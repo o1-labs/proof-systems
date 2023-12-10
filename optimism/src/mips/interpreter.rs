@@ -464,6 +464,7 @@ pub trait InterpreterEnv {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_memory(addr, value_location) }
         };
+        //0x4044e00f;
         unsafe {
             self.access_memory(addr, &old_value, &new_value);
         };
@@ -749,12 +750,44 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    unsafe fn mul_hi_lo_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_hi: Self::Position,
+        position_lo: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
+
+    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
+    /// and `position_lo` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
     unsafe fn mul_hi_lo(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
         position_hi: Self::Position,
         position_lo: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
+
+    /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
+    /// `position_remainder` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn divmod_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_quotient: Self::Position,
+        position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable);
 
     /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
@@ -819,6 +852,15 @@ pub trait InterpreterEnv {
         };
         high_bit * Self::constant(((1 << (32 - bitlength)) - 1) << bitlength) + x.clone()
     }
+
+    fn report_raw_write(
+        &mut self,
+        fd: &Self::Variable,
+        addr: &Self::Variable,
+        len: &Self::Variable,
+    );
+
+    fn report_exit(&mut self, exit_code: &Self::Variable);
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
@@ -935,7 +977,19 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::ShiftRightArithmeticVariable => (),
+        RTypeInstruction::ShiftRightArithmeticVariable => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_right_arithmetic(&rt, &rs, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::JumpRegister => {
             let addr = env.read_register(&rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
@@ -980,7 +1034,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::SyscallExitGroup => (),
+        RTypeInstruction::SyscallExitGroup => {
+            let exit_code = env.read_register(&Env::constant(4));
+            env.report_exit(&exit_code);
+            env.set_halted(Env::constant(1));
+            return;
+        }
         RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),
         RTypeInstruction::SyscallReadOther => {
@@ -1010,8 +1069,66 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         }
         RTypeInstruction::SyscallWriteHint => (),
         RTypeInstruction::SyscallWritePreimage => (),
-        RTypeInstruction::SyscallWriteOther => (),
-        RTypeInstruction::SyscallFcntl => (),
+        RTypeInstruction::SyscallWriteOther => {
+            let fd_id = env.read_register(&Env::constant(4));
+            let write_length = env.read_register(&Env::constant(6));
+            let mut check_equal = |expected_fd_id: u32| {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_zero(&(fd_id.clone() - Env::constant(expected_fd_id)), pos) }
+            };
+            let is_stdout = check_equal(FD_STDOUT);
+            let is_stderr = check_equal(FD_STDERR);
+            let is_preimage_write = check_equal(FD_PREIMAGE_WRITE);
+            let is_hint_write = check_equal(FD_HINT_WRITE);
+
+            let addr = env.read_register(&Env::constant(5));
+            env.report_raw_write(&fd_id, &addr, &write_length);
+
+            // FIXME: Should assert that `is_preimage_write` and `is_hint_write` cannot be true
+            // here.
+            let known_fd = is_stdout + is_stderr + is_preimage_write + is_hint_write;
+            let other_fd = Env::constant(1) - known_fd.clone();
+
+            // We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
+            // bad FD that we reject with EBADF.
+            let v0 = known_fd * write_length + other_fd.clone() * Env::constant(0xFFFFFFFF);
+            let v1 = other_fd * Env::constant(0x9); // EBADF
+
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::SyscallFcntl => {
+            let fd_id = env.read_register(&Env::constant(4));
+            let fd_cmd = env.read_register(&Env::constant(5));
+            let is_getfl = env.equal(&fd_cmd, &Env::constant(3));
+            let is_stdout = env.equal(&fd_id, &Env::constant(FD_STDOUT));
+            let is_stderr = env.equal(&fd_id, &Env::constant(FD_STDERR));
+            let is_preimage_write = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_WRITE));
+            let is_hint_write = env.equal(&fd_id, &Env::constant(FD_HINT_WRITE));
+            let is_stdin = env.equal(&fd_id, &Env::constant(FD_STDIN));
+            let is_preimage_read = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_READ));
+            let is_hint_read = env.equal(&fd_id, &Env::constant(FD_HINT_READ));
+
+            let is_read = is_stdin + is_preimage_read + is_hint_read;
+            let is_write = is_stdout + is_stderr + is_preimage_write + is_hint_write;
+
+            let v0 = is_getfl.clone()
+                * (is_write.clone()
+                    + (Env::constant(1) - is_read.clone() - is_write.clone())
+                        * Env::constant(0xFFFFFFFF))
+                + (Env::constant(1) - is_getfl.clone()) * Env::constant(0xFFFFFFFF);
+            let v1 = is_getfl.clone() * (Env::constant(1) - is_read - is_write.clone()) * Env::constant(0x9) /* EBADF */ + (Env::constant(1) - fd_cmd) * Env::constant(0x16) /* EINVAL */;
+
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallOther => {
             let syscall_num = env.read_register(&Env::constant(2));
             let is_sysbrk = env.equal(&syscall_num, &Env::constant(SYSCALL_BRK));
@@ -1033,7 +1150,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MoveNonZero => (),
+        RTypeInstruction::MoveNonZero => {
+            let rt = env.read_register(&rt);
+            let is_zero = Env::constant(1) - env.is_zero(&rt);
+            let rs = env.read_register(&rs);
+            env.write_register_if(&rd, rs, &is_zero);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::Sync => {
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1054,8 +1179,28 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MoveToLo => (),
-        RTypeInstruction::Multiply => (),
+        RTypeInstruction::MoveToLo => {
+            let rs = env.read_register(&rs);
+            env.write_register(&Env::constant(REGISTER_LO as u32), rs);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::Multiply => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let (hi, lo) = {
+                // Fixme: constrain
+                let hi_pos = env.alloc_scratch();
+                let lo_pos = env.alloc_scratch();
+                unsafe { env.mul_hi_lo_signed(&rs, &rt, hi_pos, lo_pos) }
+            };
+            env.write_register(&Env::constant(REGISTER_HI as u32), hi);
+            env.write_register(&Env::constant(REGISTER_LO as u32), lo);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MultiplyUnsigned => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
@@ -1071,7 +1216,21 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::Div => (),
+        RTypeInstruction::Div => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let (quotient, remainder) = {
+                // Fixme: constrain
+                let quotient_pos = env.alloc_scratch();
+                let remainder_pos = env.alloc_scratch();
+                unsafe { env.divmod_signed(&rs, &rt, quotient_pos, remainder_pos) }
+            };
+            env.write_register(&Env::constant(REGISTER_LO as u32), quotient);
+            env.write_register(&Env::constant(REGISTER_HI as u32), remainder);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::DivUnsigned => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
@@ -1531,6 +1690,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 offset.clone(),
                 addr.clone()
             );
+            //let mut pp_reg = |addr, offset| {
+            //let addr = addr + Env::constant(offset);
+            //let pos = env.alloc_scratch();
+            //let access = unsafe { env.fetch_memory_access(&addr, pos) };
+            //let pos = env.alloc_scratch();
+            //let value = unsafe { env.fetch_memory(&addr, pos) };
+            //println!("addr={:?} last_access={:?} value={:?}", addr, access, value);
+            //};
+            //pp_reg(addr.clone(), 0);
+            //pp_reg(addr.clone(), 1);
+            //pp_reg(addr.clone(), 2);
+            //pp_reg(addr.clone(), 3);
             // We load 4 bytes, i.e. one word.
             let v0 = env.read_memory(&addr);
             let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
@@ -1541,6 +1712,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 + (v2 * Env::constant(1 << 8))
                 + v3;
             debug!("Loaded 32 bits value from {:?}: {:?}", addr.clone(), value);
+            //println!("insn={:?}", env.instruction_counter());
+            //println!("value={:?}", value);
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1574,8 +1747,196 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::LoadWordLeft => (),
-        ITypeInstruction::LoadWordRight => (),
+        ITypeInstruction::LoadWordLeft => {
+            //println!("lwl");
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+
+            //println!("base={:?} offset={:?}", base, offset);
+            //println!("addr={:?}", addr);
+
+            let byte_subaddr = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&addr, 2, 0, pos) }
+            };
+            //println!("byte_subaddr={:?}", byte_subaddr);
+
+            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
+            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
+            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_2.clone();
+            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3)) + overwrite_1.clone();
+            //println!(
+            //"o0={:?} o1={:?} o2={:?} o3={:?}",
+            //overwrite_0, overwrite_1, overwrite_2, overwrite_3
+            //);
+
+            //let mut pp_reg = |addr, offset| {
+            /*let addr = addr + Env::constant(offset);
+            let pos = env.alloc_scratch();
+            let val = unsafe { env.fetch_memory_access(&addr, pos) };
+            println!("addr={:?} last_access={:?}", addr, val);*/
+            //};
+
+            //pp_reg(addr.clone(), 0);
+            //pp_reg(addr.clone(), 1);
+            //pp_reg(addr.clone(), 2);
+            //pp_reg(addr.clone(), 3);
+
+            let m0 = env.read_memory(&addr);
+            let m1 = env.read_memory(&(addr.clone() + Env::constant(1)));
+            let m2 = env.read_memory(&(addr.clone() + Env::constant(2)));
+            let m3 = env.read_memory(&(addr.clone() + Env::constant(3)));
+            //println!("m0={:?} m1={:?} m2={:?} m3={:?}", m0, m1, m2, m3);
+
+            let [r0, r1, r2, r3] = {
+                let initial_register_value = env.read_register(&rt);
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
+                    },
+                ]
+            };
+            //println!("r0={:?} r1={:?} r2={:?} r3={:?}", r0, r1, r2, r3);
+
+            //println!(
+            //"v0={:?} v1={:?} v2={:?} v3={:?}",
+            //(overwrite_0.clone() * m0.clone()
+            //+ (Env::constant(1) - overwrite_0.clone()) * r0.clone()),
+            //(overwrite_1.clone() * m1.clone()
+            //+ (Env::constant(1) - overwrite_1.clone()) * r1.clone()),
+            //(overwrite_2.clone() * m2.clone()
+            //+ (Env::constant(1) - overwrite_2.clone()) * r2.clone()),
+            //(overwrite_3.clone() * m3.clone()
+            //+ (Env::constant(1) - overwrite_3.clone()) * r3.clone()),
+            //);
+            let value = {
+                let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
+                    * Env::constant(1 << 24))
+                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1) * r1)
+                        * Env::constant(1 << 16))
+                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2) * r2)
+                        * Env::constant(1 << 8))
+                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3) * r3);
+                let pos = env.alloc_scratch();
+                env.copy(&value, pos)
+            };
+            //println!("v={:?}", value);
+            env.write_register(&rt, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
+        ITypeInstruction::LoadWordRight => {
+            //println!("lwr");
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            // The `-3` here feels odd, but simulates the `<< 24` in cannon, and matches the
+            // behavior defined in the spec.
+            // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.
+            let addr = base.clone() + offset.clone();
+
+            //println!("base={:?} offset={:?}", base, offset);
+            //println!("addr={:?}", addr);
+
+            let byte_subaddr = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&addr, 2, 0, pos) }
+            };
+            //println!("byte_subaddr={:?}", byte_subaddr);
+
+            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
+            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
+            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_1.clone();
+            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0)) + overwrite_2.clone();
+            //println!(
+            //"o0={:?} o1={:?} o2={:?} o3={:?}",
+            //overwrite_0, overwrite_1, overwrite_2, overwrite_3
+            //);
+
+            let m0 = env.read_memory(&(addr.clone() - Env::constant(3)));
+            let m1 = env.read_memory(&(addr.clone() - Env::constant(2)));
+            let m2 = env.read_memory(&(addr.clone() - Env::constant(1)));
+            let m3 = env.read_memory(&addr);
+            //println!("m0={:?} m1={:?} m2={:?} m3={:?}", m0, m1, m2, m3);
+
+            let [r0, r1, r2, r3] = {
+                let initial_register_value = env.read_register(&rt);
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
+                    },
+                ]
+            };
+            //println!("r0={:?} r1={:?} r2={:?} r3={:?}", r0, r1, r2, r3);
+
+            //println!(
+            //"v0={:?} v1={:?} v2={:?} v3={:?}",
+            //(overwrite_0.clone() * m0.clone()
+            //+ (Env::constant(1) - overwrite_0.clone()) * r0.clone()),
+            //(overwrite_1.clone() * m1.clone()
+            //+ (Env::constant(1) - overwrite_1.clone()) * r1.clone()),
+            //(overwrite_2.clone() * m2.clone()
+            //+ (Env::constant(1) - overwrite_2.clone()) * r2.clone()),
+            //(overwrite_3.clone() * m3.clone()
+            //+ (Env::constant(1) - overwrite_3.clone()) * r3.clone()),
+            //);
+
+            let value = {
+                let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
+                    * Env::constant(1 << 24))
+                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1) * r1)
+                        * Env::constant(1 << 16))
+                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2) * r2)
+                        * Env::constant(1 << 8))
+                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3) * r3);
+                let pos = env.alloc_scratch();
+                env.copy(&value, pos)
+            };
+            //println!("v={:?}", value);
+            env.write_register(&rt, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::Store8 => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
@@ -1645,6 +2006,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
+            //println!("addr={:?} v0={:?} v1={:?} v2={:?} v3={:?}", addr, v0, v1, v2, v3);
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
             env.write_memory(&(addr.clone() + Env::constant(2)), v2);
@@ -1692,8 +2054,224 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        ITypeInstruction::StoreWordLeft => (),
-        ITypeInstruction::StoreWordRight => (),
+        ITypeInstruction::StoreWordLeft => {
+            //println!("swl");
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+
+            //println!("base={:?} offset={:?}", base, offset);
+            //println!("addr={:?}", addr);
+
+            let byte_subaddr = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&addr, 2, 0, pos) }
+            };
+            //println!("byte_subaddr={:?}", byte_subaddr);
+
+            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
+            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
+            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_2.clone();
+            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3)) + overwrite_1.clone();
+            //println!(
+            //"o0={:?} o1={:?} o2={:?} o3={:?}",
+            //overwrite_0, overwrite_1, overwrite_2, overwrite_3
+            //);
+
+            //let mut pp_reg = |addr, offset| {
+            //let addr = addr + Env::constant(offset);
+            //let pos = env.alloc_scratch();
+            //let access = unsafe { env.fetch_memory_access(&addr, pos) };
+            //let pos = env.alloc_scratch();
+            //let value = unsafe { env.fetch_memory(&addr, pos) };
+            //println!("addr={:?} last_access={:?} value={:?}", addr, access, value);
+            //};
+
+            //pp_reg(addr.clone() - byte_subaddr.clone(), 0);
+            //pp_reg(addr.clone() - byte_subaddr.clone(), 1);
+            //pp_reg(addr.clone() - byte_subaddr.clone(), 2);
+            //pp_reg(addr.clone() - byte_subaddr.clone(), 3);
+
+            //pp_reg(addr.clone(), 0);
+            //pp_reg(addr.clone(), 1);
+            //pp_reg(addr.clone(), 2);
+            //pp_reg(addr.clone(), 3);
+
+            let m0 = env.read_memory(&addr);
+            let m1 = env.read_memory(&(addr.clone() + Env::constant(1)));
+            let m2 = env.read_memory(&(addr.clone() + Env::constant(2)));
+            let m3 = env.read_memory(&(addr.clone() + Env::constant(3)));
+            //println!("m0={:?} m1={:?} m2={:?} m3={:?}", m0, m1, m2, m3);
+
+            let [r0, r1, r2, r3] = {
+                let initial_register_value = env.read_register(&rt);
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
+                    },
+                ]
+            };
+            //println!("r0={:?} r1={:?} r2={:?} r3={:?}", r0, r1, r2, r3);
+
+            let v0 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_0.clone() * r0 + (Env::constant(1) - overwrite_0) * m0),
+                    pos,
+                )
+            };
+            let v1 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_1.clone() * r1 + (Env::constant(1) - overwrite_1) * m1),
+                    pos,
+                )
+            };
+            let v2 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_2.clone() * r2 + (Env::constant(1) - overwrite_2) * m2),
+                    pos,
+                )
+            };
+            let v3 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_3.clone() * r3 + (Env::constant(1) - overwrite_3) * m3),
+                    pos,
+                )
+            };
+            //println!("write_addr={:?}", addr.clone());
+            //println!("v0={:?} v1={:?} v2={:?} v3={:?}", v0, v1, v2, v3);
+
+            env.write_memory(&addr, v0);
+            env.write_memory(&(addr.clone() + Env::constant(1)), v1);
+            env.write_memory(&(addr.clone() + Env::constant(2)), v2);
+            env.write_memory(&(addr.clone() + Env::constant(3)), v3);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
+        ITypeInstruction::StoreWordRight => {
+            //println!("swr");
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            // The `-3` here feels odd, but simulates the `<< 24` in cannon, and matches the
+            // behavior defined in the spec.
+            // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.
+            let addr = base.clone() + offset.clone();
+
+            //println!("base={:?} offset={:?}", base, offset);
+            //println!("addr={:?}", addr);
+
+            let byte_subaddr = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&addr, 2, 0, pos) }
+            };
+            //println!("byte_subaddr={:?}", byte_subaddr);
+
+            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
+            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
+            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_1.clone();
+            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0)) + overwrite_2.clone();
+            //println!(
+            //"o0={:?} o1={:?} o2={:?} o3={:?}",
+            //overwrite_0, overwrite_1, overwrite_2, overwrite_3
+            //);
+
+            let m0 = env.read_memory(&(addr.clone() - Env::constant(3)));
+            let m1 = env.read_memory(&(addr.clone() - Env::constant(2)));
+            let m2 = env.read_memory(&(addr.clone() - Env::constant(1)));
+            let m3 = env.read_memory(&addr);
+            //println!("m0={:?} m1={:?} m2={:?} m3={:?}", m0, m1, m2, m3);
+
+            let [r0, r1, r2, r3] = {
+                let initial_register_value = env.read_register(&rt);
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
+                    },
+                ]
+            };
+            //println!("r0={:?} r1={:?} r2={:?} r3={:?}", r0, r1, r2, r3);
+
+            let v0 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_0.clone() * r0 + (Env::constant(1) - overwrite_0) * m0),
+                    pos,
+                )
+            };
+            let v1 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_1.clone() * r1 + (Env::constant(1) - overwrite_1) * m1),
+                    pos,
+                )
+            };
+            let v2 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_2.clone() * r2 + (Env::constant(1) - overwrite_2) * m2),
+                    pos,
+                )
+            };
+            let v3 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_3.clone() * r3 + (Env::constant(1) - overwrite_3) * m3),
+                    pos,
+                )
+            };
+            //println!("write_addr={:?}", addr.clone() - Env::constant(3));
+            //println!("v0={:?} v1={:?} v2={:?} v3={:?}", v0, v1, v2, v3);
+
+            env.write_memory(&(addr.clone() - Env::constant(3)), v0);
+            env.write_memory(&(addr.clone() - Env::constant(2)), v1);
+            env.write_memory(&(addr.clone() - Env::constant(1)), v2);
+            env.write_memory(&(addr.clone() - Env::constant(0)), v3);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
     };
 
     // REMOVEME: when all itype instructions are implemented.

@@ -22,7 +22,7 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 38;
+pub const SCRATCH_SIZE: usize = 60;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -371,6 +371,21 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn mul_hi_lo_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_hi: Self::Position,
+        position_lo: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let mul = ((*x as i64) * (*y as i64)) as u64;
+        let hi = (mul >> 32) as u32;
+        let lo = (mul & ((1 << 32) - 1)) as u32;
+        self.write_column(position_hi, hi.into());
+        self.write_column(position_lo, lo.into());
+        (hi, lo)
+    }
+
     unsafe fn mul_hi_lo(
         &mut self,
         x: &Self::Variable,
@@ -384,6 +399,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.write_column(position_hi, hi.into());
         self.write_column(position_lo, lo.into());
         (hi, lo)
+    }
+
+    unsafe fn divmod_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_quotient: Self::Position,
+        position_remainder: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let q = ((*x as i32) / (*y as i32)) as u32;
+        let r = ((*x as i32) % (*y as i32)) as u32;
+        self.write_column(position_quotient, q.into());
+        self.write_column(position_remainder, r.into());
+        (q, r)
     }
 
     unsafe fn divmod(
@@ -423,6 +452,27 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         } else {
             panic!("Bad value for flag in set_halted: {}", flag);
         }
+    }
+
+    fn report_raw_write(
+        &mut self,
+        fd: &Self::Variable,
+        addr: &Self::Variable,
+        len: &Self::Variable,
+    ) {
+        let mut bytes = Vec::with_capacity(*len as usize);
+        for i in 0..*len {
+            bytes.push(self.get_memory_direct(addr + i));
+        }
+        /*println!(
+            "received write on fd={}: {}",
+            *fd,
+            String::from_utf8_lossy(&bytes)
+        );*/
+    }
+
+    fn report_exit(&mut self, exit_code: &Self::Variable) {
+        println!("Exited with code {}", *exit_code);
     }
 }
 
@@ -706,10 +756,17 @@ impl<Fp: Field> Env<Fp> {
         // Force stops at given iteration
         if self.should_trigger_at(&config.stop_at) {
             self.halt = true;
+            println!("instruction: {:?}", opcode);
             return;
         }
 
         interpreter::interpret_instruction(self, opcode);
+
+        if self.halt {
+            println!("instruction: {:?}", opcode);
+            println!("instruction: {:032b}", instruction);
+            println!("step: {}", self.instruction_counter);
+        }
 
         self.instruction_counter += 1;
     }
@@ -770,9 +827,41 @@ impl<Fp: Field> Env<Fp> {
                 .find_address_symbol(pc)
                 .unwrap_or_else(|| "n/a".to_string());
 
-            info!(
-                "processing step={} pc={:010x} insn={:010x} ips={:.2} pages={} mem={} name={}",
-                step, pc, insn, ips, pages, mem, name
+            println!(
+                "t=... lvl=info msg=processing step={} pc={:08x} insn={:08x} ips={:.2} pages={} mem={} name={} registers=\"[{:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x}]\"",
+                step, pc, insn, ips, pages, mem, name,
+                self.registers[0],
+                self.registers[1],
+                self.registers[2],
+                self.registers[3],
+                self.registers[4],
+                self.registers[5],
+                self.registers[6],
+                self.registers[7],
+                self.registers[8],
+                self.registers[9],
+                self.registers[10],
+                self.registers[11],
+                self.registers[12],
+                self.registers[13],
+                self.registers[14],
+                self.registers[15],
+                self.registers[16],
+                self.registers[17],
+                self.registers[18],
+                self.registers[19],
+                self.registers[20],
+                self.registers[21],
+                self.registers[22],
+                self.registers[23],
+                self.registers[24],
+                self.registers[25],
+                self.registers[26],
+                self.registers[27],
+                self.registers[28],
+                self.registers[29],
+                self.registers[30],
+                self.registers[31],
             );
         }
     }

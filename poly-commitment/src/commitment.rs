@@ -265,6 +265,53 @@ impl<C: AffineCurve> PolyComm<C> {
 
         Self::new(unshifted, shifted)
     }
+
+    /// Performs a multi-scalar multiplication between scalars `elm` and commitments `com`.
+    /// If both are empty, returns a commitment of length 1 containing the point at infinity.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `com` and `elm` are not of the same size.
+    pub fn multi_scalar_mul_u64(com: &[&PolyComm<C>], elm: &[u64]) -> Self {
+        assert_eq!(com.len(), elm.len());
+
+        if com.is_empty() || elm.is_empty() {
+            return Self::new(vec![C::zero()], None);
+        }
+
+        let all_scalars: Vec<_> = elm.iter().map(|s| (*s).into()).collect();
+
+        let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
+        let mut unshifted = Vec::with_capacity(unshifted_size);
+
+        for chunk in 0..unshifted_size {
+            let (points, scalars): (Vec<_>, Vec<_>) = com
+                .iter()
+                .zip(&all_scalars)
+                // get rid of scalars that don't have an associated chunk
+                .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
+                .unzip();
+
+            let chunk_msm = VariableBaseMSM::multi_scalar_mul::<C>(&points, &scalars);
+            unshifted.push(chunk_msm.into_affine());
+        }
+
+        let mut shifted_pairs = com
+            .iter()
+            .zip(all_scalars)
+            // get rid of commitments without a `shifted` part
+            .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
+            .peekable();
+
+        let shifted = if shifted_pairs.peek().is_none() {
+            None
+        } else {
+            let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
+            Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+        };
+
+        Self::new(unshifted, shifted)
+    }
 }
 
 /// Returns the product of all the field elements belonging to an iterator.
@@ -926,6 +973,18 @@ impl<G: CommitmentCurve> SRS<G> {
         // verify the equation
         let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
         VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()
+    }
+
+    pub fn commit_evaluations_non_hiding_u64(
+        &self,
+        domain: D<G::ScalarField>,
+        evals: &[u64],
+    ) -> PolyComm<G> {
+        let basis = self
+            .lagrange_bases
+            .get(&domain.size())
+            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
+        PolyComm::<G>::multi_scalar_mul_u64(&basis.iter().collect::<Vec<_>>()[..], evals)
     }
 }
 

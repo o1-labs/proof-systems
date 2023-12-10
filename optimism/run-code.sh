@@ -11,6 +11,6 @@ set -u
 
 source $FILENAME
 
-./run-op-program.sh
+#./run-op-program.sh
 
 ./run-vm.sh

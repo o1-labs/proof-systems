@@ -1322,6 +1322,7 @@ name = "kimchi_optimism"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
+ "ark-ec",
  "ark-ff",
  "ark-poly",
  "base64",
@@ -1339,6 +1340,7 @@ dependencies = [
  "os_pipe",
  "poly-commitment",
  "rand",
+ "rayon",
  "regex",
  "rmp-serde",
  "serde",
