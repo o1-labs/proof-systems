@@ -1089,9 +1089,9 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let registers_left_to_write_after_this = {
                     // FIXME: Requires a range check
                     let pos = env.alloc_scratch();
-                    // The virtual register is 32 bits wide, so we can just read 5 bytes. If the
+                    // The virtual register is 32 bits wide, so we can just read 6 bytes. If the
                     // register has an incorrect value, it will be unprovable and we'll fault.
-                    unsafe { env.bitmask(&write_length, 5, 2, pos) }
+                    unsafe { env.bitmask(&write_length, 6, 2, pos) }
                 };
                 Env::constant(REGISTER_PREIMAGE_KEY_END as u32) - registers_left_to_write_after_this
             };
