@@ -22,20 +22,16 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 60;
+pub const SCRATCH_SIZE: usize = 60; // TODO: Delete and use a vector instead
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
-    pub preimage_offset: u32,
-    pub preimage_key: [u8; 32],
     pub last_hint: Option<Vec<u8>>,
 }
 
 impl SyscallEnv {
     pub fn create(state: &State) -> Self {
         SyscallEnv {
-            preimage_key: state.preimage_key,
-            preimage_offset: state.preimage_offset,
             last_hint: state.last_hint.clone(),
         }
     }
@@ -500,13 +496,25 @@ impl<Fp: Field> Env<Fp> {
             .map(|(offset, _)| *offset)
             .collect::<Vec<_>>();
 
-        let initial_registers = Registers {
-            lo: state.lo,
-            hi: state.hi,
-            general_purpose: state.registers,
-            current_instruction_pointer: initial_instruction_pointer,
-            next_instruction_pointer,
-            heap_pointer: state.heap,
+        let initial_registers = {
+            let preimage_key = {
+                let mut preimage_key = [0u32; 8];
+                for i in 0..8 {
+                    preimage_key[i] =
+                        u32::from_be_bytes(state.preimage_key[i * 4..i * 4 + 3].try_into().unwrap())
+                }
+                preimage_key
+            };
+            Registers {
+                lo: state.lo,
+                hi: state.hi,
+                general_purpose: state.registers,
+                current_instruction_pointer: initial_instruction_pointer,
+                next_instruction_pointer,
+                heap_pointer: state.heap,
+                preimage_key,
+                preimage_offset: state.preimage_offset,
+            }
         };
 
         Env {

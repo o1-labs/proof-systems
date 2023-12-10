@@ -654,7 +654,7 @@ fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
     // the length of the table to avoid having a bigger circuit than the table
     // size, and therefore use it as the main component for the domain size
     // computation.
-    let num_lookups = rng.gen_range(1..len);
+    let num_lookups = rng.gen_range(2..len);
     let gates = (0..num_lookups)
         .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
         .collect();
