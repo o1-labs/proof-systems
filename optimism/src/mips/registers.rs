@@ -7,10 +7,10 @@ pub const REGISTER_CURRENT_IP: usize = 34;
 pub const REGISTER_NEXT_IP: usize = 35;
 pub const REGISTER_HEAP_POINTER: usize = 36;
 pub const REGISTER_PREIMAGE_KEY_START: usize = 37;
-pub const REGISTER_PREIMAGE_KEY_END: usize = REGISTER_PREIMAGE_KEY_START + 32 /* 37 + 32 = 69 */;
-pub const REGISTER_PREIMAGE_OFFSET: usize = 69;
+pub const REGISTER_PREIMAGE_KEY_END: usize = REGISTER_PREIMAGE_KEY_START + 8 /* 37 + 8 = 45 */;
+pub const REGISTER_PREIMAGE_OFFSET: usize = 45;
 
-pub const NUM_REGISTERS: usize = 70;
+pub const NUM_REGISTERS: usize = 46;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Registers<T> {
