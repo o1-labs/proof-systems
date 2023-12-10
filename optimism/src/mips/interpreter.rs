@@ -851,6 +851,8 @@ pub trait InterpreterEnv {
         };
         high_bit * Self::constant(((1 << (32 - bitlength)) - 1) << bitlength) + x.clone()
     }
+
+    fn report_exit(&mut self, exit_code: &Self::Variable);
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
@@ -1024,7 +1026,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::SyscallExitGroup => (),
+        RTypeInstruction::SyscallExitGroup => {
+            let exit_code = env.read_register(&Env::constant(4));
+            env.report_exit(&exit_code);
+            env.set_halted(Env::constant(1));
+            return;
+        }
         RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),
         RTypeInstruction::SyscallReadOther => {
