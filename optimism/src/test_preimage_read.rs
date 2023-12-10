@@ -2,7 +2,7 @@ use clap::Arg;
 use kimchi_optimism::{
     cannon::PreimageKey,
     cannon_cli::{main_cli, read_configuration},
-    preimage_oracle::{Key, PreImageOracle},
+    preimage_oracle::PreImageOracle,
 };
 use log::{debug, error};
 use std::{
@@ -67,7 +67,8 @@ fn main() -> ExitCode {
                 .collect::<Vec<_>>()[0];
 
             let hash = PreimageKey::from_str(preimage_key).unwrap();
-            let key = Key::Keccak(hash.0);
+            let mut key = hash.0;
+            key[0] = 2; // Keccak
 
             debug!(
                 "Generating OP Keccak key for {} at index {}",
