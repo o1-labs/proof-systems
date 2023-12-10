@@ -371,6 +371,21 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn mul_hi_lo_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_hi: Self::Position,
+        position_lo: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let mul = ((*x as i64) * (*y as i64)) as u64;
+        let hi = (mul >> 32) as u32;
+        let lo = (mul & ((1 << 32) - 1)) as u32;
+        self.write_column(position_hi, hi.into());
+        self.write_column(position_lo, lo.into());
+        (hi, lo)
+    }
+
     unsafe fn mul_hi_lo(
         &mut self,
         x: &Self::Variable,
