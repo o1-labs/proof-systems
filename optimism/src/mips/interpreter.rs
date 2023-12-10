@@ -2006,7 +2006,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             //overwrite_0, overwrite_1, overwrite_2, overwrite_3
             //);
 
-
             // The `-3` here feels odd, but simulates the `<< 24` in cannon, and matches the
             // behavior defined in the spec.
             // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.

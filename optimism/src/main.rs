@@ -110,7 +110,6 @@ pub fn main() -> ExitCode {
 
     let mut values: [_; 60] = std::array::from_fn(|_| vec![]);
 
-
     while !env.halt {
         env.step(&configuration, &meta, &start);
 
