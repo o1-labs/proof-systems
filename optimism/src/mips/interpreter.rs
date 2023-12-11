@@ -749,6 +749,22 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    unsafe fn mul_hi_lo_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_hi: Self::Position,
+        position_lo: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
+
+    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
+    /// and `position_lo` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
     unsafe fn mul_hi_lo(
         &mut self,
         x: &Self::Variable,
@@ -1127,7 +1143,21 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::Multiply => (),
+        RTypeInstruction::Multiply => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let (hi, lo) = {
+                // Fixme: constrain
+                let hi_pos = env.alloc_scratch();
+                let lo_pos = env.alloc_scratch();
+                unsafe { env.mul_hi_lo_signed(&rs, &rt, hi_pos, lo_pos) }
+            };
+            env.write_register(&Env::constant(REGISTER_HI as u32), hi);
+            env.write_register(&Env::constant(REGISTER_LO as u32), lo);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MultiplyUnsigned => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
