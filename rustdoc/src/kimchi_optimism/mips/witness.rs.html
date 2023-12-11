@@ -833,6 +833,10 @@
 <a href="#833" id="833">833</a>
 <a href="#834" id="834">834</a>
 <a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -1291,6 +1295,10 @@
         </span>} <span class="kw">else </span>{
             <span class="macro">panic!</span>(<span class="string">&quot;Bad value for flag in set_halted: {}&quot;</span>, flag);
         }
+    }
+
+    <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="macro">println!</span>(<span class="string">&quot;Exited with code {}&quot;</span>, <span class="kw-2">*</span>exit_code);
     }
 }
 

@@ -2183,6 +2183,13 @@
 <a href="#2183" id="2183">2183</a>
 <a href="#2184" id="2184">2184</a>
 <a href="#2185" id="2185">2185</a>
+<a href="#2186" id="2186">2186</a>
+<a href="#2187" id="2187">2187</a>
+<a href="#2188" id="2188">2188</a>
+<a href="#2189" id="2189">2189</a>
+<a href="#2190" id="2190">2190</a>
+<a href="#2191" id="2191">2191</a>
+<a href="#2192" id="2192">2192</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -3036,6 +3043,8 @@
         };
         high_bit * <span class="self">Self</span>::constant(((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- bitlength)) - <span class="number">1</span>) &lt;&lt; bitlength) + x.clone()
     }
+
+    <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 }
 
 <span class="kw">pub fn </span>interpret_instruction&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: Instruction) {
@@ -3209,7 +3218,12 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::SyscallExitGroup =&gt; (),
+        RTypeInstruction::SyscallExitGroup =&gt; {
+            <span class="kw">let </span>exit_code = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
+            env.report_exit(<span class="kw-2">&amp;</span>exit_code);
+            env.set_halted(Env::constant(<span class="number">1</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::SyscallReadHint =&gt; (),
         RTypeInstruction::SyscallReadPreimage =&gt; (),
         RTypeInstruction::SyscallReadOther =&gt; {
