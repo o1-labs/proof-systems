@@ -3,7 +3,7 @@ use crate::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
-    keccak::column::KeccakColumns,
+    keccak::{environment::KeccakEnv, E},
     mips::{
         column::Column,
         interpreter::{
@@ -15,6 +15,8 @@ use crate::{
     preimage_oracle::PreImageOracle,
 };
 use ark_ff::Field;
+use core::panic;
+use kimchi::circuits::expr::ConstantExpr::Literal;
 use log::{debug, info};
 use std::array;
 
@@ -55,7 +57,7 @@ pub struct Env<Fp> {
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
-    pub keccak_state: KeccakColumns<Fp>,
+    pub keccak_env: Option<KeccakEnv<Fp>>,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -477,7 +479,7 @@ impl<Fp: Field> Env<Fp> {
             halt: state.exited,
             syscall_env,
             preimage_oracle,
-            keccak_state: KeccakColumns::default(),
+            keccak_env: None,
         }
     }
 
@@ -493,7 +495,13 @@ impl<Fp: Field> Env<Fp> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
-            Column::KeccakState(col) => self.keccak_state[col] = value,
+            Column::KeccakState(col) => {
+                if let Some(keccak_env) = &mut self.keccak_env {
+                    keccak_env.keccak_state[col] = E::constant(Literal(value))
+                } else {
+                    panic!("Keccak state not initialized")
+                }
+            }
         }
     }
 
