@@ -19,8 +19,8 @@ use poly_commitment::evaluation_proof::{OpeningProof, PreChallenges};
 
 // Let F, K be the two fields (either (Fp, Fq) or (Fq, Fp)).
 // Each proof over F has an accumulator state which contains
-// - a set of IPA challenges c_0, ..., c_{k-1}, which can be interpreted as F elements.
-// - a polynomial commitment challenge_polynomial_commitment, which has coordinates in K.
+// - a set of IPA challenges c_0, ..., c_{k-1}, which can be interpreted as F elements. (BulletProofChallenges / PreChallenges)
+// - a polynomial commitment challenge_polynomial_commitment, which has coordinates in K. (OpeningProof#sg)
 //
 // This part of the accumulator state is finalized by checking that challenge_polynomial_commitment
 // is a commitment to the polynomial
@@ -74,7 +74,6 @@ pub struct BranchData {}
 pub struct AppState {} // should be two?
 
 // TODO
-pub struct UnfinalizedProofs {}
 pub struct PlonkVerificationKeyEvals {}
 
 //
@@ -174,34 +173,17 @@ pub struct WrapScalarsInCircuit {
 ///   where r = evalscale most likely. Corresponds to Oracle.u. The opposite of the book's notation.
 pub struct CombinedInnerProduct<F>(pub F);
 
-/// All the deferred values needed, comprising values from the PLONK IOP verification,
-/// values from the inner-product argument, and [which_branch] which is needed to know
-/// the proper domain to use.
-pub struct WrapDeferredValues<WrapScalars> {
-    /// Could be either WrapScalarsMinimal or WrapScalarsInCircuit
-    plonk: WrapScalars,
-    combined_inner_product: CombinedInnerProduct<Fp>,
-    /// Combined evaluation on two points:
-    ///   b = challenge_poly * plonk.zeta + r * challenge_poly * (domain_generrator * plonk.zeta)
-    ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
-    b: Fp,
-    /// The challenge used for combining polynomials
-    xi: ScalarChallenge,
-    /// The challenges from the inner-product argument that was partially verified.
-    bulletproof_challenges: BulletproofChallenges<Fp>,
-    /// Data specific to which step branch of the proof-system was verified
-    branch_data: BranchData,
-}
-
+/// (Step) Deferred values
+///
 /// All the scalar-field values needed to finalize the verification of a proof
 /// by checking that the correct values were used in the "group operations" part of the
 /// verifier.
 ///
 /// Consists of some evaluations of PLONK polynomials (columns, permutation aggregation, etc.)
 /// and the remainder are things related to the inner product argument.
-pub struct StepDeferredValues<StepScalars> {
-    /// Could be ei
-    plonk: StepScalars,
+pub struct DeferredValues<Scalars> {
+    /// Could be either ScalarsMinimal or ScalarsInCircuit
+    plonk: Scalars,
     /// Most likely polyscale from commitment.rs. Also known as Oracle.v. Opposite of the book's notation.
     /// The challenge used for combining polynomials.
     xi: ScalarChallenge,
@@ -212,6 +194,17 @@ pub struct StepDeferredValues<StepScalars> {
     b: Fq,
     /// The challenges from the inner-product argument that was partially verified.
     bulletproof_challenges: BulletproofChallenges<Fq>,
+}
+
+/// (Wrap) deferred values
+///
+/// All the deferred values needed, comprising values from the PLONK IOP verification,
+/// values from the inner-product argument, and [which_branch] which is needed to know
+/// the proper domain to use.
+pub struct WrapDeferredValues<WrapScalars> {
+    deferred_values: DeferredValues<WrapScalars>,
+    /// Data specific to which step branch of the proof-system was verified
+    branch_data: BranchData,
 }
 
 /// In-circuit type for wrap proofs
@@ -298,7 +291,7 @@ pub struct MessagesForNextWrapProof {
 /// This is that data.
 pub struct PerProof<StepScalars> {
     /// Scalar values related to the proof
-    deferred_values: StepDeferredValues<StepScalars>,
+    deferred_values: DeferredValues<StepScalars>,
     /// We allow circuits in pickles proof systems to decide if it's
     /// OK that a proof did not recursively verify. In that case, when
     /// we expose the unfinalized bits, we need to communicate that
@@ -308,12 +301,17 @@ pub struct PerProof<StepScalars> {
     sponge_digest_before_evaluations: Digest<Fq>,
 }
 
+// @volhovm: this is my guess
+pub struct UnfinalizedProofs {
+    perProofs: Vec<PerProof<StepScalarsInCircuit>>, // InCircuit is also a guess
+}
+
 pub struct WrapProofState<WrapScalars> {
     deferred_values: WrapDeferredValues<WrapScalars>,
     sponge_digest_before_evaluations: Digest<Fp>,
     /// Parts of the statement not needed by the other circuit. Represented as a hash inside the
     /// circuit which is then "unhashed"
-    messages_for_next_wrap_proof: MessagesForNextStepProof,
+    messages_for_next_wrap_proof: MessagesForNextWrapProof,
 }
 
 pub struct StepProofState {
