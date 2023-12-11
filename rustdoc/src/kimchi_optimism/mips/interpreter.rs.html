@@ -4330,7 +4330,7 @@
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">3</span>)), v0);
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">2</span>)), v1);
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">1</span>)), v2);
-            env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">0</span>)), v3);
+            env.write_memory(<span class="kw-2">&amp;</span>addr.clone(), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="comment">// REMOVEME: when all itype instructions are implemented.
