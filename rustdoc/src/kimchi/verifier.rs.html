@@ -2139,7 +2139,7 @@
     };
 
     <span class="comment">//~ 1. Compute the (chuncked) commitment of $ft$
-    //~    (see [Maller&#39;s optimization](../crypto/plonk/maller_15.html)).
+    //~    (see [Maller&#39;s optimization](../kimchi/maller_15.md)).
     </span><span class="kw">let </span>ft_comm = {
         <span class="kw">let </span>zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size <span class="kw">as </span>u64]);
         <span class="kw">let </span>chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);

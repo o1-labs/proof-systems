@@ -2893,7 +2893,7 @@
         };
 
         <span class="comment">//~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+        //~    This is to implement [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
         </span><span class="macro">internal_tracing::checkpoint!</span>(internal_traces; compute_ft_poly);
         <span class="kw">let </span>ft: DensePolynomial&lt;G::ScalarField&gt; = {
             <span class="kw">let </span>f_chunked = {
@@ -2916,7 +2916,7 @@
 
                 drop(env);
 
-                <span class="comment">// see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
+                <span class="comment">// see https://o1-labs.github.io/mina-book/kimchi/maller_15.html#the-prover-side
                 </span>f.to_chunked_polynomial(num_chunks, index.max_poly_size)
                     .linearize(zeta_to_srs_len)
             };
@@ -2929,7 +2929,7 @@
         };
 
         <span class="comment">//~ 1. construct the blinding part of the ft polynomial commitment
-        //~    [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
+        //~    [see this section](https://o1-labs.github.io/mina-book/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
         </span><span class="kw">let </span>blinding_ft = {
             <span class="kw">let </span>blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
             <span class="kw">let </span>blinding_f = G::ScalarField::zero();
