@@ -457,6 +457,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             panic!("Bad value for flag in set_halted: {}", flag);
         }
     }
+
+    fn report_exit(&mut self, exit_code: &Self::Variable) {
+        println!("Exited with code {}", *exit_code);
+    }
 }
 
 impl<Fp: Field> Env<Fp> {
