@@ -935,7 +935,19 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::ShiftRightArithmeticVariable => (),
+        RTypeInstruction::ShiftRightArithmeticVariable => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_right_arithmetic(&rt, &rs, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::JumpRegister => {
             let addr = env.read_register(&rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
