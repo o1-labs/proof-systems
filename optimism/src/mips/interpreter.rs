@@ -1,4 +1,9 @@
-use crate::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
+use crate::{
+    cannon::PAGE_ADDRESS_SIZE,
+    mips::registers::{
+        REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
+    },
+};
 use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
@@ -17,66 +22,6 @@ pub const SYSCALL_EXIT_GROUP: u32 = 4246;
 pub const SYSCALL_READ: u32 = 4003;
 pub const SYSCALL_WRITE: u32 = 4004;
 pub const SYSCALL_FCNTL: u32 = 4055;
-
-// Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
-// Reserved for assembler
-pub const REGISTER_AT: u32 = 1;
-// Argument 0
-pub const REGISTER_A0: u32 = 4;
-// Argument 1
-pub const REGISTER_A1: u32 = 5;
-// Argument 2
-pub const REGISTER_A2: u32 = 6;
-// Argument 3
-pub const REGISTER_A3: u32 = 7;
-// Temporary (not preserved across call)
-pub const REGISTER_T0: u32 = 8;
-// Temporary (not preserved across call)
-pub const REGISTER_T1: u32 = 9;
-// Temporary (not preserved across call)
-pub const REGISTER_T2: u32 = 10;
-// Temporary (not preserved across call)
-pub const REGISTER_T3: u32 = 11;
-// Temporary (not preserved across call)
-pub const REGISTER_T4: u32 = 12;
-// Temporary (not preserved across call)
-pub const REGISTER_T5: u32 = 13;
-// Temporary (not preserved across call)
-pub const REGISTER_T6: u32 = 14;
-// Temporary (not preserved across call)
-pub const REGISTER_T7: u32 = 15;
-// Saved temporary (preserved across call)
-pub const REGISTER_S0: u32 = 16;
-// Saved temporary (preserved across call)
-pub const REGISTER_S1: u32 = 17;
-// Saved temporary (preserved across call)
-pub const REGISTER_S2: u32 = 18;
-// Saved temporary (preserved across call)
-pub const REGISTER_S3: u32 = 19;
-// Saved temporary (preserved across call)
-pub const REGISTER_S4: u32 = 20;
-// Saved temporary (preserved across call)
-pub const REGISTER_S5: u32 = 21;
-// Saved temporary (preserved across call)
-pub const REGISTER_S6: u32 = 22;
-// Saved temporary (preserved across call)
-pub const REGISTER_S7: u32 = 23;
-// Temporary (not preserved across call)
-pub const REGISTER_T8: u32 = 24;
-// Temporary (not preserved across call)
-pub const REGISTER_T9: u32 = 25;
-// Reserved for OS kernel
-pub const REGISTER_K0: u32 = 26;
-// Reserved for OS kernel
-pub const REGISTER_K1: u32 = 27;
-// Pointer to global area
-pub const REGISTER_GP: u32 = 28;
-// Stack pointer
-pub const REGISTER_SP: u32 = 29;
-// Frame pointer
-pub const REGISTER_FP: u32 = 30;
-// Return address (used by function call)
-pub const REGISTER_RA: u32 = 31;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Instruction {
@@ -163,6 +108,7 @@ pub enum ITypeInstruction {
     Store8,                       // sb
     Store16,                      // sh
     Store32,                      // sw
+    Store32Conditional,           // sc
     StoreWordLeft,                // swl
     StoreWordRight,               // swr
 }
@@ -251,13 +197,28 @@ pub trait InterpreterEnv {
         output: Self::Position,
     ) -> Self::Variable;
 
+    /// Set the general purpose register with index `idx` to `value` if `if_is_true` is true.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn push_register_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    );
+
     /// Set the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this operation.
-    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable);
+    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable) {
+        self.push_register_if(idx, value, &Self::constant(1))
+    }
 
     /// Fetch the last 'access index' for the general purpose register with index `idx`, and store
     /// it in local position `output`.
@@ -272,26 +233,44 @@ pub trait InterpreterEnv {
         output: Self::Position,
     ) -> Self::Variable;
 
+    /// Set the last 'access index' for the general purpose register with index `idx` to `value` if
+    /// `if_is_true` is true.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn push_register_access_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    );
+
     /// Set the last 'access index' for the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this operation.
-    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable);
+    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
+        self.push_register_access_if(idx, value, &Self::constant(1))
+    }
 
     /// Access the general purpose register with index `idx`, adding constraints asserting that the
-    /// old value was `old_value` and that the new value will be `new_value`.
+    /// old value was `old_value` and that the new value will be `new_value`, if `if_is_true` is
+    /// true.
     ///
     /// # Safety
     ///
     /// Callers of this function must manually update the registers if required, this function will
     /// only update the access counter.
-    unsafe fn access_register(
+    unsafe fn access_register_if(
         &mut self,
         idx: &Self::Variable,
         old_value: &Self::Variable,
         new_value: &Self::Variable,
+        if_is_true: &Self::Variable,
     ) {
         let last_accessed = {
             let last_accessed_location = self.alloc_scratch();
@@ -308,11 +287,11 @@ pub trait InterpreterEnv {
 
             instruction_counter + Self::constant(1)
         };
-        unsafe { self.push_register_access(idx, new_accessed.clone()) };
+        unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
-                magnitude: Self::constant(1),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), last_accessed, old_value.clone()],
@@ -320,7 +299,7 @@ pub trait InterpreterEnv {
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Neg,
-                magnitude: Self::constant(1),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), new_accessed, new_value.clone()],
@@ -339,17 +318,48 @@ pub trait InterpreterEnv {
         value
     }
 
-    fn write_register(&mut self, idx: &Self::Variable, new_value: Self::Variable) {
+    /// Access the general purpose register with index `idx`, adding constraints asserting that the
+    /// old value was `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the registers if required, this function will
+    /// only update the access counter.
+    unsafe fn access_register(
+        &mut self,
+        idx: &Self::Variable,
+        old_value: &Self::Variable,
+        new_value: &Self::Variable,
+    ) {
+        self.access_register_if(idx, old_value, new_value, &Self::constant(1))
+    }
+
+    fn write_register_if(
+        &mut self,
+        idx: &Self::Variable,
+        new_value: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
         let old_value = {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_register(idx, value_location) }
         };
-        unsafe {
-            self.access_register(idx, &old_value, &new_value);
+        // Ensure that we only write 0 to the 0 register.
+        let actual_new_value = {
+            let idx_is_zero = self.is_zero(idx);
+            let pos = self.alloc_scratch();
+            self.copy(&((Self::constant(1) - idx_is_zero) * new_value), pos)
         };
         unsafe {
-            self.push_register(idx, new_value);
+            self.access_register_if(idx, &old_value, &actual_new_value, if_is_true);
         };
+        unsafe {
+            self.push_register_if(idx, actual_new_value, if_is_true);
+        };
+    }
+
+    fn write_register(&mut self, idx: &Self::Variable, new_value: Self::Variable) {
+        self.write_register_if(idx, new_value, &Self::constant(1))
     }
 
     /// Fetch the memory value at address `addr` and store it in local position `output`.
@@ -731,6 +741,22 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns `((x * y) >> 32, (x * y) & ((1 << 32) - 1))`, storing the results in `position_hi`
+    /// and `position_lo` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn mul_hi_lo(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_hi: Self::Position,
+        position_lo: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
+
     /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
     /// `position_remainder` respectively.
     ///
@@ -747,7 +773,41 @@ pub trait InterpreterEnv {
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable);
 
+    /// Returns the number of leading 0s in `x`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn count_leading_zeros(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
+
+    /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
+    /// value of the heap pointer.
+    fn increase_heap_pointer(
+        &mut self,
+        by_amount: &Self::Variable,
+        if_is_true: &Self::Variable,
+    ) -> Self::Variable {
+        let idx = Self::constant(REGISTER_HEAP_POINTER as u32);
+        let old_ptr = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_register(&idx, value_location) }
+        };
+        let new_ptr = old_ptr.clone() + by_amount.clone();
+        unsafe {
+            self.access_register_if(&idx, &old_ptr, &new_ptr, if_is_true);
+        };
+        unsafe {
+            self.push_register_if(&idx, new_ptr, if_is_true);
+        };
+        old_ptr
+    }
 
     fn set_halted(&mut self, flag: Self::Variable);
 
@@ -776,7 +836,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
-        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
         (v0 * Env::constant(1 << 24))
             + (v1 * Env::constant(1 << 16))
             + (v2 * Env::constant(1 << 8))
@@ -842,15 +902,39 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             // FIXME: Constrain this value
             let shifted = unsafe {
                 let pos = env.alloc_scratch();
-                env.shift_right(&rt, &shamt, pos)
+                env.shift_right_arithmetic(&rt, &shamt, pos)
             };
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::ShiftLeftLogicalVariable => (),
-        RTypeInstruction::ShiftRightLogicalVariable => (),
+        RTypeInstruction::ShiftLeftLogicalVariable => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_left(&rt, &rs, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::ShiftRightLogicalVariable => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_right(&rt, &rs, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::ShiftRightArithmeticVariable => (),
         RTypeInstruction::JumpRegister => {
             let addr = env.read_register(&rs);
@@ -858,8 +942,44 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(addr);
             return;
         }
-        RTypeInstruction::JumpAndLinkRegister => (),
-        RTypeInstruction::SyscallMmap => (),
+        RTypeInstruction::JumpAndLinkRegister => {
+            let addr = env.read_register(&rs);
+            env.write_register(&rd, instruction_pointer + Env::constant(8u32));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(addr);
+            return;
+        }
+        RTypeInstruction::SyscallMmap => {
+            let requested_alloc_size = env.read_register(&Env::constant(5));
+            let size_in_pages = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&requested_alloc_size, 32, PAGE_ADDRESS_SIZE, pos) }
+            };
+            let requires_extra_page = {
+                let remainder = requested_alloc_size
+                    - (size_in_pages.clone() * Env::constant(1 << PAGE_ADDRESS_SIZE));
+                Env::constant(1) - env.is_zero(&remainder)
+            };
+            let actual_alloc_size =
+                (size_in_pages + requires_extra_page) * Env::constant(1 << PAGE_ADDRESS_SIZE);
+            let address = env.read_register(&Env::constant(4));
+            let address_is_zero = env.is_zero(&address);
+            let old_heap_ptr = env.increase_heap_pointer(&actual_alloc_size, &address_is_zero);
+            let return_position = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(address_is_zero.clone() * old_heap_ptr
+                        + (Env::constant(1) - address_is_zero) * address),
+                    pos,
+                )
+            };
+            env.write_register(&Env::constant(2), return_position);
+            env.write_register(&Env::constant(7), Env::constant(0));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallExitGroup => (),
         RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),
@@ -904,14 +1024,28 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MoveZero => (),
+        RTypeInstruction::MoveZero => {
+            let rt = env.read_register(&rt);
+            let is_zero = env.is_zero(&rt);
+            let rs = env.read_register(&rs);
+            env.write_register_if(&rd, rs, &is_zero);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveNonZero => (),
         RTypeInstruction::Sync => {
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MoveFromHi => (),
+        RTypeInstruction::MoveFromHi => {
+            let hi = env.read_register(&Env::constant(REGISTER_HI as u32));
+            env.write_register(&rd, hi);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveToHi => (),
         RTypeInstruction::MoveFromLo => {
             let lo = env.read_register(&Env::constant(REGISTER_LO as u32));
@@ -922,7 +1056,21 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         }
         RTypeInstruction::MoveToLo => (),
         RTypeInstruction::Multiply => (),
-        RTypeInstruction::MultiplyUnsigned => (),
+        RTypeInstruction::MultiplyUnsigned => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let (hi, lo) = {
+                // Fixme: constrain
+                let hi_pos = env.alloc_scratch();
+                let lo_pos = env.alloc_scratch();
+                unsafe { env.mul_hi_lo(&rs, &rt, hi_pos, lo_pos) }
+            };
+            env.write_register(&Env::constant(REGISTER_HI as u32), hi);
+            env.write_register(&Env::constant(REGISTER_LO as u32), lo);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::Div => (),
         RTypeInstruction::DivUnsigned => {
             let rs = env.read_register(&rs);
@@ -1063,7 +1211,18 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             return;
         }
         RTypeInstruction::CountLeadingOnes => (),
-        RTypeInstruction::CountLeadingZeros => (),
+        RTypeInstruction::CountLeadingZeros => {
+            let rs = env.read_register(&rs);
+            let leading_zeros = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.count_leading_zeros(&rs, pos) }
+            };
+            env.write_register(&rd, leading_zeros);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
     };
     // TODO: Don't halt.
     env.set_halted(Env::constant(1));
@@ -1195,7 +1354,25 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::BranchGtZero => (),
+        ITypeInstruction::BranchGtZero => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let less_than = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&Env::constant(0), &rs, pos) }
+            };
+            let offset =
+                (Env::constant(1) - less_than.clone()) * Env::constant(4) + less_than * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::BranchLtZero => {
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
             let rs = env.read_register(&rs);
@@ -1215,7 +1392,25 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::BranchGeqZero => (),
+        ITypeInstruction::BranchGeqZero => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let less_than = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&rs, &Env::constant(0), pos) }
+            };
+            let offset =
+                less_than.clone() * Env::constant(4) + (Env::constant(1) - less_than) * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::AddImmediate => {
             let register_rs = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
@@ -1276,7 +1471,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::OrImmediate => (),
+        ITypeInstruction::OrImmediate => {
+            let rs = env.read_register(&rs);
+            let res = {
+                // FIXME: Constraint
+                let pos = env.alloc_scratch();
+                unsafe { env.or_witness(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::XorImmediate => {
             let rs = env.read_register(&rs);
             let res = {
@@ -1384,7 +1591,31 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        ITypeInstruction::Store16 => (),
+        ITypeInstruction::Store16 => {
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+            let value = env.read_register(&rt);
+            let [v0, v1] = {
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&value, 8, 0, pos) }
+                    },
+                ]
+            };
+            env.write_memory(&addr, v0);
+            env.write_memory(&(addr.clone() + Env::constant(1)), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         ITypeInstruction::Store32 => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
@@ -1418,6 +1649,45 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
             env.write_memory(&(addr.clone() + Env::constant(2)), v2);
             env.write_memory(&(addr.clone() + Env::constant(3)), v3);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        ITypeInstruction::Store32Conditional => {
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+            let value = env.read_register(&rt);
+            let [v0, v1, v2, v3] = {
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&value, 8, 0, pos) }
+                    },
+                ]
+            };
+            env.write_memory(&addr, v0);
+            env.write_memory(&(addr.clone() + Env::constant(1)), v1);
+            env.write_memory(&(addr.clone() + Env::constant(2)), v2);
+            env.write_memory(&(addr.clone() + Env::constant(3)), v3);
+            // Write status flag.
+            env.write_register(&rt, Env::constant(1));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;

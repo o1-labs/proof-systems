@@ -56,7 +56,7 @@ pub struct State {
 pub struct ParsePreimageKeyError(String);
 
 #[derive(Debug, PartialEq)]
-pub struct PreimageKey([u8; 32]);
+pub struct PreimageKey(pub [u8; 32]);
 
 use std::str::FromStr;
 

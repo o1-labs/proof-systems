@@ -5,8 +5,9 @@ pub const REGISTER_HI: usize = 32;
 pub const REGISTER_LO: usize = 33;
 pub const REGISTER_CURRENT_IP: usize = 34;
 pub const REGISTER_NEXT_IP: usize = 35;
+pub const REGISTER_HEAP_POINTER: usize = 36;
 
-pub const NUM_REGISTERS: usize = 36;
+pub const NUM_REGISTERS: usize = 37;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Registers<T> {
@@ -15,6 +16,7 @@ pub struct Registers<T> {
     pub lo: T,
     pub current_instruction_pointer: T,
     pub next_instruction_pointer: T,
+    pub heap_pointer: T,
 }
 
 impl<T> Registers<T> {
@@ -24,6 +26,7 @@ impl<T> Registers<T> {
             &self.lo,
             &self.current_instruction_pointer,
             &self.next_instruction_pointer,
+            &self.heap_pointer,
         ])
     }
 }
@@ -42,6 +45,8 @@ impl<T: Clone> Index<usize> for Registers<T> {
             &self.current_instruction_pointer
         } else if index == REGISTER_NEXT_IP {
             &self.next_instruction_pointer
+        } else if index == REGISTER_HEAP_POINTER {
+            &self.heap_pointer
         } else {
             panic!("Index out of bounds");
         }
@@ -60,6 +65,8 @@ impl<T: Clone> IndexMut<usize> for Registers<T> {
             &mut self.current_instruction_pointer
         } else if index == REGISTER_NEXT_IP {
             &mut self.next_instruction_pointer
+        } else if index == REGISTER_HEAP_POINTER {
+            &mut self.heap_pointer
         } else {
             panic!("Index out of bounds");
         }

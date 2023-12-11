@@ -23,11 +23,10 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 31;
+pub const SCRATCH_SIZE: usize = 38;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
-    pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
     pub preimage_offset: u32,
     pub preimage_key: [u8; 32],
     pub last_hint: Option<Vec<u8>>,
@@ -36,7 +35,6 @@ pub struct SyscallEnv {
 impl SyscallEnv {
     pub fn create(state: &State) -> Self {
         SyscallEnv {
-            heap: state.heap,
             preimage_key: state.preimage_key,
             preimage_offset: state.preimage_offset,
             last_hint: state.last_hint.clone(),
@@ -47,7 +45,9 @@ impl SyscallEnv {
 pub struct Env<Fp> {
     pub instruction_counter: u32, // TODO: u32 will not be big enough..
     pub memory: Vec<(u32, Vec<u8>)>,
+    pub last_memory_accesses: [usize; 3],
     pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
+    pub last_memory_write_index_accesses: [usize; 3],
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u32>, // TODO: u32 will not be big enough..
     pub scratch_state_idx: usize,
@@ -146,8 +146,19 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable) {
-        self.registers[*idx as usize] = value
+    unsafe fn push_register_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
+        if *if_is_true == 1 {
+            self.registers[*idx as usize] = value
+        } else if *if_is_true == 0 {
+            // No-op
+        } else {
+            panic!("Bad value for flag in push_register: {}", *if_is_true);
+        }
     }
 
     unsafe fn fetch_register_access(
@@ -160,8 +171,19 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
-        self.registers_write_index[*idx as usize] = value
+    unsafe fn push_register_access_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
+        if *if_is_true == 1 {
+            self.registers_write_index[*idx as usize] = value
+        } else if *if_is_true == 0 {
+            // No-op
+        } else {
+            panic!("Bad value for flag in push_register: {}", *if_is_true);
+        }
     }
 
     unsafe fn fetch_memory(
@@ -171,26 +193,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     ) -> Self::Variable {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory) in self.memory.iter() {
-            if *page_index == page {
-                let value = memory[page_address];
-                self.write_column(output, value.into());
-                return value.into();
-            }
-        }
-        panic!("Could not access address")
+        let memory_page_idx = self.get_memory_page_index(page);
+        let value = self.memory[memory_page_idx].1[page_address];
+        self.write_column(output, value.into());
+        value.into()
     }
 
     unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory) in self.memory.iter_mut() {
-            if *page_index == page {
-                memory[page_address] = value.try_into().expect("push_memory values fit in a u8");
-                return;
-            }
-        }
-        panic!("Could not write to address")
+        let memory_page_idx = self.get_memory_page_index(page);
+        self.memory[memory_page_idx].1[page_address] =
+            value.try_into().expect("push_memory values fit in a u8");
     }
 
     unsafe fn fetch_memory_access(
@@ -200,26 +214,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     ) -> Self::Variable {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory_write_index) in self.memory_write_index.iter() {
-            if *page_index == page {
-                let value = memory_write_index[page_address];
-                self.write_column(output, value.into());
-                return value;
-            }
-        }
-        panic!("Could not access address")
+        let memory_write_index_page_idx = self.get_memory_access_page_index(page);
+        let value = self.memory_write_index[memory_write_index_page_idx].1[page_address];
+        self.write_column(output, value.into());
+        value
     }
 
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory_write_index) in self.memory_write_index.iter_mut() {
-            if *page_index == page {
-                memory_write_index[page_address] = value;
-                return;
-            }
-        }
-        panic!("Could not write to address")
+        let memory_write_index_page_idx = self.get_memory_access_page_index(page);
+        self.memory_write_index[memory_write_index_page_idx].1[page_address] = value;
     }
 
     fn constant(x: u32) -> Self::Variable {
@@ -368,6 +373,21 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn mul_hi_lo(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_hi: Self::Position,
+        position_lo: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let mul = (*x as u64) * (*y as u64);
+        let hi = (mul >> 32) as u32;
+        let lo = (mul & ((1 << 32) - 1)) as u32;
+        self.write_column(position_hi, hi.into());
+        self.write_column(position_lo, lo.into());
+        (hi, lo)
+    }
+
     unsafe fn divmod(
         &mut self,
         x: &Self::Variable,
@@ -380,6 +400,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.write_column(position_quotient, q.into());
         self.write_column(position_remainder, r.into());
         (q, r)
+    }
+
+    unsafe fn count_leading_zeros(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = x.leading_zeros();
+        self.write_column(position, res.into());
+        res
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -428,15 +458,18 @@ impl<Fp: Field> Env<Fp> {
             general_purpose: state.registers,
             current_instruction_pointer: initial_instruction_pointer,
             next_instruction_pointer,
+            heap_pointer: state.heap,
         };
 
         Env {
             instruction_counter: state.step as u32,
             memory: initial_memory.clone(),
+            last_memory_accesses: [0usize; 3],
             memory_write_index: memory_offsets
                 .iter()
                 .map(|offset| (*offset, vec![0u32; page_size]))
                 .collect(),
+            last_memory_write_index_accesses: [0usize; 3],
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
@@ -464,18 +497,67 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
-    pub fn get_memory_direct(&self, addr: u32) -> u8 {
-        let page = addr >> PAGE_ADDRESS_SIZE;
-        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory) in self.memory.iter() {
-            if *page_index == page {
-                return memory[page_address];
-            }
-        }
-        panic!("Could not access address")
+    pub fn update_last_memory_access(&mut self, i: usize) {
+        let [i_0, i_1, _] = self.last_memory_accesses;
+        self.last_memory_accesses = [i, i_0, i_1]
     }
 
-    pub fn decode_instruction(&self) -> (Instruction, u32) {
+    pub fn get_memory_page_index(&mut self, page: u32) -> usize {
+        for &i in self.last_memory_accesses.iter() {
+            if self.memory_write_index[i].0 == page {
+                return i;
+            }
+        }
+        for (i, (page_index, _memory)) in self.memory.iter_mut().enumerate() {
+            if *page_index == page {
+                self.update_last_memory_access(i);
+                return i;
+            }
+        }
+
+        // Memory not found; dynamically allocate
+        let memory = vec![0u8; PAGE_SIZE as usize];
+        self.memory.push((page, memory));
+        let i = self.memory.len() - 1;
+        self.update_last_memory_access(i);
+        i
+    }
+
+    pub fn update_last_memory_write_index_access(&mut self, i: usize) {
+        let [i_0, i_1, _] = self.last_memory_write_index_accesses;
+        self.last_memory_write_index_accesses = [i, i_0, i_1]
+    }
+
+    pub fn get_memory_access_page_index(&mut self, page: u32) -> usize {
+        for &i in self.last_memory_write_index_accesses.iter() {
+            if self.memory_write_index[i].0 == page {
+                return i;
+            }
+        }
+        for (i, (page_index, _memory_write_index)) in self.memory_write_index.iter_mut().enumerate()
+        {
+            if *page_index == page {
+                self.update_last_memory_write_index_access(i);
+                return i;
+            }
+        }
+
+        // Memory not found; dynamically allocate
+        let memory_write_index = vec![0u32; PAGE_SIZE as usize];
+        self.memory_write_index.push((page, memory_write_index));
+        let i = self.memory_write_index.len() - 1;
+        self.update_last_memory_write_index_access(i);
+        i
+    }
+
+    pub fn get_memory_direct(&mut self, addr: u32) -> u8 {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        let memory_idx = self.get_memory_page_index(page);
+        self.memory[memory_idx].1[page_address]
+    }
+
+    pub fn decode_instruction(&mut self) -> (Instruction, u32) {
         let instruction =
             ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
                 | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
@@ -600,7 +682,7 @@ impl<Fp: Field> Env<Fp> {
                 }
                 0x38 => {
                     // Note: This is sc (StoreConditional), but we're only simulating a single processor.
-                    Instruction::IType(ITypeInstruction::Store32)
+                    Instruction::IType(ITypeInstruction::Store32Conditional)
                 }
                 _ => {
                     panic!("Unhandled instruction {:#X}", instruction)

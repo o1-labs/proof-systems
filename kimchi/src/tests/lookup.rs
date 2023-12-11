@@ -14,6 +14,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use rand::prelude::*;
 use rand::Rng;
 use std::array;
 
@@ -131,7 +132,9 @@ fn setup_successfull_runtime_table_test(
     runtime_tables: Vec<RuntimeTable<Fp>>,
     lookups: Vec<i32>,
 ) {
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
     let nb_lookups = lookups.len();
 
     // circuit
@@ -194,7 +197,9 @@ fn setup_successfull_runtime_table_test(
 #[test]
 fn test_runtime_table() {
     let num = 5;
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
 
     let first_column = [8u32, 9, 8, 7, 1];
     let len = first_column.len();
@@ -448,7 +453,9 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
 
 #[test]
 fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
 
     let first_column = [0, 1, 2, 3, 4];
     let len = first_column.len();
@@ -551,7 +558,9 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_va
 
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values() {
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
 
     let len = rng.gen_range(1usize..1000);
     let first_column: Vec<i32> = (0..len as i32).collect();
@@ -572,4 +581,91 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
     let lookups: Vec<i32> = [0; 20].into();
 
     setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+}
+
+#[test]
+fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+    let max_len: u32 = 100u32;
+    let max_table_id: i32 = 100;
+
+    // No zero-length table
+    let len = rng.gen_range(1u32..max_len);
+    // No table of ID 0
+    let table_id: i32 = rng.gen_range(1i32..max_table_id);
+    // No index 0 in the table.
+    let indices: Vec<Fp> = (0..len)
+        .map(|_| rng.gen_range(1u32..max_len))
+        .map(Into::into)
+        .collect();
+    // No zero value
+    let values: Vec<Fp> = (0..len)
+        .map(|_| rng.gen_range(1u32..max_len))
+        .map(Into::into)
+        .collect();
+    let lookup_table = LookupTable {
+        id: table_id,
+        data: vec![indices, values],
+    };
+    let lookup_tables = vec![lookup_table];
+    let num_lookups = 20;
+
+    // circuit gates
+    let gates = (0..num_lookups)
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+        .collect();
+
+    // 0 everywhere, it should handle the case (0, 0, 0). We simulate a lot of
+    // lookups with (0, 0, 0).
+    let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
+
+    TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup()
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .unwrap();
+}
+
+#[test]
+fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+
+    let power_of_2: u32 = rng.gen_range(3..16);
+    // 4 = zk_rows + 1 for the closing constraint on the polynomial.
+    let len = (1 << power_of_2) - 3 - 1;
+    // We want to create a table with an ID different than 0.
+    let table_id: i32 = rng.gen_range(1..1_000);
+    let idx: Vec<Fp> = (1..(len + 1) as i32).map(Into::into).collect();
+    let values: Vec<Fp> = (1..(len + 1))
+        .map(|_| UniformRand::rand(&mut rng))
+        .collect();
+    let lt = LookupTable {
+        id: table_id,
+        data: vec![idx, values],
+    };
+
+    // Dummy, used for the setup. Only the number of gates must be lower than
+    // the length of the table to avoid having a bigger circuit than the table
+    // size, and therefore use it as the main component for the domain size
+    // computation.
+    let num_lookups = rng.gen_range(2..len);
+    let gates = (0..num_lookups)
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+        .collect();
+    let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
+
+    let setup = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(vec![lt])
+        .setup();
+    let domain_size = setup.prover_index().cs.domain.d1.size;
+    // As the dummy entry has been added, we reached the next power of two
+    assert!(domain_size == (1 << (power_of_2 + 1)));
 }
