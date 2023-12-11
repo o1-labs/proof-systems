@@ -482,8 +482,8 @@ impl<Fp: Field> Env<Fp> {
         let initial_registers = {
             let preimage_key = {
                 let mut preimage_key = [0u32; 8];
-                for i in 0..8 {
-                    preimage_key[i] = u32::from_be_bytes(
+                for (i, preimage_key_word) in preimage_key.iter_mut().enumerate() {
+                    *preimage_key_word = u32::from_be_bytes(
                         state.preimage_key[i * 4..(i + 1) * 4].try_into().unwrap(),
                     )
                 }

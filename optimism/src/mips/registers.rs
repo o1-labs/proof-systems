@@ -56,7 +56,7 @@ impl<T: Clone> Index<usize> for Registers<T> {
             &self.next_instruction_pointer
         } else if index == REGISTER_HEAP_POINTER {
             &self.heap_pointer
-        } else if index >= REGISTER_PREIMAGE_KEY_START && index < REGISTER_PREIMAGE_KEY_END {
+        } else if (REGISTER_PREIMAGE_KEY_START..REGISTER_PREIMAGE_KEY_END).contains(&index) {
             &self.preimage_key[index - REGISTER_PREIMAGE_KEY_START]
         } else if index == REGISTER_PREIMAGE_OFFSET {
             &self.preimage_offset
@@ -80,7 +80,7 @@ impl<T: Clone> IndexMut<usize> for Registers<T> {
             &mut self.next_instruction_pointer
         } else if index == REGISTER_HEAP_POINTER {
             &mut self.heap_pointer
-        } else if index >= REGISTER_PREIMAGE_KEY_START && index < REGISTER_PREIMAGE_KEY_END {
+        } else if (REGISTER_PREIMAGE_KEY_START..REGISTER_PREIMAGE_KEY_END).contains(&index) {
             &mut self.preimage_key[index - REGISTER_PREIMAGE_KEY_START]
         } else if index == REGISTER_PREIMAGE_OFFSET {
             &mut self.preimage_offset
