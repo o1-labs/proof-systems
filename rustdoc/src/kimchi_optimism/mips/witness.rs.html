@@ -806,11 +806,16 @@
 <a href="#806" id="806">806</a>
 <a href="#807" id="807">807</a>
 <a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
+    keccak::column::KeccakColumns,
     mips::{
         column::Column,
         interpreter::{
@@ -862,6 +867,7 @@
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
     <span class="kw">pub </span>preimage_oracle: PreImageOracle,
+    <span class="kw">pub </span>keccak_state: KeccakColumns&lt;Fp&gt;,
 }
 
 <span class="kw">fn </span>fresh_scratch_state&lt;Fp: Field, <span class="kw">const </span>N: usize&gt;() -&gt; [Fp; N] {
@@ -1297,6 +1303,7 @@
             halt: state.exited,
             syscall_env,
             preimage_oracle,
+            keccak_state: KeccakColumns::default(),
         }
     }
 
@@ -1312,6 +1319,7 @@
     <span class="kw">pub fn </span>write_field_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: Fp) {
         <span class="kw">match </span>column {
             Column::ScratchState(idx) =&gt; <span class="self">self</span>.scratch_state[idx] = value,
+            Column::KeccakState(col) =&gt; <span class="self">self</span>.keccak_state[col] = value,
         }
     }
 
