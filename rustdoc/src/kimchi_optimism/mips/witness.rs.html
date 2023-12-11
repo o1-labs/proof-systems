@@ -816,9 +816,9 @@
 <span class="kw">pub const </span>NUM_INSTRUCTION_LOOKUP_TERMS: usize = <span class="number">5</span>;
 <span class="kw">pub const </span>NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-<span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">38</span>;
+<span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">60</span>; <span class="comment">// TODO: Delete and use a vector instead
 
-<span class="attr">#[derive(Clone, Default)]
+</span><span class="attr">#[derive(Clone, Default)]
 </span><span class="kw">pub struct </span>SyscallEnv {
     <span class="kw">pub </span>preimage_offset: u32,
     <span class="kw">pub </span>preimage_key: [u8; <span class="number">32</span>],
