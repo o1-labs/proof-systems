@@ -301,11 +301,6 @@ pub struct PerProof<StepScalars> {
     sponge_digest_before_evaluations: Digest<Fq>,
 }
 
-// @volhovm: this is my guess
-pub struct UnfinalizedProofs {
-    perProofs: Vec<PerProof<StepScalarsInCircuit>>, // InCircuit is also a guess
-}
-
 pub struct WrapProofState<WrapScalars> {
     deferred_values: WrapDeferredValues<WrapScalars>,
     sponge_digest_before_evaluations: Digest<Fp>,
@@ -317,7 +312,7 @@ pub struct WrapProofState<WrapScalars> {
 pub struct StepProofState {
     /// A vector of the "per-proof" structures defined above, one for each proof
     /// that the step-circuit partially verifies.
-    unfinalized_proofs: UnfinalizedProofs,
+    unfinalized_proofs: Vec<PerProof<StepScalarsInCircuit>>, // InCircuit is a guess
     /// The component of the proof accumulation state that is only computed on by the
     /// "stepping" proof system, and that can be handled opaquely by any "wrap" circuits.
     messages_for_next_step_proof: MessagesForNextStepProof,
