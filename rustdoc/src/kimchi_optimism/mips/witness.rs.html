@@ -818,6 +818,21 @@
 <a href="#818" id="818">818</a>
 <a href="#819" id="819">819</a>
 <a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -1193,6 +1208,21 @@
         <span class="kw">let </span>res = ((<span class="kw-2">*</span>x <span class="kw">as </span>i32) * (<span class="kw-2">*</span>y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
         <span class="self">self</span>.write_column(position, res.into());
         res
+    }
+
+    <span class="kw">unsafe fn </span>mul_hi_lo_signed(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position_hi: <span class="self">Self</span>::Position,
+        position_lo: <span class="self">Self</span>::Position,
+    ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>mul = (((<span class="kw-2">*</span>x <span class="kw">as </span>i32) <span class="kw">as </span>i64) * ((<span class="kw-2">*</span>y <span class="kw">as </span>i32) <span class="kw">as </span>i64)) <span class="kw">as </span>u64;
+        <span class="kw">let </span>hi = (mul &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
+        <span class="kw">let </span>lo = (mul &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) - <span class="number">1</span>)) <span class="kw">as </span>u32;
+        <span class="self">self</span>.write_column(position_hi, hi.into());
+        <span class="self">self</span>.write_column(position_lo, lo.into());
+        (hi, lo)
     }
 
     <span class="kw">unsafe fn </span>mul_hi_lo(
