@@ -2,6 +2,7 @@ use crate::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
+        REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
 };
 use log::debug;
@@ -1060,7 +1061,157 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             return;
         }
         RTypeInstruction::SyscallWriteHint => (),
-        RTypeInstruction::SyscallWritePreimage => (),
+        RTypeInstruction::SyscallWritePreimage => {
+            let addr = env.read_register(&Env::constant(5));
+            let write_length = env.read_register(&Env::constant(6));
+
+            // Cannon assumes that the remaining `byte_length` represents how much remains to be
+            // read (i.e. all write calls send the full data in one syscall, and attempt to retry
+            // with the rest until there is a success). This also simplifies the implementation
+            // here, so we will follow suit.
+            let bytes_to_preserve_in_register = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&write_length, 2, 0, pos) }
+            };
+            let register_idx = {
+                let registers_left_to_write_after_this = {
+                    // FIXME: Requires a range check
+                    let pos = env.alloc_scratch();
+                    // The virtual register is 32 bits wide, so we can just read 6 bytes. If the
+                    // register has an incorrect value, it will be unprovable and we'll fault.
+                    unsafe { env.bitmask(&write_length, 6, 2, pos) }
+                };
+                Env::constant(REGISTER_PREIMAGE_KEY_END as u32) - registers_left_to_write_after_this
+            };
+
+            let [r0, r1, r2, r3] = {
+                let register_value = {
+                    let initial_register_value = env.read_register(&register_idx);
+
+                    // We should clear the register if our offset into the read will replace all of its
+                    // bytes.
+                    let should_clear_register = env.is_zero(&bytes_to_preserve_in_register);
+
+                    let pos = env.alloc_scratch();
+                    env.copy(
+                        &((Env::constant(1) - should_clear_register) * initial_register_value),
+                        pos,
+                    )
+                };
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&register_value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&register_value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&register_value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&register_value, 8, 0, pos) }
+                    },
+                ]
+            };
+
+            // We choose our read address so that the bytes we read come aligned with the target
+            // bytes in the register, to avoid an expensive bitshift.
+            let read_address = addr.clone() - bytes_to_preserve_in_register.clone();
+
+            let m0 = env.read_memory(&read_address);
+            let m1 = env.read_memory(&(read_address.clone() + Env::constant(1)));
+            let m2 = env.read_memory(&(read_address.clone() + Env::constant(2)));
+            let m3 = env.read_memory(&(read_address.clone() + Env::constant(3)));
+
+            // Now, for some complexity. From the perspective of the write operation, we should be
+            // reading the `4 - bytes_to_preserve_in_register`. However, to match cannon 1:1, we
+            // only want to read the bytes up to the end of the current word.
+            let [overwrite_0, overwrite_1, overwrite_2, overwrite_3] = {
+                let next_word_addr = {
+                    let byte_subaddr = {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&addr, 2, 0, pos) }
+                    };
+                    addr.clone() + Env::constant(4) - byte_subaddr
+                };
+                let overwrite_0 = {
+                    // We always write the first byte if we're not preserving it, since it will
+                    // have been read from `addr`.
+                    env.equal(&bytes_to_preserve_in_register, &Env::constant(0))
+                };
+                let overwrite_1 = {
+                    // We write the second byte if:
+                    //   we wrote the first byte
+                    overwrite_0.clone()
+                    //   and this isn't the start of the next word (which implies `overwrite_0`),
+                    - env.equal(&(read_address.clone() + Env::constant(1)), &next_word_addr)
+                    //   or this byte was read from `addr`
+                    + env.equal(&bytes_to_preserve_in_register, &Env::constant(1))
+                };
+                let overwrite_2 = {
+                    // We write the third byte if:
+                    //   we wrote the second byte
+                    overwrite_1.clone()
+                    //   and this isn't the start of the next word (which implies `overwrite_1`),
+                    - env.equal(&(read_address.clone() + Env::constant(2)), &next_word_addr)
+                    //   or this byte was read from `addr`
+                    + env.equal(&bytes_to_preserve_in_register, &Env::constant(2))
+                };
+                let overwrite_3 = {
+                    // We write the fourth byte if:
+                    //   we wrote the third byte
+                    overwrite_2.clone()
+                    //   and this isn't the start of the next word (which implies `overwrite_2`),
+                    - env.equal(&(read_address.clone() + Env::constant(3)), &next_word_addr)
+                    //   or this byte was read from `addr`
+                    + env.equal(&bytes_to_preserve_in_register, &Env::constant(3))
+                };
+                [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
+            };
+
+            let value = {
+                let value = ((overwrite_0.clone() * m0
+                    + (Env::constant(1) - overwrite_0.clone()) * r0)
+                    * Env::constant(1 << 24))
+                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1.clone()) * r1)
+                        * Env::constant(1 << 16))
+                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2.clone()) * r2)
+                        * Env::constant(1 << 8))
+                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3.clone()) * r3);
+                let pos = env.alloc_scratch();
+                env.copy(&value, pos)
+            };
+
+            // Update the preimage key.
+            env.write_register(&register_idx, value);
+            // Reset the preimage offset.
+            env.write_register(
+                &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),
+                Env::constant(0u32),
+            );
+            // Return the number of bytes read.
+            env.write_register(
+                &Env::constant(2),
+                overwrite_0 + overwrite_1 + overwrite_2 + overwrite_3,
+            );
+            // Set the error register to 0.
+            env.write_register(&Env::constant(7), Env::constant(0u32));
+
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         RTypeInstruction::SyscallWriteOther => {
             let fd_id = env.read_register(&Env::constant(4));
             let write_length = env.read_register(&Env::constant(6));
