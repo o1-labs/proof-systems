@@ -1874,6 +1874,18 @@
 <a href="#1874" id="1874">1874</a>
 <a href="#1875" id="1875">1875</a>
 <a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2811,7 +2823,19 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::ShiftRightArithmeticVariable =&gt; (),
+        RTypeInstruction::ShiftRightArithmeticVariable =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
+            <span class="comment">// FIXME: Constrain this value
+            </span><span class="kw">let </span>shifted = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.shift_right_arithmetic(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>rs, pos)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::JumpRegister =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
