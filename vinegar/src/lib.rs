@@ -218,7 +218,7 @@ pub struct StepDeferredValues<StepScalars> {
 pub struct WrapProofChecked {
     // in mina: w_comm, z_comm, t_comm, lookup
     messages: ProverCommitments<G1>,
-    // in mina: // lr, z_1, z_2, delta, challenge_polynomial_commitment
+    // in mina: // lr, z_1, z_2, delta, challenge_polynomial_commitment = sg
     opening: OpeningProof<G1>,
 }
 
@@ -326,9 +326,9 @@ pub struct StepProofState {
 }
 
 /// This is the full statement for "wrap" proofs which contains
-///       - the application-level statement (app_state)
-///       - data needed to perform the final verification of the proof, which correspond
-///         to parts of incompletely verified proofs.
+/// - the application-level statement (app_state)
+/// - data needed to perform the final verification of the proof, which correspond
+///   to parts of incompletely verified proofs.
 pub struct WrapStatement<WrapScalars> {
     proof_state: WrapProofState<WrapScalars>,
     messages_for_next_step_proof: MessagesForNextStepProof,
@@ -346,6 +346,10 @@ pub struct WrapProof<WrapScalars> {
     prev_evals: AllEvals,
     proof: ProverProof<G1, OpeningProof<G1>>,
 }
+
+////////////////////////////////////////////////////////////////////////////
+// Maybe not needed
+////////////////////////////////////////////////////////////////////////////
 
 // The proposal is implemented in [#150](https://github.com/o1-labs/proof-systems/pull/150) with the following details:
 //
