@@ -1869,7 +1869,94 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             return;
         }
         ITypeInstruction::StoreWordLeft => (),
-        ITypeInstruction::StoreWordRight => (),
+        ITypeInstruction::StoreWordRight => {
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+
+            let byte_subaddr = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&addr, 2, 0, pos) }
+            };
+
+            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3));
+            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_0.clone();
+            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_1.clone();
+            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0)) + overwrite_2.clone();
+
+            // The `-3` here feels odd, but simulates the `<< 24` in cannon, and matches the
+            // behavior defined in the spec.
+            // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.
+            let m0 = env.read_memory(&(addr.clone() - Env::constant(3)));
+            let m1 = env.read_memory(&(addr.clone() - Env::constant(2)));
+            let m2 = env.read_memory(&(addr.clone() - Env::constant(1)));
+            let m3 = env.read_memory(&addr);
+
+            let [r0, r1, r2, r3] = {
+                let initial_register_value = env.read_register(&rt);
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
+                    },
+                ]
+            };
+
+            let v0 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_0.clone() * r0 + (Env::constant(1) - overwrite_0) * m0),
+                    pos,
+                )
+            };
+            let v1 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_1.clone() * r1 + (Env::constant(1) - overwrite_1) * m1),
+                    pos,
+                )
+            };
+            let v2 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_2.clone() * r2 + (Env::constant(1) - overwrite_2) * m2),
+                    pos,
+                )
+            };
+            let v3 = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(overwrite_3.clone() * r3 + (Env::constant(1) - overwrite_3) * m3),
+                    pos,
+                )
+            };
+
+            env.write_memory(&(addr.clone() - Env::constant(3)), v0);
+            env.write_memory(&(addr.clone() - Env::constant(2)), v1);
+            env.write_memory(&(addr.clone() - Env::constant(1)), v2);
+            env.write_memory(&(addr.clone() - Env::constant(0)), v3);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
     };
 
     // REMOVEME: when all itype instructions are implemented.
