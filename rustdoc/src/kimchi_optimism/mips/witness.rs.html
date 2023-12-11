@@ -837,6 +837,15 @@
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -864,20 +873,16 @@
 <span class="kw">pub const </span>NUM_INSTRUCTION_LOOKUP_TERMS: usize = <span class="number">5</span>;
 <span class="kw">pub const </span>NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-<span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">60</span>; <span class="comment">// TODO: Delete and use a vector instead
+<span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">80</span>; <span class="comment">// TODO: Delete and use a vector instead
 
 </span><span class="attr">#[derive(Clone, Default)]
 </span><span class="kw">pub struct </span>SyscallEnv {
-    <span class="kw">pub </span>preimage_offset: u32,
-    <span class="kw">pub </span>preimage_key: [u8; <span class="number">32</span>],
     <span class="kw">pub </span>last_hint: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
 
 <span class="kw">impl </span>SyscallEnv {
     <span class="kw">pub fn </span>create(state: <span class="kw-2">&amp;</span>State) -&gt; <span class="self">Self </span>{
         SyscallEnv {
-            preimage_key: state.preimage_key,
-            preimage_offset: state.preimage_offset,
             last_hint: state.last_hint.clone(),
         }
     }
@@ -1326,13 +1331,26 @@
             .map(|(offset, <span class="kw">_</span>)| <span class="kw-2">*</span>offset)
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-        <span class="kw">let </span>initial_registers = Registers {
-            lo: state.lo,
-            hi: state.hi,
-            general_purpose: state.registers,
-            current_instruction_pointer: initial_instruction_pointer,
-            next_instruction_pointer,
-            heap_pointer: state.heap,
+        <span class="kw">let </span>initial_registers = {
+            <span class="kw">let </span>preimage_key = {
+                <span class="kw">let </span><span class="kw-2">mut </span>preimage_key = [<span class="number">0u32</span>; <span class="number">8</span>];
+                <span class="kw">for </span>(i, preimage_key_word) <span class="kw">in </span>preimage_key.iter_mut().enumerate() {
+                    <span class="kw-2">*</span>preimage_key_word = u32::from_be_bytes(
+                        state.preimage_key[i * <span class="number">4</span>..(i + <span class="number">1</span>) * <span class="number">4</span>].try_into().unwrap(),
+                    )
+                }
+                preimage_key
+            };
+            Registers {
+                lo: state.lo,
+                hi: state.hi,
+                general_purpose: state.registers,
+                current_instruction_pointer: initial_instruction_pointer,
+                next_instruction_pointer,
+                heap_pointer: state.heap,
+                preimage_key,
+                preimage_offset: state.preimage_offset,
+            }
         };
 
         Env {
