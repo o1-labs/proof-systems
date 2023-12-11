@@ -64,6 +64,14 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_mut(&mut self) -> &mut ExtendedInstance<G, I> {
         &mut self.instance
     }
+    ///provides access to commitments to the extra columns added by quadricization
+    pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
+        self.instance.extended.get(i)
+    }
+    ///provides access to a commitment to the error column
+    pub fn get_error_column_commitment(&self) -> &PolyComm<G> {
+        &self.error_commitment
+    }
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
@@ -72,6 +80,14 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
     }
     pub(crate) fn inner_mut(&mut self) -> &mut ExtendedWitness<G, W> {
         &mut self.witness
+    }
+    ///provides access to the extra columns added by quadricization
+    pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
+        self.inner().extended.get(i)
+    }
+    ///provides access to the error column
+    pub fn get_error_column(&self) -> &Evals<G::ScalarField> {
+        &self.error_vec
     }
 }
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
