@@ -3,6 +3,7 @@ use crate::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
+    keccak::column::KeccakColumns,
     mips::{
         column::Column,
         interpreter::{
@@ -54,6 +55,7 @@ pub struct Env<Fp> {
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
+    pub keccak_state: KeccakColumns<Fp>,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -489,6 +491,7 @@ impl<Fp: Field> Env<Fp> {
             halt: state.exited,
             syscall_env,
             preimage_oracle,
+            keccak_state: KeccakColumns::default(),
         }
     }
 
@@ -504,6 +507,7 @@ impl<Fp: Field> Env<Fp> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::KeccakState(col) => self.keccak_state[col] = value,
         }
     }
 
