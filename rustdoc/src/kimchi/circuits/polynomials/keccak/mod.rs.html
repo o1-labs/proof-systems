@@ -400,6 +400,9 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak hash module
 </span><span class="kw">pub mod </span>circuitgates;
 <span class="kw">pub mod </span>gadget;
@@ -417,6 +420,9 @@
 
 <span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>grid {
+    (<span class="number">5</span>, <span class="macro-nonterminal">$v</span>:expr) =&gt; {{
+        |x: usize| <span class="macro-nonterminal">$v</span>[x].clone()
+    }};
     (<span class="number">20</span>, <span class="macro-nonterminal">$v</span>:expr) =&gt; {{
         |x: usize, q: usize| <span class="macro-nonterminal">$v</span>[q + QUARTERS * x].clone()
     }};
