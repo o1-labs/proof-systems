@@ -1,9 +1,7 @@
 use super::column::{KeccakColumn, KeccakColumns};
-use super::{DIM, E, QUARTERS};
+use super::E;
 use crate::mips::interpreter::Lookup;
-use ark_ff::{Field, One};
-use kimchi::o1_utils::Two;
-use kimchi::{auto_clone_array, circuits::expr::ConstantExpr, grid};
+use ark_ff::Field;
 
 pub(crate) struct KeccakEnv<Fp> {
     pub(crate) _constraints: Vec<E<Fp>>,
