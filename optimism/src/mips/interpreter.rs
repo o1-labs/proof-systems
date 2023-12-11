@@ -765,6 +765,22 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned values; callers must manually add constraints to
     /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
     /// that they fall within the desired range.
+    unsafe fn divmod_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_quotient: Self::Position,
+        position_remainder: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
+
+    /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
+    /// `position_remainder` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
     unsafe fn divmod(
         &mut self,
         x: &Self::Variable,
@@ -1089,7 +1105,21 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::Div => (),
+        RTypeInstruction::Div => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let (quotient, remainder) = {
+                // Fixme: constrain
+                let quotient_pos = env.alloc_scratch();
+                let remainder_pos = env.alloc_scratch();
+                unsafe { env.divmod_signed(&rs, &rt, quotient_pos, remainder_pos) }
+            };
+            env.write_register(&Env::constant(REGISTER_LO as u32), quotient);
+            env.write_register(&Env::constant(REGISTER_HI as u32), remainder);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::DivUnsigned => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
