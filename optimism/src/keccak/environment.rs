@@ -3,7 +3,8 @@ use super::E;
 use crate::mips::interpreter::Lookup;
 use ark_ff::Field;
 
-pub(crate) struct KeccakEnv<Fp> {
+#[derive(Clone, Debug)]
+pub struct KeccakEnv<Fp> {
     pub(crate) _constraints: Vec<E<Fp>>,
     pub(crate) _lookup_terms_idx: usize,
     pub(crate) _lookup_terms: [Vec<Lookup<E<Fp>>>; 2], // at most 2 values are looked up at a time
