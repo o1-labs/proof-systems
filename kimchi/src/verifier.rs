@@ -904,7 +904,7 @@ where
     };
 
     //~ 1. Compute the (chuncked) commitment of $ft$
-    //~    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
+    //~    (see [Maller's optimization](../kimchi/maller_15.md)).
     let ft_comm = {
         let zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size as u64]);
         let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);

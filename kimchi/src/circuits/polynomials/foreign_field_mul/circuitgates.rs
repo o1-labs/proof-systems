@@ -8,7 +8,8 @@
 //~
 //~ ##### Documentation
 //~
-//~ For more details please see the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
+//~ For more details please see the [Foreign Field Multiplication](../kimchi/foreign_field_add.md)
+//~ chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 //~
 //~ ##### Notations
 //~

@@ -195,7 +195,7 @@ Similarly to the generic gate, each values taking part in a lookup can be scaled
 The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user's perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.
 
-Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup feature.
+Please refer to the [lookup RFC](../kimchi/lookup.md) for an overview of the lookup feature.
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
 
