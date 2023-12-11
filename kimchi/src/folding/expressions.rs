@@ -1,8 +1,10 @@
-use super::{
-    quadricization::{quadricization, ExtendedWitnessGenerator},
-    Fi, FoldingConfig,
+use crate::{
+    circuits::{expr::Op2, gate::CurrOrNext},
+    folding::{
+        quadricization::{quadricization, ExtendedWitnessGenerator},
+        Fi, FoldingConfig,
+    },
 };
-use crate::circuits::{expr::Op2, gate::CurrOrNext};
 use ark_ec::AffineCurve;
 use itertools::Itertools;
 use num_traits::Zero;
@@ -53,6 +55,7 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Extensions(ExpExtension),
 }
 
+/// Extra expressions that can be created by folding
 pub enum ExpExtension {
     U,
     Error,
@@ -118,7 +121,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
         use FoldingExp::*;
         let e = Box::new(exp);
         let e_2 = Box::new(Square(e.clone()));
-        let new_exp = match p {
+        match p {
             2 => *e_2,
             3 => Mul(e, e_2),
             4..=8 => {
@@ -133,8 +136,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
                 }
             }
             _ => panic!("unsupported"),
-        };
-        new_exp
+        }
     }
 }
 
@@ -166,7 +168,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
             }
         }
     }
-    fn to_compatible(self) -> FoldingCompatibleExpr<C> {
+    fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
         match self {
             FoldingExp::Cell(c) => match c {
@@ -184,21 +186,21 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Challenge(c) => Challenge(c),
                 ExtendedFoldingColumn::Alpha(i) => Extensions(ExpExtension::Alpha(i)),
             },
-            FoldingExp::Double(exp) => Double(Box::new(exp.to_compatible())),
-            FoldingExp::Square(exp) => Square(Box::new(exp.to_compatible())),
+            FoldingExp::Double(exp) => Double(Box::new(exp.into_compatible())),
+            FoldingExp::Square(exp) => Square(Box::new(exp.into_compatible())),
             FoldingExp::Add(e1, e2) => {
-                let e1 = Box::new(e1.to_compatible());
-                let e2 = Box::new(e2.to_compatible());
+                let e1 = Box::new(e1.into_compatible());
+                let e2 = Box::new(e2.into_compatible());
                 BinOp(Op2::Add, e1, e2)
             }
             FoldingExp::Sub(e1, e2) => {
-                let e1 = Box::new(e1.to_compatible());
-                let e2 = Box::new(e2.to_compatible());
+                let e1 = Box::new(e1.into_compatible());
+                let e2 = Box::new(e2.into_compatible());
                 BinOp(Op2::Sub, e1, e2)
             }
             FoldingExp::Mul(e1, e2) => {
-                let e1 = Box::new(e1.to_compatible());
-                let e2 = Box::new(e2.to_compatible());
+                let e1 = Box::new(e1.into_compatible());
+                let e2 = Box::new(e2.into_compatible());
                 BinOp(Op2::Mul, e1, e2)
             }
         }
@@ -258,7 +260,8 @@ impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
     type Output = Term<C>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let sign = self.sign ^ rhs.sign;
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        let sign = !(self.sign ^ rhs.sign);
         let exp = FoldingExp::Mul(Box::new(self.exp.clone()), Box::new(rhs.exp.clone()));
         Term { exp, sign }
     }
@@ -317,7 +320,7 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
                     )
                 })
             })
-            .map(|e| e.to_compatible());
+            .map(|e| e.into_compatible());
         let u = || Box::new(Extensions(ExpExtension::U));
         let u2 = || Box::new(Square(u()));
         let d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));

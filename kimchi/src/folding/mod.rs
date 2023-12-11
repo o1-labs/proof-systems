@@ -1,17 +1,13 @@
-use self::{
-    error::{compute_error, ExtendedEnv, Side},
-    expressions::{FoldingColumnTrait, IntegratedFoldingExpr},
-    quadricization::ExtendedWitnessGenerator,
-};
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use expressions::folding_expression;
+use error::{compute_error, ExtendedEnv, Side};
+use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 pub use expressions::{ExpExtension, FoldingCompatibleExpr, Var};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 use instance_witness::{RelaxableInstance, RelaxablePair};
-use poly_commitment::PolyComm;
-use poly_commitment::{commitment::CommitmentCurve, SRS};
+use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
+use quadricization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 
 mod error;
@@ -164,6 +160,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
         };
         (scheme, final_expression)
     }
+    #[allow(clippy::type_complexity)]
     pub fn fold_instance_witness_pair<I, W, A, B>(
         &self,
         a: A,

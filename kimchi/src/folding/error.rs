@@ -1,8 +1,8 @@
-use super::expressions::{FoldingExp, IntegratedFoldingExpr};
-use super::quadricization::ExtendedWitnessGenerator;
-use super::{FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness};
-use crate::folding::expressions::{Degree, ExtendedFoldingColumn};
-use crate::folding::EvalLeaf;
+use crate::folding::{
+    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr},
+    quadricization::ExtendedWitnessGenerator,
+    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
+};
 use ark_ec::AffineCurve;
 use ark_ff::Field;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -238,6 +238,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
     pub fn inner(&self) -> &CF::Env {
         &self.inner
     }
+    #[allow(clippy::type_complexity)]
     pub fn unwrap(
         self,
     ) -> (
@@ -281,14 +282,14 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             Side::Right => (&self.instances[1], &self.witnesses[1]),
         };
         match col {
-            Inner(_) => true,
             WitnessExtended(i) => witness.inner().extended.get(i).is_some(),
             Error => panic!("shouldn't happen"),
-            Shift => true,
-            UnnormalizedLagrangeBasis(_) => true,
-            Constant(_) => true,
-            Challenge(_) => true,
-            Alpha(_) => true,
+            Inner(_)
+            | Shift
+            | UnnormalizedLagrangeBasis(_)
+            | Constant(_)
+            | Challenge(_)
+            | Alpha(_) => true,
         }
     }
     pub fn add_witness_evals(&mut self, i: usize, evals: Vec<Fi<CF>>, side: Side) {
@@ -319,12 +320,10 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             Side::Right => (&mut self.instances[1], &self.witnesses[1]),
         };
 
-        let mut next = 0;
-        for (i, wit) in &witness.inner().extended {
+        for (expected_i, (i, wit)) in witness.inner().extended.iter().enumerate() {
             //in case any where to be missing for some reason
-            assert_eq!(*i, next);
-            next += 1;
-            let commit = srs.commit_evaluations_non_hiding(self.domain, &wit);
+            assert_eq!(*i, expected_i);
+            let commit = srs.commit_evaluations_non_hiding(self.domain, wit);
             instance.inner_mut().extended.push(commit)
         }
         self

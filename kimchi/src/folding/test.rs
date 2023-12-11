@@ -1,7 +1,7 @@
-use super::{
-    expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
+use crate::folding::{
+    expressions::{extract_terms, ExtendedFoldingColumn, FoldingColumnTrait, FoldingExp},
+    FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
 };
-use crate::folding::expressions::{extract_terms, ExtendedFoldingColumn, FoldingExp};
 use ark_ec::AffineCurve;
 use itertools::Itertools;
 use mina_curves::pasta::Pallas;
@@ -16,7 +16,6 @@ impl FoldingColumnTrait for u8 {
         true
     }
 }
-// struct Hasher;
 impl<G: CommitmentCurve> Sponge<G> for Mock {
     fn challenge(_absorbe: &[poly_commitment::PolyComm<G>; 2]) -> <G>::ScalarField {
         panic!("just for test")
@@ -33,7 +32,6 @@ impl<G: CommitmentCurve> Witness<G> for Mock {
     }
 }
 struct MockEnv<F, I, W, Col, Chal>(PhantomData<(F, I, W, Col, Chal)>);
-// pub trait FoldingEnv2<F, I, W, Col, Chal> {
 impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col, Chal> {
     type Structure = Mock;
 
@@ -90,6 +88,7 @@ impl FoldingConfig for TestConfig {
 
 #[ignore]
 #[test]
+//not testing much right now, just to observe what quadricization does
 fn test_term_separation() {
     use FoldingExp::*;
     let t1 = FoldingExp::<TestConfig>::Mul(

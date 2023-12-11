@@ -1,7 +1,7 @@
-use super::{CommitmentCurve, One, PolyComm};
-use ark_ff::Field;
-// use ark_poly::Evaluations;
 use crate::folding::Evals;
+use ark_ff::Field;
+use num_traits::One;
+use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 use std::collections::BTreeMap;
 
 pub trait Instance<G: CommitmentCurve>: Sized {
@@ -114,14 +114,14 @@ impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
         let inner = W::combine(inner1, inner2, challenge);
         let extended = ex1
             .into_iter()
-            .zip(ex2.into_iter())
+            .zip(ex2)
             .map(|(a, b)| {
                 let (i, mut evals) = a;
                 assert_eq!(i, b.0);
                 evals
                     .evals
                     .iter_mut()
-                    .zip(b.1.evals.into_iter())
+                    .zip(b.1.evals)
                     .for_each(|(a, b)| *a += b * challenge);
                 (i, evals)
             })
@@ -142,7 +142,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
         let inner = I::combine(inner1, inner2, challenge);
         let extended = ex1
             .into_iter()
-            .zip(ex2.into_iter())
+            .zip(ex2)
             .map(|(a, b)| &a + &b.scale(challenge))
             .collect();
         Self { inner, extended }

@@ -1,4 +1,4 @@
-use super::{
+use crate::folding::{
     error::{eval_sided, ExtendedEnv, Side},
     expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
     FoldingConfig,
@@ -46,6 +46,7 @@ impl<C: FoldingConfig> ExpRecorder<C> {
             id
         })
     }
+    #[allow(clippy::type_complexity)]
     fn into_constraints(self) -> (Vec<FoldingExp<C>>, VecDeque<(usize, FoldingExp<C>)>) {
         let ExpRecorder { recorded_exprs, .. } = self;
         let mut witness_generator = VecDeque::with_capacity(recorded_exprs.len());
@@ -80,9 +81,7 @@ fn lower_degree_to_1<C: FoldingConfig>(
 ) -> FoldingExp<C> {
     let degree = unbounded_degree(&exp);
     match degree {
-        1 => {
-            return exp;
-        }
+        1 => exp,
         _ => {
             let exp = lower_degree_to_2(exp, rec);
             let id = rec.get_id(exp);
@@ -156,9 +155,9 @@ impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
 }
 
 ///checks if the expression can be evaluated in the current environment
-fn check_evaluable<'a, C: FoldingConfig>(
+fn check_evaluable<C: FoldingConfig>(
     exp: &FoldingExp<C>,
-    env: &'a ExtendedEnv<C>,
+    env: &ExtendedEnv<C>,
     side: Side,
 ) -> bool {
     match exp {
