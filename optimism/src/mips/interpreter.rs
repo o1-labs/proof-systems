@@ -2138,7 +2138,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_memory(&(addr.clone() - Env::constant(3)), v0);
             env.write_memory(&(addr.clone() - Env::constant(2)), v1);
             env.write_memory(&(addr.clone() - Env::constant(1)), v2);
-            env.write_memory(&(addr.clone() - Env::constant(0)), v3);
+            env.write_memory(&addr.clone(), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.
