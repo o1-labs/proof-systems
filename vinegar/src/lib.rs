@@ -334,10 +334,21 @@ pub struct StepStatement {
     messages_for_next_wrap_proof: MessagesForNextWrapProof,
 }
 
+/// This is what is returned by a "wrap" function in wrap.ml
 pub struct WrapProof<WrapScalars> {
     statement: WrapStatement<WrapScalars>,
     prev_evals: AllEvals,
     proof: ProverProof<G1, OpeningProof<G1>>,
+}
+
+/// Step proof as fed into wrap proof
+pub struct StepProof {
+    statement: StepStatement,
+    prev_evals: AllEvals,
+    proof: ProverProof<G1, OpeningProof<G1>>,
+    /// Indicates which "branch" of several step proofs absorbed by
+    /// "wrap" this step proof is.
+    index: u32,
 }
 
 ////////////////////////////////////////////////////////////////////////////
