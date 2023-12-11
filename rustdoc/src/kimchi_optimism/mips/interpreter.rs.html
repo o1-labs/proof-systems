@@ -2095,6 +2095,36 @@
 <a href="#2095" id="2095">2095</a>
 <a href="#2096" id="2096">2096</a>
 <a href="#2097" id="2097">2097</a>
+<a href="#2098" id="2098">2098</a>
+<a href="#2099" id="2099">2099</a>
+<a href="#2100" id="2100">2100</a>
+<a href="#2101" id="2101">2101</a>
+<a href="#2102" id="2102">2102</a>
+<a href="#2103" id="2103">2103</a>
+<a href="#2104" id="2104">2104</a>
+<a href="#2105" id="2105">2105</a>
+<a href="#2106" id="2106">2106</a>
+<a href="#2107" id="2107">2107</a>
+<a href="#2108" id="2108">2108</a>
+<a href="#2109" id="2109">2109</a>
+<a href="#2110" id="2110">2110</a>
+<a href="#2111" id="2111">2111</a>
+<a href="#2112" id="2112">2112</a>
+<a href="#2113" id="2113">2113</a>
+<a href="#2114" id="2114">2114</a>
+<a href="#2115" id="2115">2115</a>
+<a href="#2116" id="2116">2116</a>
+<a href="#2117" id="2117">2117</a>
+<a href="#2118" id="2118">2118</a>
+<a href="#2119" id="2119">2119</a>
+<a href="#2120" id="2120">2120</a>
+<a href="#2121" id="2121">2121</a>
+<a href="#2122" id="2122">2122</a>
+<a href="#2123" id="2123">2123</a>
+<a href="#2124" id="2124">2124</a>
+<a href="#2125" id="2125">2125</a>
+<a href="#2126" id="2126">2126</a>
+<a href="#2127" id="2127">2127</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -3136,7 +3166,37 @@
         RTypeInstruction::SyscallWriteHint =&gt; (),
         RTypeInstruction::SyscallWritePreimage =&gt; (),
         RTypeInstruction::SyscallWriteOther =&gt; (),
-        RTypeInstruction::SyscallFcntl =&gt; (),
+        RTypeInstruction::SyscallFcntl =&gt; {
+            <span class="kw">let </span>fd_id = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
+            <span class="kw">let </span>fd_cmd = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
+            <span class="kw">let </span>is_getfl = env.equal(<span class="kw-2">&amp;</span>fd_cmd, <span class="kw-2">&amp;</span>Env::constant(<span class="number">3</span>));
+            <span class="kw">let </span>is_stdout = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_STDOUT));
+            <span class="kw">let </span>is_stderr = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_STDERR));
+            <span class="kw">let </span>is_preimage_write = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_PREIMAGE_WRITE));
+            <span class="kw">let </span>is_hint_write = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_HINT_WRITE));
+            <span class="kw">let </span>is_stdin = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_STDIN));
+            <span class="kw">let </span>is_preimage_read = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_PREIMAGE_READ));
+            <span class="kw">let </span>is_hint_read = env.equal(<span class="kw-2">&amp;</span>fd_id, <span class="kw-2">&amp;</span>Env::constant(FD_HINT_READ));
+
+            <span class="kw">let </span>is_read = is_stdin + is_preimage_read + is_hint_read;
+            <span class="kw">let </span>is_write = is_stdout + is_stderr + is_preimage_write + is_hint_write;
+
+            <span class="kw">let </span>v0 = is_getfl.clone()
+                * (is_write.clone()
+                    + (Env::constant(<span class="number">1</span>) - is_read.clone() - is_write.clone())
+                        * Env::constant(<span class="number">0xFFFFFFFF</span>))
+                + (Env::constant(<span class="number">1</span>) - is_getfl.clone()) * Env::constant(<span class="number">0xFFFFFFFF</span>);
+            <span class="kw">let </span>v1 =
+                is_getfl.clone() * (Env::constant(<span class="number">1</span>) - is_read - is_write.clone())
+                    * Env::constant(<span class="number">0x9</span>) <span class="comment">/* EBADF */
+                </span>+ (Env::constant(<span class="number">1</span>) - is_getfl.clone()) * Env::constant(<span class="number">0x16</span>) <span class="comment">/* EINVAL */</span>;
+
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), v0);
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::SyscallOther =&gt; {
             <span class="kw">let </span>syscall_num = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>));
             <span class="kw">let </span>is_sysbrk = env.equal(<span class="kw-2">&amp;</span>syscall_num, <span class="kw-2">&amp;</span>Env::constant(SYSCALL_BRK));
