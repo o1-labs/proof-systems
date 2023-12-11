@@ -810,20 +810,12 @@
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
 <a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
-    keccak::{environment::KeccakEnv, E},
+    keccak::column::KeccakColumns,
     mips::{
         column::Column,
         interpreter::{
@@ -835,8 +827,6 @@
     preimage_oracle::PreImageOracle,
 };
 <span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>core::panic;
-<span class="kw">use </span>kimchi::circuits::expr::ConstantExpr::Literal;
 <span class="kw">use </span>log::{debug, info};
 <span class="kw">use </span>std::array;
 
@@ -877,7 +867,7 @@
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
     <span class="kw">pub </span>preimage_oracle: PreImageOracle,
-    <span class="kw">pub </span>keccak_env: <span class="prelude-ty">Option</span>&lt;KeccakEnv&lt;Fp&gt;&gt;,
+    <span class="kw">pub </span>keccak_state: KeccakColumns&lt;Fp&gt;,
 }
 
 <span class="kw">fn </span>fresh_scratch_state&lt;Fp: Field, <span class="kw">const </span>N: usize&gt;() -&gt; [Fp; N] {
@@ -1313,7 +1303,7 @@
             halt: state.exited,
             syscall_env,
             preimage_oracle,
-            keccak_env: <span class="prelude-val">None</span>,
+            keccak_state: KeccakColumns::default(),
         }
     }
 
@@ -1329,13 +1319,7 @@
     <span class="kw">pub fn </span>write_field_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: Fp) {
         <span class="kw">match </span>column {
             Column::ScratchState(idx) =&gt; <span class="self">self</span>.scratch_state[idx] = value,
-            Column::KeccakState(col) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(keccak_env) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.keccak_env {
-                    keccak_env.keccak_state[col] = E::constant(Literal(value))
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;Keccak state not initialized&quot;</span>)
-                }
-            }
+            Column::KeccakState(col) =&gt; <span class="self">self</span>.keccak_state[col] = value,
         }
     }
 
