@@ -15,13 +15,48 @@
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
-</pre></div><pre class="rust"><code><span class="kw">pub mod </span>column;
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+
+<span class="kw">use </span><span class="kw">crate</span>::mips::column::Column;
+
+<span class="kw">pub mod </span>column;
+<span class="kw">pub mod </span>environment;
 
 <span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize = <span class="number">1965 </span>+ <span class="number">6</span>;
 <span class="kw">pub const </span>RATE: usize = <span class="number">1088</span>;
 <span class="kw">pub const </span>RATE_IN_BYTES: usize = RATE / <span class="number">8</span>;
 <span class="kw">pub const </span>DIM: usize = <span class="number">5</span>;
 <span class="kw">pub const </span>QUARTERS: usize = <span class="number">4</span>;
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
 
 <span class="kw">fn </span>grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -&gt; usize {
     <span class="kw">match </span>size {
@@ -31,5 +66,26 @@
         <span class="number">400 </span>=&gt; q + QUARTERS * (x + DIM * (y + DIM * i)),
         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid grid size&quot;</span>),
     }
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>BoolOps {
+    <span class="kw">type </span>Column;
+    <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + Clone;
+    <span class="kw">type </span>Fp: std::ops::Neg&lt;Output = <span class="self">Self</span>::Fp&gt;;
+
+    <span class="kw">fn </span>boolean(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>not(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>is_one(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>xor(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>or(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>either_false(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 }
 </code></pre></div></section></main></body></html>

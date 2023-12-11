@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["DIM","QUARTERS","RATE","RATE_IN_BYTES","ZKVM_KECCAK_COLS"],"mod":["column"]};
+window.SIDEBAR_ITEMS = {"constant":["DIM","QUARTERS","RATE","RATE_IN_BYTES","ZKVM_KECCAK_COLS"],"mod":["column","environment"]};
