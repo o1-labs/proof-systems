@@ -1,4 +1,7 @@
-use super::{quadricization::quadricization, Fi, FoldingConfig};
+use super::{
+    quadricization::{quadricization, ExtendedWitnessGenerator},
+    Fi, FoldingConfig,
+};
 use crate::circuits::{expr::Op2, gate::CurrOrNext};
 use ark_ec::AffineCurve;
 use itertools::Itertools;
@@ -274,9 +277,10 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
 ///A simplified expression with all terms separated by degree
 #[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
-    pub(super) degree_0: Vec<(FoldingExp<C>, bool)>,
-    pub(super) degree_1: Vec<(FoldingExp<C>, bool)>,
-    pub(super) degree_2: Vec<(FoldingExp<C>, bool)>,
+    //(exp,sign,alpha)
+    pub(super) degree_0: Vec<(FoldingExp<C>, bool, usize)>,
+    pub(super) degree_1: Vec<(FoldingExp<C>, bool, usize)>,
+    pub(super) degree_2: Vec<(FoldingExp<C>, bool, usize)>,
 }
 
 impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
@@ -290,7 +294,6 @@ impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
 }
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     ///combines constraints into single expression
-    // fn combine(self, u: Fi<C>) -> FoldingExp2<C> {
     pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
         ///todo: should use powers of alpha
         use FoldingCompatibleExpr::*;
@@ -302,12 +305,16 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
         let [d0, d1, d2] = [degree_0, degree_1, degree_2]
             .map(|exps| {
                 let init = FoldingExp::Cell(ExtendedFoldingColumn::Constant(Fi::<C>::zero()));
-                exps.into_iter().fold(init, |acc, (exp, sign)| {
-                    if sign {
+                exps.into_iter().fold(init, |acc, (exp, sign, alpha)| {
+                    let e = if sign {
                         FoldingExp::Add(Box::new(acc), Box::new(exp))
                     } else {
                         FoldingExp::Sub(Box::new(acc), Box::new(exp))
-                    }
+                    };
+                    FoldingExp::Mul(
+                        Box::new(e),
+                        Box::new(FoldingExp::Cell(ExtendedFoldingColumn::Alpha(alpha))),
+                    )
                 })
             })
             .map(|e| e.to_compatible());
@@ -363,30 +370,34 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
 }
 pub fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
-) -> IntegratedFoldingExpr<C> {
+) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
     // let simplied = simplify_expression(exp, flag_resolver);
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
-    let (expressions, extra_expressions) = quadricization(simplified_expressions);
+    let (expressions, extra_expressions, extenden_witness_generator) =
+        quadricization(simplified_expressions);
     let mut terms = vec![];
     // let terms = extract_terms2(expressions);
     println!("constraints");
+    let mut alpha = 0;
     for exp in expressions.into_iter() {
-        terms.extend(extract_terms(exp))
+        terms.extend(extract_terms(exp).map(|term| (term, alpha)));
+        alpha += 1;
     }
     println!("extra");
     for exp in extra_expressions.into_iter() {
-        terms.extend(extract_terms(exp))
+        terms.extend(extract_terms(exp).map(|term| (term, alpha)));
+        alpha += 1;
     }
     let mut integrated = IntegratedFoldingExpr::default();
-    for term in terms.into_iter() {
+    for (term, alpha) in terms.into_iter() {
         let Term { exp, sign } = term;
         let degree = exp.folding_degree();
-        let t = (exp, sign);
+        let t = (exp, sign, alpha);
         match degree {
             Degree::Zero => integrated.degree_0.push(t),
             Degree::One => integrated.degree_1.push(t),
             Degree::Two => integrated.degree_2.push(t),
         }
     }
-    integrated
+    (integrated, extenden_witness_generator)
 }

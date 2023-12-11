@@ -1,20 +1,29 @@
 use super::{
+    error::{eval_sided, ExtendedEnv, Side},
     expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
     FoldingConfig,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 ///returns the constraints converted into degree 2 or less and the extra contraints added in the process
 pub(crate) fn quadricization<C: FoldingConfig>(
     constraints: Vec<FoldingExp<C>>,
-) -> (Vec<FoldingExp<C>>, Vec<FoldingExp<C>>) {
+) -> (
+    Vec<FoldingExp<C>>,
+    Vec<FoldingExp<C>>,
+    ExtendedWitnessGenerator<C>,
+) {
     let mut recorder = ExpRecorder::new();
     let original_constraints = constraints
         .into_iter()
         .map(|exp| lower_degree_to_2(exp, &mut recorder))
         .collect();
-    let extra_constraints = recorder.into_constraints();
-    (original_constraints, extra_constraints)
+    let (extra_constraints, exprs) = recorder.into_constraints();
+    (
+        original_constraints,
+        extra_constraints,
+        ExtendedWitnessGenerator { exprs },
+    )
 }
 
 ///records expressions that have been extracted into an extra column
@@ -37,17 +46,17 @@ impl<C: FoldingConfig> ExpRecorder<C> {
             id
         })
     }
-    fn into_constraints(self) -> Vec<FoldingExp<C>> {
+    fn into_constraints(self) -> (Vec<FoldingExp<C>>, VecDeque<(usize, FoldingExp<C>)>) {
         let ExpRecorder { recorded_exprs, .. } = self;
+        let mut witness_generator = VecDeque::with_capacity(recorded_exprs.len());
         let mut new_constraints = BTreeMap::new();
         for (exp, id) in recorded_exprs.into_iter() {
             let left = FoldingExp::Cell(ExtendedFoldingColumn::WitnessExtended(id));
-            // let left = Box::new(extended(id));
-            // let constraint = Expr::<C, ColumnExtended<Col>>::BinOp(Op2::Sub, left, Box::new(exp));
             let constraint = FoldingExp::Sub(Box::new(left), Box::new(exp));
-            new_constraints.insert(id, constraint);
+            new_constraints.insert(id, constraint.clone());
+            witness_generator.push_front((id, constraint));
         }
-        new_constraints.into_values().collect()
+        (new_constraints.into_values().collect(), witness_generator)
     }
 }
 fn unbounded_degree<C: FoldingConfig>(exp: &FoldingExp<C>) -> usize {
@@ -117,6 +126,46 @@ fn lower_degree_to_2<C: FoldingConfig>(
                 (_, _) => (lower_degree_to_1(e1, rec), lower_degree_to_1(e2, rec)),
             };
             Mul(Box::new(e1), Box::new(e2))
+        }
+    }
+}
+
+pub struct ExtendedWitnessGenerator<C: FoldingConfig> {
+    exprs: VecDeque<(usize, FoldingExp<C>)>,
+}
+
+impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
+    pub(crate) fn compute_extended_witness<'a>(
+        &self,
+        mut env: ExtendedEnv<'a, C>,
+        side: Side,
+    ) -> ExtendedEnv<'a, C> {
+        let mut pending = self.exprs.clone();
+
+        while let Some((i, exp)) = pending.pop_front() {
+            if check_evaluable(&exp, &env, side) {
+                let evals = eval_sided(&exp, &env, side).unwrap_result();
+                env.add_witness_evals(i, evals, side);
+            } else {
+                pending.push_back((i, exp))
+            }
+        }
+
+        env
+    }
+}
+
+///checks if the expression can be evaluated in the current environment
+fn check_evaluable<'a, C: FoldingConfig>(
+    exp: &FoldingExp<C>,
+    env: &'a ExtendedEnv<C>,
+    side: Side,
+) -> bool {
+    match exp {
+        FoldingExp::Cell(col) => env.col_try(col, side),
+        FoldingExp::Double(e) | FoldingExp::Square(e) => check_evaluable(e, env, side),
+        FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) | FoldingExp::Mul(e1, e2) => {
+            check_evaluable(e1, env, side) && check_evaluable(e2, env, side)
         }
     }
 }

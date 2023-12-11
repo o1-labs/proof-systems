@@ -1,5 +1,5 @@
 use super::{
-    expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, InstanceTrait, Sponge, WitnessTrait,
+    expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
 };
 use crate::folding::expressions::{extract_terms, ExtendedFoldingColumn, FoldingExp};
 use ark_ec::AffineCurve;
@@ -18,16 +18,16 @@ impl FoldingColumnTrait for u8 {
 }
 // struct Hasher;
 impl<G: CommitmentCurve> Sponge<G> for Mock {
-    fn challenge(_absorbe: &poly_commitment::PolyComm<G>) -> <G>::ScalarField {
+    fn challenge(_absorbe: &[poly_commitment::PolyComm<G>; 2]) -> <G>::ScalarField {
         panic!("just for test")
     }
 }
-impl<G: CommitmentCurve> InstanceTrait<G> for Mock {
+impl<G: CommitmentCurve> Instance<G> for Mock {
     fn combine(_a: Self, _b: Self, _challenge: G::ScalarField) -> Self {
         Mock
     }
 }
-impl<G: CommitmentCurve> WitnessTrait<G> for Mock {
+impl<G: CommitmentCurve> Witness<G> for Mock {
     fn combine(_a: Self, _b: Self, _challenge: G::ScalarField) -> Self {
         Mock
     }
@@ -45,7 +45,7 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
         todo!()
     }
 
-    fn challenge(&self, _challenge: Chal) -> F {
+    fn challenge(&self, _challenge: Chal, _side: super::error::Side) -> F {
         todo!()
     }
 
@@ -54,6 +54,10 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
     }
 
     fn lagrange_basis(&self, _i: usize) -> &Vec<F> {
+        todo!()
+    }
+
+    fn alpha(&self, _i: usize, _side: super::error::Side) -> F {
         todo!()
     }
 }

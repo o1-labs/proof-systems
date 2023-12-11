@@ -1,6 +1,10 @@
 use super::{CommitmentCurve, One, PolyComm};
+use ark_ff::Field;
+// use ark_poly::Evaluations;
+use crate::folding::Evals;
+use std::collections::BTreeMap;
 
-pub trait InstanceTrait<G: CommitmentCurve>: Sized {
+pub trait Instance<G: CommitmentCurve>: Sized {
     ///should return a linear combination
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
     fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
@@ -12,64 +16,76 @@ pub trait InstanceTrait<G: CommitmentCurve>: Sized {
         }
     }
 }
-pub trait WitnessTrait<G: CommitmentCurve>: Sized {
+pub trait Witness<G: CommitmentCurve>: Sized {
     ///should return a linear combination
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
 
-    fn relax(self, zero_poly: &[G::ScalarField]) -> RelaxedWitness<G, Self> {
+    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
         let witness = ExtendedWitness::extend(self);
         RelaxedWitness {
             witness,
-            error_vec: zero_poly.to_vec(),
+            error_vec: zero_poly.clone(),
         }
     }
 }
-impl<G: CommitmentCurve, W: WitnessTrait<G>> ExtendedWitness<G, W> {
-    fn extend(_witness: W) -> ExtendedWitness<G, W> {
-        ///todo: should come from quadricization
-        todo!()
+impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
+    fn extend(witness: W) -> ExtendedWitness<G, W> {
+        //will later be filled by the quadricization witness generator
+        let extended = BTreeMap::new();
+        ExtendedWitness {
+            inner: witness,
+            extended,
+        }
     }
 }
-impl<G: CommitmentCurve, I: InstanceTrait<G>> ExtendedInstance<G, I> {
-    fn extend(_witness: I) -> ExtendedInstance<G, I> {
-        ///todo: should come from quadricization
-        todo!()
+impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
+    fn extend(instance: I) -> ExtendedInstance<G, I> {
+        ExtendedInstance {
+            inner: instance,
+            extended: vec![],
+        }
     }
 }
-pub struct RelaxedInstance<G: CommitmentCurve, I: InstanceTrait<G>> {
+pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     instance: ExtendedInstance<G, I>,
     pub u: G::ScalarField,
     error_commitment: PolyComm<G>,
 }
 
-pub struct RelaxedWitness<G: CommitmentCurve, W: WitnessTrait<G>> {
+pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
     pub witness: ExtendedWitness<G, W>,
-    pub error_vec: Vec<G::ScalarField>,
+    pub error_vec: Evals<G::ScalarField>,
 }
 
-impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxedInstance<G, I> {
+impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
     }
+    pub(crate) fn inner_mut(&mut self) -> &mut ExtendedInstance<G, I> {
+        &mut self.instance
+    }
 }
 
-impl<G: CommitmentCurve, W: WitnessTrait<G>> RelaxedWitness<G, W> {
+impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
     pub(crate) fn inner(&self) -> &ExtendedWitness<G, W> {
         &self.witness
     }
+    pub(crate) fn inner_mut(&mut self) -> &mut ExtendedWitness<G, W> {
+        &mut self.witness
+    }
 }
-pub struct ExtendedWitness<G: CommitmentCurve, W: WitnessTrait<G>> {
+pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     pub inner: W,
     //extra columns added by quadricization to lower the degree of expressions to 2
-    pub extended: Vec<Vec<G::ScalarField>>,
+    pub extended: BTreeMap<usize, Evals<G::ScalarField>>,
 }
-pub struct ExtendedInstance<G: CommitmentCurve, I: InstanceTrait<G>> {
+pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
     pub inner: I,
     //commitments to extra columns
     pub extended: Vec<PolyComm<G>>,
 }
 
-impl<G: CommitmentCurve, W: WitnessTrait<G>> WitnessTrait<G> for ExtendedWitness<G, W> {
+impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
             inner: inner1,
@@ -84,16 +100,20 @@ impl<G: CommitmentCurve, W: WitnessTrait<G>> WitnessTrait<G> for ExtendedWitness
             .into_iter()
             .zip(ex2.into_iter())
             .map(|(a, b)| {
-                a.into_iter()
-                    .zip(b.into_iter())
-                    .map(|(a, b)| a + b * challenge)
-                    .collect()
+                let (i, mut evals) = a;
+                assert_eq!(i, b.0);
+                evals
+                    .evals
+                    .iter_mut()
+                    .zip(b.1.evals.into_iter())
+                    .for_each(|(a, b)| *a += b * challenge);
+                (i, evals)
             })
             .collect();
         Self { inner, extended }
     }
 }
-impl<G: CommitmentCurve, I: InstanceTrait<G>> InstanceTrait<G> for ExtendedInstance<G, I> {
+impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
             inner: inner1,
@@ -113,60 +133,62 @@ impl<G: CommitmentCurve, I: InstanceTrait<G>> InstanceTrait<G> for ExtendedInsta
     }
 }
 
-impl<G: CommitmentCurve, W: WitnessTrait<G>> ExtendedWitness<G, W> {
+impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     pub(crate) fn inner(&self) -> &W {
         &self.inner
     }
+    pub(crate) fn add_witness_evals(&mut self, i: usize, evals: Evals<G::ScalarField>) {
+        self.extended.insert(i, evals);
+    }
 }
-impl<G: CommitmentCurve, I: InstanceTrait<G>> ExtendedInstance<G, I> {
+impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     pub(crate) fn inner(&self) -> &I {
         &self.inner
     }
 }
-pub trait RelaxableInstance<G: CommitmentCurve, I: InstanceTrait<G>> {
+pub trait RelaxableInstance<G: CommitmentCurve, I: Instance<G>> {
     fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I>;
 }
-impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxableInstance<G, I> for I {
+impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
     fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
         self.relax(zero_commitment)
     }
 }
-impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxableInstance<G, I> for RelaxedInstance<G, I> {
+impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for RelaxedInstance<G, I> {
     fn relax(self, _zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
         self
     }
 }
-pub trait RelaxableWitness<G: CommitmentCurve, W: WitnessTrait<G>> {
-    fn relax(self, zero_poly: &[G::ScalarField]) -> RelaxedWitness<G, W>;
+pub trait RelaxableWitness<G: CommitmentCurve, W: Witness<G>> {
+    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W>;
 }
-impl<G: CommitmentCurve, W: WitnessTrait<G>> RelaxableWitness<G, W> for W {
-    fn relax(self, zero_poly: &[G::ScalarField]) -> RelaxedWitness<G, W> {
+impl<G: CommitmentCurve, W: Witness<G>> RelaxableWitness<G, W> for W {
+    fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W> {
         self.relax(zero_poly)
     }
 }
-impl<G: CommitmentCurve, W: WitnessTrait<G>> RelaxableWitness<G, W> for RelaxedWitness<G, W> {
-    fn relax(self, _zero_poly: &[G::ScalarField]) -> RelaxedWitness<G, W> {
+impl<G: CommitmentCurve, W: Witness<G>> RelaxableWitness<G, W> for RelaxedWitness<G, W> {
+    fn relax(self, _zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W> {
         self
     }
 }
 
-// pub trait RelaxableInstance<G: KimchiCurve, >: seal::Seal<G, I, 0> {
-pub trait RelaxablePair<G: CommitmentCurve, I: InstanceTrait<G>, W: WitnessTrait<G>> {
+pub trait RelaxablePair<G: CommitmentCurve, I: Instance<G>, W: Witness<G>> {
     fn relax(
         self,
-        zero_poly: &[G::ScalarField],
+        zero_poly: &Evals<G::ScalarField>,
         zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>);
 }
 impl<G, I, W> RelaxablePair<G, I, W> for (I, W)
 where
     G: CommitmentCurve,
-    I: InstanceTrait<G> + RelaxableInstance<G, I>,
-    W: WitnessTrait<G> + RelaxableWitness<G, W>,
+    I: Instance<G> + RelaxableInstance<G, I>,
+    W: Witness<G> + RelaxableWitness<G, W>,
 {
     fn relax(
         self,
-        zero_poly: &[G::ScalarField],
+        zero_poly: &Evals<G::ScalarField>,
         zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>) {
         let (instance, witness) = self;
@@ -177,14 +199,15 @@ where
     }
 }
 
-impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxedInstance<G, I> {
-    fn sub_error(self, error_commitment: &PolyComm<G>, challenge: G::ScalarField) -> Self {
+impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
+    fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
         let RelaxedInstance {
             instance,
             u,
             error_commitment: error,
         } = self;
-        let error_commitment = &error - &error_commitment.scale(challenge);
+        let [e0, e1] = error_commitments;
+        let error_commitment = &error - &(&e0.scale(challenge) + &e1.scale(challenge.square()));
         RelaxedInstance {
             instance,
             u,
@@ -217,16 +240,24 @@ impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxedInstance<G, I> {
         a: Self,
         b: Self,
         challenge: <G>::ScalarField,
-        error_commitment: &PolyComm<G>,
+        error_commitments: &[PolyComm<G>; 2],
     ) -> Self {
-        Self::combine(a, b, challenge).sub_error(error_commitment, challenge)
+        Self::combine(a, b, challenge).sub_errors(error_commitments, challenge)
     }
 }
 
-impl<G: CommitmentCurve, W: WitnessTrait<G>> RelaxedWitness<G, W> {
-    fn sub_error(mut self, error: Vec<G::ScalarField>, challenge: G::ScalarField) -> Self {
-        for (a, b) in self.error_vec.iter_mut().zip(error.into_iter()) {
-            *a -= b * challenge;
+impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
+    fn sub_error(mut self, errors: [Vec<G::ScalarField>; 2], challenge: G::ScalarField) -> Self {
+        let [e0, e1] = errors;
+
+        for (a, (e0, e1)) in self
+            .error_vec
+            .evals
+            .iter_mut()
+            .zip(e0.into_iter().zip(e1.into_iter()))
+        {
+            // should be the same as e0 * c + e1 * c^2
+            *a -= ((e1 * challenge) + e0) * challenge;
         }
         self
     }
@@ -242,7 +273,7 @@ impl<G: CommitmentCurve, W: WitnessTrait<G>> RelaxedWitness<G, W> {
         } = b;
         let challenge = challenge * challenge;
         let witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
-        for (a, b) in e1.iter_mut().zip(e2.into_iter()) {
+        for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
             *a += b * challenge;
         }
         let error_vec = e1;
@@ -252,7 +283,7 @@ impl<G: CommitmentCurve, W: WitnessTrait<G>> RelaxedWitness<G, W> {
         a: Self,
         b: Self,
         challenge: <G>::ScalarField,
-        error: Vec<G::ScalarField>,
+        error: [Vec<G::ScalarField>; 2],
     ) -> Self {
         Self::combine(a, b, challenge).sub_error(error, challenge)
     }
