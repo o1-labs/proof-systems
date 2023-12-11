@@ -1061,7 +1061,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MoveNonZero => (),
+        RTypeInstruction::MoveNonZero => {
+            let rt = env.read_register(&rt);
+            let is_zero = Env::constant(1) - env.is_zero(&rt);
+            let rs = env.read_register(&rs);
+            env.write_register_if(&rd, rs, &is_zero);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::Sync => {
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
