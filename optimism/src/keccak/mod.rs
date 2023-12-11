@@ -43,3 +43,16 @@ pub(crate) trait BoolOps {
 
     fn either_false(x: Self::Variable, y: Self::Variable) -> Self::Variable;
 }
+
+pub(crate) trait ArithOps {
+    type Column;
+    type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
+        + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Sub<Self::Variable, Output = Self::Variable>
+        + Clone;
+    type Fp: std::ops::Neg<Output = Self::Fp>;
+
+    fn constant(x: Self::Fp) -> Self::Variable;
+
+    fn two_pow(x: u64) -> Self::Variable;
+}

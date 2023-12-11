@@ -1,7 +1,10 @@
-use super::column::{KeccakColumn, KeccakColumns};
-use super::{BoolOps, E};
+use super::{
+    column::{KeccakColumn, KeccakColumns},
+    ArithOps, BoolOps, DIM, E, QUARTERS,
+};
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
+use kimchi::{auto_clone_array, circuits::expr::ConstantExpr, grid, o1_utils::Two};
 
 pub(crate) struct KeccakEnv<Fp> {
     pub(crate) _constraints: Vec<E<Fp>>,
@@ -40,6 +43,18 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     }
 }
 
+impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
+    type Column = KeccakColumn;
+    type Variable = E<Fp>;
+    type Fp = Fp;
+    fn constant(x: Self::Fp) -> Self::Variable {
+        Self::Variable::constant(ConstantExpr::Literal(x))
+    }
+    fn two_pow(x: u64) -> Self::Variable {
+        Self::constant(Self::Fp::two_pow(x))
+    }
+}
+
 pub(crate) trait KeccakEnvironment {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
@@ -47,6 +62,16 @@ pub(crate) trait KeccakEnvironment {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
+
+    fn from_shifts(
+        shifts: &[Self::Variable],
+        i: Option<usize>,
+        y: Option<usize>,
+        x: Option<usize>,
+        q: Option<usize>,
+    ) -> Self::Variable;
+
+    fn from_quarters(quarters: &[Self::Variable], y: Option<usize>, x: usize) -> Self::Variable;
 
     fn is_sponge(&self) -> Self::Variable;
 
@@ -113,6 +138,58 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
     type Fp = Fp;
+
+    fn from_shifts(
+        shifts: &[Self::Variable],
+        i: Option<usize>,
+        y: Option<usize>,
+        x: Option<usize>,
+        q: Option<usize>,
+    ) -> Self::Variable {
+        match shifts.len() {
+            400 => {
+                if let Some(i) = i {
+                    auto_clone_array!(shifts);
+                    shifts(i)
+                        + Self::two_pow(1) * shifts(100 + i)
+                        + Self::two_pow(2) * shifts(200 + i)
+                        + Self::two_pow(3) * shifts(300 + i)
+                } else {
+                    let shifts = grid!(400, shifts);
+                    shifts(0, y.unwrap(), x.unwrap(), q.unwrap())
+                        + Self::two_pow(1) * shifts(1, y.unwrap(), x.unwrap(), q.unwrap())
+                        + Self::two_pow(2) * shifts(2, y.unwrap(), x.unwrap(), q.unwrap())
+                        + Self::two_pow(3) * shifts(3, y.unwrap(), x.unwrap(), q.unwrap())
+                }
+            }
+            100 => {
+                let shifts = grid!(100, shifts);
+                shifts(0, x.unwrap(), q.unwrap())
+                    + Self::two_pow(1) * shifts(1, x.unwrap(), q.unwrap())
+                    + Self::two_pow(2) * shifts(2, x.unwrap(), q.unwrap())
+                    + Self::two_pow(3) * shifts(3, x.unwrap(), q.unwrap())
+            }
+            _ => panic!("Invalid length of shifts"),
+        }
+    }
+
+    fn from_quarters(quarters: &[Self::Variable], y: Option<usize>, x: usize) -> Self::Variable {
+        if let Some(y) = y {
+            assert!(quarters.len() == 100, "Invalid length of quarters");
+            let quarters = grid!(100, quarters);
+            quarters(y, x, 0)
+                + Self::two_pow(16) * quarters(y, x, 1)
+                + Self::two_pow(32) * quarters(y, x, 2)
+                + Self::two_pow(48) * quarters(y, x, 3)
+        } else {
+            assert!(quarters.len() == 20, "Invalid length of quarters");
+            let quarters = grid!(20, quarters);
+            quarters(x, 0)
+                + Self::two_pow(16) * quarters(x, 1)
+                + Self::two_pow(32) * quarters(x, 2)
+                + Self::two_pow(48) * quarters(x, 3)
+        }
+    }
 
     fn is_sponge(&self) -> Self::Variable {
         Self::xor(self.absorb(), self.squeeze())
