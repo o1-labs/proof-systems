@@ -375,9 +375,13 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_hi: Self::Position,
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let mul = ((*x as i64) * (*y as i64)) as u64;
+        let mul = (((*x as i32) as i64) * ((*y as i32) as i64)) as u64;
+        let mul_signed = ((*x as i32) as i64) * ((*y as i32) as i64);
+        println!("mul: {:016x} (signed: {:016x})", mul, mul_signed);
         let hi = (mul >> 32) as u32;
         let lo = (mul & ((1 << 32) - 1)) as u32;
+        println!("hi: {:016x}", hi);
+        println!("lo: {:016x}", lo);
         self.write_column(position_hi, hi.into());
         self.write_column(position_lo, lo.into());
         (hi, lo)
@@ -469,7 +473,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable) {
-        println!("Exited with code {} at step {}", *exit_code, self.instruction_counter);
+        println!(
+            "Exited with code {} at step {}",
+            *exit_code, self.instruction_counter
+        );
     }
 
     fn request_preimage_write(
@@ -886,8 +893,10 @@ impl<Fp: Field> Env<Fp> {
                 .unwrap_or_else(|| "n/a".to_string());
 
             println!(
-                "t=... lvl=info msg=processing step={} pc={:08x} insn={:08x} ips={:.2} pages={} mem={} name={} registers=\"[{:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x}]\" preimage_key=\"[{:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x}\"]",
+                "t=... lvl=info msg=processing step={} pc={:08x} insn={:08x} ips={:.2} pages={} mem={} name={} hi={:08x} lo={:08x} registers=\"[{:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x} {:08x}]\" preimage_key=\"[{:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x}]\"",
                 step, pc, insn, ips, pages, mem, name,
+                self.registers.hi,
+                self.registers.lo,
                 self.registers[0],
                 self.registers[1],
                 self.registers[2],

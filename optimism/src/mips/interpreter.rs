@@ -1213,8 +1213,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
             };
             //println!(
-                //"overwrite_0={:?} overwrite_1={:?} overwrite_2={:?} overwrite_3={:?}",
-                //overwrite_0, overwrite_1, overwrite_2, overwrite_3
+            //"overwrite_0={:?} overwrite_1={:?} overwrite_2={:?} overwrite_3={:?}",
+            //overwrite_0, overwrite_1, overwrite_2, overwrite_3
             //);
 
             let value = {
@@ -1295,15 +1295,31 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let is_preimage_read = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_READ));
             let is_hint_read = env.equal(&fd_id, &Env::constant(FD_HINT_READ));
 
+            //println!("fd_id={:?}", fd_id);
+            //println!("fd_cmd={:?}", fd_cmd);
+            //println!("is_getfl={:?}", is_getfl);
+            //println!("is_stdout={:?}", is_stdout);
+            //println!("is_stderr={:?}", is_stderr);
+            //println!("is_preimage_write={:?}", is_preimage_write);
+            //println!("is_hint_write={:?}", is_hint_write);
+            //println!("is_stdin={:?}", is_stdin);
+            //println!("is_preimage_read={:?}", is_preimage_read);
+            //println!("is_hint_read={:?}", is_hint_read);
+
             let is_read = is_stdin + is_preimage_read + is_hint_read;
             let is_write = is_stdout + is_stderr + is_preimage_write + is_hint_write;
+            //println!("is_read={:?} is_write={:?}", is_read, is_write);
 
             let v0 = is_getfl.clone()
                 * (is_write.clone()
                     + (Env::constant(1) - is_read.clone() - is_write.clone())
                         * Env::constant(0xFFFFFFFF))
                 + (Env::constant(1) - is_getfl.clone()) * Env::constant(0xFFFFFFFF);
-            let v1 = is_getfl.clone() * (Env::constant(1) - is_read - is_write.clone()) * Env::constant(0x9) /* EBADF */ + (Env::constant(1) - fd_cmd) * Env::constant(0x16) /* EINVAL */;
+            let v1 =
+                is_getfl.clone() * (Env::constant(1) - is_read - is_write.clone())
+                    * Env::constant(0x9) /* EBADF */
+                + (Env::constant(1) - is_getfl.clone()) * Env::constant(0x16) /* EINVAL */;
+            //println!("v0={:?} v1={:?}", v0, v1);
 
             env.write_register(&Env::constant(2), v0);
             env.write_register(&Env::constant(7), v1);
