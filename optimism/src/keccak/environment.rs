@@ -1,15 +1,43 @@
 use super::column::{KeccakColumn, KeccakColumns};
-use super::{DIM, E, QUARTERS};
+use super::{BoolOps, E};
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
-use kimchi::o1_utils::Two;
-use kimchi::{auto_clone_array, circuits::expr::ConstantExpr, grid};
 
 pub(crate) struct KeccakEnv<Fp> {
     pub(crate) _constraints: Vec<E<Fp>>,
     pub(crate) _lookup_terms_idx: usize,
     pub(crate) _lookup_terms: [Vec<Lookup<E<Fp>>>; 2], // at most 2 values are looked up at a time
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
+}
+
+impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
+    type Column = KeccakColumn;
+    type Variable = E<Fp>;
+    type Fp = Fp;
+
+    fn boolean(x: Self::Variable) -> Self::Variable {
+        x.clone() * (x - Self::Variable::one())
+    }
+
+    fn not(x: Self::Variable) -> Self::Variable {
+        Self::Variable::one() - x
+    }
+
+    fn is_one(x: Self::Variable) -> Self::Variable {
+        x - Self::Variable::one()
+    }
+
+    fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
+        Self::is_one(x + y)
+    }
+
+    fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable {
+        x.clone() + y.clone() - x * y
+    }
+
+    fn either_false(x: Self::Variable, y: Self::Variable) -> Self::Variable {
+        x * y
+    }
 }
 
 pub(crate) trait KeccakEnvironment {
@@ -87,11 +115,11 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     type Fp = Fp;
 
     fn is_sponge(&self) -> Self::Variable {
-        todo!()
+        Self::xor(self.absorb(), self.squeeze())
     }
 
     fn is_round(&self) -> Self::Variable {
-        todo!()
+        Self::not(self.is_sponge())
     }
 
     fn round(&self) -> Self::Variable {

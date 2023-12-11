@@ -22,3 +22,24 @@ fn grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
         _ => panic!("Invalid grid size"),
     }
 }
+
+pub(crate) trait BoolOps {
+    type Column;
+    type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
+        + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Sub<Self::Variable, Output = Self::Variable>
+        + Clone;
+    type Fp: std::ops::Neg<Output = Self::Fp>;
+
+    fn boolean(x: Self::Variable) -> Self::Variable;
+
+    fn not(x: Self::Variable) -> Self::Variable;
+
+    fn is_one(x: Self::Variable) -> Self::Variable;
+
+    fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable;
+
+    fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable;
+
+    fn either_false(x: Self::Variable, y: Self::Variable) -> Self::Variable;
+}
