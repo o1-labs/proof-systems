@@ -1103,7 +1103,10 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                     + (Env::constant(1) - is_read.clone() - is_write.clone())
                         * Env::constant(0xFFFFFFFF))
                 + (Env::constant(1) - is_getfl.clone()) * Env::constant(0xFFFFFFFF);
-            let v1 = is_getfl.clone() * (Env::constant(1) - is_read - is_write.clone()) * Env::constant(0x9) /* EBADF */ + (Env::constant(1) - fd_cmd) * Env::constant(0x16) /* EINVAL */;
+            let v1 =
+                is_getfl.clone() * (Env::constant(1) - is_read - is_write.clone())
+                    * Env::constant(0x9) /* EBADF */
+                + (Env::constant(1) - is_getfl.clone()) * Env::constant(0x16) /* EINVAL */;
 
             env.write_register(&Env::constant(2), v0);
             env.write_register(&Env::constant(7), v1);
