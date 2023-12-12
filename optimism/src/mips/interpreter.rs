@@ -1042,7 +1042,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_halted(Env::constant(1));
             return;
         }
-        RTypeInstruction::SyscallReadHint => (),
+        RTypeInstruction::SyscallReadHint => {
+            // We don't really write here, since the value is unused, per the cannon
+            // implementation. Just claim that we wrote the correct length.
+            let length = env.read_register(&Env::constant(6));
+            env.write_register(&Env::constant(2), length);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallReadPreimage => {
             let addr = env.read_register(&Env::constant(5));
             let length = env.read_register(&Env::constant(6));
