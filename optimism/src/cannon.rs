@@ -48,7 +48,7 @@ where
 #[derive(Serialize, Deserialize, Debug)]
 pub struct State {
     pub memory: Vec<Page>,
-    #[serde(rename = "preimageKey", deserialize_with = "to_preimage_key")]
+    #[serde(rename = "preimageKey", deserialize_with = "deserialize_preimage_key")]
     pub preimage_key: [u8; 32],
     #[serde(rename = "preimageOffset")]
     pub preimage_offset: u32,
@@ -116,7 +116,7 @@ impl FromStr for PreimageKey {
     }
 }
 
-fn to_preimage_key<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
+fn deserialize_preimage_key<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
 where
     D: Deserializer<'de>,
 {
