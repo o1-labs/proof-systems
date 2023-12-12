@@ -48,7 +48,11 @@ where
 #[derive(Serialize, Deserialize, Debug)]
 pub struct State {
     pub memory: Vec<Page>,
-    #[serde(rename = "preimageKey", deserialize_with = "deserialize_preimage_key")]
+    #[serde(
+        rename = "preimageKey",
+        deserialize_with = "deserialize_preimage_key",
+        serialize_with = "serialize_preimage_key"
+    )]
     pub preimage_key: [u8; 32],
     #[serde(rename = "preimageOffset")]
     pub preimage_offset: u32,
@@ -124,6 +128,14 @@ where
     let p = PreimageKey::from_str(s.as_str())
         .unwrap_or_else(|_| panic!("Parsing {s} as preimage key failed"));
     Ok(p.0)
+}
+
+fn serialize_preimage_key<S>(v: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let s: String = format!("0x{}", hex::encode(v));
+    serializer.serialize_str(&s)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -341,6 +353,24 @@ mod tests {
         let decoded_page: Page = serde_json::from_str(value).unwrap();
         let res = serde_json::to_string(&decoded_page).unwrap();
         assert_eq!(res, value);
+    }
+
+    #[test]
+    fn test_preimage_key_serialisation() {
+        #[derive(Serialize, Deserialize)]
+        struct TestPreimageKeyStruct {
+            #[serde(
+                rename = "preimageKey",
+                deserialize_with = "deserialize_preimage_key",
+                serialize_with = "serialize_preimage_key"
+            )]
+            pub preimage_key: [u8; 32],
+        }
+
+        let preimage_key: &str = r#"{"preimageKey":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        let s: TestPreimageKeyStruct = serde_json::from_str(preimage_key).unwrap();
+        let res = serde_json::to_string(&s).unwrap();
+        assert_eq!(preimage_key, res);
     }
 
     #[test]
