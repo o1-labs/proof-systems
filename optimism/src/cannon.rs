@@ -341,6 +341,14 @@ mod tests {
         let decoded_page: Page = serde_json::from_str(value).unwrap();
         let res = serde_json::to_string(&decoded_page).unwrap();
         assert_eq!(res, value);
+
+        // let value: &str = r#"{"index":0,"data":"eJzswAENAAAAwiD7p7bHBwMAAADyHgAA//8QAAAB"}"#;
+        // let decoded_page: Page = serde_json::from_str(value).unwrap();
+        // let res = serde_json::to_string(&decoded_page).unwrap();
+        // let redecoded_page: Page = serde_json::from_str(&res).unwrap();
+        // println!("Redecode: {:?}", redecoded_page);
+        // println!("Init: {:?}", decoded_page);
+        // assert_eq!(res, value);
     }
 
     #[test]
