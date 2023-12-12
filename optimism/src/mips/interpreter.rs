@@ -861,6 +861,8 @@ pub trait InterpreterEnv {
         len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable;
+
+    fn request_hint_write(&mut self, addr: &Self::Variable, len: &Self::Variable);
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
@@ -1085,7 +1087,17 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::SyscallWriteHint => (),
+        RTypeInstruction::SyscallWriteHint => {
+            let addr = env.read_register(&Env::constant(5));
+            let length = env.read_register(&Env::constant(6));
+            // TODO: Message preimage oracle
+            env.request_hint_write(&addr, &length);
+            env.write_register(&Env::constant(2), length);
+            env.write_register(&Env::constant(7), Env::constant(0));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallWritePreimage => {
             let addr = env.read_register(&Env::constant(5));
             let write_length = env.read_register(&Env::constant(6));

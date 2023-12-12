@@ -1,7 +1,7 @@
 use crate::{
     cannon::{
-        Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
-        PAGE_SIZE,
+        Hint, Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
+        PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
     mips::{
         column::Column,
@@ -509,6 +509,47 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
         self.write_column(pos, actual_read_len.into());
         actual_read_len
+    }
+
+    fn request_hint_write(&mut self, addr: &Self::Variable, len: &Self::Variable) {
+        let mut last_hint = match std::mem::take(&mut self.syscall_env.last_hint) {
+            Some(mut last_hint) => {
+                last_hint.reserve(*len as usize);
+                last_hint
+            }
+            None => Vec::with_capacity(*len as usize),
+        };
+
+        // This should really be handled by the keccak oracle.
+        for i in 0..*len {
+            // Push memory access
+            unsafe { self.push_memory_access(&(*addr + i), self.instruction_counter + 1) };
+            // Fetch the value without allocating witness columns
+            let value = {
+                let page = addr >> PAGE_ADDRESS_SIZE;
+                let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+                let memory_page_idx = self.get_memory_page_index(page);
+                self.memory[memory_page_idx].1[page_address]
+            };
+            last_hint.push(value);
+        }
+
+        let len = last_hint.len();
+        let mut idx = 0;
+
+        while idx + 4 <= len {
+            let hint_len = u32::from_be_bytes(last_hint[idx..idx + 4].try_into().unwrap()) as usize;
+            idx += 4;
+            if idx + hint_len <= len {
+                let hint = last_hint[idx..idx + hint_len].to_vec();
+                idx += hint_len;
+                self.preimage_oracle.hint(Hint::create(hint));
+            }
+        }
+
+        let remaining = last_hint[idx..len].into_iter().copied().collect();
+
+        self.syscall_env.last_hint = Some(remaining);
     }
 }
 
