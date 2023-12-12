@@ -4,6 +4,7 @@ set -euo pipefail
 cargo run --bin kimchi_optimism --release -p kimchi_optimism -- \
     --pprof-cpu \
     --info-at "${INFO_AT:-%10000000}" \
+    --dump-state-at "${DUMP_STATE_AT:-%10000000}" \
     --proof-at never \
     --stop-at "${STOP_AT:-never}" \
     --input ./state.json \
