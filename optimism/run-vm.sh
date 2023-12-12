@@ -7,7 +7,7 @@ cargo run --bin kimchi_optimism --release -p kimchi_optimism -- \
     --dump-state-at "${DUMP_STATE_AT:-%10000000}" \
     --proof-at never \
     --stop-at "${STOP_AT:-never}" \
-    --input ./state.json \
+    --input "${STATE_FILENAME:-./state.json}" \
     -- \
     ./ethereum-optimism/op-program/bin/op-program \
     --log.level DEBUG \
