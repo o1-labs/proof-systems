@@ -329,7 +329,7 @@ Similarly to the generic gate, each values taking part in a lookup can be scaled
 The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user's perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.
 
-Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup feature.
+Please refer to the [lookup RFC](../kimchi/lookup.md) for an overview of the lookup feature.
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
 
@@ -1103,7 +1103,7 @@ left_input +/- right_input = field_overflow * foreign_modulus + result
 
 ##### Documentation
 
- For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
+ For more details please see the [Foreign Field Addition](../kimchi/foreign_field_add.md) chapter.
 
 ##### Mapping
 
@@ -1224,7 +1224,8 @@ left_input * right_input = quotient * foreign_field_modulus + remainder
 
 ##### Documentation
 
-For more details please see the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
+For more details please see the [Foreign Field Multiplication](../kimchi/foreign_field_add.md)
+chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 
 ##### Notations
 
@@ -2225,9 +2226,9 @@ The prover then follows the following steps to create the proof:
 1. Evaluate the same polynomials without chunking them
    (so that each polynomial should correspond to a single value this time).
 1. Compute the ft polynomial.
-   This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+   This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
 1. construct the blinding part of the ft polynomial commitment
-   [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
+   [see this section](https://o1-labs.github.io/mina-book/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
 1. Evaluate the ft polynomial at $\zeta\omega$ only.
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
@@ -2343,7 +2344,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    unless a polynomial has its evaluation provided by the proof
    in which case the evaluation should be used in place of the commitment.
 1. Compute the (chuncked) commitment of $ft$
-   (see [Maller's optimization](../crypto/plonk/maller_15.html)).
+   (see [Maller's optimization](../kimchi/maller_15.md)).
 1. List the polynomial commitments, and their associated evaluations,
    that are associated to the aggregated evaluation proof in the proof:
 	* recursion
