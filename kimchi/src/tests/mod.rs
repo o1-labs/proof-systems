@@ -1,5 +1,6 @@
 mod and;
 mod chunked;
+mod customisable;
 mod ec;
 mod endomul;
 mod endomul_scalar;

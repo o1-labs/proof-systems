@@ -4,14 +4,14 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::zk_rows_strict_lower_bound,
-        expr::{self, l0_1, Constants, Environment, LookupEnvironment},
+        expr::{self, l0_1, Constants, Environment, Expr, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::circuitgates::{Conditional, ForeignFieldAdd},
+            foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
             poseidon::Poseidon,
@@ -764,11 +764,11 @@ where
                     index.column_evaluations.range_check0_selector8.is_some();
                 let range_check1_enabled =
                     index.column_evaluations.range_check1_selector8.is_some();
-                let foreign_field_addition_enabled = index
+                let foreign_field_add_enabled = index
                     .column_evaluations
                     .foreign_field_add_selector8
                     .is_some();
-                let foreign_field_multiplication_enabled = index
+                let foreign_field_mul_enabled = index
                     .column_evaluations
                     .foreign_field_mul_selector8
                     .is_some();
@@ -777,40 +777,35 @@ where
 
                 for gate in [
                     (
-                        (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
+                        &CompleteAdd::default() as &dyn DynArgument<G::ScalarField>,
                         true,
                     ),
                     (&VarbaseMul::default(), true),
                     (&EndosclMul::default(), true),
                     (&EndomulScalar::default(), true),
                     (&Poseidon::default(), true),
-                    // Range check gates
                     (&RangeCheck0::default(), range_check0_enabled),
                     (&RangeCheck1::default(), range_check1_enabled),
-                    // Foreign field addition gate
-                    (
-                        &ForeignFieldAdd::default(),
-                        (foreign_field_addition_enabled && !index.cs.custom_gate_type),
-                    ),
-                    // Alternative foreign field addition gate
-                    (
-                        &Conditional::default(),
-                        (foreign_field_addition_enabled && index.cs.custom_gate_type),
-                    ),
-                    // Foreign field multiplication gate
-                    (
-                        &ForeignFieldMul::default(),
-                        foreign_field_multiplication_enabled,
-                    ),
-                    // Xor gate
+                    (&ForeignFieldAdd::default(), foreign_field_add_enabled),
+                    (&ForeignFieldMul::default(), foreign_field_mul_enabled),
                     (&Xor16::default(), xor_enabled),
-                    // Rot gate
                     (&Rot64::default(), rot_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
                 {
-                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
+                    let constraint = {
+                        if gate.argument_type() == ArgumentType::Gate(GateType::ForeignFieldAdd) {
+                            if let Some(custom_gate_type) = index.cs.custom_gate_type.as_ref() {
+                                // Override foreign field addition gate
+                                Expr::from_polish(custom_gate_type).expect("valid gate definition")
+                            } else {
+                                gate.combined_constraints(&all_alphas, &mut cache)
+                            }
+                        } else {
+                            gate.combined_constraints(&all_alphas, &mut cache)
+                        }
+                    };
                     let eval = constraint.evaluations(&env);
                     if eval.domain().size == t4.domain().size {
                         t4 += &eval;
@@ -821,7 +816,7 @@ where
                     }
                     check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
                 }
-            };
+            }
 
             // lookup
             {
@@ -852,7 +847,7 @@ where
 
                         check_constraint!(index, format!("lookup constraint #{ii}"), eval);
                     }
-                }
+                };
             }
 
             // public polynomial

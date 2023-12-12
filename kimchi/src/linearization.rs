@@ -8,7 +8,6 @@ use crate::circuits::lookup::{
     constraints::LookupConfiguration,
     lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
-use crate::circuits::polynomials::foreign_field_add::circuitgates::Conditional;
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
@@ -37,7 +36,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
-    custom_gate_type: bool,
+    custom_gate_type: Option<&Vec<PolishToken<F>>>,
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
@@ -95,8 +94,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut foreign_field_add_expr = || {
-            if custom_gate_type {
-                Conditional::combined_constraints(&powers_of_alpha, &mut cache)
+            if let Some(custom_gate_type) = custom_gate_type {
+                Expr::from_polish(custom_gate_type).expect("valid gate definition")
             } else {
                 ForeignFieldAdd::combined_constraints(&powers_of_alpha, &mut cache)
             }
@@ -344,7 +343,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 ///
 /// Will panic if the `linearization` process fails.
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
-    custom_gate_type: bool,
+    custom_gate_type: Option<&Vec<PolishToken<F>>>,
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {

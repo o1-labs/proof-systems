@@ -1862,7 +1862,8 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub powers_of_alpha: Alphas<G::ScalarField>,
 
     /// Vertical slice custom gate flag
-    pub custom_gate_type: bool,
+    #[serde(skip)]
+    pub custom_gate_type: Option<Vec<PolishToken<G::ScalarField>>>,
 }
 ```
 

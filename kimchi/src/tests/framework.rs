@@ -2,6 +2,7 @@
 
 use crate::{
     circuits::{
+        expr::PolishToken,
         gate::CircuitGate,
         lookup::{
             runtime_tables::{RuntimeTable, RuntimeTableCfg},
@@ -40,6 +41,7 @@ where
     OpeningProof::SRS: Clone,
     VerifierIndex<G, OpeningProof>: Clone,
 {
+    custom_gate_type: Option<Vec<PolishToken<G::ScalarField>>>,
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
     public_inputs: Vec<G::ScalarField>,
@@ -70,6 +72,14 @@ where
     OpeningProof::SRS: Clone,
     VerifierIndex<G, OpeningProof>: Clone,
 {
+    pub(crate) fn custom_gate_type(
+        mut self,
+        def: Option<Vec<PolishToken<G::ScalarField>>>,
+    ) -> Self {
+        self.custom_gate_type = def;
+        self
+    }
+
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
         self.gates = Some(gates);
@@ -133,6 +143,7 @@ where
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups_and_custom_srs(
+            self.custom_gate_type.clone(),
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -167,6 +178,7 @@ where
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups::<G>(
+            self.custom_gate_type.clone(),
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,

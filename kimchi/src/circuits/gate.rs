@@ -312,9 +312,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env, &mut cache)
             }
             GateType::ForeignFieldAdd => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(
-                    &env, &mut cache,
-                )
+                if let Some(_custom_gate_type) = cs.custom_gate_type.as_ref() {
+                    // TODO (maybe): witness verification (evaluation RPN against witness row)
+                    vec![]
+                } else {
+                    foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(
+                        &env, &mut cache,
+                    )
+                }
             }
             GateType::ForeignFieldMul => {
                 foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(

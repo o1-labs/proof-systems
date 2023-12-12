@@ -1554,6 +1554,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                         let x = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
                         stack.push(Expr::Square(Box::new(x)));
                         i += 1; // Skip ahead
+                    } else if *next == PolishToken::Add {
+                        todo!();
                     }
                     // TODO? Possibly need special case for Dup, Add -> Double
                     else {

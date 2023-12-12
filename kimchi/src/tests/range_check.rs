@@ -65,6 +65,7 @@ fn create_test_prover_index(
     };
 
     new_index_for_test_with_lookups(
+        None,
         gates,
         public_size,
         0,

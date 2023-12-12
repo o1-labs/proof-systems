@@ -70,7 +70,7 @@ where
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) =
-            expr_linearization(cs.custom_gate_type, Some(&cs.feature_flags), true);
+            expr_linearization(cs.custom_gate_type.as_ref(), Some(&cs.feature_flags), true);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
@@ -151,6 +151,7 @@ pub mod testing {
         OpeningProof: OpenProof<G>,
         F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS,
     >(
+        custom_gate_type: Option<Vec<PolishToken<G::ScalarField>>>,
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
@@ -166,6 +167,7 @@ pub mod testing {
     {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         let cs = ConstraintSystem::<G::ScalarField>::create(gates)
+            .custom_gate_type(custom_gate_type)
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)
@@ -188,7 +190,9 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
+    #[allow(clippy::too_many_arguments)]
     pub fn new_index_for_test_with_lookups<G: KimchiCurve>(
+        custom_gate_type: Option<Vec<PolishToken<G::ScalarField>>>,
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
@@ -202,6 +206,7 @@ pub mod testing {
         G::ScalarField: PrimeField + SquareRootField,
     {
         new_index_for_test_with_lookups_and_custom_srs(
+            custom_gate_type,
             gates,
             public,
             prev_challenges,
@@ -226,6 +231,7 @@ pub mod testing {
     }
 
     pub fn new_index_for_test<G: KimchiCurve>(
+        custom_gate_type: Option<Vec<PolishToken<G::ScalarField>>>,
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
     ) -> ProverIndex<G, OpeningProof<G>>
@@ -233,6 +239,15 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false, None)
+        new_index_for_test_with_lookups::<G>(
+            custom_gate_type,
+            gates,
+            public,
+            0,
+            vec![],
+            None,
+            false,
+            None,
+        )
     }
 }

@@ -1,5 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use super::{expr::PolishToken, lookup::runtime_tables::RuntimeTableCfg};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -154,8 +154,9 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// flags for optional features
     pub feature_flags: FeatureFlags,
 
-    /// Vertical slice custom gate flag
-    pub custom_gate_type: bool,
+    /// User-supplied custom gate definition
+    #[serde(skip)]
+    pub custom_gate_type: Option<Vec<PolishToken<F>>>,
 
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -190,7 +191,7 @@ pub enum GateError {
 }
 
 pub struct Builder<F: PrimeField> {
-    custom_gate_type: bool,
+    custom_gate_type: Option<Vec<PolishToken<F>>>,
     gates: Vec<CircuitGate<F>>,
     public: usize,
     prev_challenges: usize,
@@ -249,7 +250,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
     pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
-            custom_gate_type: false,
+            custom_gate_type: None,
             gates,
             public: 0,
             prev_challenges: 0,
@@ -620,8 +621,8 @@ pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
 }
 
 impl<F: PrimeField + SquareRootField> Builder<F> {
-    /// Custom gate type parameter (for vertical slice)
-    pub fn custom_gate_type(mut self, custom_gate_type: bool) -> Self {
+    /// Custom gate type definition in RPN
+    pub fn custom_gate_type(mut self, custom_gate_type: Option<Vec<PolishToken<F>>>) -> Self {
         self.custom_gate_type = custom_gate_type;
         self
     }

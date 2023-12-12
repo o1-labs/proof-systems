@@ -401,6 +401,7 @@ fn test_bad_not_gnrc() {
     );
     witness[0][1] += PallasField::one();
     let index = new_index_for_test_with_lookups(
+        None,
         cs.gates,
         1,
         0,

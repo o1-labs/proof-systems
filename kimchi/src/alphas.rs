@@ -322,9 +322,9 @@ mod tests {
     #[test]
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
-        let index = new_index_for_test::<Vesta>(gates, 0);
+        let index = new_index_for_test::<Vesta>(None, gates, 0);
         let (_linearization, powers_of_alpha) = expr_linearization::<Fp>(
-            index.cs.custom_gate_type,
+            index.cs.custom_gate_type.as_ref(),
             Some(&index.cs.feature_flags),
             true,
         );
