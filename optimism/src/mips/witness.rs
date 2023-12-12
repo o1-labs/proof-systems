@@ -775,6 +775,9 @@ impl<Fp: Field> Env<Fp> {
             StepFrequency::Always => true,
             StepFrequency::Exactly(n) => *n == m,
             StepFrequency::Every(n) => m % *n == 0,
+            StepFrequency::Range(lo, hi_opt) => {
+                m >= *lo && (hi_opt.is_none() || m < hi_opt.unwrap())
+            }
         }
     }
 

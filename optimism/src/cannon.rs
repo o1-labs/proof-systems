@@ -119,6 +119,7 @@ pub enum StepFrequency {
     Always,
     Exactly(u64),
     Every(u64),
+    Range(u64, Option<u64>),
 }
 
 // Simple parser for Cannon's "frequency format"
@@ -126,11 +127,13 @@ pub enum StepFrequency {
 // - never/always
 // - =<n> (only at step n)
 // - %<n> (every steps multiple of n)
+// - n..[m] (from n on, until m excluded if specified, until the end otherwise)
 pub fn step_frequency_parser(s: &str) -> std::result::Result<StepFrequency, String> {
     use StepFrequency::*;
 
-    let mod_re = Regex::new(r"%([0-9]+)").unwrap();
-    let eq_re = Regex::new(r"=([0-9]+)").unwrap();
+    let mod_re = Regex::new(r"^%([0-9]+)").unwrap();
+    let eq_re = Regex::new(r"^=([0-9]+)").unwrap();
+    let ival_re = Regex::new(r"^([0-9]+)..([0-9]+)?").unwrap();
 
     match s {
         "never" => Ok(Never),
@@ -140,6 +143,10 @@ pub fn step_frequency_parser(s: &str) -> std::result::Result<StepFrequency, Stri
                 Ok(Every(m[1].parse::<u64>().unwrap()))
             } else if let Some(m) = eq_re.captures(s) {
                 Ok(Exactly(m[1].parse::<u64>().unwrap()))
+            } else if let Some(m) = ival_re.captures(s) {
+                let lo = m[1].parse::<u64>().unwrap();
+                let hi_opt = m.get(2).map(|x| x.as_str().parse::<u64>().unwrap());
+                Ok(Range(lo, hi_opt))
             } else {
                 Err(format!("Unknown frequency format {}", s))
             }
@@ -265,6 +272,8 @@ mod tests {
         assert_eq!(step_frequency_parser("always"), Ok(Always));
         assert_eq!(step_frequency_parser("=123"), Ok(Exactly(123)));
         assert_eq!(step_frequency_parser("%123"), Ok(Every(123)));
+        assert_eq!(step_frequency_parser("1..3"), Ok(Range(1, Some(3))));
+        assert_eq!(step_frequency_parser("1.."), Ok(Range(1, None)));
         assert!(step_frequency_parser("@123").is_err());
     }
 
