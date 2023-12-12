@@ -2,7 +2,7 @@
 
 use base64::{engine::general_purpose, Engine as _};
 
-use libflate::zlib::{Decoder, Encoder};
+use libflate::zlib::{Decoder, Encoder, EncodeOptions};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::Read;
@@ -37,7 +37,8 @@ where
     S: Serializer,
 {
     let encoded_v = Vec::new();
-    let mut encoder = Encoder::new(encoded_v).unwrap();
+    let options = EncodeOptions::new().no_compression();
+    let mut encoder = Encoder::with_options(encoded_v, options).unwrap();
     encoder.write_all(v).unwrap();
     let res = encoder.finish().into_result().unwrap();
     let b64_encoded = general_purpose::STANDARD.encode(res);
@@ -342,13 +343,13 @@ mod tests {
         let res = serde_json::to_string(&decoded_page).unwrap();
         assert_eq!(res, value);
 
-        // let value: &str = r#"{"index":0,"data":"eJzswAENAAAAwiD7p7bHBwMAAADyHgAA//8QAAAB"}"#;
-        // let decoded_page: Page = serde_json::from_str(value).unwrap();
-        // let res = serde_json::to_string(&decoded_page).unwrap();
-        // let redecoded_page: Page = serde_json::from_str(&res).unwrap();
-        // println!("Redecode: {:?}", redecoded_page);
-        // println!("Init: {:?}", decoded_page);
-        // assert_eq!(res, value);
+        let value: &str = r#"{"index":0,"data":"eJzswAENAAAAwiD7p7bHBwMAAADyHgAA//8QAAAB"}"#;
+        let decoded_page: Page = serde_json::from_str(value).unwrap();
+        let res = serde_json::to_string(&decoded_page).unwrap();
+        let redecoded_page: Page = serde_json::from_str(&res).unwrap();
+        println!("Redecode: {:?}", redecoded_page);
+        println!("Init: {:?}", decoded_page);
+        assert_eq!(res, value);
     }
 
     #[test]
