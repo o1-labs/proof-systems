@@ -456,7 +456,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable) {
-        println!("Exited with code {} at step {}", *exit_code, self.instruction_counter);
+        println!(
+            "Exited with code {} at step {}",
+            *exit_code, self.instruction_counter
+        );
     }
 
     fn request_preimage_write(
