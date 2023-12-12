@@ -15,7 +15,7 @@ If $f < n$ then we can easily perform the above computation. But in this gate we
 - our foreign field will have 256-bit length
 - our native field has 255-bit length
 
-In other words, using 3 limbs of 88 bits each allows us to represent any foreign field element in the range $[0,2^{264})$ for foreign field addition, but only up to $2^{259}$ for foreign field multiplication. Thus, with the current configuration of our limbs, our foreign field must be smaller than $2^{259}$ (because $2^{264} \cdot 2^{255} > {2^{259}}^2 + 2^{259}$, more on this in the [FFmul RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
+In other words, using 3 limbs of 88 bits each allows us to represent any foreign field element in the range $[0,2^{264})$ for foreign field addition, but only up to $2^{259}$ for foreign field multiplication. Thus, with the current configuration of our limbs, our foreign field must be smaller than $2^{259}$ (because $2^{264} \cdot 2^{255} > {2^{259}}^2 + 2^{259}$, more on this in [Foreign Field Multiplication](../kimchi/foreign_field_mul.md) or the original [FFmul RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 
 ### Splitting the addition
 
@@ -155,13 +155,13 @@ So far, one can recompute the result as follows:
 ```text
 bits  0..............87|88...........175|176...........263
 r  =  (-------r0-------|-------r1-------|-------r2-------)
-= 
+=
 a  =  (-------a0-------|-------a1-------|-------a2-------)
 +
 s = 1 | -1
 ·
 b  =  (-------b0-------|-------b1-------|-------b2-------)
-- 
+-
 q  =  -1 |0 | 1
 ·
 f  =  (-------f0-------|-------f1-------|-------f2-------)
@@ -174,13 +174,13 @@ Inspired by the halving approach in foreign field multiplication, an optimized v
 ```text
 bits  0..............87|88...........175|176...........263
 r  =  (-------r0------- -------r1-------|-------r2-------)
-= 
+=
 a  =  (-------a0------- -------a1-------|-------a2-------)
 +
 s = 1 | -1
 ·
 b  =  (-------b0------- -------b1-------|-------b2-------)
-- 
+-
 q  =  -1 |0 | 1
 ·
 f  =  (-------f0------- -------f1-------|-------f2-------)
@@ -193,18 +193,18 @@ f  =  (-------f0------- -------f1-------|-------f2-------)
 $$
 \begin{aligned}
 r_{bot} &= (a_0 + 2^{88} \cdot a_1) + s \cdot (b_0 + 2^{88} \cdot b_1) - q \cdot (f_0 + 2^{88} \cdot f_1) - c \cdot 2^{176} \\
-r_{top} &= a_2 + s \cdot b_2 - q \cdot f_2 + c 
+r_{top} &= a_2 + s \cdot b_2 - q \cdot f_2 + c
 \end{aligned}
 $$
 
-with $r_{top} = r_2$ and $c = c_1$. 
+with $r_{top} = r_2$ and $c = c_1$.
 
 ## Gadget
 
-The full foreign field addition/subtraction gadget will be composed of: 
+The full foreign field addition/subtraction gadget will be composed of:
 - $1$ public input row containing the value $1$;
 - $n$ rows with `ForeignFieldAdd` gate type:
-  - for the actual $n$ chained additions or subtractions;  
+  - for the actual $n$ chained additions or subtractions;
 - $1$ `ForeignFieldAdd` row for the bound addition;
 - $1$ `Zero` row for the final bound addition.
 - $1$ `RangeCheck` gadget for the first left input of the chain $a_1 := a$;
@@ -227,7 +227,7 @@ A total of 20 rows with 15 columns in Kimchi for 1 addition. All ranges below ar
 | 9n+7..9n+10      | `multi-range-check` | $u$     |
 
 
-This mechanism can chain foreign field additions together. Initially, there are $n$ foreign field addition gates, followed by a foreign field addition gate for the bound addition (whose current row corresponds to the next row of the last foreign field addition gate), and an auxiliary `Zero` row that holds the upper bound. At the end, an initial left input range check is performed, which is followed by a $n$ pairs of range check gates for the right input and intermediate result (which become the left input for the next iteration). After the chained inputs checks, a final range check on the bound takes place. 
+This mechanism can chain foreign field additions together. Initially, there are $n$ foreign field addition gates, followed by a foreign field addition gate for the bound addition (whose current row corresponds to the next row of the last foreign field addition gate), and an auxiliary `Zero` row that holds the upper bound. At the end, an initial left input range check is performed, which is followed by a $n$ pairs of range check gates for the right input and intermediate result (which become the left input for the next iteration). After the chained inputs checks, a final range check on the bound takes place.
 
 For example, chaining the following set of 3 instructions would result in a full gadget with 37 rows:
 
@@ -250,7 +250,7 @@ $$add(add(add(a,b),c),d)$$
 | 30..33 | `multi-range-check` | $a+b+c+d$     |
 | 34..37 | `multi-range-check` | bound         |
 
-Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8*n+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges): 
+Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8*n+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges):
 
 | Row(s)   | Gate type(s)                                          | Witness |
 | -------- | ----------------------------------------------------- | ------- |
@@ -260,7 +260,7 @@ Nonetheless, such an exhaustive set of checks are not necessary for completeness
 | n+2      | `Zero`                                                |         |
 | n+3..n+6 | `multi-range-check` for `bound`                       | $u$     |
 
-Otherwise, we would need range checks for each new input of the chain, but none for intermediate results; implying $4\cdot n$ fewer rows. 
+Otherwise, we would need range checks for each new input of the chain, but none for intermediate results; implying $4\cdot n$ fewer rows.
 
 | Row(s)          | Gate type(s)                                          | Witness   |
 | --------------- | ----------------------------------------------------- | --------- |
@@ -273,7 +273,7 @@ Otherwise, we would need range checks for each new input of the chain, but none 
 | 5n+7..5n+10     | `multi-range-check` for bound                         | $u$       |
 
 
-For more details see the Bound Addition section of the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
+For more details see the Bound Addition section in [Foreign Field Multiplication](../kimchi/foreign_field_mul.md) or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 
 ### Layout
 
@@ -326,4 +326,4 @@ TODO: decide if we really want to keep this check or leave it implicit as it is 
 When we use this gate as part of a larger chained gadget, we should optimize the number of range check rows
 to avoid redundant checks. In particular, if the result of an addition becomes one input of another addition, there is no need to check twice that the limbs of that term have the right length.
 
-The sign is now part of the coefficients of the gate. This will allow us to remove the sign check constraint and release one witness cell element. But more importantly, it brings soundness to the gate as it is now possible to wire the $1$ public input to the overflow witness of the final bound check of every addition chain.  
+The sign is now part of the coefficients of the gate. This will allow us to remove the sign check constraint and release one witness cell element. But more importantly, it brings soundness to the gate as it is now possible to wire the $1$ public input to the overflow witness of the final bound check of every addition chain.

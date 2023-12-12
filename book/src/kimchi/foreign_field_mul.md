@@ -610,7 +610,7 @@ $$
 
 ### Bound checks
 
-To perform the above range checks we use the *upper bound check* method described in the [Foreign Field Addition RFC](](https://github.com/o1-labs/proof-systems/blob/master/book/src/rfcs/ffadd.md#upper-bound-check)).
+To perform the above range checks we use the *upper bound check* method described in the upper bound check section in [Foreign Field Addition](../kimchi/foreign_field_add.md#upper-bound-check).
 
 The upper bound check is as follows.  We must constrain $0 \le q < f$ over the positive integers, so
 

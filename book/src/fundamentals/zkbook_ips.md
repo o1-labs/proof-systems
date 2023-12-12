@@ -4,7 +4,7 @@ Earlier we defined zero-knowledge proofs as being proofs of a computation of a f
 
 We will now go beyond this, and try to define zero-knowledge proof systems for computations that proceed **inductively**. That is, in pieces, and potentially over different locations involving different parties in a distributed manner.
 
-An example of an **inductive computation** would be the verification of the Mina blockchain. Each block producer, when they produce a new block, 
+An example of an **inductive computation** would be the verification of the Mina blockchain. Each block producer, when they produce a new block,
 
 - verifies that previous state of the chain was arrived at correctly
 
@@ -31,7 +31,7 @@ Another way of looking at this is that they let you prove membership in sets of 
 $A_f := \{ a \colon A \mid \text{There exists } w \colon W \text{ such that} f(a, w) = \mathsf{true} \}$[^1]
 
 
-These are called [NP sets](todo.link). In intuitive terms, an NP set is one in which membership can be efficiently checked given some "witness" or helper information (which is $w$).
+These are called [NP sets](https://en.wikipedia.org/wiki/NP_(complexity)). In intuitive terms, an NP set is one in which membership can be efficiently checked given some "witness" or helper information (which is $w$).
 
 Inductive proof systems let you prove membership in sets that are inductively defined. An inductively defined set is one where membership can be efficiently checked given some helper information, but the computation is explicitly segmented into pieces.
 
@@ -45,7 +45,7 @@ We will give a recursive definition of a few concepts. Making this mathematicall
 
 
 
-The data of an **inductive rule for a type $A$** is 
+The data of an **inductive rule for a type $A$** is
 
 - a sequence of inductive sets $A_0, \dots, A_{n-1}$ (note the recursive reference to )
 
@@ -59,7 +59,7 @@ The data of an **inductive set over a type $A$** is
 
 The subset of $A$  corresponding to $R$ (which we will for now write $A_R$) is defined inductively as follows.
 
-For $a \colon A$, $a \in A_R$ if and only if 
+For $a \colon A$, $a \in A_R$ if and only if
 
 - there is some inductive rule $r$ in the sequence $R$ with function $f \colon A \times W_r \times A_{r,0} \times \dots A_{r, n_r-1} \to \mathsf{Bool}$ such that
 

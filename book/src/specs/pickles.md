@@ -4,7 +4,7 @@ Pickles is Mina’s inductive zk-SNARK composition system. It lets you construct
 
 ---
 
-Pickles uses a pair of amicable curves called [Pasta](../pasta_curves.md) in order to deliver incremental verifiable computation efficiently.
+Pickles uses a pair of amicable curves called [Pasta](./pasta.md) in order to deliver incremental verifiable computation efficiently.
 
 These curves are referred to as "tick" and "tock" within the Mina source code.
 
