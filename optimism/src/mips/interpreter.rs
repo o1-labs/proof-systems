@@ -1044,10 +1044,16 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallReadPreimage => {
             let addr = env.read_register(&Env::constant(5));
             let length = env.read_register(&Env::constant(6));
+            let preimage_offset =
+                env.read_register(&Env::constant(REGISTER_PREIMAGE_OFFSET as u32));
             let read_length = {
                 let pos = env.alloc_scratch();
                 env.request_preimage_write(&addr, &length, pos)
             };
+            env.write_register(
+                &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),
+                preimage_offset + read_length.clone(),
+            );
             env.write_register(&Env::constant(2), read_length);
             env.write_register(&Env::constant(7), Env::constant(0));
             env.set_instruction_pointer(next_instruction_pointer.clone());

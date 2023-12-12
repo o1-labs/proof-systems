@@ -472,23 +472,43 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage);
         }
+
+        const LENGTH_SIZE: usize = 8;
+
         let preimage = self
             .preimage
             .as_ref()
             .expect("to have a preimage if we're requesting it at a non-zero offset");
-        let read_len = std::cmp::min(self.registers.preimage_offset + len, preimage.len() as u32)
-            - self.registers.preimage_offset;
-        for i in 0..read_len {
-            // This should really be handled by the keccak oracle.
-            let preimage_byte =
-                self.preimage.as_ref().unwrap()[(self.registers.preimage_offset + i) as usize];
-            unsafe {
-                self.push_memory(&(*addr + i), preimage_byte as u32);
-                self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
+        let preimage_len = preimage.len();
+
+        let max_read_len = std::cmp::min(
+            self.registers.preimage_offset + len,
+            (preimage_len + LENGTH_SIZE) as u32,
+        ) - self.registers.preimage_offset;
+        // We read at most 4 bytes, ensuring that we respect word alignment.
+        let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
+
+        for i in 0..actual_read_len {
+            let idx = (self.registers.preimage_offset + i) as usize;
+            // The first 8 bytes of the read preimage are the preimage length, followed by the body
+            // of the preimage
+            if idx < LENGTH_SIZE {
+                let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
+                unsafe {
+                    self.push_memory(&(*addr + i), length_byte as u32);
+                    self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
+                }
+            } else {
+                // This should really be handled by the keccak oracle.
+                let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
+                unsafe {
+                    self.push_memory(&(*addr + i), preimage_byte as u32);
+                    self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
+                }
             }
         }
-        self.write_column(pos, read_len.into());
-        read_len
+        self.write_column(pos, actual_read_len.into());
+        actual_read_len
     }
 }
 
