@@ -170,6 +170,10 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
     Witness(usize),
@@ -232,6 +236,10 @@ impl Column {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
 pub struct Variable {
@@ -296,10 +304,10 @@ impl<F: Copy> ConstantExpr<F> {
             ConstantExpr::Gamma => res.push(PolishToken::Gamma),
             ConstantExpr::JointCombiner => res.push(PolishToken::JointCombiner),
             ConstantExpr::EndoCoefficient => res.push(PolishToken::EndoCoefficient),
-            ConstantExpr::Mds { row, col } => res.push(PolishToken::Mds {
+            ConstantExpr::Mds { row, col } => res.push(PolishToken::Mds(Mds {
                 row: *row,
                 col: *col,
-            }),
+            })),
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -318,7 +326,7 @@ impl<F: Copy> ConstantExpr<F> {
             ConstantExpr::Literal(x) => res.push(PolishToken::Literal(*x)),
             ConstantExpr::Pow(x, n) => {
                 x.to_polish_(res);
-                res.push(PolishToken::Pow(*n))
+                res.push(PolishToken::Pow(*n as i32))
             }
         }
     }
@@ -463,6 +471,10 @@ impl FeatureFlag {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 pub struct RowOffset {
     pub zk_rows: bool,
     pub offset: i32,
@@ -636,24 +648,36 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
     }
 }
 
+/// Maximal distance separable matrix constants
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+pub struct Mds {
+    row: usize,
+    col: usize,
+}
+
 /// For efficiency of evaluation, we compile expressions to
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum PolishToken<F> {
     Alpha,
     Beta,
     Gamma,
     JointCombiner,
     EndoCoefficient,
-    Mds {
-        row: usize,
-        col: usize,
-    },
+    Mds(Mds),
     Literal(F),
     Cell(Variable),
     Dup,
-    Pow(u64),
+    Pow(i32),
     Add,
     Mul,
     Sub,
@@ -768,7 +792,7 @@ impl<F: FftField> PolishToken<F> {
                     stack.push(c.joint_combiner.expect("no joint lookup was expected"))
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
-                Mds { row, col } => stack.push(c.mds[*row][*col]),
+                Mds(mds) => stack.push(c.mds[mds.row][mds.col]),
                 VanishesOnZeroKnowledgeAndPreviousRows => {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
                 }
@@ -788,7 +812,7 @@ impl<F: FftField> PolishToken<F> {
                 },
                 Pow(n) => {
                     let i = stack.len() - 1;
-                    stack[i] = stack[i].pow([*n]);
+                    stack[i] = stack[i].pow([*n as u64]);
                 }
                 Add => {
                     let y = stack.pop().ok_or(ExprError::EmptyStack)?;
@@ -1468,7 +1492,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             }
             Expr::Pow(x, d) => {
                 x.to_polish_(cache, res);
-                res.push(PolishToken::Pow(*d))
+                res.push(PolishToken::Pow(*d as i32))
             }
             Expr::Constant(c) => {
                 c.to_polish_(res);
@@ -1543,7 +1567,10 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 Gamma => stack.push(Expr::Constant(ConstantExpr::Gamma)),
                 JointCombiner => stack.push(Expr::Constant(ConstantExpr::JointCombiner)),
                 EndoCoefficient => stack.push(Expr::Constant(ConstantExpr::EndoCoefficient)),
-                &Mds { row, col } => stack.push(Expr::Constant(ConstantExpr::Mds { row, col })),
+                &Mds(mds) => stack.push(Expr::Constant(ConstantExpr::Mds {
+                    row: mds.row,
+                    col: mds.col,
+                })),
                 Literal(lit) => stack.push(Expr::Constant(ConstantExpr::Literal(*lit))),
                 Cell(cell) => stack.push(Expr::Cell(*cell)),
                 Dup => {
@@ -1568,9 +1595,9 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                     let base = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
                     if base == Expr::Constant(ConstantExpr::Alpha) {
                         // Special case for powers of alpha
-                        stack.push(Expr::Constant(ConstantExpr::Alpha.pow(*exp)));
+                        stack.push(Expr::Constant(ConstantExpr::Alpha.pow(*exp as u64)));
                     } else {
-                        stack.push(Expr::Pow(Box::new(base), *exp));
+                        stack.push(Expr::Pow(Box::new(base), *exp as u64));
                     }
                 }
                 Add => {
