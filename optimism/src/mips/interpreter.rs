@@ -1866,7 +1866,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::Load16 => (),
+        ITypeInstruction::Load16 => {
+            let base = env.read_register(&rs);
+            let dest = rt;
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base + offset;
+            let v0 = env.read_memory(&addr);
+            let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
+            let value = (v0 * Env::constant(1 << 8)) + v1;
+            let value = env.sign_extend(&value, 16);
+            env.write_register(&dest, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::Load32 => {
             let base = env.read_register(&rs);
             let dest = rt;
@@ -2341,9 +2355,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             return;
         }
     };
-
-    // REMOVEME: when all itype instructions are implemented.
-    env.set_halted(Env::constant(1))
 }
 
 pub mod debugging {
