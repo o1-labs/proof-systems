@@ -503,7 +503,7 @@
 </span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>State {
     <span class="kw">pub </span>memory: Vec&lt;Page&gt;,
-    <span class="attr">#[serde(rename = <span class="string">&quot;preimageKey&quot;</span>, deserialize_with = <span class="string">&quot;deserialize_preimage_key&quot;</span>)]
+    <span class="attr">#[serde(rename = <span class="string">&quot;preimageKey&quot;</span>, deserialize_with = <span class="string">&quot;to_preimage_key&quot;</span>)]
     </span><span class="kw">pub </span>preimage_key: [u8; <span class="number">32</span>],
     <span class="attr">#[serde(rename = <span class="string">&quot;preimageOffset&quot;</span>)]
     </span><span class="kw">pub </span>preimage_offset: u32,
@@ -571,7 +571,7 @@
     }
 }
 
-<span class="kw">fn </span>deserialize_preimage_key&lt;<span class="lifetime">&#39;de</span>, D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; <span class="number">32</span>], D::Error&gt;
+<span class="kw">fn </span>to_preimage_key&lt;<span class="lifetime">&#39;de</span>, D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; <span class="number">32</span>], D::Error&gt;
 <span class="kw">where
     </span>D: Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
 {
