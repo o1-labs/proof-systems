@@ -432,14 +432,66 @@
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
 </pre></div><pre class="rust"><code><span class="comment">// Data structure and stuff for compatibility with Cannon
 
 </span><span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
 
-<span class="kw">use </span>libflate::zlib::Decoder;
+<span class="kw">use </span>libflate::zlib::{Decoder, Encoder};
 <span class="kw">use </span>regex::Regex;
-<span class="kw">use </span>serde::{Deserialize, Deserializer, Serialize};
+<span class="kw">use </span>serde::{Deserialize, Deserializer, Serialize, Serializer};
 <span class="kw">use </span>std::io::Read;
+<span class="kw">use </span>std::io::Write;
 
 <span class="kw">pub const </span>PAGE_ADDRESS_SIZE: u32 = <span class="number">12</span>;
 <span class="kw">pub const </span>PAGE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
@@ -448,7 +500,7 @@
 <span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>Page {
     <span class="kw">pub </span>index: u32,
-    <span class="attr">#[serde(deserialize_with = <span class="string">&quot;from_base64&quot;</span>)]
+    <span class="attr">#[serde(deserialize_with = <span class="string">&quot;from_base64&quot;</span>, serialize_with = <span class="string">&quot;to_base64&quot;</span>)]
     </span><span class="kw">pub </span>data: Vec&lt;u8&gt;,
 }
 
@@ -465,11 +517,27 @@
     <span class="prelude-val">Ok</span>(data)
 }
 
+<span class="kw">fn </span>to_base64&lt;S&gt;(v: <span class="kw-2">&amp;</span>[u8], serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+<span class="kw">where
+    </span>S: Serializer,
+{
+    <span class="kw">let </span>encoded_v = Vec::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>encoder = Encoder::new(encoded_v).unwrap();
+    encoder.write_all(v).unwrap();
+    <span class="kw">let </span>res = encoder.finish().into_result().unwrap();
+    <span class="kw">let </span>b64_encoded = general_purpose::STANDARD.encode(res);
+    serializer.serialize_str(<span class="kw-2">&amp;</span>b64_encoded)
+}
+
 <span class="comment">// The renaming below keeps compatibility with OP Cannon&#39;s state format
 </span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>State {
     <span class="kw">pub </span>memory: Vec&lt;Page&gt;,
-    <span class="attr">#[serde(rename = <span class="string">&quot;preimageKey&quot;</span>, deserialize_with = <span class="string">&quot;to_preimage_key&quot;</span>)]
+    <span class="attr">#[serde(
+        rename = <span class="string">&quot;preimageKey&quot;</span>,
+        deserialize_with = <span class="string">&quot;deserialize_preimage_key&quot;</span>,
+        serialize_with = <span class="string">&quot;serialize_preimage_key&quot;
+    </span>)]
     </span><span class="kw">pub </span>preimage_key: [u8; <span class="number">32</span>],
     <span class="attr">#[serde(rename = <span class="string">&quot;preimageOffset&quot;</span>)]
     </span><span class="kw">pub </span>preimage_offset: u32,
@@ -537,7 +605,7 @@
     }
 }
 
-<span class="kw">fn </span>to_preimage_key&lt;<span class="lifetime">&#39;de</span>, D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; <span class="number">32</span>], D::Error&gt;
+<span class="kw">fn </span>deserialize_preimage_key&lt;<span class="lifetime">&#39;de</span>, D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; <span class="number">32</span>], D::Error&gt;
 <span class="kw">where
     </span>D: Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
 {
@@ -545,6 +613,14 @@
     <span class="kw">let </span>p = PreimageKey::from_str(s.as_str())
         .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Parsing {s} as preimage key failed&quot;</span>));
     <span class="prelude-val">Ok</span>(p.<span class="number">0</span>)
+}
+
+<span class="kw">fn </span>serialize_preimage_key&lt;S&gt;(v: <span class="kw-2">&amp;</span>[u8], serializer: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt;
+<span class="kw">where
+    </span>S: Serializer,
+{
+    <span class="kw">let </span>s: String = <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, hex::encode(v));
+    serializer.serialize_str(<span class="kw-2">&amp;</span>s)
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
@@ -754,6 +830,32 @@
 
     <span class="kw">fn </span>deserialize_meta_sample() -&gt; Meta {
         serde_json::from_str::&lt;Meta&gt;(META_SAMPLE).unwrap()
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_serialize_deserialize_page() {
+        <span class="kw">let </span>value: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{&quot;index&quot;:16,&quot;data&quot;:&quot;eJztlkFoE0EUht8k21ZEtFYFg1FCTW0qSGoTS6pFJU3TFlNI07TEQJHE1kJMmhwi1ihaRJCqiAdBKR5Ez4IXvQk5eBaP4iEWpAchV0Hoof5vd14SoQcvve0H/5s3O//OzuzMLHtvNBZVDkUNHLQLUdHugSTKINJgnDoNZB60+MhFBq63Q0G4LCFYQptZoKR9r0hpEc1r4bopy8WRtdptmCJqM+t89RHiY60Xc39M8b26XXUjHLdEbf4qdTyMIWvn9vnyxhTy7eBxGwvGoRWU23ASIqNE5MT4H2DslogOa/EY+f38LxiNKYyrEwW02sV9CJLfgdjnMOfLc0+6biMKHohJFLe2fqO0qLl4Hui0AfcB1H0EzEFTc73GtSfIBO0jnhvnDvpx5CLVIJoKoS7Ic59C2pdfoRpEe+KoC+J7CWnf8leqQf/CbcwbiHP2rcO3TuENfr+C9HcGYp+T15nXnMjdOl/JOyDtc3tUt9tDzto31AXprwuyfCc2SfVsohZ8j7ogPh4Lr7NT+fxV1Yv9pXJ11AXxHYUsX99aVfnWqkT11vcsvk8QnstWJD4EUr0Igt4HqodD0wdP59kIUkH76DvU9IXOXSfnr0tIBe1T5zlAJmrY+xHFICRIG+8p5Lq/YW+djt1tfX/S314ODV/67Wc6eOEZUkF8CxwavqWfSWo/9QWpoH2UhXjtHDhn+E6wzO+EIL4RnEk+nOzDnmWZayRYDyJ6BzkgE3Vjv5faYrjV9F6DuD/eMx+gxvlQlbnndMDdh1TA2G1sbGxsbGxsbGx2Co9Sqvk/2gL/r05DxlgRP8bZK0O50cJQPjMxO5HKhCOlQr8/sVy5uRTuD5RGKuXFaDgYSQ+E/LOlsZlEIZ8NBqKlcmby8mIpPOjPpWYmxwPF06lI+mpqPB+O35ou0l+FGHpe&quot;}&quot;#</span>;
+        <span class="kw">let </span>decoded_page: Page = serde_json::from_str(value).unwrap();
+        <span class="kw">let </span>res = serde_json::to_string(<span class="kw-2">&amp;</span>decoded_page).unwrap();
+        <span class="macro">assert_eq!</span>(res, value);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_preimage_key_serialisation() {
+        <span class="attr">#[derive(Serialize, Deserialize)]
+        </span><span class="kw">struct </span>TestPreimageKeyStruct {
+            <span class="attr">#[serde(
+                rename = <span class="string">&quot;preimageKey&quot;</span>,
+                deserialize_with = <span class="string">&quot;deserialize_preimage_key&quot;</span>,
+                serialize_with = <span class="string">&quot;serialize_preimage_key&quot;
+            </span>)]
+            </span><span class="kw">pub </span>preimage_key: [u8; <span class="number">32</span>],
+        }
+
+        <span class="kw">let </span>preimage_key: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{&quot;preimageKey&quot;:&quot;0x0000000000000000000000000000000000000000000000000000000000000000&quot;}&quot;#</span>;
+        <span class="kw">let </span>s: TestPreimageKeyStruct = serde_json::from_str(preimage_key).unwrap();
+        <span class="kw">let </span>res = serde_json::to_string(<span class="kw-2">&amp;</span>s).unwrap();
+        <span class="macro">assert_eq!</span>(preimage_key, res);
     }
 
     <span class="attr">#[test]
