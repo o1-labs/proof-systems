@@ -2366,6 +2366,26 @@
 <a href="#2366" id="2366">2366</a>
 <a href="#2367" id="2367">2367</a>
 <a href="#2368" id="2368">2368</a>
+<a href="#2369" id="2369">2369</a>
+<a href="#2370" id="2370">2370</a>
+<a href="#2371" id="2371">2371</a>
+<a href="#2372" id="2372">2372</a>
+<a href="#2373" id="2373">2373</a>
+<a href="#2374" id="2374">2374</a>
+<a href="#2375" id="2375">2375</a>
+<a href="#2376" id="2376">2376</a>
+<a href="#2377" id="2377">2377</a>
+<a href="#2378" id="2378">2378</a>
+<a href="#2379" id="2379">2379</a>
+<a href="#2380" id="2380">2380</a>
+<a href="#2381" id="2381">2381</a>
+<a href="#2382" id="2382">2382</a>
+<a href="#2383" id="2383">2383</a>
+<a href="#2384" id="2384">2384</a>
+<a href="#2385" id="2385">2385</a>
+<a href="#2386" id="2386">2386</a>
+<a href="#2387" id="2387">2387</a>
+<a href="#2388" id="2388">2388</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -3229,6 +3249,8 @@
         len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         pos: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>request_hint_write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 }
 
 <span class="kw">pub fn </span>interpret_instruction&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: Instruction) {
@@ -3408,7 +3430,15 @@
             env.set_halted(Env::constant(<span class="number">1</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::SyscallReadHint =&gt; (),
+        RTypeInstruction::SyscallReadHint =&gt; {
+            <span class="comment">// We don&#39;t really write here, since the value is unused, per the cannon
+            // implementation. Just claim that we wrote the correct length.
+            </span><span class="kw">let </span>length = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">6</span>));
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), length);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::SyscallReadPreimage =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
             <span class="kw">let </span>length = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">6</span>));
@@ -3453,7 +3483,17 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::SyscallWriteHint =&gt; (),
+        RTypeInstruction::SyscallWriteHint =&gt; {
+            <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
+            <span class="kw">let </span>length = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">6</span>));
+            <span class="comment">// TODO: Message preimage oracle
+            </span>env.request_hint_write(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>length);
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), length);
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), Env::constant(<span class="number">0</span>));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::SyscallWritePreimage =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
             <span class="kw">let </span>write_length = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">6</span>));
