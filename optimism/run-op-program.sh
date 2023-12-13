@@ -24,7 +24,7 @@ set -x
     --info-at "${INFO_AT:-%10000000}" \
     --proof-at never \
     --stop-at "${STOP_AT:-never}" \
-    --input "{CANNON_STATE_FILENAME:-./state.json}" \
+    --input "${CANNON_STATE_FILENAME:-./state.json}" \
     -- \
     ./ethereum-optimism/op-program/bin/op-program \
     --log.level DEBUG \
