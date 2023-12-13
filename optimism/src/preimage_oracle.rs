@@ -110,10 +110,10 @@ impl PreImageOracle {
     pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
-        let r = writer.write_all(&key);
+        let r = writer.write(&key);
         assert!(r.is_ok());
-        let r = writer.flush();
-        assert!(r.is_ok());
+        // We check that 32 bytes have been written
+        assert_eq!(r.unwrap(), 32);
 
         debug!("Reading response");
         let mut buf = [0_u8; 8];
