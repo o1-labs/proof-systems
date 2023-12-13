@@ -209,7 +209,7 @@ pub struct VmConfiguration {
     pub metadata_file: String,
     pub proof_at: StepFrequency,
     pub stop_at: StepFrequency,
-    pub dump_state_at: StepFrequency,
+    pub snapshot_state_at: StepFrequency,
     pub info_at: StepFrequency,
     pub proof_fmt: String,
     pub snapshot_fmt: String,

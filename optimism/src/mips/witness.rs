@@ -759,7 +759,7 @@ impl<Fp: Field> Env<Fp> {
         debug!("Funct: {:#08b}", instruction_parts.funct);
 
         self.pp_info(&config.info_at, metadata, start);
-        self.dump_state_at(&config.dump_state_at);
+        self.snapshot_state_at(&config.snapshot_state_at);
 
         // Force stops at given iteration
         if self.should_trigger_at(&config.stop_at) {
@@ -811,9 +811,9 @@ impl<Fp: Field> Env<Fp> {
         None
     }
 
-    fn dump_state_at(&mut self, at: &StepFrequency) {
+    fn snapshot_state_at(&mut self, at: &StepFrequency) {
         if self.should_trigger_at(at) {
-            let filename = format!("dump-state-{}.json", self.instruction_counter);
+            let filename = format!("snapshot-state-{}.json", self.instruction_counter);
             let file = File::create(filename.clone()).expect("Impossible to open file");
             let mut writer = BufWriter::new(file);
             let mut preimage_key = [0u8; 32];
@@ -847,7 +847,7 @@ impl<Fp: Field> Env<Fp> {
             };
             let _ = serde_json::to_writer(&mut writer, &s);
             info!(
-                "Dumping state in {}, step {}",
+                "Snapshot state in {}, step {}",
                 filename, self.instruction_counter
             );
             writer.flush().expect("Flush writer failing")

@@ -56,8 +56,8 @@ pub fn main_cli() -> clap::Command {
                 .value_parser(value_parser!(String)),
         )
         .arg(
-            Arg::new("dump-state-at")
-                .long("dump-state-at")
+            Arg::new("snapshot-state-at")
+                .long("snapshot-state-at")
                 .value_name("FREQ")
                 .default_value("never")
                 .value_parser(step_frequency_parser),
@@ -74,7 +74,7 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
     let proof_at = cli.get_one::<StepFrequency>("proof-at").unwrap();
     let info_at = cli.get_one::<StepFrequency>("info-at").unwrap();
     let stop_at = cli.get_one::<StepFrequency>("stop-at").unwrap();
-    let dump_state_at = cli.get_one::<StepFrequency>("dump-state-at").unwrap();
+    let snapshot_state_at = cli.get_one::<StepFrequency>("snapshot-state-at").unwrap();
 
     let proof_fmt = cli.get_one::<String>("proof-fmt").unwrap();
     let snapshot_fmt = cli.get_one::<String>("snapshot-fmt").unwrap();
@@ -104,7 +104,7 @@ pub fn read_configuration(cli: &clap::ArgMatches) -> VmConfiguration {
         metadata_file: metadata_file.to_string(),
         proof_at: proof_at.clone(),
         stop_at: stop_at.clone(),
-        dump_state_at: dump_state_at.clone(),
+        snapshot_state_at: snapshot_state_at.clone(),
         info_at: info_at.clone(),
         proof_fmt: proof_fmt.to_string(),
         snapshot_fmt: snapshot_fmt.to_string(),
