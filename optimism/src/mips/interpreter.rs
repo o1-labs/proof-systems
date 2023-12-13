@@ -854,6 +854,13 @@ pub trait InterpreterEnv {
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable);
+
+    fn request_preimage_write(
+        &mut self,
+        addr: &Self::Variable,
+        len: &Self::Variable,
+        pos: Self::Position,
+    ) -> Self::Variable;
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
@@ -1034,7 +1041,25 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             return;
         }
         RTypeInstruction::SyscallReadHint => (),
-        RTypeInstruction::SyscallReadPreimage => (),
+        RTypeInstruction::SyscallReadPreimage => {
+            let addr = env.read_register(&Env::constant(5));
+            let length = env.read_register(&Env::constant(6));
+            let preimage_offset =
+                env.read_register(&Env::constant(REGISTER_PREIMAGE_OFFSET as u32));
+            let read_length = {
+                let pos = env.alloc_scratch();
+                env.request_preimage_write(&addr, &length, pos)
+            };
+            env.write_register(
+                &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),
+                preimage_offset + read_length.clone(),
+            );
+            env.write_register(&Env::constant(2), read_length);
+            env.write_register(&Env::constant(7), Env::constant(0));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallReadOther => {
             let fd_id = env.read_register(&Env::constant(4));
             let mut check_equal = |expected_fd_id: u32| {
