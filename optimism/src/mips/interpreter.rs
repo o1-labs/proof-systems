@@ -1661,8 +1661,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::BranchNeq => {
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
@@ -1676,8 +1674,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::BranchLeqZero => {
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
@@ -1698,8 +1694,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::BranchGtZero => {
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
@@ -1717,8 +1711,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::BranchLtZero => {
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
@@ -1736,8 +1728,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::BranchGeqZero => {
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
@@ -1755,8 +1745,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::AddImmediate => {
             let register_rs = env.read_register(&rs);
@@ -1765,8 +1753,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::AddImmediateUnsigned => {
             debug!("Fetching register: {:?}", rs);
@@ -1776,8 +1762,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::SetLessThanImmediate => {
             let rs = env.read_register(&rs);
@@ -1790,7 +1774,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         ITypeInstruction::SetLessThanImmediateUnsigned => {
             let rs = env.read_register(&rs);
@@ -1803,7 +1786,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         ITypeInstruction::AndImmediate => {
             let rs = env.read_register(&rs);
@@ -1815,8 +1797,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::OrImmediate => {
             let rs = env.read_register(&rs);
@@ -1828,8 +1808,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::XorImmediate => {
             let rs = env.read_register(&rs);
@@ -1841,8 +1819,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::LoadUpperImmediate => {
             // lui $reg, [most significant 16 bits of immediate]
@@ -1850,8 +1826,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, immediate_value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::Load8 => {
             let base = env.read_register(&rs);
@@ -1863,8 +1837,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::Load16 => {
             let base = env.read_register(&rs);
@@ -1878,8 +1850,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::Load32 => {
             let base = env.read_register(&rs);
@@ -1905,8 +1875,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::Load8Unsigned => {
             let base = env.read_register(&rs);
@@ -1918,8 +1886,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::Load16Unsigned => {
             let base = env.read_register(&rs);
@@ -1932,8 +1898,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::LoadWordLeft => {
             let base = env.read_register(&rs);
@@ -1995,8 +1959,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::LoadWordRight => {
             let base = env.read_register(&rs);
@@ -2062,8 +2024,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::Store8 => {
             let base = env.read_register(&rs);
@@ -2078,7 +2038,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_memory(&addr, v0);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         ITypeInstruction::Store16 => {
             let base = env.read_register(&rs);
@@ -2103,7 +2062,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         ITypeInstruction::Store32 => {
             let base = env.read_register(&rs);
@@ -2140,7 +2098,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_memory(&(addr.clone() + Env::constant(3)), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         ITypeInstruction::Store32Conditional => {
             let base = env.read_register(&rs);
@@ -2179,7 +2136,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_register(&rt, Env::constant(1));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         ITypeInstruction::StoreWordLeft => {
             let base = env.read_register(&rs);
@@ -2263,8 +2219,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_memory(&(addr.clone() + Env::constant(3)), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         ITypeInstruction::StoreWordRight => {
             let base = env.read_register(&rs);
@@ -2351,10 +2305,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.write_memory(&addr.clone(), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            // REMOVEME: when all itype instructions are implemented.
-            return;
         }
-    };
+    }
 }
 
 pub mod debugging {
