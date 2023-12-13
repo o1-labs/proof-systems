@@ -625,7 +625,7 @@ impl<Fp: Field> Env<Fp> {
             halt: state.exited,
             syscall_env,
             preimage_oracle,
-            preimage: None,
+            preimage: state.preimage,
             keccak_env: None,
         }
     }
@@ -957,6 +957,7 @@ impl<Fp: Field> Env<Fp> {
                 preimage_offset: self.registers.preimage_offset,
                 preimage_key,
                 memory,
+                preimage: self.preimage.clone(),
             };
             let _ = serde_json::to_writer(&mut writer, &s);
             info!(

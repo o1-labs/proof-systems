@@ -67,6 +67,7 @@ pub struct State {
     pub step: u64,
     pub registers: [u32; 32],
     pub last_hint: Option<Vec<u8>>,
+    pub preimage: Option<Vec<u8>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
