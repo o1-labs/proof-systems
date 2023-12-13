@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+make -C ./ethereum-optimism/op-program op-program
 make -C ./ethereum-optimism/cannon cannon
 
 ./ethereum-optimism/cannon/bin/cannon load-elf --path=./ethereum-optimism/op-program/bin/op-program-client.elf
