@@ -813,7 +813,12 @@ impl<Fp: Field> Env<Fp> {
 
     fn snapshot_state_at(&mut self, at: &StepFrequency) {
         if self.should_trigger_at(at) {
-            let filename = format!("snapshot-state-{}.json", self.instruction_counter);
+            let snapshot_directory =
+                std::env::var("ZKVM_SNAPSHOT_DIRECTORY").unwrap_or(".".to_string());
+            let filename = format!(
+                "{}/snapshot-state-{}.json",
+                snapshot_directory, self.instruction_counter
+            );
             let file = File::create(filename.clone()).expect("Impossible to open file");
             let mut writer = BufWriter::new(file);
             let mut preimage_key = [0u8; 32];
