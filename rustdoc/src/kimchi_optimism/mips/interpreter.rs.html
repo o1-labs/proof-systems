@@ -2349,43 +2349,6 @@
 <a href="#2349" id="2349">2349</a>
 <a href="#2350" id="2350">2350</a>
 <a href="#2351" id="2351">2351</a>
-<a href="#2352" id="2352">2352</a>
-<a href="#2353" id="2353">2353</a>
-<a href="#2354" id="2354">2354</a>
-<a href="#2355" id="2355">2355</a>
-<a href="#2356" id="2356">2356</a>
-<a href="#2357" id="2357">2357</a>
-<a href="#2358" id="2358">2358</a>
-<a href="#2359" id="2359">2359</a>
-<a href="#2360" id="2360">2360</a>
-<a href="#2361" id="2361">2361</a>
-<a href="#2362" id="2362">2362</a>
-<a href="#2363" id="2363">2363</a>
-<a href="#2364" id="2364">2364</a>
-<a href="#2365" id="2365">2365</a>
-<a href="#2366" id="2366">2366</a>
-<a href="#2367" id="2367">2367</a>
-<a href="#2368" id="2368">2368</a>
-<a href="#2369" id="2369">2369</a>
-<a href="#2370" id="2370">2370</a>
-<a href="#2371" id="2371">2371</a>
-<a href="#2372" id="2372">2372</a>
-<a href="#2373" id="2373">2373</a>
-<a href="#2374" id="2374">2374</a>
-<a href="#2375" id="2375">2375</a>
-<a href="#2376" id="2376">2376</a>
-<a href="#2377" id="2377">2377</a>
-<a href="#2378" id="2378">2378</a>
-<a href="#2379" id="2379">2379</a>
-<a href="#2380" id="2380">2380</a>
-<a href="#2381" id="2381">2381</a>
-<a href="#2382" id="2382">2382</a>
-<a href="#2383" id="2383">2383</a>
-<a href="#2384" id="2384">2384</a>
-<a href="#2385" id="2385">2385</a>
-<a href="#2386" id="2386">2386</a>
-<a href="#2387" id="2387">2387</a>
-<a href="#2388" id="2388">2388</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -4049,8 +4012,6 @@
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::BranchNeq =&gt; {
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
@@ -4064,8 +4025,6 @@
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::BranchLeqZero =&gt; {
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
@@ -4086,8 +4045,6 @@
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::BranchGtZero =&gt; {
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
@@ -4105,8 +4062,6 @@
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::BranchLtZero =&gt; {
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
@@ -4124,8 +4079,6 @@
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::BranchGeqZero =&gt; {
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
@@ -4143,8 +4096,6 @@
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::AddImmediate =&gt; {
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4153,8 +4104,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::AddImmediateUnsigned =&gt; {
             <span class="macro">debug!</span>(<span class="string">&quot;Fetching register: {:?}&quot;</span>, rs);
@@ -4164,8 +4113,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::SetLessThanImmediate =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4178,7 +4125,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         ITypeInstruction::SetLessThanImmediateUnsigned =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4191,7 +4137,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         ITypeInstruction::AndImmediate =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4203,8 +4148,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::OrImmediate =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4216,8 +4159,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::XorImmediate =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4229,8 +4170,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::LoadUpperImmediate =&gt; {
             <span class="comment">// lui $reg, [most significant 16 bits of immediate]
@@ -4238,8 +4177,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, immediate_value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::Load8 =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4251,10 +4188,20 @@
             env.write_register(<span class="kw-2">&amp;</span>dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
-        ITypeInstruction::Load16 =&gt; (),
+        ITypeInstruction::Load16 =&gt; {
+            <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>dest = rt;
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
+            <span class="kw">let </span>addr = base + offset;
+            <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>addr);
+            <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">1</span>)));
+            <span class="kw">let </span>value = (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>)) + v1;
+            <span class="kw">let </span>value = env.sign_extend(<span class="kw-2">&amp;</span>value, <span class="number">16</span>);
+            env.write_register(<span class="kw-2">&amp;</span>dest, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+        }
         ITypeInstruction::Load32 =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>dest = rt;
@@ -4279,8 +4226,6 @@
             env.write_register(<span class="kw-2">&amp;</span>dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::Load8Unsigned =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4292,8 +4237,6 @@
             env.write_register(<span class="kw-2">&amp;</span>dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::Load16Unsigned =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4306,8 +4249,6 @@
             env.write_register(<span class="kw-2">&amp;</span>dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::LoadWordLeft =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4369,8 +4310,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::LoadWordRight =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4436,8 +4375,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rt, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::Store8 =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4452,7 +4389,6 @@
             env.write_memory(<span class="kw-2">&amp;</span>addr, v0);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         ITypeInstruction::Store16 =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4477,7 +4413,6 @@
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">1</span>)), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         ITypeInstruction::Store32 =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4514,7 +4449,6 @@
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">3</span>)), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         ITypeInstruction::Store32Conditional =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4553,7 +4487,6 @@
             </span>env.write_register(<span class="kw-2">&amp;</span>rt, Env::constant(<span class="number">1</span>));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         ITypeInstruction::StoreWordLeft =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4637,8 +4570,6 @@
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">3</span>)), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
         ITypeInstruction::StoreWordRight =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4725,13 +4656,8 @@
             env.write_memory(<span class="kw-2">&amp;</span>addr.clone(), v3);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
         }
-    };
-
-    <span class="comment">// REMOVEME: when all itype instructions are implemented.
-    </span>env.set_halted(Env::constant(<span class="number">1</span>))
+    }
 }
 
 <span class="kw">pub mod </span>debugging {
