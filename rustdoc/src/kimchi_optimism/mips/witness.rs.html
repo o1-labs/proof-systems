@@ -896,6 +896,67 @@
 <a href="#896" id="896">896</a>
 <a href="#897" id="897">897</a>
 <a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
 <span class="kw">use crate</span>::{
     cannon::{
@@ -954,6 +1015,7 @@
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
     <span class="kw">pub </span>preimage_oracle: PreImageOracle,
+    <span class="kw">pub </span>preimage: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
     <span class="kw">pub </span>keccak_env: <span class="prelude-ty">Option</span>&lt;KeccakEnv&lt;Fp&gt;&gt;,
 }
 
@@ -1356,7 +1418,66 @@
     }
 
     <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="macro">println!</span>(<span class="string">&quot;Exited with code {}&quot;</span>, <span class="kw-2">*</span>exit_code);
+        <span class="macro">println!</span>(
+            <span class="string">&quot;Exited with code {} at step {}&quot;</span>,
+            <span class="kw-2">*</span>exit_code, <span class="self">self</span>.instruction_counter
+        );
+    }
+
+    <span class="kw">fn </span>request_preimage_write(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        pos: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">if </span><span class="self">self</span>.registers.preimage_offset == <span class="number">0 </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>preimage_key = [<span class="number">0u8</span>; <span class="number">32</span>];
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
+                <span class="kw">let </span>bytes = u32::to_be_bytes(<span class="self">self</span>.registers.preimage_key[i]);
+                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..<span class="number">4 </span>{
+                    preimage_key[<span class="number">4 </span>* i + j] = bytes[j]
+                }
+            }
+            <span class="kw">let </span>preimage = <span class="self">self</span>.preimage_oracle.get_preimage(preimage_key).get();
+            <span class="self">self</span>.preimage = <span class="prelude-val">Some</span>(preimage);
+        }
+
+        <span class="kw">const </span>LENGTH_SIZE: usize = <span class="number">8</span>;
+
+        <span class="kw">let </span>preimage = <span class="self">self
+            </span>.preimage
+            .as_ref()
+            .expect(<span class="string">&quot;to have a preimage if we&#39;re requesting it at a non-zero offset&quot;</span>);
+        <span class="kw">let </span>preimage_len = preimage.len();
+
+        <span class="kw">let </span>max_read_len = std::cmp::min(
+            <span class="self">self</span>.registers.preimage_offset + len,
+            (preimage_len + LENGTH_SIZE) <span class="kw">as </span>u32,
+        ) - <span class="self">self</span>.registers.preimage_offset;
+        <span class="comment">// We read at most 4 bytes, ensuring that we respect word alignment.
+        </span><span class="kw">let </span>actual_read_len = std::cmp::min(max_read_len, <span class="number">4 </span>- (addr &amp; <span class="number">3</span>));
+
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..actual_read_len {
+            <span class="kw">let </span>idx = (<span class="self">self</span>.registers.preimage_offset + i) <span class="kw">as </span>usize;
+            <span class="comment">// The first 8 bytes of the read preimage are the preimage length, followed by the body
+            // of the preimage
+            </span><span class="kw">if </span>idx &lt; LENGTH_SIZE {
+                <span class="kw">let </span>length_byte = u64::to_be_bytes(preimage_len <span class="kw">as </span>u64)[idx];
+                <span class="kw">unsafe </span>{
+                    <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), length_byte <span class="kw">as </span>u32);
+                    <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.instruction_counter + <span class="number">1</span>);
+                }
+            } <span class="kw">else </span>{
+                <span class="comment">// This should really be handled by the keccak oracle.
+                </span><span class="kw">let </span>preimage_byte = <span class="self">self</span>.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
+                <span class="kw">unsafe </span>{
+                    <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), preimage_byte <span class="kw">as </span>u32);
+                    <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.instruction_counter + <span class="number">1</span>);
+                }
+            }
+        }
+        <span class="self">self</span>.write_column(pos, actual_read_len.into());
+        actual_read_len
     }
 }
 
@@ -1422,6 +1543,7 @@
             halt: state.exited,
             syscall_env,
             preimage_oracle,
+            preimage: <span class="prelude-val">None</span>,
             keccak_env: <span class="prelude-val">None</span>,
         }
     }

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Key"],"fn":["create_bidirectional_channel"],"struct":["PreImageOracle","RW","ReadWrite"]};
+window.SIDEBAR_ITEMS = {"fn":["create_bidirectional_channel"],"struct":["PreImageOracle","RW","ReadWrite"]};

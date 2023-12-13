@@ -2341,6 +2341,31 @@
 <a href="#2341" id="2341">2341</a>
 <a href="#2342" id="2342">2342</a>
 <a href="#2343" id="2343">2343</a>
+<a href="#2344" id="2344">2344</a>
+<a href="#2345" id="2345">2345</a>
+<a href="#2346" id="2346">2346</a>
+<a href="#2347" id="2347">2347</a>
+<a href="#2348" id="2348">2348</a>
+<a href="#2349" id="2349">2349</a>
+<a href="#2350" id="2350">2350</a>
+<a href="#2351" id="2351">2351</a>
+<a href="#2352" id="2352">2352</a>
+<a href="#2353" id="2353">2353</a>
+<a href="#2354" id="2354">2354</a>
+<a href="#2355" id="2355">2355</a>
+<a href="#2356" id="2356">2356</a>
+<a href="#2357" id="2357">2357</a>
+<a href="#2358" id="2358">2358</a>
+<a href="#2359" id="2359">2359</a>
+<a href="#2360" id="2360">2360</a>
+<a href="#2361" id="2361">2361</a>
+<a href="#2362" id="2362">2362</a>
+<a href="#2363" id="2363">2363</a>
+<a href="#2364" id="2364">2364</a>
+<a href="#2365" id="2365">2365</a>
+<a href="#2366" id="2366">2366</a>
+<a href="#2367" id="2367">2367</a>
+<a href="#2368" id="2368">2368</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -3197,6 +3222,13 @@
     }
 
     <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="kw">fn </span>request_preimage_write(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        pos: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
 }
 
 <span class="kw">pub fn </span>interpret_instruction&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: Instruction) {
@@ -3377,7 +3409,25 @@
             <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallReadHint =&gt; (),
-        RTypeInstruction::SyscallReadPreimage =&gt; (),
+        RTypeInstruction::SyscallReadPreimage =&gt; {
+            <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
+            <span class="kw">let </span>length = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">6</span>));
+            <span class="kw">let </span>preimage_offset =
+                env.read_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_PREIMAGE_OFFSET <span class="kw">as </span>u32));
+            <span class="kw">let </span>read_length = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.request_preimage_write(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>length, pos)
+            };
+            env.write_register(
+                <span class="kw-2">&amp;</span>Env::constant(REGISTER_PREIMAGE_OFFSET <span class="kw">as </span>u32),
+                preimage_offset + read_length.clone(),
+            );
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), read_length);
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), Env::constant(<span class="number">0</span>));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::SyscallReadOther =&gt; {
             <span class="kw">let </span>fd_id = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
             <span class="kw">let </span><span class="kw-2">mut </span>check_equal = |expected_fd_id: u32| {

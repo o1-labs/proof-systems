@@ -88,11 +88,12 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>clap::Arg;
 <span class="kw">use </span>kimchi_optimism::{
     cannon::PreimageKey,
     cannon_cli::{main_cli, read_configuration},
-    preimage_oracle::{Key, PreImageOracle},
+    preimage_oracle::PreImageOracle,
 };
 <span class="kw">use </span>log::{debug, error};
 <span class="kw">use </span>std::{
@@ -157,9 +158,10 @@
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()[<span class="number">0</span>];
 
             <span class="kw">let </span>hash = PreimageKey::from_str(preimage_key).unwrap();
-            <span class="kw">let </span>key = Key::Keccak(hash.<span class="number">0</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>key = hash.<span class="number">0</span>;
+            key[<span class="number">0</span>] = <span class="number">2</span>; <span class="comment">// Keccak
 
-            <span class="macro">debug!</span>(
+            </span><span class="macro">debug!</span>(
                 <span class="string">&quot;Generating OP Keccak key for {} at index {}&quot;</span>,
                 preimage_key, idx
             );
