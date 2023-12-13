@@ -1,6 +1,7 @@
+use crate::cannon::{Page, State};
 use crate::{
     cannon::{
-        Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
+        Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
     keccak::{environment::KeccakEnv, E},
@@ -19,6 +20,8 @@ use core::panic;
 use kimchi::circuits::expr::ConstantExpr::Literal;
 use log::{debug, info};
 use std::array;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
 pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
@@ -756,6 +759,7 @@ impl<Fp: Field> Env<Fp> {
         debug!("Funct: {:#08b}", instruction_parts.funct);
 
         self.pp_info(&config.info_at, metadata, start);
+        self.snapshot_state_at(&config.snapshot_state_at);
 
         // Force stops at given iteration
         if self.should_trigger_at(&config.stop_at) {
@@ -805,6 +809,49 @@ impl<Fp: Field> Env<Fp> {
             }
         }
         None
+    }
+
+    fn snapshot_state_at(&mut self, at: &StepFrequency) {
+        if self.should_trigger_at(at) {
+            let filename = format!("snapshot-state-{}.json", self.instruction_counter);
+            let file = File::create(filename.clone()).expect("Impossible to open file");
+            let mut writer = BufWriter::new(file);
+            let mut preimage_key = [0u8; 32];
+            for i in 0..8 {
+                let bytes = u32::to_be_bytes(self.registers.preimage_key[i]);
+                for j in 0..4 {
+                    preimage_key[4 * i + j] = bytes[j]
+                }
+            }
+            let memory = self
+                .memory
+                .clone()
+                .into_iter()
+                .map(|(idx, data)| Page { index: idx, data })
+                .collect();
+            let s: State = State {
+                pc: self.registers.current_instruction_pointer,
+                next_pc: self.registers.next_instruction_pointer,
+                step: self.instruction_counter as u64,
+                registers: self.registers.general_purpose,
+                lo: self.registers.lo,
+                hi: self.registers.hi,
+                heap: self.registers.heap_pointer,
+                // FIXME: it should be the exit code. We do not keep it in the witness atm
+                exit: if self.halt { 1 } else { 0 },
+                last_hint: self.syscall_env.last_hint.clone(),
+                exited: self.halt,
+                preimage_offset: self.registers.preimage_offset,
+                preimage_key,
+                memory,
+            };
+            let _ = serde_json::to_writer(&mut writer, &s);
+            info!(
+                "Snapshot state in {}, step {}",
+                filename, self.instruction_counter
+            );
+            writer.flush().expect("Flush writer failing")
+        }
     }
 
     fn pp_info(&mut self, at: &StepFrequency, meta: &Meta, start: &Start) {
