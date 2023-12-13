@@ -6,7 +6,7 @@ cargo run --bin kimchi_optimism --release -p kimchi_optimism -- \
     --info-at "${INFO_AT:-%10000000}" \
     --proof-at never \
     --stop-at "${STOP_AT:-never}" \
-    --input "${STATE_FILENAME:-./state.json}" \
+    --input "${ZKVM_STATE_FILENAME:-./state.json}" \
     -- \
     ./ethereum-optimism/op-program/bin/op-program \
     --log.level DEBUG \
