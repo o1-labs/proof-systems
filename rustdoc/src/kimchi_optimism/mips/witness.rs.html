@@ -1009,6 +1009,7 @@
 <a href="#1009" id="1009">1009</a>
 <a href="#1010" id="1010">1010</a>
 <a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
 <span class="kw">use crate</span>::{
     cannon::{
@@ -1636,7 +1637,7 @@
             halt: state.exited,
             syscall_env,
             preimage_oracle,
-            preimage: <span class="prelude-val">None</span>,
+            preimage: state.preimage,
             keccak_env: <span class="prelude-val">None</span>,
         }
     }
@@ -1968,6 +1969,7 @@
                 preimage_offset: <span class="self">self</span>.registers.preimage_offset,
                 preimage_key,
                 memory,
+                preimage: <span class="self">self</span>.preimage.clone(),
             };
             <span class="kw">let _ </span>= serde_json::to_writer(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>s);
             <span class="macro">info!</span>(
