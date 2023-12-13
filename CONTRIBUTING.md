@@ -14,6 +14,15 @@ We have a list of easy task to start contributing. [Start over there](https://gi
 
 ## Setting up the project
 
+Run
+
+```
+git submodule init
+git submodule update
+```
+
+to get the version of Optimism the zkVM has been developed for.
+
 ### Mac & Linux
 
 * Follow these instructions to install OCaml: https://ocaml.org/docs/install.html
