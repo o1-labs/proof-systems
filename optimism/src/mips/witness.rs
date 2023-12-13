@@ -554,7 +554,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
         }
 
-        let remaining = last_hint[idx..len].into_iter().copied().collect();
+        let remaining = last_hint[idx..len].to_vec();
 
         self.syscall_env.last_hint = Some(remaining);
     }
