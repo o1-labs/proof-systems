@@ -122,9 +122,8 @@ impl PreImageOracle {
 
         debug!("Extracting contents");
         let length = u64::from_be_bytes(buf);
-        let mut handle = reader.take(length);
         let mut preimage = vec![0_u8; length as usize];
-        let resp = handle.read(&mut preimage);
+        let resp = reader.read_exact(&mut preimage);
 
         assert!(resp.is_ok());
 
