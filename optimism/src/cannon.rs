@@ -2,10 +2,11 @@
 
 use base64::{engine::general_purpose, Engine as _};
 
-use libflate::zlib::Decoder;
+use libflate::zlib::{Decoder, Encoder};
 use regex::Regex;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::Read;
+use std::io::Write;
 
 pub const PAGE_ADDRESS_SIZE: u32 = 12;
 pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
@@ -14,7 +15,7 @@ pub const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
     pub index: u32,
-    #[serde(deserialize_with = "from_base64")]
+    #[serde(deserialize_with = "from_base64", serialize_with = "to_base64")]
     pub data: Vec<u8>,
 }
 
@@ -31,11 +32,27 @@ where
     Ok(data)
 }
 
+fn to_base64<S>(v: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let encoded_v = Vec::new();
+    let mut encoder = Encoder::new(encoded_v).unwrap();
+    encoder.write_all(v).unwrap();
+    let res = encoder.finish().into_result().unwrap();
+    let b64_encoded = general_purpose::STANDARD.encode(res);
+    serializer.serialize_str(&b64_encoded)
+}
+
 // The renaming below keeps compatibility with OP Cannon's state format
 #[derive(Serialize, Deserialize, Debug)]
 pub struct State {
     pub memory: Vec<Page>,
-    #[serde(rename = "preimageKey", deserialize_with = "to_preimage_key")]
+    #[serde(
+        rename = "preimageKey",
+        deserialize_with = "deserialize_preimage_key",
+        serialize_with = "serialize_preimage_key"
+    )]
     pub preimage_key: [u8; 32],
     #[serde(rename = "preimageOffset")]
     pub preimage_offset: u32,
@@ -45,7 +62,7 @@ pub struct State {
     pub lo: u32,
     pub hi: u32,
     pub heap: u32,
-    exit: u8,
+    pub exit: u8,
     pub exited: bool,
     pub step: u64,
     pub registers: [u32; 32],
@@ -103,7 +120,7 @@ impl FromStr for PreimageKey {
     }
 }
 
-fn to_preimage_key<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
+fn deserialize_preimage_key<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -111,6 +128,14 @@ where
     let p = PreimageKey::from_str(s.as_str())
         .unwrap_or_else(|_| panic!("Parsing {s} as preimage key failed"));
     Ok(p.0)
+}
+
+fn serialize_preimage_key<S>(v: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let s: String = format!("0x{}", hex::encode(v));
+    serializer.serialize_str(&s)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -184,6 +209,7 @@ pub struct VmConfiguration {
     pub metadata_file: String,
     pub proof_at: StepFrequency,
     pub stop_at: StepFrequency,
+    pub snapshot_state_at: StepFrequency,
     pub info_at: StepFrequency,
     pub proof_fmt: String,
     pub snapshot_fmt: String,
@@ -320,6 +346,32 @@ mod tests {
 
     fn deserialize_meta_sample() -> Meta {
         serde_json::from_str::<Meta>(META_SAMPLE).unwrap()
+    }
+
+    #[test]
+    fn test_serialize_deserialize_page() {
+        let value: &str = r#"{"index":16,"data":"eJztlkFoE0EUht8k21ZEtFYFg1FCTW0qSGoTS6pFJU3TFlNI07TEQJHE1kJMmhwi1ihaRJCqiAdBKR5Ez4IXvQk5eBaP4iEWpAchV0Hoof5vd14SoQcvve0H/5s3O//OzuzMLHtvNBZVDkUNHLQLUdHugSTKINJgnDoNZB60+MhFBq63Q0G4LCFYQptZoKR9r0hpEc1r4bopy8WRtdptmCJqM+t89RHiY60Xc39M8b26XXUjHLdEbf4qdTyMIWvn9vnyxhTy7eBxGwvGoRWU23ASIqNE5MT4H2DslogOa/EY+f38LxiNKYyrEwW02sV9CJLfgdjnMOfLc0+6biMKHohJFLe2fqO0qLl4Hui0AfcB1H0EzEFTc73GtSfIBO0jnhvnDvpx5CLVIJoKoS7Ic59C2pdfoRpEe+KoC+J7CWnf8leqQf/CbcwbiHP2rcO3TuENfr+C9HcGYp+T15nXnMjdOl/JOyDtc3tUt9tDzto31AXprwuyfCc2SfVsohZ8j7ogPh4Lr7NT+fxV1Yv9pXJ11AXxHYUsX99aVfnWqkT11vcsvk8QnstWJD4EUr0Igt4HqodD0wdP59kIUkH76DvU9IXOXSfnr0tIBe1T5zlAJmrY+xHFICRIG+8p5Lq/YW+djt1tfX/S314ODV/67Wc6eOEZUkF8CxwavqWfSWo/9QWpoH2UhXjtHDhn+E6wzO+EIL4RnEk+nOzDnmWZayRYDyJ6BzkgE3Vjv5faYrjV9F6DuD/eMx+gxvlQlbnndMDdh1TA2G1sbGxsbGxsbGx2Co9Sqvk/2gL/r05DxlgRP8bZK0O50cJQPjMxO5HKhCOlQr8/sVy5uRTuD5RGKuXFaDgYSQ+E/LOlsZlEIZ8NBqKlcmby8mIpPOjPpWYmxwPF06lI+mpqPB+O35ou0l+FGHpe"}"#;
+        let decoded_page: Page = serde_json::from_str(value).unwrap();
+        let res = serde_json::to_string(&decoded_page).unwrap();
+        assert_eq!(res, value);
+    }
+
+    #[test]
+    fn test_preimage_key_serialisation() {
+        #[derive(Serialize, Deserialize)]
+        struct TestPreimageKeyStruct {
+            #[serde(
+                rename = "preimageKey",
+                deserialize_with = "deserialize_preimage_key",
+                serialize_with = "serialize_preimage_key"
+            )]
+            pub preimage_key: [u8; 32],
+        }
+
+        let preimage_key: &str = r#"{"preimageKey":"0x0000000000000000000000000000000000000000000000000000000000000000"}"#;
+        let s: TestPreimageKeyStruct = serde_json::from_str(preimage_key).unwrap();
+        let res = serde_json::to_string(&s).unwrap();
+        assert_eq!(preimage_key, res);
     }
 
     #[test]
