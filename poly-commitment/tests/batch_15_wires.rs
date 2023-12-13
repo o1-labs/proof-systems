@@ -1,14 +1,20 @@
 //! This module tests polynomial commitments, batched openings and
 //! verification of a batch of batched opening proofs of polynomial commitments
 
+use crate::{
+    commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
+    evaluation_proof::DensePolynomialOrEvaluations,
+    srs::SRS,
+};
+use ark_ec::AffineRepr;
 use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge,
-};
+use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
+use mina_poseidon::sponge::DefaultFqSponge;
+use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial as _;
 use poly_commitment::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},

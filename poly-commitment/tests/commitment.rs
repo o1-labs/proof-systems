@@ -16,6 +16,16 @@ use poly_commitment::{
     srs::SRS,
     SRS as _,
 };
+use ark_ec::AffineRepr;
+use ark_ff::{UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
+use colored::Colorize;
+use groupmap::GroupMap;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
+use mina_poseidon::sponge::DefaultFqSponge;
+use mina_poseidon::FqSponge as _;
+use o1_utils::ExtendedDensePolynomial as _;
 use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
