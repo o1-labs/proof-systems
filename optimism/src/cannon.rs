@@ -2,10 +2,11 @@
 
 use base64::{engine::general_purpose, Engine as _};
 
-use libflate::zlib::Decoder;
+use libflate::zlib::{Decoder, Encoder};
 use regex::Regex;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::io::Read;
+use std::io::Write;
 
 pub const PAGE_ADDRESS_SIZE: u32 = 12;
 pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
@@ -14,7 +15,7 @@ pub const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
     pub index: u32,
-    #[serde(deserialize_with = "from_base64")]
+    #[serde(deserialize_with = "from_base64", serialize_with = "to_base64")]
     pub data: Vec<u8>,
 }
 
@@ -29,6 +30,18 @@ where
     decoder.read_to_end(&mut data).unwrap();
     assert_eq!(data.len(), PAGE_SIZE as usize);
     Ok(data)
+}
+
+fn to_base64<S>(v: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let encoded_v = Vec::new();
+    let mut encoder = Encoder::new(encoded_v).unwrap();
+    encoder.write_all(v).unwrap();
+    let res = encoder.finish().into_result().unwrap();
+    let b64_encoded = general_purpose::STANDARD.encode(res);
+    serializer.serialize_str(&b64_encoded)
 }
 
 // The renaming below keeps compatibility with OP Cannon's state format
@@ -320,6 +333,14 @@ mod tests {
 
     fn deserialize_meta_sample() -> Meta {
         serde_json::from_str::<Meta>(META_SAMPLE).unwrap()
+    }
+
+    #[test]
+    fn test_serialize_deserialize_page() {
+        let value: &str = r#"{"index":16,"data":"eJztlkFoE0EUht8k21ZEtFYFg1FCTW0qSGoTS6pFJU3TFlNI07TEQJHE1kJMmhwi1ihaRJCqiAdBKR5Ez4IXvQk5eBaP4iEWpAchV0Hoof5vd14SoQcvve0H/5s3O//OzuzMLHtvNBZVDkUNHLQLUdHugSTKINJgnDoNZB60+MhFBq63Q0G4LCFYQptZoKR9r0hpEc1r4bopy8WRtdptmCJqM+t89RHiY60Xc39M8b26XXUjHLdEbf4qdTyMIWvn9vnyxhTy7eBxGwvGoRWU23ASIqNE5MT4H2DslogOa/EY+f38LxiNKYyrEwW02sV9CJLfgdjnMOfLc0+6biMKHohJFLe2fqO0qLl4Hui0AfcB1H0EzEFTc73GtSfIBO0jnhvnDvpx5CLVIJoKoS7Ic59C2pdfoRpEe+KoC+J7CWnf8leqQf/CbcwbiHP2rcO3TuENfr+C9HcGYp+T15nXnMjdOl/JOyDtc3tUt9tDzto31AXprwuyfCc2SfVsohZ8j7ogPh4Lr7NT+fxV1Yv9pXJ11AXxHYUsX99aVfnWqkT11vcsvk8QnstWJD4EUr0Igt4HqodD0wdP59kIUkH76DvU9IXOXSfnr0tIBe1T5zlAJmrY+xHFICRIG+8p5Lq/YW+djt1tfX/S314ODV/67Wc6eOEZUkF8CxwavqWfSWo/9QWpoH2UhXjtHDhn+E6wzO+EIL4RnEk+nOzDnmWZayRYDyJ6BzkgE3Vjv5faYrjV9F6DuD/eMx+gxvlQlbnndMDdh1TA2G1sbGxsbGxsbGx2Co9Sqvk/2gL/r05DxlgRP8bZK0O50cJQPjMxO5HKhCOlQr8/sVy5uRTuD5RGKuXFaDgYSQ+E/LOlsZlEIZ8NBqKlcmby8mIpPOjPpWYmxwPF06lI+mpqPB+O35ou0l+FGHpe"}"#;
+        let decoded_page: Page = serde_json::from_str(value).unwrap();
+        let res = serde_json::to_string(&decoded_page).unwrap();
+        assert_eq!(res, value);
     }
 
     #[test]
