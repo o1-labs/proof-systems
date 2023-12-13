@@ -103,6 +103,15 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::<span class="kw-2">*</span>;
 <span class="kw">use </span>clap::{arg, value_parser, Arg, ArgAction};
 
@@ -160,6 +169,13 @@
                 .last(<span class="bool-val">true</span>)
                 .value_parser(<span class="macro">value_parser!</span>(String)),
         )
+        .arg(
+            Arg::new(<span class="string">&quot;snapshot-state-at&quot;</span>)
+                .long(<span class="string">&quot;snapshot-state-at&quot;</span>)
+                .value_name(<span class="string">&quot;FREQ&quot;</span>)
+                .default_value(<span class="string">&quot;never&quot;</span>)
+                .value_parser(step_frequency_parser),
+        )
 }
 
 <span class="kw">pub fn </span>read_configuration(cli: <span class="kw-2">&amp;</span>clap::ArgMatches) -&gt; VmConfiguration {
@@ -172,6 +188,7 @@
     <span class="kw">let </span>proof_at = cli.get_one::&lt;StepFrequency&gt;(<span class="string">&quot;proof-at&quot;</span>).unwrap();
     <span class="kw">let </span>info_at = cli.get_one::&lt;StepFrequency&gt;(<span class="string">&quot;info-at&quot;</span>).unwrap();
     <span class="kw">let </span>stop_at = cli.get_one::&lt;StepFrequency&gt;(<span class="string">&quot;stop-at&quot;</span>).unwrap();
+    <span class="kw">let </span>snapshot_state_at = cli.get_one::&lt;StepFrequency&gt;(<span class="string">&quot;snapshot-state-at&quot;</span>).unwrap();
 
     <span class="kw">let </span>proof_fmt = cli.get_one::&lt;String&gt;(<span class="string">&quot;proof-fmt&quot;</span>).unwrap();
     <span class="kw">let </span>snapshot_fmt = cli.get_one::&lt;String&gt;(<span class="string">&quot;snapshot-fmt&quot;</span>).unwrap();
@@ -201,6 +218,7 @@
         metadata_file: metadata_file.to_string(),
         proof_at: proof_at.clone(),
         stop_at: stop_at.clone(),
+        snapshot_state_at: snapshot_state_at.clone(),
         info_at: info_at.clone(),
         proof_fmt: proof_fmt.to_string(),
         snapshot_fmt: snapshot_fmt.to_string(),
