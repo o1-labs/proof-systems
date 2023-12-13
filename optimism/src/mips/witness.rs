@@ -866,12 +866,23 @@ impl<Fp: Field> Env<Fp> {
         // Force stops at given iteration
         if self.should_trigger_at(&config.stop_at) {
             self.halt = true;
+            println!(
+                "Halted as requested at step={} instruction={:?}",
+                self.instruction_counter, opcode
+            );
             return;
         }
 
         interpreter::interpret_instruction(self, opcode);
 
         self.instruction_counter += 1;
+
+        if self.halt {
+            println!(
+                "Halted at step={} instruction={:?}",
+                self.instruction_counter, opcode
+            );
+        }
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {
