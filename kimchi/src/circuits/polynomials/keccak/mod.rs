@@ -8,7 +8,7 @@ pub const QUARTERS: usize = 4;
 pub const ROUNDS: usize = 24;
 pub const RATE_IN_BYTES: usize = 1088 / 8;
 pub const CAPACITY_IN_BYTES: usize = 512 / 8;
-pub const KECCAK_COLS: usize = 1965;
+pub const KECCAK_COLS: usize = 2344;
 
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
@@ -78,67 +78,18 @@ pub const RC: [u64; 24] = [
     0x8000000080008008,
 ];
 
-/// Naive Keccak struct
+/// Naive Keccak structure
 pub struct Keccak {}
 
-/// Trait containing bitwise-sparse representation common operations for optimized Keccak
-pub trait KeccakOps {
+/// Trait containing common operations for optimized Keccak
+impl Keccak {
     /// Composes a vector of 4 dense quarters into the dense full u64 word
-    fn compose(quarters: &[u64]) -> u64;
-
-    /// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters.
-    /// The first element of the vector corresponds to the 16 least significant bits.
-    fn decompose(word: u64) -> Vec<u64>;
-
-    /// Expands a quarter of a word into the sparse representation as a u64
-    fn expand(quarter: u64) -> u64;
-
-    /// Expands a u64 word into a vector of 4 sparse u64 quarters
-    fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T>;
-
-    /// Returns the expansion of the 4 dense decomposed quarters of a word
-    fn sparse(word: u64) -> Vec<u64>;
-
-    /// From each quarter in sparse representation, it computes its 4 resets.
-    /// The resulting vector contains 4 times as many elements as the input.
-    /// The output is placed in the vector as [shift0, shift1, shift2, shift3]
-    fn shift(state: &[u64]) -> Vec<u64>;
-
-    /// From a vector of shifts, resets the underlying value returning only shift0
-    /// Note that shifts is always a vector whose length is a multiple of 4.
-    fn reset(shifts: &[u64]) -> Vec<u64>;
-
-    /// From a canonical expanded state, obtain the corresponding 16-bit dense terms
-    fn collapse(state: &[u64]) -> Vec<u64>;
-
-    /// Outputs the state into dense quarters of 16-bits each in little endian order
-    fn quarters(state: &[u8]) -> Vec<u64>;
-
-    /// On input a vector of 16-bit dense quarters, outputs a vector of 8-bit bytes in the right order for Keccak
-    fn bytestring(dense: &[u64]) -> Vec<u64>;
-
-    /// On input a 200-byte vector, generates a vector of 100 expanded quarters representing the 1600-bit state
-    fn expand_state(state: &[u8]) -> Vec<u64>;
-}
-
-/// Trait containing operations related to the Keccak padding rule
-pub trait KeccakPad {
-    /// On input a length, returns the smallest multiple of RATE_IN_BYTES that is greater than the bytelength.
-    /// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
-    /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
-    fn padded_length(bytelength: usize) -> usize;
-
-    /// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
-    fn pad(message: &[u8]) -> Vec<u8>;
-}
-
-/// Trait containing bitwise-sparse representation common operations to be used in optimized Keccak
-impl KeccakOps for Keccak {
-    fn compose(quarters: &[u64]) -> u64 {
+    pub fn compose(quarters: &[u64]) -> u64 {
         quarters[0] + (1 << 16) * quarters[1] + (1 << 32) * quarters[2] + (1 << 48) * quarters[3]
     }
-
-    fn decompose(word: u64) -> Vec<u64> {
+    /// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters.
+    /// The first element of the vector corresponds to the 16 least significant bits.
+    pub fn decompose(word: u64) -> Vec<u64> {
         vec![
             word % (1 << 16),
             (word / (1 << 16)) % (1 << 16),
@@ -147,25 +98,30 @@ impl KeccakOps for Keccak {
         ]
     }
 
-    fn expand(quarter: u64) -> u64 {
+    /// Expands a quarter of a word into the sparse representation as a u64
+    pub fn expand(quarter: u64) -> u64 {
         u64::from_str_radix(&format!("{:b}", quarter), 16).unwrap()
     }
 
-    fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
+    /// Expands a u64 word into a vector of 4 sparse u64 quarters
+    pub fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
         Self::decompose(word)
             .iter()
             .map(|q| T::literal(F::from(Self::expand(*q))))
             .collect::<Vec<T>>()
     }
 
-    fn sparse(word: u64) -> Vec<u64> {
+    /// Returns the expansion of the 4 dense decomposed quarters of a word
+    pub fn sparse(word: u64) -> Vec<u64> {
         Self::decompose(word)
             .iter()
             .map(|q| Self::expand(*q))
             .collect::<Vec<u64>>()
     }
-
-    fn shift(state: &[u64]) -> Vec<u64> {
+    /// From each quarter in sparse representation, it computes its 4 resets.
+    /// The resulting vector contains 4 times as many elements as the input.
+    /// The output is placed in the vector as [shift0, shift1, shift2, shift3]
+    pub fn shift(state: &[u64]) -> Vec<u64> {
         let n = state.len();
         let mut shifts = vec![0; QUARTERS * n];
         let aux = Self::expand(0xFFFF);
@@ -178,18 +134,22 @@ impl KeccakOps for Keccak {
         shifts
     }
 
-    fn reset(shifts: &[u64]) -> Vec<u64> {
+    /// From a vector of shifts, resets the underlying value returning only shift0
+    /// Note that shifts is always a vector whose length is a multiple of 4.
+    pub fn reset(shifts: &[u64]) -> Vec<u64> {
         shifts[0..shifts.len() / QUARTERS].to_vec()
     }
 
-    fn collapse(state: &[u64]) -> Vec<u64> {
+    /// From a canonical expanded state, obtain the corresponding 16-bit dense terms
+    pub fn collapse(state: &[u64]) -> Vec<u64> {
         state
             .iter()
             .map(|&reset| u64::from_str_radix(&format!("{:x}", reset), 2).unwrap())
             .collect::<Vec<u64>>()
     }
 
-    fn quarters(state: &[u8]) -> Vec<u64> {
+    /// Outputs the state into dense quarters of 16-bits each in little endian order
+    pub fn quarters(state: &[u8]) -> Vec<u64> {
         let mut quarters = vec![];
         for pair in state.chunks(2) {
             quarters.push(u16::from_le_bytes([pair[0], pair[1]]) as u64);
@@ -197,7 +157,8 @@ impl KeccakOps for Keccak {
         quarters
     }
 
-    fn bytestring(dense: &[u64]) -> Vec<u64> {
+    /// On input a vector of 16-bit dense quarters, outputs a vector of 8-bit bytes in the right order for Keccak
+    pub fn bytestring(dense: &[u64]) -> Vec<u64> {
         dense
             .iter()
             .map(|x| vec![x % 256, x / 256])
@@ -208,7 +169,8 @@ impl KeccakOps for Keccak {
             .collect()
     }
 
-    fn expand_state(state: &[u8]) -> Vec<u64> {
+    /// On input a 200-byte vector, generates a vector of 100 expanded quarters representing the 1600-bit state
+    pub fn expand_state(state: &[u8]) -> Vec<u64> {
         let mut expanded = vec![];
         for pair in state.chunks(2) {
             let quarter = u16::from_le_bytes([pair[0], pair[1]]);
@@ -216,14 +178,16 @@ impl KeccakOps for Keccak {
         }
         expanded
     }
-}
 
-impl KeccakPad for Keccak {
-    fn padded_length(bytelength: usize) -> usize {
+    /// On input a length, returns the smallest multiple of RATE_IN_BYTES that is greater than the bytelength.
+    /// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
+    /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
+    pub fn padded_length(bytelength: usize) -> usize {
         (bytelength / RATE_IN_BYTES + 1) * RATE_IN_BYTES
     }
 
-    fn pad(message: &[u8]) -> Vec<u8> {
+    /// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
+    pub fn pad(message: &[u8]) -> Vec<u8> {
         let msg_len = message.len();
         let pad_len = Self::padded_length(msg_len);
         let mut padded = vec![0; pad_len];
@@ -234,6 +198,11 @@ impl KeccakPad for Keccak {
         padded[pad_len - 1] += 0x80;
 
         padded
+    }
+
+    /// Number of blocks to be absorbed on input a given preimage bytelength
+    pub fn num_blocks(bytelength: usize) -> usize {
+        Self::padded_length(bytelength) / RATE_IN_BYTES
     }
 }
 
