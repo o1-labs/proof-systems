@@ -233,6 +233,13 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                     }
                 }
             } // END chi
+
+            // STEP iota: 4 constraints
+            for (q, c) in self.round_constants().iter().enumerate() {
+                self.constrain(
+                    self.is_round() * (self.next_state(q) - (state_f[0][0][q].clone() + c.clone())),
+                );
+            } // END iota
         }
 
         // LOOKUP CONSTRAINTS
