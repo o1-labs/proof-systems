@@ -36,12 +36,21 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         // Run all steps of hash
         while self.curr_step.is_some() {
             self.step();
-            self.update_step();
         }
     }
 
+    // FIXME: read preimage from memory and pad and expand
     fn step(&mut self) {
-        todo!()
+        // Reset columns to zeros to avoid conflicts between steps
+        self.null_state();
+
+        // FIXME sparse notation
+
+        match self.curr_step.unwrap() {
+            KeccakStep::Sponge(typ) => self.run_sponge(typ),
+            KeccakStep::Round(i) => self.run_round(i),
+        }
+        self.update_step();
     }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
