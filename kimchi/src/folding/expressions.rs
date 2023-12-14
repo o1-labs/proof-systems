@@ -239,10 +239,27 @@ impl std::ops::Mul for &Degree {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Sign {
+    Pos,
+    Neg,
+}
+
+impl std::ops::Neg for Sign {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        match self {
+            Sign::Pos => Sign::Neg,
+            Sign::Neg => Sign::Pos,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
-    pub sign: bool,
+    pub sign: Sign,
 }
 
 impl<C: FoldingConfig> Term<C> {
@@ -257,8 +274,11 @@ impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
     type Output = Term<C>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        #[allow(clippy::suspicious_arithmetic_impl)]
-        let sign = !(self.sign ^ rhs.sign);
+        let sign = if self.sign == rhs.sign {
+            Sign::Pos
+        } else {
+            Sign::Neg
+        };
         let exp = FoldingExp::Mul(Box::new(self.exp.clone()), Box::new(rhs.exp.clone()));
         Term { exp, sign }
     }
@@ -269,7 +289,7 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
 
     fn neg(self) -> Self::Output {
         Term {
-            sign: !self.sign,
+            sign: -self.sign,
             ..self
         }
     }
@@ -279,9 +299,9 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
 #[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
     //(exp,sign,alpha)
-    pub(super) degree_0: Vec<(FoldingExp<C>, bool, usize)>,
-    pub(super) degree_1: Vec<(FoldingExp<C>, bool, usize)>,
-    pub(super) degree_2: Vec<(FoldingExp<C>, bool, usize)>,
+    pub(super) degree_0: Vec<(FoldingExp<C>, Sign, usize)>,
+    pub(super) degree_1: Vec<(FoldingExp<C>, Sign, usize)>,
+    pub(super) degree_2: Vec<(FoldingExp<C>, Sign, usize)>,
 }
 
 impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
@@ -308,10 +328,9 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
             .map(|exps| {
                 let init = FoldingExp::Cell(ExtendedFoldingColumn::Constant(Fi::<C>::zero()));
                 exps.into_iter().fold(init, |acc, (exp, sign, alpha)| {
-                    let e = if sign {
-                        FoldingExp::Add(Box::new(acc), Box::new(exp))
-                    } else {
-                        FoldingExp::Sub(Box::new(acc), Box::new(exp))
+                    let e = match sign {
+                        Sign::Pos => FoldingExp::Add(Box::new(acc), Box::new(exp)),
+                        Sign::Neg => FoldingExp::Sub(Box::new(acc), Box::new(exp)),
                     };
                     FoldingExp::Mul(
                         Box::new(e),
@@ -334,7 +353,13 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
 pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
     use FoldingExp::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
-        exp @ Cell(_) => Box::new([Term { exp, sign: true }].into_iter()),
+        exp @ Cell(_) => Box::new(
+            [Term {
+                exp,
+                sign: Sign::Pos,
+            }]
+            .into_iter(),
+        ),
         Double(exp) => Box::new(extract_terms(*exp).map(Term::double)),
         Square(exp) => {
             let terms = extract_terms(*exp).collect_vec();

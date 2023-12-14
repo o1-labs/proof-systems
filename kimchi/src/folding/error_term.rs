@@ -1,5 +1,5 @@
 use crate::folding::{
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr},
+    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
     quadricization::ExtendedWitnessGenerator,
     EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
 };
@@ -113,10 +113,9 @@ pub(crate) fn compute_error<C: FoldingConfig>(
             let alpha_r = env.inner().alpha(*alpha, Side::Right);
             let left = exp.clone() * alpha_l;
             let right = exp * alpha_r;
-            if *sign {
-                (l + left, r + right)
-            } else {
-                (l - left, r - right)
+            match sign {
+                Sign::Pos => (l + left, r + right),
+                Sign::Neg => (l - left, r - right),
             }
         });
         let cross2 = u_cross.double();
@@ -138,10 +137,9 @@ pub(crate) fn compute_error<C: FoldingConfig>(
                 let expr_cross = expl.clone() * alpha_r + expr.clone() * alpha_l;
                 let left = expl * alpha_l;
                 let right = expr * alpha_r;
-                if *sign {
-                    (l + left, cross + expr_cross, r + right)
-                } else {
-                    (l - left, cross - expr_cross, r - right)
+                match sign {
+                    Sign::Pos => (l + left, cross + expr_cross, r + right),
+                    Sign::Neg => (l - left, cross - expr_cross, r - right),
                 }
             });
         let e0 = cross.clone() * ul + l * ur;
@@ -158,10 +156,9 @@ pub(crate) fn compute_error<C: FoldingConfig>(
         let alpha_r = env.inner().alpha(*alpha, Side::Right);
         let left = expl * alpha_r + cross.clone() * alpha_l;
         let right = expr * alpha_l + cross * alpha_r;
-        if *sign {
-            (l + left, r + right)
-        } else {
-            (l - left, r - right)
+        match sign {
+            Sign::Pos => (l + left, r + right),
+            Sign::Neg => (l - left, r - right),
         }
     });
     let t = [t_1, t_2]
