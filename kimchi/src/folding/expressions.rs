@@ -23,7 +23,6 @@ pub trait FoldingColumnTrait: Copy + Clone {
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Inner(Var<C::Column>),
     ///for the extra columns added by quadraticization
-    #[allow(dead_code)]
     WitnessExtended(usize),
     Error,
     ///basically X, to allow accesing the next row
