@@ -1,5 +1,5 @@
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::Keccak;
+use kimchi::circuits::polynomials::keccak::{Keccak, ROUNDS};
 
 use super::{
     column::KeccakColumn,
@@ -57,17 +57,30 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         todo!()
     }
 
-    fn set_flag_round(&mut self, _round: u64) {
-        todo!()
-    }
-    fn set_flag_absorb(&mut self, _absorb: Absorb) {
-        todo!()
-    }
     fn set_flag_root(&mut self) {
-        todo!()
+        self.write_column(KeccakColumn::FlagRoot, 1);
     }
+
     fn set_flag_pad(&mut self) {
-        todo!()
+        self.write_column(KeccakColumn::FlagPad, 1);
+        self.write_column(KeccakColumn::FlagLength, self.pad_len)
+    }
+
+    fn set_flag_absorb(&mut self, absorb: Absorb) {
+        self.write_column(KeccakColumn::FlagAbsorb, 1);
+        match absorb {
+            Absorb::First => self.set_flag_root(),
+            Absorb::Last => self.set_flag_pad(),
+            _ => {
+                self.set_flag_root();
+                self.set_flag_pad()
+            }
+        }
+    }
+
+    fn set_flag_round(&mut self, round: u64) {
+        assert!(round < ROUNDS as u64);
+        self.write_column(KeccakColumn::FlagRound, round);
     }
 
     fn run_sponge(&mut self, _sponge: Sponge) {
