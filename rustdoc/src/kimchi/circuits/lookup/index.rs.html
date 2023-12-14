@@ -443,6 +443,15 @@
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
 <a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
@@ -839,6 +848,15 @@
                 }
 
                 <span class="comment">//~ 6. Pad the end of the concatened table with the dummy value.
+                //     By padding with 0, we constraint the table with ID 0 to
+                //     have a zero entry.
+                //     This is for the rows which do not have a lookup selector,
+                //     see ../../../../book/src/kimchi/lookup.md.
+                //     The zero entry row is contained in the built-in XOR table.
+                //     An error is raised when creating the CS if a user-defined
+                //     table is defined with ID 0 without a row contain zeroes.
+                //     If no such table is used, we artificially add a dummy
+                //     table with ID 0 and a row containing only zeroes.
                 </span>lookup_table
                     .iter_mut()
                     .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
