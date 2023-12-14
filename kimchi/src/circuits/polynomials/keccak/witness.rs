@@ -55,7 +55,7 @@ fn field<F: PrimeField>(input: &[u64]) -> Vec<F> {
 
 // Contains the quotient, remainder, bound, dense rotated as quarters of at most 16 bits each
 // Contains the expansion of the rotated word
-struct Rotation {
+pub struct Rotation {
     quotient: Vec<u64>,
     remainder: Vec<u64>,
     dense_rot: Vec<u64>,
@@ -105,7 +105,7 @@ impl Rotation {
     }
 }
 
-struct Theta {
+pub struct Theta {
     shifts_c: Vec<u64>,
     dense_c: Vec<u64>,
     quotient_c: Vec<u64>,
@@ -185,7 +185,7 @@ impl Theta {
     }
 }
 
-struct PiRho {
+pub struct PiRho {
     shifts_e: Vec<u64>,
     dense_e: Vec<u64>,
     quotient_e: Vec<u64>,
@@ -230,7 +230,7 @@ impl PiRho {
     }
 }
 
-struct Chi {
+pub struct Chi {
     shifts_b: Vec<u64>,
     shifts_sum: Vec<u64>,
     state_f: Vec<u64>,
@@ -269,7 +269,7 @@ impl Chi {
     }
 }
 
-struct Iota {
+pub struct Iota {
     state_g: Vec<u64>,
 }
 
