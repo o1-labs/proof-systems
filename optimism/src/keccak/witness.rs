@@ -9,7 +9,6 @@ use kimchi::{
 use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
-    grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
@@ -173,7 +172,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
-        let theta = Theta::create(&state_a);
+        let theta = Theta::create(state_a);
 
         // Write Theta-related columns
         for x in 0..DIM {
