@@ -1,9 +1,15 @@
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS};
+use kimchi::{
+    circuits::polynomials::keccak::{
+        witness::Theta, Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS,
+    },
+    grid,
+};
 
 use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
+    grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
@@ -166,9 +172,32 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         // Compute witness values
     }
 
-    fn run_theta(&mut self, _state_a: &[u64]) -> Vec<u64> {
-        todo!()
+    fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
+        let theta = Theta::create(&state_a);
+
+        // Write Theta-related columns
+        for x in 0..DIM {
+            self.write_column(KeccakColumn::ThetaQuotientC(x), theta.quotient_c(x));
+            for q in 0..QUARTERS {
+                self.write_column(KeccakColumn::ThetaDenseC(x, q), theta.dense_c(x, q));
+                self.write_column(KeccakColumn::ThetaRemainderC(x, q), theta.remainder_c(x, q));
+                self.write_column(KeccakColumn::ThetaDenseRotC(x, q), theta.dense_rot_c(x, q));
+                self.write_column(
+                    KeccakColumn::ThetaExpandRotC(x, q),
+                    theta.expand_rot_c(x, q),
+                );
+                for y in 0..DIM {
+                    let state_a = grid!(100, state_a);
+                    self.write_column(KeccakColumn::ThetaStateA(y, x, q), state_a(y, x, q));
+                }
+                for i in 0..QUARTERS {
+                    self.write_column(KeccakColumn::ThetaShiftsC(i, x, q), theta.shifts_c(i, x, q));
+                }
+            }
+        }
+        theta.state_e()
     }
+
     fn run_pirho(&mut self, _state_e: &[u64]) -> Vec<u64> {
         todo!()
     }
