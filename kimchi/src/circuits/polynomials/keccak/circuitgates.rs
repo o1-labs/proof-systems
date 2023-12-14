@@ -148,8 +148,8 @@ where
                 state_d[x][q] =
                     shifts_c(0, (x + DIM - 1) % DIM, q) + expand_rot_c((x + 1) % DIM, q);
 
-                for y in 0..DIM {
-                    state_e[y][x][q] = state_a(y, x, q) + state_d[x][q].clone();
+                for (y, column_e) in state_e.iter_mut().enumerate() {
+                    column_e[x][q] = state_a(y, x, q) + state_d[x][q].clone();
                 }
             }
         } // END theta
