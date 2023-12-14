@@ -6,6 +6,7 @@ use kimchi::circuits::{
 use crate::mips::column::Column;
 
 pub mod column;
+pub mod constraints;
 pub mod environment;
 pub mod interpreter;
 pub mod witness;
