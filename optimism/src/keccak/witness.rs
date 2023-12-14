@@ -1,5 +1,5 @@
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS};
+use kimchi::circuits::polynomials::keccak::{Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS};
 
 use super::{
     column::KeccakColumn,
@@ -153,9 +153,19 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.block_idx += 1; // To be used in next absorb (if any)
     }
 
-    fn run_round(&mut self, _round: u64) {
-        todo!()
+    fn run_round(&mut self, round: u64) {
+        self.set_flag_round(round);
+
+        let rc = Keccak::sparse(RC[round as usize]);
+        let state_a = self.prev_block.clone();
+        let state_e = self.run_theta(&state_a);
+        let state_b = self.run_pirho(&state_e);
+        let state_f = self.run_chi(&state_b);
+        self.run_iota(&state_f, &rc);
+
+        // Compute witness values
     }
+
     fn run_theta(&mut self, _state_a: &[u64]) -> Vec<u64> {
         todo!()
     }
