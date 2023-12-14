@@ -386,12 +386,10 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
 pub fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
-    // let simplied = simplify_expression(exp, flag_resolver);
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
     let (expressions, extra_expressions, extenden_witness_generator) =
         quadricization(simplified_expressions);
     let mut terms = vec![];
-    // let terms = extract_terms2(expressions);
     println!("constraints");
     let mut alpha = 0;
     for exp in expressions.into_iter() {
