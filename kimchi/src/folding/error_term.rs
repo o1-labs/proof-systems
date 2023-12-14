@@ -58,7 +58,6 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     env: &'a ExtendedEnv<C>,
     side: Side,
 ) -> EvalLeaf<'a, Fi<C>> {
-    let degree = exp.folding_degree();
     use FoldingExp::*;
 
     match exp {
@@ -69,7 +68,7 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
                 Field::double_in_place(f);
             })
         }
-        Square(e) => match degree {
+        Square(e) => match exp.folding_degree() {
             Degree::Two => {
                 let cross = eval_exp_error(e, env, side) * eval_exp_error(e, env, side.other());
                 cross.map(Field::square, |f| {
@@ -85,7 +84,7 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
         },
         Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
         Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
-        Mul(e1, e2) => match (degree, e1.folding_degree()) {
+        Mul(e1, e2) => match (exp.folding_degree(), e1.folding_degree()) {
             (Degree::Two, Degree::One) => {
                 let first = eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side.other());
                 let second = eval_exp_error(e1, env, side.other()) * eval_exp_error(e2, env, side);
