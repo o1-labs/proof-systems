@@ -22,27 +22,20 @@ type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMN
 fn layout_round<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 1] {
     [vec![
         IndexCell::create("state_a", 0, 100),
-        IndexCell::create("state_c", 100, 120),
-        IndexCell::create("shifts_c", 120, 200),
-        IndexCell::create("dense_c", 200, 220),
-        IndexCell::create("quotient_c", 220, 240),
-        IndexCell::create("remainder_c", 240, 260),
-        IndexCell::create("bound_c", 260, 280),
-        IndexCell::create("dense_rot_c", 280, 300),
-        IndexCell::create("expand_rot_c", 300, 320),
-        IndexCell::create("state_d", 320, 340),
-        IndexCell::create("state_e", 340, 440),
-        IndexCell::create("shifts_e", 440, 840),
-        IndexCell::create("dense_e", 840, 940),
-        IndexCell::create("quotient_e", 940, 1040),
-        IndexCell::create("remainder_e", 1040, 1140),
-        IndexCell::create("bound_e", 1140, 1240),
-        IndexCell::create("dense_rot_e", 1240, 1340),
-        IndexCell::create("expand_rot_e", 1340, 1440),
-        IndexCell::create("state_b", 1440, 1540),
-        IndexCell::create("shifts_b", 1540, 1940),
-        IndexCell::create("shifts_sum", 1940, 2340),
-        IndexCell::create("f00", 2340, 2344),
+        IndexCell::create("shifts_c", 100, 180),
+        IndexCell::create("dense_c", 180, 200),
+        IndexCell::create("quotient_c", 200, 205),
+        IndexCell::create("remainder_c", 205, 225),
+        IndexCell::create("dense_rot_c", 225, 245),
+        IndexCell::create("expand_rot_c", 245, 265),
+        IndexCell::create("shifts_e", 265, 665),
+        IndexCell::create("dense_e", 665, 765),
+        IndexCell::create("quotient_e", 765, 865),
+        IndexCell::create("remainder_e", 865, 965),
+        IndexCell::create("dense_rot_e", 965, 1065),
+        IndexCell::create("expand_rot_e", 1065, 1165),
+        IndexCell::create("shifts_b", 1165, 1565),
+        IndexCell::create("shifts_sum", 1565, 1965),
     ]]
 }
 
@@ -65,41 +58,24 @@ fn field<F: PrimeField>(input: &[u64]) -> Vec<F> {
 struct Rotation {
     quotient: Vec<u64>,
     remainder: Vec<u64>,
-    bound: Vec<u64>,
     dense_rot: Vec<u64>,
     expand_rot: Vec<u64>,
 }
 
 impl Rotation {
-    // Returns rotation of 0 bits
-    fn none(dense: &[u64]) -> Self {
-        Self {
-            quotient: vec![0; QUARTERS],
-            remainder: dense.to_vec(),
-            bound: vec![0xFFFF; QUARTERS],
-            dense_rot: dense.to_vec(),
-            expand_rot: dense.iter().map(|x| Keccak::expand(*x)).collect(),
-        }
-    }
-
     // On input the dense quarters of a word, rotate the word offset bits to the left
     fn new(dense: &[u64], offset: u32) -> Self {
-        if offset == 0 {
-            return Self::none(dense);
-        }
         let word = Keccak::compose(dense);
-        let rem = (word as u128 * 2u128.pow(offset) % 2u128.pow(64)) as u64;
-        let quo = word / 2u64.pow(64 - offset);
-        let bnd = (quo as u128) + 2u128.pow(64) - 2u128.pow(offset);
+        let rem = word as u128 * 2u128.pow(offset) % 2u128.pow(64);
+        let quo = (word as u128) / 2u128.pow(64 - offset);
         let rot = rem + quo;
-        assert!(rot == word.rotate_left(offset));
+        assert!(rot as u64 == word.rotate_left(offset));
 
         Self {
-            quotient: Keccak::decompose(quo),
-            remainder: Keccak::decompose(rem),
-            bound: Keccak::decompose(bnd as u64),
-            dense_rot: Keccak::decompose(rot),
-            expand_rot: Keccak::decompose(rot)
+            quotient: Keccak::decompose(quo as u64),
+            remainder: Keccak::decompose(rem as u64),
+            dense_rot: Keccak::decompose(rot as u64),
+            expand_rot: Keccak::decompose(rot as u64)
                 .iter()
                 .map(|x| Keccak::expand(*x))
                 .collect(),
@@ -111,21 +87,18 @@ impl Rotation {
         assert!(words.len() == QUARTERS * offsets.len());
         let mut quotient = vec![];
         let mut remainder = vec![];
-        let mut bound = vec![];
         let mut dense_rot = vec![];
         let mut expand_rot = vec![];
         for (word, offset) in words.chunks(QUARTERS).zip(offsets.iter()) {
             let mut rot = Self::new(word, *offset);
             quotient.append(&mut rot.quotient);
             remainder.append(&mut rot.remainder);
-            bound.append(&mut rot.bound);
             dense_rot.append(&mut rot.dense_rot);
             expand_rot.append(&mut rot.expand_rot);
         }
         Self {
             quotient,
             remainder,
-            bound,
             dense_rot,
             expand_rot,
         }
@@ -133,15 +106,12 @@ impl Rotation {
 }
 
 struct Theta {
-    state_c: Vec<u64>,
     shifts_c: Vec<u64>,
     dense_c: Vec<u64>,
     quotient_c: Vec<u64>,
     remainder_c: Vec<u64>,
-    bound_c: Vec<u64>,
     dense_rot_c: Vec<u64>,
     expand_rot_c: Vec<u64>,
-    state_d: Vec<u64>,
     state_e: Vec<u64>,
 }
 
@@ -153,16 +123,20 @@ impl Theta {
         let rotation_c = Rotation::many(&dense_c, &[1; DIM]);
         let state_d = Self::compute_state_d(&shifts_c, &rotation_c.expand_rot);
         let state_e = Self::compute_state_e(state_a, &state_d);
+        let quotient_c = vec![
+            rotation_c.quotient[0],
+            rotation_c.quotient[4],
+            rotation_c.quotient[8],
+            rotation_c.quotient[12],
+            rotation_c.quotient[16],
+        ];
         Self {
-            state_c,
             shifts_c,
             dense_c,
-            quotient_c: rotation_c.quotient,
+            quotient_c,
             remainder_c: rotation_c.remainder,
-            bound_c: rotation_c.bound,
             dense_rot_c: rotation_c.dense_rot,
             expand_rot_c: rotation_c.expand_rot,
-            state_d,
             state_e,
         }
     }
@@ -216,7 +190,6 @@ struct PiRho {
     dense_e: Vec<u64>,
     quotient_e: Vec<u64>,
     remainder_e: Vec<u64>,
-    bound_e: Vec<u64>,
     dense_rot_e: Vec<u64>,
     expand_rot_e: Vec<u64>,
     state_b: Vec<u64>,
@@ -250,7 +223,6 @@ impl PiRho {
             dense_e,
             quotient_e: rotation_e.quotient,
             remainder_e: rotation_e.remainder,
-            bound_e: rotation_e.bound,
             dense_rot_e: rotation_e.dense_rot,
             expand_rot_e: rotation_e.expand_rot,
             state_b,
@@ -339,7 +311,6 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
         let mut block = chunk.to_vec();
         // Pad the block until reaching 200 bytes
         block.append(&mut vec![0; CAPACITY_IN_BYTES]);
-        let dense = Keccak::quarters(&block);
         let new_state = Keccak::expand_state(&block);
         auto_clone!(new_state);
         let shifts = Keccak::shift(&new_state());
@@ -350,7 +321,7 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
             &mut keccak_witness,
             row,
             &layout_sponge(),
-            &variable_map!["old_state" => field(&state), "new_state" => field(&new_state()), "dense" => field(&dense), "bytes" => field(&bytes), "shifts" => field(&shifts)],
+            &variable_map!["old_state" => field(&state), "new_state" => field(&new_state()), "bytes" => field(&bytes), "shifts" => field(&shifts)],
         );
         row += 1;
 
@@ -371,12 +342,6 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
 
             // Chi
             let chi = Chi::create(&pirho.state_b);
-            let f00 = chi
-                .state_f
-                .clone()
-                .into_iter()
-                .take(QUARTERS)
-                .collect::<Vec<u64>>();
 
             // Iota
             let iota = Iota::create(chi.state_f, round);
@@ -388,27 +353,20 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
                 &layout_round(),
                 &variable_map![
                 "state_a" => field(&ini_state),
-                "state_c" => field(&theta.state_c),
                 "shifts_c" => field(&theta.shifts_c),
                 "dense_c" => field(&theta.dense_c),
                 "quotient_c" => field(&theta.quotient_c),
                 "remainder_c" => field(&theta.remainder_c),
-                "bound_c" => field(&theta.bound_c),
                 "dense_rot_c" => field(&theta.dense_rot_c),
                 "expand_rot_c" => field(&theta.expand_rot_c),
-                "state_d" => field(&theta.state_d),
-                "state_e" => field(&theta.state_e),
                 "shifts_e" => field(&pirho.shifts_e),
                 "dense_e" => field(&pirho.dense_e),
                 "quotient_e" => field(&pirho.quotient_e),
                 "remainder_e" => field(&pirho.remainder_e),
-                "bound_e" => field(&pirho.bound_e),
                 "dense_rot_e" => field(&pirho.dense_rot_e),
                 "expand_rot_e" => field(&pirho.expand_rot_e),
-                "state_b" => field(&pirho.state_b),
                 "shifts_b" => field(&chi.shifts_b),
-                "shifts_sum" => field(&chi.shifts_sum),
-                "f00" => field(&f00)
+                "shifts_sum" => field(&chi.shifts_sum)
                 ],
             );
             row += 1;
