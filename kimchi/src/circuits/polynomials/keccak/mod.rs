@@ -8,7 +8,7 @@ pub const QUARTERS: usize = 4;
 pub const ROUNDS: usize = 24;
 pub const RATE_IN_BYTES: usize = 1088 / 8;
 pub const CAPACITY_IN_BYTES: usize = 512 / 8;
-pub const KECCAK_COLS: usize = 1965;
+pub const KECCAK_COLS: usize = 2344;
 
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
@@ -84,60 +84,11 @@ pub struct Keccak {}
 /// Trait containing bitwise-sparse representation common operations for optimized Keccak
 pub trait KeccakOps {
     /// Composes a vector of 4 dense quarters into the dense full u64 word
-    fn compose(quarters: &[u64]) -> u64;
-
-    /// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters.
-    /// The first element of the vector corresponds to the 16 least significant bits.
-    fn decompose(word: u64) -> Vec<u64>;
-
-    /// Expands a quarter of a word into the sparse representation as a u64
-    fn expand(quarter: u64) -> u64;
-
-    /// Expands a u64 word into a vector of 4 sparse u64 quarters
-    fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T>;
-
-    /// Returns the expansion of the 4 dense decomposed quarters of a word
-    fn sparse(word: u64) -> Vec<u64>;
-
-    /// From each quarter in sparse representation, it computes its 4 resets.
-    /// The resulting vector contains 4 times as many elements as the input.
-    /// The output is placed in the vector as [shift0, shift1, shift2, shift3]
-    fn shift(state: &[u64]) -> Vec<u64>;
-
-    /// From a vector of shifts, resets the underlying value returning only shift0
-    /// Note that shifts is always a vector whose length is a multiple of 4.
-    fn reset(shifts: &[u64]) -> Vec<u64>;
-
-    /// From a canonical expanded state, obtain the corresponding 16-bit dense terms
-    fn collapse(state: &[u64]) -> Vec<u64>;
-
-    /// Outputs the state into dense quarters of 16-bits each in little endian order
-    fn quarters(state: &[u8]) -> Vec<u64>;
-
-    /// On input a vector of 16-bit dense quarters, outputs a vector of 8-bit bytes in the right order for Keccak
-    fn bytestring(dense: &[u64]) -> Vec<u64>;
-
-    /// On input a 200-byte vector, generates a vector of 100 expanded quarters representing the 1600-bit state
-    fn expand_state(state: &[u8]) -> Vec<u64>;
-}
-
-/// Trait containing operations related to the Keccak padding rule
-pub trait KeccakPad {
-    /// On input a length, returns the smallest multiple of RATE_IN_BYTES that is greater than the bytelength.
-    /// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
-    /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
-    fn padded_length(bytelength: usize) -> usize;
-
-    /// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
-    fn pad(message: &[u8]) -> Vec<u8>;
-}
-
-/// Trait containing bitwise-sparse representation common operations to be used in optimized Keccak
-impl KeccakOps for Keccak {
     fn compose(quarters: &[u64]) -> u64 {
         quarters[0] + (1 << 16) * quarters[1] + (1 << 32) * quarters[2] + (1 << 48) * quarters[3]
     }
-
+    /// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters.
+    /// The first element of the vector corresponds to the 16 least significant bits.
     fn decompose(word: u64) -> Vec<u64> {
         vec![
             word % (1 << 16),
@@ -147,10 +98,12 @@ impl KeccakOps for Keccak {
         ]
     }
 
+    /// Expands a quarter of a word into the sparse representation as a u64
     fn expand(quarter: u64) -> u64 {
         u64::from_str_radix(&format!("{:b}", quarter), 16).unwrap()
     }
 
+    /// Expands a u64 word into a vector of 4 sparse u64 quarters
     fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
         Self::decompose(word)
             .iter()
@@ -158,13 +111,16 @@ impl KeccakOps for Keccak {
             .collect::<Vec<T>>()
     }
 
+    /// Returns the expansion of the 4 dense decomposed quarters of a word
     fn sparse(word: u64) -> Vec<u64> {
         Self::decompose(word)
             .iter()
             .map(|q| Self::expand(*q))
             .collect::<Vec<u64>>()
     }
-
+    /// From each quarter in sparse representation, it computes its 4 resets.
+    /// The resulting vector contains 4 times as many elements as the input.
+    /// The output is placed in the vector as [shift0, shift1, shift2, shift3]
     fn shift(state: &[u64]) -> Vec<u64> {
         let n = state.len();
         let mut shifts = vec![0; QUARTERS * n];
@@ -178,10 +134,13 @@ impl KeccakOps for Keccak {
         shifts
     }
 
+    /// From a vector of shifts, resets the underlying value returning only shift0
+    /// Note that shifts is always a vector whose length is a multiple of 4.
     fn reset(shifts: &[u64]) -> Vec<u64> {
         shifts[0..shifts.len() / QUARTERS].to_vec()
     }
 
+    /// From a canonical expanded state, obtain the corresponding 16-bit dense terms
     fn collapse(state: &[u64]) -> Vec<u64> {
         state
             .iter()
@@ -189,6 +148,7 @@ impl KeccakOps for Keccak {
             .collect::<Vec<u64>>()
     }
 
+    /// Outputs the state into dense quarters of 16-bits each in little endian order
     fn quarters(state: &[u8]) -> Vec<u64> {
         let mut quarters = vec![];
         for pair in state.chunks(2) {
@@ -197,6 +157,7 @@ impl KeccakOps for Keccak {
         quarters
     }
 
+    /// On input a vector of 16-bit dense quarters, outputs a vector of 8-bit bytes in the right order for Keccak
     fn bytestring(dense: &[u64]) -> Vec<u64> {
         dense
             .iter()
@@ -208,6 +169,7 @@ impl KeccakOps for Keccak {
             .collect()
     }
 
+    /// On input a 200-byte vector, generates a vector of 100 expanded quarters representing the 1600-bit state
     fn expand_state(state: &[u8]) -> Vec<u64> {
         let mut expanded = vec![];
         for pair in state.chunks(2) {
@@ -217,12 +179,18 @@ impl KeccakOps for Keccak {
         expanded
     }
 }
+impl KeccakOps for Keccak {}
 
-impl KeccakPad for Keccak {
+/// Trait containing operations related to the Keccak padding rule
+pub trait KeccakPad {
+    /// On input a length, returns the smallest multiple of RATE_IN_BYTES that is greater than the bytelength.
+    /// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
+    /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
     fn padded_length(bytelength: usize) -> usize {
         (bytelength / RATE_IN_BYTES + 1) * RATE_IN_BYTES
     }
 
+    /// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
     fn pad(message: &[u8]) -> Vec<u8> {
         let msg_len = message.len();
         let pad_len = Self::padded_length(msg_len);
@@ -235,7 +203,13 @@ impl KeccakPad for Keccak {
 
         padded
     }
+
+    /// Number of blocks to be absorbed on input a given preimage bytelength
+    fn num_blocks(bytelength: usize) -> usize {
+        Self::padded_length(bytelength) / RATE_IN_BYTES
+    }
 }
+impl KeccakPad for Keccak {}
 
 #[cfg(test)]
 mod tests {
