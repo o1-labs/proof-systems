@@ -62,6 +62,7 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
         }
     }
 }
+
 pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     exp: &FoldingExp<C>,
     env: &'a ExtendedEnv<C>,
@@ -235,9 +236,11 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             domain,
         }
     }
+
     pub fn inner(&self) -> &CF::Env {
         &self.inner
     }
+
     #[allow(clippy::type_complexity)]
     pub fn unwrap(
         self,
@@ -252,6 +255,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         } = self;
         (instances, witnesses)
     }
+
     pub fn col(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> EvalLeaf<Fi<CF>> {
         use EvalLeaf::Col;
         use ExtendedFoldingColumn::*;
@@ -275,6 +279,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             Alpha(i) => EvalLeaf::Const(self.inner().alpha(*i, side)),
         }
     }
+
     pub fn col_try(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> bool {
         use ExtendedFoldingColumn::*;
         let (_instance, witness) = match side {
@@ -292,6 +297,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             | Alpha(_) => true,
         }
     }
+
     pub fn add_witness_evals(&mut self, i: usize, evals: Vec<Fi<CF>>, side: Side) {
         let (_instance, witness) = match side {
             Side::Left => (&self.instances[0], &mut self.witnesses[0]),
@@ -300,6 +306,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         let evals = Evaluations::from_vec_and_domain(evals, self.domain);
         witness.inner_mut().add_witness_evals(i, evals);
     }
+
     /// computes the extended witness column and the corresponding commitments,
     /// updating the innner instance/witness pairs
     pub fn compute_extension(
@@ -314,6 +321,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         let env = env.compute_extended_commitments(srs, Side::Right);
         env
     }
+
     fn compute_extended_commitments(mut self, srs: &CF::Srs, side: Side) -> Self {
         let (instance, witness) = match side {
             Side::Left => (&mut self.instances[0], &self.witnesses[0]),

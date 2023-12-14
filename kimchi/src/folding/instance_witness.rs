@@ -16,6 +16,7 @@ pub trait Instance<G: CommitmentCurve>: Sized {
         }
     }
 }
+
 pub trait Witness<G: CommitmentCurve>: Sized {
     ///should return a linear combination
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
@@ -28,6 +29,7 @@ pub trait Witness<G: CommitmentCurve>: Sized {
         }
     }
 }
+
 impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     fn extend(witness: W) -> ExtendedWitness<G, W> {
         //will later be filled by the quadricization witness generator
@@ -38,6 +40,7 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
         }
     }
 }
+
 impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     fn extend(instance: I) -> ExtendedInstance<G, I> {
         ExtendedInstance {
@@ -46,6 +49,7 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
         }
     }
 }
+
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     instance: ExtendedInstance<G, I>,
     pub u: G::ScalarField,
@@ -61,13 +65,16 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
     }
+
     pub(crate) fn inner_mut(&mut self) -> &mut ExtendedInstance<G, I> {
         &mut self.instance
     }
+
     ///provides access to commitments to the extra columns added by quadricization
     pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
         self.instance.extended.get(i)
     }
+
     ///provides access to a commitment to the error column
     pub fn get_error_column_commitment(&self) -> &PolyComm<G> {
         &self.error_commitment
@@ -78,23 +85,28 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
     pub(crate) fn inner(&self) -> &ExtendedWitness<G, W> {
         &self.witness
     }
+
     pub(crate) fn inner_mut(&mut self) -> &mut ExtendedWitness<G, W> {
         &mut self.witness
     }
+
     ///provides access to the extra columns added by quadricization
     pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
         self.inner().extended.get(i)
     }
+
     ///provides access to the error column
     pub fn get_error_column(&self) -> &Evals<G::ScalarField> {
         &self.error_vec
     }
 }
+
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     pub inner: W,
     //extra columns added by quadricization to lower the degree of expressions to 2
     pub extended: BTreeMap<usize, Evals<G::ScalarField>>,
 }
+
 pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
     pub inner: I,
     //commitments to extra columns
@@ -129,6 +141,7 @@ impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
         Self { inner, extended }
     }
 }
+
 impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
@@ -165,24 +178,29 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
 pub trait RelaxableInstance<G: CommitmentCurve, I: Instance<G>> {
     fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I>;
 }
+
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for I {
     fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
         self.relax(zero_commitment)
     }
 }
+
 impl<G: CommitmentCurve, I: Instance<G>> RelaxableInstance<G, I> for RelaxedInstance<G, I> {
     fn relax(self, _zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I> {
         self
     }
 }
+
 pub trait RelaxableWitness<G: CommitmentCurve, W: Witness<G>> {
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W>;
 }
+
 impl<G: CommitmentCurve, W: Witness<G>> RelaxableWitness<G, W> for W {
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W> {
         self.relax(zero_poly)
     }
 }
+
 impl<G: CommitmentCurve, W: Witness<G>> RelaxableWitness<G, W> for RelaxedWitness<G, W> {
     fn relax(self, _zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, W> {
         self
@@ -252,6 +270,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
             error_commitment,
         }
     }
+
     pub(super) fn combine_and_sub_error(
         a: Self,
         b: Self,

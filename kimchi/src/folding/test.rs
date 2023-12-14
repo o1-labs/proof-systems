@@ -16,21 +16,25 @@ impl FoldingColumnTrait for u8 {
         true
     }
 }
+
 impl<G: CommitmentCurve> Sponge<G> for Mock {
     fn challenge(_absorbe: &[poly_commitment::PolyComm<G>; 2]) -> <G>::ScalarField {
         panic!("just for test")
     }
 }
+
 impl<G: CommitmentCurve> Instance<G> for Mock {
     fn combine(_a: Self, _b: Self, _challenge: G::ScalarField) -> Self {
         Mock
     }
 }
+
 impl<G: CommitmentCurve> Witness<G> for Mock {
     fn combine(_a: Self, _b: Self, _challenge: G::ScalarField) -> Self {
         Mock
     }
 }
+
 struct MockEnv<F, I, W, Col, Chal>(PhantomData<(F, I, W, Col, Chal)>);
 impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col, Chal> {
     type Structure = Mock;

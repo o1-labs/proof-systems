@@ -63,6 +63,7 @@ impl<'a, F: Field> EvalLeaf<'a, F> {
             }
         }
     }
+
     fn bin_op<M: Fn(&F, &F) -> F, I: Fn(&mut F, &F)>(
         a: Self,
         b: Self,
@@ -100,6 +101,7 @@ impl<'a, F: Field> EvalLeaf<'a, F> {
             }
         }
     }
+
     fn unwrap_result(self) -> Vec<F> {
         match self {
             EvalLeaf::Result(res) => res,
@@ -118,9 +120,11 @@ pub trait FoldingEnv<F, I, W, Col, Chal> {
     fn alpha(&self, i: usize, side: Side) -> F;
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 }
+
 pub trait Sponge<G: CommitmentCurve> {
     fn challenge(absorbe: &[PolyComm<G>; 2]) -> G::ScalarField;
 }
+
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
 pub struct FoldingScheme<CF: FoldingConfig> {
@@ -133,6 +137,7 @@ pub struct FoldingScheme<CF: FoldingConfig> {
     structure: CF::Structure,
     extended_witness_generator: ExtendedWitnessGenerator<CF>,
 }
+
 impl<CF: FoldingConfig> FoldingScheme<CF> {
     pub fn new(
         constraints: Vec<FoldingCompatibleExpr<CF>>,
@@ -160,6 +165,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
         };
         (scheme, final_expression)
     }
+
     #[allow(clippy::type_complexity)]
     pub fn fold_instance_witness_pair<I, W, A, B>(
         &self,

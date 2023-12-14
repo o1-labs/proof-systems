@@ -39,6 +39,7 @@ impl<C: FoldingConfig> ExpRecorder<C> {
             next: 0,
         }
     }
+
     fn get_id(&mut self, exp: FoldingExp<C>) -> usize {
         *self.recorded_exprs.entry(exp).or_insert_with(|| {
             let id = self.next;
@@ -46,6 +47,7 @@ impl<C: FoldingConfig> ExpRecorder<C> {
             id
         })
     }
+
     #[allow(clippy::type_complexity)]
     fn into_constraints(self) -> (Vec<FoldingExp<C>>, VecDeque<(usize, FoldingExp<C>)>) {
         let ExpRecorder { recorded_exprs, .. } = self;
@@ -60,6 +62,7 @@ impl<C: FoldingConfig> ExpRecorder<C> {
         (new_constraints.into_values().collect(), witness_generator)
     }
 }
+
 fn unbounded_degree<C: FoldingConfig>(exp: &FoldingExp<C>) -> usize {
     match exp {
         e @ FoldingExp::Cell(_) => match e.folding_degree() {
@@ -75,6 +78,7 @@ fn unbounded_degree<C: FoldingConfig>(exp: &FoldingExp<C>) -> usize {
         FoldingExp::Mul(e1, e2) => unbounded_degree(e1) + unbounded_degree(e2),
     }
 }
+
 fn lower_degree_to_1<C: FoldingConfig>(
     exp: FoldingExp<C>,
     rec: &mut ExpRecorder<C>,

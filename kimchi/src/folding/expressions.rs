@@ -38,6 +38,7 @@ pub struct Var<C> {
     pub col: C,
     pub row: CurrOrNext,
 }
+
 ///designed for easy translation to and from most Expr
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
@@ -146,6 +147,7 @@ pub enum Degree {
     One,
     Two,
 }
+
 impl<C: FoldingConfig> FoldingExp<C> {
     pub(super) fn folding_degree(&self) -> Degree {
         use Degree::*;
@@ -168,6 +170,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
             }
         }
     }
+
     fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
         match self {
@@ -206,6 +209,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
         }
     }
 }
+
 impl std::ops::Add for Degree {
     type Output = Self;
 
@@ -218,6 +222,7 @@ impl std::ops::Add for Degree {
         }
     }
 }
+
 impl std::ops::Mul for &Degree {
     type Output = Degree;
 
@@ -256,6 +261,7 @@ impl<C: FoldingConfig> Term<C> {
         Self { exp, sign }
     }
 }
+
 impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
     type Output = Term<C>;
 
@@ -277,6 +283,7 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
         }
     }
 }
+
 ///A simplified expression with all terms separated by degree
 #[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
@@ -295,6 +302,7 @@ impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
         }
     }
 }
+
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     ///combines constraints into single expression
     pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
@@ -371,6 +379,7 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
     };
     exps
 }
+
 pub fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
