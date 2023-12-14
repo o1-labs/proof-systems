@@ -13,16 +13,16 @@ pub enum Side {
     Left,
     Right,
 }
-impl std::ops::Not for Side {
-    type Output = Self;
 
-    fn not(self) -> Self::Output {
+impl Side {
+    pub fn other(self) -> Self {
         match self {
             Side::Left => Side::Right,
             Side::Right => Side::Left,
         }
     }
 }
+
 type Fi<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 ///evaluates the expression in the provided side
@@ -83,7 +83,7 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
         Square(e) => match degree {
             Degree::Two => {
                 let a = eval_exp_error(e, env, side);
-                let b = eval_exp_error(e, env, !side);
+                let b = eval_exp_error(e, env, side.other());
                 let cross = EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b);
                 cross.map(Field::square, |f| {
                     Field::double_in_place(f);
@@ -107,9 +107,9 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
         Mul(e1, e2) => match (degree, e1.folding_degree()) {
             (Degree::Two, Degree::One) => {
                 let a = eval_exp_error(e1, env, side);
-                let b = eval_exp_error(e2, env, !side);
+                let b = eval_exp_error(e2, env, side.other());
                 let first = EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b);
-                let a = eval_exp_error(e1, env, !side);
+                let a = eval_exp_error(e1, env, side.other());
                 let b = eval_exp_error(e2, env, side);
                 let second = EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b);
                 EvalLeaf::bin_op(first, second, |a, b| *a + b, |a, b| *a += b)
