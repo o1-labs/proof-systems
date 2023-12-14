@@ -4,8 +4,9 @@ use crate::keccak::{
     BoolOps,
 };
 use ark_ff::Field;
+use kimchi::circuits::polynomials::keccak::{DIM, QUARTERS};
 
-use super::E;
+use super::{E, WORDS_IN_HASH};
 
 pub trait Constraints {
     type Column;
@@ -64,6 +65,47 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
         }
 
         // SPONGE CONSTRAINTS
+        {
+            for z in self.sponge_zeros() {
+                // Absorb phase pads with zeros the new state
+                self.constrain(self.absorb() * z.clone());
+            }
+            for i in 0..QUARTERS * DIM * DIM {
+                // In first absorb, root state is all zeros
+                self.constrain(self.root() * self.old_state(i));
+                // Absorbs the new block by performing XOR with the old state
+                self.constrain(
+                    self.absorb() * (self.next_state(i) - (self.old_state(i) + self.new_block(i))),
+                );
+                // In absorb, Check shifts correspond to the decomposition of the new state
+                self.constrain(
+                    self.absorb()
+                        * (self.new_block(i)
+                            - Self::from_shifts(
+                                &self.keccak_state.sponge_shifts,
+                                Some(i),
+                                None,
+                                None,
+                                None,
+                            )),
+                );
+            }
+            for i in 0..QUARTERS * WORDS_IN_HASH {
+                // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
+                self.constrain(
+                    self.squeeze()
+                        * (self.old_state(i)
+                            - Self::from_shifts(
+                                &self.keccak_state.sponge_shifts,
+                                Some(i),
+                                None,
+                                None,
+                                None,
+                            )),
+                );
+            }
+            // TODO: check padding with lookups
+        }
 
         // ROUND CONSTRAINTS
 
