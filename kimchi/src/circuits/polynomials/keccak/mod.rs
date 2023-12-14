@@ -8,7 +8,7 @@ pub const QUARTERS: usize = 4;
 pub const ROUNDS: usize = 24;
 pub const RATE_IN_BYTES: usize = 1088 / 8;
 pub const CAPACITY_IN_BYTES: usize = 512 / 8;
-pub const KECCAK_COLS: usize = 1965;
+pub const KECCAK_COLS: usize = 2344;
 
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
