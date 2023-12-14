@@ -1,3 +1,4 @@
+use crate::circuits::gate::CurrOrNext;
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
@@ -160,7 +161,7 @@ pub trait FoldingEnv<F, I, W, Col, Chal> {
     type Structure;
     ///a vec of just zeros of the same length as other columns
     fn zero_vec(&self) -> Vec<F>;
-    fn col(&self, col: Col, side: Side) -> &Vec<F>;
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
     fn lagrange_basis(&self, i: usize) -> &Vec<F>;
     fn challenge(&self, challenge: Chal, side: Side) -> F;
     fn alpha(&self, i: usize, side: Side) -> F;

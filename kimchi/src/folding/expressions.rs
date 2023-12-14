@@ -21,7 +21,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
-    Inner(C::Column),
+    Inner(Var<C::Column>),
     ///for the extra columns added by quadricization
     #[allow(dead_code)]
     WitnessExtended(usize),
@@ -34,6 +34,7 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Alpha(usize),
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Var<C> {
     pub col: C,
     pub row: CurrOrNext,
@@ -84,17 +85,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
         match self {
             FoldingCompatibleExpr::Constant(c) => Cell(ExtendedFoldingColumn::Constant(c)),
             FoldingCompatibleExpr::Challenge(c) => Cell(ExtendedFoldingColumn::Challenge(c)),
-            FoldingCompatibleExpr::Cell(col) => {
-                let Var { col, row } = col;
-                let col = Cell(ExtendedFoldingColumn::Inner(col));
-                match row {
-                    CurrOrNext::Curr => col,
-                    CurrOrNext::Next => {
-                        let shift = Cell(Ex::Shift);
-                        Mul(Box::new(col), Box::new(shift))
-                    }
-                }
-            }
+            FoldingCompatibleExpr::Cell(col) => Cell(ExtendedFoldingColumn::Inner(col)),
             FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::Square(exp) => Square(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::BinOp(op, e1, e2) => {
@@ -156,7 +147,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
         use Degree::*;
         match self {
             FoldingExp::Cell(ex_col) => match ex_col {
-                ExtendedFoldingColumn::Inner(col) => col.degree(),
+                ExtendedFoldingColumn::Inner(col) => col.col.degree(),
                 ExtendedFoldingColumn::WitnessExtended(_) => One,
                 ExtendedFoldingColumn::Error => One,
                 ExtendedFoldingColumn::Shift => Zero,
@@ -178,10 +169,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
         use FoldingCompatibleExpr::*;
         match self {
             FoldingExp::Cell(c) => match c {
-                ExtendedFoldingColumn::Inner(col) => Cell(Var {
-                    col,
-                    row: CurrOrNext::Curr,
-                }),
+                ExtendedFoldingColumn::Inner(col) => Cell(col),
                 ExtendedFoldingColumn::WitnessExtended(i) => {
                     Extensions(ExpExtension::ExtendedWitness(i))
                 }

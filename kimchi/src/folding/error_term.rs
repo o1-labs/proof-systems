@@ -1,5 +1,5 @@
 use crate::folding::{
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
+    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign, Var},
     quadricization::ExtendedWitnessGenerator,
     EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
 };
@@ -231,7 +231,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             Side::Right => (&self.instances[1], &self.witnesses[1]),
         };
         match col {
-            Inner(col) => Col(self.inner().col(*col, side)),
+            Inner(Var { col, row }) => Col(self.inner().col(*col, *row, side)),
             WitnessExtended(i) => Col(&witness
                 .inner()
                 .extended
