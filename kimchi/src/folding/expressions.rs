@@ -77,6 +77,36 @@ pub enum FoldingExp<C: FoldingConfig> {
     Mul(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
 }
 
+impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self::Add(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl<C: FoldingConfig> std::ops::Sub for FoldingExp<C> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        Self::Sub(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl<C: FoldingConfig> std::ops::Mul for FoldingExp<C> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self {
+        Self::Mul(Box::new(self), Box::new(rhs))
+    }
+}
+
+impl<C: FoldingConfig> FoldingExp<C> {
+    pub fn double(self) -> Self {
+        Self::Double(Box::new(self))
+    }
+}
+
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;

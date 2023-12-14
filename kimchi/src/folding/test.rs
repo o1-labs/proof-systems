@@ -99,20 +99,13 @@ impl FoldingConfig for TestConfig {
 fn test_term_separation() {
     use FoldingExp::*;
     let col = |col| Cell(ExtendedFoldingColumn::Inner(Var { col, row: Curr }));
-    let t1 = FoldingExp::<TestConfig>::Mul(
-        Box::new(Add(Box::new(col(0)), Box::new(col(1)))),
-        Box::new(Add(Box::new(col(2)), Box::new(col(3)))),
-    );
-    let t2 = Sub(
-        Box::new(Square(Box::new(col(1)))),
-        Box::new(Add(
-            Box::new(col(2)),
-            Box::new(Cell(ExtendedFoldingColumn::Constant(
+    let t1: FoldingExp<TestConfig> = (col(0) + col(1)) * (col(2) + col(3));
+    let t2 = col(1).double()
+        - (col(2)
+            + Cell(ExtendedFoldingColumn::Constant(
                 <<Pallas as AffineCurve>::ScalarField>::zero(),
-            ))),
-        )),
-    );
-    let test_exp = Add(Box::new(t1), Box::new(t2));
+            )));
+    let test_exp = t1 + t2;
     println!("{:#?}", test_exp);
     let terms = extract_terms(test_exp).collect_vec();
     println!("{:#?}", terms);
