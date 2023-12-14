@@ -28,7 +28,7 @@ use poly_commitment::evaluation_proof::{OpeningProof, PreChallenges};
 // f_c := prod_{i = 0}^{k-1} (1 + c_i x^{2^{k-1 - i}})
 //
 // When incrementally-verifying such a proof in a K-circuit (since we need K-arithmetic to perform
-// the group operations on the F-polynomial-commitments that constitute the proof),
+// the group operations on the F-polynomial-commitments that constitute the proof)
 // instead of checking this, we get an evaluation E_c at a random point zeta and check
 // that challenge_polynomial_commitment opens to E_c at zeta. Then we will need to check that
 // E_c = f_c(zeta) = prod_{i = 0}^{k-1} (1 + c_i zeta^{2^{k-1 - i}}).
