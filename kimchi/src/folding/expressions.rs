@@ -246,12 +246,9 @@ pub struct Term<C: FoldingConfig> {
 }
 
 impl<C: FoldingConfig> Term<C> {
-    fn wrap_exp<F>(self, f: F) -> Self
-    where
-        F: Fn(Box<FoldingExp<C>>) -> FoldingExp<C>,
-    {
+    fn double(self) -> Self {
         let Self { exp, sign } = self;
-        let exp = f(Box::new(exp));
+        let exp = FoldingExp::Double(Box::new(exp));
         Self { exp, sign }
     }
 }
@@ -338,7 +335,7 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
     use FoldingExp::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
         exp @ Cell(_) => Box::new([Term { exp, sign: true }].into_iter()),
-        Double(exp) => Box::new(extract_terms(*exp).map(|t| t.wrap_exp(Double))),
+        Double(exp) => Box::new(extract_terms(*exp).map(Term::double)),
         Square(exp) => {
             let terms = extract_terms(*exp).collect_vec();
             let mut combinations = Vec::with_capacity(terms.len() ^ 2);
