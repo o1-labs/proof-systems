@@ -36,6 +36,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
+    omit_custom_gate: bool,
     custom_gate_type: Option<&Vec<PolishToken<F>>>,
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
@@ -92,7 +93,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         }
     }
 
-    {
+    if !omit_custom_gate {
         let mut foreign_field_add_expr = || {
             if let Some(custom_gate_type) = custom_gate_type {
                 Expr::from_polish(custom_gate_type).expect("valid gate definition")
@@ -228,7 +229,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(custom_gate_type, None, generic);
+            let (feature_flagged_expr, _) =
+                constraints_expr(omit_custom_gate, custom_gate_type, None, generic);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -349,7 +351,7 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr(custom_gate_type, feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr(false, custom_gate_type, feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)
