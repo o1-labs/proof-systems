@@ -36,7 +36,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         // Run all steps of hash
         while self.curr_step.is_some() {
             self.step();
-            //self.update_step();
+            self.update_step();
         }
     }
 

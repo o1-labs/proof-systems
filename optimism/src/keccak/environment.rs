@@ -1,11 +1,16 @@
 use super::{
     column::{KeccakColumn, KeccakColumns},
-    interpreter::KeccakStep,
+    interpreter::{Absorb, KeccakStep, Sponge},
     ArithOps, BoolOps, DIM, E, QUARTERS,
 };
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
-use kimchi::{auto_clone_array, circuits::expr::ConstantExpr, grid, o1_utils::Two};
+use kimchi::{
+    auto_clone_array,
+    circuits::{expr::ConstantExpr, polynomials::keccak::ROUNDS},
+    grid,
+    o1_utils::Two,
+};
 
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<Fp> {
@@ -35,6 +40,35 @@ impl<Fp: Field> KeccakEnv<Fp> {
     }
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
+    }
+    pub fn update_step(&mut self) {
+        match self.curr_step {
+            Some(step) => match step {
+                KeccakStep::Sponge(sponge) => match sponge {
+                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(0)),
+                    Sponge::Squeeze => self.curr_step = None,
+                },
+                KeccakStep::Round(round) => {
+                    if round < ROUNDS as u64 - 1 {
+                        self.curr_step = Some(KeccakStep::Round(round + 1));
+                    } else {
+                        self.blocks_left_to_absorb -= 1;
+                        match self.blocks_left_to_absorb {
+                            0 => self.curr_step = Some(KeccakStep::Sponge(Sponge::Squeeze)),
+                            1 => {
+                                self.curr_step =
+                                    Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Last)))
+                            }
+                            _ => {
+                                self.curr_step =
+                                    Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Middle)))
+                            }
+                        }
+                    }
+                }
+            },
+            None => panic!("No step to update"),
+        }
     }
 }
 
