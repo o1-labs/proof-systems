@@ -105,6 +105,7 @@ impl Rotation {
     }
 }
 
+/// Values involved in Theta permutation step
 pub struct Theta {
     shifts_c: Vec<u64>,
     dense_c: Vec<u64>,
@@ -185,6 +186,7 @@ impl Theta {
     }
 }
 
+/// Values involved in PiRho permutation step
 pub struct PiRho {
     shifts_e: Vec<u64>,
     dense_e: Vec<u64>,
@@ -230,6 +232,7 @@ impl PiRho {
     }
 }
 
+/// Values involved in Chi permutation step
 pub struct Chi {
     shifts_b: Vec<u64>,
     shifts_sum: Vec<u64>,
@@ -269,6 +272,7 @@ impl Chi {
     }
 }
 
+/// Values involved in Iota permutation step
 pub struct Iota {
     state_g: Vec<u64>,
 }
