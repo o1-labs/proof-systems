@@ -1,7 +1,7 @@
 use ark_ec::AffineCurve;
 use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use error::{compute_error, ExtendedEnv, Side};
+use error_term::{compute_error, ExtendedEnv, Side};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 pub use expressions::{ExpExtension, FoldingCompatibleExpr, Var};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
@@ -10,7 +10,7 @@ use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadricization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 
-mod error;
+mod error_term;
 mod expressions;
 mod instance_witness;
 mod quadricization;

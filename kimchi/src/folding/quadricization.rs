@@ -1,5 +1,5 @@
 use crate::folding::{
-    error::{eval_sided, ExtendedEnv, Side},
+    error_term::{eval_sided, ExtendedEnv, Side},
     expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
     FoldingConfig,
 };
