@@ -32,7 +32,7 @@ pub trait Witness<G: CommitmentCurve>: Sized {
 
 impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     fn extend(witness: W) -> ExtendedWitness<G, W> {
-        //will later be filled by the quadricization witness generator
+        //will later be filled by the quadraticization witness generator
         let extended = BTreeMap::new();
         ExtendedWitness {
             inner: witness,
@@ -70,7 +70,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
         &mut self.instance
     }
 
-    ///provides access to commitments to the extra columns added by quadricization
+    ///provides access to commitments to the extra columns added by quadraticization
     pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
         self.instance.extended.get(i)
     }
@@ -90,7 +90,7 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
         &mut self.witness
     }
 
-    ///provides access to the extra columns added by quadricization
+    ///provides access to the extra columns added by quadraticization
     pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
         self.inner().extended.get(i)
     }
@@ -103,7 +103,7 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
 
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     pub inner: W,
-    //extra columns added by quadricization to lower the degree of expressions to 2
+    //extra columns added by quadraticization to lower the degree of expressions to 2
     pub extended: BTreeMap<usize, Evals<G::ScalarField>>,
 }
 

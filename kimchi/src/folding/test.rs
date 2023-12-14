@@ -92,7 +92,7 @@ impl FoldingConfig for TestConfig {
 
 #[ignore]
 #[test]
-//not testing much right now, just to observe what quadricization does
+//not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
     use FoldingExp::*;
     let t1 = FoldingExp::<TestConfig>::Mul(

@@ -6,7 +6,7 @@ use crate::folding::{
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 ///returns the constraints converted into degree 2 or less and the extra contraints added in the process
-pub(crate) fn quadricization<C: FoldingConfig>(
+pub(crate) fn quadraticize<C: FoldingConfig>(
     constraints: Vec<FoldingExp<C>>,
 ) -> (
     Vec<FoldingExp<C>>,

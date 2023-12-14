@@ -1,7 +1,7 @@
 use crate::{
     circuits::{expr::Op2, gate::CurrOrNext},
     folding::{
-        quadricization::{quadricization, ExtendedWitnessGenerator},
+        quadraticization::{quadraticize, ExtendedWitnessGenerator},
         FoldingConfig, ScalarField,
     },
 };
@@ -22,7 +22,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Inner(Var<C::Column>),
-    ///for the extra columns added by quadricization
+    ///for the extra columns added by quadraticization
     #[allow(dead_code)]
     WitnessExtended(usize),
     Error,
@@ -61,7 +61,7 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
 pub enum ExpExtension {
     U,
     Error,
-    //from quadricization
+    //from quadraticization
     ExtendedWitness(usize),
     Alpha(usize),
     Shift,
@@ -390,7 +390,7 @@ pub fn folding_expression<C: FoldingConfig>(
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
     let (expressions, extra_expressions, extenden_witness_generator) =
-        quadricization(simplified_expressions);
+        quadraticize(simplified_expressions);
     let mut terms = vec![];
     let mut alpha = 0;
     for exp in expressions.into_iter() {

@@ -8,13 +8,13 @@ pub use expressions::{ExpExtension, FoldingCompatibleExpr, Var};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 use instance_witness::{RelaxableInstance, RelaxablePair};
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
-use quadricization::ExtendedWitnessGenerator;
+use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 
 mod error_term;
 mod expressions;
 mod instance_witness;
-mod quadricization;
+mod quadraticization;
 #[cfg(test)]
 mod test;
 

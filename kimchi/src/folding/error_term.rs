@@ -1,6 +1,6 @@
 use crate::folding::{
     expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign, Var},
-    quadricization::ExtendedWitnessGenerator,
+    quadraticization::ExtendedWitnessGenerator,
     EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::AffineCurve;
