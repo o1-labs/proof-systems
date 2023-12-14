@@ -38,6 +38,11 @@ impl<Fp: Field> KeccakEnv<Fp> {
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
         self.keccak_state[column] = Self::constant(value.into());
     }
+
+    pub fn write_column_field(&mut self, column: KeccakColumn, value: Fp) {
+        self.keccak_state[column] = Self::constant(value);
+    }
+
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
     }
@@ -147,6 +152,10 @@ pub(crate) trait KeccakEnvironment {
     fn pad(&self) -> Self::Variable;
 
     fn length(&self) -> Self::Variable;
+
+    fn in_padding(&self, i: usize) -> Self::Variable;
+
+    fn pad_suffix(&self, i: usize) -> Self::Variable;
 
     fn round_constants(&self) -> Vec<Self::Variable>;
 
@@ -278,6 +287,14 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn length(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::FlagLength].clone()
+    }
+
+    fn in_padding(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagsPad(i)].clone()
+    }
+
+    fn pad_suffix(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::PadSuffix(i)].clone()
     }
 
     fn round_constants(&self) -> Vec<Self::Variable> {
