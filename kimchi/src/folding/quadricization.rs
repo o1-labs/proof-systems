@@ -147,7 +147,7 @@ impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
 
         while let Some((i, exp)) = pending.pop_front() {
             if check_evaluable(&exp, &env, side) {
-                let evals = eval_sided(&exp, &env, side).unwrap_result();
+                let evals = eval_sided(&exp, &env, side).unwrap();
                 env.add_witness_evals(i, evals, side);
             } else {
                 pending.push_back((i, exp))

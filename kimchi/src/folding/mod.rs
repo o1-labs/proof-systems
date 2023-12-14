@@ -149,10 +149,14 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
         }
     }
 
-    fn unwrap_result(self) -> Vec<F> {
+    fn unwrap(self) -> Vec<F>
+    where
+        F: Clone,
+    {
         match self {
+            EvalLeaf::Col(res) => res.iter().cloned().collect(),
             EvalLeaf::Result(res) => res,
-            _ => panic!("is not result"),
+            EvalLeaf::Const(_) => panic!("Attempted to unwrap a constant"),
         }
     }
 }
