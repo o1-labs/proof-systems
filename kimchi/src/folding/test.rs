@@ -115,8 +115,6 @@ fn test_term_separation() {
         )),
     );
     let test_exp = Add(Box::new(t1), Box::new(t2));
-    // let test_exp = t1;
-    // let mut terms = vec![];
     println!("{:#?}", test_exp);
     let terms = extract_terms(test_exp).collect_vec();
     println!("{:#?}", terms);
