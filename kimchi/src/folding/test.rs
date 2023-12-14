@@ -43,11 +43,11 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
         todo!()
     }
 
-    fn col(&self, _col: Col, _side: super::error::Side) -> &Vec<F> {
+    fn col(&self, _col: Col, _side: super::error_term::Side) -> &Vec<F> {
         todo!()
     }
 
-    fn challenge(&self, _challenge: Chal, _side: super::error::Side) -> F {
+    fn challenge(&self, _challenge: Chal, _side: super::error_term::Side) -> F {
         todo!()
     }
 
@@ -59,7 +59,7 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
         todo!()
     }
 
-    fn alpha(&self, _i: usize, _side: super::error::Side) -> F {
+    fn alpha(&self, _i: usize, _side: super::error_term::Side) -> F {
         todo!()
     }
 }
