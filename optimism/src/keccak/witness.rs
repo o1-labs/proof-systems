@@ -59,10 +59,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.update_step();
     }
 
-    fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
-        todo!()
-    }
-
     fn set_flag_root(&mut self) {
         self.write_column(KeccakColumn::FlagRoot, 1);
     }
