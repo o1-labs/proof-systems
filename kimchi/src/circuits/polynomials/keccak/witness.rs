@@ -3,8 +3,7 @@
 use std::array;
 
 use crate::circuits::polynomials::keccak::{
-    Keccak, KeccakOps, KeccakPad, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF, QUARTERS,
-    RATE_IN_BYTES, RC,
+    Keccak, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF, QUARTERS, RATE_IN_BYTES, RC,
 };
 use crate::{
     auto_clone,
