@@ -2,7 +2,7 @@ use crate::{
     circuits::{expr::Op2, gate::CurrOrNext},
     folding::{
         quadricization::{quadricization, ExtendedWitnessGenerator},
-        Fi, FoldingConfig,
+        FoldingConfig, ScalarField,
     },
 };
 use ark_ec::AffineCurve;
@@ -326,7 +326,8 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
         } = self;
         let [d0, d1, d2] = [degree_0, degree_1, degree_2]
             .map(|exps| {
-                let init = FoldingExp::Cell(ExtendedFoldingColumn::Constant(Fi::<C>::zero()));
+                let init =
+                    FoldingExp::Cell(ExtendedFoldingColumn::Constant(ScalarField::<C>::zero()));
                 exps.into_iter().fold(init, |acc, (exp, sign, alpha)| {
                     let e = match sign {
                         Sign::Pos => FoldingExp::Add(Box::new(acc), Box::new(exp)),

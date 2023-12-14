@@ -17,7 +17,7 @@ mod quadricization;
 #[cfg(test)]
 mod test;
 
-type Fi<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
@@ -175,11 +175,11 @@ type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
 pub struct FoldingScheme<CF: FoldingConfig> {
     expression: IntegratedFoldingExpr<CF>,
-    shift: Vec<Fi<CF>>,
+    shift: Vec<ScalarField<CF>>,
     srs: CF::Srs,
-    domain: Radix2EvaluationDomain<Fi<CF>>,
+    domain: Radix2EvaluationDomain<ScalarField<CF>>,
     zero_commitment: PolyComm<CF::Curve>,
-    zero_vec: Evals<Fi<CF>>,
+    zero_vec: Evals<ScalarField<CF>>,
     structure: CF::Structure,
     extended_witness_generator: ExtendedWitnessGenerator<CF>,
 }
@@ -188,12 +188,12 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
     pub fn new(
         constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: CF::Srs,
-        domain: Radix2EvaluationDomain<Fi<CF>>,
+        domain: Radix2EvaluationDomain<ScalarField<CF>>,
         structure: CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
         let (expression, extended_witness_generator) = folding_expression(constraints);
         let shift = domain.elements().collect();
-        let zero = <Fi<CF>>::zero();
+        let zero = <ScalarField<CF>>::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
         let zero_commitment = srs.commit_evaluations_non_hiding(domain, &zero_vec_evals);
