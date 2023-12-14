@@ -4,9 +4,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, GateType},
-        polynomials::keccak::{
-            witness::extend_keccak_witness, Keccak, KeccakOps, KeccakPad, KECCAK_COLS,
-        },
+        polynomials::keccak::{witness::extend_keccak_witness, Keccak, KECCAK_COLS},
         wires::Wire,
     },
     curve::KimchiCurve,
