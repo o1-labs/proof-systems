@@ -102,16 +102,16 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
         match (a, b) {
             (Const(a), Const(b)) => Const(f(a, b)),
             (Const(a), Col(b)) => {
-                let res = b.into_iter().map(|b| f(a.clone(), b.clone())).collect();
+                let res = b.iter().map(|b| f(a.clone(), b.clone())).collect();
                 Result(res)
             }
             (Col(a), Const(b)) => {
-                let res = a.into_iter().map(|a| f(a.clone(), b.clone())).collect();
+                let res = a.iter().map(|a| f(a.clone(), b.clone())).collect();
                 Result(res)
             }
             (Col(a), Col(b)) => {
-                let res = (a.into_iter())
-                    .zip(b.into_iter())
+                let res = (a.iter())
+                    .zip(b.iter())
                     .map(|(a, b)| f(a.clone(), b.clone()))
                     .collect();
                 Result(res)
@@ -129,13 +129,13 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
                 Result(b)
             }
             (Result(mut a), Col(b)) => {
-                for (a, b) in a.iter_mut().zip(b.into_iter()) {
+                for (a, b) in a.iter_mut().zip(b.iter()) {
                     *a = f(a.clone(), b.clone())
                 }
                 Result(a)
             }
             (Col(a), Result(mut b)) => {
-                for (a, b) in a.into_iter().zip(b.iter_mut()) {
+                for (a, b) in a.iter().zip(b.iter_mut()) {
                     *b = f(b.clone(), a.clone())
                 }
                 Result(b)
@@ -154,7 +154,7 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
         F: Clone,
     {
         match self {
-            EvalLeaf::Col(res) => res.iter().cloned().collect(),
+            EvalLeaf::Col(res) => res.to_vec(),
             EvalLeaf::Result(res) => res,
             EvalLeaf::Const(_) => panic!("Attempted to unwrap a constant"),
         }
