@@ -14,6 +14,12 @@ pub struct KeccakEnv<Fp> {
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
 }
 
+impl<Fp: Field> KeccakEnv<Fp> {
+    pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
+        self.keccak_state[column] = Self::constant(value.into());
+    }
+}
+
 impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
