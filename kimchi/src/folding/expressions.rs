@@ -246,14 +246,6 @@ pub struct Term<C: FoldingConfig> {
 }
 
 impl<C: FoldingConfig> Term<C> {
-    /*fn map_exp<F>(self, f: F) -> Self
-    where
-        F: Fn(FoldingExp2<C>) -> FoldingExp2<C>,
-    {
-        let Self { exp, sign } = self;
-        let exp = f(exp);
-        Self { exp, sign }
-    }*/
     fn wrap_exp<F>(self, f: F) -> Self
     where
         F: Fn(Box<FoldingExp<C>>) -> FoldingExp<C>,
