@@ -65,6 +65,7 @@ pub enum ExpExtension {
     Alpha(usize),
     Shift,
 }
+
 ///Internal expression used for folding, simplified for that purpose
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FoldingExp<C: FoldingConfig> {
@@ -75,6 +76,7 @@ pub enum FoldingExp<C: FoldingConfig> {
     Sub(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
     Mul(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
 }
+
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
@@ -114,6 +116,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
             }
         }
     }
+
     fn pow_to_mul(exp: FoldingExp<C>, p: u64) -> FoldingExp<C>
     where
         C::Column: Clone,
