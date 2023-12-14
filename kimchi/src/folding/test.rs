@@ -1,6 +1,9 @@
-use crate::folding::{
-    expressions::{extract_terms, ExtendedFoldingColumn, FoldingColumnTrait, FoldingExp},
-    FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
+use crate::{
+    circuits::gate::CurrOrNext::{self, Curr},
+    folding::{
+        expressions::{extract_terms, ExtendedFoldingColumn, FoldingColumnTrait, FoldingExp, Var},
+        FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
+    },
 };
 use ark_ec::AffineCurve;
 use itertools::Itertools;
@@ -43,7 +46,7 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
         todo!()
     }
 
-    fn col(&self, _col: Col, _side: super::error_term::Side) -> &Vec<F> {
+    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: super::error_term::Side) -> &Vec<F> {
         todo!()
     }
 
@@ -95,20 +98,15 @@ impl FoldingConfig for TestConfig {
 //not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
     use FoldingExp::*;
+    let col = |col| Cell(ExtendedFoldingColumn::Inner(Var { col, row: Curr }));
     let t1 = FoldingExp::<TestConfig>::Mul(
-        Box::new(Add(
-            Box::new(Cell(ExtendedFoldingColumn::Inner(0))),
-            Box::new(Cell(ExtendedFoldingColumn::Inner(1))),
-        )),
-        Box::new(Add(
-            Box::new(Cell(ExtendedFoldingColumn::Inner(2))),
-            Box::new(Cell(ExtendedFoldingColumn::Inner(3))),
-        )),
+        Box::new(Add(Box::new(col(0)), Box::new(col(1)))),
+        Box::new(Add(Box::new(col(2)), Box::new(col(3)))),
     );
     let t2 = Sub(
-        Box::new(Square(Box::new(Cell(ExtendedFoldingColumn::Inner(1))))),
+        Box::new(Square(Box::new(col(1)))),
         Box::new(Add(
-            Box::new(Cell(ExtendedFoldingColumn::Inner(2))),
+            Box::new(col(2)),
             Box::new(Cell(ExtendedFoldingColumn::Constant(
                 <<Pallas as AffineCurve>::ScalarField>::zero(),
             ))),
