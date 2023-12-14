@@ -33,7 +33,6 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
 ) -> EvalLeaf<'a, Fi<C>> {
     use FoldingExp::*;
 
-    let eval_bin = |e1, e2| (eval_exp_error(e1, env, side), eval_exp_error(e2, env, side));
     match exp {
         Cell(col) => env.col(col, side),
         Double(e) => {
@@ -48,18 +47,9 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
                 Field::square_in_place(f);
             })
         }
-        Add(e1, e2) => {
-            let (a, b) = eval_bin(e1, e2);
-            EvalLeaf::bin_op(a, b, |a, b| *a + b, |a, b| *a += b)
-        }
-        Sub(e1, e2) => {
-            let (a, b) = eval_bin(e1, e2);
-            EvalLeaf::bin_op(a, b, |a, b| *a - b, |a, b| *a -= b)
-        }
-        Mul(e1, e2) => {
-            let (a, b) = eval_bin(e1, e2);
-            EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b)
-        }
+        Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
+        Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
+        Mul(e1, e2) => eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
     }
 }
 
@@ -71,7 +61,6 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     let degree = exp.folding_degree();
     use FoldingExp::*;
 
-    let eval_bin = |e1, e2| (eval_exp_error(e1, env, side), eval_exp_error(e2, env, side));
     match exp {
         Cell(col) => env.col(col, side),
         Double(e) => {
@@ -82,11 +71,9 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
         }
         Square(e) => match degree {
             Degree::Two => {
-                let a = eval_exp_error(e, env, side);
-                let b = eval_exp_error(e, env, side.other());
-                let cross = EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b);
+                let cross = eval_exp_error(e, env, side) * eval_exp_error(e, env, side.other());
                 cross.map(Field::square, |f| {
-                    Field::double_in_place(f);
+                    Field::square_in_place(f);
                 })
             }
             _ => {
@@ -96,28 +83,15 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
                 })
             }
         },
-        Add(e1, e2) => {
-            let (a, b) = eval_bin(e1, e2);
-            EvalLeaf::bin_op(a, b, |a, b| *a + b, |a, b| *a += b)
-        }
-        Sub(e1, e2) => {
-            let (a, b) = eval_bin(e1, e2);
-            EvalLeaf::bin_op(a, b, |a, b| *a - b, |a, b| *a -= b)
-        }
+        Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
+        Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
         Mul(e1, e2) => match (degree, e1.folding_degree()) {
             (Degree::Two, Degree::One) => {
-                let a = eval_exp_error(e1, env, side);
-                let b = eval_exp_error(e2, env, side.other());
-                let first = EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b);
-                let a = eval_exp_error(e1, env, side.other());
-                let b = eval_exp_error(e2, env, side);
-                let second = EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b);
-                EvalLeaf::bin_op(first, second, |a, b| *a + b, |a, b| *a += b)
+                let first = eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side.other());
+                let second = eval_exp_error(e1, env, side.other()) * eval_exp_error(e2, env, side);
+                first + second
             }
-            _ => {
-                let (a, b) = eval_bin(e1, e2);
-                EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b)
-            }
+            _ => eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
         },
     }
 }
@@ -127,18 +101,10 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     env: &ExtendedEnv<C>,
     u: (Fi<C>, Fi<C>),
 ) -> [Vec<Fi<C>>; 2] {
-    let add = |a, b| EvalLeaf::bin_op(a, b, |a, b| *a + b, |a, b| *a += b);
-    let sub = |a, b| EvalLeaf::bin_op(a, b, |a, b| *a - b, |a, b| *a -= b);
-    let scale = |t, s| EvalLeaf::bin_op(t, EvalLeaf::Const(s), |a, b| *a * b, |a, b| *a *= b);
-
     let (ul, ur) = (u.0, u.1);
     let u_cross = ul * ur;
     let zero = || EvalLeaf::Result(env.inner().zero_vec());
 
-    let add_signed = |sign| match sign {
-        true => add,
-        false => sub,
-    };
     let t_0 = {
         let t_0 = (zero(), zero());
         let (l, r) = exp.degree_0.iter().fold(t_0, |(l, r), (exp, sign, alpha)| {
@@ -146,15 +112,17 @@ pub(crate) fn compute_error<C: FoldingConfig>(
             let exp = eval_exp_error(exp, env, Side::Left);
             let alpha_l = env.inner().alpha(*alpha, Side::Left);
             let alpha_r = env.inner().alpha(*alpha, Side::Right);
-            let add_signed = add_signed(*sign);
-            (
-                add_signed(l, scale(exp.clone(), alpha_l)),
-                add_signed(r, scale(exp, alpha_r)),
-            )
+            let left = exp.clone() * alpha_l;
+            let right = exp * alpha_r;
+            if *sign {
+                (l + left, r + right)
+            } else {
+                (l - left, r - right)
+            }
         });
         let cross2 = u_cross.double();
-        let e0 = add(scale(l.clone(), cross2), scale(r.clone(), ul.square()));
-        let e1 = add(scale(r, cross2), scale(l, ur.square()));
+        let e0 = l.clone() * cross2 + r.clone() * ul.square();
+        let e1 = r * cross2 + l * ur.square();
         (e0, e1)
     };
 
@@ -168,15 +136,17 @@ pub(crate) fn compute_error<C: FoldingConfig>(
                 let expr = eval_exp_error(exp, env, Side::Right);
                 let alpha_l = env.inner().alpha(*alpha, Side::Left);
                 let alpha_r = env.inner().alpha(*alpha, Side::Right);
-                let expr_cross = add(scale(expl.clone(), alpha_r), scale(expr.clone(), alpha_l));
-                let add_signed = add_signed(*sign);
-                let l = add_signed(l, scale(expl, alpha_l));
-                let r = add_signed(r, scale(expr, alpha_r));
-                let cross = add_signed(cross, expr_cross);
-                (l, cross, r)
+                let expr_cross = expl.clone() * alpha_r + expr.clone() * alpha_l;
+                let left = expl * alpha_l;
+                let right = expr * alpha_r;
+                if *sign {
+                    (l + left, cross + expr_cross, r + right)
+                } else {
+                    (l - left, cross - expr_cross, r - right)
+                }
             });
-        let e0 = add(scale(cross.clone(), ul), scale(l, ur));
-        let e1 = add(scale(cross.clone(), ur), scale(r, ul));
+        let e0 = cross.clone() * ul + l * ur;
+        let e1 = cross.clone() * ur + r * ul;
         (e0, e1)
     };
     let t_2 = (zero(), zero());
@@ -187,16 +157,17 @@ pub(crate) fn compute_error<C: FoldingConfig>(
         let cross = eval_exp_error(exp, env, Side::Left);
         let alpha_l = env.inner().alpha(*alpha, Side::Left);
         let alpha_r = env.inner().alpha(*alpha, Side::Right);
-        let left = add(scale(expl, alpha_r), scale(cross.clone(), alpha_l));
-        let right = add(scale(expr, alpha_l), scale(cross, alpha_r));
-        let add_signed = add_signed(*sign);
-        let l = add_signed(l, left);
-        let r = add_signed(r, right);
-        (l, r)
+        let left = expl * alpha_r + cross.clone() * alpha_l;
+        let right = expr * alpha_l + cross * alpha_r;
+        if *sign {
+            (l + left, r + right)
+        } else {
+            (l - left, r - right)
+        }
     });
     let t = [t_1, t_2]
         .into_iter()
-        .fold(t_0, |(tl, tr), (txl, txr)| (add(tl, txl), add(tr, txr)));
+        .fold(t_0, |(tl, tr), (txl, txr)| (tl + txl, tr + txr));
 
     match t {
         (EvalLeaf::Result(l), EvalLeaf::Result(r)) => [l, r],

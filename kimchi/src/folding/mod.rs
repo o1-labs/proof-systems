@@ -1,5 +1,5 @@
 use ark_ec::AffineCurve;
-use ark_ff::{Field, Zero};
+use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv, Side};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
@@ -40,13 +40,45 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
 }
 
 #[derive(Clone)]
-pub(crate) enum EvalLeaf<'a, F: Field> {
+pub(crate) enum EvalLeaf<'a, F> {
     Const(F),
     Col(&'a Vec<F>),
     Result(Vec<F>),
 }
 
-impl<'a, F: Field> EvalLeaf<'a, F> {
+impl<'a, F: std::ops::Add<Output = F> + Clone> std::ops::Add for EvalLeaf<'a, F> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self::bin_op(|a, b| a + b, self, rhs)
+    }
+}
+
+impl<'a, F: std::ops::Sub<Output = F> + Clone> std::ops::Sub for EvalLeaf<'a, F> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        Self::bin_op(|a, b| a - b, self, rhs)
+    }
+}
+
+impl<'a, F: std::ops::Mul<Output = F> + Clone> std::ops::Mul for EvalLeaf<'a, F> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self {
+        Self::bin_op(|a, b| a * b, self, rhs)
+    }
+}
+
+impl<'a, F: std::ops::Mul<Output = F> + Clone> std::ops::Mul<F> for EvalLeaf<'a, F> {
+    type Output = Self;
+
+    fn mul(self, rhs: F) -> Self {
+        self * Self::Const(rhs)
+    }
+}
+
+impl<'a, F: Clone> EvalLeaf<'a, F> {
     fn map<M: Fn(&F) -> F, I: Fn(&mut F)>(self, map: M, in_place: I) -> Self {
         use EvalLeaf::*;
         match self {
@@ -64,38 +96,52 @@ impl<'a, F: Field> EvalLeaf<'a, F> {
         }
     }
 
-    fn bin_op<M: Fn(&F, &F) -> F, I: Fn(&mut F, &F)>(
-        a: Self,
-        b: Self,
-        map: M,
-        in_place: I,
-    ) -> Self {
+    fn bin_op<M: Fn(F, F) -> F>(f: M, a: Self, b: Self) -> Self {
         use EvalLeaf::*;
         match (a, b) {
-            (Const(a), Const(b)) => Const(map(&a, &b)),
-            (Const(a), Col(b)) | (Col(b), Const(a)) => {
-                let res = b.iter().map(|f| map(f, &a)).collect();
+            (Const(a), Const(b)) => Const(f(a, b)),
+            (Const(a), Col(b)) => {
+                let res = b.into_iter().map(|b| f(a.clone(), b.clone())).collect();
+                Result(res)
+            }
+            (Col(a), Const(b)) => {
+                let res = a.into_iter().map(|a| f(a.clone(), b.clone())).collect();
                 Result(res)
             }
             (Col(a), Col(b)) => {
-                let res = a.iter().zip(b.iter()).map(|(a, b)| map(a, b)).collect();
+                let res = (a.into_iter())
+                    .zip(b.into_iter())
+                    .map(|(a, b)| f(a.clone(), b.clone()))
+                    .collect();
                 Result(res)
             }
-            (Result(mut a), Const(b)) | (Const(b), Result(mut a)) => {
+            (Result(mut a), Const(b)) => {
                 for a in a.iter_mut() {
-                    in_place(a, &b);
+                    *a = f(a.clone(), b.clone())
                 }
                 Result(a)
             }
-            (Result(mut a), Col(b)) | (Col(b), Result(mut a)) => {
-                for (a, b) in a.iter_mut().zip(b.iter()) {
-                    in_place(a, b);
+            (Const(a), Result(mut b)) => {
+                for b in b.iter_mut() {
+                    *b = f(a.clone(), b.clone())
+                }
+                Result(b)
+            }
+            (Result(mut a), Col(b)) => {
+                for (a, b) in a.iter_mut().zip(b.into_iter()) {
+                    *a = f(a.clone(), b.clone())
                 }
                 Result(a)
+            }
+            (Col(a), Result(mut b)) => {
+                for (a, b) in a.into_iter().zip(b.iter_mut()) {
+                    *b = f(b.clone(), a.clone())
+                }
+                Result(b)
             }
             (Result(mut a), Result(b)) => {
-                for (a, b) in a.iter_mut().zip(b.iter()) {
-                    in_place(a, b);
+                for (a, b) in a.iter_mut().zip(b.into_iter()) {
+                    *a = f(a.clone(), b)
                 }
                 Result(a)
             }
