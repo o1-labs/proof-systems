@@ -4,7 +4,7 @@ use crate::{
         Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
-    keccak::{environment::KeccakEnv, E},
+    keccak::environment::KeccakEnv,
     mips::{
         column::Column,
         interpreter::{
@@ -17,7 +17,6 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
-use kimchi::circuits::expr::ConstantExpr::Literal;
 use log::{debug, info};
 use std::array;
 use std::fs::File;
