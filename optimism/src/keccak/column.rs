@@ -59,7 +59,6 @@ pub struct KeccakColumns<T> {
     pub pi_rho_expand_rot_e: Vec<T>, // Round Curr[1065..1165)
     pub chi_shifts_b: Vec<T>,        // Round Curr[1165..1565)
     pub chi_shifts_sum: Vec<T>,      // Round Curr[1565..1965)
-    pub iota_rc: Vec<T>,             // Round Curr[1965..1969)
     pub sponge_old_state: Vec<T>,    // Sponge Curr[0..100)
     pub sponge_new_state: Vec<T>,    // Sponge Curr[100..200)
     pub sponge_bytes: Vec<T>,        // Sponge Curr[200..400)
