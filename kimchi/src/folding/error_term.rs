@@ -23,14 +23,14 @@ impl Side {
     }
 }
 
-type Fi<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 ///evaluates the expression in the provided side
 pub(crate) fn eval_sided<'a, C: FoldingConfig>(
     exp: &FoldingExp<C>,
     env: &'a ExtendedEnv<C>,
     side: Side,
-) -> EvalLeaf<'a, Fi<C>> {
+) -> EvalLeaf<'a, ScalarField<C>> {
     use FoldingExp::*;
 
     match exp {
@@ -57,7 +57,7 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     exp: &FoldingExp<C>,
     env: &'a ExtendedEnv<C>,
     side: Side,
-) -> EvalLeaf<'a, Fi<C>> {
+) -> EvalLeaf<'a, ScalarField<C>> {
     use FoldingExp::*;
 
     match exp {
@@ -98,8 +98,8 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
 pub(crate) fn compute_error<C: FoldingConfig>(
     exp: &IntegratedFoldingExpr<C>,
     env: &ExtendedEnv<C>,
-    u: (Fi<C>, Fi<C>),
-) -> [Vec<Fi<C>>; 2] {
+    u: (ScalarField<C>, ScalarField<C>),
+) -> [Vec<ScalarField<C>>; 2] {
     let (ul, ur) = (u.0, u.1);
     let u_cross = ul * ur;
     let zero = || EvalLeaf::Result(env.inner().zero_vec());
@@ -177,7 +177,7 @@ pub(crate) struct ExtendedEnv<'a, CF: FoldingConfig> {
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
     witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
     shift: &'a Evals<CF>,
-    domain: Radix2EvaluationDomain<Fi<CF>>,
+    domain: Radix2EvaluationDomain<ScalarField<CF>>,
 }
 
 impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
@@ -187,7 +187,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         shift: &'a Evals<CF>,
         instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
         witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
-        domain: Radix2EvaluationDomain<Fi<CF>>,
+        domain: Radix2EvaluationDomain<ScalarField<CF>>,
     ) -> Self {
         let inner_instances = [
             instances[0].inner_instance().inner(),
@@ -223,7 +223,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         (instances, witnesses)
     }
 
-    pub fn col(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> EvalLeaf<Fi<CF>> {
+    pub fn col(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> EvalLeaf<ScalarField<CF>> {
         use EvalLeaf::Col;
         use ExtendedFoldingColumn::*;
         let (_instance, witness) = match side {
@@ -265,7 +265,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         }
     }
 
-    pub fn add_witness_evals(&mut self, i: usize, evals: Vec<Fi<CF>>, side: Side) {
+    pub fn add_witness_evals(&mut self, i: usize, evals: Vec<ScalarField<CF>>, side: Side) {
         let (_instance, witness) = match side {
             Side::Left => (&self.instances[0], &mut self.witnesses[0]),
             Side::Right => (&self.instances[1], &mut self.witnesses[1]),
