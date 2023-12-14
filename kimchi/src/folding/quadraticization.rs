@@ -5,25 +5,25 @@ use crate::folding::{
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
+pub(crate) struct Quadraticized<C: FoldingConfig> {
+    pub(crate) original_constraints: Vec<FoldingExp<C>>,
+    pub(crate) extra_constraints: Vec<FoldingExp<C>>,
+    pub(crate) extended_witness_generator: ExtendedWitnessGenerator<C>,
+}
+
 ///returns the constraints converted into degree 2 or less and the extra contraints added in the process
-pub(crate) fn quadraticize<C: FoldingConfig>(
-    constraints: Vec<FoldingExp<C>>,
-) -> (
-    Vec<FoldingExp<C>>,
-    Vec<FoldingExp<C>>,
-    ExtendedWitnessGenerator<C>,
-) {
+pub(crate) fn quadraticize<C: FoldingConfig>(constraints: Vec<FoldingExp<C>>) -> Quadraticized<C> {
     let mut recorder = ExpRecorder::new();
     let original_constraints = constraints
         .into_iter()
         .map(|exp| lower_degree_to_2(exp, &mut recorder))
         .collect();
     let (extra_constraints, exprs) = recorder.into_constraints();
-    (
+    Quadraticized {
         original_constraints,
         extra_constraints,
-        ExtendedWitnessGenerator { exprs },
-    )
+        extended_witness_generator: ExtendedWitnessGenerator { exprs },
+    }
 }
 
 ///records expressions that have been extracted into an extra column
@@ -63,19 +63,21 @@ impl<C: FoldingConfig> ExpRecorder<C> {
     }
 }
 
-fn unbounded_degree<C: FoldingConfig>(exp: &FoldingExp<C>) -> usize {
-    match exp {
-        e @ FoldingExp::Cell(_) => match e.folding_degree() {
-            Degree::Zero => 0,
-            Degree::One => 1,
-            Degree::Two => 2,
-        },
-        FoldingExp::Double(exp) => unbounded_degree(exp),
-        FoldingExp::Square(exp) => unbounded_degree(exp) * 2,
-        FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) => {
-            std::cmp::max(unbounded_degree(e1), unbounded_degree(e2))
+impl<C: FoldingConfig> FoldingExp<C> {
+    fn degree(&self) -> usize {
+        match self {
+            e @ FoldingExp::Cell(_) => match e.folding_degree() {
+                Degree::Zero => 0,
+                Degree::One => 1,
+                Degree::Two => 2,
+            },
+            FoldingExp::Double(exp) => exp.degree(),
+            FoldingExp::Square(exp) => exp.degree() * 2,
+            FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) => {
+                std::cmp::max(e1.degree(), e2.degree())
+            }
+            FoldingExp::Mul(e1, e2) => e1.degree() + e2.degree(),
         }
-        FoldingExp::Mul(e1, e2) => unbounded_degree(e1) + unbounded_degree(e2),
     }
 }
 
@@ -83,7 +85,7 @@ fn lower_degree_to_1<C: FoldingConfig>(
     exp: FoldingExp<C>,
     rec: &mut ExpRecorder<C>,
 ) -> FoldingExp<C> {
-    let degree = unbounded_degree(&exp);
+    let degree = exp.degree();
     match degree {
         1 => exp,
         _ => {
@@ -99,7 +101,7 @@ fn lower_degree_to_2<C: FoldingConfig>(
     rec: &mut ExpRecorder<C>,
 ) -> FoldingExp<C> {
     use FoldingExp::*;
-    let degree = unbounded_degree(&exp);
+    let degree = exp.degree();
     if degree <= 2 {
         return exp;
     }
@@ -119,8 +121,8 @@ fn lower_degree_to_2<C: FoldingConfig>(
             Sub(Box::new(e1), Box::new(e2))
         }
         FoldingExp::Mul(e1, e2) => {
-            let d1 = unbounded_degree(&e1);
-            let d2 = unbounded_degree(&e2);
+            let d1 = e1.degree();
+            let d2 = e2.degree();
             assert_eq!(degree, d1 + d2);
             let (e1, e2) = (*e1, *e2);
             let (e1, e2) = match (d1, d2) {
