@@ -144,7 +144,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Degree {
     Zero,
     One,
@@ -219,9 +219,9 @@ impl std::ops::Add for Degree {
     fn add(self, rhs: Self) -> Self::Output {
         use Degree::*;
         match (self, rhs) {
-            (Zero, Zero) => Zero,
-            (Zero, One) | (One, Zero) | (One, One) => One,
             (_, Two) | (Two, _) => Two,
+            (_, One) | (One, _) => One,
+            (Zero, Zero) => Zero,
         }
     }
 }
@@ -232,10 +232,9 @@ impl std::ops::Mul for &Degree {
     fn mul(self, rhs: Self) -> Self::Output {
         use Degree::*;
         match (self, rhs) {
-            (Zero, Zero) => Zero,
-            (Zero, One) | (One, Zero) => One,
-            (Zero, Two) | (One, One) | (Two, Zero) => Two,
-            (One, Two) | (Two, One) | (Two, Two) => panic!("degree over 2"),
+            (Zero, other) | (other, Zero) => *other,
+            (One, One) => Two,
+            _ => panic!("degree over 2"),
         }
     }
 }
