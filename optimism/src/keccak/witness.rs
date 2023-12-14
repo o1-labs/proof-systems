@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
-        witness::{PiRho, Theta},
+        witness::{Chi, PiRho, Theta},
         Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS,
     },
     grid,
@@ -234,9 +234,29 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         pirho.state_b()
     }
 
-    fn run_chi(&mut self, _state_b: &[u64]) -> Vec<u64> {
-        todo!()
+    fn run_chi(&mut self, state_b: &[u64]) -> Vec<u64> {
+        let chi = Chi::create(state_b);
+
+        // Write Chi-related columns
+        for i in 0..DIM {
+            for y in 0..DIM {
+                for x in 0..DIM {
+                    for q in 0..QUARTERS {
+                        self.write_column(
+                            KeccakColumn::ChiShiftsB(i, y, x, q),
+                            chi.shifts_b(i, y, x, q),
+                        );
+                        self.write_column(
+                            KeccakColumn::ChiShiftsSum(i, y, x, q),
+                            chi.shifts_sum(i, y, x, q),
+                        );
+                    }
+                }
+            }
+        }
+        chi.state_f()
     }
+
     fn run_iota(&mut self, _state_f: &[u64], _rc: &[u64]) {
         todo!()
     }

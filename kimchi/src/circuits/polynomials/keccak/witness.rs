@@ -306,7 +306,7 @@ pub struct Chi {
 }
 
 impl Chi {
-    fn create(state_b: &[u64]) -> Self {
+    pub fn create(state_b: &[u64]) -> Self {
         let shifts_b = Keccak::shift(state_b);
         let shiftsb = grid!(400, shifts_b);
         let mut sum = vec![];
@@ -335,6 +335,20 @@ impl Chi {
             shifts_sum,
             state_f,
         }
+    }
+
+    pub fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> u64 {
+        let shifts_b = grid!(400, &self.shifts_b);
+        shifts_b(i, y, x, q)
+    }
+
+    pub fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> u64 {
+        let shifts_sum = grid!(400, &self.shifts_sum);
+        shifts_sum(i, y, x, q)
+    }
+
+    pub fn state_f(&self) -> Vec<u64> {
+        self.state_f.clone()
     }
 }
 
