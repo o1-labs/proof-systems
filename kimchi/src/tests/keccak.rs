@@ -56,15 +56,6 @@ fn eprint_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
         bytes.reverse();
         bytes.iter().fold(0, |acc: u64, x| (acc << 8) + *x as u64)
     }
-    fn eprint_line(state: &[u64]) {
-        eprint!("         ");
-        for x in 0..5 {
-            let quarters = &state[4 * x..4 * (x + 1)];
-            let word = Keccak::compose(&Keccak::collapse(&Keccak::reset(&Keccak::shift(quarters))));
-            eprint!("{:016x} ", word);
-        }
-        eprintln!();
-    }
     fn eprint_matrix(state: &[u64]) {
         for x in 0..5 {
             eprint!("         ");
@@ -91,21 +82,6 @@ fn eprint_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
     eprintln!("ROUND {}", round);
     eprintln!("State A:");
     eprint_matrix(&row[0..100]);
-    eprintln!("State C:");
-    eprint_line(&row[100..120]);
-    eprintln!("State D:");
-    eprint_line(&row[320..340]);
-    eprintln!("State E:");
-    eprint_matrix(&row[340..440]);
-    eprintln!("State B:");
-    eprint_matrix(&row[1440..1540]);
-
-    let mut state_f = row[2340..2344].to_vec();
-    let mut tail = next[4..100].to_vec();
-    state_f.append(&mut tail);
-
-    eprintln!("State F:");
-    eprint_matrix(&state_f);
     eprintln!("State G:");
     eprint_matrix(&next[0..100]);
 }
