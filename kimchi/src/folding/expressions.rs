@@ -381,13 +381,11 @@ pub fn folding_expression<C: FoldingConfig>(
     let (expressions, extra_expressions, extenden_witness_generator) =
         quadricization(simplified_expressions);
     let mut terms = vec![];
-    println!("constraints");
     let mut alpha = 0;
     for exp in expressions.into_iter() {
         terms.extend(extract_terms(exp).map(|term| (term, alpha)));
         alpha += 1;
     }
-    println!("extra");
     for exp in extra_expressions.into_iter() {
         terms.extend(extract_terms(exp).map(|term| (term, alpha)));
         alpha += 1;
