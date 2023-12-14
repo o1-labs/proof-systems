@@ -50,5 +50,5 @@ pub trait KeccakInterpreter {
     fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64>;
     fn run_pirho(&mut self, state_e: &[u64]) -> Vec<u64>;
     fn run_chi(&mut self, state_b: &[u64]) -> Vec<u64>;
-    fn run_iota(&mut self, state_f: &[u64], rc: &[u64]);
+    fn run_iota(&mut self, state_f: &[u64], round: usize);
 }
