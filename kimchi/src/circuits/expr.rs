@@ -288,32 +288,40 @@ impl<F> From<ChallengeTerm> for ConstantExpr<F> {
     }
 }
 
-impl<F: Copy> ConstantExpr<F> {
-    fn to_polish_<Column>(&self, res: &mut Vec<PolishToken<F, Column>>) {
+pub trait ToPolish<F, Column> {
+    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>);
+}
+
+impl<F: Copy, Column> ToPolish<F, Column> for ConstantExprInner<F> {
+    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>) {
         match self {
-            ConstantExpr::Atom(ConstantExprInner::Challenge(chal)) => {
-                res.push(PolishToken::Challenge(*chal))
-            }
-            ConstantExpr::Atom(ConstantExprInner::Constant(c)) => {
-                res.push(PolishToken::Constant(*c))
-            }
-            ConstantExpr::Add(x, y) => {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            ConstantExprInner::Challenge(chal) => res.push(PolishToken::Challenge(*chal)),
+            ConstantExprInner::Constant(c) => res.push(PolishToken::Constant(*c)),
+        }
+    }
+}
+
+impl<F, Column, T: ToPolish<F, Column>> ToPolish<F, Column> for Operations<T> {
+    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>) {
+        match self {
+            Operations::Atom(atom) => atom.to_polish(res),
+            Operations::Add(x, y) => {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Add)
             }
-            ConstantExpr::Mul(x, y) => {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            Operations::Mul(x, y) => {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Mul)
             }
-            ConstantExpr::Sub(x, y) => {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            Operations::Sub(x, y) => {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Sub)
             }
-            ConstantExpr::Pow(x, n) => {
-                x.to_polish_(res);
+            Operations::Pow(x, n) => {
+                x.to_polish(res);
                 res.push(PolishToken::Pow(*n))
             }
         }
@@ -1428,7 +1436,7 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
                 res.push(PolishToken::Pow(*d))
             }
             Expr::Constant(c) => {
-                c.to_polish_(res);
+                c.to_polish(res);
             }
             Expr::Cell(v) => res.push(PolishToken::Cell(*v)),
             Expr::VanishesOnZeroKnowledgeAndPreviousRows => {
