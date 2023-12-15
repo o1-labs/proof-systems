@@ -398,20 +398,23 @@ impl<F, Column, T: ToPolish<F, Column>> ToPolish<F, Column> for Operations<T> {
     }
 }
 
-impl<F: Field> ConstantExpr<F> {
+impl<T: Literal> Operations<T>
+where
+    T::F: Field,
+{
     /// Exponentiate a constant expression.
     pub fn pow(self, p: u64) -> Self {
-        use ConstantExprInner::*;
-        use Operations::*;
         if p == 0 {
-            return ConstantTerm::Literal(F::one()).into();
+            return Self::literal(T::F::one());
         }
-        match self {
-            Atom(Constant(ConstantTerm::Literal(x))) => ConstantTerm::Literal(x.pow([p])).into(),
-            x => Pow(Box::new(x), p),
+        match self.to_literal() {
+            Ok(l) => Self::literal(<T::F as Field>::pow(&l, [p])),
+            Err(x) => Self::Pow(Box::new(x), p),
         }
     }
+}
 
+impl<F: Field> ConstantExpr<F> {
     /// Evaluate the given constant expression to a field element.
     pub fn value(&self, c: &Constants<F>, chals: &Challenges<F>) -> F {
         use ConstantExprInner::*;
