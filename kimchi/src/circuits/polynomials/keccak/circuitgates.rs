@@ -1,5 +1,5 @@
 //! Keccak gadget
-use super::{DIM, OFF, QUARTERS};
+use super::{DIM, OFF, QUARTERS, STATE_LEN};
 use crate::{
     auto_clone, auto_clone_array,
     circuits::{
@@ -249,7 +249,7 @@ where
             // Absorb phase pads with zeros the new state
             constraints.push(absorb() * z);
         }
-        for i in 0..QUARTERS * DIM * DIM {
+        for i in 0..STATE_LEN {
             // In first absorb, root state is all zeros
             constraints.push(root() * old_state(i));
             // Absorbs the new block by performing XOR with the old state

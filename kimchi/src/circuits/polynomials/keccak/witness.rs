@@ -3,7 +3,7 @@
 use std::array;
 
 use crate::circuits::polynomials::keccak::{
-    Keccak, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF, QUARTERS, RATE_IN_BYTES, RC,
+    Keccak, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF, QUARTERS, RATE_IN_BYTES, RC, STATE_LEN,
 };
 use crate::{
     auto_clone,
@@ -471,7 +471,7 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
 
     // Squeeze phase
 
-    let new_state = vec![0; QUARTERS * DIM * DIM];
+    let new_state = vec![0; STATE_LEN];
     let shifts = Keccak::shift(&state);
     let dense = Keccak::collapse(&Keccak::reset(&shifts));
     let bytes = Keccak::bytestring(&dense);

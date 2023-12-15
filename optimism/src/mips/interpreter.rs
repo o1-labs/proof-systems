@@ -140,6 +140,9 @@ pub enum LookupTable {
     RoundConstantsLookup,
     // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     PadLookup,
+    // All values that can be stored in a byte
+    // TODO: model as RangeCheck16 for x and a scaled x' = x * 2^8
+    ByteLookup,
 }
 
 #[derive(Clone, Debug)]
