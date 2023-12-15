@@ -108,12 +108,10 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             }
             // Check that the padding is located at the end of the message
             // TODO: get power of two from lookup table
-            let pad_at_end = (0..RATE_IN_BYTES).fold(Self::constant(Fp::zero()), |acc, i| {
-                acc * Self::constant(Fp::from(2u8)) + self.sponge_bytes(i)
+            let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
+                acc * Self::two() + self.sponge_bytes(i)
             });
-            self.constrain(
-                self.pad() * (self.two_to_pad() - Self::constant(Fp::one()) - pad_at_end),
-            );
+            self.constrain(self.pad() * (self.two_to_pad() - Self::one() - pad_at_end));
             // Check that the padding value is correct
             // TODO: get suffix from lookup table
             for i in 0..5 {
@@ -128,16 +126,14 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             // self.round() = [0..24)
 
             // Define vectors storing expressions which are not in the witness layout for efficiency
-            let mut state_c: Vec<Vec<Self::Variable>> =
-                vec![vec![Self::constant(Fp::zero()); QUARTERS]; DIM];
-            let mut state_d: Vec<Vec<Self::Variable>> =
-                vec![vec![Self::constant(Fp::zero()); QUARTERS]; DIM];
+            let mut state_c: Vec<Vec<Self::Variable>> = vec![vec![Self::zero(); QUARTERS]; DIM];
+            let mut state_d: Vec<Vec<Self::Variable>> = vec![vec![Self::zero(); QUARTERS]; DIM];
             let mut state_e: Vec<Vec<Vec<Self::Variable>>> =
-                vec![vec![vec![Self::constant(Fp::zero()); QUARTERS]; DIM]; DIM];
+                vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
             let mut state_b: Vec<Vec<Vec<Self::Variable>>> =
-                vec![vec![vec![Self::constant(Fp::zero()); QUARTERS]; DIM]; DIM];
+                vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
             let mut state_f: Vec<Vec<Vec<Self::Variable>>> =
-                vec![vec![vec![Self::constant(Fp::zero()); QUARTERS]; DIM]; DIM];
+                vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
 
             // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
             for x in 0..DIM {

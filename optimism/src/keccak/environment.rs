@@ -117,6 +117,15 @@ impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
     fn two_pow(x: u64) -> Self::Variable {
         Self::constant(Self::Fp::two_pow(x))
     }
+    fn zero() -> Self::Variable {
+        Self::constant(Self::Fp::zero())
+    }
+    fn one() -> Self::Variable {
+        Self::constant(Self::Fp::one())
+    }
+    fn two() -> Self::Variable {
+        Self::constant(Self::Fp::from(2u8))
+    }
 }
 
 pub(crate) trait KeccakEnvironment {
@@ -339,7 +348,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .iter()
             .zip(flags)
             .fold(Self::constant(Fp::zero()), |acc, (byte, flag)| {
-                acc + byte.clone() * flag * Self::constant(Self::Fp::from(256u16))
+                acc + byte.clone() * flag * Self::two_pow(8)
             });
 
         pad

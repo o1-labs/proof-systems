@@ -61,4 +61,8 @@ pub(crate) trait ArithOps {
     fn constant(x: Self::Fp) -> Self::Variable;
 
     fn two_pow(x: u64) -> Self::Variable;
+
+    fn zero() -> Self::Variable;
+    fn one() -> Self::Variable;
+    fn two() -> Self::Variable;
 }
