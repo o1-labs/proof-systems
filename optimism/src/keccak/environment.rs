@@ -17,7 +17,7 @@ pub struct KeccakEnv<Fp> {
     /// Constraints that are added to the circuit
     pub(crate) constraints: Vec<E<Fp>>,
     /// Values that are looked up in the circuit
-    pub(crate) _lookup_terms: Vec<Lookup<E<Fp>>>, // at most 5 values are looked up at a time
+    pub(crate) lookups: Vec<Lookup<E<Fp>>>, // at most 5 values are looked up at a time
     /// Expanded block of previous step    
     pub(crate) prev_block: Vec<u64>,
     /// Padded preimage data
