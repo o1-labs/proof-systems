@@ -95,7 +95,7 @@
 };
 <span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
 
-<span class="kw">use super</span>::{expand_word, padded_length, RATE_IN_BYTES, RC, ROUNDS};
+<span class="kw">use super</span>::{Keccak, RATE_IN_BYTES, RC, ROUNDS};
 
 <span class="kw">const </span>SPONGE_COEFFS: usize = <span class="number">336</span>;
 
@@ -112,7 +112,7 @@
 
     <span class="doccomment">/// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, message of a given bytelength
     </span><span class="kw">fn </span>create_keccak(new_row: usize, bytelength: usize) -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>padded_len = padded_length(bytelength);
+        <span class="kw">let </span>padded_len = Keccak::padded_length(bytelength);
         <span class="kw">let </span>extra_bytes = padded_len - bytelength;
         <span class="kw">let </span>num_blocks = padded_len / RATE_IN_BYTES;
         <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
@@ -174,7 +174,7 @@
         CircuitGate {
             typ: GateType::KeccakRound,
             wires: Wire::for_row(new_row),
-            coeffs: expand_word(RC[round]),
+            coeffs: Keccak::expand_word(RC[round]),
         }
     }
 }

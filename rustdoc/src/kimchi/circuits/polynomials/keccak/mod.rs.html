@@ -403,6 +403,21 @@
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak hash module
 </span><span class="kw">pub mod </span>circuitgates;
 <span class="kw">pub mod </span>gadget;
@@ -448,7 +463,7 @@
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
 /// Note that the order of the indexing is [y][x] to match the encoding of the witness algorithm
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>OFF: [[u64; DIM]; DIM] = [
+</span><span class="kw">pub const </span>OFF: [[u64; DIM]; DIM] = [
     [<span class="number">0</span>, <span class="number">1</span>, <span class="number">62</span>, <span class="number">28</span>, <span class="number">27</span>],
     [<span class="number">36</span>, <span class="number">44</span>, <span class="number">6</span>, <span class="number">55</span>, <span class="number">20</span>],
     [<span class="number">3</span>, <span class="number">10</span>, <span class="number">43</span>, <span class="number">25</span>, <span class="number">39</span>],
@@ -456,7 +471,7 @@
     [<span class="number">18</span>, <span class="number">2</span>, <span class="number">61</span>, <span class="number">56</span>, <span class="number">14</span>],
 ];
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>RC: [u64; <span class="number">24</span>] = [
+<span class="kw">pub const </span>RC: [u64; <span class="number">24</span>] = [
     <span class="number">0x0000000000000001</span>,
     <span class="number">0x0000000000008082</span>,
     <span class="number">0x800000000000808a</span>,
@@ -483,123 +498,132 @@
     <span class="number">0x8000000080008008</span>,
 ];
 
-<span class="doccomment">/// Composes a vector of 4 dense quarters into the dense full u64 word
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compose(quarters: <span class="kw-2">&amp;</span>[u64]) -&gt; u64 {
-    quarters[<span class="number">0</span>] + (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>) * quarters[<span class="number">1</span>] + (<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) * quarters[<span class="number">2</span>] + (<span class="number">1 </span>&lt;&lt; <span class="number">48</span>) * quarters[<span class="number">3</span>]
-}
+<span class="doccomment">/// Naive Keccak structure
+</span><span class="kw">pub struct </span>Keccak {}
 
-<span class="doccomment">/// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters.
-/// The first element of the vector corresponds to the 16 least significant bits.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>decompose(word: u64) -&gt; Vec&lt;u64&gt; {
-    <span class="macro">vec!</span>[
-        word % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
-        (word / (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)) % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
-        (word / (<span class="number">1 </span>&lt;&lt; <span class="number">32</span>)) % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
-        (word / (<span class="number">1 </span>&lt;&lt; <span class="number">48</span>)) % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
-    ]
-}
-
-<span class="doccomment">/// Expands a quarter of a word into the sparse representation as a u64
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>expand(quarter: u64) -&gt; u64 {
-    u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{:b}&quot;</span>, quarter), <span class="number">16</span>).unwrap()
-}
-
-<span class="doccomment">/// Expands a u64 word into a vector of 4 sparse u64 quarters
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>expand_word&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(word: u64) -&gt; Vec&lt;T&gt; {
-    decompose(word)
-        .iter()
-        .map(|q| T::literal(F::from(expand(<span class="kw-2">*</span>q))))
-        .collect::&lt;Vec&lt;T&gt;&gt;()
-}
-
-<span class="doccomment">/// Returns the expansion of the 4 dense decomposed quarters of a word
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sparse(word: u64) -&gt; Vec&lt;u64&gt; {
-    decompose(word)
-        .iter()
-        .map(|q| expand(<span class="kw-2">*</span>q))
-        .collect::&lt;Vec&lt;u64&gt;&gt;()
-}
-
-<span class="doccomment">/// From each quarter in sparse representation, it computes its 4 resets.
-/// The resulting vector contains 4 times as many elements as the input.
-/// The output is placed in the vector as [shift0, shift1, shift2, shift3]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>shift(state: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
-    <span class="kw">let </span>n = state.len();
-    <span class="kw">let </span><span class="kw-2">mut </span>shifts = <span class="macro">vec!</span>[<span class="number">0</span>; QUARTERS * n];
-    <span class="kw">let </span>aux = expand(<span class="number">0xFFFF</span>);
-    <span class="kw">for </span>(i, term) <span class="kw">in </span>state.iter().enumerate() {
-        shifts[i] = aux &amp; term; <span class="comment">// shift0 = reset0
-        </span>shifts[n + i] = ((aux &lt;&lt; <span class="number">1</span>) &amp; term) / <span class="number">2</span>; <span class="comment">// shift1 = reset1/2
-        </span>shifts[<span class="number">2 </span>* n + i] = ((aux &lt;&lt; <span class="number">2</span>) &amp; term) / <span class="number">4</span>; <span class="comment">// shift2 = reset2/4
-        </span>shifts[<span class="number">3 </span>* n + i] = ((aux &lt;&lt; <span class="number">3</span>) &amp; term) / <span class="number">8</span>; <span class="comment">// shift3 = reset3/8
-    </span>}
-    shifts
-}
-
-<span class="doccomment">/// From a vector of shifts, resets the underlying value returning only shift0
-/// Note that shifts is always a vector whose length is a multiple of 4.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>reset(shifts: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
-    shifts[<span class="number">0</span>..shifts.len() / QUARTERS].to_vec()
-}
-
-<span class="doccomment">/// From a canonical expanded state, obtain the corresponding 16-bit dense terms
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>collapse(state: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
-    state
-        .iter()
-        .map(|<span class="kw-2">&amp;</span>reset| u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{:x}&quot;</span>, reset), <span class="number">2</span>).unwrap())
-        .collect::&lt;Vec&lt;u64&gt;&gt;()
-}
-
-<span class="doccomment">/// Outputs the state into dense quarters of 16-bits each in little endian order
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>quarters(state: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u64&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>quarters = <span class="macro">vec!</span>[];
-    <span class="kw">for </span>pair <span class="kw">in </span>state.chunks(<span class="number">2</span>) {
-        quarters.push(u16::from_le_bytes([pair[<span class="number">0</span>], pair[<span class="number">1</span>]]) <span class="kw">as </span>u64);
+<span class="doccomment">/// Trait containing common operations for optimized Keccak
+</span><span class="kw">impl </span>Keccak {
+    <span class="doccomment">/// Composes a vector of 4 dense quarters into the dense full u64 word
+    </span><span class="kw">pub fn </span>compose(quarters: <span class="kw-2">&amp;</span>[u64]) -&gt; u64 {
+        quarters[<span class="number">0</span>] + (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>) * quarters[<span class="number">1</span>] + (<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) * quarters[<span class="number">2</span>] + (<span class="number">1 </span>&lt;&lt; <span class="number">48</span>) * quarters[<span class="number">3</span>]
     }
-    quarters
-}
-
-<span class="doccomment">/// On input a vector of 16-bit dense quarters, outputs a vector of 8-bit bytes in the right order for Keccak
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bytestring(dense: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
-    dense
-        .iter()
-        .map(|x| <span class="macro">vec!</span>[x % <span class="number">256</span>, x / <span class="number">256</span>])
-        .collect::&lt;Vec&lt;Vec&lt;u64&gt;&gt;&gt;()
-        .iter()
-        .flatten()
-        .copied()
-        .collect()
-}
-
-<span class="doccomment">/// On input a 200-byte vector, generates a vector of 100 expanded quarters representing the 1600-bit state
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>expand_state(state: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u64&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>expanded = <span class="macro">vec!</span>[];
-    <span class="kw">for </span>pair <span class="kw">in </span>state.chunks(<span class="number">2</span>) {
-        <span class="kw">let </span>quarter = u16::from_le_bytes([pair[<span class="number">0</span>], pair[<span class="number">1</span>]]);
-        expanded.push(expand(quarter <span class="kw">as </span>u64));
+    <span class="doccomment">/// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters.
+    /// The first element of the vector corresponds to the 16 least significant bits.
+    </span><span class="kw">pub fn </span>decompose(word: u64) -&gt; Vec&lt;u64&gt; {
+        <span class="macro">vec!</span>[
+            word % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
+            (word / (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)) % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
+            (word / (<span class="number">1 </span>&lt;&lt; <span class="number">32</span>)) % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
+            (word / (<span class="number">1 </span>&lt;&lt; <span class="number">48</span>)) % (<span class="number">1 </span>&lt;&lt; <span class="number">16</span>),
+        ]
     }
-    expanded
-}
 
-<span class="doccomment">/// On input a length, returns the smallest multiple of RATE_IN_BYTES that is greater than the bytelength.
-/// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
-/// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>padded_length(bytelength: usize) -&gt; usize {
-    (bytelength / RATE_IN_BYTES + <span class="number">1</span>) * RATE_IN_BYTES
-}
-
-<span class="doccomment">/// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad(message: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
-    <span class="kw">let </span>msg_len = message.len();
-    <span class="kw">let </span>pad_len = padded_length(msg_len);
-    <span class="kw">let </span><span class="kw-2">mut </span>padded = <span class="macro">vec!</span>[<span class="number">0</span>; pad_len];
-    <span class="kw">for </span>(i, byte) <span class="kw">in </span>message.iter().enumerate() {
-        padded[i] = <span class="kw-2">*</span>byte;
+    <span class="doccomment">/// Expands a quarter of a word into the sparse representation as a u64
+    </span><span class="kw">pub fn </span>expand(quarter: u64) -&gt; u64 {
+        u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{:b}&quot;</span>, quarter), <span class="number">16</span>).unwrap()
     }
-    padded[msg_len] = <span class="number">0x01</span>;
-    padded[pad_len - <span class="number">1</span>] += <span class="number">0x80</span>;
 
-    padded
+    <span class="doccomment">/// Expands a u64 word into a vector of 4 sparse u64 quarters
+    </span><span class="kw">pub fn </span>expand_word&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(word: u64) -&gt; Vec&lt;T&gt; {
+        <span class="self">Self</span>::decompose(word)
+            .iter()
+            .map(|q| T::literal(F::from(<span class="self">Self</span>::expand(<span class="kw-2">*</span>q))))
+            .collect::&lt;Vec&lt;T&gt;&gt;()
+    }
+
+    <span class="doccomment">/// Returns the expansion of the 4 dense decomposed quarters of a word
+    </span><span class="kw">pub fn </span>sparse(word: u64) -&gt; Vec&lt;u64&gt; {
+        <span class="self">Self</span>::decompose(word)
+            .iter()
+            .map(|q| <span class="self">Self</span>::expand(<span class="kw-2">*</span>q))
+            .collect::&lt;Vec&lt;u64&gt;&gt;()
+    }
+    <span class="doccomment">/// From each quarter in sparse representation, it computes its 4 resets.
+    /// The resulting vector contains 4 times as many elements as the input.
+    /// The output is placed in the vector as [shift0, shift1, shift2, shift3]
+    </span><span class="kw">pub fn </span>shift(state: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
+        <span class="kw">let </span>n = state.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>shifts = <span class="macro">vec!</span>[<span class="number">0</span>; QUARTERS * n];
+        <span class="kw">let </span>aux = <span class="self">Self</span>::expand(<span class="number">0xFFFF</span>);
+        <span class="kw">for </span>(i, term) <span class="kw">in </span>state.iter().enumerate() {
+            shifts[i] = aux &amp; term; <span class="comment">// shift0 = reset0
+            </span>shifts[n + i] = ((aux &lt;&lt; <span class="number">1</span>) &amp; term) / <span class="number">2</span>; <span class="comment">// shift1 = reset1/2
+            </span>shifts[<span class="number">2 </span>* n + i] = ((aux &lt;&lt; <span class="number">2</span>) &amp; term) / <span class="number">4</span>; <span class="comment">// shift2 = reset2/4
+            </span>shifts[<span class="number">3 </span>* n + i] = ((aux &lt;&lt; <span class="number">3</span>) &amp; term) / <span class="number">8</span>; <span class="comment">// shift3 = reset3/8
+        </span>}
+        shifts
+    }
+
+    <span class="doccomment">/// From a vector of shifts, resets the underlying value returning only shift0
+    /// Note that shifts is always a vector whose length is a multiple of 4.
+    </span><span class="kw">pub fn </span>reset(shifts: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
+        shifts[<span class="number">0</span>..shifts.len() / QUARTERS].to_vec()
+    }
+
+    <span class="doccomment">/// From a canonical expanded state, obtain the corresponding 16-bit dense terms
+    </span><span class="kw">pub fn </span>collapse(state: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
+        state
+            .iter()
+            .map(|<span class="kw-2">&amp;</span>reset| u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{:x}&quot;</span>, reset), <span class="number">2</span>).unwrap())
+            .collect::&lt;Vec&lt;u64&gt;&gt;()
+    }
+
+    <span class="doccomment">/// Outputs the state into dense quarters of 16-bits each in little endian order
+    </span><span class="kw">pub fn </span>quarters(state: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u64&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>quarters = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>pair <span class="kw">in </span>state.chunks(<span class="number">2</span>) {
+            quarters.push(u16::from_le_bytes([pair[<span class="number">0</span>], pair[<span class="number">1</span>]]) <span class="kw">as </span>u64);
+        }
+        quarters
+    }
+
+    <span class="doccomment">/// On input a vector of 16-bit dense quarters, outputs a vector of 8-bit bytes in the right order for Keccak
+    </span><span class="kw">pub fn </span>bytestring(dense: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
+        dense
+            .iter()
+            .map(|x| <span class="macro">vec!</span>[x % <span class="number">256</span>, x / <span class="number">256</span>])
+            .collect::&lt;Vec&lt;Vec&lt;u64&gt;&gt;&gt;()
+            .iter()
+            .flatten()
+            .copied()
+            .collect()
+    }
+
+    <span class="doccomment">/// On input a 200-byte vector, generates a vector of 100 expanded quarters representing the 1600-bit state
+    </span><span class="kw">pub fn </span>expand_state(state: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u64&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>expanded = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>pair <span class="kw">in </span>state.chunks(<span class="number">2</span>) {
+            <span class="kw">let </span>quarter = u16::from_le_bytes([pair[<span class="number">0</span>], pair[<span class="number">1</span>]]);
+            expanded.push(<span class="self">Self</span>::expand(quarter <span class="kw">as </span>u64));
+        }
+        expanded
+    }
+
+    <span class="doccomment">/// On input a length, returns the smallest multiple of RATE_IN_BYTES that is greater than the bytelength.
+    /// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
+    /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
+    </span><span class="kw">pub fn </span>padded_length(bytelength: usize) -&gt; usize {
+        (bytelength / RATE_IN_BYTES + <span class="number">1</span>) * RATE_IN_BYTES
+    }
+
+    <span class="doccomment">/// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
+    </span><span class="kw">pub fn </span>pad(message: <span class="kw-2">&amp;</span>[u8]) -&gt; Vec&lt;u8&gt; {
+        <span class="kw">let </span>msg_len = message.len();
+        <span class="kw">let </span>pad_len = <span class="self">Self</span>::padded_length(msg_len);
+        <span class="kw">let </span><span class="kw-2">mut </span>padded = <span class="macro">vec!</span>[<span class="number">0</span>; pad_len];
+        <span class="kw">for </span>(i, byte) <span class="kw">in </span>message.iter().enumerate() {
+            padded[i] = <span class="kw-2">*</span>byte;
+        }
+        padded[msg_len] = <span class="number">0x01</span>;
+        padded[pad_len - <span class="number">1</span>] += <span class="number">0x80</span>;
+
+        padded
+    }
+
+    <span class="doccomment">/// Number of blocks to be absorbed on input a given preimage bytelength
+    </span><span class="kw">pub fn </span>num_blocks(bytelength: usize) -&gt; usize {
+        <span class="self">Self</span>::padded_length(bytelength) / RATE_IN_BYTES
+    }
 }
 
 <span class="attr">#[cfg(test)]
@@ -619,9 +643,9 @@
     </span><span class="comment">// Shows that the expansion of the 16-bit dense quarters into 64-bit sparse quarters
     // corresponds to the binary representation of the 16-bit dense quarter.
     </span><span class="kw">fn </span>test_bitwise_sparse_representation() {
-        <span class="macro">assert_eq!</span>(expand(<span class="number">0xFFFF</span>), <span class="number">0x1111111111111111</span>);
-        <span class="macro">assert_eq!</span>(expand(<span class="number">0x0000</span>), <span class="number">0x0000000000000000</span>);
-        <span class="macro">assert_eq!</span>(expand(<span class="number">0x1234</span>), <span class="number">0x0001001000110100</span>)
+        <span class="macro">assert_eq!</span>(Keccak::expand(<span class="number">0xFFFF</span>), <span class="number">0x1111111111111111</span>);
+        <span class="macro">assert_eq!</span>(Keccak::expand(<span class="number">0x0000</span>), <span class="number">0x0000000000000000</span>);
+        <span class="macro">assert_eq!</span>(Keccak::expand(<span class="number">0x1234</span>), <span class="number">0x0001001000110100</span>)
     }
 
     <span class="attr">#[test]
@@ -629,12 +653,12 @@
     // and the order of the quarters is the desired one.
     </span><span class="kw">fn </span>test_compose_decompose() {
         <span class="kw">let </span>word: u64 = <span class="number">0x70d324ac9215fd8e</span>;
-        <span class="kw">let </span>dense = decompose(word);
+        <span class="kw">let </span>dense = Keccak::decompose(word);
         <span class="kw">let </span>expected_dense = [<span class="number">0xfd8e</span>, <span class="number">0x9215</span>, <span class="number">0x24ac</span>, <span class="number">0x70d3</span>];
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
             <span class="macro">assert_eq!</span>(dense[i], expected_dense[i]);
         }
-        <span class="macro">assert_eq!</span>(word, compose(<span class="kw-2">&amp;</span>dense));
+        <span class="macro">assert_eq!</span>(word, Keccak::compose(<span class="kw-2">&amp;</span>dense));
     }
 
     <span class="attr">#[test]
@@ -642,14 +666,14 @@
     </span><span class="kw">fn </span>test_quarter_expansion() {
         <span class="kw">let </span>quarter: u16 = <span class="number">0b01011010111011011</span>; <span class="comment">// 0xB5DB
         </span><span class="kw">let </span>expected_expansion = <span class="number">0b0001000000010001000000010000000100010001000000010001000000010001</span>; <span class="comment">// 0x01011010111011011
-        </span><span class="macro">assert_eq!</span>(expected_expansion, expand(quarter <span class="kw">as </span>u64));
+        </span><span class="macro">assert_eq!</span>(expected_expansion, Keccak::expand(quarter <span class="kw">as </span>u64));
     }
 
     <span class="attr">#[test]
     </span><span class="comment">// Tests that expansion of decomposed quarters works as expected
     </span><span class="kw">fn </span>test_sparse() {
         <span class="kw">let </span>word: u64 = <span class="number">0x1234567890abcdef</span>;
-        <span class="kw">let </span>sparse = sparse(word);
+        <span class="kw">let </span>sparse = Keccak::sparse(word);
         <span class="kw">let </span>expected_sparse: Vec&lt;u64&gt; = <span class="macro">vec!</span>[
             <span class="number">0x1100110111101111</span>, <span class="comment">// 0xcdef
             </span><span class="number">0x1001000010101011</span>, <span class="comment">// 0x90ab
@@ -666,8 +690,8 @@
     </span><span class="kw">fn </span>test_shifts() {
         <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
-        <span class="kw">let </span>sparse = sparse(word);
-        <span class="kw">let </span>shifts = shift(<span class="kw-2">&amp;</span>sparse);
+        <span class="kw">let </span>sparse = Keccak::sparse(word);
+        <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>sparse);
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
             <span class="macro">assert_eq!</span>(
                 sparse[i],
@@ -681,8 +705,8 @@
     </span><span class="kw">fn </span>test_reset() {
         <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
-        <span class="kw">let </span>shifts = shift(<span class="kw-2">&amp;</span>sparse(word));
-        <span class="kw">let </span>reset = reset(<span class="kw-2">&amp;</span>shifts);
+        <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>Keccak::sparse(word));
+        <span class="kw">let </span>reset = Keccak::reset(<span class="kw-2">&amp;</span>shifts);
         <span class="macro">assert_eq!</span>(reset.len(), <span class="number">4</span>);
         <span class="macro">assert_eq!</span>(shifts.len(), <span class="number">16</span>);
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
@@ -695,7 +719,9 @@
     </span><span class="kw">fn </span>test_collapse() {
         <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
-        <span class="kw">let </span>dense = compose(<span class="kw-2">&amp;</span>collapse(<span class="kw-2">&amp;</span>reset(<span class="kw-2">&amp;</span>shift(<span class="kw-2">&amp;</span>sparse(word)))));
+        <span class="kw">let </span>dense = Keccak::compose(<span class="kw-2">&amp;</span>Keccak::collapse(<span class="kw-2">&amp;</span>Keccak::reset(<span class="kw-2">&amp;</span>Keccak::shift(
+            <span class="kw-2">&amp;</span>Keccak::sparse(word),
+        ))));
         <span class="macro">assert_eq!</span>(word, dense);
     }
 
@@ -707,15 +733,16 @@
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>carries = <span class="number">0xEEEE</span>;
         <span class="comment">// add a few carry bits to the canonical representation
-        </span><span class="kw">let </span><span class="kw-2">mut </span>sparse = sparse(word)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>sparse = Keccak::sparse(word)
             .iter()
             .map(|x| <span class="kw-2">*</span>x + carries)
             .collect::&lt;Vec&lt;u64&gt;&gt;();
-        <span class="kw">let </span>dense = compose(<span class="kw-2">&amp;</span>collapse(<span class="kw-2">&amp;</span>reset(<span class="kw-2">&amp;</span>shift(<span class="kw-2">&amp;</span>sparse))));
+        <span class="kw">let </span>dense = Keccak::compose(<span class="kw-2">&amp;</span>Keccak::collapse(<span class="kw-2">&amp;</span>Keccak::reset(<span class="kw-2">&amp;</span>Keccak::shift(<span class="kw-2">&amp;</span>sparse))));
         <span class="macro">assert_eq!</span>(word, dense);
 
         sparse[<span class="number">0</span>] += <span class="number">1</span>;
-        <span class="kw">let </span>wrong_dense = compose(<span class="kw-2">&amp;</span>collapse(<span class="kw-2">&amp;</span>reset(<span class="kw-2">&amp;</span>shift(<span class="kw-2">&amp;</span>sparse))));
+        <span class="kw">let </span>wrong_dense =
+            Keccak::compose(<span class="kw-2">&amp;</span>Keccak::collapse(<span class="kw-2">&amp;</span>Keccak::reset(<span class="kw-2">&amp;</span>Keccak::shift(<span class="kw-2">&amp;</span>sparse))));
         <span class="macro">assert_ne!</span>(word, wrong_dense);
     }
 
@@ -728,8 +755,8 @@
         <span class="kw">let </span>b: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>xor = a ^ b;
 
-        <span class="kw">let </span>sparse_a = sparse(a);
-        <span class="kw">let </span>sparse_b = sparse(b);
+        <span class="kw">let </span>sparse_a = Keccak::sparse(a);
+        <span class="kw">let </span>sparse_b = Keccak::sparse(b);
 
         <span class="comment">// compute xor as sum of a and b
         </span><span class="kw">let </span>sparse_sum = sparse_a
@@ -737,9 +764,9 @@
             .zip(sparse_b.iter())
             .map(|(a, b)| a + b)
             .collect::&lt;Vec&lt;u64&gt;&gt;();
-        <span class="kw">let </span>reset_sum = reset(<span class="kw-2">&amp;</span>shift(<span class="kw-2">&amp;</span>sparse_sum));
+        <span class="kw">let </span>reset_sum = Keccak::reset(<span class="kw-2">&amp;</span>Keccak::shift(<span class="kw-2">&amp;</span>sparse_sum));
 
-        <span class="macro">assert_eq!</span>(sparse(xor), reset_sum);
+        <span class="macro">assert_eq!</span>(Keccak::sparse(xor), reset_sum);
     }
 
     <span class="attr">#[test]
@@ -751,8 +778,8 @@
         <span class="kw">let </span>b: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>and = a &amp; b;
 
-        <span class="kw">let </span>sparse_a = sparse(a);
-        <span class="kw">let </span>sparse_b = sparse(b);
+        <span class="kw">let </span>sparse_a = Keccak::sparse(a);
+        <span class="kw">let </span>sparse_b = Keccak::sparse(b);
 
         <span class="comment">// compute and as carries of sum of a and b
         </span><span class="kw">let </span>sparse_sum = sparse_a
@@ -760,9 +787,9 @@
             .zip(sparse_b.iter())
             .map(|(a, b)| a + b)
             .collect::&lt;Vec&lt;u64&gt;&gt;();
-        <span class="kw">let </span>carries_sum = <span class="kw-2">&amp;</span>shift(<span class="kw-2">&amp;</span>sparse_sum)[<span class="number">4</span>..<span class="number">8</span>];
+        <span class="kw">let </span>carries_sum = <span class="kw-2">&amp;</span>Keccak::shift(<span class="kw-2">&amp;</span>sparse_sum)[<span class="number">4</span>..<span class="number">8</span>];
 
-        <span class="macro">assert_eq!</span>(sparse(and), carries_sum);
+        <span class="macro">assert_eq!</span>(Keccak::sparse(and), carries_sum);
     }
 
     <span class="attr">#[test]
@@ -771,38 +798,41 @@
     </span><span class="kw">fn </span>test_sparse_not() {
         <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
         <span class="kw">let </span>word = rng.gen_range(<span class="number">0</span>..<span class="number">2u64</span>.pow(<span class="number">16</span>));
-        <span class="kw">let </span>expanded = expand(word);
+        <span class="kw">let </span>expanded = Keccak::expand(word);
 
         <span class="comment">// compute not as subtraction with expand all ones
         </span><span class="kw">let </span>all_ones = <span class="number">0xFFFF</span>;
         <span class="kw">let </span>not = all_ones - word;
-        <span class="kw">let </span>sparse_not = expand(all_ones) - expanded;
+        <span class="kw">let </span>sparse_not = Keccak::expand(all_ones) - expanded;
 
-        <span class="macro">assert_eq!</span>(not, collapse(<span class="kw-2">&amp;</span>[sparse_not])[<span class="number">0</span>]);
+        <span class="macro">assert_eq!</span>(not, Keccak::collapse(<span class="kw-2">&amp;</span>[sparse_not])[<span class="number">0</span>]);
     }
 
     <span class="attr">#[test]
     </span><span class="comment">// Checks that the padding length is correctly computed
     </span><span class="kw">fn </span>test_pad_length() {
-        <span class="macro">assert_eq!</span>(padded_length(<span class="number">0</span>), RATE_IN_BYTES);
-        <span class="macro">assert_eq!</span>(padded_length(<span class="number">1</span>), RATE_IN_BYTES);
-        <span class="macro">assert_eq!</span>(padded_length(RATE_IN_BYTES - <span class="number">1</span>), RATE_IN_BYTES);
+        <span class="macro">assert_eq!</span>(Keccak::padded_length(<span class="number">0</span>), RATE_IN_BYTES);
+        <span class="macro">assert_eq!</span>(Keccak::padded_length(<span class="number">1</span>), RATE_IN_BYTES);
+        <span class="macro">assert_eq!</span>(Keccak::padded_length(RATE_IN_BYTES - <span class="number">1</span>), RATE_IN_BYTES);
         <span class="comment">// If input is already a multiple of RATE bytes, it needs to add a whole new block just for padding
-        </span><span class="macro">assert_eq!</span>(padded_length(RATE_IN_BYTES), <span class="number">2 </span>* RATE_IN_BYTES);
-        <span class="macro">assert_eq!</span>(padded_length(RATE_IN_BYTES * <span class="number">2 </span>- <span class="number">1</span>), <span class="number">2 </span>* RATE_IN_BYTES);
-        <span class="macro">assert_eq!</span>(padded_length(RATE_IN_BYTES * <span class="number">2</span>), <span class="number">3 </span>* RATE_IN_BYTES);
+        </span><span class="macro">assert_eq!</span>(Keccak::padded_length(RATE_IN_BYTES), <span class="number">2 </span>* RATE_IN_BYTES);
+        <span class="macro">assert_eq!</span>(
+            Keccak::padded_length(RATE_IN_BYTES * <span class="number">2 </span>- <span class="number">1</span>),
+            <span class="number">2 </span>* RATE_IN_BYTES
+        );
+        <span class="macro">assert_eq!</span>(Keccak::padded_length(RATE_IN_BYTES * <span class="number">2</span>), <span class="number">3 </span>* RATE_IN_BYTES);
     }
 
     <span class="attr">#[test]
     </span><span class="comment">// Checks that the padding is correctly computed
     </span><span class="kw">fn </span>test_pad() {
         <span class="kw">let </span>message = <span class="macro">vec!</span>[<span class="number">0xFF</span>; RATE_IN_BYTES - <span class="number">1</span>];
-        <span class="kw">let </span>padded = pad(<span class="kw-2">&amp;</span>message);
+        <span class="kw">let </span>padded = Keccak::pad(<span class="kw-2">&amp;</span>message);
         <span class="macro">assert_eq!</span>(padded.len(), RATE_IN_BYTES);
         <span class="macro">assert_eq!</span>(padded[padded.len() - <span class="number">1</span>], <span class="number">0x81</span>);
 
         <span class="kw">let </span>message = <span class="macro">vec!</span>[<span class="number">0x01</span>; RATE_IN_BYTES];
-        <span class="kw">let </span>padded = pad(<span class="kw-2">&amp;</span>message);
+        <span class="kw">let </span>padded = Keccak::pad(<span class="kw-2">&amp;</span>message);
         <span class="macro">assert_eq!</span>(padded.len(), <span class="number">2 </span>* RATE_IN_BYTES);
         <span class="macro">assert_eq!</span>(padded[message.len()], <span class="number">0x01</span>);
         <span class="macro">assert_eq!</span>(padded[padded.len() - <span class="number">1</span>], <span class="number">0x80</span>);
