@@ -28,5 +28,27 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         self.lookups.push(lookup);
     }
 
-    fn lookups(&mut self) {}
+    fn lookups(&mut self) {
+        // TODO: preimage lookups (somewhere else)
+
+        // SPONGE LOOKUPS
+        {
+            // PADDING LOOKUPS
+            {}
+            // OTHER LOOKUPS
+            {}
+        }
+
+        // ROUND LOOKUPS
+        {
+            // THETA LOOKUPS
+            {}
+            // PIRHO LOOKUPS
+            {}
+            // CHI LOOKUPS
+            {}
+            // IOTA LOOKUPS
+            {}
+        }
+    }
 }
