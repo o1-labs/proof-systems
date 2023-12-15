@@ -119,10 +119,6 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
 
         // ROUND CONSTRAINTS
         {
-            // DEFINE ROUND CONSTANT
-            // TODO: lookup round and sparse constants
-            // self.round() = [0..24)
-
             // Define vectors storing expressions which are not in the witness layout for efficiency
             let mut state_c: Vec<Vec<Self::Variable>> = vec![vec![Self::zero(); QUARTERS]; DIM];
             let mut state_d: Vec<Vec<Self::Variable>> = vec![vec![Self::zero(); QUARTERS]; DIM];
