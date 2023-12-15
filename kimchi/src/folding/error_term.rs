@@ -71,14 +71,14 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
         Square(e) => match exp.folding_degree() {
             Degree::Two => {
                 let cross = eval_exp_error(e, env, side) * eval_exp_error(e, env, side.other());
-                cross.map(Field::square, |f| {
-                    Field::square_in_place(f);
+                cross.map(Field::double, |f| {
+                    Field::double_in_place(f);
                 })
             }
             _ => {
                 let e = eval_exp_error(e, env, side);
-                e.map(Field::square, |f| {
-                    Field::square_in_place(f);
+                e.map(Field::double, |f| {
+                    Field::double_in_place(f);
                 })
             }
         },
