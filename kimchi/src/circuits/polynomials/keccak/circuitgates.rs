@@ -1,5 +1,5 @@
 //! Keccak gadget
-use super::{DIM, OFF, QUARTERS, STATE_LEN};
+use super::{DIM, OFF, QUARTERS};
 use crate::{
     auto_clone, auto_clone_array,
     circuits::{
@@ -9,6 +9,7 @@ use crate::{
             Cache,
         },
         gate::GateType,
+        polynomials::keccak::STATE_LEN,
     },
     grid,
 };

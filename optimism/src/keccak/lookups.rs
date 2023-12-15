@@ -106,7 +106,54 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // ROUND LOOKUPS
         {
             // THETA LOOKUPS
-            {}
+            {
+                for i in 0..20 {
+                    // Check ThetaShiftC0 is the expansion of ThetaDenseC
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::ResetLookup,
+                        value: vec![
+                            self.keccak_state.theta_dense_c[i].clone(),
+                            self.keccak_state.theta_shifts_c[i].clone(),
+                        ],
+                    });
+                    // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::ResetLookup,
+                        value: vec![
+                            self.keccak_state.theta_dense_rot_c[i].clone(),
+                            self.keccak_state.theta_expand_rot_c[i].clone(),
+                        ],
+                    });
+                    // Check that the rest of ThetaShiftsC are in the Sparse table
+                    for j in 1..4 {
+                        self.add_lookup(Lookup {
+                            numerator: Signed {
+                                sign: Sign::Neg,
+                                magnitude: Self::Variable::one(),
+                            },
+                            table_id: LookupTable::SparseLookup,
+                            value: vec![self.keccak_state.theta_shifts_c[i + 20 * j].clone()],
+                        });
+                    }
+                    // Check that ThetaRemainderC < 2^64
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::RangeCheck16Lookup,
+                        value: vec![self.keccak_state.theta_remainder_c[i].clone()],
+                    });
+                }
+            }
             // PIRHO LOOKUPS
             {}
             // CHI LOOKUPS
