@@ -58,11 +58,12 @@ pub(crate) trait ArithOps {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    fn constant(x: Self::Fp) -> Self::Variable;
-
-    fn two_pow(x: u64) -> Self::Variable;
+    fn constant(x: u64) -> Self::Variable;
+    fn constant_field(x: Self::Fp) -> Self::Variable;
 
     fn zero() -> Self::Variable;
     fn one() -> Self::Variable;
     fn two() -> Self::Variable;
+
+    fn two_pow(x: u64) -> Self::Variable;
 }

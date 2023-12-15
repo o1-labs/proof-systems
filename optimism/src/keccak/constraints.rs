@@ -214,7 +214,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             for q in 0..QUARTERS {
                 for x in 0..DIM {
                     for y in 0..DIM {
-                        let not = Self::constant(Fp::from(0x1111111111111111u64))
+                        let not = Self::constant(0x1111111111111111u64)
                             - self.shifts_b(0, y, (x + 1) % DIM, q);
                         let sum = not + self.shifts_b(0, y, (x + 2) % DIM, q);
                         let and = self.shifts_sum(1, y, x, q);
