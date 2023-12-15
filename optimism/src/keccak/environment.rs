@@ -155,6 +155,8 @@ pub(crate) trait KeccakEnvironment {
 
     fn round(&self) -> Self::Variable;
 
+    fn inverse_round(&self) -> Self::Variable;
+
     fn absorb(&self) -> Self::Variable;
 
     fn squeeze(&self) -> Self::Variable;
@@ -291,6 +293,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn round(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::FlagRound].clone()
+    }
+
+    fn inverse_round(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::InverseRound].clone()
     }
 
     fn absorb(&self) -> Self::Variable {

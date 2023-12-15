@@ -60,8 +60,10 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 self.constrain(Self::either_false(self.is_round(), self.root()));
                 // Absorb and Squeeze cannot happen at the same time
                 self.constrain(Self::either_false(self.absorb(), self.squeeze()));
-                // Round and Sponge cannot happen at the same time
-                self.constrain(Self::either_false(self.round(), self.is_sponge()));
+                // Only one of Round and Sponge can be zero
+                // This means either Sponge is true or Round is nonzero -> has an inverse
+                self.constrain(self.is_sponge() * self.round());
+                self.constrain(self.is_round() * Self::is_one(self.round() * self.inverse_round()));
                 // Trivially, is_sponge and is_round are mutually exclusive
             }
         }

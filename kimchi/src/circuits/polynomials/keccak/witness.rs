@@ -426,7 +426,8 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
 
         let mut ini_state = xor_state.clone();
 
-        for round in 0..ROUNDS {
+        // Start by 1 to avoid dummy entry
+        for round in 1..=ROUNDS {
             // Theta
             let theta = Theta::create(&ini_state);
 
