@@ -226,7 +226,7 @@ pub struct Variable<Column> {
     pub row: CurrOrNext,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChallengeTerm {
     Alpha,
     Beta,
@@ -234,7 +234,7 @@ pub enum ChallengeTerm {
     JointCombiner,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstantTerm<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
@@ -260,19 +260,8 @@ pub enum ConstantExpr<F> {
 impl<F: Copy> ConstantExpr<F> {
     fn to_polish_<Column>(&self, res: &mut Vec<PolishToken<F, Column>>) {
         match self {
-            ConstantExpr::Challenge(ChallengeTerm::Alpha) => res.push(PolishToken::Alpha),
-            ConstantExpr::Challenge(ChallengeTerm::Beta) => res.push(PolishToken::Beta),
-            ConstantExpr::Challenge(ChallengeTerm::Gamma) => res.push(PolishToken::Gamma),
-            ConstantExpr::Challenge(ChallengeTerm::JointCombiner) => {
-                res.push(PolishToken::JointCombiner)
-            }
-            ConstantExpr::Constant(ConstantTerm::EndoCoefficient) => {
-                res.push(PolishToken::EndoCoefficient)
-            }
-            ConstantExpr::Constant(ConstantTerm::Mds { row, col }) => res.push(PolishToken::Mds {
-                row: *row,
-                col: *col,
-            }),
+            ConstantExpr::Challenge(chal) => res.push(PolishToken::Challenge(*chal)),
+            ConstantExpr::Constant(c) => res.push(PolishToken::Constant(*c)),
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -288,7 +277,6 @@ impl<F: Copy> ConstantExpr<F> {
                 y.as_ref().to_polish_(res);
                 res.push(PolishToken::Sub)
             }
-            ConstantExpr::Constant(ConstantTerm::Literal(x)) => res.push(PolishToken::Literal(*x)),
             ConstantExpr::Pow(x, n) => {
                 x.to_polish_(res);
                 res.push(PolishToken::Pow(*n))
@@ -618,16 +606,8 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PolishToken<F, Column> {
-    Alpha,
-    Beta,
-    Gamma,
-    JointCombiner,
-    EndoCoefficient,
-    Mds {
-        row: usize,
-        col: usize,
-    },
-    Literal(F),
+    Constant(ConstantTerm<F>),
+    Challenge(ChallengeTerm),
     Cell(Variable<Column>),
     Dup,
     Pow(u64),
@@ -682,16 +662,18 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
                 skip_count -= 1;
                 continue;
             }
+            use ChallengeTerm::*;
+            use ConstantTerm::*;
             use PolishToken::*;
             match t {
-                Alpha => stack.push(chals.alpha),
-                Beta => stack.push(chals.beta),
-                Gamma => stack.push(chals.gamma),
-                JointCombiner => {
+                Challenge(Alpha) => stack.push(chals.alpha),
+                Challenge(Beta) => stack.push(chals.beta),
+                Challenge(Gamma) => stack.push(chals.gamma),
+                Challenge(JointCombiner) => {
                     stack.push(chals.joint_combiner.expect("no joint lookup was expected"))
                 }
-                EndoCoefficient => stack.push(c.endo_coefficient),
-                Mds { row, col } => stack.push(c.mds[*row][*col]),
+                Constant(EndoCoefficient) => stack.push(c.endo_coefficient),
+                Constant(Mds { row, col }) => stack.push(c.mds[*row][*col]),
                 VanishesOnZeroKnowledgeAndPreviousRows => {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
                 }
@@ -703,7 +685,7 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
                     };
                     stack.push(unnormalized_lagrange_basis(&d, offset, &pt))
                 }
-                Literal(x) => stack.push(*x),
+                Constant(Literal(x)) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) => match v.evaluate(evals) {
                     Ok(x) => stack.push(x),
