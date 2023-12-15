@@ -2532,27 +2532,132 @@ impl<F: Field, Column: PartialEq> Mul<F> for Expr<ConstantExpr<F>, Column> {
 // Display
 //
 
-impl<F> ConstantExpr<F>
-where
-    F: PrimeField,
-{
+trait FormattedOutput {
+    fn is_alpha(&self) -> bool;
+    fn ocaml(&self) -> String;
+    fn latex(&self) -> String;
+    fn text(&self) -> String;
+}
+
+impl FormattedOutput for ChallengeTerm {
+    fn is_alpha(&self) -> bool {
+        match self {
+            ChallengeTerm::Alpha => true,
+            _ => false,
+        }
+    }
     fn ocaml(&self) -> String {
         use ChallengeTerm::*;
-        use ConstantExprInner::*;
+        match self {
+            Alpha => "alpha".to_string(),
+            Beta => "beta".to_string(),
+            Gamma => "gamma".to_string(),
+            JointCombiner => "joint_combiner".to_string(),
+        }
+    }
+
+    fn latex(&self) -> String {
+        use ChallengeTerm::*;
+        match self {
+            Alpha => "\\alpha".to_string(),
+            Beta => "\\beta".to_string(),
+            Gamma => "\\gamma".to_string(),
+            JointCombiner => "joint\\_combiner".to_string(),
+        }
+    }
+
+    fn text(&self) -> String {
+        use ChallengeTerm::*;
+        match self {
+            Alpha => "alpha".to_string(),
+            Beta => "beta".to_string(),
+            Gamma => "gamma".to_string(),
+            JointCombiner => "joint_combiner".to_string(),
+        }
+    }
+}
+
+impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
+    fn is_alpha(&self) -> bool {
+        false
+    }
+    fn ocaml(&self) -> String {
         use ConstantTerm::*;
+        match self {
+            EndoCoefficient => "endo_coefficient".to_string(),
+            Mds { row, col } => format!("mds({row}, {col})"),
+            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
+        }
+    }
+
+    fn latex(&self) -> String {
+        use ConstantTerm::*;
+        match self {
+            EndoCoefficient => "endo\\_coefficient".to_string(),
+            Mds { row, col } => format!("mds({row}, {col})"),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
+        }
+    }
+
+    fn text(&self) -> String {
+        use ConstantTerm::*;
+        match self {
+            EndoCoefficient => "endo_coefficient".to_string(),
+            Mds { row, col } => format!("mds({row}, {col})"),
+            Literal(x) => format!("0x{}", x.to_hex()),
+        }
+    }
+}
+
+impl<F: PrimeField> FormattedOutput for ConstantExprInner<F> {
+    fn is_alpha(&self) -> bool {
+        use ConstantExprInner::*;
+        match self {
+            Challenge(x) => x.is_alpha(),
+            Constant(x) => x.is_alpha(),
+        }
+    }
+    fn ocaml(&self) -> String {
+        use ConstantExprInner::*;
+        match self {
+            Challenge(x) => x.ocaml(),
+            Constant(x) => x.ocaml(),
+        }
+    }
+    fn latex(&self) -> String {
+        use ConstantExprInner::*;
+        match self {
+            Challenge(x) => x.latex(),
+            Constant(x) => x.latex(),
+        }
+    }
+    fn text(&self) -> String {
+        use ConstantExprInner::*;
+        match self {
+            Challenge(x) => x.text(),
+            Constant(x) => x.text(),
+        }
+    }
+}
+
+impl<T: FormattedOutput> FormattedOutput for Operations<T> {
+    fn is_alpha(&self) -> bool {
+        match self {
+            Operations::Atom(x) => x.is_alpha(),
+            _ => false,
+        }
+    }
+    fn ocaml(&self) -> String {
         use Operations::*;
         match self {
-            Atom(Challenge(Alpha)) => "alpha".to_string(),
-            Atom(Challenge(Beta)) => "beta".to_string(),
-            Atom(Challenge(Gamma)) => "gamma".to_string(),
-            Atom(Challenge(JointCombiner)) => "joint_combiner".to_string(),
-            Atom(Constant(EndoCoefficient)) => "endo_coefficient".to_string(),
-            Atom(Constant(Mds { row, col })) => format!("mds({row}, {col})"),
-            Atom(Constant(Literal(x))) => format!("field(\"0x{}\")", x.into_repr()),
-            Pow(x, n) => match x.as_ref() {
-                Atom(Challenge(Alpha)) => format!("alpha_pow({n})"),
-                x => format!("pow({}, {n})", x.ocaml()),
-            },
+            Atom(x) => x.ocaml(),
+            Pow(x, n) => {
+                if x.is_alpha() {
+                    format!("alpha_pow({n})")
+                } else {
+                    format!("pow({}, {n})", x.ocaml())
+                }
+            }
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
             Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
@@ -2560,45 +2665,21 @@ where
     }
 
     fn latex(&self) -> String {
-        use ChallengeTerm::*;
-        use ConstantExprInner::*;
-        use ConstantTerm::*;
         use Operations::*;
         match self {
-            Atom(Challenge(Alpha)) => "\\alpha".to_string(),
-            Atom(Challenge(Beta)) => "\\beta".to_string(),
-            Atom(Challenge(Gamma)) => "\\gamma".to_string(),
-            Atom(Challenge(JointCombiner)) => "joint\\_combiner".to_string(),
-            Atom(Constant(EndoCoefficient)) => "endo\\_coefficient".to_string(),
-            Atom(Constant(Mds { row, col })) => format!("mds({row}, {col})"),
-            Atom(Constant(Literal(x))) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
-            Pow(x, n) => match x.as_ref() {
-                Atom(Challenge(Alpha)) => format!("\\alpha^{{{n}}}"),
-                x => format!("{}^{n}", x.ocaml()),
-            },
-            Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
-            Mul(x, y) => format!("({} \\cdot {})", x.ocaml(), y.ocaml()),
-            Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
+            Atom(x) => x.latex(),
+            Pow(x, n) => format!("{}^{{{n}}}", x.latex()),
+            Add(x, y) => format!("({} + {})", x.latex(), y.latex()),
+            Mul(x, y) => format!("({} \\cdot {})", x.latex(), y.latex()),
+            Sub(x, y) => format!("({} - {})", x.latex(), y.latex()),
         }
     }
 
     fn text(&self) -> String {
-        use ChallengeTerm::*;
-        use ConstantExprInner::*;
-        use ConstantTerm::*;
         use Operations::*;
         match self {
-            Atom(Challenge(Alpha)) => "alpha".to_string(),
-            Atom(Challenge(Beta)) => "beta".to_string(),
-            Atom(Challenge(Gamma)) => "gamma".to_string(),
-            Atom(Challenge(JointCombiner)) => "joint_combiner".to_string(),
-            Atom(Constant(EndoCoefficient)) => "endo_coefficient".to_string(),
-            Atom(Constant(Mds { row, col })) => format!("mds({row}, {col})"),
-            Atom(Constant(Literal(x))) => format!("0x{}", x.to_hex()),
-            Pow(x, n) => match x.as_ref() {
-                Atom(Challenge(Alpha)) => format!("alpha^{n}"),
-                x => format!("{}^{n}", x.text()),
-            },
+            Atom(x) => x.text(),
+            Pow(x, n) => format!("{}^{n}", x.text()),
             Add(x, y) => format!("({} + {})", x.text(), y.text()),
             Mul(x, y) => format!("({} * {})", x.text(), y.text()),
             Sub(x, y) => format!("({} - {})", x.text(), y.text()),
