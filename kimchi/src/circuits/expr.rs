@@ -2541,10 +2541,7 @@ trait FormattedOutput {
 
 impl FormattedOutput for ChallengeTerm {
     fn is_alpha(&self) -> bool {
-        match self {
-            ChallengeTerm::Alpha => true,
-            _ => false,
-        }
+        matches!(self, ChallengeTerm::Alpha)
     }
     fn ocaml(&self) -> String {
         use ChallengeTerm::*;
