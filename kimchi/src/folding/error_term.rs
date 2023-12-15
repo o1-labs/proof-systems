@@ -278,8 +278,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         let env = witness_generator.compute_extended_witness(env, Side::Left);
         let env = witness_generator.compute_extended_witness(env, Side::Right);
         let env = env.compute_extended_commitments(srs, Side::Left);
-        let env = env.compute_extended_commitments(srs, Side::Right);
-        env
+        env.compute_extended_commitments(srs, Side::Right)
     }
 
     fn compute_extended_commitments(mut self, srs: &CF::Srs, side: Side) -> Self {

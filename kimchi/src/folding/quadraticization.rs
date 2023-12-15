@@ -140,7 +140,7 @@ pub struct ExtendedWitnessGenerator<C: FoldingConfig> {
 }
 
 impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
-    pub(crate) fn compute_extended_witness<'a>(
+    pub(crate) fn compute_extended_witness(
         &self,
         mut env: ExtendedEnv<C>,
         side: Side,
