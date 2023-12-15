@@ -4,9 +4,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, GateType},
-        polynomials::keccak::{
-            collapse, compose, pad, reset, shift, witness::extend_keccak_witness, KECCAK_COLS,
-        },
+        polynomials::keccak::{witness::extend_keccak_witness, Keccak, KECCAK_COLS},
         wires::Wire,
     },
     curve::KimchiCurve,
@@ -60,7 +58,7 @@ fn eprint_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
         eprint!("         ");
         for x in 0..5 {
             let quarters = &state[4 * x..4 * (x + 1)];
-            let word = compose(&collapse(&reset(&shift(quarters))));
+            let word = Keccak::compose(&Keccak::collapse(&Keccak::reset(&Keccak::shift(quarters))));
             eprint!("{:016x} ", word);
         }
         eprintln!();
@@ -70,7 +68,8 @@ fn eprint_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
             eprint!("         ");
             for y in 0..5 {
                 let quarters = &state[4 * (5 * y + x)..4 * (5 * y + x) + 4];
-                let word = compose(&collapse(&reset(&shift(quarters))));
+                let word =
+                    Keccak::compose(&Keccak::collapse(&Keccak::reset(&Keccak::shift(quarters))));
                 eprint!("{:016x} ", word);
             }
             eprintln!();
@@ -118,7 +117,7 @@ where
     let padded_len = {
         let mut sized = message.to_bytes_be();
         sized.resize(bytelength - sized.len(), 0);
-        pad(&sized).len()
+        Keccak::pad(&sized).len()
     };
     let _index = create_test_constraint_system::<G>(padded_len);
     let witness = create_keccak_witness::<G>(message);

@@ -2,7 +2,9 @@
 
 use std::array;
 
-use crate::circuits::polynomials::keccak::{compose, decompose, expand_state, quarters, RC};
+use crate::circuits::polynomials::keccak::{
+    Keccak, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF, QUARTERS, RATE_IN_BYTES, RC,
+};
 use crate::{
     auto_clone,
     circuits::{
@@ -13,11 +15,6 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
-
-use super::{
-    bytestring, collapse, expand, pad, reset, shift, sparse, CAPACITY_IN_BYTES, DIM, KECCAK_COLS,
-    OFF, QUARTERS, RATE_IN_BYTES,
-};
 
 type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
 
@@ -80,7 +77,7 @@ impl Rotation {
             remainder: dense.to_vec(),
             bound: vec![0xFFFF; QUARTERS],
             dense_rot: dense.to_vec(),
-            expand_rot: dense.iter().map(|x| expand(*x)).collect(),
+            expand_rot: dense.iter().map(|x| Keccak::expand(*x)).collect(),
         }
     }
 
@@ -89,7 +86,7 @@ impl Rotation {
         if offset == 0 {
             return Self::none(dense);
         }
-        let word = compose(dense);
+        let word = Keccak::compose(dense);
         let rem = (word as u128 * 2u128.pow(offset) % 2u128.pow(64)) as u64;
         let quo = word / 2u64.pow(64 - offset);
         let bnd = (quo as u128) + 2u128.pow(64) - 2u128.pow(offset);
@@ -97,11 +94,14 @@ impl Rotation {
         assert!(rot == word.rotate_left(offset));
 
         Self {
-            quotient: decompose(quo),
-            remainder: decompose(rem),
-            bound: decompose(bnd as u64),
-            dense_rot: decompose(rot),
-            expand_rot: decompose(rot).iter().map(|x| expand(*x)).collect(),
+            quotient: Keccak::decompose(quo),
+            remainder: Keccak::decompose(rem),
+            bound: Keccak::decompose(bnd as u64),
+            dense_rot: Keccak::decompose(rot),
+            expand_rot: Keccak::decompose(rot)
+                .iter()
+                .map(|x| Keccak::expand(*x))
+                .collect(),
         }
     }
 
@@ -147,8 +147,8 @@ struct Theta {
 impl Theta {
     fn create(state_a: &[u64]) -> Self {
         let state_c = Self::compute_state_c(state_a);
-        let shifts_c = shift(&state_c);
-        let dense_c = collapse(&reset(&shifts_c));
+        let shifts_c = Keccak::shift(&state_c);
+        let dense_c = Keccak::collapse(&Keccak::reset(&shifts_c));
         let rotation_c = Rotation::many(&dense_c, &[1; DIM]);
         let state_d = Self::compute_state_d(&shifts_c, &rotation_c.expand_rot);
         let state_e = Self::compute_state_e(state_a, &state_d);
@@ -223,8 +223,8 @@ struct PiRho {
 
 impl PiRho {
     fn create(state_e: &[u64]) -> Self {
-        let shifts_e = shift(state_e);
-        let dense_e = collapse(&reset(&shifts_e));
+        let shifts_e = Keccak::shift(state_e);
+        let dense_e = Keccak::collapse(&Keccak::reset(&shifts_e));
         let rotation_e = Rotation::many(
             &dense_e,
             &OFF.iter()
@@ -265,7 +265,7 @@ struct Chi {
 
 impl Chi {
     fn create(state_b: &[u64]) -> Self {
-        let shifts_b = shift(state_b);
+        let shifts_b = Keccak::shift(state_b);
         let shiftsb = grid!(400, shifts_b);
         let mut sum = vec![];
         for y in 0..DIM {
@@ -276,7 +276,7 @@ impl Chi {
                 }
             }
         }
-        let shifts_sum = shift(&sum);
+        let shifts_sum = Keccak::shift(&sum);
         let shiftsum = grid!(400, shifts_sum);
         let mut state_f = vec![];
         for y in 0..DIM {
@@ -302,7 +302,7 @@ struct Iota {
 
 impl Iota {
     fn create(state_f: Vec<u64>, round: usize) -> Self {
-        let rc = sparse(RC[round]);
+        let rc = Keccak::sparse(RC[round]);
         let mut state_g = state_f.clone();
         for (i, c) in rc.iter().enumerate() {
             state_g[i] = state_f[i] + *c;
@@ -318,7 +318,7 @@ impl Iota {
 /// Requires at least one more row after the keccak gadget so that
 /// constraints can access the next row in the squeeze
 pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS], message: BigUint) {
-    let padded = pad(&message.to_bytes_be());
+    let padded = Keccak::pad(&message.to_bytes_be());
     let chunks = padded.chunks(RATE_IN_BYTES);
 
     // The number of rows that need to be added to the witness correspond to
@@ -338,10 +338,10 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
         let mut block = chunk.to_vec();
         // Pad the block until reaching 200 bytes
         block.append(&mut vec![0; CAPACITY_IN_BYTES]);
-        let dense = quarters(&block);
-        let new_state = expand_state(&block);
+        let dense = Keccak::quarters(&block);
+        let new_state = Keccak::expand_state(&block);
         auto_clone!(new_state);
-        let shifts = shift(&new_state());
+        let shifts = Keccak::shift(&new_state());
         let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
 
         // Initialize the absorb sponge row
@@ -420,9 +420,9 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
     // Squeeze phase
 
     let new_state = vec![0; QUARTERS * DIM * DIM];
-    let shifts = shift(&state);
-    let dense = collapse(&reset(&shifts));
-    let bytes = bytestring(&dense);
+    let shifts = Keccak::shift(&state);
+    let dense = Keccak::collapse(&Keccak::reset(&shifts));
+    let bytes = Keccak::bytestring(&dense);
 
     // Initialize the squeeze sponge row
     witness::init(
