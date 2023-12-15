@@ -33,6 +33,9 @@ where
     let file =
         File::open(srs_path.clone()).unwrap_or_else(|_| panic!("missing SRS file: {srs_path:?}"));
     let reader = BufReader::new(file);
+    // Note: In tests, this read takes significant amount of time (2 min) due
+    // to -O0 optimisation level. Compile tests with -O1 or --release flag.
+    // See: https://github.com/o1-labs/proof-systems/blob/develop/CONTRIBUTING.md#development
     rmp_serde::from_read(reader).unwrap()
 }
 

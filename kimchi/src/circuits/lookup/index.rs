@@ -217,11 +217,11 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // product is 1, we cannot use those rows to store any values.
                 let max_num_entries = d1_size - zk_rows - 1;
 
-                //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
+                //~ 2. Get the lookup selectors and lookup tables that are specified implicitly
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
-                //~ 3. Concatenate runtime lookup tables with the ones used by gates
+                //~ 3. Concatenate explicit runtime lookup tables with the ones (implicitly) used by gates
                 let mut lookup_tables: Vec<_> = gate_lookup_tables
                     .into_iter()
                     .chain(lookup_tables)
