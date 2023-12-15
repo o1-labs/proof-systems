@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 pub mod range_check;
 pub mod xor;
 
+// If you add new tables, update ../../../../../book/src/kimchi/lookup.md
+// accordingly
+
 //~ spec:startcode
 /// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;
@@ -18,6 +21,53 @@ pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 pub enum GateLookupTable {
     Xor,
     RangeCheck,
+}
+
+/// Enumerates the different 'fixed' lookup tables used by individual gates
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct GateLookupTables {
+    pub xor: bool,
+    pub range_check: bool,
+}
+
+impl std::ops::Index<GateLookupTable> for GateLookupTables {
+    type Output = bool;
+
+    fn index(&self, index: GateLookupTable) -> &Self::Output {
+        match index {
+            GateLookupTable::Xor => &self.xor,
+            GateLookupTable::RangeCheck => &self.range_check,
+        }
+    }
+}
+
+impl std::ops::IndexMut<GateLookupTable> for GateLookupTables {
+    fn index_mut(&mut self, index: GateLookupTable) -> &mut Self::Output {
+        match index {
+            GateLookupTable::Xor => &mut self.xor,
+            GateLookupTable::RangeCheck => &mut self.range_check,
+        }
+    }
+}
+
+impl IntoIterator for GateLookupTables {
+    type Item = GateLookupTable;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Destructor pattern to make sure we add new lookup patterns.
+        let GateLookupTables { xor, range_check } = self;
+
+        let mut patterns = Vec::with_capacity(2);
+
+        if xor {
+            patterns.push(GateLookupTable::Xor)
+        }
+        if range_check {
+            patterns.push(GateLookupTable::RangeCheck)
+        }
+        patterns.into_iter()
+    }
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.

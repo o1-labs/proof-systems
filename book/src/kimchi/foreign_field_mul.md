@@ -1,6 +1,7 @@
-# Foreign Field Multiplication RFC
+# Foreign Field Multiplication
 
-This document explains how we constrain foreign field multiplication (i.e. non-native field multiplication) in the Kimchi proof system.
+This document is an original RFC explaining how we constrain foreign field multiplication (i.e. non-native field multiplication) in the Kimchi proof system.
+For a more recent RFC, see [FFmul RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 
 **Changelog**
 
@@ -175,7 +176,7 @@ $$
 m_{max} = \frac{t + \log_2(n)}{2}.
 $$
 
-With $t=258, n=255$ we have 
+With $t=258, n=255$ we have
 
 $$
 \begin{aligned}
@@ -609,7 +610,7 @@ $$
 
 ### Bound checks
 
-To perform the above range checks we use the *upper bound check* method described in the [Foreign Field Addition RFC](](https://github.com/o1-labs/proof-systems/blob/master/book/src/rfcs/ffadd.md#upper-bound-check)).
+To perform the above range checks we use the *upper bound check* method described in the upper bound check section in [Foreign Field Addition](../kimchi/foreign_field_add.md#upper-bound-check).
 
 The upper bound check is as follows.  We must constrain $0 \le q < f$ over the positive integers, so
 

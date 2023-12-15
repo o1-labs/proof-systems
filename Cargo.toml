@@ -6,6 +6,7 @@ members = [
     "groupmap",
     "hasher",
     "kimchi",
+    "optimism",
     "poseidon",
     "poseidon/export_test_vectors",
     "poly-commitment",
@@ -14,6 +15,7 @@ members = [
     "utils",
     "internal-tracing",
 ]
+resolver = "2"
 
 [profile.release]
 lto = true

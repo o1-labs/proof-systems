@@ -7,6 +7,7 @@ mod foreign_field_add;
 mod foreign_field_mul;
 mod framework;
 mod generic;
+mod keccak;
 mod lookup;
 mod not;
 mod poseidon;

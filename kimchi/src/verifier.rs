@@ -3,8 +3,9 @@
 use crate::{
     circuits::{
         argument::ArgumentType,
+        berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{Column, Constants, PolishToken},
+        expr::{Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -85,6 +86,8 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
+                    KeccakRound => todo!(),
+                    KeccakSponge => todo!(),
                 }
             }
         }
@@ -901,7 +904,7 @@ where
     };
 
     //~ 1. Compute the (chuncked) commitment of $ft$
-    //~    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
+    //~    (see [Maller's optimization](../kimchi/maller_15.md)).
     let ft_comm = {
         let zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size as u64]);
         let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
@@ -1038,6 +1041,9 @@ where
             let joint_combiner = oracles
                 .joint_combiner
                 .expect("joint_combiner should be present if lookups are used");
+            // The table ID is added as the last column of the vector.
+            // Therefore, the exponent for the combiner for the table ID is the
+            // width of the concatenated table, i.e. max_joint_size.
             let table_id_combiner = joint_combiner
                 .1
                 .pow([u64::from(li.lookup_info.max_joint_size)]);
