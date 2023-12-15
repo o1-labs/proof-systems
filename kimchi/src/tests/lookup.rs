@@ -600,13 +600,21 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
 
     // Non zero-length table
     let len = 1u32 + rng.gen_range(0u32..max_len);
+    // Table id is 0
     let table_id: i32 = 0;
-    // No index 0 in the table.
+    // Always include index 0 in the table. Maybe even a few.
     let indices: Vec<Fp> = (0..len)
-        .map(|_| 1 + rng.gen_range(0u32..max_len))
+        .map(|i| {
+            if i == 0 {
+                0u32
+            } else {
+                rng.gen_range(0u32..max_len)
+            }
+        })
         .map(Into::into)
         .collect();
-    // No zero value
+    // But no zero values!
+    // So we'll get rows with zeroes that are not full-zero-rows.
     let values: Vec<Fp> = (0..len)
         .map(|_| rng.gen_range(1u32..max_len))
         .map(Into::into)
