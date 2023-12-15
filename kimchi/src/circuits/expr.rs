@@ -691,6 +691,37 @@ pub enum PolishToken<F> {
     SkipIfNot(FeatureFlag, usize),
 }
 
+impl<F> PolishToken<F> {
+    /// Convert into another type of PolishToken
+    pub fn into<T>(self) -> PolishToken<T>
+    where
+        F: Into<T>,
+    {
+        use PolishToken::*;
+        match self {
+            Alpha => Alpha,
+            Beta => Beta,
+            Gamma => Gamma,
+            JointCombiner => JointCombiner,
+            EndoCoefficient => EndoCoefficient,
+            Mds(mds) => Mds(mds),
+            Literal(x) => Literal(x.into()),
+            Cell(v) => Cell(v),
+            Dup => Dup,
+            Pow(exp) => Pow(exp),
+            Add => Add,
+            Mul => Mul,
+            Sub => Sub,
+            VanishesOnZeroKnowledgeAndPreviousRows => VanishesOnZeroKnowledgeAndPreviousRows,
+            UnnormalizedLagrangeBasis(l) => UnnormalizedLagrangeBasis(l),
+            Store => Store,
+            Load(x) => Load(x),
+            SkipIf(feature, count) => SkipIf(feature, count),
+            SkipIfNot(feature, count) => SkipIfNot(feature, count),
+        }
+    }
+}
+
 impl Variable {
     fn evaluate<F: Field>(
         &self,
