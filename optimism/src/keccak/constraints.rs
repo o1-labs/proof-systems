@@ -107,13 +107,11 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 );
             }
             // Check that the padding is located at the end of the message
-            // TODO: get power of two from lookup table
             let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
                 acc * Self::two() + self.sponge_bytes(i)
             });
             self.constrain(self.pad() * (self.two_to_pad() - Self::one() - pad_at_end));
             // Check that the padding value is correct
-            // TODO: get suffix from lookup table
             for i in 0..5 {
                 self.constrain(self.pad() * (self.block_in_padding(i) - self.pad_suffix(i)));
             }
