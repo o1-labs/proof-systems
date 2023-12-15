@@ -38,7 +38,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 // Pad suffixes correspond to 10*1 rule
                 self.add_lookup(Lookup {
                     numerator: Signed {
-                        sign: Sign::Pos,
+                        sign: Sign::Neg,
                         magnitude: Self::Variable::one(),
                     },
                     table_id: LookupTable::PadLookup,
