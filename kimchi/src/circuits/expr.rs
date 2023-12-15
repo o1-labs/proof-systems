@@ -445,14 +445,8 @@ impl<F: Field> ConstantExpr<F> {
             Mul(x, y) => x.value(c, chals) * y.value(c, chals),
             Add(x, y) => x.value(c, chals) + y.value(c, chals),
             Sub(x, y) => x.value(c, chals) - y.value(c, chals),
-            Double(x) => {
-                let x = x.value(c, chals);
-                x.double()
-            }
-            Square(x) => {
-                let x = x.value(c, chals);
-                x.square()
-            }
+            Double(x) => x.value(c, chals).double(),
+            Square(x) => x.value(c, chals).square(),
         }
     }
 }
