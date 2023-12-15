@@ -80,8 +80,8 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
             }
             _ => {
                 let e = eval_exp_error(e, env, side);
-                e.map(Field::double, |f| {
-                    Field::double_in_place(f);
+                e.map(Field::square, |f| {
+                    Field::square_in_place(f);
                 })
             }
         },
