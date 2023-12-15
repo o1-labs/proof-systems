@@ -138,10 +138,8 @@ pub enum LookupTable {
     ResetLookup,
     // 24-row table with all possible values for round and their round constant in expanded form
     RoundConstantsLookup,
-    // All [0..136] values of possible padding lengths and the 5 corresponding pad suffixes with the 10*1 rule
+    // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     PadLookup,
-    // Powers of two, from 2^0 to 2^136
-    PowersOfTwoLookup,
 }
 
 #[derive(Clone, Debug)]
