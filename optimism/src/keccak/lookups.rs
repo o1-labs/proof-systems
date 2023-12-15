@@ -212,7 +212,27 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 }
             }
             // CHI LOOKUPS
-            {}
+            {
+                // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
+                for i in 0..SHIFTS_LEN {
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::SparseLookup,
+                        value: vec![self.keccak_state.chi_shifts_b[i].clone()],
+                    });
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::SparseLookup,
+                        value: vec![self.keccak_state.chi_shifts_sum[i].clone()],
+                    });
+                }
+            }
             // IOTA LOOKUPS
             {}
         }
