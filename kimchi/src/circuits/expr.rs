@@ -1,6 +1,7 @@
 pub use crate::circuits::berkeley_columns::Column;
 use crate::{
     circuits::{
+        berkeley_columns,
         constraints::FeatureFlags,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
@@ -216,7 +217,7 @@ impl Column {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
-pub struct Variable {
+pub struct Variable<Column = berkeley_columns::Column> {
     /// The column of this variable
     pub col: Column,
     /// The row (Curr of Next) of this variable
