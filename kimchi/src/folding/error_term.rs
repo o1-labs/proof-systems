@@ -1,7 +1,10 @@
-use crate::folding::{
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign, Var},
-    quadraticization::ExtendedWitnessGenerator,
-    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
+use crate::{
+    circuits::expr::Variable,
+    folding::{
+        expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
+        quadraticization::ExtendedWitnessGenerator,
+        EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
+    },
 };
 use ark_ec::AffineCurve;
 use ark_ff::Field;
@@ -231,7 +234,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             Side::Right => (&self.instances[1], &self.witnesses[1]),
         };
         match col {
-            Inner(Var { col, row }) => Col(self.inner().col(*col, *row, side)),
+            Inner(Variable { col, row }) => Col(self.inner().col(*col, *row, side)),
             WitnessExtended(i) => Col(&witness
                 .inner()
                 .extended
