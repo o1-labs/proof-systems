@@ -1,5 +1,5 @@
 use crate::{
-    circuits::{expr::Op2, gate::CurrOrNext},
+    circuits::expr::{Op2, Variable},
     folding::{
         quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
         FoldingConfig, ScalarField,
@@ -21,7 +21,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
-    Inner(Var<C::Column>),
+    Inner(Variable<C::Column>),
     ///for the extra columns added by quadraticization
     WitnessExtended(usize),
     Error,
@@ -33,17 +33,11 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Alpha(usize),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Var<C> {
-    pub col: C,
-    pub row: CurrOrNext,
-}
-
 ///designed for easy translation to and from most Expr
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
-    Cell(Var<C::Column>),
+    Cell(Variable<C::Column>),
     Double(Box<Self>),
     Square(Box<Self>),
     BinOp(Op2, Box<Self>, Box<Self>),

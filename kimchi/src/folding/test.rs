@@ -1,7 +1,10 @@
 use crate::{
-    circuits::gate::CurrOrNext::{self, Curr},
+    circuits::{
+        expr::Variable,
+        gate::CurrOrNext::{self, Curr},
+    },
     folding::{
-        expressions::{extract_terms, ExtendedFoldingColumn, FoldingColumnTrait, FoldingExp, Var},
+        expressions::{extract_terms, ExtendedFoldingColumn, FoldingColumnTrait, FoldingExp},
         FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
     },
 };
@@ -98,7 +101,7 @@ impl FoldingConfig for TestConfig {
 //not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
     use FoldingExp::*;
-    let col = |col| Cell(ExtendedFoldingColumn::Inner(Var { col, row: Curr }));
+    let col = |col| Cell(ExtendedFoldingColumn::Inner(Variable { col, row: Curr }));
     let t1: FoldingExp<TestConfig> = (col(0) + col(1)) * (col(2) + col(3));
     let t2 = col(1).double()
         - (col(2)
