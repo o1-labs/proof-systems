@@ -257,7 +257,7 @@ impl<F: Field> Literal for F {
         Ok(self)
     }
     fn to_literal_ref(&self) -> Option<&Self::F> {
-        Some(&self)
+        Some(self)
     }
 }
 
