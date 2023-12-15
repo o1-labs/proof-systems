@@ -314,6 +314,8 @@ pub enum Operations<T> {
     Add(Box<Operations<T>>, Box<Operations<T>>),
     Mul(Box<Operations<T>>, Box<Operations<T>>),
     Sub(Box<Operations<T>>, Box<Operations<T>>),
+    Double(Box<Operations<T>>),
+    Square(Box<Operations<T>>),
 }
 
 impl<T> From<T> for Operations<T> {
@@ -394,6 +396,16 @@ impl<F, Column, T: ToPolish<F, Column>> ToPolish<F, Column> for Operations<T> {
                 x.to_polish(res);
                 res.push(PolishToken::Pow(*n))
             }
+            Operations::Double(x) => {
+                x.to_polish(res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Add);
+            }
+            Operations::Square(x) => {
+                x.to_polish(res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Mul);
+            }
         }
     }
 }
@@ -433,6 +445,14 @@ impl<F: Field> ConstantExpr<F> {
             Mul(x, y) => x.value(c, chals) * y.value(c, chals),
             Add(x, y) => x.value(c, chals) + y.value(c, chals),
             Sub(x, y) => x.value(c, chals) - y.value(c, chals),
+            Double(x) => {
+                let x = x.value(c, chals);
+                x.double()
+            }
+            Square(x) => {
+                let x = x.value(c, chals);
+                x.square()
+            }
         }
     }
 }
@@ -2661,6 +2681,8 @@ impl<T: FormattedOutput> FormattedOutput for Operations<T> {
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
             Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
+            Double(x) => format!("double({})", x.ocaml()),
+            Square(x) => format!("square({})", x.ocaml()),
         }
     }
 
@@ -2672,6 +2694,8 @@ impl<T: FormattedOutput> FormattedOutput for Operations<T> {
             Add(x, y) => format!("({} + {})", x.latex(), y.latex()),
             Mul(x, y) => format!("({} \\cdot {})", x.latex(), y.latex()),
             Sub(x, y) => format!("({} - {})", x.latex(), y.latex()),
+            Double(x) => format!("2 ({})", x.latex()),
+            Square(x) => format!("({})^2", x.latex()),
         }
     }
 
@@ -2683,6 +2707,8 @@ impl<T: FormattedOutput> FormattedOutput for Operations<T> {
             Add(x, y) => format!("({} + {})", x.text(), y.text()),
             Mul(x, y) => format!("({} * {})", x.text(), y.text()),
             Sub(x, y) => format!("({} - {})", x.text(), y.text()),
+            Double(x) => format!("double({})", x.text()),
+            Square(x) => format!("square({})", x.text()),
         }
     }
 }
