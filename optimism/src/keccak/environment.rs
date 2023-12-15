@@ -4,7 +4,12 @@ use super::{
 };
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
-use kimchi::{auto_clone_array, circuits::expr::ConstantExpr, grid, o1_utils::Two};
+use kimchi::{
+    auto_clone_array,
+    circuits::expr::{ConstantExpr, ConstantTerm::Literal},
+    grid,
+    o1_utils::Two,
+};
 
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<Fp> {
@@ -49,7 +54,7 @@ impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
     type Variable = E<Fp>;
     type Fp = Fp;
     fn constant(x: Self::Fp) -> Self::Variable {
-        Self::Variable::constant(ConstantExpr::Literal(x))
+        Self::Variable::constant(ConstantExpr::Constant(Literal(x)))
     }
     fn two_pow(x: u64) -> Self::Variable {
         Self::constant(Self::Fp::two_pow(x))

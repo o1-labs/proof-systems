@@ -12,7 +12,7 @@ use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    expr::{constraints::ExprOps, Cache, Challenges, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, Cache, Challenges, ConstantExpr, ConstantTerm, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -127,12 +127,18 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
 
     /// Helper to access endomorphism coefficient constant
     pub fn endo_coefficient(&self) -> T {
-        T::constant(ConstantExpr::<F>::EndoCoefficient, self.data.as_ref())
+        T::constant(
+            ConstantExpr::<F>::Constant(ConstantTerm::EndoCoefficient),
+            self.data.as_ref(),
+        )
     }
 
     /// Helper to access maximum distance separable matrix constant at row, col
     pub fn mds(&self, row: usize, col: usize) -> T {
-        T::constant(ConstantExpr::<F>::Mds { row, col }, self.data.as_ref())
+        T::constant(
+            ConstantExpr::<F>::Constant(ConstantTerm::Mds { row, col }),
+            self.data.as_ref(),
+        )
     }
 }
 

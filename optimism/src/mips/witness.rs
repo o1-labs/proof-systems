@@ -17,7 +17,7 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
-use kimchi::circuits::expr::ConstantExpr::Literal;
+use kimchi::circuits::expr::{ConstantExpr::Constant, ConstantTerm::Literal};
 use log::{debug, info};
 use std::array;
 use std::fs::File;
@@ -644,7 +644,7 @@ impl<Fp: Field> Env<Fp> {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::KeccakState(col) => {
                 if let Some(keccak_env) = &mut self.keccak_env {
-                    keccak_env.keccak_state[col] = E::constant(Literal(value))
+                    keccak_env.keccak_state[col] = E::constant(Constant(Literal(value)))
                 } else {
                     panic!("Keccak state not initialized")
                 }
