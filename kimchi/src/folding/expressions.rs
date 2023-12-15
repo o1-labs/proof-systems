@@ -25,8 +25,6 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     ///for the extra columns added by quadraticization
     WitnessExtended(usize),
     Error,
-    ///basically X, to allow accesing the next row
-    Shift,
     UnnormalizedLagrangeBasis(usize),
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
@@ -57,7 +55,6 @@ pub enum ExpExtension {
     //from quadraticization
     ExtendedWitness(usize),
     Alpha(usize),
-    Shift,
 }
 
 ///Internal expression used for folding, simplified for that purpose
@@ -173,7 +170,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Inner(col) => col.col.degree(),
                 ExtendedFoldingColumn::WitnessExtended(_) => One,
                 ExtendedFoldingColumn::Error => One,
-                ExtendedFoldingColumn::Shift => Zero,
                 ExtendedFoldingColumn::UnnormalizedLagrangeBasis(_) => Zero,
                 ExtendedFoldingColumn::Constant(_) => Zero,
                 ExtendedFoldingColumn::Challenge(_) => One,
@@ -197,7 +193,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                     Extensions(ExpExtension::ExtendedWitness(i))
                 }
                 ExtendedFoldingColumn::Error => Extensions(ExpExtension::Error),
-                ExtendedFoldingColumn::Shift => Extensions(ExpExtension::Shift),
                 ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(i),
                 ExtendedFoldingColumn::Constant(c) => Constant(c),
                 ExtendedFoldingColumn::Challenge(c) => Challenge(c),

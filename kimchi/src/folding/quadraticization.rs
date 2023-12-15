@@ -142,9 +142,9 @@ pub struct ExtendedWitnessGenerator<C: FoldingConfig> {
 impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
     pub(crate) fn compute_extended_witness<'a>(
         &self,
-        mut env: ExtendedEnv<'a, C>,
+        mut env: ExtendedEnv<C>,
         side: Side,
-    ) -> ExtendedEnv<'a, C> {
+    ) -> ExtendedEnv<C> {
         let mut pending = self.exprs.clone();
 
         while let Some((i, exp)) = pending.pop_front() {

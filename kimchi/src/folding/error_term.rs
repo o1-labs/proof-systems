@@ -174,20 +174,17 @@ pub(crate) fn compute_error<C: FoldingConfig>(
     }
 }
 
-type Evals<C> = Vec<<<C as FoldingConfig>::Curve as AffineCurve>::ScalarField>;
-pub(crate) struct ExtendedEnv<'a, CF: FoldingConfig> {
+pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
     inner: CF::Env,
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
     witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
-    shift: &'a Evals<CF>,
     domain: Radix2EvaluationDomain<ScalarField<CF>>,
 }
 
-impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
+impl<CF: FoldingConfig> ExtendedEnv<CF> {
     pub fn new(
         structure: &CF::Structure,
         //maybe better to have some structure exteded or something like that
-        shift: &'a Evals<CF>,
         instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
         witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
@@ -202,7 +199,6 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
             inner,
             instances,
             witnesses,
-            shift,
             domain,
         }
     }
@@ -242,7 +238,6 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
                 .expect("extended column not present")
                 .evals),
             Error => panic!("shouldn't happen"),
-            Shift => Col(self.shift),
             UnnormalizedLagrangeBasis(i) => Col(self.inner().lagrange_basis(*i)),
             Constant(c) => EvalLeaf::Const(*c),
             Challenge(chall) => EvalLeaf::Const(self.inner().challenge(*chall, side)),
@@ -259,12 +254,7 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         match col {
             WitnessExtended(i) => witness.inner().extended.get(i).is_some(),
             Error => panic!("shouldn't happen"),
-            Inner(_)
-            | Shift
-            | UnnormalizedLagrangeBasis(_)
-            | Constant(_)
-            | Challenge(_)
-            | Alpha(_) => true,
+            Inner(_) | UnnormalizedLagrangeBasis(_) | Constant(_) | Challenge(_) | Alpha(_) => true,
         }
     }
 

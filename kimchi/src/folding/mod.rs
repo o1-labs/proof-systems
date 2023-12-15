@@ -180,7 +180,6 @@ type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
 pub struct FoldingScheme<CF: FoldingConfig> {
     expression: IntegratedFoldingExpr<CF>,
-    shift: Vec<ScalarField<CF>>,
     srs: CF::Srs,
     domain: Radix2EvaluationDomain<ScalarField<CF>>,
     zero_commitment: PolyComm<CF::Curve>,
@@ -197,7 +196,6 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
         structure: CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
         let (expression, extended_witness_generator) = folding_expression(constraints);
-        let shift = domain.elements().collect();
         let zero = <ScalarField<CF>>::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
@@ -206,7 +204,6 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
         let final_expression = expression.clone().final_expression();
         let scheme = Self {
             expression,
-            shift,
             srs,
             domain,
             zero_commitment,
@@ -238,13 +235,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
 
         let (ins1, wit1) = a;
         let (ins2, wit2) = b;
-        let env = ExtendedEnv::new(
-            &self.structure,
-            &self.shift,
-            [ins1, ins2],
-            [wit1, wit2],
-            self.domain,
-        );
+        let env = ExtendedEnv::new(&self.structure, [ins1, ins2], [wit1, wit2], self.domain);
         let env = env.compute_extension(&self.extended_witness_generator, &self.srs);
         let error = compute_error(&self.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
