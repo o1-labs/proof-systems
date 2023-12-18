@@ -45,7 +45,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn instruction_counter(&self) -> Self::Variable {
-        todo!()
+        Expr::Cell(Variable {
+            col: MIPSColumn::InstructionCounter,
+            row: CurrOrNext::Curr,
+        })
     }
 
     unsafe fn fetch_register(
