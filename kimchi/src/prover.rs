@@ -263,14 +263,15 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: Vec<_> =  {
-        witness.par_iter().enumerate().map(|(col, witness)| {
+        let evals: Vec<_> = witness.iter().map(|witness| {
             // witness coeff -> witness eval
-            let witness_eval =
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                     witness.clone(),
                     index.cs.domain.d1,
-                );
+                )
+        }).collect();
+        let w_comm: Vec<_> =  {
+        evals.par_iter().enumerate().map(|(col, witness_eval)| {
             let rng = &mut rand::rngs::OsRng;
 
             let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
