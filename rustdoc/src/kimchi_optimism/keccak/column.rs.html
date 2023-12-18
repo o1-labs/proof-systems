@@ -179,17 +179,6 @@
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -220,13 +209,11 @@
     </span>PiRhoExpandRotE(usize, usize, usize),     <span class="comment">// Round Curr[1065..1165)
     </span>ChiShiftsB(usize, usize, usize, usize),   <span class="comment">// Round Curr[1165..1565)
     </span>ChiShiftsSum(usize, usize, usize, usize), <span class="comment">// Round Curr[1565..1965)
-    </span>IotaStateG(usize, usize, usize),          <span class="comment">// Round Next[0..100)
     </span>SpongeOldState(usize),                    <span class="comment">// Sponge Curr[0..100)
-    </span>SpongeNewState(usize),                    <span class="comment">// Sponge Curr[100..168)
-    </span>SpongeZeros(usize),                       <span class="comment">// Sponge Curr[168..200)
+    </span>SpongeNewState(usize),                    <span class="comment">// Sponge Curr[100..200)
     </span>SpongeBytes(usize),                       <span class="comment">// Sponge Curr[200..400)
     </span>SpongeShifts(usize),                      <span class="comment">// Sponge Curr[400..800)
-    </span>SpongeXorState(usize),                    <span class="comment">// Sponge Next[0..100)
+    </span>NextState(usize),                         <span class="comment">// Sponge Next[0..100)
 </span>}
 
 <span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
@@ -253,14 +240,11 @@
     </span><span class="kw">pub </span>pi_rho_expand_rot_e: Vec&lt;T&gt;, <span class="comment">// Round Curr[1065..1165)
     </span><span class="kw">pub </span>chi_shifts_b: Vec&lt;T&gt;,        <span class="comment">// Round Curr[1165..1565)
     </span><span class="kw">pub </span>chi_shifts_sum: Vec&lt;T&gt;,      <span class="comment">// Round Curr[1565..1965)
-    </span><span class="kw">pub </span>iota_rc: Vec&lt;T&gt;,             <span class="comment">// Round Curr[1965..1969)
-    </span><span class="kw">pub </span>iota_state_g: Vec&lt;T&gt;,        <span class="comment">// Round Next[0..100)
     </span><span class="kw">pub </span>sponge_old_state: Vec&lt;T&gt;,    <span class="comment">// Sponge Curr[0..100)
-    </span><span class="kw">pub </span>sponge_new_state: Vec&lt;T&gt;,    <span class="comment">// Sponge Curr[100..168)
-    </span><span class="kw">pub </span>sponge_zeros: Vec&lt;T&gt;,        <span class="comment">// Sponge Curr[168..200)
+    </span><span class="kw">pub </span>sponge_new_state: Vec&lt;T&gt;,    <span class="comment">// Sponge Curr[100..200)
     </span><span class="kw">pub </span>sponge_bytes: Vec&lt;T&gt;,        <span class="comment">// Sponge Curr[200..400)
     </span><span class="kw">pub </span>sponge_shifts: Vec&lt;T&gt;,       <span class="comment">// Sponge Curr[400..800)
-    </span><span class="kw">pub </span>sponge_xor_state: Vec&lt;T&gt;,    <span class="comment">// Sponge Next[0..100)
+    </span><span class="kw">pub </span>next_state: Vec&lt;T&gt;,          <span class="comment">// Sponge Next[0..100)
 </span>}
 
 <span class="kw">impl</span>&lt;A&gt; Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;A&gt; {
@@ -308,13 +292,11 @@
             KeccakColumn::ChiShiftsSum(i, y, x, q) =&gt; {
                 <span class="kw-2">&amp;</span><span class="self">self</span>.chi_shifts_sum[grid_index(<span class="number">400</span>, i, y, x, q)]
             }
-            KeccakColumn::IotaStateG(y, x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.iota_state_g[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)],
             KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_old_state[i],
             KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_new_state[i],
-            KeccakColumn::SpongeZeros(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_zeros[i],
             KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_bytes[i],
             KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_shifts[i],
-            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_xor_state[i],
+            KeccakColumn::NextState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next_state[i],
         }
     }
 }
@@ -370,15 +352,11 @@
             KeccakColumn::ChiShiftsSum(i, y, x, q) =&gt; {
                 <span class="kw-2">&amp;mut </span><span class="self">self</span>.chi_shifts_sum[grid_index(<span class="number">400</span>, i, y, x, q)]
             }
-            KeccakColumn::IotaStateG(y, x, q) =&gt; {
-                <span class="kw-2">&amp;mut </span><span class="self">self</span>.iota_state_g[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
-            }
             KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_old_state[i],
             KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_new_state[i],
-            KeccakColumn::SpongeZeros(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_zeros[i],
             KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_bytes[i],
             KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_shifts[i],
-            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_xor_state[i],
+            KeccakColumn::NextState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.next_state[i],
         }
     }
 }

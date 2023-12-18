@@ -306,12 +306,6 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     ArithOps, BoolOps, DIM, E, QUARTERS,
@@ -410,7 +404,7 @@
 
     <span class="kw">fn </span>new_block(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>xor_state(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>next_state(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
 
@@ -445,8 +439,6 @@
     <span class="kw">fn </span>shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; KeccakEnvironment <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
@@ -550,12 +542,12 @@
         <span class="self">self</span>.keccak_state[KeccakColumn::SpongeNewState(i)].clone()
     }
 
-    <span class="kw">fn </span>xor_state(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
+    <span class="kw">fn </span>next_state(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::NextState(i)].clone()
     }
 
     <span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
-        <span class="self">self</span>.keccak_state.sponge_zeros.clone()
+        <span class="self">self</span>.keccak_state.sponge_new_state[<span class="number">68</span>..<span class="number">100</span>].to_vec().clone()
     }
 
     <span class="kw">fn </span>sponge_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
@@ -620,10 +612,6 @@
 
     <span class="kw">fn </span>shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.keccak_state[KeccakColumn::ChiShiftsSum(i, y, x, q)].clone()
-    }
-
-    <span class="kw">fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::IotaStateG(y, x, q)].clone()
     }
 }
 </code></pre></div></section></main></body></html>
