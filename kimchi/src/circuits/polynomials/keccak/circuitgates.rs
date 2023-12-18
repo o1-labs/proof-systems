@@ -1,4 +1,5 @@
 //! Keccak gadget
+use self::constants::*;
 use super::{DIM, OFF, QUARTERS};
 use crate::{
     auto_clone, auto_clone_array,
@@ -53,6 +54,55 @@ macro_rules! from_shifts {
     };
 }
 
+/// Constants for each witness' index offsets and lengths
+pub mod constants {
+    use crate::circuits::polynomials::keccak::{DIM, QUARTERS, SHIFTS};
+
+    // ROUND INDICES
+    pub const THETA_STATE_A_OFF: usize = 0;
+    pub const THETA_STATE_A_LEN: usize = QUARTERS * DIM * DIM;
+    pub const THETA_SHIFTS_C_OFF: usize = THETA_STATE_A_LEN;
+    pub const THETA_SHIFTS_C_LEN: usize = SHIFTS * DIM * QUARTERS;
+    pub const THETA_DENSE_C_OFF: usize = THETA_SHIFTS_C_OFF + THETA_SHIFTS_C_LEN;
+    pub const THETA_DENSE_C_LEN: usize = QUARTERS * DIM;
+    pub const THETA_QUOTIENT_C_OFF: usize = THETA_DENSE_C_OFF + THETA_DENSE_C_LEN;
+    pub const THETA_QUOTIENT_C_LEN: usize = DIM;
+    pub const THETA_REMAINDER_C_OFF: usize = THETA_QUOTIENT_C_OFF + THETA_QUOTIENT_C_LEN;
+    pub const THETA_REMAINDER_C_LEN: usize = QUARTERS * DIM;
+    pub const THETA_DENSE_ROT_C_OFF: usize = THETA_REMAINDER_C_OFF + THETA_REMAINDER_C_LEN;
+    pub const THETA_DENSE_ROT_C_LEN: usize = QUARTERS * DIM;
+    pub const THETA_EXPAND_ROT_C_OFF: usize = THETA_DENSE_ROT_C_OFF + THETA_DENSE_ROT_C_LEN;
+    pub const THETA_EXPAND_ROT_C_LEN: usize = QUARTERS * DIM;
+    pub const PIRHO_SHIFTS_E_OFF: usize = THETA_EXPAND_ROT_C_OFF + THETA_EXPAND_ROT_C_LEN;
+    pub const PIRHO_SHIFTS_E_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
+    pub const PIRHO_DENSE_E_OFF: usize = PIRHO_SHIFTS_E_OFF + PIRHO_SHIFTS_E_LEN;
+    pub const PIRHO_DENSE_E_LEN: usize = QUARTERS * DIM * DIM;
+    pub const PIRHO_QUOTIENT_E_OFF: usize = PIRHO_DENSE_E_OFF + PIRHO_DENSE_E_LEN;
+    pub const PIRHO_QUOTIENT_E_LEN: usize = QUARTERS * DIM * DIM;
+    pub const PIRHO_REMAINDER_E_OFF: usize = PIRHO_QUOTIENT_E_OFF + PIRHO_QUOTIENT_E_LEN;
+    pub const PIRHO_REMAINDER_E_LEN: usize = QUARTERS * DIM * DIM;
+    pub const PIRHO_DENSE_ROT_E_OFF: usize = PIRHO_REMAINDER_E_OFF + PIRHO_REMAINDER_E_LEN;
+    pub const PIRHO_DENSE_ROT_E_LEN: usize = QUARTERS * DIM * DIM;
+    pub const PIRHO_EXPAND_ROT_E_OFF: usize = PIRHO_DENSE_ROT_E_OFF + PIRHO_DENSE_ROT_E_LEN;
+    pub const PIRHO_EXPAND_ROT_E_LEN: usize = QUARTERS * DIM * DIM;
+    pub const CHI_SHIFTS_B_OFF: usize = PIRHO_EXPAND_ROT_E_OFF + PIRHO_EXPAND_ROT_E_LEN;
+    pub const CHI_SHIFTS_B_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
+    pub const CHI_SHIFTS_SUM_OFF: usize = CHI_SHIFTS_B_OFF + CHI_SHIFTS_B_LEN;
+    pub const CHI_SHIFTS_SUM_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
+    pub const IOTA_STATE_G_OFF: usize = CHI_SHIFTS_SUM_OFF + CHI_SHIFTS_SUM_LEN;
+    pub const IOTA_STATE_G_LEN: usize = QUARTERS * DIM * DIM;
+    // SPONGE INDICES
+    pub const SPONGE_OLD_STATE_OFF: usize = 0;
+    pub const SPONGE_OLD_STATE_LEN: usize = QUARTERS * DIM * DIM;
+    pub const SPONGE_NEW_STATE_OFF: usize = SPONGE_OLD_STATE_OFF + SPONGE_OLD_STATE_LEN;
+    pub const SPONGE_NEW_STATE_LEN: usize = QUARTERS * DIM * DIM;
+    pub const SPONGE_BYTES_OFF: usize = SPONGE_NEW_STATE_OFF + SPONGE_NEW_STATE_LEN;
+    pub const SPONGE_BYTES_LEN: usize = 2 * QUARTERS * DIM * DIM;
+    pub const SPONGE_SHIFTS_OFF: usize = SPONGE_BYTES_OFF + SPONGE_BYTES_LEN;
+    pub const SPONGE_SHIFTS_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
+    pub const SPONGE_XOR_STATE_LEN: usize = QUARTERS * DIM * DIM;
+}
+
 //~
 //~ | `KeccakRound` | [0...265) | [265...1165) | [1165...1965) |
 //~ | ------------- | --------- | ------------ | ------------- |
@@ -99,25 +149,70 @@ where
 
         // LOAD STATES FROM WITNESS LAYOUT
         // THETA
-        let state_a = grid!(100, env.witness_curr_chunk(0, 100));
-        let shifts_c = grid!(80, env.witness_curr_chunk(100, 180));
-        let dense_c = grid!(20, env.witness_curr_chunk(180, 200));
-        let quotient_c = grid!(5, env.witness_curr_chunk(200, 205));
-        let remainder_c = grid!(20, env.witness_curr_chunk(205, 225));
-        let dense_rot_c = grid!(20, env.witness_curr_chunk(225, 245));
-        let expand_rot_c = grid!(20, env.witness_curr_chunk(245, 265));
+        let state_a = grid!(
+            100,
+            env.witness_curr_chunk(THETA_STATE_A_OFF, THETA_SHIFTS_C_OFF)
+        );
+        let shifts_c = grid!(
+            80,
+            env.witness_curr_chunk(THETA_SHIFTS_C_OFF, THETA_DENSE_C_OFF)
+        );
+        let dense_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_DENSE_C_OFF, THETA_QUOTIENT_C_OFF)
+        );
+        let quotient_c = grid!(
+            5,
+            env.witness_curr_chunk(THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF)
+        );
+        let remainder_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_REMAINDER_C_OFF, THETA_DENSE_ROT_C_OFF)
+        );
+        let dense_rot_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF)
+        );
+        let expand_rot_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_EXPAND_ROT_C_OFF, PIRHO_DENSE_E_OFF)
+        );
         // PI-RHO
-        let shifts_e = grid!(400, env.witness_curr_chunk(265, 665));
-        let dense_e = grid!(100, env.witness_curr_chunk(665, 765));
-        let quotient_e = grid!(100, env.witness_curr_chunk(765, 865));
-        let remainder_e = grid!(100, env.witness_curr_chunk(865, 965));
-        let dense_rot_e = grid!(100, env.witness_curr_chunk(965, 1065));
-        let expand_rot_e = grid!(100, env.witness_curr_chunk(1065, 1165));
+        let shifts_e = grid!(
+            400,
+            env.witness_curr_chunk(PIRHO_SHIFTS_E_OFF, PIRHO_DENSE_E_OFF)
+        );
+        let dense_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_DENSE_E_OFF, PIRHO_QUOTIENT_E_OFF)
+        );
+        let quotient_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF)
+        );
+        let remainder_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_REMAINDER_E_OFF, PIRHO_DENSE_ROT_E_OFF)
+        );
+        let dense_rot_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_OFF)
+        );
+        let expand_rot_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_EXPAND_ROT_E_OFF, CHI_SHIFTS_B_OFF)
+        );
         // CHI
-        let shifts_b = grid!(400, env.witness_curr_chunk(1165, 1565));
-        let shifts_sum = grid!(400, env.witness_curr_chunk(1565, 1965));
+        let shifts_b = grid!(
+            400,
+            env.witness_curr_chunk(CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF)
+        );
+        let shifts_sum = grid!(
+            400,
+            env.witness_curr_chunk(CHI_SHIFTS_SUM_OFF, IOTA_STATE_G_OFF)
+        );
         // IOTA
-        let state_g = grid!(100, env.witness_next_chunk(0, 100));
+        let state_g = grid!(100, env.witness_next_chunk(0, IOTA_STATE_G_LEN));
 
         // Define vectors containing witness expressions which are not in the layout for efficiency
         let mut state_c: Vec<Vec<T>> = vec![vec![T::zero(); QUARTERS]; DIM];
@@ -220,12 +315,13 @@ where
         let mut constraints = vec![];
 
         // LOAD WITNESS
-        let old_state = env.witness_curr_chunk(0, 100);
-        let new_block = env.witness_curr_chunk(100, 200);
-        let zeros = env.witness_curr_chunk(168, 200);
-        let xor_state = env.witness_next_chunk(0, 100);
-        let bytes = env.witness_curr_chunk(200, 400);
-        let shifts = env.witness_curr_chunk(400, 800);
+        let old_state = env.witness_curr_chunk(SPONGE_OLD_STATE_OFF, SPONGE_OLD_STATE_LEN);
+        let new_block = env.witness_curr_chunk(SPONGE_NEW_STATE_OFF, SPONGE_BYTES_OFF);
+        let zeros = env.witness_curr_chunk(168, SPONGE_BYTES_OFF);
+        let xor_state = env.witness_next_chunk(0, SPONGE_XOR_STATE_LEN);
+        let bytes = env.witness_curr_chunk(SPONGE_BYTES_OFF, SPONGE_SHIFTS_OFF);
+        let shifts =
+            env.witness_curr_chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_OFF + SPONGE_SHIFTS_LEN);
         auto_clone_array!(old_state);
         auto_clone_array!(new_block);
         auto_clone_array!(xor_state);
