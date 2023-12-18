@@ -315,8 +315,24 @@
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
+    interpreter::KeccakStep,
     ArithOps, BoolOps, DIM, E, QUARTERS,
 };
 <span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::Lookup;
@@ -325,10 +341,24 @@
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>KeccakEnv&lt;Fp&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) _constraints: Vec&lt;E&lt;Fp&gt;&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) _lookup_terms_idx: usize,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) _lookup_terms: [Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;; <span class="number">2</span>], <span class="comment">// at most 2 values are looked up at a time
+    <span class="doccomment">/// Constraints that are added to the circuit
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) _constraints: Vec&lt;E&lt;Fp&gt;&gt;,
+    <span class="doccomment">/// Values that are looked up in the circuit
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) _lookup_terms: [Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;; <span class="number">2</span>], <span class="comment">// at most 2 values are looked up at a time
+    </span><span class="doccomment">/// Expanded block of previous step    
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) prev_block: Vec&lt;u64&gt;,
+    <span class="doccomment">/// Padded preimage data
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) padded: Vec&lt;u8&gt;,
+    <span class="doccomment">/// Current block of preimage data
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_idx: usize,
+    <span class="doccomment">/// The full state of the Keccak gate (witness)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) keccak_state: KeccakColumns&lt;E&lt;Fp&gt;&gt;,
+    <span class="doccomment">/// Byte-length of the 10*1 pad (&lt;=136)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) pad_len: u64,
+    <span class="doccomment">/// How many blocks are left to absrob (including current absorb)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) blocks_left_to_absorb: u64,
+    <span class="doccomment">/// What step of the hash is being executed (or None, if just ended)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) curr_step: <span class="prelude-ty">Option</span>&lt;KeccakStep&gt;,
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; KeccakEnv&lt;Fp&gt; {
