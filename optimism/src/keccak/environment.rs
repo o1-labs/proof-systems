@@ -18,6 +18,9 @@ impl<Fp: Field> KeccakEnv<Fp> {
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
         self.keccak_state[column] = Self::constant(value.into());
     }
+    pub fn null_state(&mut self) {
+        self.keccak_state = KeccakColumns::default();
+    }
 }
 
 impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
