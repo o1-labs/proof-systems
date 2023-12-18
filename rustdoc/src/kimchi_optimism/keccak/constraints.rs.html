@@ -245,13 +245,19 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
     {ArithOps, BoolOps, E, WORDS_IN_HASH},
 };
 <span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::{DIM, OFF, QUARTERS};
+<span class="kw">use </span>kimchi::circuits::polynomials::keccak::{
+    constants::{DIM, QUARTERS},
+    OFF,
+};
 
 <span class="kw">pub trait </span>Constraints {
     <span class="kw">type </span>Column;

@@ -64,7 +64,7 @@
 <a href="#64" id="64">64</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
-    polynomials::keccak::{DIM, QUARTERS},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS},
 };
 
 <span class="kw">use </span><span class="self">self</span>::column::KeccakColumn;
@@ -78,7 +78,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BITLENGTH: usize = <span class="number">256</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BYTELENGTH: usize = HASH_BITLENGTH / <span class="number">8</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORD_LENGTH_IN_BITS: usize = <span class="number">64</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>_ZKVM_KECCAK_COLS: usize = <span class="number">1965 </span>+ <span class="number">4 </span>+ <span class="number">6</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>_ZKVM_KECCAK_COLS: usize = KECCAK_COLS + <span class="number">4 </span>+ <span class="number">6</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, KeccakColumn&gt;;

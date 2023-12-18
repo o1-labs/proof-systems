@@ -487,24 +487,22 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
-</span><span class="kw">use </span>std::array;
-
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::keccak::{
-    Keccak, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF, QUARTERS, RATE_IN_BYTES, RC,
-};
-<span class="kw">use crate</span>::{
+</span><span class="kw">use crate</span>::{
     auto_clone,
     circuits::{
-        polynomials::keccak::ROUNDS,
+        polynomials::keccak::{
+            constants::{CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS},
+            Keccak, OFF, RC,
+        },
         witness::{<span class="self">self</span>, IndexCell, Variables, WitnessCell},
     },
     grid, variable_map,
 };
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>std::array;
 
 <span class="kw">type </span>Layout&lt;F, <span class="kw">const </span>COLUMNS: usize&gt; = Vec&lt;Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F, Vec&lt;F&gt;, COLUMNS&gt;&gt;&gt;;
 

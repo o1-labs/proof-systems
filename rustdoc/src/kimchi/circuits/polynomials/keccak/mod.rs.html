@@ -414,24 +414,16 @@
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak hash module
 </span><span class="kw">pub mod </span>circuitgates;
+<span class="kw">pub mod </span>constants;
 <span class="kw">pub mod </span>gadget;
 <span class="kw">pub mod </span>witness;
 
-<span class="kw">pub const </span>DIM: usize = <span class="number">5</span>;
-<span class="kw">pub const </span>QUARTERS: usize = <span class="number">4</span>;
-<span class="kw">pub const </span>ROUNDS: usize = <span class="number">24</span>;
-<span class="kw">pub const </span>RATE_IN_BYTES: usize = <span class="number">1088 </span>/ <span class="number">8</span>;
-<span class="kw">pub const </span>CAPACITY_IN_BYTES: usize = <span class="number">512 </span>/ <span class="number">8</span>;
-<span class="kw">pub const </span>KECCAK_COLS: usize = <span class="number">2344</span>;
-
 <span class="kw">use </span><span class="kw">crate</span>::circuits::expr::constraints::ExprOps;
 <span class="kw">use </span>ark_ff::PrimeField;
+
+<span class="kw">use </span><span class="self">self</span>::constants::{DIM, QUARTERS, RATE_IN_BYTES};
 
 <span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>grid {

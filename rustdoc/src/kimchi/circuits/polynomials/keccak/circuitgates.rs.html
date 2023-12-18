@@ -269,8 +269,54 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak gadget
-</span><span class="kw">use super</span>::{DIM, OFF, QUARTERS};
+</span><span class="kw">use super</span>::{constants::<span class="kw-2">*</span>, OFF};
 <span class="kw">use crate</span>::{
     auto_clone, auto_clone_array,
     circuits::{
@@ -370,25 +416,70 @@
 
         <span class="comment">// LOAD STATES FROM WITNESS LAYOUT
         // THETA
-        </span><span class="kw">let </span>state_a = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_curr_chunk(<span class="number">0</span>, <span class="number">100</span>));
-        <span class="kw">let </span>shifts_c = <span class="macro">grid!</span>(<span class="number">80</span>, env.witness_curr_chunk(<span class="number">100</span>, <span class="number">180</span>));
-        <span class="kw">let </span>dense_c = <span class="macro">grid!</span>(<span class="number">20</span>, env.witness_curr_chunk(<span class="number">180</span>, <span class="number">200</span>));
-        <span class="kw">let </span>quotient_c = <span class="macro">grid!</span>(<span class="number">5</span>, env.witness_curr_chunk(<span class="number">200</span>, <span class="number">205</span>));
-        <span class="kw">let </span>remainder_c = <span class="macro">grid!</span>(<span class="number">20</span>, env.witness_curr_chunk(<span class="number">205</span>, <span class="number">225</span>));
-        <span class="kw">let </span>dense_rot_c = <span class="macro">grid!</span>(<span class="number">20</span>, env.witness_curr_chunk(<span class="number">225</span>, <span class="number">245</span>));
-        <span class="kw">let </span>expand_rot_c = <span class="macro">grid!</span>(<span class="number">20</span>, env.witness_curr_chunk(<span class="number">245</span>, <span class="number">265</span>));
+        </span><span class="kw">let </span>state_a = <span class="macro">grid!</span>(
+            <span class="number">100</span>,
+            env.witness_curr_chunk(THETA_STATE_A_OFF, THETA_SHIFTS_C_OFF)
+        );
+        <span class="kw">let </span>shifts_c = <span class="macro">grid!</span>(
+            <span class="number">80</span>,
+            env.witness_curr_chunk(THETA_SHIFTS_C_OFF, THETA_DENSE_C_OFF)
+        );
+        <span class="kw">let </span>dense_c = <span class="macro">grid!</span>(
+            <span class="number">20</span>,
+            env.witness_curr_chunk(THETA_DENSE_C_OFF, THETA_QUOTIENT_C_OFF)
+        );
+        <span class="kw">let </span>quotient_c = <span class="macro">grid!</span>(
+            <span class="number">5</span>,
+            env.witness_curr_chunk(THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF)
+        );
+        <span class="kw">let </span>remainder_c = <span class="macro">grid!</span>(
+            <span class="number">20</span>,
+            env.witness_curr_chunk(THETA_REMAINDER_C_OFF, THETA_DENSE_ROT_C_OFF)
+        );
+        <span class="kw">let </span>dense_rot_c = <span class="macro">grid!</span>(
+            <span class="number">20</span>,
+            env.witness_curr_chunk(THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF)
+        );
+        <span class="kw">let </span>expand_rot_c = <span class="macro">grid!</span>(
+            <span class="number">20</span>,
+            env.witness_curr_chunk(THETA_EXPAND_ROT_C_OFF, PIRHO_DENSE_E_OFF)
+        );
         <span class="comment">// PI-RHO
-        </span><span class="kw">let </span>shifts_e = <span class="macro">grid!</span>(<span class="number">400</span>, env.witness_curr_chunk(<span class="number">265</span>, <span class="number">665</span>));
-        <span class="kw">let </span>dense_e = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_curr_chunk(<span class="number">665</span>, <span class="number">765</span>));
-        <span class="kw">let </span>quotient_e = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_curr_chunk(<span class="number">765</span>, <span class="number">865</span>));
-        <span class="kw">let </span>remainder_e = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_curr_chunk(<span class="number">865</span>, <span class="number">965</span>));
-        <span class="kw">let </span>dense_rot_e = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_curr_chunk(<span class="number">965</span>, <span class="number">1065</span>));
-        <span class="kw">let </span>expand_rot_e = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_curr_chunk(<span class="number">1065</span>, <span class="number">1165</span>));
+        </span><span class="kw">let </span>shifts_e = <span class="macro">grid!</span>(
+            <span class="number">400</span>,
+            env.witness_curr_chunk(PIRHO_SHIFTS_E_OFF, PIRHO_DENSE_E_OFF)
+        );
+        <span class="kw">let </span>dense_e = <span class="macro">grid!</span>(
+            <span class="number">100</span>,
+            env.witness_curr_chunk(PIRHO_DENSE_E_OFF, PIRHO_QUOTIENT_E_OFF)
+        );
+        <span class="kw">let </span>quotient_e = <span class="macro">grid!</span>(
+            <span class="number">100</span>,
+            env.witness_curr_chunk(PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF)
+        );
+        <span class="kw">let </span>remainder_e = <span class="macro">grid!</span>(
+            <span class="number">100</span>,
+            env.witness_curr_chunk(PIRHO_REMAINDER_E_OFF, PIRHO_DENSE_ROT_E_OFF)
+        );
+        <span class="kw">let </span>dense_rot_e = <span class="macro">grid!</span>(
+            <span class="number">100</span>,
+            env.witness_curr_chunk(PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_OFF)
+        );
+        <span class="kw">let </span>expand_rot_e = <span class="macro">grid!</span>(
+            <span class="number">100</span>,
+            env.witness_curr_chunk(PIRHO_EXPAND_ROT_E_OFF, CHI_SHIFTS_B_OFF)
+        );
         <span class="comment">// CHI
-        </span><span class="kw">let </span>shifts_b = <span class="macro">grid!</span>(<span class="number">400</span>, env.witness_curr_chunk(<span class="number">1165</span>, <span class="number">1565</span>));
-        <span class="kw">let </span>shifts_sum = <span class="macro">grid!</span>(<span class="number">400</span>, env.witness_curr_chunk(<span class="number">1565</span>, <span class="number">1965</span>));
+        </span><span class="kw">let </span>shifts_b = <span class="macro">grid!</span>(
+            <span class="number">400</span>,
+            env.witness_curr_chunk(CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF)
+        );
+        <span class="kw">let </span>shifts_sum = <span class="macro">grid!</span>(
+            <span class="number">400</span>,
+            env.witness_curr_chunk(CHI_SHIFTS_SUM_OFF, IOTA_STATE_G_OFF)
+        );
         <span class="comment">// IOTA
-        </span><span class="kw">let </span>state_g = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_next_chunk(<span class="number">0</span>, <span class="number">100</span>));
+        </span><span class="kw">let </span>state_g = <span class="macro">grid!</span>(<span class="number">100</span>, env.witness_next_chunk(<span class="number">0</span>, IOTA_STATE_G_LEN));
 
         <span class="comment">// Define vectors containing witness expressions which are not in the layout for efficiency
         </span><span class="kw">let </span><span class="kw-2">mut </span>state_c: Vec&lt;Vec&lt;T&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[T::zero(); QUARTERS]; DIM];
@@ -491,14 +582,15 @@
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
 
         <span class="comment">// LOAD WITNESS
-        </span><span class="kw">let </span>old_state = env.witness_curr_chunk(<span class="number">0</span>, <span class="number">100</span>);
-        <span class="kw">let </span>new_block = env.witness_curr_chunk(<span class="number">100</span>, <span class="number">200</span>);
-        <span class="kw">let </span>zeros = env.witness_curr_chunk(<span class="number">168</span>, <span class="number">200</span>);
-        <span class="kw">let </span>xor_state = env.witness_next_chunk(<span class="number">0</span>, <span class="number">100</span>);
-        <span class="kw">let </span>bytes = env.witness_curr_chunk(<span class="number">200</span>, <span class="number">400</span>);
-        <span class="kw">let </span>shifts = env.witness_curr_chunk(<span class="number">400</span>, <span class="number">800</span>);
+        </span><span class="kw">let </span>old_state = env.witness_curr_chunk(SPONGE_OLD_STATE_OFF, SPONGE_NEW_STATE_OFF);
+        <span class="kw">let </span>new_state = env.witness_curr_chunk(SPONGE_NEW_STATE_OFF, SPONGE_BYTES_OFF);
+        <span class="kw">let </span>zeros = env.witness_curr_chunk(SPONGE_ZEROS_OFF, SPONGE_BYTES_OFF);
+        <span class="kw">let </span>xor_state = env.witness_next_chunk(<span class="number">0</span>, SPONGE_XOR_STATE_LEN);
+        <span class="kw">let </span>bytes = env.witness_curr_chunk(SPONGE_BYTES_OFF, SPONGE_SHIFTS_OFF);
+        <span class="kw">let </span>shifts =
+            env.witness_curr_chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_OFF + SPONGE_SHIFTS_LEN);
         <span class="macro">auto_clone_array!</span>(old_state);
-        <span class="macro">auto_clone_array!</span>(new_block);
+        <span class="macro">auto_clone_array!</span>(new_state);
         <span class="macro">auto_clone_array!</span>(xor_state);
         <span class="macro">auto_clone_array!</span>(bytes);
         <span class="macro">auto_clone_array!</span>(shifts);
@@ -520,13 +612,13 @@
             <span class="comment">// Absorb phase pads with zeros the new state
             </span>constraints.push(absorb() * z);
         }
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
             <span class="comment">// In first absorb, root state is all zeros
             </span>constraints.push(root() * old_state(i));
             <span class="comment">// Absorbs the new block by performing XOR with the old state
-            </span>constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
+            </span>constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_state(i))));
             <span class="comment">// In absorb, Check shifts correspond to the decomposition of the new state
-            </span>constraints.push(absorb() * (new_block(i) - <span class="macro">from_shifts!</span>(shifts, i)));
+            </span>constraints.push(absorb() * (new_state(i) - <span class="macro">from_shifts!</span>(shifts, i)));
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">64 </span>{
             <span class="comment">// In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
