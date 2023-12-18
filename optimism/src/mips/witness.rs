@@ -4,7 +4,7 @@ use crate::{
         Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
-    keccak::{environment::KeccakEnv, E},
+    keccak::environment::KeccakEnv,
     mips::{
         column::Column,
         interpreter::{
@@ -17,7 +17,6 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
-use kimchi::circuits::expr::{ConstantExpr::Constant, ConstantTerm::Literal};
 use log::{debug, info};
 use std::array;
 use std::fs::File;
@@ -642,13 +641,6 @@ impl<Fp: Field> Env<Fp> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
-            Column::KeccakState(col) => {
-                if let Some(keccak_env) = &mut self.keccak_env {
-                    keccak_env.keccak_state[col] = E::constant(Constant(Literal(value)))
-                } else {
-                    panic!("Keccak state not initialized")
-                }
-            }
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }
