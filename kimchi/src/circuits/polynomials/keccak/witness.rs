@@ -116,7 +116,7 @@ pub struct Theta {
 }
 
 impl Theta {
-    fn create(state_a: &[u64]) -> Self {
+    pub fn create(state_a: &[u64]) -> Self {
         let state_c = Self::compute_state_c(state_a);
         let shifts_c = Keccak::shift(&state_c);
         let dense_c = Keccak::collapse(&Keccak::reset(&shifts_c));
@@ -139,6 +139,39 @@ impl Theta {
             expand_rot_c: rotation_c.expand_rot,
             state_e,
         }
+    }
+
+    pub fn shifts_c(&self, i: usize, x: usize, q: usize) -> u64 {
+        let shifts_c = grid!(80, &self.shifts_c);
+        shifts_c(i, x, q)
+    }
+
+    pub fn dense_c(&self, x: usize, q: usize) -> u64 {
+        let dense_c = grid!(20, &self.dense_c);
+        dense_c(x, q)
+    }
+
+    pub fn quotient_c(&self, x: usize) -> u64 {
+        self.quotient_c[x]
+    }
+
+    pub fn remainder_c(&self, x: usize, q: usize) -> u64 {
+        let remainder_c = grid!(20, &self.remainder_c);
+        remainder_c(x, q)
+    }
+
+    pub fn dense_rot_c(&self, x: usize, q: usize) -> u64 {
+        let dense_rot_c = grid!(20, &self.dense_rot_c);
+        dense_rot_c(x, q)
+    }
+
+    pub fn expand_rot_c(&self, x: usize, q: usize) -> u64 {
+        let expand_rot_c = grid!(20, &self.expand_rot_c);
+        expand_rot_c(x, q)
+    }
+
+    pub fn state_e(&self) -> Vec<u64> {
+        self.state_e.clone()
     }
 
     fn compute_state_c(state_a: &[u64]) -> Vec<u64> {
