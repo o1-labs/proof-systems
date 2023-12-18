@@ -1,4 +1,7 @@
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::{
+    expr::{ConstantExpr, Expr},
+    polynomials::keccak::{DIM, QUARTERS},
+};
 
 use crate::mips::column::Column;
 
@@ -7,11 +10,11 @@ pub mod environment;
 pub mod interpreter;
 pub mod witness;
 
-pub const ZKVM_KECCAK_COLS: usize = 1965 + 6;
-pub const RATE: usize = 1088;
-pub const RATE_IN_BYTES: usize = RATE / 8;
-pub const DIM: usize = 5;
-pub const QUARTERS: usize = 4;
+pub(crate) const HASH_BITLENGTH: usize = 256;
+pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
+pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
+pub(crate) const _ZKVM_KECCAK_COLS: usize = 1965 + 4 + 6;
+pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 

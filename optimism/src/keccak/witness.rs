@@ -1,11 +1,11 @@
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{Keccak, ROUNDS};
+use kimchi::circuits::polynomials::keccak::{Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS};
 
 use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    DIM, QUARTERS,
+    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 
 impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
@@ -84,15 +84,76 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.write_column(KeccakColumn::FlagRound, round);
     }
 
-    fn run_sponge(&mut self, _sponge: Sponge) {
-        todo!()
+    fn run_sponge(&mut self, sponge: Sponge) {
+        match sponge {
+            Sponge::Absorb(absorb) => self.run_absorb(absorb),
+            Sponge::Squeeze => self.run_squeeze(),
+        }
     }
-    fn run_absorb(&mut self, _absorb: Absorb) {
-        todo!()
-    }
+
     fn run_squeeze(&mut self) {
-        todo!()
+        self.write_column(KeccakColumn::FlagSqueeze, 1);
+
+        // Compute witness values
+        let state = self.prev_block.clone();
+        let shifts = Keccak::shift(&state);
+        let dense = Keccak::collapse(&Keccak::reset(&shifts));
+        let bytes = Keccak::bytestring(&dense);
+
+        // Write squeeze-related columns
+        for (i, value) in state.iter().enumerate() {
+            self.write_column(KeccakColumn::SpongeOldState(i), *value);
+        }
+        for (i, value) in bytes.iter().enumerate().take(HASH_BYTELENGTH) {
+            self.write_column(KeccakColumn::SpongeBytes(i), *value);
+        }
+        for (i, value) in shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
+            self.write_column(KeccakColumn::SpongeShifts(i), *value);
+        }
+
+        // Rest is zero thanks to null_state
+
+        // TODO: more updates to the env?
     }
+
+    fn run_absorb(&mut self, absorb: Absorb) {
+        self.set_flag_absorb(absorb);
+
+        // Compute witness values
+        let ini_idx = self.block_idx * RATE_IN_BYTES;
+        let mut block = self.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
+        // Pad with zeros
+        let old_state = self.prev_block.clone();
+        block.append(&mut vec![0; CAPACITY_IN_BYTES]);
+        let new_state = Keccak::expand_state(&block);
+        let shifts = Keccak::shift(&new_state);
+        let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
+        let xor_state = old_state
+            .iter()
+            .zip(new_state.clone())
+            .map(|(x, y)| x + y)
+            .collect::<Vec<u64>>();
+
+        // Write absorb-related columns
+        for i in 0..QUARTERS * DIM * DIM {
+            self.write_column(KeccakColumn::SpongeOldState(i), old_state[i]);
+            self.write_column(KeccakColumn::SpongeNewState(i), new_state[i]);
+            self.write_column(KeccakColumn::NextState(i), xor_state[i]);
+        }
+        for (i, value) in bytes.iter().enumerate() {
+            self.write_column(KeccakColumn::SpongeBytes(i), *value);
+        }
+        for (i, value) in shifts.iter().enumerate() {
+            self.write_column(KeccakColumn::SpongeShifts(i), *value);
+        }
+
+        // Rest is zero thanks to null_state
+
+        // Update environment
+        self.prev_block = xor_state;
+        self.block_idx += 1; // To be used in next absorb (if any)
+    }
+
     fn run_round(&mut self, _round: u64) {
         todo!()
     }
