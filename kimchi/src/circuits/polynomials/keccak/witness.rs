@@ -355,16 +355,25 @@ impl Chi {
 /// Values involved in Iota permutation step
 pub struct Iota {
     state_g: Vec<u64>,
+    rc: Vec<u64>,
 }
 
 impl Iota {
-    fn create(state_f: Vec<u64>, round: usize) -> Self {
+    pub fn create(state_f: &[u64], round: usize) -> Self {
         let rc = Keccak::sparse(RC[round]);
-        let mut state_g = state_f.clone();
+        let mut state_g = state_f.to_vec();
         for (i, c) in rc.iter().enumerate() {
             state_g[i] = state_f[i] + *c;
         }
-        Self { state_g }
+        Self { state_g, rc }
+    }
+
+    pub fn state_g(&self, i: usize) -> u64 {
+        self.state_g[i]
+    }
+
+    pub fn rc(&self, i: usize) -> u64 {
+        self.rc[i]
     }
 }
 
@@ -428,7 +437,7 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
             let chi = Chi::create(&pirho.state_b);
 
             // Iota
-            let iota = Iota::create(chi.state_f, round);
+            let iota = Iota::create(&chi.state_f, round);
 
             // Initialize the round row
             witness::init(

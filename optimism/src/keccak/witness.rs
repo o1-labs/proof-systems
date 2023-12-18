@@ -1,8 +1,8 @@
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
-        witness::{Chi, PiRho, Theta},
-        Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS,
+        witness::{Chi, Iota, PiRho, Theta},
+        Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS,
     },
     grid,
 };
@@ -163,12 +163,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     fn run_round(&mut self, round: u64) {
         self.set_flag_round(round);
 
-        let rc = Keccak::sparse(RC[round as usize]);
         let state_a = self.prev_block.clone();
         let state_e = self.run_theta(&state_a);
         let state_b = self.run_pirho(&state_e);
         let state_f = self.run_chi(&state_b);
-        self.run_iota(&state_f, &rc);
+        self.run_iota(&state_f, round as usize);
 
         // Compute witness values
     }
@@ -258,7 +257,15 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         chi.state_f()
     }
 
-    fn run_iota(&mut self, _state_f: &[u64], _rc: &[u64]) {
-        todo!()
+    fn run_iota(&mut self, state_f: &[u64], round: usize) {
+        let iota = Iota::create(state_f, round);
+
+        // Update columns
+        for i in 0..QUARTERS * DIM * DIM {
+            self.write_column(KeccakColumn::NextState(i), iota.state_g(i));
+        }
+        for i in 0..QUARTERS {
+            self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
+        }
     }
 }
