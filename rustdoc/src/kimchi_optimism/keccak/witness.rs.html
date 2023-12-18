@@ -95,8 +95,22 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::Keccak;
+<span class="kw">use </span>kimchi::circuits::polynomials::keccak::{Keccak, ROUNDS};
 
 <span class="kw">use super</span>::{
     column::KeccakColumn,
@@ -154,17 +168,31 @@
         <span class="macro">todo!</span>()
     }
 
-    <span class="kw">fn </span>set_flag_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _round: u64) {
-        <span class="macro">todo!</span>()
-    }
-    <span class="kw">fn </span>set_flag_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _absorb: Absorb) {
-        <span class="macro">todo!</span>()
-    }
     <span class="kw">fn </span>set_flag_root(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="macro">todo!</span>()
+        <span class="self">self</span>.write_column(KeccakColumn::FlagRoot, <span class="number">1</span>);
     }
+
     <span class="kw">fn </span>set_flag_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="macro">todo!</span>()
+        <span class="self">self</span>.write_column(KeccakColumn::FlagPad, <span class="number">1</span>);
+        <span class="self">self</span>.write_column(KeccakColumn::FlagLength, <span class="self">self</span>.pad_len)
+    }
+
+    <span class="kw">fn </span>set_flag_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, absorb: Absorb) {
+        <span class="self">self</span>.write_column(KeccakColumn::FlagAbsorb, <span class="number">1</span>);
+        <span class="kw">match </span>absorb {
+            Absorb::First =&gt; <span class="self">self</span>.set_flag_root(),
+            Absorb::Last =&gt; <span class="self">self</span>.set_flag_pad(),
+            Absorb::FirstAndLast =&gt; {
+                <span class="self">self</span>.set_flag_root();
+                <span class="self">self</span>.set_flag_pad()
+            }
+            Absorb::Middle =&gt; (),
+        }
+    }
+
+    <span class="kw">fn </span>set_flag_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, round: u64) {
+        <span class="macro">assert!</span>(round &lt; ROUNDS <span class="kw">as </span>u64);
+        <span class="self">self</span>.write_column(KeccakColumn::FlagRound, round);
     }
 
     <span class="kw">fn </span>run_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _sponge: Sponge) {
