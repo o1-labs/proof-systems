@@ -1,8 +1,9 @@
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
+        constants::{CAPACITY_IN_BYTES, DIM, QUARTERS, RATE_IN_BYTES, ROUNDS, STATE_LEN},
         witness::{Chi, Iota, PiRho, Theta},
-        Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, STATE_LEN,
+        Keccak,
     },
     grid,
 };
@@ -11,7 +12,7 @@ use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    HASH_BYTELENGTH, WORDS_IN_HASH,
 };
 
 pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {

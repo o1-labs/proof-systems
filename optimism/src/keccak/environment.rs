@@ -7,7 +7,7 @@ use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
 use kimchi::{
     auto_clone_array,
-    circuits::{expr::ConstantExpr, polynomials::keccak::ROUNDS},
+    circuits::{expr::ConstantExpr, polynomials::keccak::constants::ROUNDS},
     grid,
     o1_utils::Two,
 };
