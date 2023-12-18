@@ -1002,21 +1002,13 @@
 <a href="#1002" id="1002">1002</a>
 <a href="#1003" id="1003">1003</a>
 <a href="#1004" id="1004">1004</a>
-<a href="#1005" id="1005">1005</a>
-<a href="#1006" id="1006">1006</a>
-<a href="#1007" id="1007">1007</a>
-<a href="#1008" id="1008">1008</a>
-<a href="#1009" id="1009">1009</a>
-<a href="#1010" id="1010">1010</a>
-<a href="#1011" id="1011">1011</a>
-<a href="#1012" id="1012">1012</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
 <span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
-    keccak::{environment::KeccakEnv, E},
+    keccak::environment::KeccakEnv,
     mips::{
         column::Column,
         interpreter::{
@@ -1029,7 +1021,6 @@
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>core::panic;
-<span class="kw">use </span>kimchi::circuits::expr::ConstantExpr::Literal;
 <span class="kw">use </span>log::{debug, info};
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::fs::File;
@@ -1654,13 +1645,6 @@
     <span class="kw">pub fn </span>write_field_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: Fp) {
         <span class="kw">match </span>column {
             Column::ScratchState(idx) =&gt; <span class="self">self</span>.scratch_state[idx] = value,
-            Column::KeccakState(col) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(keccak_env) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.keccak_env {
-                    keccak_env.keccak_state[col] = E::constant(Literal(value))
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">&quot;Keccak state not initialized&quot;</span>)
-                }
-            }
         }
     }
 

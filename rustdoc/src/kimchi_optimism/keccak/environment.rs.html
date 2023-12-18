@@ -306,6 +306,12 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     ArithOps, BoolOps, DIM, E, QUARTERS,
@@ -320,6 +326,12 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) _lookup_terms_idx: usize,
     <span class="kw">pub</span>(<span class="kw">crate</span>) _lookup_terms: [Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;; <span class="number">2</span>], <span class="comment">// at most 2 values are looked up at a time
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) keccak_state: KeccakColumns&lt;E&lt;Fp&gt;&gt;,
+}
+
+<span class="kw">impl</span>&lt;Fp: Field&gt; KeccakEnv&lt;Fp&gt; {
+    <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: u64) {
+        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant(value.into());
+    }
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; BoolOps <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
