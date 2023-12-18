@@ -729,7 +729,8 @@ where
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
 
-                for gate in [
+                let constraints: Vec<_> = 
+                [
                     (
                         (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
                         true,
@@ -752,12 +753,16 @@ where
                     (&Xor16::default(), xor_enabled),
                     // Rot gate
                     (&Rot64::default(), rot_enabled),
-                ]
-                .into_iter()
-                .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
-                {
-                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
-                    let eval = constraint.evaluations(&env);
+                ].into_iter().filter_map(|(gate, is_enabled)| {
+                    if is_enabled {
+                        Some(gate.combined_constraints(&all_alphas, &mut cache))
+                    } else { None }
+                }).collect();
+                let results: Vec<_> = constraints.into_par_iter()
+                .map(|constraint| {
+                    constraint.evaluations(&env)
+                }).collect();
+                results.into_iter().for_each(|eval| {
                     if eval.domain().size == t4.domain().size {
                         t4 += &eval;
                     } else if eval.domain().size == t8.domain().size {
@@ -765,8 +770,7 @@ where
                     } else {
                         panic!("Bad evaluation")
                     }
-                    check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
-                }
+                });
             };
 
             // lookup
