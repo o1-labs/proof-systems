@@ -364,6 +364,9 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -373,7 +376,10 @@
 <span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>kimchi::{
     auto_clone_array,
-    circuits::{expr::ConstantExpr, polynomials::keccak::ROUNDS},
+    circuits::{
+        expr::{ConstantExpr, ConstantTerm::Literal},
+        polynomials::keccak::ROUNDS,
+    },
     grid,
     o1_utils::Two,
 };
@@ -473,7 +479,7 @@
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
     <span class="kw">type </span>Fp = Fp;
     <span class="kw">fn </span>constant(x: <span class="self">Self</span>::Fp) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::Variable::constant(ConstantExpr::Literal(x))
+        <span class="self">Self</span>::Variable::constant(ConstantExpr::Constant(Literal(x)))
     }
     <span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::constant(<span class="self">Self</span>::Fp::two_pow(x))
