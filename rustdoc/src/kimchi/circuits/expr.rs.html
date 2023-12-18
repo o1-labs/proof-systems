@@ -3046,6 +3046,32 @@
 <a href="#3046" id="3046">3046</a>
 <a href="#3047" id="3047">3047</a>
 <a href="#3048" id="3048">3048</a>
+<a href="#3049" id="3049">3049</a>
+<a href="#3050" id="3050">3050</a>
+<a href="#3051" id="3051">3051</a>
+<a href="#3052" id="3052">3052</a>
+<a href="#3053" id="3053">3053</a>
+<a href="#3054" id="3054">3054</a>
+<a href="#3055" id="3055">3055</a>
+<a href="#3056" id="3056">3056</a>
+<a href="#3057" id="3057">3057</a>
+<a href="#3058" id="3058">3058</a>
+<a href="#3059" id="3059">3059</a>
+<a href="#3060" id="3060">3060</a>
+<a href="#3061" id="3061">3061</a>
+<a href="#3062" id="3062">3062</a>
+<a href="#3063" id="3063">3063</a>
+<a href="#3064" id="3064">3064</a>
+<a href="#3065" id="3065">3065</a>
+<a href="#3066" id="3066">3066</a>
+<a href="#3067" id="3067">3067</a>
+<a href="#3068" id="3068">3068</a>
+<a href="#3069" id="3069">3069</a>
+<a href="#3070" id="3070">3070</a>
+<a href="#3071" id="3071">3071</a>
+<a href="#3072" id="3072">3072</a>
+<a href="#3073" id="3073">3073</a>
+<a href="#3074" id="3074">3074</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3105,17 +3131,19 @@
     </span>MissingRuntime,
 }
 
-<span class="doccomment">/// The collection of constants required to evaluate an `Expr`.
-</span><span class="kw">pub struct </span>Constants&lt;F: <span class="lifetime">&#39;static</span>&gt; {
+<span class="kw">pub struct </span>Challenges&lt;F&gt; {
     <span class="doccomment">/// The challenge alpha from the PLONK IOP.
     </span><span class="kw">pub </span>alpha: F,
     <span class="doccomment">/// The challenge beta from the PLONK IOP.
     </span><span class="kw">pub </span>beta: F,
     <span class="doccomment">/// The challenge gamma from the PLONK IOP.
     </span><span class="kw">pub </span>gamma: F,
-    <span class="doccomment">/// The challenge joint_combiner which is used to combine
-    /// joint lookup tables.
+    <span class="doccomment">/// The challenge joint_combiner which is used to combine joint lookup tables.
     </span><span class="kw">pub </span>joint_combiner: <span class="prelude-ty">Option</span>&lt;F&gt;,
+}
+
+<span class="doccomment">/// The collection of constants required to evaluate an `Expr`.
+</span><span class="kw">pub struct </span>Constants&lt;F: <span class="lifetime">&#39;static</span>&gt; {
     <span class="doccomment">/// The endomorphism coefficient
     </span><span class="kw">pub </span>endo_coefficient: F,
     <span class="doccomment">/// The MDS matrix
@@ -3162,6 +3190,8 @@
     </span><span class="kw">pub </span>l0_1: F,
     <span class="doccomment">/// Constant values required
     </span><span class="kw">pub </span>constants: Constants&lt;F&gt;,
+    <span class="doccomment">/// Challenges from the IOP.
+    </span><span class="kw">pub </span>challenges: Challenges&lt;F&gt;,
     <span class="doccomment">/// The domains used in the PLONK argument.
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
     <span class="doccomment">/// Lookup specific polynomials
@@ -3173,6 +3203,7 @@
     <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;;
     <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; D&lt;F&gt;;
     <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt;;
+    <span class="kw">fn </span>get_challenges(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Challenges&lt;F&gt;;
     <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;;
     <span class="kw">fn </span>l0_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
 }
@@ -3212,6 +3243,10 @@
 
     <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.constants
+    }
+
+    <span class="kw">fn </span>get_challenges(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Challenges&lt;F&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.challenges
     }
 
     <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt; {
@@ -3340,20 +3375,20 @@
     }
 
     <span class="doccomment">/// Evaluate the given constant expression to a field element.
-    </span><span class="kw">pub fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;) -&gt; F {
+    </span><span class="kw">pub fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;) -&gt; F {
         <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Alpha =&gt; c.alpha,
-            Beta =&gt; c.beta,
-            Gamma =&gt; c.gamma,
-            JointCombiner =&gt; c.joint_combiner.expect(<span class="string">&quot;joint lookup was not expected&quot;</span>),
+            Alpha =&gt; chals.alpha,
+            Beta =&gt; chals.beta,
+            Gamma =&gt; chals.gamma,
+            JointCombiner =&gt; chals.joint_combiner.expect(<span class="string">&quot;joint lookup was not expected&quot;</span>),
             EndoCoefficient =&gt; c.endo_coefficient,
             Mds { row, col } =&gt; c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col],
             Literal(x) =&gt; <span class="kw-2">*</span>x,
-            Pow(x, p) =&gt; x.value(c).pow([<span class="kw-2">*</span>p]),
-            Mul(x, y) =&gt; x.value(c) * y.value(c),
-            Add(x, y) =&gt; x.value(c) + y.value(c),
-            Sub(x, y) =&gt; x.value(c) - y.value(c),
+            Pow(x, p) =&gt; x.value(c, chals).pow([<span class="kw-2">*</span>p]),
+            Mul(x, y) =&gt; x.value(c, chals) * y.value(c, chals),
+            Add(x, y) =&gt; x.value(c, chals) + y.value(c, chals),
+            Sub(x, y) =&gt; x.value(c, chals) - y.value(c, chals),
         }
     }
 }
@@ -3697,6 +3732,7 @@
         pt: F,
         evals: <span class="kw-2">&amp;</span>Evaluations,
         c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;,
+        chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>stack = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>cache: Vec&lt;F&gt; = <span class="macro">vec!</span>[];
@@ -3710,11 +3746,11 @@
             }
             <span class="kw">use </span>PolishToken::<span class="kw-2">*</span>;
             <span class="kw">match </span>t {
-                Alpha =&gt; stack.push(c.alpha),
-                Beta =&gt; stack.push(c.beta),
-                Gamma =&gt; stack.push(c.gamma),
+                Alpha =&gt; stack.push(chals.alpha),
+                Beta =&gt; stack.push(chals.beta),
+                Gamma =&gt; stack.push(chals.gamma),
                 JointCombiner =&gt; {
-                    stack.push(c.joint_combiner.expect(<span class="string">&quot;no joint lookup was expected&quot;</span>))
+                    stack.push(chals.joint_combiner.expect(<span class="string">&quot;no joint lookup was expected&quot;</span>))
                 }
                 EndoCoefficient =&gt; stack.push(c.endo_coefficient),
                 Mds { row, col } =&gt; stack.push(c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col]),
@@ -4481,25 +4517,31 @@
 }
 
 <span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy + GenericColumn&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
-    <span class="kw">fn </span>evaluate_constants_(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;) -&gt; Expr&lt;F, Column&gt; {
+    <span class="kw">fn </span>evaluate_constants_(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;) -&gt; Expr&lt;F, Column&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="comment">// TODO: Use cache
         </span><span class="kw">match </span><span class="self">self </span>{
-            Double(x) =&gt; x.evaluate_constants_(c).double(),
-            Pow(x, d) =&gt; x.evaluate_constants_(c).pow(<span class="kw-2">*</span>d),
-            Square(x) =&gt; x.evaluate_constants_(c).square(),
-            Constant(x) =&gt; Constant(x.value(c)),
+            Double(x) =&gt; x.evaluate_constants_(c, chals).double(),
+            Pow(x, d) =&gt; x.evaluate_constants_(c, chals).pow(<span class="kw-2">*</span>d),
+            Square(x) =&gt; x.evaluate_constants_(c, chals).square(),
+            Constant(x) =&gt; Constant(x.value(c, chals)),
             Cell(v) =&gt; Cell(<span class="kw-2">*</span>v),
             VanishesOnZeroKnowledgeAndPreviousRows =&gt; VanishesOnZeroKnowledgeAndPreviousRows,
             UnnormalizedLagrangeBasis(i) =&gt; UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i),
-            BinOp(Op2::Add, x, y) =&gt; x.evaluate_constants_(c) + y.evaluate_constants_(c),
-            BinOp(Op2::Mul, x, y) =&gt; x.evaluate_constants_(c) * y.evaluate_constants_(c),
-            BinOp(Op2::Sub, x, y) =&gt; x.evaluate_constants_(c) - y.evaluate_constants_(c),
-            Cache(id, e) =&gt; Cache(<span class="kw-2">*</span>id, Box::new(e.evaluate_constants_(c))),
+            BinOp(Op2::Add, x, y) =&gt; {
+                x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals)
+            }
+            BinOp(Op2::Mul, x, y) =&gt; {
+                x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals)
+            }
+            BinOp(Op2::Sub, x, y) =&gt; {
+                x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals)
+            }
+            Cache(id, e) =&gt; Cache(<span class="kw-2">*</span>id, Box::new(e.evaluate_constants_(c, chals))),
             IfFeature(feature, e1, e2) =&gt; IfFeature(
                 <span class="kw-2">*</span>feature,
-                Box::new(e1.evaluate_constants_(c)),
-                Box::new(e2.evaluate_constants_(c)),
+                Box::new(e1.evaluate_constants_(c, chals)),
+                Box::new(e2.evaluate_constants_(c, chals)),
             ),
         }
     }
@@ -4516,7 +4558,7 @@
         evals: <span class="kw-2">&amp;</span>Evaluations,
         env: <span class="kw-2">&amp;</span>Environment,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
-        <span class="self">self</span>.evaluate_(d, pt, evals, env.get_constants())
+        <span class="self">self</span>.evaluate_(d, pt, evals, env.get_constants(), env.get_challenges())
     }
 
     <span class="doccomment">/// Evaluate an expression as a field element against the constants.
@@ -4526,26 +4568,27 @@
         pt: F,
         evals: <span class="kw-2">&amp;</span>Evaluations,
         c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;,
+        chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Double(x) =&gt; x.evaluate_(d, pt, evals, c).map(|x| x.double()),
-            Constant(x) =&gt; <span class="prelude-val">Ok</span>(x.value(c)),
-            Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
+            Double(x) =&gt; x.evaluate_(d, pt, evals, c, chals).map(|x| x.double()),
+            Constant(x) =&gt; <span class="prelude-val">Ok</span>(x.value(c, chals)),
+            Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
             BinOp(Op2::Mul, x, y) =&gt; {
-                <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
-                <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
+                <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
+                <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x * y)
             }
-            Square(x) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c)<span class="question-mark">?</span>.square()),
+            Square(x) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>.square()),
             BinOp(Op2::Add, x, y) =&gt; {
-                <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
-                <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
+                <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
+                <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x + y)
             }
             BinOp(Op2::Sub, x, y) =&gt; {
-                <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
-                <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
+                <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
+                <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x - y)
             }
             VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
@@ -4560,12 +4603,12 @@
                 <span class="prelude-val">Ok</span>(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, offset, <span class="kw-2">&amp;</span>pt))
             }
             Cell(v) =&gt; v.evaluate(evals),
-            Cache(<span class="kw">_</span>, e) =&gt; e.evaluate_(d, pt, evals, c),
+            Cache(<span class="kw">_</span>, e) =&gt; e.evaluate_(d, pt, evals, c, chals),
             IfFeature(feature, e1, e2) =&gt; {
                 <span class="kw">if </span>feature.is_enabled() {
-                    e1.evaluate_(d, pt, evals, c)
+                    e1.evaluate_(d, pt, evals, c, chals)
                 } <span class="kw">else </span>{
-                    e2.evaluate_(d, pt, evals, c)
+                    e2.evaluate_(d, pt, evals, c, chals)
                 }
             }
         }
@@ -4576,7 +4619,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
     ) -&gt; Expr&lt;F, Column&gt; {
-        <span class="self">self</span>.evaluate_constants_(env.get_constants())
+        <span class="self">self</span>.evaluate_constants_(env.get_constants(), env.get_challenges())
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
@@ -4886,11 +4929,12 @@
         evals: <span class="kw-2">&amp;</span>ColEvaluations,
     ) -&gt; (F, Evaluations&lt;F, D&lt;F&gt;&gt;) {
         <span class="kw">let </span>cs = env.get_constants();
+        <span class="kw">let </span>chals = env.get_challenges();
         <span class="kw">let </span>d1 = env.get_domain(Domain::D1);
         <span class="kw">let </span>n = d1.size();
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[F::zero(); n];
         <span class="self">self</span>.index_terms.iter().for_each(|(idx, c)| {
-            <span class="kw">let </span>c = PolishToken::evaluate(c, d1, pt, evals, cs).unwrap();
+            <span class="kw">let </span>c = PolishToken::evaluate(c, d1, pt, evals, cs, chals).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
                 .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
@@ -4901,7 +4945,7 @@
         });
         <span class="kw">let </span>p = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(res, d1);
         (
-            PolishToken::evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>.constant_term, d1, pt, evals, cs).unwrap(),
+            PolishToken::evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>.constant_term, d1, pt, evals, cs, chals).unwrap(),
             p,
         )
     }
@@ -4923,11 +4967,12 @@
         evals: <span class="kw-2">&amp;</span>ColEvaluations,
     ) -&gt; (F, DensePolynomial&lt;F&gt;) {
         <span class="kw">let </span>cs = env.get_constants();
+        <span class="kw">let </span>chals = env.get_challenges();
         <span class="kw">let </span>d1 = env.get_domain(Domain::D1);
         <span class="kw">let </span>n = d1.size();
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[F::zero(); n];
         <span class="self">self</span>.index_terms.iter().for_each(|(idx, c)| {
-            <span class="kw">let </span>c = c.evaluate_(d1, pt, evals, cs).unwrap();
+            <span class="kw">let </span>c = c.evaluate_(d1, pt, evals, cs, chals).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
                 .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
@@ -4937,7 +4982,12 @@
                 .for_each(|(i, r)| <span class="kw-2">*</span>r += c * e.evals[scale * i])
         });
         <span class="kw">let </span>p = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(res, d1).interpolate();
-        (<span class="self">self</span>.constant_term.evaluate_(d1, pt, evals, cs).unwrap(), p)
+        (
+            <span class="self">self</span>.constant_term
+                .evaluate_(d1, pt, evals, cs, chals)
+                .unwrap(),
+            p,
+        )
     }
 }
 
@@ -5846,7 +5896,7 @@
 
         <span class="kw">fn </span>constant(expr: ConstantExpr&lt;F&gt;, env: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ArgumentData&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
             <span class="kw">match </span>env {
-                <span class="prelude-val">Some</span>(data) =&gt; expr.value(<span class="kw-2">&amp;</span>data.constants),
+                <span class="prelude-val">Some</span>(data) =&gt; expr.value(<span class="kw-2">&amp;</span>data.constants, <span class="kw-2">&amp;</span>data.challenges),
                 <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Missing constants&quot;</span>),
             }
         }
@@ -6018,13 +6068,15 @@
 
         <span class="kw">let </span>env = Environment {
             constants: Constants {
+                endo_coefficient: one,
+                mds: <span class="kw-2">&amp;</span>Vesta::sponge_params().mds,
+                zk_rows: <span class="number">3</span>,
+            },
+            challenges: Challenges {
                 alpha: one,
                 beta: one,
                 gamma: one,
                 joint_combiner: <span class="prelude-val">None</span>,
-                endo_coefficient: one,
-                mds: <span class="kw-2">&amp;</span>Vesta::sponge_params().mds,
-                zk_rows: <span class="number">3</span>,
             },
             witness: <span class="kw-2">&amp;</span>domain_evals.d8.this.w,
             coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,

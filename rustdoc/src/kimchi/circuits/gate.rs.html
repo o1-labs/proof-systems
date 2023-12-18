@@ -639,6 +639,13 @@
 <a href="#639" id="639">639</a>
 <a href="#640" id="640">640</a>
 <a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -892,16 +899,23 @@
         <span class="comment">// Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
         </span><span class="kw">let </span>constants = expr::Constants {
-            alpha: F::one(),
-            beta: F::one(),
-            gamma: F::one(),
-            joint_combiner: <span class="prelude-val">Some</span>(F::one()),
             endo_coefficient: cs.endo,
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
             zk_rows: cs.zk_rows,
         };
+        <span class="kw">let </span>challenges = expr::Challenges {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: <span class="prelude-val">Some</span>(F::one()),
+        };
         <span class="comment">// Create the argument environment for the constraints over field elements
-        </span><span class="kw">let </span>env = ArgumentEnv::&lt;F, F&gt;::create(argument_witness, <span class="self">self</span>.coeffs.clone(), constants);
+        </span><span class="kw">let </span>env = ArgumentEnv::&lt;F, F&gt;::create(
+            argument_witness,
+            <span class="self">self</span>.coeffs.clone(),
+            constants,
+            challenges,
+        );
 
         <span class="comment">// Check the wiring (i.e. copy constraints) for this gate
         // Note: Gates can operated on row Curr or Curr and Next.

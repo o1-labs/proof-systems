@@ -362,6 +362,8 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
@@ -503,13 +505,15 @@
         <span class="kw">let </span>pt = F::from(<span class="number">123456u64</span>);
 
         <span class="kw">let </span>constants = expr::Constants {
+            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            endo_coefficient: cs.endo,
+            zk_rows: cs.zk_rows,
+        };
+        <span class="kw">let </span>challenges = expr::Challenges {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
             joint_combiner: <span class="prelude-val">None</span>,
-            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-            endo_coefficient: cs.endo,
-            zk_rows: cs.zk_rows,
         };
 
         <span class="kw">let </span>evals: ProofEvaluations&lt;PointEvaluations&lt;G::ScalarField&gt;&gt; =
@@ -517,7 +521,7 @@
 
         <span class="kw">let </span>constraints = EndosclMul::constraints(<span class="kw-2">&amp;mut </span>Cache::default());
         <span class="kw">for </span>(i, c) <span class="kw">in </span>constraints.iter().enumerate() {
-            <span class="kw">match </span>c.evaluate_(cs.domain.d1, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants) {
+            <span class="kw">match </span>c.evaluate_(cs.domain.d1, pt, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants, <span class="kw-2">&amp;</span>challenges) {
                 <span class="prelude-val">Ok</span>(x) =&gt; {
                     <span class="kw">if </span>x != F::zero() {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Bad endo equation {i}&quot;</span>));

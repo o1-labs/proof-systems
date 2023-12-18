@@ -212,6 +212,13 @@
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
 <a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! An argument is simply a number of constraints,
 //! which we want to enforce on all points of the domain.
 //! Both the permutation and the plookup arguments fit this type.
@@ -226,7 +233,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use super</span>::{
-    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, Cache, Challenges, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -270,12 +277,18 @@
 <span class="kw">impl</span>&lt;F: Field, T: ExprOps&lt;F&gt;&gt; ArgumentEnv&lt;F, T&gt; {
     <span class="doccomment">/// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
-    </span><span class="kw">pub fn </span>create(witness: ArgumentWitness&lt;F&gt;, coeffs: Vec&lt;F&gt;, constants: Constants&lt;F&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>create(
+        witness: ArgumentWitness&lt;F&gt;,
+        coeffs: Vec&lt;F&gt;,
+        constants: Constants&lt;F&gt;,
+        challenges: Challenges&lt;F&gt;,
+    ) -&gt; <span class="self">Self </span>{
         ArgumentEnv {
             data: <span class="prelude-val">Some</span>(ArgumentData {
                 witness,
                 coeffs,
                 constants,
+                challenges,
             }),
             phantom_data: PhantomData,
         }
@@ -352,6 +365,7 @@
     </span><span class="kw">pub </span>coeffs: Vec&lt;F&gt;,
     <span class="doccomment">/// Constants
     </span><span class="kw">pub </span>constants: Constants&lt;F&gt;,
+    <span class="kw">pub </span>challenges: Challenges&lt;F&gt;,
 }
 
 <span class="doccomment">/// Witness data for a argument

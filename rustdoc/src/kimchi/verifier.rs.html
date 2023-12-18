@@ -1233,6 +1233,12 @@
 <a href="#1233" id="1233">1233</a>
 <a href="#1234" id="1234">1234</a>
 <a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -1240,7 +1246,7 @@
         argument::ArgumentType,
         berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{Constants, PolishToken},
+        expr::{Challenges, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -1664,13 +1670,15 @@
             ft_eval0 += numerator * denominator;
 
             <span class="kw">let </span>constants = Constants {
+                endo_coefficient: index.endo,
+                mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+                zk_rows,
+            };
+            <span class="kw">let </span>challenges = Challenges {
                 alpha,
                 beta,
                 gamma,
                 joint_combiner: joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
-                endo_coefficient: index.endo,
-                mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-                zk_rows,
             };
 
             ft_eval0 -= PolishToken::evaluate(
@@ -1679,6 +1687,7 @@
                 zeta,
                 <span class="kw-2">&amp;</span>evals,
                 <span class="kw-2">&amp;</span>constants,
+                <span class="kw-2">&amp;</span>challenges,
             )
             .unwrap();
 
@@ -2103,15 +2112,17 @@
 
         <span class="comment">// other gates are implemented using the expression framework
         </span>{
-            <span class="comment">// TODO: Reuse constants from oracles function
+            <span class="comment">// TODO: Reuse constants and challenges from oracles function
             </span><span class="kw">let </span>constants = Constants {
+                endo_coefficient: verifier_index.endo,
+                mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+                zk_rows,
+            };
+            <span class="kw">let </span>challenges = Challenges {
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
-                endo_coefficient: verifier_index.endo,
-                mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-                zk_rows,
             };
 
             <span class="kw">for </span>(col, tokens) <span class="kw">in </span><span class="kw-2">&amp;</span>verifier_index.linearization.index_terms {
@@ -2121,6 +2132,7 @@
                     oracles.zeta,
                     <span class="kw-2">&amp;</span>evals,
                     <span class="kw-2">&amp;</span>constants,
+                    <span class="kw-2">&amp;</span>challenges,
                 )
                 .expect(<span class="string">&quot;should evaluate&quot;</span>);
 
