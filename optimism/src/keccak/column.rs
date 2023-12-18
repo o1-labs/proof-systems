@@ -1,18 +1,22 @@
 use std::ops::{Index, IndexMut};
 
-use ark_ff::Zero;
+use ark_ff::{One, Zero};
 use serde::{Deserialize, Serialize};
 
 use super::grid_index;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum KeccakColumn {
-    FlagRound,                                // Coeff Round = 0 | 1
+    FlagRound,                                // Coeff Round = 0 | 1 .. 24
     FlagAbsorb,                               // Coeff Absorb = 0 | 1
     FlagSqueeze,                              // Coeff Squeeze = 0 | 1
     FlagRoot,                                 // Coeff Root = 0 | 1
     FlagPad,                                  // Coeff Pad = 0 | 1
     FlagLength,                               // Coeff Length 0 | 1 .. 136
+    TwoToPad,                                 // 2^PadLength
+    InverseRound,                             // Round^-1
+    FlagsBytes(usize),                        // 136 boolean values
+    PadSuffix(usize),                         // 5 values with padding suffix
     RoundConstants(usize),                    // Round constants
     ThetaStateA(usize, usize, usize),         // Round Curr[0..100)
     ThetaShiftsC(usize, usize, usize),        // Round Curr[100..180)
@@ -38,12 +42,16 @@ pub enum KeccakColumn {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
-    pub flag_round: T,               // Coeff Round = [0..24)
+    pub flag_round: T,               // Coeff Round = 0 | 1 .. 24
     pub flag_absorb: T,              // Coeff Absorb = 0 | 1
     pub flag_squeeze: T,             // Coeff Squeeze = 0 | 1
     pub flag_root: T,                // Coeff Root = 0 | 1
     pub flag_pad: T,                 // Coeff Pad = 0 | 1
     pub flag_length: T,              // Coeff Length 0 | 1 .. 136
+    pub two_to_pad: T,               // 2^PadLength
+    pub inverse_round: T,            // Round^-1
+    pub flags_bytes: Vec<T>,         // 136 boolean values
+    pub pad_suffix: Vec<T>,          // 5 values with padding suffix
     pub round_constants: Vec<T>,     // Round constants
     pub theta_state_a: Vec<T>,       // Round Curr[0..100)
     pub theta_shifts_c: Vec<T>,      // Round Curr[100..180)
@@ -67,7 +75,7 @@ pub struct KeccakColumns<T> {
     pub next_state: Vec<T>,          // Sponge Next[0..100)
 }
 
-impl<T: Zero + Clone> Default for KeccakColumns<T> {
+impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
     fn default() -> Self {
         KeccakColumns {
             flag_round: T::zero(),
@@ -76,7 +84,11 @@ impl<T: Zero + Clone> Default for KeccakColumns<T> {
             flag_root: T::zero(),
             flag_pad: T::zero(),
             flag_length: T::zero(),
-            round_constants: vec![T::zero(); 4],
+            two_to_pad: T::one(), // So that default 2^0 is in the table
+            inverse_round: T::zero(),
+            flags_bytes: vec![T::zero(); 136],
+            pad_suffix: vec![T::zero(); 5],
+            round_constants: vec![T::zero(); 4], // RC[0] is set to be all zeros
             theta_state_a: vec![T::zero(); 100],
             theta_shifts_c: vec![T::zero(); 80],
             theta_dense_c: vec![T::zero(); 20],
@@ -112,6 +124,10 @@ impl<A> Index<KeccakColumn> for KeccakColumns<A> {
             KeccakColumn::FlagRoot => &self.flag_root,
             KeccakColumn::FlagPad => &self.flag_pad,
             KeccakColumn::FlagLength => &self.flag_length,
+            KeccakColumn::TwoToPad => &self.two_to_pad,
+            KeccakColumn::InverseRound => &self.inverse_round,
+            KeccakColumn::FlagsBytes(i) => &self.flags_bytes[i],
+            KeccakColumn::PadSuffix(i) => &self.pad_suffix[i],
             KeccakColumn::RoundConstants(q) => &self.round_constants[q],
             KeccakColumn::ThetaStateA(y, x, q) => &self.theta_state_a[grid_index(100, 0, y, x, q)],
             KeccakColumn::ThetaShiftsC(i, x, q) => &self.theta_shifts_c[grid_index(80, i, 0, x, q)],
@@ -164,6 +180,10 @@ impl<A> IndexMut<KeccakColumn> for KeccakColumns<A> {
             KeccakColumn::FlagRoot => &mut self.flag_root,
             KeccakColumn::FlagPad => &mut self.flag_pad,
             KeccakColumn::FlagLength => &mut self.flag_length,
+            KeccakColumn::TwoToPad => &mut self.two_to_pad,
+            KeccakColumn::InverseRound => &mut self.inverse_round,
+            KeccakColumn::FlagsBytes(i) => &mut self.flags_bytes[i],
+            KeccakColumn::PadSuffix(i) => &mut self.pad_suffix[i],
             KeccakColumn::RoundConstants(q) => &mut self.round_constants[q],
             KeccakColumn::ThetaStateA(y, x, q) => {
                 &mut self.theta_state_a[grid_index(100, 0, y, x, q)]

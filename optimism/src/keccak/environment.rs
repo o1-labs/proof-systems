@@ -8,7 +8,7 @@ use ark_ff::{Field, One};
 use kimchi::{
     auto_clone_array,
     circuits::{
-        expr::{ConstantExpr, ConstantTerm::Literal},
+        expr::{ConstantExpr, ConstantTerm, Expr},
         polynomials::keccak::constants::ROUNDS,
     },
     grid,
@@ -20,8 +20,8 @@ pub struct KeccakEnv<Fp> {
     /// Constraints that are added to the circuit
     pub(crate) constraints: Vec<E<Fp>>,
     /// Values that are looked up in the circuit
-    pub(crate) _lookup_terms: [Vec<Lookup<E<Fp>>>; 2], // at most 2 values are looked up at a time
-    /// Expanded block of previous step
+    pub(crate) lookups: Vec<Lookup<E<Fp>>>, // at most 5 values are looked up at a time
+    /// Expanded block of previous step    
     pub(crate) prev_block: Vec<u64>,
     /// Padded preimage data
     pub(crate) padded: Vec<u8>,
@@ -39,8 +39,13 @@ pub struct KeccakEnv<Fp> {
 
 impl<Fp: Field> KeccakEnv<Fp> {
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
-        self.keccak_state[column] = Self::constant(value.into());
+        self.keccak_state[column] = Self::constant(value);
     }
+
+    pub fn write_column_field(&mut self, column: KeccakColumn, value: Fp) {
+        self.keccak_state[column] = Self::constant_field(value);
+    }
+
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
     }
@@ -48,11 +53,11 @@ impl<Fp: Field> KeccakEnv<Fp> {
         match self.curr_step {
             Some(step) => match step {
                 KeccakStep::Sponge(sponge) => match sponge {
-                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(0)),
+                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(1)),
                     Sponge::Squeeze => self.curr_step = None,
                 },
                 KeccakStep::Round(round) => {
-                    if round < ROUNDS as u64 - 1 {
+                    if round < ROUNDS as u64 {
                         self.curr_step = Some(KeccakStep::Round(round + 1));
                     } else {
                         self.blocks_left_to_absorb -= 1;
@@ -109,11 +114,23 @@ impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
     type Fp = Fp;
-    fn constant(x: Self::Fp) -> Self::Variable {
-        Self::Variable::constant(ConstantExpr::Constant(Literal(x)))
+    fn constant(x: u64) -> Self::Variable {
+        Self::constant_field(Self::Fp::from(x))
+    }
+    fn constant_field(x: Self::Fp) -> Self::Variable {
+        Expr::Constant(ConstantExpr::Constant(ConstantTerm::Literal(x)))
+    }
+    fn zero() -> Self::Variable {
+        Self::constant(0)
+    }
+    fn one() -> Self::Variable {
+        Self::constant(1)
+    }
+    fn two() -> Self::Variable {
+        Self::constant(2)
     }
     fn two_pow(x: u64) -> Self::Variable {
-        Self::constant(Self::Fp::two_pow(x))
+        Self::constant_field(Self::Fp::two_pow(x))
     }
 }
 
@@ -141,6 +158,8 @@ pub(crate) trait KeccakEnvironment {
 
     fn round(&self) -> Self::Variable;
 
+    fn inverse_round(&self) -> Self::Variable;
+
     fn absorb(&self) -> Self::Variable;
 
     fn squeeze(&self) -> Self::Variable;
@@ -150,6 +169,18 @@ pub(crate) trait KeccakEnvironment {
     fn pad(&self) -> Self::Variable;
 
     fn length(&self) -> Self::Variable;
+
+    fn two_to_pad(&self) -> Self::Variable;
+
+    fn in_padding(&self, i: usize) -> Self::Variable;
+
+    fn pad_suffix(&self, i: usize) -> Self::Variable;
+
+    fn bytes_block(&self, i: usize) -> Vec<Self::Variable>;
+
+    fn flags_block(&self, i: usize) -> Vec<Self::Variable>;
+
+    fn block_in_padding(&self, i: usize) -> Self::Variable;
 
     fn round_constants(&self) -> Vec<Self::Variable>;
 
@@ -162,6 +193,10 @@ pub(crate) trait KeccakEnvironment {
     fn sponge_zeros(&self) -> Vec<Self::Variable>;
 
     fn sponge_shifts(&self) -> Vec<Self::Variable>;
+
+    fn sponge_shift(&self, i: usize) -> Self::Variable;
+
+    fn sponge_bytes(&self, i: usize) -> Self::Variable;
 
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
@@ -263,6 +298,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::FlagRound].clone()
     }
 
+    fn inverse_round(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::InverseRound].clone()
+    }
+
     fn absorb(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::FlagAbsorb].clone()
     }
@@ -281,6 +320,52 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn length(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::FlagLength].clone()
+    }
+
+    fn two_to_pad(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::TwoToPad].clone()
+    }
+
+    fn in_padding(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagsBytes(i)].clone()
+    }
+
+    fn pad_suffix(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::PadSuffix(i)].clone()
+    }
+
+    fn bytes_block(&self, i: usize) -> Vec<Self::Variable> {
+        match i {
+            0 => self.keccak_state.sponge_bytes[0..12].to_vec().clone(),
+            1..=4 => self.keccak_state.sponge_bytes[12 + (i - 1) * 31..12 + i * 31]
+                .to_vec()
+                .clone(),
+            _ => panic!("No more blocks of bytes can be part of padding"),
+        }
+    }
+
+    fn flags_block(&self, i: usize) -> Vec<Self::Variable> {
+        match i {
+            0 => self.keccak_state.flags_bytes[0..12].to_vec().clone(),
+            1..=4 => self.keccak_state.flags_bytes[12 + (i - 1) * 31..12 + i * 31]
+                .to_vec()
+                .clone(),
+            _ => panic!("No more blocks of flags can be part of padding"),
+        }
+    }
+
+    fn block_in_padding(&self, i: usize) -> Self::Variable {
+        let bytes = self.bytes_block(i);
+        let flags = self.flags_block(i);
+        assert_eq!(bytes.len(), flags.len());
+        let pad = bytes
+            .iter()
+            .zip(flags)
+            .fold(Self::zero(), |acc, (byte, flag)| {
+                acc + byte.clone() * flag * Self::two_pow(8)
+            });
+
+        pad
     }
 
     fn round_constants(&self) -> Vec<Self::Variable> {
@@ -303,8 +388,16 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state.sponge_new_state[68..100].to_vec().clone()
     }
 
+    fn sponge_bytes(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeBytes(i)].clone()
+    }
+
     fn sponge_shifts(&self) -> Vec<Self::Variable> {
         self.keccak_state.sponge_shifts.clone()
+    }
+
+    fn sponge_shift(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeShifts(i)].clone()
     }
 
     fn state_a(&self, x: usize, y: usize, q: usize) -> Self::Variable {

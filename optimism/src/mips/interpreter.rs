@@ -5,6 +5,7 @@ use crate::{
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
 };
+use ark_ff::One;
 use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
@@ -126,10 +127,38 @@ pub struct Signed<T> {
     pub magnitude: T,
 }
 
+impl<T: One> Signed<T> {
+    pub fn read_one() -> Self {
+        Self {
+            sign: Sign::Neg,
+            magnitude: T::one(),
+        }
+    }
+    pub fn write_one() -> Self {
+        Self {
+            sign: Sign::Pos,
+            magnitude: T::one(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTable {
     MemoryLookup,
     RegisterLookup,
+    // Single-column table of 2^16 entries with the sparse representation of all values
+    SparseLookup,
+    // Single-column table of all values in the range [0, 2^16)
+    RangeCheck16Lookup,
+    // Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    ResetLookup,
+    // 24-row table with all possible values for round and their round constant in expanded form
+    RoundConstantsLookup,
+    // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    PadLookup,
+    // All values that can be stored in a byte
+    // TODO: model as RangeCheck16 for x and a scaled x' = x * 2^8
+    ByteLookup,
 }
 
 #[derive(Clone, Debug)]

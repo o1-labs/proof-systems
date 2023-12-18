@@ -7,7 +7,7 @@ pub mod witness;
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
 
-use self::constants::{DIM, QUARTERS, RATE_IN_BYTES};
+use self::constants::{DIM, QUARTERS, RATE_IN_BYTES, ROUNDS};
 
 #[macro_export]
 macro_rules! grid {
@@ -47,7 +47,9 @@ pub const OFF: [[u64; DIM]; DIM] = [
     [18, 2, 61, 56, 14],
 ];
 
-pub const RC: [u64; 24] = [
+/// Contains the 24 round constants for Keccak and an initial dummy entry
+pub const RC: [u64; ROUNDS + 1] = [
+    0x0000000000000000,
     0x0000000000000001,
     0x0000000000008082,
     0x800000000000808a,
