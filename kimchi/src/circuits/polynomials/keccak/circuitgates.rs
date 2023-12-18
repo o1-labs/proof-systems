@@ -258,22 +258,23 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
-    const CONSTRAINTS: u32 = 532;
+    const CONSTRAINTS: u32 = 500;
 
     // Constraints for the Keccak sponge
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
         // LOAD WITNESS
-        let old_state = env.witness_curr_chunk(SPONGE_OLD_STATE_OFF, SPONGE_OLD_STATE_LEN);
-        let new_block = env.witness_curr_chunk(SPONGE_NEW_STATE_OFF, SPONGE_BYTES_OFF);
-        let zeros = env.witness_curr_chunk(168, SPONGE_BYTES_OFF);
+        let old_state = env.witness_curr_chunk(SPONGE_OLD_STATE_OFF, SPONGE_NEW_STATE_OFF);
+        let new_state = env.witness_curr_chunk(SPONGE_NEW_STATE_OFF, SPONGE_BYTES_OFF);
+        let new_block = env.witness_curr_chunk(SPONGE_NEW_BLOCK_OFF, SPONGE_ZEROS_OFF);
+        let zeros = env.witness_curr_chunk(SPONGE_ZEROS_OFF, SPONGE_BYTES_OFF);
         let xor_state = env.witness_next_chunk(0, SPONGE_XOR_STATE_LEN);
         let bytes = env.witness_curr_chunk(SPONGE_BYTES_OFF, SPONGE_SHIFTS_OFF);
         let shifts =
             env.witness_curr_chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_OFF + SPONGE_SHIFTS_LEN);
         auto_clone_array!(old_state);
-        auto_clone_array!(new_block);
+        auto_clone_array!(new_state);
         auto_clone_array!(xor_state);
         auto_clone_array!(bytes);
         auto_clone_array!(shifts);
@@ -290,18 +291,20 @@ where
         auto_clone_array!(flags);
         auto_clone_array!(pad);
 
-        // 32 + 100 * 3 + 64 + 136 = 532
+        // 32 + 68 + 100 * 2 + 64 + 136 = 500
         for z in zeros {
             // Absorb phase pads with zeros the new state
             constraints.push(absorb() * z);
         }
-        for i in 0..QUARTERS * DIM * DIM {
+        for (i, new) in new_block.iter().enumerate() {
+            // Absorbs the new block by performing XOR with the old state (no need full state because zeros)
+            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new.clone())));
+        }
+        for i in 0..STATE_LEN {
             // In first absorb, root state is all zeros
             constraints.push(root() * old_state(i));
-            // Absorbs the new block by performing XOR with the old state
-            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
             // In absorb, Check shifts correspond to the decomposition of the new state
-            constraints.push(absorb() * (new_block(i) - from_shifts!(shifts, i)));
+            constraints.push(absorb() * (new_state(i) - from_shifts!(shifts, i)));
         }
         for i in 0..64 {
             // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)

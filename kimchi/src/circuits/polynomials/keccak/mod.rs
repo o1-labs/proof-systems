@@ -54,6 +54,10 @@ pub mod constants {
     pub const SPONGE_OLD_STATE_LEN: usize = STATE_LEN;
     pub const SPONGE_NEW_STATE_OFF: usize = SPONGE_OLD_STATE_OFF + SPONGE_OLD_STATE_LEN;
     pub const SPONGE_NEW_STATE_LEN: usize = STATE_LEN;
+    pub const SPONGE_NEW_BLOCK_OFF: usize = SPONGE_NEW_STATE_OFF;
+    pub const SPONGE_NEW_BLOCK_LEN: usize = 68;
+    pub const SPONGE_ZEROS_OFF: usize = SPONGE_NEW_BLOCK_OFF + SPONGE_NEW_BLOCK_LEN;
+    pub const SPONGE_ZEROS_LEN: usize = STATE_LEN - SPONGE_NEW_BLOCK_LEN;
     pub const SPONGE_BYTES_OFF: usize = SPONGE_NEW_STATE_OFF + SPONGE_NEW_STATE_LEN;
     pub const SPONGE_BYTES_LEN: usize = 2 * STATE_LEN;
     pub const SPONGE_SHIFTS_OFF: usize = SPONGE_BYTES_OFF + SPONGE_BYTES_LEN;
