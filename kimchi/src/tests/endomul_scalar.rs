@@ -45,7 +45,7 @@ fn endomul_scalar_test() {
 
     let (_, endo_scalar_coeff) = endos::<Vesta>();
 
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
+    let mut witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
 

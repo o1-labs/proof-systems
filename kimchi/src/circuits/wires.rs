@@ -6,13 +6,13 @@ use std::array;
 use std::io::{Read, Result as IoResult, Write};
 
 /// Number of registers
-pub const COLUMNS: usize = 15;
+pub const KIMCHI_COLS: usize = 15;
 
 /// Number of registers that can be wired (participating in the permutation)
 pub const PERMUTS: usize = 7;
 
 /// index of all registers
-pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+pub const WIRES: [usize; KIMCHI_COLS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 /// Wire documents the other cell that is wired to this one.
 /// If the cell represents an internal wire, an input to the circuit,

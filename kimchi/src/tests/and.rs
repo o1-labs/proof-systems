@@ -2,7 +2,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, GateType},
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         polynomials::{and, xor},
         wires::Wire,
     },
@@ -49,7 +49,7 @@ where
 
 // Manually checks the AND of the witness
 fn check_and<G: KimchiCurve>(
-    witness: &[Vec<G::ScalarField>; COLUMNS],
+    witness: &[Vec<G::ScalarField>; KIMCHI_COLS],
     bytes: usize,
     input1: G::ScalarField,
     input2: G::ScalarField,
@@ -74,7 +74,7 @@ fn setup_and<G: KimchiCurve>(
     bytes: usize,
 ) -> (
     ConstraintSystem<G::ScalarField>,
-    [Vec<G::ScalarField>; COLUMNS],
+    [Vec<G::ScalarField>; KIMCHI_COLS],
 )
 where
     G::BaseField: PrimeField,
@@ -82,7 +82,9 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     let gates = create_test_gates_and::<G>(bytes);
-    let cs = ConstraintSystem::create(gates).build().unwrap();
+    let cs = ConstraintSystem::create(gates)
+        .build::<KIMCHI_COLS>()
+        .unwrap();
 
     // Initalize inputs
     let input1 = rng.gen(input1, Some(bytes * 8));
@@ -99,7 +101,7 @@ fn test_and<G: KimchiCurve>(
     input1: Option<G::ScalarField>,
     input2: Option<G::ScalarField>,
     bytes: usize,
-) -> [Vec<G::ScalarField>; COLUMNS]
+) -> [Vec<G::ScalarField>; KIMCHI_COLS]
 where
     G::BaseField: PrimeField,
 {
@@ -107,7 +109,12 @@ where
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<G, KIMCHI_COLS>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
@@ -120,7 +127,7 @@ fn prove_and_verify<G: KimchiCurve, EFqSponge, EFrSponge>(bytes: usize)
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField, KIMCHI_COLS>,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
@@ -230,13 +237,13 @@ fn test_and_overflow_one() {
 }
 
 fn verify_bad_and_decomposition<G: KimchiCurve>(
-    witness: &mut [Vec<G::ScalarField>; COLUMNS],
+    witness: &mut [Vec<G::ScalarField>; KIMCHI_COLS],
     cs: ConstraintSystem<G::ScalarField>,
 ) where
     G::BaseField: PrimeField,
 {
     // modify by one each of the witness cells individually
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         // first three columns make fail the ith+1 constraint
         // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
@@ -246,7 +253,12 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
         // Update copy constraints of generic gate
         if col < 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<G, KIMCHI_COLS>(
+                    0,
+                    witness,
+                    &cs,
+                    &witness[0][0..cs.public]
+                ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -257,7 +269,12 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
         }
         if col == 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<G, KIMCHI_COLS>(
+                    0,
+                    witness,
+                    &cs,
+                    &witness[0][0..cs.public]
+                ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -270,7 +287,12 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
             witness[4][and_row] += G::ScalarField::one();
         }
         assert_eq!(
-            cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<G, KIMCHI_COLS>(
+                0,
+                witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][xor_row] -= G::ScalarField::one();
@@ -283,7 +305,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<G, KIMCHI_COLS>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -313,7 +335,7 @@ fn test_bad_and() {
     // Corrupt the witness: modify the output to be all zero
     witness[2][0] = PallasField::zero();
     for i in 1..=4 {
-        witness[COLUMNS - i][0] = PallasField::zero();
+        witness[KIMCHI_COLS - i][0] = PallasField::zero();
     }
     witness[4][2] = PallasField::zero();
 

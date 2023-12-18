@@ -42,7 +42,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         polynomial::WitnessOverDomains,
-        wires::{Wire, COLUMNS, PERMUTS},
+        wires::{Wire, PERMUTS},
     },
     curve::KimchiCurve,
     error::ProverError,
@@ -194,8 +194,12 @@ where
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<
+        F: PrimeField,
+        G: KimchiCurve<ScalarField = F>,
+        OpeningProof: OpenProof<G>,
+        const COLUMNS: usize,
+    > ProverIndex<G, OpeningProof, COLUMNS>
 {
     /// permutation quotient poly contribution computation
     ///
@@ -209,7 +213,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
         &self,
-        lagrange: &WitnessOverDomains<F>,
+        lagrange: &WitnessOverDomains<F, COLUMNS>,
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
@@ -332,7 +336,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &ProofEvaluations<PointEvaluations<F>>,
+        e: &ProofEvaluations<PointEvaluations<F>, COLUMNS>,
         zeta: F,
         beta: F,
         gamma: F,
@@ -361,8 +365,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
-    pub fn perm_scalars(
-        e: &ProofEvaluations<PointEvaluations<F>>,
+    pub fn perm_scalars<const COLUMNS: usize>(
+        e: &ProofEvaluations<PointEvaluations<F>, COLUMNS>,
         beta: F,
         gamma: F,
         mut alphas: impl Iterator<Item = F>,
@@ -402,8 +406,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-    ProverIndex<G, OpeningProof>
+impl<
+        F: PrimeField,
+        G: KimchiCurve<ScalarField = F>,
+        OpeningProof: OpenProof<G>,
+        const COLUMNS: usize,
+    > ProverIndex<G, OpeningProof, COLUMNS>
 {
     /// permutation aggregation polynomial computation
     ///

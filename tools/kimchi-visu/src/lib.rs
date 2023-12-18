@@ -75,8 +75,8 @@ where
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-pub fn visu<G: KimchiCurve>(
-    index: &ProverIndex<G, OpeningProof<G>>,
+pub fn visu<G: KimchiCurve, const COLUMNS: usize>(
+    index: &ProverIndex<G, OpeningProof<G>, COLUMNS>,
     witness: Option<Witness<G::ScalarField>>,
 ) where
     G::BaseField: PrimeField,

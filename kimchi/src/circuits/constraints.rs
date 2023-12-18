@@ -62,7 +62,7 @@ pub struct FeatureFlags {
 /// The polynomials representing evaluated columns, in coefficient form.
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct EvaluatedColumnCoefficients<F: PrimeField> {
+pub struct EvaluatedColumnCoefficients<F: PrimeField, const COLUMNS: usize = KIMCHI_COLS> {
     /// permutation coefficients
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub permutation_coefficients: [DP<F>; PERMUTS],
@@ -84,7 +84,7 @@ pub struct EvaluatedColumnCoefficients<F: PrimeField> {
 /// The evaluations are expanded to the domain size required for their constraints.
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ColumnEvaluations<F: PrimeField> {
+pub struct ColumnEvaluations<F: PrimeField, const COLUMNS: usize = KIMCHI_COLS> {
     /// permutation coefficients over domain d8
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub permutation_coefficients8: [E<F, D<F>>; PERMUTS],
@@ -282,7 +282,8 @@ impl<
         F: PrimeField + SquareRootField,
         G: KimchiCurve<ScalarField = F>,
         OpeningProof: OpenProof<G>,
-    > ProverIndex<G, OpeningProof>
+        const COLUMNS: usize,
+    > ProverIndex<G, OpeningProof, COLUMNS>
 {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
@@ -327,7 +328,7 @@ impl<
             }
 
             // check the gate's satisfiability
-            gate.verify(row, &witness, self, public)
+            gate.verify::<G, OpeningProof, COLUMNS>(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -338,7 +339,11 @@ impl<
 
 impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
-    pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
+    pub fn evaluate<const COLUMNS: usize>(
+        &self,
+        w: &[DP<F>; COLUMNS],
+        z: &DP<F>,
+    ) -> WitnessOverDomains<F, COLUMNS> {
         // compute shifted witness polynomials
         let w8: [E<F, D<F>>; COLUMNS] =
             array::from_fn(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
@@ -376,7 +381,9 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         }
     }
 
-    pub(crate) fn evaluated_column_coefficients(&self) -> EvaluatedColumnCoefficients<F> {
+    pub(crate) fn evaluated_column_coefficients<const COLUMNS: usize>(
+        &self,
+    ) -> EvaluatedColumnCoefficients<F, COLUMNS> {
         // compute permutation polynomials
         let shifts = Shifts::new(&self.domain.d1);
 
@@ -456,10 +463,10 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         }
     }
 
-    pub(crate) fn column_evaluations(
+    pub(crate) fn column_evaluations<const COLUMNS: usize>(
         &self,
-        evaluated_column_coefficients: &EvaluatedColumnCoefficients<F>,
-    ) -> ColumnEvaluations<F> {
+        evaluated_column_coefficients: &EvaluatedColumnCoefficients<F, COLUMNS>,
+    ) -> ColumnEvaluations<F, COLUMNS> {
         let permutation_coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.permutation_coefficients[i]
                 .evaluate_over_domain_by_ref(self.domain.d8)
@@ -723,7 +730,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     }
 
     /// Build the [ConstraintSystem] from a [Builder].
-    pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
+    pub fn build<const COLUMNS: usize>(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
         let lookup_tables = self.lookup_tables;
         let runtime_tables = self.runtime_tables;
@@ -865,7 +872,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //
         // Lookup
         // ------
-        let lookup_constraint_system = LookupConstraintSystem::create(
+        let lookup_constraint_system = LookupConstraintSystem::create::<COLUMNS>(
             &gates,
             lookup_tables,
             runtime_tables,
@@ -915,12 +922,12 @@ pub mod tests {
     use mina_curves::pasta::Fp;
 
     impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
-        pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
+        pub fn for_testing<const COLUMNS: usize>(gates: Vec<CircuitGate<F>>) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
             ConstraintSystem::<F>::create(gates)
                 .public(public)
-                .build()
+                .build::<COLUMNS>()
                 .unwrap()
         }
     }
@@ -928,7 +935,7 @@ pub mod tests {
     impl ConstraintSystem<Fp> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
-            Self::for_testing(gates)
+            Self::for_testing::<KIMCHI_COLS>(gates)
         }
     }
 
@@ -955,7 +962,10 @@ pub mod tests {
                     }
                 })
                 .collect();
-            let res = builder.runtime(Some(rt_cfgs)).build().unwrap();
+            let res = builder
+                .runtime(Some(rt_cfgs))
+                .build::<KIMCHI_COLS>()
+                .unwrap();
             assert_eq!(res.domain.d1.size, expected_domain_size)
         }
     }

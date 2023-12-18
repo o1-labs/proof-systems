@@ -4,7 +4,7 @@ use crate::circuits::expr::constraints::compact_limb;
 use crate::circuits::witness::Variables;
 use crate::{
     circuits::{
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         witness::{self, ConstantCell, VariableCell, WitnessCell},
     },
     variable_map,
@@ -130,7 +130,7 @@ pub fn create_chain<F: PrimeField>(
     inputs: &Vec<BigUint>,
     opcodes: &[FFOps],
     modulus: BigUint,
-) -> [Vec<F>; COLUMNS] {
+) -> [Vec<F>; KIMCHI_COLS] {
     if modulus > BigUint::max_foreign_field_modulus::<F>() {
         panic!(
             "foreign_field_modulus exceeds maximum: {} > {}",
@@ -178,7 +178,7 @@ pub fn create_chain<F: PrimeField>(
 }
 
 fn init_ffadd_row<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     offset: usize,
     left: [F; 3],
     right: [F; 3],
@@ -215,7 +215,7 @@ fn init_ffadd_row<F: PrimeField>(
 }
 
 fn init_bound_rows<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     offset: usize,
     result: &[F; 3],
     bound: &[F; 3],
@@ -270,7 +270,7 @@ fn init_bound_rows<F: PrimeField>(
 
 /// Create witness for bound computation addition gate
 pub fn extend_witness_bound_addition<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     limbs: &[F; 3],
     foreign_field_modulus: &[F; 3],
 ) {
@@ -297,7 +297,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
 
     // Extend the witness for the add gate
     let offset = witness[0].len();
-    for col in witness.iter_mut().take(COLUMNS) {
+    for col in witness.iter_mut().take(KIMCHI_COLS) {
         col.extend(std::iter::repeat(F::zero()).take(2))
     }
 

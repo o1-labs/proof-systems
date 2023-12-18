@@ -11,7 +11,7 @@ use crate::circuits::witness::Variables;
 use crate::variable_map;
 use crate::{
     circuits::{
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         witness::{init_row, CopyBitsCell, CopyCell, VariableCell, WitnessCell},
     },
     variables,
@@ -114,9 +114,9 @@ pub fn range_check_0_row<F: PrimeField>(
 }
 
 /// Create a multi range check witness from three 88-bit values: v0, v1 and v2
-pub fn create_multi<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
+pub fn create_multi<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; KIMCHI_COLS] {
     let layout = layout();
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
+    let mut witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero(); 4]);
 
     init_row(&mut witness, 0, 0, &layout, &variables!(v0));
     init_row(&mut witness, 0, 1, &layout, &variables!(v1));
@@ -134,9 +134,9 @@ pub fn create_multi<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
 
 /// Create a multi range check witness from two limbs: v01 (176 bits), v2 (88 bits),
 /// where v2 is the most significant limb and v01 is the least significant limb
-pub fn create_multi_compact<F: PrimeField>(v01: F, v2: F) -> [Vec<F>; COLUMNS] {
+pub fn create_multi_compact<F: PrimeField>(v01: F, v2: F) -> [Vec<F>; KIMCHI_COLS] {
     let layout = layout();
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
+    let mut witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero(); 4]);
 
     let (v1, v0) = v01.to_biguint().div_rem(&BigUint::two_to_limb());
     let v0: F = v0.to_field().expect("failed to convert to field element");
@@ -158,20 +158,20 @@ pub fn create_multi_compact<F: PrimeField>(v01: F, v2: F) -> [Vec<F>; COLUMNS] {
 }
 
 /// Create a multi range check witness from limbs
-pub fn create_multi_limbs<F: PrimeField>(limbs: &[F; 3]) -> [Vec<F>; COLUMNS] {
+pub fn create_multi_limbs<F: PrimeField>(limbs: &[F; 3]) -> [Vec<F>; KIMCHI_COLS] {
     create_multi(limbs[0], limbs[1], limbs[2])
 }
 
 /// Create a multi range check witness from compact limbs
-pub fn create_multi_compact_limbs<F: PrimeField>(limbs: &[F; 2]) -> [Vec<F>; COLUMNS] {
+pub fn create_multi_compact_limbs<F: PrimeField>(limbs: &[F; 2]) -> [Vec<F>; KIMCHI_COLS] {
     create_multi_compact(limbs[0], limbs[1])
 }
 
 /// Create a single range check witness
 /// Input: 88-bit value v0
-pub fn create<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
+pub fn create<F: PrimeField>(v0: F) -> [Vec<F>; KIMCHI_COLS] {
     let layout = vec![range_check_0_row("v0", 0)];
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
+    let mut witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero()]);
 
     init_row(&mut witness, 0, 0, &layout, &variables!(v0));
 
@@ -179,58 +179,61 @@ pub fn create<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
 }
 
 /// Extend an existing witness with a multi-range-check gadget for three 88-bit values: v0, v1 and v2
-pub fn extend_multi<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], v0: F, v1: F, v2: F) {
+pub fn extend_multi<F: PrimeField>(witness: &mut [Vec<F>; KIMCHI_COLS], v0: F, v1: F, v2: F) {
     let limbs_witness = create_multi(v0, v1, v2);
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(limbs_witness[col].iter())
     }
 }
 
 /// Extend and existing witness with a multi range check witness for two limbs: v01 (176 bits), v2 (88 bits),
 /// where v2 is the most significant limb and v01 is the least significant limb
-pub fn extend_multi_compact<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], v01: F, v2: F) {
+pub fn extend_multi_compact<F: PrimeField>(witness: &mut [Vec<F>; KIMCHI_COLS], v01: F, v2: F) {
     let limbs_witness = create_multi_compact(v01, v2);
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(limbs_witness[col].iter())
     }
 }
 
 /// Extend an existing witness with a multi-range-check gadget for limbs
-pub fn extend_multi_limbs<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], limbs: &[F; 3]) {
+pub fn extend_multi_limbs<F: PrimeField>(witness: &mut [Vec<F>; KIMCHI_COLS], limbs: &[F; 3]) {
     let limbs_witness = create_multi_limbs(limbs);
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(limbs_witness[col].iter())
     }
 }
 
 /// Extend an existing witness with a multi-range-check gadget for compact limbs
-pub fn extend_multi_compact_limbs<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], limbs: &[F; 2]) {
+pub fn extend_multi_compact_limbs<F: PrimeField>(
+    witness: &mut [Vec<F>; KIMCHI_COLS],
+    limbs: &[F; 2],
+) {
     let limbs_witness = create_multi_compact_limbs(limbs);
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(limbs_witness[col].iter())
     }
 }
 
 /// Extend an existing witness with a multi-range-check gadget for ForeignElement
 pub fn extend_multi_from_fe<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     fe: &ForeignElement<F, 3>,
 ) {
     extend_multi(witness, fe.limbs[0], fe.limbs[1], fe.limbs[2]);
 }
 
 /// Extend an existing witness with a single range check witness for foreign field element
-pub fn extend<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: F) {
+pub fn extend<F: PrimeField>(witness: &mut [Vec<F>; KIMCHI_COLS], fe: F) {
     let limbs_witness = create(fe);
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(limbs_witness[col].iter())
     }
 }
 
 /// Extend an existing witness with a single-range-check gate for 88bits
-pub fn extend_single<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], elem: F) {
+pub fn extend_single<F: PrimeField>(witness: &mut [Vec<F>; KIMCHI_COLS], elem: F) {
     let single_wit = create(elem);
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(single_wit[col].iter())
     }
 }
