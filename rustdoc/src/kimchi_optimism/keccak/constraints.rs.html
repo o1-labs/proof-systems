@@ -112,15 +112,65 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
-    BoolOps,
+    {ArithOps, BoolOps, E, WORDS_IN_HASH},
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::{DIM, QUARTERS};
-
-<span class="kw">use super</span>::{E, WORDS_IN_HASH};
 
 <span class="kw">pub trait </span>Constraints {
     <span class="kw">type </span>Column;
@@ -222,8 +272,62 @@
         </span>}
 
         <span class="comment">// ROUND CONSTRAINTS
+        </span>{
+            <span class="comment">// DEFINE ROUND CONSTANT
+            // TODO: lookup round and sparse constants
+            // self.round() = [0..24)
 
-        // LOOKUP CONSTRAINTS
+            // Define vectors storing expressions which are not in the witness layout for efficiency
+            </span><span class="kw">let </span><span class="kw-2">mut </span>state_c: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; =
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM];
+            <span class="kw">let </span><span class="kw-2">mut </span>state_d: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; =
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM];
+            <span class="kw">let </span><span class="kw-2">mut </span>state_e: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; =
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM]; DIM];
+
+            <span class="comment">// STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
+            </span><span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
+                <span class="kw">let </span>word_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_dense_c, <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>rem_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_remainder_c, <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>rot_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_dense_rot_c, <span class="prelude-val">None</span>, x);
+
+                <span class="self">self</span>.constrain(
+                    <span class="self">self</span>.is_round()
+                        * (word_c * <span class="self">Self</span>::two_pow(<span class="number">1</span>)
+                            - (<span class="self">self</span>.quotient_c(x) * <span class="self">Self</span>::two_pow(<span class="number">64</span>) + rem_c.clone())),
+                );
+                <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (rot_c - (<span class="self">self</span>.quotient_c(x) + rem_c)));
+                <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (<span class="self">Self</span>::boolean(<span class="self">self</span>.quotient_c(x))));
+
+                <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
+                    state_c[x][q] = <span class="self">self</span>.state_a(<span class="number">0</span>, x, q)
+                        + <span class="self">self</span>.state_a(<span class="number">1</span>, x, q)
+                        + <span class="self">self</span>.state_a(<span class="number">2</span>, x, q)
+                        + <span class="self">self</span>.state_a(<span class="number">3</span>, x, q)
+                        + <span class="self">self</span>.state_a(<span class="number">4</span>, x, q);
+                    <span class="self">self</span>.constrain(
+                        <span class="self">self</span>.is_round()
+                            * (state_c[x][q].clone()
+                                - <span class="self">Self</span>::from_shifts(
+                                    <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_shifts_c,
+                                    <span class="prelude-val">None</span>,
+                                    <span class="prelude-val">None</span>,
+                                    <span class="prelude-val">Some</span>(x),
+                                    <span class="prelude-val">Some</span>(q),
+                                )),
+                    );
+
+                    state_d[x][q] = <span class="self">self</span>.shifts_c(<span class="number">0</span>, (x + DIM - <span class="number">1</span>) % DIM, q)
+                        + <span class="self">self</span>.expand_rot_c((x + <span class="number">1</span>) % DIM, q);
+
+                    <span class="kw">for </span>(y, column_e) <span class="kw">in </span>state_e.iter_mut().enumerate() {
+                        column_e[x][q] = <span class="self">self</span>.state_a(y, x, q) + state_d[x][q].clone();
+                    }
+                }
+            } <span class="comment">// END theta
+        </span>}
+
+        <span class="comment">// LOOKUP CONSTRAINTS
     </span>}
 }
 </code></pre></div></section></main></body></html>
