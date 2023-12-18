@@ -230,7 +230,7 @@ pub struct PiRho {
 }
 
 impl PiRho {
-    fn create(state_e: &[u64]) -> Self {
+    pub fn create(state_e: &[u64]) -> Self {
         let shifts_e = Keccak::shift(state_e);
         let dense_e = Keccak::collapse(&Keccak::reset(&shifts_e));
         let rotation_e = Rotation::many(
@@ -261,6 +261,40 @@ impl PiRho {
             expand_rot_e: rotation_e.expand_rot,
             state_b,
         }
+    }
+
+    pub fn shifts_e(&self, i: usize, y: usize, x: usize, q: usize) -> u64 {
+        let shifts_e = grid!(400, &self.shifts_e);
+        shifts_e(i, y, x, q)
+    }
+
+    pub fn dense_e(&self, y: usize, x: usize, q: usize) -> u64 {
+        let dense_e = grid!(100, &self.dense_e);
+        dense_e(y, x, q)
+    }
+
+    pub fn quotient_e(&self, y: usize, x: usize, q: usize) -> u64 {
+        let quotient_e = grid!(100, &self.quotient_e);
+        quotient_e(y, x, q)
+    }
+
+    pub fn remainder_e(&self, y: usize, x: usize, q: usize) -> u64 {
+        let remainder_e = grid!(100, &self.remainder_e);
+        remainder_e(y, x, q)
+    }
+
+    pub fn dense_rot_e(&self, y: usize, x: usize, q: usize) -> u64 {
+        let dense_rot_e = grid!(100, &self.dense_rot_e);
+        dense_rot_e(y, x, q)
+    }
+
+    pub fn expand_rot_e(&self, y: usize, x: usize, q: usize) -> u64 {
+        let expand_rot_e = grid!(100, &self.expand_rot_e);
+        expand_rot_e(y, x, q)
+    }
+
+    pub fn state_b(&self) -> Vec<u64> {
+        self.state_b.clone()
     }
 }
 

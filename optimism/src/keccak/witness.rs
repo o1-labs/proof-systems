@@ -1,7 +1,8 @@
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
-        witness::Theta, Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS,
+        witness::{PiRho, Theta},
+        Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS,
     },
     grid,
 };
@@ -198,9 +199,42 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         theta.state_e()
     }
 
-    fn run_pirho(&mut self, _state_e: &[u64]) -> Vec<u64> {
-        todo!()
+    fn run_pirho(&mut self, state_e: &[u64]) -> Vec<u64> {
+        let pirho = PiRho::create(state_e);
+
+        // Write PiRho-related columns
+        for y in 0..DIM {
+            for x in 0..DIM {
+                for q in 0..QUARTERS {
+                    self.write_column(KeccakColumn::PiRhoDenseE(y, x, q), pirho.dense_e(y, x, q));
+                    self.write_column(
+                        KeccakColumn::PiRhoQuotientE(y, x, q),
+                        pirho.quotient_e(y, x, q),
+                    );
+                    self.write_column(
+                        KeccakColumn::PiRhoRemainderE(y, x, q),
+                        pirho.remainder_e(y, x, q),
+                    );
+                    self.write_column(
+                        KeccakColumn::PiRhoDenseRotE(y, x, q),
+                        pirho.dense_rot_e(y, x, q),
+                    );
+                    self.write_column(
+                        KeccakColumn::PiRhoExpandRotE(y, x, q),
+                        pirho.expand_rot_e(y, x, q),
+                    );
+                    for i in 0..QUARTERS {
+                        self.write_column(
+                            KeccakColumn::PiRhoShiftsE(i, y, x, q),
+                            pirho.shifts_e(i, y, x, q),
+                        );
+                    }
+                }
+            }
+        }
+        pirho.state_b()
     }
+
     fn run_chi(&mut self, _state_b: &[u64]) -> Vec<u64> {
         todo!()
     }
