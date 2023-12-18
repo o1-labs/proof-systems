@@ -3,7 +3,7 @@ use kimchi::circuits::{
     polynomials::keccak::{DIM, QUARTERS},
 };
 
-use crate::mips::column::Column;
+use self::column::KeccakColumn;
 
 pub mod column;
 pub mod constraints;
@@ -17,7 +17,7 @@ pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
 pub(crate) const _ZKVM_KECCAK_COLS: usize = 1965 + 4 + 6;
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
-pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
+pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
 fn grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
     match size {
