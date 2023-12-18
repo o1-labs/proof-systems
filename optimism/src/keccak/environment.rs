@@ -1,5 +1,6 @@
 use super::{
     column::{KeccakColumn, KeccakColumns},
+    interpreter::KeccakStep,
     ArithOps, BoolOps, DIM, E, QUARTERS,
 };
 use crate::mips::interpreter::Lookup;
@@ -8,10 +9,24 @@ use kimchi::{auto_clone_array, circuits::expr::ConstantExpr, grid, o1_utils::Two
 
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<Fp> {
+    /// Constraints that are added to the circuit
     pub(crate) _constraints: Vec<E<Fp>>,
-    pub(crate) _lookup_terms_idx: usize,
+    /// Values that are looked up in the circuit
     pub(crate) _lookup_terms: [Vec<Lookup<E<Fp>>>; 2], // at most 2 values are looked up at a time
+    /// Expanded block of previous step    
+    pub(crate) prev_block: Vec<u64>,
+    /// Padded preimage data
+    pub(crate) padded: Vec<u8>,
+    /// Current block of preimage data
+    pub(crate) block_idx: usize,
+    /// The full state of the Keccak gate (witness)
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
+    /// Byte-length of the 10*1 pad (<=136)
+    pub(crate) pad_len: u64,
+    /// How many blocks are left to absrob (including current absorb)
+    pub(crate) blocks_left_to_absorb: u64,
+    /// What step of the hash is being executed (or None, if just ended)
+    pub(crate) curr_step: Option<KeccakStep>,
 }
 
 impl<Fp: Field> KeccakEnv<Fp> {
