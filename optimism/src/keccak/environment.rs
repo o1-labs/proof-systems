@@ -9,7 +9,7 @@ use kimchi::{
     auto_clone_array,
     circuits::{
         expr::{ConstantExpr, ConstantTerm::Literal},
-        polynomials::keccak::ROUNDS,
+        polynomials::keccak::constants::ROUNDS,
     },
     grid,
     o1_utils::Two,

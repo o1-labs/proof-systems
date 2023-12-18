@@ -1,6 +1,6 @@
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
-    polynomials::keccak::{DIM, QUARTERS},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS},
 };
 
 use self::column::KeccakColumn;
@@ -14,7 +14,7 @@ pub mod witness;
 pub(crate) const HASH_BITLENGTH: usize = 256;
 pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
 pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
-pub(crate) const _ZKVM_KECCAK_COLS: usize = 1965 + 4 + 6;
+pub(crate) const _ZKVM_KECCAK_COLS: usize = KECCAK_COLS + 4 + 6;
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;

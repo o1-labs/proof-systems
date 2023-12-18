@@ -1,20 +1,19 @@
 //! Keccak witness computation
 
-use std::array;
-
-use crate::circuits::polynomials::keccak::{
-    Keccak, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF, QUARTERS, RATE_IN_BYTES, RC,
-};
 use crate::{
     auto_clone,
     circuits::{
-        polynomials::keccak::ROUNDS,
+        polynomials::keccak::{
+            constants::{CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS},
+            Keccak, OFF, RC,
+        },
         witness::{self, IndexCell, Variables, WitnessCell},
     },
     grid, variable_map,
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
+use std::array;
 
 type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
 
