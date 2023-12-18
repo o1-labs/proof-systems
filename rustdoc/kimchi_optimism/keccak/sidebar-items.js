@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["column","environment","interpreter","witness"]};
+window.SIDEBAR_ITEMS = {"mod":["column","constraints","environment","interpreter","witness"]};

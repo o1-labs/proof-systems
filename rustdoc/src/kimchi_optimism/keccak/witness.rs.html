@@ -269,6 +269,14 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
@@ -328,10 +336,6 @@
             KeccakStep::Round(i) =&gt; <span class="self">self</span>.run_round(i),
         }
         <span class="self">self</span>.update_step();
-    }
-
-    <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _assert_equals_zero: <span class="self">Self</span>::Variable) {
-        <span class="macro">todo!</span>()
     }
 
     <span class="kw">fn </span>set_flag_root(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -399,17 +403,29 @@
         <span class="comment">// Compute witness values
         </span><span class="kw">let </span>ini_idx = <span class="self">self</span>.block_idx * RATE_IN_BYTES;
         <span class="kw">let </span><span class="kw-2">mut </span>block = <span class="self">self</span>.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
+
         <span class="comment">// Pad with zeros
+        </span>block.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[<span class="number">0</span>; CAPACITY_IN_BYTES]);
+
+        <span class="comment">//    Round + Mode of Operation (Sponge)
+        //    state -&gt; permutation(state) -&gt; state&#39;
+        //              ----&gt; either [0] or state&#39;
+        //             |            new state = Exp(block)
+        //             |         ------------------------
+        //    Absorb: state  + [  block      +     0...0 ]
+        //                       1088 bits          512
+        //            ----------------------------------
+        //                         XOR STATE
         </span><span class="kw">let </span>old_state = <span class="self">self</span>.prev_block.clone();
-        block.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[<span class="number">0</span>; CAPACITY_IN_BYTES]);
         <span class="kw">let </span>new_state = Keccak::expand_state(<span class="kw-2">&amp;</span>block);
-        <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>new_state);
-        <span class="kw">let </span>bytes = block.iter().map(|b| <span class="kw-2">*</span>b <span class="kw">as </span>u64).collect::&lt;Vec&lt;u64&gt;&gt;();
         <span class="kw">let </span>xor_state = old_state
             .iter()
             .zip(new_state.clone())
             .map(|(x, y)| x + y)
             .collect::&lt;Vec&lt;u64&gt;&gt;();
+
+        <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>new_state);
+        <span class="kw">let </span>bytes = block.iter().map(|b| <span class="kw-2">*</span>b <span class="kw">as </span>u64).collect::&lt;Vec&lt;u64&gt;&gt;();
 
         <span class="comment">// Write absorb-related columns
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {

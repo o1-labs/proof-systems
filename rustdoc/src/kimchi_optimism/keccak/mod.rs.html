@@ -61,14 +61,16 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::{DIM, QUARTERS},
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::mips::column::Column;
+<span class="kw">use </span><span class="self">self</span>::column::KeccakColumn;
 
 <span class="kw">pub mod </span>column;
+<span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>environment;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>witness;
@@ -79,7 +81,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>_ZKVM_KECCAK_COLS: usize = <span class="number">1965 </span>+ <span class="number">4 </span>+ <span class="number">6</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, KeccakColumn&gt;;
 
 <span class="kw">fn </span>grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -&gt; usize {
     <span class="kw">match </span>size {

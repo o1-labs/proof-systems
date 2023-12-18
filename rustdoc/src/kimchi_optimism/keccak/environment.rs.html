@@ -381,7 +381,7 @@
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>KeccakEnv&lt;Fp&gt; {
     <span class="doccomment">/// Constraints that are added to the circuit
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) _constraints: Vec&lt;E&lt;Fp&gt;&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) constraints: Vec&lt;E&lt;Fp&gt;&gt;,
     <span class="doccomment">/// Values that are looked up in the circuit
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) _lookup_terms: [Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;; <span class="number">2</span>], <span class="comment">// at most 2 values are looked up at a time
     </span><span class="doccomment">/// Expanded block of previous step    
