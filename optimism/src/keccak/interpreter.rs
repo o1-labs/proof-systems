@@ -36,8 +36,6 @@ pub trait KeccakInterpreter {
 
     fn step(&mut self);
 
-    fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
-
     fn set_flag_round(&mut self, round: u64);
     fn set_flag_absorb(&mut self, absorb: Absorb);
     fn set_flag_root(&mut self);
