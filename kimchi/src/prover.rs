@@ -263,14 +263,15 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let mut w_comm = vec![];
-        for col in 0..COLUMNS {
+        let w_comm: Vec<_> =  {
+        witness.par_iter().enumerate().map(|(col, witness)| {
             // witness coeff -> witness eval
             let witness_eval =
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[col].clone(),
+                    witness.clone(),
                     index.cs.domain.d1,
                 );
+            let rng = &mut rand::rngs::OsRng;
 
             let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
                 // no blinders: blind the witness
@@ -286,12 +287,11 @@ where
                     index
                         .srs
                         .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
+                        .map_err(ProverError::WrongBlinders).unwrap() /* TODO: Fixme */
                 }
             };
 
-            w_comm.push(com);
-        }
+            com}).collect()};
 
         let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
             .try_into()
