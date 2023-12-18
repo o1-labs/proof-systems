@@ -123,17 +123,29 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         // Compute witness values
         let ini_idx = self.block_idx * RATE_IN_BYTES;
         let mut block = self.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
+
         // Pad with zeros
-        let old_state = self.prev_block.clone();
         block.append(&mut vec![0; CAPACITY_IN_BYTES]);
+
+        //    Round + Mode of Operation (Sponge)
+        //    state -> permutation(state) -> state'
+        //              ----> either [0] or state'
+        //             |            new state = Exp(block)
+        //             |         ------------------------
+        //    Absorb: state  + [  block      +     0...0 ]
+        //                       1088 bits          512
+        //            ----------------------------------
+        //                         XOR STATE
+        let old_state = self.prev_block.clone();
         let new_state = Keccak::expand_state(&block);
-        let shifts = Keccak::shift(&new_state);
-        let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
         let xor_state = old_state
             .iter()
             .zip(new_state.clone())
             .map(|(x, y)| x + y)
             .collect::<Vec<u64>>();
+
+        let shifts = Keccak::shift(&new_state);
+        let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
 
         // Write absorb-related columns
         for i in 0..QUARTERS * DIM * DIM {
