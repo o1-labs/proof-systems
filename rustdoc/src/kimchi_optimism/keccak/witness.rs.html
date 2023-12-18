@@ -170,8 +170,18 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::{Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS};
+<span class="kw">use </span>kimchi::circuits::polynomials::keccak::{Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS};
 
 <span class="kw">use super</span>::{
     column::KeccakColumn,
@@ -326,9 +336,19 @@
         <span class="self">self</span>.block_idx += <span class="number">1</span>; <span class="comment">// To be used in next absorb (if any)
     </span>}
 
-    <span class="kw">fn </span>run_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _round: u64) {
-        <span class="macro">todo!</span>()
-    }
+    <span class="kw">fn </span>run_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, round: u64) {
+        <span class="self">self</span>.set_flag_round(round);
+
+        <span class="kw">let </span>rc = Keccak::sparse(RC[round <span class="kw">as </span>usize]);
+        <span class="kw">let </span>state_a = <span class="self">self</span>.prev_block.clone();
+        <span class="kw">let </span>state_e = <span class="self">self</span>.run_theta(<span class="kw-2">&amp;</span>state_a);
+        <span class="kw">let </span>state_b = <span class="self">self</span>.run_pirho(<span class="kw-2">&amp;</span>state_e);
+        <span class="kw">let </span>state_f = <span class="self">self</span>.run_chi(<span class="kw-2">&amp;</span>state_b);
+        <span class="self">self</span>.run_iota(<span class="kw-2">&amp;</span>state_f, <span class="kw-2">&amp;</span>rc);
+
+        <span class="comment">// Compute witness values
+    </span>}
+
     <span class="kw">fn </span>run_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _state_a: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
         <span class="macro">todo!</span>()
     }
