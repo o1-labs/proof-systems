@@ -649,6 +649,7 @@ impl<Fp: Field> Env<Fp> {
                     panic!("Keccak state not initialized")
                 }
             }
+            Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }
 

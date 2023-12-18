@@ -4,4 +4,5 @@ use crate::keccak::column::KeccakColumn;
 pub enum Column {
     ScratchState(usize),
     KeccakState(KeccakColumn),
+    InstructionCounter,
 }
