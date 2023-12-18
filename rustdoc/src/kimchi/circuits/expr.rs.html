@@ -3090,24 +3090,6 @@
 <a href="#3090" id="3090">3090</a>
 <a href="#3091" id="3091">3091</a>
 <a href="#3092" id="3092">3092</a>
-<a href="#3093" id="3093">3093</a>
-<a href="#3094" id="3094">3094</a>
-<a href="#3095" id="3095">3095</a>
-<a href="#3096" id="3096">3096</a>
-<a href="#3097" id="3097">3097</a>
-<a href="#3098" id="3098">3098</a>
-<a href="#3099" id="3099">3099</a>
-<a href="#3100" id="3100">3100</a>
-<a href="#3101" id="3101">3101</a>
-<a href="#3102" id="3102">3102</a>
-<a href="#3103" id="3103">3103</a>
-<a href="#3104" id="3104">3104</a>
-<a href="#3105" id="3105">3105</a>
-<a href="#3106" id="3106">3106</a>
-<a href="#3107" id="3107">3107</a>
-<a href="#3108" id="3108">3108</a>
-<a href="#3109" id="3109">3109</a>
-<a href="#3110" id="3110">3110</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3336,7 +3318,7 @@
     </span><span class="kw">pub </span>row: CurrOrNext,
 }
 
-<span class="attr">#[derive(Clone, Debug, PartialEq)]
+<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>ChallengeTerm {
     Alpha,
     Beta,
@@ -3344,7 +3326,7 @@
     JointCombiner,
 }
 
-<span class="attr">#[derive(Clone, Debug, PartialEq)]
+<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>ConstantTerm&lt;F&gt; {
     EndoCoefficient,
     Mds { row: usize, col: usize },
@@ -3370,19 +3352,8 @@
 <span class="kw">impl</span>&lt;F: Copy&gt; ConstantExpr&lt;F&gt; {
     <span class="kw">fn </span>to_polish_&lt;Column&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;) {
         <span class="kw">match </span><span class="self">self </span>{
-            ConstantExpr::Challenge(ChallengeTerm::Alpha) =&gt; res.push(PolishToken::Alpha),
-            ConstantExpr::Challenge(ChallengeTerm::Beta) =&gt; res.push(PolishToken::Beta),
-            ConstantExpr::Challenge(ChallengeTerm::Gamma) =&gt; res.push(PolishToken::Gamma),
-            ConstantExpr::Challenge(ChallengeTerm::JointCombiner) =&gt; {
-                res.push(PolishToken::JointCombiner)
-            }
-            ConstantExpr::Constant(ConstantTerm::EndoCoefficient) =&gt; {
-                res.push(PolishToken::EndoCoefficient)
-            }
-            ConstantExpr::Constant(ConstantTerm::Mds { row, col }) =&gt; res.push(PolishToken::Mds {
-                row: <span class="kw-2">*</span>row,
-                col: <span class="kw-2">*</span>col,
-            }),
+            ConstantExpr::Challenge(chal) =&gt; res.push(PolishToken::Challenge(<span class="kw-2">*</span>chal)),
+            ConstantExpr::Constant(c) =&gt; res.push(PolishToken::Constant(<span class="kw-2">*</span>c)),
             ConstantExpr::Add(x, y) =&gt; {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -3398,7 +3369,6 @@
                 y.as_ref().to_polish_(res);
                 res.push(PolishToken::Sub)
             }
-            ConstantExpr::Constant(ConstantTerm::Literal(x)) =&gt; res.push(PolishToken::Literal(<span class="kw-2">*</span>x)),
             ConstantExpr::Pow(x, n) =&gt; {
                 x.to_polish_(res);
                 res.push(PolishToken::Pow(<span class="kw-2">*</span>n))
@@ -3728,16 +3698,8 @@
 /// expressions, which are vectors of the below tokens.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>PolishToken&lt;F, Column&gt; {
-    Alpha,
-    Beta,
-    Gamma,
-    JointCombiner,
-    EndoCoefficient,
-    Mds {
-        row: usize,
-        col: usize,
-    },
-    Literal(F),
+    Constant(ConstantTerm&lt;F&gt;),
+    Challenge(ChallengeTerm),
     Cell(Variable&lt;Column&gt;),
     Dup,
     Pow(u64),
@@ -3792,16 +3754,18 @@
                 skip_count -= <span class="number">1</span>;
                 <span class="kw">continue</span>;
             }
+            <span class="kw">use </span>ChallengeTerm::<span class="kw-2">*</span>;
+            <span class="kw">use </span>ConstantTerm::<span class="kw-2">*</span>;
             <span class="kw">use </span>PolishToken::<span class="kw-2">*</span>;
             <span class="kw">match </span>t {
-                Alpha =&gt; stack.push(chals.alpha),
-                Beta =&gt; stack.push(chals.beta),
-                Gamma =&gt; stack.push(chals.gamma),
-                JointCombiner =&gt; {
+                Challenge(Alpha) =&gt; stack.push(chals.alpha),
+                Challenge(Beta) =&gt; stack.push(chals.beta),
+                Challenge(Gamma) =&gt; stack.push(chals.gamma),
+                Challenge(JointCombiner) =&gt; {
                     stack.push(chals.joint_combiner.expect(<span class="string">&quot;no joint lookup was expected&quot;</span>))
                 }
-                EndoCoefficient =&gt; stack.push(c.endo_coefficient),
-                Mds { row, col } =&gt; stack.push(c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col]),
+                Constant(EndoCoefficient) =&gt; stack.push(c.endo_coefficient),
+                Constant(Mds { row, col }) =&gt; stack.push(c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col]),
                 VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + <span class="number">1</span>, pt))
                 }
@@ -3813,7 +3777,7 @@
                     };
                     stack.push(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, offset, <span class="kw-2">&amp;</span>pt))
                 }
-                Literal(x) =&gt; stack.push(<span class="kw-2">*</span>x),
+                Constant(Literal(x)) =&gt; stack.push(<span class="kw-2">*</span>x),
                 Dup =&gt; stack.push(stack[stack.len() - <span class="number">1</span>]),
                 Cell(v) =&gt; <span class="kw">match </span>v.evaluate(evals) {
                     <span class="prelude-val">Ok</span>(x) =&gt; stack.push(x),
