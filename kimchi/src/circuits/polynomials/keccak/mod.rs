@@ -9,7 +9,13 @@ pub const SHIFTS: usize = 4;
 pub const ROUNDS: usize = 24;
 pub const RATE_IN_BYTES: usize = 1088 / 8;
 pub const CAPACITY_IN_BYTES: usize = 512 / 8;
+<<<<<<< Updated upstream
 pub const KECCAK_COLS: usize = 2344;
+=======
+pub const KECCAK_COLS: usize = 1965;
+pub const STATE_LEN: usize = QUARTERS * DIM * DIM;
+pub const SHIFTS_LEN: usize = 4 * STATE_LEN;
+>>>>>>> Stashed changes
 
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
