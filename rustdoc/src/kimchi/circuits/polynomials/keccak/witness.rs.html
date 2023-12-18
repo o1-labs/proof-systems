@@ -479,6 +479,15 @@
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
 <a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
 </span><span class="kw">use </span>std::array;
@@ -836,16 +845,25 @@
 <span class="doccomment">/// Values involved in Iota permutation step
 </span><span class="kw">pub struct </span>Iota {
     state_g: Vec&lt;u64&gt;,
+    rc: Vec&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>Iota {
-    <span class="kw">fn </span>create(state_f: Vec&lt;u64&gt;, round: usize) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>create(state_f: <span class="kw-2">&amp;</span>[u64], round: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>rc = Keccak::sparse(RC[round]);
-        <span class="kw">let </span><span class="kw-2">mut </span>state_g = state_f.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>state_g = state_f.to_vec();
         <span class="kw">for </span>(i, c) <span class="kw">in </span>rc.iter().enumerate() {
             state_g[i] = state_f[i] + <span class="kw-2">*</span>c;
         }
-        <span class="self">Self </span>{ state_g }
+        <span class="self">Self </span>{ state_g, rc }
+    }
+
+    <span class="kw">pub fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; u64 {
+        <span class="self">self</span>.state_g[i]
+    }
+
+    <span class="kw">pub fn </span>rc(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; u64 {
+        <span class="self">self</span>.rc[i]
     }
 }
 
@@ -909,7 +927,7 @@
             </span><span class="kw">let </span>chi = Chi::create(<span class="kw-2">&amp;</span>pirho.state_b);
 
             <span class="comment">// Iota
-            </span><span class="kw">let </span>iota = Iota::create(chi.state_f, round);
+            </span><span class="kw">let </span>iota = Iota::create(<span class="kw-2">&amp;</span>chi.state_f, round);
 
             <span class="comment">// Initialize the round row
             </span>witness::init(

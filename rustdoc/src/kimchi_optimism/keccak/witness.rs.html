@@ -262,11 +262,18 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
-        witness::{Chi, PiRho, Theta},
-        Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, RC, ROUNDS,
+        witness::{Chi, Iota, PiRho, Theta},
+        Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS,
     },
     grid,
 };
@@ -427,12 +434,11 @@
     <span class="kw">fn </span>run_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, round: u64) {
         <span class="self">self</span>.set_flag_round(round);
 
-        <span class="kw">let </span>rc = Keccak::sparse(RC[round <span class="kw">as </span>usize]);
         <span class="kw">let </span>state_a = <span class="self">self</span>.prev_block.clone();
         <span class="kw">let </span>state_e = <span class="self">self</span>.run_theta(<span class="kw-2">&amp;</span>state_a);
         <span class="kw">let </span>state_b = <span class="self">self</span>.run_pirho(<span class="kw-2">&amp;</span>state_e);
         <span class="kw">let </span>state_f = <span class="self">self</span>.run_chi(<span class="kw-2">&amp;</span>state_b);
-        <span class="self">self</span>.run_iota(<span class="kw-2">&amp;</span>state_f, <span class="kw-2">&amp;</span>rc);
+        <span class="self">self</span>.run_iota(<span class="kw-2">&amp;</span>state_f, round <span class="kw">as </span>usize);
 
         <span class="comment">// Compute witness values
     </span>}
@@ -522,8 +528,16 @@
         chi.state_f()
     }
 
-    <span class="kw">fn </span>run_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _state_f: <span class="kw-2">&amp;</span>[u64], _rc: <span class="kw-2">&amp;</span>[u64]) {
-        <span class="macro">todo!</span>()
+    <span class="kw">fn </span>run_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state_f: <span class="kw-2">&amp;</span>[u64], round: usize) {
+        <span class="kw">let </span>iota = Iota::create(state_f, round);
+
+        <span class="comment">// Update columns
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
+            <span class="self">self</span>.write_column(KeccakColumn::NextState(i), iota.state_g(i));
+        }
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
+            <span class="self">self</span>.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
+        }
     }
 }
 </code></pre></div></section></main></body></html>
