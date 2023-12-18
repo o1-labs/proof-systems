@@ -71,10 +71,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         match absorb {
             Absorb::First => self.set_flag_root(),
             Absorb::Last => self.set_flag_pad(),
-            _ => {
+            Absorb::FirstAndLast => {
                 self.set_flag_root();
                 self.set_flag_pad()
             }
+            Absorb::Middle => (),
         }
     }
 
