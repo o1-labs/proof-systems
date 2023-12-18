@@ -1,8 +1,9 @@
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
+        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS},
         witness::{Chi, Iota, PiRho, Theta},
-        Keccak, CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS,
+        Keccak,
     },
     grid,
 };

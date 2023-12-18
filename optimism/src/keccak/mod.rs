@@ -1,6 +1,6 @@
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
-    polynomials::keccak::{DIM, KECCAK_COLS, QUARTERS},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS},
 };
 
 use self::column::KeccakColumn;
