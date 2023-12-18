@@ -258,7 +258,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
-    const CONSTRAINTS: u32 = 500;
+    const CONSTRAINTS: u32 = 532;
 
     // Constraints for the Keccak sponge
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -267,7 +267,6 @@ where
         // LOAD WITNESS
         let old_state = env.witness_curr_chunk(SPONGE_OLD_STATE_OFF, SPONGE_NEW_STATE_OFF);
         let new_state = env.witness_curr_chunk(SPONGE_NEW_STATE_OFF, SPONGE_BYTES_OFF);
-        let new_block = env.witness_curr_chunk(SPONGE_NEW_BLOCK_OFF, SPONGE_ZEROS_OFF);
         let zeros = env.witness_curr_chunk(SPONGE_ZEROS_OFF, SPONGE_BYTES_OFF);
         let xor_state = env.witness_next_chunk(0, SPONGE_XOR_STATE_LEN);
         let bytes = env.witness_curr_chunk(SPONGE_BYTES_OFF, SPONGE_SHIFTS_OFF);
@@ -291,18 +290,16 @@ where
         auto_clone_array!(flags);
         auto_clone_array!(pad);
 
-        // 32 + 68 + 100 * 2 + 64 + 136 = 500
+        // 32 + 100 * 3 + 64 + 136 = 532
         for z in zeros {
             // Absorb phase pads with zeros the new state
             constraints.push(absorb() * z);
         }
-        for (i, new) in new_block.iter().enumerate() {
-            // Absorbs the new block by performing XOR with the old state (no need full state because zeros)
-            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new.clone())));
-        }
         for i in 0..STATE_LEN {
             // In first absorb, root state is all zeros
             constraints.push(root() * old_state(i));
+            // Absorbs the new block by performing XOR with the old state
+            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_state(i))));
             // In absorb, Check shifts correspond to the decomposition of the new state
             constraints.push(absorb() * (new_state(i) - from_shifts!(shifts, i)));
         }
