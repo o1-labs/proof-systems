@@ -1,6 +1,5 @@
 //! Keccak gadget
-use self::constants::*;
-use super::{DIM, OFF, QUARTERS};
+use super::{constants::*, OFF};
 use crate::{
     auto_clone, auto_clone_array,
     circuits::{
@@ -52,55 +51,6 @@ macro_rules! from_shifts {
             + T::two_pow(2) * $shifts(2, $y, $x, $q)
             + T::two_pow(3) * $shifts(3, $y, $x, $q)
     };
-}
-
-/// Constants for each witness' index offsets and lengths
-pub mod constants {
-    use crate::circuits::polynomials::keccak::{DIM, QUARTERS, SHIFTS};
-
-    // ROUND INDICES
-    pub const THETA_STATE_A_OFF: usize = 0;
-    pub const THETA_STATE_A_LEN: usize = QUARTERS * DIM * DIM;
-    pub const THETA_SHIFTS_C_OFF: usize = THETA_STATE_A_LEN;
-    pub const THETA_SHIFTS_C_LEN: usize = SHIFTS * DIM * QUARTERS;
-    pub const THETA_DENSE_C_OFF: usize = THETA_SHIFTS_C_OFF + THETA_SHIFTS_C_LEN;
-    pub const THETA_DENSE_C_LEN: usize = QUARTERS * DIM;
-    pub const THETA_QUOTIENT_C_OFF: usize = THETA_DENSE_C_OFF + THETA_DENSE_C_LEN;
-    pub const THETA_QUOTIENT_C_LEN: usize = DIM;
-    pub const THETA_REMAINDER_C_OFF: usize = THETA_QUOTIENT_C_OFF + THETA_QUOTIENT_C_LEN;
-    pub const THETA_REMAINDER_C_LEN: usize = QUARTERS * DIM;
-    pub const THETA_DENSE_ROT_C_OFF: usize = THETA_REMAINDER_C_OFF + THETA_REMAINDER_C_LEN;
-    pub const THETA_DENSE_ROT_C_LEN: usize = QUARTERS * DIM;
-    pub const THETA_EXPAND_ROT_C_OFF: usize = THETA_DENSE_ROT_C_OFF + THETA_DENSE_ROT_C_LEN;
-    pub const THETA_EXPAND_ROT_C_LEN: usize = QUARTERS * DIM;
-    pub const PIRHO_SHIFTS_E_OFF: usize = THETA_EXPAND_ROT_C_OFF + THETA_EXPAND_ROT_C_LEN;
-    pub const PIRHO_SHIFTS_E_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
-    pub const PIRHO_DENSE_E_OFF: usize = PIRHO_SHIFTS_E_OFF + PIRHO_SHIFTS_E_LEN;
-    pub const PIRHO_DENSE_E_LEN: usize = QUARTERS * DIM * DIM;
-    pub const PIRHO_QUOTIENT_E_OFF: usize = PIRHO_DENSE_E_OFF + PIRHO_DENSE_E_LEN;
-    pub const PIRHO_QUOTIENT_E_LEN: usize = QUARTERS * DIM * DIM;
-    pub const PIRHO_REMAINDER_E_OFF: usize = PIRHO_QUOTIENT_E_OFF + PIRHO_QUOTIENT_E_LEN;
-    pub const PIRHO_REMAINDER_E_LEN: usize = QUARTERS * DIM * DIM;
-    pub const PIRHO_DENSE_ROT_E_OFF: usize = PIRHO_REMAINDER_E_OFF + PIRHO_REMAINDER_E_LEN;
-    pub const PIRHO_DENSE_ROT_E_LEN: usize = QUARTERS * DIM * DIM;
-    pub const PIRHO_EXPAND_ROT_E_OFF: usize = PIRHO_DENSE_ROT_E_OFF + PIRHO_DENSE_ROT_E_LEN;
-    pub const PIRHO_EXPAND_ROT_E_LEN: usize = QUARTERS * DIM * DIM;
-    pub const CHI_SHIFTS_B_OFF: usize = PIRHO_EXPAND_ROT_E_OFF + PIRHO_EXPAND_ROT_E_LEN;
-    pub const CHI_SHIFTS_B_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
-    pub const CHI_SHIFTS_SUM_OFF: usize = CHI_SHIFTS_B_OFF + CHI_SHIFTS_B_LEN;
-    pub const CHI_SHIFTS_SUM_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
-    pub const IOTA_STATE_G_OFF: usize = CHI_SHIFTS_SUM_OFF + CHI_SHIFTS_SUM_LEN;
-    pub const IOTA_STATE_G_LEN: usize = QUARTERS * DIM * DIM;
-    // SPONGE INDICES
-    pub const SPONGE_OLD_STATE_OFF: usize = 0;
-    pub const SPONGE_OLD_STATE_LEN: usize = QUARTERS * DIM * DIM;
-    pub const SPONGE_NEW_STATE_OFF: usize = SPONGE_OLD_STATE_OFF + SPONGE_OLD_STATE_LEN;
-    pub const SPONGE_NEW_STATE_LEN: usize = QUARTERS * DIM * DIM;
-    pub const SPONGE_BYTES_OFF: usize = SPONGE_NEW_STATE_OFF + SPONGE_NEW_STATE_LEN;
-    pub const SPONGE_BYTES_LEN: usize = 2 * QUARTERS * DIM * DIM;
-    pub const SPONGE_SHIFTS_OFF: usize = SPONGE_BYTES_OFF + SPONGE_BYTES_LEN;
-    pub const SPONGE_SHIFTS_LEN: usize = SHIFTS * QUARTERS * DIM * DIM;
-    pub const SPONGE_XOR_STATE_LEN: usize = QUARTERS * DIM * DIM;
 }
 
 //~
