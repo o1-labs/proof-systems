@@ -394,48 +394,6 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
 </span><span class="kw">use </span>std::array;
@@ -459,27 +417,20 @@
 <span class="kw">fn </span>layout_round&lt;F: PrimeField&gt;() -&gt; [Layout&lt;F, KECCAK_COLS&gt;; <span class="number">1</span>] {
     [<span class="macro">vec!</span>[
         IndexCell::create(<span class="string">&quot;state_a&quot;</span>, <span class="number">0</span>, <span class="number">100</span>),
-        IndexCell::create(<span class="string">&quot;state_c&quot;</span>, <span class="number">100</span>, <span class="number">120</span>),
-        IndexCell::create(<span class="string">&quot;shifts_c&quot;</span>, <span class="number">120</span>, <span class="number">200</span>),
-        IndexCell::create(<span class="string">&quot;dense_c&quot;</span>, <span class="number">200</span>, <span class="number">220</span>),
-        IndexCell::create(<span class="string">&quot;quotient_c&quot;</span>, <span class="number">220</span>, <span class="number">240</span>),
-        IndexCell::create(<span class="string">&quot;remainder_c&quot;</span>, <span class="number">240</span>, <span class="number">260</span>),
-        IndexCell::create(<span class="string">&quot;bound_c&quot;</span>, <span class="number">260</span>, <span class="number">280</span>),
-        IndexCell::create(<span class="string">&quot;dense_rot_c&quot;</span>, <span class="number">280</span>, <span class="number">300</span>),
-        IndexCell::create(<span class="string">&quot;expand_rot_c&quot;</span>, <span class="number">300</span>, <span class="number">320</span>),
-        IndexCell::create(<span class="string">&quot;state_d&quot;</span>, <span class="number">320</span>, <span class="number">340</span>),
-        IndexCell::create(<span class="string">&quot;state_e&quot;</span>, <span class="number">340</span>, <span class="number">440</span>),
-        IndexCell::create(<span class="string">&quot;shifts_e&quot;</span>, <span class="number">440</span>, <span class="number">840</span>),
-        IndexCell::create(<span class="string">&quot;dense_e&quot;</span>, <span class="number">840</span>, <span class="number">940</span>),
-        IndexCell::create(<span class="string">&quot;quotient_e&quot;</span>, <span class="number">940</span>, <span class="number">1040</span>),
-        IndexCell::create(<span class="string">&quot;remainder_e&quot;</span>, <span class="number">1040</span>, <span class="number">1140</span>),
-        IndexCell::create(<span class="string">&quot;bound_e&quot;</span>, <span class="number">1140</span>, <span class="number">1240</span>),
-        IndexCell::create(<span class="string">&quot;dense_rot_e&quot;</span>, <span class="number">1240</span>, <span class="number">1340</span>),
-        IndexCell::create(<span class="string">&quot;expand_rot_e&quot;</span>, <span class="number">1340</span>, <span class="number">1440</span>),
-        IndexCell::create(<span class="string">&quot;state_b&quot;</span>, <span class="number">1440</span>, <span class="number">1540</span>),
-        IndexCell::create(<span class="string">&quot;shifts_b&quot;</span>, <span class="number">1540</span>, <span class="number">1940</span>),
-        IndexCell::create(<span class="string">&quot;shifts_sum&quot;</span>, <span class="number">1940</span>, <span class="number">2340</span>),
-        IndexCell::create(<span class="string">&quot;f00&quot;</span>, <span class="number">2340</span>, <span class="number">2344</span>),
+        IndexCell::create(<span class="string">&quot;shifts_c&quot;</span>, <span class="number">100</span>, <span class="number">180</span>),
+        IndexCell::create(<span class="string">&quot;dense_c&quot;</span>, <span class="number">180</span>, <span class="number">200</span>),
+        IndexCell::create(<span class="string">&quot;quotient_c&quot;</span>, <span class="number">200</span>, <span class="number">205</span>),
+        IndexCell::create(<span class="string">&quot;remainder_c&quot;</span>, <span class="number">205</span>, <span class="number">225</span>),
+        IndexCell::create(<span class="string">&quot;dense_rot_c&quot;</span>, <span class="number">225</span>, <span class="number">245</span>),
+        IndexCell::create(<span class="string">&quot;expand_rot_c&quot;</span>, <span class="number">245</span>, <span class="number">265</span>),
+        IndexCell::create(<span class="string">&quot;shifts_e&quot;</span>, <span class="number">265</span>, <span class="number">665</span>),
+        IndexCell::create(<span class="string">&quot;dense_e&quot;</span>, <span class="number">665</span>, <span class="number">765</span>),
+        IndexCell::create(<span class="string">&quot;quotient_e&quot;</span>, <span class="number">765</span>, <span class="number">865</span>),
+        IndexCell::create(<span class="string">&quot;remainder_e&quot;</span>, <span class="number">865</span>, <span class="number">965</span>),
+        IndexCell::create(<span class="string">&quot;dense_rot_e&quot;</span>, <span class="number">965</span>, <span class="number">1065</span>),
+        IndexCell::create(<span class="string">&quot;expand_rot_e&quot;</span>, <span class="number">1065</span>, <span class="number">1165</span>),
+        IndexCell::create(<span class="string">&quot;shifts_b&quot;</span>, <span class="number">1165</span>, <span class="number">1565</span>),
+        IndexCell::create(<span class="string">&quot;shifts_sum&quot;</span>, <span class="number">1565</span>, <span class="number">1965</span>),
     ]]
 }
 
@@ -502,41 +453,24 @@
 </span><span class="kw">struct </span>Rotation {
     quotient: Vec&lt;u64&gt;,
     remainder: Vec&lt;u64&gt;,
-    bound: Vec&lt;u64&gt;,
     dense_rot: Vec&lt;u64&gt;,
     expand_rot: Vec&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>Rotation {
-    <span class="comment">// Returns rotation of 0 bits
-    </span><span class="kw">fn </span>none(dense: <span class="kw-2">&amp;</span>[u64]) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            quotient: <span class="macro">vec!</span>[<span class="number">0</span>; QUARTERS],
-            remainder: dense.to_vec(),
-            bound: <span class="macro">vec!</span>[<span class="number">0xFFFF</span>; QUARTERS],
-            dense_rot: dense.to_vec(),
-            expand_rot: dense.iter().map(|x| Keccak::expand(<span class="kw-2">*</span>x)).collect(),
-        }
-    }
-
     <span class="comment">// On input the dense quarters of a word, rotate the word offset bits to the left
     </span><span class="kw">fn </span>new(dense: <span class="kw-2">&amp;</span>[u64], offset: u32) -&gt; <span class="self">Self </span>{
-        <span class="kw">if </span>offset == <span class="number">0 </span>{
-            <span class="kw">return </span><span class="self">Self</span>::none(dense);
-        }
         <span class="kw">let </span>word = Keccak::compose(dense);
-        <span class="kw">let </span>rem = (word <span class="kw">as </span>u128 * <span class="number">2u128</span>.pow(offset) % <span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
-        <span class="kw">let </span>quo = word / <span class="number">2u64</span>.pow(<span class="number">64 </span>- offset);
-        <span class="kw">let </span>bnd = (quo <span class="kw">as </span>u128) + <span class="number">2u128</span>.pow(<span class="number">64</span>) - <span class="number">2u128</span>.pow(offset);
+        <span class="kw">let </span>rem = word <span class="kw">as </span>u128 * <span class="number">2u128</span>.pow(offset) % <span class="number">2u128</span>.pow(<span class="number">64</span>);
+        <span class="kw">let </span>quo = (word <span class="kw">as </span>u128) / <span class="number">2u128</span>.pow(<span class="number">64 </span>- offset);
         <span class="kw">let </span>rot = rem + quo;
-        <span class="macro">assert!</span>(rot == word.rotate_left(offset));
+        <span class="macro">assert!</span>(rot <span class="kw">as </span>u64 == word.rotate_left(offset));
 
         <span class="self">Self </span>{
-            quotient: Keccak::decompose(quo),
-            remainder: Keccak::decompose(rem),
-            bound: Keccak::decompose(bnd <span class="kw">as </span>u64),
-            dense_rot: Keccak::decompose(rot),
-            expand_rot: Keccak::decompose(rot)
+            quotient: Keccak::decompose(quo <span class="kw">as </span>u64),
+            remainder: Keccak::decompose(rem <span class="kw">as </span>u64),
+            dense_rot: Keccak::decompose(rot <span class="kw">as </span>u64),
+            expand_rot: Keccak::decompose(rot <span class="kw">as </span>u64)
                 .iter()
                 .map(|x| Keccak::expand(<span class="kw-2">*</span>x))
                 .collect(),
@@ -548,21 +482,18 @@
         <span class="macro">assert!</span>(words.len() == QUARTERS * offsets.len());
         <span class="kw">let </span><span class="kw-2">mut </span>quotient = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>remainder = <span class="macro">vec!</span>[];
-        <span class="kw">let </span><span class="kw-2">mut </span>bound = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>dense_rot = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>expand_rot = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(word, offset) <span class="kw">in </span>words.chunks(QUARTERS).zip(offsets.iter()) {
             <span class="kw">let </span><span class="kw-2">mut </span>rot = <span class="self">Self</span>::new(word, <span class="kw-2">*</span>offset);
             quotient.append(<span class="kw-2">&amp;mut </span>rot.quotient);
             remainder.append(<span class="kw-2">&amp;mut </span>rot.remainder);
-            bound.append(<span class="kw-2">&amp;mut </span>rot.bound);
             dense_rot.append(<span class="kw-2">&amp;mut </span>rot.dense_rot);
             expand_rot.append(<span class="kw-2">&amp;mut </span>rot.expand_rot);
         }
         <span class="self">Self </span>{
             quotient,
             remainder,
-            bound,
             dense_rot,
             expand_rot,
         }
@@ -570,15 +501,12 @@
 }
 
 <span class="kw">struct </span>Theta {
-    state_c: Vec&lt;u64&gt;,
     shifts_c: Vec&lt;u64&gt;,
     dense_c: Vec&lt;u64&gt;,
     quotient_c: Vec&lt;u64&gt;,
     remainder_c: Vec&lt;u64&gt;,
-    bound_c: Vec&lt;u64&gt;,
     dense_rot_c: Vec&lt;u64&gt;,
     expand_rot_c: Vec&lt;u64&gt;,
-    state_d: Vec&lt;u64&gt;,
     state_e: Vec&lt;u64&gt;,
 }
 
@@ -590,16 +518,20 @@
         <span class="kw">let </span>rotation_c = Rotation::many(<span class="kw-2">&amp;</span>dense_c, <span class="kw-2">&amp;</span>[<span class="number">1</span>; DIM]);
         <span class="kw">let </span>state_d = <span class="self">Self</span>::compute_state_d(<span class="kw-2">&amp;</span>shifts_c, <span class="kw-2">&amp;</span>rotation_c.expand_rot);
         <span class="kw">let </span>state_e = <span class="self">Self</span>::compute_state_e(state_a, <span class="kw-2">&amp;</span>state_d);
+        <span class="kw">let </span>quotient_c = <span class="macro">vec!</span>[
+            rotation_c.quotient[<span class="number">0</span>],
+            rotation_c.quotient[<span class="number">4</span>],
+            rotation_c.quotient[<span class="number">8</span>],
+            rotation_c.quotient[<span class="number">12</span>],
+            rotation_c.quotient[<span class="number">16</span>],
+        ];
         <span class="self">Self </span>{
-            state_c,
             shifts_c,
             dense_c,
-            quotient_c: rotation_c.quotient,
+            quotient_c,
             remainder_c: rotation_c.remainder,
-            bound_c: rotation_c.bound,
             dense_rot_c: rotation_c.dense_rot,
             expand_rot_c: rotation_c.expand_rot,
-            state_d,
             state_e,
         }
     }
@@ -653,7 +585,6 @@
     dense_e: Vec&lt;u64&gt;,
     quotient_e: Vec&lt;u64&gt;,
     remainder_e: Vec&lt;u64&gt;,
-    bound_e: Vec&lt;u64&gt;,
     dense_rot_e: Vec&lt;u64&gt;,
     expand_rot_e: Vec&lt;u64&gt;,
     state_b: Vec&lt;u64&gt;,
@@ -687,7 +618,6 @@
             dense_e,
             quotient_e: rotation_e.quotient,
             remainder_e: rotation_e.remainder,
-            bound_e: rotation_e.bound,
             dense_rot_e: rotation_e.dense_rot,
             expand_rot_e: rotation_e.expand_rot,
             state_b,
@@ -776,7 +706,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>block = chunk.to_vec();
         <span class="comment">// Pad the block until reaching 200 bytes
         </span>block.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[<span class="number">0</span>; CAPACITY_IN_BYTES]);
-        <span class="kw">let </span>dense = Keccak::quarters(<span class="kw-2">&amp;</span>block);
         <span class="kw">let </span>new_state = Keccak::expand_state(<span class="kw-2">&amp;</span>block);
         <span class="macro">auto_clone!</span>(new_state);
         <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>new_state());
@@ -787,7 +716,7 @@
             <span class="kw-2">&amp;mut </span>keccak_witness,
             row,
             <span class="kw-2">&amp;</span>layout_sponge(),
-            <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">&quot;old_state&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>state), <span class="string">&quot;new_state&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>new_state()), <span class="string">&quot;dense&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>dense), <span class="string">&quot;bytes&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>bytes), <span class="string">&quot;shifts&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>shifts)],
+            <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">&quot;old_state&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>state), <span class="string">&quot;new_state&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>new_state()), <span class="string">&quot;bytes&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>bytes), <span class="string">&quot;shifts&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>shifts)],
         );
         row += <span class="number">1</span>;
 
@@ -808,12 +737,6 @@
 
             <span class="comment">// Chi
             </span><span class="kw">let </span>chi = Chi::create(<span class="kw-2">&amp;</span>pirho.state_b);
-            <span class="kw">let </span>f00 = chi
-                .state_f
-                .clone()
-                .into_iter()
-                .take(QUARTERS)
-                .collect::&lt;Vec&lt;u64&gt;&gt;();
 
             <span class="comment">// Iota
             </span><span class="kw">let </span>iota = Iota::create(chi.state_f, round);
@@ -825,27 +748,20 @@
                 <span class="kw-2">&amp;</span>layout_round(),
                 <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[
                 <span class="string">&quot;state_a&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>ini_state),
-                <span class="string">&quot;state_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.state_c),
                 <span class="string">&quot;shifts_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.shifts_c),
                 <span class="string">&quot;dense_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.dense_c),
                 <span class="string">&quot;quotient_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.quotient_c),
                 <span class="string">&quot;remainder_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.remainder_c),
-                <span class="string">&quot;bound_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.bound_c),
                 <span class="string">&quot;dense_rot_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.dense_rot_c),
                 <span class="string">&quot;expand_rot_c&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.expand_rot_c),
-                <span class="string">&quot;state_d&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.state_d),
-                <span class="string">&quot;state_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>theta.state_e),
                 <span class="string">&quot;shifts_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.shifts_e),
                 <span class="string">&quot;dense_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.dense_e),
                 <span class="string">&quot;quotient_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.quotient_e),
                 <span class="string">&quot;remainder_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.remainder_e),
-                <span class="string">&quot;bound_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.bound_e),
                 <span class="string">&quot;dense_rot_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.dense_rot_e),
                 <span class="string">&quot;expand_rot_e&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.expand_rot_e),
-                <span class="string">&quot;state_b&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>pirho.state_b),
                 <span class="string">&quot;shifts_b&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>chi.shifts_b),
-                <span class="string">&quot;shifts_sum&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>chi.shifts_sum),
-                <span class="string">&quot;f00&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>f00)
+                <span class="string">&quot;shifts_sum&quot; </span>=&gt; field(<span class="kw-2">&amp;</span>chi.shifts_sum)
                 ],
             );
             row += <span class="number">1</span>;
