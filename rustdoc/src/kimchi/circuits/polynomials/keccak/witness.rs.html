@@ -394,6 +394,10 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
 </span><span class="kw">use </span>std::array;
@@ -450,7 +454,7 @@
 
 <span class="comment">// Contains the quotient, remainder, bound, dense rotated as quarters of at most 16 bits each
 // Contains the expansion of the rotated word
-</span><span class="kw">struct </span>Rotation {
+</span><span class="kw">pub struct </span>Rotation {
     quotient: Vec&lt;u64&gt;,
     remainder: Vec&lt;u64&gt;,
     dense_rot: Vec&lt;u64&gt;,
@@ -500,7 +504,8 @@
     }
 }
 
-<span class="kw">struct </span>Theta {
+<span class="doccomment">/// Values involved in Theta permutation step
+</span><span class="kw">pub struct </span>Theta {
     shifts_c: Vec&lt;u64&gt;,
     dense_c: Vec&lt;u64&gt;,
     quotient_c: Vec&lt;u64&gt;,
@@ -580,7 +585,8 @@
     }
 }
 
-<span class="kw">struct </span>PiRho {
+<span class="doccomment">/// Values involved in PiRho permutation step
+</span><span class="kw">pub struct </span>PiRho {
     shifts_e: Vec&lt;u64&gt;,
     dense_e: Vec&lt;u64&gt;,
     quotient_e: Vec&lt;u64&gt;,
@@ -625,7 +631,8 @@
     }
 }
 
-<span class="kw">struct </span>Chi {
+<span class="doccomment">/// Values involved in Chi permutation step
+</span><span class="kw">pub struct </span>Chi {
     shifts_b: Vec&lt;u64&gt;,
     shifts_sum: Vec&lt;u64&gt;,
     state_f: Vec&lt;u64&gt;,
@@ -664,7 +671,8 @@
     }
 }
 
-<span class="kw">struct </span>Iota {
+<span class="doccomment">/// Values involved in Iota permutation step
+</span><span class="kw">pub struct </span>Iota {
     state_g: Vec&lt;u64&gt;,
 }
 
