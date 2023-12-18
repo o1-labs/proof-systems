@@ -179,8 +179,44 @@
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
+<span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span><span class="kw">super</span>::grid_index;
@@ -216,7 +252,7 @@
     </span>NextState(usize),                         <span class="comment">// Sponge Next[0..100)
 </span>}
 
-<span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+<span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
     <span class="kw">pub </span>flag_round: T,               <span class="comment">// Coeff Round = [0..24)
     </span><span class="kw">pub </span>flag_absorb: T,              <span class="comment">// Coeff Absorb = 0 | 1
@@ -246,6 +282,40 @@
     </span><span class="kw">pub </span>sponge_shifts: Vec&lt;T&gt;,       <span class="comment">// Sponge Curr[400..800)
     </span><span class="kw">pub </span>next_state: Vec&lt;T&gt;,          <span class="comment">// Sponge Next[0..100)
 </span>}
+
+<span class="kw">impl</span>&lt;T: Zero + Clone&gt; Default <span class="kw">for </span>KeccakColumns&lt;T&gt; {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        KeccakColumns {
+            flag_round: T::zero(),
+            flag_absorb: T::zero(),
+            flag_squeeze: T::zero(),
+            flag_root: T::zero(),
+            flag_pad: T::zero(),
+            flag_length: T::zero(),
+            round_constants: <span class="macro">vec!</span>[T::zero(); <span class="number">4</span>],
+            theta_state_a: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            theta_shifts_c: <span class="macro">vec!</span>[T::zero(); <span class="number">80</span>],
+            theta_dense_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            theta_quotient_c: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
+            theta_remainder_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            theta_dense_rot_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            theta_expand_rot_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            pi_rho_shifts_e: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            pi_rho_dense_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_quotient_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_remainder_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_dense_rot_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_expand_rot_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            chi_shifts_b: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            chi_shifts_sum: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            sponge_old_state: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            sponge_new_state: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            sponge_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">200</span>],
+            sponge_shifts: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            next_state: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+        }
+    }
+}
 
 <span class="kw">impl</span>&lt;A&gt; Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;A&gt; {
     <span class="kw">type </span>Output = A;
