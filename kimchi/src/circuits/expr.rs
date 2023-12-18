@@ -57,17 +57,19 @@ pub enum ExprError<Column> {
     MissingRuntime,
 }
 
-/// The collection of constants required to evaluate an `Expr`.
-pub struct Constants<F: 'static> {
+pub struct Challenges<F> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
     /// The challenge beta from the PLONK IOP.
     pub beta: F,
     /// The challenge gamma from the PLONK IOP.
     pub gamma: F,
-    /// The challenge joint_combiner which is used to combine
-    /// joint lookup tables.
+    /// The challenge joint_combiner which is used to combine joint lookup tables.
     pub joint_combiner: Option<F>,
+}
+
+/// The collection of constants required to evaluate an `Expr`.
+pub struct Constants<F: 'static> {
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
@@ -114,6 +116,8 @@ pub struct Environment<'a, F: FftField> {
     pub l0_1: F,
     /// Constant values required
     pub constants: Constants<F>,
+    /// Challenges from the IOP.
+    pub challenges: Challenges<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
@@ -125,6 +129,7 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
     fn get_domain(&self, d: Domain) -> D<F>;
     fn get_constants(&self) -> &Constants<F>;
+    fn get_challenges(&self) -> &Challenges<F>;
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
     fn l0_1(&self) -> F;
 }
@@ -164,6 +169,10 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
 
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
+    }
+
+    fn get_challenges(&self) -> &Challenges<F> {
+        &self.challenges
     }
 
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
@@ -292,20 +301,20 @@ impl<F: Field> ConstantExpr<F> {
     }
 
     /// Evaluate the given constant expression to a field element.
-    pub fn value(&self, c: &Constants<F>) -> F {
+    pub fn value(&self, c: &Constants<F>, chals: &Challenges<F>) -> F {
         use ConstantExpr::*;
         match self {
-            Alpha => c.alpha,
-            Beta => c.beta,
-            Gamma => c.gamma,
-            JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
+            Alpha => chals.alpha,
+            Beta => chals.beta,
+            Gamma => chals.gamma,
+            JointCombiner => chals.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
-            Pow(x, p) => x.value(c).pow([*p]),
-            Mul(x, y) => x.value(c) * y.value(c),
-            Add(x, y) => x.value(c) + y.value(c),
-            Sub(x, y) => x.value(c) - y.value(c),
+            Pow(x, p) => x.value(c, chals).pow([*p]),
+            Mul(x, y) => x.value(c, chals) * y.value(c, chals),
+            Add(x, y) => x.value(c, chals) + y.value(c, chals),
+            Sub(x, y) => x.value(c, chals) - y.value(c, chals),
         }
     }
 }
@@ -649,6 +658,7 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
+        chals: &Challenges<F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
@@ -662,11 +672,11 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
             }
             use PolishToken::*;
             match t {
-                Alpha => stack.push(c.alpha),
-                Beta => stack.push(c.beta),
-                Gamma => stack.push(c.gamma),
+                Alpha => stack.push(chals.alpha),
+                Beta => stack.push(chals.beta),
+                Gamma => stack.push(chals.gamma),
                 JointCombiner => {
-                    stack.push(c.joint_combiner.expect("no joint lookup was expected"))
+                    stack.push(chals.joint_combiner.expect("no joint lookup was expected"))
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
@@ -1433,25 +1443,31 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
 }
 
 impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>, Column> {
-    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F, Column> {
+    fn evaluate_constants_(&self, c: &Constants<F>, chals: &Challenges<F>) -> Expr<F, Column> {
         use Expr::*;
         // TODO: Use cache
         match self {
-            Double(x) => x.evaluate_constants_(c).double(),
-            Pow(x, d) => x.evaluate_constants_(c).pow(*d),
-            Square(x) => x.evaluate_constants_(c).square(),
-            Constant(x) => Constant(x.value(c)),
+            Double(x) => x.evaluate_constants_(c, chals).double(),
+            Pow(x, d) => x.evaluate_constants_(c, chals).pow(*d),
+            Square(x) => x.evaluate_constants_(c, chals).square(),
+            Constant(x) => Constant(x.value(c, chals)),
             Cell(v) => Cell(*v),
             VanishesOnZeroKnowledgeAndPreviousRows => VanishesOnZeroKnowledgeAndPreviousRows,
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
-            BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
-            BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
-            BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
-            Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
+            BinOp(Op2::Add, x, y) => {
+                x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals)
+            }
+            BinOp(Op2::Mul, x, y) => {
+                x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals)
+            }
+            BinOp(Op2::Sub, x, y) => {
+                x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals)
+            }
+            Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c, chals))),
             IfFeature(feature, e1, e2) => IfFeature(
                 *feature,
-                Box::new(e1.evaluate_constants_(c)),
-                Box::new(e2.evaluate_constants_(c)),
+                Box::new(e1.evaluate_constants_(c, chals)),
+                Box::new(e2.evaluate_constants_(c, chals)),
             ),
         }
     }
@@ -1468,7 +1484,7 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         evals: &Evaluations,
         env: &Environment,
     ) -> Result<F, ExprError<Column>> {
-        self.evaluate_(d, pt, evals, env.get_constants())
+        self.evaluate_(d, pt, evals, env.get_constants(), env.get_challenges())
     }
 
     /// Evaluate an expression as a field element against the constants.
@@ -1478,26 +1494,27 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
+        chals: &Challenges<F>,
     ) -> Result<F, ExprError<Column>> {
         use Expr::*;
         match self {
-            Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
-            Constant(x) => Ok(x.value(c)),
-            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow([*p])),
+            Double(x) => x.evaluate_(d, pt, evals, c, chals).map(|x| x.double()),
+            Constant(x) => Ok(x.value(c, chals)),
+            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c, chals)?.pow([*p])),
             BinOp(Op2::Mul, x, y) => {
-                let x = (*x).evaluate_(d, pt, evals, c)?;
-                let y = (*y).evaluate_(d, pt, evals, c)?;
+                let x = (*x).evaluate_(d, pt, evals, c, chals)?;
+                let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x * y)
             }
-            Square(x) => Ok(x.evaluate_(d, pt, evals, c)?.square()),
+            Square(x) => Ok(x.evaluate_(d, pt, evals, c, chals)?.square()),
             BinOp(Op2::Add, x, y) => {
-                let x = (*x).evaluate_(d, pt, evals, c)?;
-                let y = (*y).evaluate_(d, pt, evals, c)?;
+                let x = (*x).evaluate_(d, pt, evals, c, chals)?;
+                let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x + y)
             }
             BinOp(Op2::Sub, x, y) => {
-                let x = (*x).evaluate_(d, pt, evals, c)?;
-                let y = (*y).evaluate_(d, pt, evals, c)?;
+                let x = (*x).evaluate_(d, pt, evals, c, chals)?;
+                let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x - y)
             }
             VanishesOnZeroKnowledgeAndPreviousRows => {
@@ -1512,12 +1529,12 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
                 Ok(unnormalized_lagrange_basis(&d, offset, &pt))
             }
             Cell(v) => v.evaluate(evals),
-            Cache(_, e) => e.evaluate_(d, pt, evals, c),
+            Cache(_, e) => e.evaluate_(d, pt, evals, c, chals),
             IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
-                    e1.evaluate_(d, pt, evals, c)
+                    e1.evaluate_(d, pt, evals, c, chals)
                 } else {
-                    e2.evaluate_(d, pt, evals, c)
+                    e2.evaluate_(d, pt, evals, c, chals)
                 }
             }
         }
@@ -1528,7 +1545,7 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         &self,
         env: &Environment,
     ) -> Expr<F, Column> {
-        self.evaluate_constants_(env.get_constants())
+        self.evaluate_constants_(env.get_constants(), env.get_challenges())
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
@@ -1838,11 +1855,12 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
         evals: &ColEvaluations,
     ) -> (F, Evaluations<F, D<F>>) {
         let cs = env.get_constants();
+        let chals = env.get_challenges();
         let d1 = env.get_domain(Domain::D1);
         let n = d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = PolishToken::evaluate(c, d1, pt, evals, cs).unwrap();
+            let c = PolishToken::evaluate(c, d1, pt, evals, cs, chals).unwrap();
             let e = env
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
@@ -1853,7 +1871,7 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, d1);
         (
-            PolishToken::evaluate(&self.constant_term, d1, pt, evals, cs).unwrap(),
+            PolishToken::evaluate(&self.constant_term, d1, pt, evals, cs, chals).unwrap(),
             p,
         )
     }
@@ -1875,11 +1893,12 @@ impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
         evals: &ColEvaluations,
     ) -> (F, DensePolynomial<F>) {
         let cs = env.get_constants();
+        let chals = env.get_challenges();
         let d1 = env.get_domain(Domain::D1);
         let n = d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = c.evaluate_(d1, pt, evals, cs).unwrap();
+            let c = c.evaluate_(d1, pt, evals, cs, chals).unwrap();
             let e = env
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
@@ -1889,7 +1908,12 @@ impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
                 .for_each(|(i, r)| *r += c * e.evals[scale * i])
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, d1).interpolate();
-        (self.constant_term.evaluate_(d1, pt, evals, cs).unwrap(), p)
+        (
+            self.constant_term
+                .evaluate_(d1, pt, evals, cs, chals)
+                .unwrap(),
+            p,
+        )
     }
 }
 
@@ -2798,7 +2822,7 @@ pub mod constraints {
 
         fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
             match env {
-                Some(data) => expr.value(&data.constants),
+                Some(data) => expr.value(&data.constants, &data.challenges),
                 None => panic!("Missing constants"),
             }
         }
@@ -2970,13 +2994,15 @@ pub mod test {
 
         let env = Environment {
             constants: Constants {
+                endo_coefficient: one,
+                mds: &Vesta::sponge_params().mds,
+                zk_rows: 3,
+            },
+            challenges: Challenges {
                 alpha: one,
                 beta: one,
                 gamma: one,
                 joint_combiner: None,
-                endo_coefficient: one,
-                mds: &Vesta::sponge_params().mds,
-                zk_rows: 3,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &index.column_evaluations.coefficients8,

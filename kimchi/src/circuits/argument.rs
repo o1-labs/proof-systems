@@ -12,7 +12,7 @@ use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, Cache, Challenges, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -56,12 +56,18 @@ impl<F, T> Default for ArgumentEnv<F, T> {
 impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
-    pub fn create(witness: ArgumentWitness<F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
+    pub fn create(
+        witness: ArgumentWitness<F>,
+        coeffs: Vec<F>,
+        constants: Constants<F>,
+        challenges: Challenges<F>,
+    ) -> Self {
         ArgumentEnv {
             data: Some(ArgumentData {
                 witness,
                 coeffs,
                 constants,
+                challenges,
             }),
             phantom_data: PhantomData,
         }
@@ -138,6 +144,7 @@ pub struct ArgumentData<F: 'static> {
     pub coeffs: Vec<F>,
     /// Constants
     pub constants: Constants<F>,
+    pub challenges: Challenges<F>,
 }
 
 /// Witness data for a argument
