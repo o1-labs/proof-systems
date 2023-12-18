@@ -58,7 +58,13 @@
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::{
+    expr::{ConstantExpr, Expr},
+    polynomials::keccak::{DIM, QUARTERS},
+};
 
 <span class="kw">use </span><span class="kw">crate</span>::mips::column::Column;
 
@@ -67,11 +73,11 @@
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>witness;
 
-<span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize = <span class="number">1965 </span>+ <span class="number">6</span>;
-<span class="kw">pub const </span>RATE: usize = <span class="number">1088</span>;
-<span class="kw">pub const </span>RATE_IN_BYTES: usize = RATE / <span class="number">8</span>;
-<span class="kw">pub const </span>DIM: usize = <span class="number">5</span>;
-<span class="kw">pub const </span>QUARTERS: usize = <span class="number">4</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BITLENGTH: usize = <span class="number">256</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BYTELENGTH: usize = HASH_BITLENGTH / <span class="number">8</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORD_LENGTH_IN_BITS: usize = <span class="number">64</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>_ZKVM_KECCAK_COLS: usize = <span class="number">1965 </span>+ <span class="number">4 </span>+ <span class="number">6</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
 
