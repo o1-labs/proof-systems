@@ -1,17 +1,13 @@
 //! Keccak hash module
 pub mod circuitgates;
+pub mod constants;
 pub mod gadget;
 pub mod witness;
 
-pub const DIM: usize = 5;
-pub const QUARTERS: usize = 4;
-pub const ROUNDS: usize = 24;
-pub const RATE_IN_BYTES: usize = 1088 / 8;
-pub const CAPACITY_IN_BYTES: usize = 512 / 8;
-pub const KECCAK_COLS: usize = 2344;
-
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
+
+use self::constants::{DIM, QUARTERS, RATE_IN_BYTES};
 
 #[macro_export]
 macro_rules! grid {
