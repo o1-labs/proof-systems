@@ -7,7 +7,10 @@ use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
 use kimchi::{
     auto_clone_array,
-    circuits::{expr::ConstantExpr, polynomials::keccak::ROUNDS},
+    circuits::{
+        expr::{ConstantExpr, ConstantTerm::Literal},
+        polynomials::keccak::constants::ROUNDS,
+    },
     grid,
     o1_utils::Two,
 };
@@ -18,7 +21,7 @@ pub struct KeccakEnv<Fp> {
     pub(crate) constraints: Vec<E<Fp>>,
     /// Values that are looked up in the circuit
     pub(crate) _lookup_terms: Vec<Lookup<E<Fp>>>, // at most 5 values are looked up at a time
-    /// Expanded block of previous step    
+    /// Expanded block of previous step
     pub(crate) prev_block: Vec<u64>,
     /// Padded preimage data
     pub(crate) padded: Vec<u8>,
@@ -115,7 +118,7 @@ impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
         Self::constant_field(Self::Fp::from(x))
     }
     fn constant_field(x: Self::Fp) -> Self::Variable {
-        Self::Variable::constant(ConstantExpr::Literal(x))
+        Self::Variable::constant(ConstantExpr::Constant(Literal(x)))
     }
     fn zero() -> Self::Variable {
         Self::constant(0)
