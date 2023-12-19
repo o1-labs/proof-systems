@@ -316,6 +316,7 @@ pub enum Operations<T> {
     Sub(Box<Operations<T>>, Box<Operations<T>>),
     Double(Box<Operations<T>>),
     Square(Box<Operations<T>>),
+    Cache(CacheId, Box<Operations<T>>),
 }
 
 impl<T> From<T> for Operations<T> {
@@ -361,11 +362,15 @@ impl<F> From<ChallengeTerm> for ConstantExpr<F> {
 }
 
 pub trait ToPolish<F, Column> {
-    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>);
+    fn to_polish(&self, cache: &mut HashMap<CacheId, usize>, res: &mut Vec<PolishToken<F, Column>>);
 }
 
 impl<F: Copy, Column> ToPolish<F, Column> for ConstantExprInner<F> {
-    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>) {
+    fn to_polish(
+        &self,
+        _cache: &mut HashMap<CacheId, usize>,
+        res: &mut Vec<PolishToken<F, Column>>,
+    ) {
         match self {
             ConstantExprInner::Challenge(chal) => res.push(PolishToken::Challenge(*chal)),
             ConstantExprInner::Constant(c) => res.push(PolishToken::Constant(*c)),
@@ -374,37 +379,56 @@ impl<F: Copy, Column> ToPolish<F, Column> for ConstantExprInner<F> {
 }
 
 impl<F, Column, T: ToPolish<F, Column>> ToPolish<F, Column> for Operations<T> {
-    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>) {
+    fn to_polish(
+        &self,
+        cache: &mut HashMap<CacheId, usize>,
+        res: &mut Vec<PolishToken<F, Column>>,
+    ) {
         match self {
-            Operations::Atom(atom) => atom.to_polish(res),
+            Operations::Atom(atom) => atom.to_polish(cache, res),
             Operations::Add(x, y) => {
-                x.as_ref().to_polish(res);
-                y.as_ref().to_polish(res);
+                x.as_ref().to_polish(cache, res);
+                y.as_ref().to_polish(cache, res);
                 res.push(PolishToken::Add)
             }
             Operations::Mul(x, y) => {
-                x.as_ref().to_polish(res);
-                y.as_ref().to_polish(res);
+                x.as_ref().to_polish(cache, res);
+                y.as_ref().to_polish(cache, res);
                 res.push(PolishToken::Mul)
             }
             Operations::Sub(x, y) => {
-                x.as_ref().to_polish(res);
-                y.as_ref().to_polish(res);
+                x.as_ref().to_polish(cache, res);
+                y.as_ref().to_polish(cache, res);
                 res.push(PolishToken::Sub)
             }
             Operations::Pow(x, n) => {
-                x.to_polish(res);
+                x.to_polish(cache, res);
                 res.push(PolishToken::Pow(*n))
             }
             Operations::Double(x) => {
-                x.to_polish(res);
+                x.to_polish(cache, res);
                 res.push(PolishToken::Dup);
                 res.push(PolishToken::Add);
             }
             Operations::Square(x) => {
-                x.to_polish(res);
+                x.to_polish(cache, res);
                 res.push(PolishToken::Dup);
                 res.push(PolishToken::Mul);
+            }
+            Operations::Cache(id, x) => {
+                match cache.get(id) {
+                    Some(pos) =>
+                    // Already computed and stored this.
+                    {
+                        res.push(PolishToken::Load(*pos))
+                    }
+                    None => {
+                        // Haven't computed this yet. Compute it, then store it.
+                        x.to_polish(cache, res);
+                        res.push(PolishToken::Store);
+                        cache.insert(*id, cache.len());
+                    }
+                }
             }
         }
     }
@@ -447,6 +471,10 @@ impl<F: Field> ConstantExpr<F> {
             Sub(x, y) => x.value(c, chals) - y.value(c, chals),
             Double(x) => x.value(c, chals).double(),
             Square(x) => x.value(c, chals).square(),
+            Cache(_, x) => {
+                // TODO: Use cache ID
+                x.value(c, chals)
+            }
         }
     }
 }
@@ -1523,7 +1551,7 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
                 res.push(PolishToken::Pow(*d))
             }
             Expr::Constant(c) => {
-                c.to_polish(res);
+                c.to_polish(cache, res);
             }
             Expr::Cell(v) => res.push(PolishToken::Cell(*v)),
             Expr::VanishesOnZeroKnowledgeAndPreviousRows => {
@@ -2549,18 +2577,18 @@ impl<F: Field, Column: PartialEq> Mul<F> for Expr<ConstantExpr<F>, Column> {
 // Display
 //
 
-trait FormattedOutput {
+trait FormattedOutput: Sized {
     fn is_alpha(&self) -> bool;
-    fn ocaml(&self) -> String;
-    fn latex(&self) -> String;
-    fn text(&self) -> String;
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Self>) -> String;
+    fn latex(&self, cache: &mut HashMap<CacheId, Self>) -> String;
+    fn text(&self, cache: &mut HashMap<CacheId, Self>) -> String;
 }
 
 impl FormattedOutput for ChallengeTerm {
     fn is_alpha(&self) -> bool {
         matches!(self, ChallengeTerm::Alpha)
     }
-    fn ocaml(&self) -> String {
+    fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         use ChallengeTerm::*;
         match self {
             Alpha => "alpha".to_string(),
@@ -2570,7 +2598,7 @@ impl FormattedOutput for ChallengeTerm {
         }
     }
 
-    fn latex(&self) -> String {
+    fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         use ChallengeTerm::*;
         match self {
             Alpha => "\\alpha".to_string(),
@@ -2580,7 +2608,7 @@ impl FormattedOutput for ChallengeTerm {
         }
     }
 
-    fn text(&self) -> String {
+    fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         use ChallengeTerm::*;
         match self {
             Alpha => "alpha".to_string(),
@@ -2595,7 +2623,7 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
     fn is_alpha(&self) -> bool {
         false
     }
-    fn ocaml(&self) -> String {
+    fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         use ConstantTerm::*;
         match self {
             EndoCoefficient => "endo_coefficient".to_string(),
@@ -2604,7 +2632,7 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
         }
     }
 
-    fn latex(&self) -> String {
+    fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         use ConstantTerm::*;
         match self {
             EndoCoefficient => "endo\\_coefficient".to_string(),
@@ -2613,7 +2641,7 @@ impl<F: PrimeField> FormattedOutput for ConstantTerm<F> {
         }
     }
 
-    fn text(&self) -> String {
+    fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         use ConstantTerm::*;
         match self {
             EndoCoefficient => "endo_coefficient".to_string(),
@@ -2631,78 +2659,153 @@ impl<F: PrimeField> FormattedOutput for ConstantExprInner<F> {
             Constant(x) => x.is_alpha(),
         }
     }
-    fn ocaml(&self) -> String {
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Self>) -> String {
         use ConstantExprInner::*;
         match self {
-            Challenge(x) => x.ocaml(),
-            Constant(x) => x.ocaml(),
+            Challenge(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.ocaml(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Challenge(v));
+                });
+                res
+            }
+            Constant(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.ocaml(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Constant(v));
+                });
+                res
+            }
         }
     }
-    fn latex(&self) -> String {
+    fn latex(&self, cache: &mut HashMap<CacheId, Self>) -> String {
         use ConstantExprInner::*;
         match self {
-            Challenge(x) => x.latex(),
-            Constant(x) => x.latex(),
+            Challenge(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.latex(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Challenge(v));
+                });
+                res
+            }
+            Constant(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.latex(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Constant(v));
+                });
+                res
+            }
         }
     }
-    fn text(&self) -> String {
+    fn text(&self, cache: &mut HashMap<CacheId, Self>) -> String {
         use ConstantExprInner::*;
         match self {
-            Challenge(x) => x.text(),
-            Constant(x) => x.text(),
+            Challenge(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.text(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Challenge(v));
+                });
+                res
+            }
+            Constant(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.text(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Constant(v));
+                });
+                res
+            }
         }
     }
 }
 
-impl<T: FormattedOutput> FormattedOutput for Operations<T> {
+impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
     fn is_alpha(&self) -> bool {
         match self {
             Operations::Atom(x) => x.is_alpha(),
             _ => false,
         }
     }
-    fn ocaml(&self) -> String {
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Self>) -> String {
         use Operations::*;
         match self {
-            Atom(x) => x.ocaml(),
+            Atom(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.ocaml(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Atom(v));
+                });
+                res
+            }
             Pow(x, n) => {
                 if x.is_alpha() {
                     format!("alpha_pow({n})")
                 } else {
-                    format!("pow({}, {n})", x.ocaml())
+                    format!("pow({}, {n})", x.ocaml(cache))
                 }
             }
-            Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
-            Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
-            Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
-            Double(x) => format!("double({})", x.ocaml()),
-            Square(x) => format!("square({})", x.ocaml()),
+            Add(x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
+            Mul(x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
+            Sub(x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
+            Double(x) => format!("double({})", x.ocaml(cache)),
+            Square(x) => format!("square({})", x.ocaml(cache)),
+            Cache(id, e) => {
+                cache.insert(*id, e.as_ref().clone());
+                id.var_name()
+            }
         }
     }
 
-    fn latex(&self) -> String {
+    fn latex(&self, cache: &mut HashMap<CacheId, Self>) -> String {
         use Operations::*;
         match self {
-            Atom(x) => x.latex(),
-            Pow(x, n) => format!("{}^{{{n}}}", x.latex()),
-            Add(x, y) => format!("({} + {})", x.latex(), y.latex()),
-            Mul(x, y) => format!("({} \\cdot {})", x.latex(), y.latex()),
-            Sub(x, y) => format!("({} - {})", x.latex(), y.latex()),
-            Double(x) => format!("2 ({})", x.latex()),
-            Square(x) => format!("({})^2", x.latex()),
+            Atom(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.latex(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Atom(v));
+                });
+                res
+            }
+            Pow(x, n) => format!("{}^{{{n}}}", x.latex(cache)),
+            Add(x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
+            Mul(x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
+            Sub(x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
+            Double(x) => format!("2 ({})", x.latex(cache)),
+            Square(x) => format!("({})^2", x.latex(cache)),
+            Cache(id, e) => {
+                cache.insert(*id, e.as_ref().clone());
+                id.var_name()
+            }
         }
     }
 
-    fn text(&self) -> String {
+    fn text(&self, cache: &mut HashMap<CacheId, Self>) -> String {
         use Operations::*;
         match self {
-            Atom(x) => x.text(),
-            Pow(x, n) => format!("{}^{n}", x.text()),
-            Add(x, y) => format!("({} + {})", x.text(), y.text()),
-            Mul(x, y) => format!("({} * {})", x.text(), y.text()),
-            Sub(x, y) => format!("({} - {})", x.text(), y.text()),
-            Double(x) => format!("double({})", x.text()),
-            Square(x) => format!("square({})", x.text()),
+            Atom(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.text(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Atom(v));
+                });
+                res
+            }
+            Pow(x, n) => format!("{}^{n}", x.text(cache)),
+            Add(x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
+            Mul(x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
+            Sub(x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
+            Double(x) => format!("double({})", x.text(cache)),
+            Square(x) => format!("square({})", x.text(cache)),
+            Cache(id, e) => {
+                cache.insert(*id, e.as_ref().clone());
+                id.var_name()
+            }
         }
     }
 }
@@ -2741,7 +2844,14 @@ where
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
-            Constant(x) => x.ocaml(),
+            Constant(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.ocaml(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Constant(v));
+                });
+                res
+            }
             Cell(v) => format!("cell({})", v.ocaml()),
             UnnormalizedLagrangeBasis(i) => {
                 format!("unnormalized_lagrange_basis({}, {})", i.zk_rows, i.offset)
@@ -2797,7 +2907,14 @@ where
         use Expr::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
-            Constant(x) => x.latex(),
+            Constant(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.latex(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Constant(v));
+                });
+                res
+            }
             Cell(v) => v.latex(),
             UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: true,
@@ -2836,7 +2953,14 @@ where
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.text(cache)),
-            Constant(x) => x.text(),
+            Constant(x) => {
+                let mut inner_cache = HashMap::new();
+                let res = x.text(&mut inner_cache);
+                inner_cache.into_iter().for_each(|(k, v)| {
+                    let _ = cache.insert(k, Constant(v));
+                });
+                res
+            }
             Cell(v) => v.text(),
             UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: true,
