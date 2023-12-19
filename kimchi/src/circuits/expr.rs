@@ -241,10 +241,58 @@ pub enum ConstantTerm<F> {
     Literal(F),
 }
 
+pub trait Literal: Sized {
+    type F;
+    fn literal(x: Self::F) -> Self;
+    fn to_literal(self) -> Result<Self::F, Self>;
+    fn to_literal_ref(&self) -> Option<&Self::F>;
+}
+
+impl<F> Literal for ConstantTerm<F> {
+    type F = F;
+    fn literal(x: Self::F) -> Self {
+        ConstantTerm::Literal(x)
+    }
+    fn to_literal(self) -> Result<Self::F, Self> {
+        match self {
+            ConstantTerm::Literal(x) => Ok(x),
+            x => Err(x),
+        }
+    }
+    fn to_literal_ref(&self) -> Option<&Self::F> {
+        match self {
+            ConstantTerm::Literal(x) => Some(x),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstantExprInner<F> {
     Challenge(ChallengeTerm),
     Constant(ConstantTerm<F>),
+}
+
+impl<F> Literal for ConstantExprInner<F> {
+    type F = F;
+    fn literal(x: Self::F) -> Self {
+        Self::Constant(ConstantTerm::literal(x))
+    }
+    fn to_literal(self) -> Result<Self::F, Self> {
+        match self {
+            Self::Constant(x) => match x.to_literal() {
+                Ok(x) => Ok(x),
+                Err(x) => Err(Self::Constant(x)),
+            },
+            x => Err(x),
+        }
+    }
+    fn to_literal_ref(&self) -> Option<&Self::F> {
+        match self {
+            Self::Constant(x) => x.to_literal_ref(),
+            _ => None,
+        }
+    }
 }
 
 impl<F> From<ChallengeTerm> for ConstantExprInner<F> {
@@ -271,6 +319,28 @@ pub enum Operations<T> {
 impl<T> From<T> for Operations<T> {
     fn from(x: T) -> Self {
         Operations::Atom(x)
+    }
+}
+
+impl<T: Literal> Literal for Operations<T> {
+    type F = T::F;
+    fn literal(x: Self::F) -> Self {
+        Self::Atom(T::literal(x))
+    }
+    fn to_literal(self) -> Result<Self::F, Self> {
+        match self {
+            Self::Atom(x) => match x.to_literal() {
+                Ok(x) => Ok(x),
+                Err(x) => Err(Self::Atom(x)),
+            },
+            x => Err(x),
+        }
+    }
+    fn to_literal_ref(&self) -> Option<&Self::F> {
+        match self {
+            Self::Atom(x) => x.to_literal_ref(),
+            _ => None,
+        }
     }
 }
 
@@ -2208,102 +2278,120 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
 
 // Trait implementations
 
-impl<F: Field> Zero for ConstantExpr<F> {
+impl<T: Literal> Zero for Operations<T>
+where
+    T::F: Field,
+{
     fn zero() -> Self {
-        ConstantTerm::Literal(F::zero()).into()
+        Self::literal(T::F::zero())
     }
 
     fn is_zero(&self) -> bool {
-        match self {
-            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) => x.is_zero(),
-            _ => false,
+        if let Some(x) = self.to_literal_ref() {
+            x.is_zero()
+        } else {
+            false
         }
     }
 }
 
-impl<F: Field> One for ConstantExpr<F> {
+impl<T: Literal + PartialEq> One for Operations<T>
+where
+    T::F: Field,
+{
     fn one() -> Self {
-        ConstantTerm::Literal(F::one()).into()
+        Self::literal(T::F::one())
     }
 
     fn is_one(&self) -> bool {
-        match self {
-            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) => x.is_one(),
-            _ => false,
+        if let Some(x) = self.to_literal_ref() {
+            x.is_one()
+        } else {
+            false
         }
     }
 }
 
-impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
-    type Output = ConstantExpr<F>;
+impl<T: Literal> Neg for Operations<T>
+where
+    T::F: One + Neg<Output = T::F> + Copy,
+{
+    type Output = Self;
 
-    fn neg(self) -> ConstantExpr<F> {
-        match self {
-            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) => {
-                ConstantTerm::Literal(x.neg()).into()
-            }
-            e => ConstantExpr::Mul(
-                Box::new(ConstantTerm::Literal(F::one().neg()).into()),
-                Box::new(e),
-            ),
+    fn neg(self) -> Self {
+        match self.to_literal() {
+            Ok(x) => Self::literal(x.neg()),
+            Err(x) => Operations::Mul(Box::new(Self::literal(T::F::one().neg())), Box::new(x)),
         }
     }
 }
 
-impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
-    type Output = ConstantExpr<F>;
+impl<T: Literal> Add<Self> for Operations<T>
+where
+    T::F: Field,
+{
+    type Output = Self;
     fn add(self, other: Self) -> Self {
-        use Operations::{Add, Atom};
         if self.is_zero() {
             return other;
         }
         if other.is_zero() {
             return self;
         }
-        match (self, other) {
-            (
-                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
-                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
-            ) => ConstantTerm::Literal(x + y).into(),
-            (x, y) => Add(Box::new(x), Box::new(y)),
-        }
+        let (x, y) = {
+            match (self.to_literal(), other.to_literal()) {
+                (Ok(x), Ok(y)) => return Self::literal(x + y),
+                (Ok(x), Err(y)) => (Self::literal(x), y),
+                (Err(x), Ok(y)) => (x, Self::literal(y)),
+                (Err(x), Err(y)) => (x, y),
+            }
+        };
+        Operations::Add(Box::new(x), Box::new(y))
     }
 }
 
-impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
-    type Output = ConstantExpr<F>;
+impl<T: Literal> Sub<Self> for Operations<T>
+where
+    T::F: Field,
+{
+    type Output = Self;
     fn sub(self, other: Self) -> Self {
-        use Operations::{Atom, Sub};
         if other.is_zero() {
             return self;
         }
-        match (self, other) {
-            (
-                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
-                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
-            ) => ConstantTerm::Literal(x - y).into(),
-            (x, y) => Sub(Box::new(x), Box::new(y)),
-        }
+        let (x, y) = {
+            match (self.to_literal(), other.to_literal()) {
+                (Ok(x), Ok(y)) => return Self::literal(x - y),
+                (Ok(x), Err(y)) => (Self::literal(x), y),
+                (Err(x), Ok(y)) => (x, Self::literal(y)),
+                (Err(x), Err(y)) => (x, y),
+            }
+        };
+        Operations::Sub(Box::new(x), Box::new(y))
     }
 }
 
-impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
-    type Output = ConstantExpr<F>;
+impl<T: Literal + PartialEq> Mul<Self> for Operations<T>
+where
+    T::F: Field,
+{
+    type Output = Self;
     fn mul(self, other: Self) -> Self {
-        use Operations::{Atom, Mul};
         if self.is_one() {
             return other;
         }
         if other.is_one() {
             return self;
         }
-        match (self, other) {
-            (
-                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
-                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
-            ) => ConstantTerm::Literal(x * y).into(),
-            (x, y) => Mul(Box::new(x), Box::new(y)),
-        }
+        let (x, y) = {
+            match (self.to_literal(), other.to_literal()) {
+                (Ok(x), Ok(y)) => return Self::literal(x * y),
+                (Ok(x), Err(y)) => (Self::literal(x), y),
+                (Err(x), Ok(y)) => (x, Self::literal(y)),
+                (Err(x), Err(y)) => (x, y),
+            }
+        };
+        Operations::Mul(Box::new(x), Box::new(y))
     }
 }
 
