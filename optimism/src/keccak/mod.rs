@@ -9,6 +9,7 @@ pub mod column;
 pub mod constraints;
 pub mod environment;
 pub mod interpreter;
+pub mod lookups;
 pub mod witness;
 
 pub(crate) const HASH_BITLENGTH: usize = 256;
