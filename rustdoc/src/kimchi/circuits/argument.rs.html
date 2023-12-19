@@ -355,7 +355,7 @@
     <span class="doccomment">/// Helper to access endomorphism coefficient constant
     </span><span class="kw">pub fn </span>endo_coefficient(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; T {
         T::constant(
-            ConstantExpr::&lt;F&gt;::Constant(ConstantTerm::EndoCoefficient),
+            ConstantExpr::from(ConstantTerm::EndoCoefficient),
             <span class="self">self</span>.data.as_ref(),
         )
     }
@@ -363,7 +363,7 @@
     <span class="doccomment">/// Helper to access maximum distance separable matrix constant at row, col
     </span><span class="kw">pub fn </span>mds(<span class="kw-2">&amp;</span><span class="self">self</span>, row: usize, col: usize) -&gt; T {
         T::constant(
-            ConstantExpr::&lt;F&gt;::Constant(ConstantTerm::Mds { row, col }),
+            ConstantExpr::from(ConstantTerm::Mds { row, col }),
             <span class="self">self</span>.data.as_ref(),
         )
     }

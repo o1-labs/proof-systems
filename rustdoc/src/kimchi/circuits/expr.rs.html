@@ -3090,6 +3090,62 @@
 <a href="#3090" id="3090">3090</a>
 <a href="#3091" id="3091">3091</a>
 <a href="#3092" id="3092">3092</a>
+<a href="#3093" id="3093">3093</a>
+<a href="#3094" id="3094">3094</a>
+<a href="#3095" id="3095">3095</a>
+<a href="#3096" id="3096">3096</a>
+<a href="#3097" id="3097">3097</a>
+<a href="#3098" id="3098">3098</a>
+<a href="#3099" id="3099">3099</a>
+<a href="#3100" id="3100">3100</a>
+<a href="#3101" id="3101">3101</a>
+<a href="#3102" id="3102">3102</a>
+<a href="#3103" id="3103">3103</a>
+<a href="#3104" id="3104">3104</a>
+<a href="#3105" id="3105">3105</a>
+<a href="#3106" id="3106">3106</a>
+<a href="#3107" id="3107">3107</a>
+<a href="#3108" id="3108">3108</a>
+<a href="#3109" id="3109">3109</a>
+<a href="#3110" id="3110">3110</a>
+<a href="#3111" id="3111">3111</a>
+<a href="#3112" id="3112">3112</a>
+<a href="#3113" id="3113">3113</a>
+<a href="#3114" id="3114">3114</a>
+<a href="#3115" id="3115">3115</a>
+<a href="#3116" id="3116">3116</a>
+<a href="#3117" id="3117">3117</a>
+<a href="#3118" id="3118">3118</a>
+<a href="#3119" id="3119">3119</a>
+<a href="#3120" id="3120">3120</a>
+<a href="#3121" id="3121">3121</a>
+<a href="#3122" id="3122">3122</a>
+<a href="#3123" id="3123">3123</a>
+<a href="#3124" id="3124">3124</a>
+<a href="#3125" id="3125">3125</a>
+<a href="#3126" id="3126">3126</a>
+<a href="#3127" id="3127">3127</a>
+<a href="#3128" id="3128">3128</a>
+<a href="#3129" id="3129">3129</a>
+<a href="#3130" id="3130">3130</a>
+<a href="#3131" id="3131">3131</a>
+<a href="#3132" id="3132">3132</a>
+<a href="#3133" id="3133">3133</a>
+<a href="#3134" id="3134">3134</a>
+<a href="#3135" id="3135">3135</a>
+<a href="#3136" id="3136">3136</a>
+<a href="#3137" id="3137">3137</a>
+<a href="#3138" id="3138">3138</a>
+<a href="#3139" id="3139">3139</a>
+<a href="#3140" id="3140">3140</a>
+<a href="#3141" id="3141">3141</a>
+<a href="#3142" id="3142">3142</a>
+<a href="#3143" id="3143">3143</a>
+<a href="#3144" id="3144">3144</a>
+<a href="#3145" id="3145">3145</a>
+<a href="#3146" id="3146">3146</a>
+<a href="#3147" id="3147">3147</a>
+<a href="#3148" id="3148">3148</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3334,26 +3390,61 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="doccomment">/// An arithmetic expression over
-///
-/// - the operations *, +, -, ^
-/// - the constants `alpha`, `beta`, `gamma`, `joint_combiner`, and literal field elements.
-</span><span class="kw">pub enum </span>ConstantExpr&lt;F&gt; {
+</span><span class="kw">pub enum </span>ConstantExprInner&lt;F&gt; {
     Challenge(ChallengeTerm),
     Constant(ConstantTerm&lt;F&gt;),
-    Pow(Box&lt;ConstantExpr&lt;F&gt;&gt;, u64),
-    <span class="comment">// TODO: I think having separate Add, Sub, Mul constructors is faster than
-    // having a BinOp constructor :(
-    </span>Add(Box&lt;ConstantExpr&lt;F&gt;&gt;, Box&lt;ConstantExpr&lt;F&gt;&gt;),
-    Mul(Box&lt;ConstantExpr&lt;F&gt;&gt;, Box&lt;ConstantExpr&lt;F&gt;&gt;),
-    Sub(Box&lt;ConstantExpr&lt;F&gt;&gt;, Box&lt;ConstantExpr&lt;F&gt;&gt;),
+}
+
+<span class="kw">impl</span>&lt;F&gt; From&lt;ChallengeTerm&gt; <span class="kw">for </span>ConstantExprInner&lt;F&gt; {
+    <span class="kw">fn </span>from(x: ChallengeTerm) -&gt; <span class="self">Self </span>{
+        ConstantExprInner::Challenge(x)
+    }
+}
+
+<span class="kw">impl</span>&lt;F&gt; From&lt;ConstantTerm&lt;F&gt;&gt; <span class="kw">for </span>ConstantExprInner&lt;F&gt; {
+    <span class="kw">fn </span>from(x: ConstantTerm&lt;F&gt;) -&gt; <span class="self">Self </span>{
+        ConstantExprInner::Constant(x)
+    }
+}
+
+<span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="kw">pub enum </span>Operations&lt;T&gt; {
+    Atom(T),
+    Pow(Box&lt;Operations&lt;T&gt;&gt;, u64),
+    Add(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
+    Mul(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
+    Sub(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
+}
+
+<span class="kw">impl</span>&lt;T&gt; From&lt;T&gt; <span class="kw">for </span>Operations&lt;T&gt; {
+    <span class="kw">fn </span>from(x: T) -&gt; <span class="self">Self </span>{
+        Operations::Atom(x)
+    }
+}
+
+<span class="kw">pub type </span>ConstantExpr&lt;F&gt; = Operations&lt;ConstantExprInner&lt;F&gt;&gt;;
+
+<span class="kw">impl</span>&lt;F&gt; From&lt;ConstantTerm&lt;F&gt;&gt; <span class="kw">for </span>ConstantExpr&lt;F&gt; {
+    <span class="kw">fn </span>from(x: ConstantTerm&lt;F&gt;) -&gt; <span class="self">Self </span>{
+        ConstantExprInner::from(x).into()
+    }
+}
+
+<span class="kw">impl</span>&lt;F&gt; From&lt;ChallengeTerm&gt; <span class="kw">for </span>ConstantExpr&lt;F&gt; {
+    <span class="kw">fn </span>from(x: ChallengeTerm) -&gt; <span class="self">Self </span>{
+        ConstantExprInner::from(x).into()
+    }
 }
 
 <span class="kw">impl</span>&lt;F: Copy&gt; ConstantExpr&lt;F&gt; {
     <span class="kw">fn </span>to_polish_&lt;Column&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;) {
         <span class="kw">match </span><span class="self">self </span>{
-            ConstantExpr::Challenge(chal) =&gt; res.push(PolishToken::Challenge(<span class="kw-2">*</span>chal)),
-            ConstantExpr::Constant(c) =&gt; res.push(PolishToken::Constant(<span class="kw-2">*</span>c)),
+            ConstantExpr::Atom(ConstantExprInner::Challenge(chal)) =&gt; {
+                res.push(PolishToken::Challenge(<span class="kw-2">*</span>chal))
+            }
+            ConstantExpr::Atom(ConstantExprInner::Constant(c)) =&gt; {
+                res.push(PolishToken::Constant(<span class="kw-2">*</span>c))
+            }
             ConstantExpr::Add(x, y) =&gt; {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -3380,29 +3471,31 @@
 <span class="kw">impl</span>&lt;F: Field&gt; ConstantExpr&lt;F&gt; {
     <span class="doccomment">/// Exponentiate a constant expression.
     </span><span class="kw">pub fn </span>pow(<span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
+        <span class="kw">use </span>ConstantExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">if </span>p == <span class="number">0 </span>{
-            <span class="kw">return </span>Constant(ConstantTerm::Literal(F::one()));
+            <span class="kw">return </span>ConstantTerm::Literal(F::one()).into();
         }
-        <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Constant(ConstantTerm::Literal(x)) =&gt; Constant(ConstantTerm::Literal(x.pow([p]))),
+            Atom(Constant(ConstantTerm::Literal(x))) =&gt; ConstantTerm::Literal(x.pow([p])).into(),
             x =&gt; Pow(Box::new(x), p),
         }
     }
 
     <span class="doccomment">/// Evaluate the given constant expression to a field element.
     </span><span class="kw">pub fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;) -&gt; F {
-        <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ConstantExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Challenge(ChallengeTerm::Alpha) =&gt; chals.alpha,
-            Challenge(ChallengeTerm::Beta) =&gt; chals.beta,
-            Challenge(ChallengeTerm::Gamma) =&gt; chals.gamma,
-            Challenge(ChallengeTerm::JointCombiner) =&gt; {
+            Atom(Challenge(ChallengeTerm::Alpha)) =&gt; chals.alpha,
+            Atom(Challenge(ChallengeTerm::Beta)) =&gt; chals.beta,
+            Atom(Challenge(ChallengeTerm::Gamma)) =&gt; chals.gamma,
+            Atom(Challenge(ChallengeTerm::JointCombiner)) =&gt; {
                 chals.joint_combiner.expect(<span class="string">&quot;joint lookup was not expected&quot;</span>)
             }
-            Constant(ConstantTerm::EndoCoefficient) =&gt; c.endo_coefficient,
-            Constant(ConstantTerm::Mds { row, col }) =&gt; c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col],
-            Constant(ConstantTerm::Literal(x)) =&gt; <span class="kw-2">*</span>x,
+            Atom(Constant(ConstantTerm::EndoCoefficient)) =&gt; c.endo_coefficient,
+            Atom(Constant(ConstantTerm::Mds { row, col })) =&gt; c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col],
+            Atom(Constant(ConstantTerm::Literal(x))) =&gt; <span class="kw-2">*</span>x,
             Pow(x, p) =&gt; x.value(c, chals).pow([<span class="kw-2">*</span>p]),
             Mul(x, y) =&gt; x.value(c, chals) * y.value(c, chals),
             Add(x, y) =&gt; x.value(c, chals) + y.value(c, chals),
@@ -3548,6 +3641,24 @@
     Cache(CacheId, Box&lt;Expr&lt;C, Column&gt;&gt;),
     <span class="doccomment">/// If the feature flag is enabled, return the first expression; otherwise, return the second.
     </span>IfFeature(FeatureFlag, Box&lt;Expr&lt;C, Column&gt;&gt;, Box&lt;Expr&lt;C, Column&gt;&gt;),
+}
+
+<span class="kw">impl</span>&lt;F, Column&gt; From&lt;ConstantExpr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
+    <span class="kw">fn </span>from(x: ConstantExpr&lt;F&gt;) -&gt; <span class="self">Self </span>{
+        Expr::Constant(x)
+    }
+}
+
+<span class="kw">impl</span>&lt;F, Column&gt; From&lt;ConstantTerm&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
+    <span class="kw">fn </span>from(x: ConstantTerm&lt;F&gt;) -&gt; <span class="self">Self </span>{
+        ConstantExpr::from(x).into()
+    }
+}
+
+<span class="kw">impl</span>&lt;F, Column&gt; From&lt;ChallengeTerm&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
+    <span class="kw">fn </span>from(x: ChallengeTerm) -&gt; <span class="self">Self </span>{
+        ConstantExpr::from(x).into()
+    }
 }
 
 <span class="kw">impl</span>&lt;C: Zero + One + Neg&lt;Output = C&gt; + PartialEq + Clone, Column: Clone + PartialEq&gt;
@@ -4419,7 +4530,7 @@
     <span class="doccomment">/// Convenience function for constructing expressions from literal
     /// field elements.
     </span><span class="kw">pub fn </span>literal(x: F) -&gt; <span class="self">Self </span>{
-        Expr::Constant(ConstantExpr::Constant(ConstantTerm::Literal(x)))
+        ConstantTerm::Literal(x).into()
     }
 
     <span class="doccomment">/// Combines multiple constraints `[c0, ..., cn]` into a single constraint
@@ -4429,7 +4540,7 @@
         cs.into_iter()
             .zip_eq(alphas)
             .map(|(c, i)| {
-                Expr::Constant(ConstantExpr::Challenge(ChallengeTerm::Alpha).pow(i <span class="kw">as </span>u64)) * c
+                Expr::Constant(ConstantExpr::pow(ChallengeTerm::Alpha.into(), i <span class="kw">as </span>u64)) * c
             })
             .fold(zero, |acc, x| acc + x)
     }
@@ -4526,7 +4637,7 @@
 
     <span class="doccomment">/// The expression `beta`.
     </span><span class="kw">pub fn </span>beta() -&gt; <span class="self">Self </span>{
-        Expr::Constant(ConstantExpr::Challenge(ChallengeTerm::Beta))
+        ChallengeTerm::Beta.into()
     }
 }
 
@@ -5239,12 +5350,12 @@
 
 </span><span class="kw">impl</span>&lt;F: Field&gt; Zero <span class="kw">for </span>ConstantExpr&lt;F&gt; {
     <span class="kw">fn </span>zero() -&gt; <span class="self">Self </span>{
-        ConstantExpr::Constant(ConstantTerm::Literal(F::zero()))
+        ConstantTerm::Literal(F::zero()).into()
     }
 
     <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
-            ConstantExpr::Constant(ConstantTerm::Literal(x)) =&gt; x.is_zero(),
+            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) =&gt; x.is_zero(),
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
@@ -5252,12 +5363,12 @@
 
 <span class="kw">impl</span>&lt;F: Field&gt; One <span class="kw">for </span>ConstantExpr&lt;F&gt; {
     <span class="kw">fn </span>one() -&gt; <span class="self">Self </span>{
-        ConstantExpr::Constant(ConstantTerm::Literal(F::one()))
+        ConstantTerm::Literal(F::one()).into()
     }
 
     <span class="kw">fn </span>is_one(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
-            ConstantExpr::Constant(ConstantTerm::Literal(x)) =&gt; x.is_one(),
+            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) =&gt; x.is_one(),
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
@@ -5268,13 +5379,11 @@
 
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; ConstantExpr&lt;F&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            ConstantExpr::Constant(ConstantTerm::Literal(x)) =&gt; {
-                ConstantExpr::Constant(ConstantTerm::Literal(x.neg()))
+            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) =&gt; {
+                ConstantTerm::Literal(x.neg()).into()
             }
             e =&gt; ConstantExpr::Mul(
-                Box::new(ConstantExpr::Constant(ConstantTerm::Literal(
-                    F::one().neg(),
-                ))),
+                Box::new(ConstantTerm::Literal(F::one().neg()).into()),
                 Box::new(e),
             ),
         }
@@ -5284,7 +5393,7 @@
 <span class="kw">impl</span>&lt;F: Field&gt; Add&lt;ConstantExpr&lt;F&gt;&gt; <span class="kw">for </span>ConstantExpr&lt;F&gt; {
     <span class="kw">type </span>Output = ConstantExpr&lt;F&gt;;
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>ConstantExpr::Add;
+        <span class="kw">use </span>Operations::{Add, Atom};
         <span class="kw">if </span><span class="self">self</span>.is_zero() {
             <span class="kw">return </span>other;
         }
@@ -5293,9 +5402,9 @@
         }
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (
-                ConstantExpr::Constant(ConstantTerm::Literal(x)),
-                ConstantExpr::Constant(ConstantTerm::Literal(y)),
-            ) =&gt; ConstantExpr::Constant(ConstantTerm::Literal(x + y)),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
+            ) =&gt; ConstantTerm::Literal(x + y).into(),
             (x, y) =&gt; Add(Box::new(x), Box::new(y)),
         }
     }
@@ -5304,15 +5413,15 @@
 <span class="kw">impl</span>&lt;F: Field&gt; Sub&lt;ConstantExpr&lt;F&gt;&gt; <span class="kw">for </span>ConstantExpr&lt;F&gt; {
     <span class="kw">type </span>Output = ConstantExpr&lt;F&gt;;
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>ConstantExpr::Sub;
+        <span class="kw">use </span>Operations::{Atom, Sub};
         <span class="kw">if </span>other.is_zero() {
             <span class="kw">return </span><span class="self">self</span>;
         }
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (
-                ConstantExpr::Constant(ConstantTerm::Literal(x)),
-                ConstantExpr::Constant(ConstantTerm::Literal(y)),
-            ) =&gt; ConstantExpr::Constant(ConstantTerm::Literal(x - y)),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
+            ) =&gt; ConstantTerm::Literal(x - y).into(),
             (x, y) =&gt; Sub(Box::new(x), Box::new(y)),
         }
     }
@@ -5321,7 +5430,7 @@
 <span class="kw">impl</span>&lt;F: Field&gt; Mul&lt;ConstantExpr&lt;F&gt;&gt; <span class="kw">for </span>ConstantExpr&lt;F&gt; {
     <span class="kw">type </span>Output = ConstantExpr&lt;F&gt;;
     <span class="kw">fn </span>mul(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>ConstantExpr::Mul;
+        <span class="kw">use </span>Operations::{Atom, Mul};
         <span class="kw">if </span><span class="self">self</span>.is_one() {
             <span class="kw">return </span>other;
         }
@@ -5330,9 +5439,9 @@
         }
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (
-                ConstantExpr::Constant(ConstantTerm::Literal(x)),
-                ConstantExpr::Constant(ConstantTerm::Literal(y)),
-            ) =&gt; ConstantExpr::Constant(ConstantTerm::Literal(x * y)),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
+            ) =&gt; ConstantTerm::Literal(x * y).into(),
             (x, y) =&gt; Mul(Box::new(x), Box::new(y)),
         }
     }
@@ -5453,13 +5562,13 @@
 
 <span class="kw">impl</span>&lt;F: Field, Column&gt; From&lt;u64&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="kw">fn </span>from(x: u64) -&gt; <span class="self">Self </span>{
-        Expr::Constant(ConstantExpr::Constant(ConstantTerm::Literal(F::from(x))))
+        ConstantTerm::Literal(F::from(x)).into()
     }
 }
 
 <span class="kw">impl</span>&lt;F: Field&gt; From&lt;u64&gt; <span class="kw">for </span>ConstantExpr&lt;F&gt; {
     <span class="kw">fn </span>from(x: u64) -&gt; <span class="self">Self </span>{
-        ConstantExpr::Constant(ConstantTerm::Literal(F::from(x)))
+        ConstantTerm::Literal(F::from(x)).into()
     }
 }
 
@@ -5467,7 +5576,7 @@
     <span class="kw">type </span>Output = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, y: F) -&gt; <span class="self">Self</span>::Output {
-        Expr::Constant(ConstantExpr::Constant(ConstantTerm::Literal(y))) * <span class="self">self
+        Expr::from(ConstantTerm::Literal(y)) * <span class="self">self
     </span>}
 }
 
@@ -5481,18 +5590,19 @@
 {
     <span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">use </span>ChallengeTerm::<span class="kw-2">*</span>;
-        <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ConstantExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>ConstantTerm::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Challenge(Alpha) =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
-            Challenge(Beta) =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
-            Challenge(Gamma) =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
-            Challenge(JointCombiner) =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
-            Constant(EndoCoefficient) =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
-            Constant(Mds { row, col }) =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Constant(Literal(x)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
+            Atom(Challenge(Alpha)) =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
+            Atom(Challenge(Beta)) =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
+            Atom(Challenge(Gamma)) =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
+            Atom(Challenge(JointCombiner)) =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
+            Atom(Constant(EndoCoefficient)) =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
+            Atom(Constant(Mds { row, col })) =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
+            Atom(Constant(Literal(x))) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
-                Challenge(Alpha) =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>),
+                Atom(Challenge(Alpha)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {n})&quot;</span>, x.ocaml()),
             },
             Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(), y.ocaml()),
@@ -5503,18 +5613,19 @@
 
     <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">use </span>ChallengeTerm::<span class="kw-2">*</span>;
-        <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ConstantExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>ConstantTerm::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Challenge(Alpha) =&gt; <span class="string">&quot;\\alpha&quot;</span>.to_string(),
-            Challenge(Beta) =&gt; <span class="string">&quot;\\beta&quot;</span>.to_string(),
-            Challenge(Gamma) =&gt; <span class="string">&quot;\\gamma&quot;</span>.to_string(),
-            Challenge(JointCombiner) =&gt; <span class="string">&quot;joint\\_combiner&quot;</span>.to_string(),
-            Constant(EndoCoefficient) =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.to_string(),
-            Constant(Mds { row, col }) =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Constant(Literal(x)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.into_repr().into()),
+            Atom(Challenge(Alpha)) =&gt; <span class="string">&quot;\\alpha&quot;</span>.to_string(),
+            Atom(Challenge(Beta)) =&gt; <span class="string">&quot;\\beta&quot;</span>.to_string(),
+            Atom(Challenge(Gamma)) =&gt; <span class="string">&quot;\\gamma&quot;</span>.to_string(),
+            Atom(Challenge(JointCombiner)) =&gt; <span class="string">&quot;joint\\_combiner&quot;</span>.to_string(),
+            Atom(Constant(EndoCoefficient)) =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.to_string(),
+            Atom(Constant(Mds { row, col })) =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
+            Atom(Constant(Literal(x))) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.into_repr().into()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
-                Challenge(Alpha) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\alpha^{{{n}}}&quot;</span>),
+                Atom(Challenge(Alpha)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\alpha^{{{n}}}&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, x.ocaml()),
             },
             Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(), y.ocaml()),
@@ -5525,18 +5636,19 @@
 
     <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">use </span>ChallengeTerm::<span class="kw-2">*</span>;
-        <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ConstantExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>ConstantTerm::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Challenge(Alpha) =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
-            Challenge(Beta) =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
-            Challenge(Gamma) =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
-            Challenge(JointCombiner) =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
-            Constant(EndoCoefficient) =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
-            Constant(Mds { row, col }) =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Constant(Literal(x)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, x.to_hex()),
+            Atom(Challenge(Alpha)) =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
+            Atom(Challenge(Beta)) =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
+            Atom(Challenge(Gamma)) =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
+            Atom(Challenge(JointCombiner)) =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
+            Atom(Constant(EndoCoefficient)) =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
+            Atom(Constant(Mds { row, col })) =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
+            Atom(Constant(Literal(x))) =&gt; <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
-                Challenge(Alpha) =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha^{n}&quot;</span>),
+                Atom(Challenge(Alpha)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha^{n}&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, x.text()),
             },
             Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(), y.text()),
@@ -5855,7 +5967,7 @@
         }
 
         <span class="kw">fn </span>literal(x: F) -&gt; <span class="self">Self </span>{
-            Expr::Constant(ConstantExpr::Constant(ConstantTerm::Literal(x)))
+            ConstantTerm::Literal(x).into()
         }
 
         <span class="kw">fn </span>witness(row: CurrOrNext, col: usize, <span class="kw">_</span>: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ArgumentData&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
@@ -5971,7 +6083,7 @@
 
 <span class="doccomment">/// Convenience function to create a constant as [Expr].
 </span><span class="kw">pub fn </span>constant&lt;F&gt;(x: F) -&gt; E&lt;F&gt; {
-    Expr::Constant(ConstantExpr::Constant(ConstantTerm::Literal(x)))
+    ConstantTerm::Literal(x).into()
 }
 
 <span class="doccomment">/// Helper function to quickly create an expression for a witness.
