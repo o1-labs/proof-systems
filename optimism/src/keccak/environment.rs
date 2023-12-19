@@ -5,6 +5,7 @@ use super::{
 };
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
+use kimchi::circuits::expr::Operations;
 use kimchi::{
     auto_clone_array,
     circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::ROUNDS},
@@ -36,11 +37,11 @@ pub struct KeccakEnv<Fp> {
 
 impl<Fp: Field> KeccakEnv<Fp> {
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
-        self.keccak_state[column] = Self::constant(value.into());
+        self.keccak_state[column] = Self::constant(value);
     }
 
     pub fn write_column_field(&mut self, column: KeccakColumn, value: Fp) {
-        self.keccak_state[column] = Self::constant(value);
+        self.keccak_state[column] = Self::constant_field(value);
     }
 
     pub fn null_state(&mut self) {
@@ -111,11 +112,23 @@ impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
     type Fp = Fp;
-    fn constant(x: Self::Fp) -> Self::Variable {
-        Literal(x).into()
+    fn constant(x: u64) -> Self::Variable {
+        Self::constant_field(Self::Fp::from(x))
+    }
+    fn constant_field(x: Self::Fp) -> Self::Variable {
+        Self::Variable::constant(Operations::from(Literal(x)))
+    }
+    fn zero() -> Self::Variable {
+        Self::constant(0)
+    }
+    fn one() -> Self::Variable {
+        Self::constant(1)
+    }
+    fn two() -> Self::Variable {
+        Self::constant(2)
     }
     fn two_pow(x: u64) -> Self::Variable {
-        Self::constant(Self::Fp::two_pow(x))
+        Self::constant_field(Self::Fp::two_pow(x))
     }
 }
 
@@ -338,8 +351,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         let pad = bytes
             .iter()
             .zip(flags)
-            .fold(Self::constant(Fp::zero()), |acc, (byte, flag)| {
-                acc + byte.clone() * flag * Self::constant(Self::Fp::from(256u16))
+            .fold(Self::zero(), |acc, (byte, flag)| {
+                acc + byte.clone() * flag * Self::two_pow(8)
             });
 
         pad
