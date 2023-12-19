@@ -130,6 +130,18 @@ pub struct Signed<T> {
 pub enum LookupTable {
     MemoryLookup,
     RegisterLookup,
+    // Single-column table of 2^16 entries with the sparse representation of all values
+    SparseLookup,
+    // Single-column table of all values in the range [0, 2^16)
+    RangeCheck16Lookup,
+    // Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    ResetLookup,
+    // 24-row table with all possible values for round and their round constant in expanded form
+    RoundConstantsLookup,
+    // All [0..136] values of possible padding lengths and the 5 corresponding pad suffixes with the 10*1 rule
+    PadLookup,
+    // Powers of two, from 2^0 to 2^136
+    PowersOfTwoLookup,
 }
 
 #[derive(Clone, Debug)]
