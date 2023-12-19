@@ -2349,6 +2349,18 @@
 <a href="#2349" id="2349">2349</a>
 <a href="#2350" id="2350">2350</a>
 <a href="#2351" id="2351">2351</a>
+<a href="#2352" id="2352">2352</a>
+<a href="#2353" id="2353">2353</a>
+<a href="#2354" id="2354">2354</a>
+<a href="#2355" id="2355">2355</a>
+<a href="#2356" id="2356">2356</a>
+<a href="#2357" id="2357">2357</a>
+<a href="#2358" id="2358">2358</a>
+<a href="#2359" id="2359">2359</a>
+<a href="#2360" id="2360">2360</a>
+<a href="#2361" id="2361">2361</a>
+<a href="#2362" id="2362">2362</a>
+<a href="#2363" id="2363">2363</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2481,6 +2493,18 @@
 </span><span class="kw">pub enum </span>LookupTable {
     MemoryLookup,
     RegisterLookup,
+    <span class="comment">// Single-column table of 2^16 entries with the sparse representation of all values
+    </span>SparseLookup,
+    <span class="comment">// Single-column table of all values in the range [0, 2^16)
+    </span>RangeCheck16Lookup,
+    <span class="comment">// Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    </span>ResetLookup,
+    <span class="comment">// 24-row table with all possible values for round and their round constant in expanded form
+    </span>RoundConstantsLookup,
+    <span class="comment">// All [0..136] values of possible padding lengths and the 5 corresponding pad suffixes with the 10*1 rule
+    </span>PadLookup,
+    <span class="comment">// Powers of two, from 2^0 to 2^136
+    </span>PowersOfTwoLookup,
 }
 
 <span class="attr">#[derive(Clone, Debug)]

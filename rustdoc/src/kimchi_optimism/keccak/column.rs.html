@@ -231,7 +231,7 @@
 <a href="#231" id="231">231</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
-<span class="kw">use </span>ark_ff::Zero;
+<span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use </span><span class="kw">super</span>::grid_index;
@@ -304,7 +304,7 @@
     </span><span class="kw">pub </span>next_state: Vec&lt;T&gt;,          <span class="comment">// Sponge Next[0..100)
 </span>}
 
-<span class="kw">impl</span>&lt;T: Zero + Clone&gt; Default <span class="kw">for </span>KeccakColumns&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Zero + One + Clone&gt; Default <span class="kw">for </span>KeccakColumns&lt;T&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         KeccakColumns {
             flag_round: T::zero(),
@@ -313,8 +313,8 @@
             flag_root: T::zero(),
             flag_pad: T::zero(),
             flag_length: T::zero(),
-            two_to_pad: T::zero(),
-            flags_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">136</span>],
+            two_to_pad: T::one(), <span class="comment">// So that default 2^0 is in the table
+            </span>flags_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">136</span>],
             pad_suffix: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
             round_constants: <span class="macro">vec!</span>[T::zero(); <span class="number">4</span>],
             theta_state_a: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
