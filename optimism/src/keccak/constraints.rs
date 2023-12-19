@@ -5,7 +5,7 @@ use crate::keccak::{
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::{
-    constants::{DIM, QUARTERS},
+    constants::{DIM, QUARTERS, RATE_IN_BYTES},
     OFF,
 };
 
@@ -46,6 +46,10 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 self.constrain(Self::boolean(self.root()));
                 // Pad is either true or false
                 self.constrain(Self::boolean(self.pad()));
+                for i in 0..RATE_IN_BYTES {
+                    // Bytes are either involved on padding or not
+                    self.constrain(Self::boolean(self.in_padding(i)));
+                }
             }
             // Mutually exclusiveness of flags
             {
@@ -105,7 +109,19 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                             )),
                 );
             }
-            // TODO: check padding with lookups
+            // Check that the padding is located at the end of the message
+            // TODO: get power of two from lookup table
+            let pad_at_end = (0..RATE_IN_BYTES).fold(Self::constant(Fp::zero()), |acc, i| {
+                acc * Self::constant(Fp::from(2u8)) + self.sponge_bytes(i)
+            });
+            self.constrain(
+                self.pad() * (self.two_to_pad() - Self::constant(Fp::one()) - pad_at_end),
+            );
+            // Check that the padding value is correct
+            // TODO: get suffix from lookup table
+            for i in 0..5 {
+                self.constrain(self.pad() * (self.block_in_padding(i) - self.pad_suffix(i)));
+            }
         }
 
         // ROUND CONSTRAINTS

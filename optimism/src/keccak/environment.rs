@@ -42,6 +42,10 @@ impl<Fp: Field> KeccakEnv<Fp> {
         self.keccak_state[column] = Self::constant(value.into());
     }
 
+    pub fn write_column_field(&mut self, column: KeccakColumn, value: Fp) {
+        self.keccak_state[column] = Self::constant(value);
+    }
+
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
     }

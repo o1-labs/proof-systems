@@ -15,6 +15,28 @@ use super::{
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 
+pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
+    // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+    let mut blocks = vec![Fp::zero(); 5];
+    let mut pad = [Fp::zero(); RATE_IN_BYTES];
+    pad[RATE_IN_BYTES - pad_bytelength] = Fp::one();
+    pad[RATE_IN_BYTES - 1] += Fp::from(0x80u8);
+    blocks[0] = pad
+        .iter()
+        .take(12)
+        .fold(Fp::zero(), |acc, x| acc * Fp::from(256u32) + *x);
+    for (i, block) in blocks.iter_mut().enumerate().take(5).skip(1) {
+        // take 31 elements from pad, starting at 12 + (i - 1) * 31 and fold them into a single Fp
+        *block = pad
+            .iter()
+            .skip(12 + (i - 1) * 31)
+            .take(31)
+            .fold(Fp::zero(), |acc, x| acc * Fp::from(256u32) + *x);
+    }
+
+    blocks
+}
+
 impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     type Position = KeccakColumn;
 
@@ -66,7 +88,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
     fn set_flag_pad(&mut self) {
         self.write_column(KeccakColumn::FlagPad, 1);
-        self.write_column(KeccakColumn::FlagLength, self.pad_len)
+        self.write_column(KeccakColumn::FlagLength, self.pad_len);
+        let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
+        for i in pad_range {
+            self.write_column(KeccakColumn::FlagsBytes(i), 1);
+        }
     }
 
     fn set_flag_absorb(&mut self, absorb: Absorb) {
@@ -161,7 +187,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for (i, value) in shifts.iter().enumerate() {
             self.write_column(KeccakColumn::SpongeShifts(i), *value);
         }
-
+        let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
+        for (i, value) in pad_blocks.iter().enumerate() {
+            self.write_column_field(KeccakColumn::PadSuffix(i), *value);
+        }
         // Rest is zero thanks to null_state
 
         // Update environment
