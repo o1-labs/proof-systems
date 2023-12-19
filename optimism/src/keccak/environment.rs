@@ -41,6 +41,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
         self.keccak_state[column] = Self::constant(value.into());
     }
+
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
     }
@@ -151,6 +152,18 @@ pub(crate) trait KeccakEnvironment {
 
     fn length(&self) -> Self::Variable;
 
+    fn two_to_pad(&self) -> Self::Variable;
+
+    fn in_padding(&self, i: usize) -> Self::Variable;
+
+    fn pad_suffix(&self, i: usize) -> Self::Variable;
+
+    fn bytes_block(&self, i: usize) -> Vec<Self::Variable>;
+
+    fn flags_block(&self, i: usize) -> Vec<Self::Variable>;
+
+    fn block_in_padding(&self, i: usize) -> Self::Variable;
+
     fn round_constants(&self) -> Vec<Self::Variable>;
 
     fn old_state(&self, i: usize) -> Self::Variable;
@@ -162,6 +175,8 @@ pub(crate) trait KeccakEnvironment {
     fn sponge_zeros(&self) -> Vec<Self::Variable>;
 
     fn sponge_shifts(&self) -> Vec<Self::Variable>;
+
+    fn sponge_bytes(&self, i: usize) -> Self::Variable;
 
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
@@ -283,6 +298,52 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::FlagLength].clone()
     }
 
+    fn two_to_pad(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::TwoToPad].clone()
+    }
+
+    fn in_padding(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagsBytes(i)].clone()
+    }
+
+    fn pad_suffix(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::PadSuffix(i)].clone()
+    }
+
+    fn bytes_block(&self, i: usize) -> Vec<Self::Variable> {
+        match i {
+            0 => self.keccak_state.sponge_bytes[0..12].to_vec().clone(),
+            1..=4 => self.keccak_state.sponge_bytes[12 + (i - 1) * 31..12 + i * 31]
+                .to_vec()
+                .clone(),
+            _ => panic!("No more blocks of bytes can be part of padding"),
+        }
+    }
+
+    fn flags_block(&self, i: usize) -> Vec<Self::Variable> {
+        match i {
+            0 => self.keccak_state.flags_bytes[0..12].to_vec().clone(),
+            1..=4 => self.keccak_state.flags_bytes[12 + (i - 1) * 31..12 + i * 31]
+                .to_vec()
+                .clone(),
+            _ => panic!("No more blocks of flags can be part of padding"),
+        }
+    }
+
+    fn block_in_padding(&self, i: usize) -> Self::Variable {
+        let bytes = self.bytes_block(i);
+        let flags = self.flags_block(i);
+        assert_eq!(bytes.len(), flags.len());
+        let pad = bytes
+            .iter()
+            .zip(flags)
+            .fold(Self::constant(Fp::zero()), |acc, (byte, flag)| {
+                acc + byte.clone() * flag * Self::constant(Self::Fp::from(256u16))
+            });
+
+        pad
+    }
+
     fn round_constants(&self) -> Vec<Self::Variable> {
         self.keccak_state.round_constants.clone()
     }
@@ -301,6 +362,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn sponge_zeros(&self) -> Vec<Self::Variable> {
         self.keccak_state.sponge_new_state[68..100].to_vec().clone()
+    }
+
+    fn sponge_bytes(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeBytes(i)].clone()
     }
 
     fn sponge_shifts(&self) -> Vec<Self::Variable> {
