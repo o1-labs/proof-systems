@@ -278,6 +278,35 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
@@ -294,6 +323,28 @@
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad_blocks&lt;Fp: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;Fp&gt; {
+    <span class="comment">// Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>blocks = <span class="macro">vec!</span>[Fp::zero(); <span class="number">5</span>];
+    <span class="kw">let </span><span class="kw-2">mut </span>pad = [Fp::zero(); RATE_IN_BYTES];
+    pad[RATE_IN_BYTES - pad_bytelength] = Fp::one();
+    pad[RATE_IN_BYTES - <span class="number">1</span>] += Fp::from(<span class="number">0x80u8</span>);
+    blocks[<span class="number">0</span>] = pad
+        .iter()
+        .take(<span class="number">12</span>)
+        .fold(Fp::zero(), |acc, x| acc * Fp::from(<span class="number">256u32</span>) + <span class="kw-2">*</span>x);
+    <span class="kw">for </span>(i, block) <span class="kw">in </span>blocks.iter_mut().enumerate().take(<span class="number">5</span>).skip(<span class="number">1</span>) {
+        <span class="comment">// take 31 elements from pad, starting at 12 + (i - 1) * 31 and fold them into a single Fp
+        </span><span class="kw-2">*</span>block = pad
+            .iter()
+            .skip(<span class="number">12 </span>+ (i - <span class="number">1</span>) * <span class="number">31</span>)
+            .take(<span class="number">31</span>)
+            .fold(Fp::zero(), |acc, x| acc * Fp::from(<span class="number">256u32</span>) + <span class="kw-2">*</span>x);
+    }
+
+    blocks
+}
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; KeccakInterpreter <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
     <span class="kw">type </span>Position = KeccakColumn;
@@ -346,7 +397,11 @@
 
     <span class="kw">fn </span>set_flag_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.write_column(KeccakColumn::FlagPad, <span class="number">1</span>);
-        <span class="self">self</span>.write_column(KeccakColumn::FlagLength, <span class="self">self</span>.pad_len)
+        <span class="self">self</span>.write_column(KeccakColumn::FlagLength, <span class="self">self</span>.pad_len);
+        <span class="kw">let </span>pad_range = RATE_IN_BYTES - <span class="self">self</span>.pad_len <span class="kw">as </span>usize..RATE_IN_BYTES;
+        <span class="kw">for </span>i <span class="kw">in </span>pad_range {
+            <span class="self">self</span>.write_column(KeccakColumn::FlagsBytes(i), <span class="number">1</span>);
+        }
     }
 
     <span class="kw">fn </span>set_flag_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, absorb: Absorb) {
@@ -441,7 +496,10 @@
         <span class="kw">for </span>(i, value) <span class="kw">in </span>shifts.iter().enumerate() {
             <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(i), <span class="kw-2">*</span>value);
         }
-
+        <span class="kw">let </span>pad_blocks = pad_blocks::&lt;Fp&gt;(<span class="self">self</span>.pad_len <span class="kw">as </span>usize);
+        <span class="kw">for </span>(i, value) <span class="kw">in </span>pad_blocks.iter().enumerate() {
+            <span class="self">self</span>.write_column_field(KeccakColumn::PadSuffix(i), <span class="kw-2">*</span>value);
+        }
         <span class="comment">// Rest is zero thanks to null_state
 
         // Update environment

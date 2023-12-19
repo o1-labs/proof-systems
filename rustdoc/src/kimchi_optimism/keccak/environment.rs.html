@@ -432,6 +432,10 @@
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -474,6 +478,10 @@
 <span class="kw">impl</span>&lt;Fp: Field&gt; KeccakEnv&lt;Fp&gt; {
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: u64) {
         <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant(value.into());
+    }
+
+    <span class="kw">pub fn </span>write_column_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: Fp) {
+        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant(value);
     }
 
     <span class="kw">pub fn </span>null_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
