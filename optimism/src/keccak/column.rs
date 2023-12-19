@@ -1,6 +1,6 @@
 use std::ops::{Index, IndexMut};
 
-use ark_ff::Zero;
+use ark_ff::{One, Zero};
 use serde::{Deserialize, Serialize};
 
 use super::grid_index;
@@ -73,7 +73,7 @@ pub struct KeccakColumns<T> {
     pub next_state: Vec<T>,          // Sponge Next[0..100)
 }
 
-impl<T: Zero + Clone> Default for KeccakColumns<T> {
+impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
     fn default() -> Self {
         KeccakColumns {
             flag_round: T::zero(),
@@ -82,7 +82,7 @@ impl<T: Zero + Clone> Default for KeccakColumns<T> {
             flag_root: T::zero(),
             flag_pad: T::zero(),
             flag_length: T::zero(),
-            two_to_pad: T::zero(),
+            two_to_pad: T::one(), // So that default 2^0 is in the table
             flags_bytes: vec![T::zero(); 136],
             pad_suffix: vec![T::zero(); 5],
             round_constants: vec![T::zero(); 4],

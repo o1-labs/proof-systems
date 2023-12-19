@@ -128,7 +128,7 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     /// Helper to access endomorphism coefficient constant
     pub fn endo_coefficient(&self) -> T {
         T::constant(
-            ConstantExpr::<F>::Constant(ConstantTerm::EndoCoefficient),
+            ConstantExpr::from(ConstantTerm::EndoCoefficient),
             self.data.as_ref(),
         )
     }
@@ -136,7 +136,7 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     /// Helper to access maximum distance separable matrix constant at row, col
     pub fn mds(&self, row: usize, col: usize) -> T {
         T::constant(
-            ConstantExpr::<F>::Constant(ConstantTerm::Mds { row, col }),
+            ConstantExpr::from(ConstantTerm::Mds { row, col }),
             self.data.as_ref(),
         )
     }
