@@ -3506,6 +3506,26 @@
 <a href="#3506" id="3506">3506</a>
 <a href="#3507" id="3507">3507</a>
 <a href="#3508" id="3508">3508</a>
+<a href="#3509" id="3509">3509</a>
+<a href="#3510" id="3510">3510</a>
+<a href="#3511" id="3511">3511</a>
+<a href="#3512" id="3512">3512</a>
+<a href="#3513" id="3513">3513</a>
+<a href="#3514" id="3514">3514</a>
+<a href="#3515" id="3515">3515</a>
+<a href="#3516" id="3516">3516</a>
+<a href="#3517" id="3517">3517</a>
+<a href="#3518" id="3518">3518</a>
+<a href="#3519" id="3519">3519</a>
+<a href="#3520" id="3520">3520</a>
+<a href="#3521" id="3521">3521</a>
+<a href="#3522" id="3522">3522</a>
+<a href="#3523" id="3523">3523</a>
+<a href="#3524" id="3524">3524</a>
+<a href="#3525" id="3525">3525</a>
+<a href="#3526" id="3526">3526</a>
+<a href="#3527" id="3527">3527</a>
+<a href="#3528" id="3528">3528</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -4128,6 +4148,16 @@
     <span class="kw">pub </span>offset: i32,
 }
 
+<span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="kw">pub enum </span>ExprInner&lt;C, Column&gt; {
+    Constant(C),
+    Cell(Variable&lt;Column&gt;),
+    VanishesOnZeroKnowledgeAndPreviousRows,
+    <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is
+    /// (x^n - 1) / (x - omega^i)
+    </span>UnnormalizedLagrangeBasis(RowOffset),
+}
+
 <span class="doccomment">/// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -4140,15 +4170,10 @@
 /// the above variables should vanish on the PLONK domain.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>Expr&lt;C, Column&gt; {
-    Constant(C),
-    Cell(Variable&lt;Column&gt;),
+    Atom(ExprInner&lt;C, Column&gt;),
     Double(Box&lt;Expr&lt;C, Column&gt;&gt;),
     Square(Box&lt;Expr&lt;C, Column&gt;&gt;),
     BinOp(Op2, Box&lt;Expr&lt;C, Column&gt;&gt;, Box&lt;Expr&lt;C, Column&gt;&gt;),
-    VanishesOnZeroKnowledgeAndPreviousRows,
-    <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is
-    /// (x^n - 1) / (x - omega^i)
-    </span>UnnormalizedLagrangeBasis(RowOffset),
     Pow(Box&lt;Expr&lt;C, Column&gt;&gt;, u64),
     Cache(CacheId, Box&lt;Expr&lt;C, Column&gt;&gt;),
     <span class="doccomment">/// If the feature flag is enabled, return the first expression; otherwise, return the second.
@@ -4157,7 +4182,7 @@
 
 <span class="kw">impl</span>&lt;F, Column&gt; From&lt;ConstantExpr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="kw">fn </span>from(x: ConstantExpr&lt;F&gt;) -&gt; <span class="self">Self </span>{
-        Expr::Constant(x)
+        Expr::Atom(ExprInner::Constant(x))
     }
 }
 
@@ -4178,11 +4203,14 @@
 {
     <span class="kw">fn </span>apply_feature_flags_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; (Expr&lt;C, Column&gt;, bool) {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Constant(<span class="kw">_</span>)
-            | Cell(<span class="kw">_</span>)
-            | VanishesOnZeroKnowledgeAndPreviousRows
-            | UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; (<span class="self">self</span>.clone(), <span class="bool-val">false</span>),
+            Atom(
+                Constant(<span class="kw">_</span>)
+                | Cell(<span class="kw">_</span>)
+                | VanishesOnZeroKnowledgeAndPreviousRows
+                | UnnormalizedLagrangeBasis(<span class="kw">_</span>),
+            ) =&gt; (<span class="self">self</span>.clone(), <span class="bool-val">false</span>),
             Double(c) =&gt; {
                 <span class="kw">let </span>(c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
                 <span class="kw">if </span>reduce_further &amp;&amp; c_reduced.is_zero() {
@@ -4453,7 +4481,7 @@
 <span class="kw">impl</span>&lt;C, Column&gt; Expr&lt;C, Column&gt; {
     <span class="doccomment">/// Convenience function for constructing cell variables.
     </span><span class="kw">pub fn </span>cell(col: Column, row: CurrOrNext) -&gt; Expr&lt;C, Column&gt; {
-        Expr::Cell(Variable { col, row })
+        Expr::Atom(ExprInner::Cell(Variable { col, row }))
     }
 
     <span class="kw">pub fn </span>double(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
@@ -4466,17 +4494,18 @@
 
     <span class="doccomment">/// Convenience function for constructing constant expressions.
     </span><span class="kw">pub fn </span>constant(c: C) -&gt; Expr&lt;C, Column&gt; {
-        Expr::Constant(c)
+        Expr::Atom(ExprInner::Constant(c))
     }
 
     <span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>, d1_size: u64, zk_rows: u64) -&gt; u64 {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.degree(d1_size, zk_rows),
-            Constant(<span class="kw">_</span>) =&gt; <span class="number">0</span>,
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; zk_rows + <span class="number">1</span>,
-            UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; d1_size,
-            Cell(<span class="kw">_</span>) =&gt; d1_size,
+            Atom(Constant(<span class="kw">_</span>)) =&gt; <span class="number">0</span>,
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; zk_rows + <span class="number">1</span>,
+            Atom(UnnormalizedLagrangeBasis(<span class="kw">_</span>)) =&gt; d1_size,
+            Atom(Cell(<span class="kw">_</span>)) =&gt; d1_size,
             Square(x) =&gt; <span class="number">2 </span>* x.degree(d1_size, zk_rows),
             BinOp(Op2::Mul, x, y) =&gt; (<span class="kw-2">*</span>x).degree(d1_size, zk_rows) + (<span class="kw-2">*</span>y).degree(d1_size, zk_rows),
             BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) =&gt; {
@@ -5051,9 +5080,7 @@
         <span class="kw">let </span>zero = Expr::&lt;ConstantExpr&lt;F&gt;, Column&gt;::zero();
         cs.into_iter()
             .zip_eq(alphas)
-            .map(|(c, i)| {
-                Expr::Constant(ConstantExpr::pow(ChallengeTerm::Alpha.into(), i <span class="kw">as </span>u64)) * c
-            })
+            .map(|(c, i)| Expr::from(ConstantExpr::pow(ChallengeTerm::Alpha.into(), i <span class="kw">as </span>u64)) * c)
             .fold(zero, |acc, x| acc + x)
     }
 }
@@ -5087,14 +5114,14 @@
                 x.to_polish_(cache, res);
                 res.push(PolishToken::Pow(<span class="kw-2">*</span>d))
             }
-            Expr::Constant(c) =&gt; {
+            Expr::Atom(ExprInner::Constant(c)) =&gt; {
                 c.to_polish(cache, res);
             }
-            Expr::Cell(v) =&gt; res.push(PolishToken::Cell(<span class="kw-2">*</span>v)),
-            Expr::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+            Expr::Atom(ExprInner::Cell(v)) =&gt; res.push(PolishToken::Cell(<span class="kw-2">*</span>v)),
+            Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 res.push(PolishToken::VanishesOnZeroKnowledgeAndPreviousRows);
             }
-            Expr::UnnormalizedLagrangeBasis(i) =&gt; {
+            Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) =&gt; {
                 res.push(PolishToken::UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i));
             }
             Expr::BinOp(op, x, y) =&gt; {
@@ -5156,15 +5183,18 @@
 <span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy + GenericColumn&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="kw">fn </span>evaluate_constants_(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;) -&gt; Expr&lt;F, Column&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="comment">// TODO: Use cache
         </span><span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.evaluate_constants_(c, chals).double(),
             Pow(x, d) =&gt; x.evaluate_constants_(c, chals).pow(<span class="kw-2">*</span>d),
             Square(x) =&gt; x.evaluate_constants_(c, chals).square(),
-            Constant(x) =&gt; Constant(x.value(c, chals)),
-            Cell(v) =&gt; Cell(<span class="kw-2">*</span>v),
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; VanishesOnZeroKnowledgeAndPreviousRows,
-            UnnormalizedLagrangeBasis(i) =&gt; UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i),
+            Atom(Constant(x)) =&gt; Atom(Constant(x.value(c, chals))),
+            Atom(Cell(v)) =&gt; Atom(Cell(<span class="kw-2">*</span>v)),
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
+                Atom(VanishesOnZeroKnowledgeAndPreviousRows)
+            }
+            Atom(UnnormalizedLagrangeBasis(i)) =&gt; Atom(UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i)),
             BinOp(Op2::Add, x, y) =&gt; {
                 x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals)
             }
@@ -5208,9 +5238,10 @@
         chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.evaluate_(d, pt, evals, c, chals).map(|x| x.double()),
-            Constant(x) =&gt; <span class="prelude-val">Ok</span>(x.value(c, chals)),
+            Atom(Constant(x)) =&gt; <span class="prelude-val">Ok</span>(x.value(c, chals)),
             Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
             BinOp(Op2::Mul, x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
@@ -5228,10 +5259,10 @@
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x - y)
             }
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="prelude-val">Ok</span>(eval_vanishes_on_last_n_rows(d, c.zk_rows + <span class="number">1</span>, pt))
             }
-            UnnormalizedLagrangeBasis(i) =&gt; {
+            Atom(UnnormalizedLagrangeBasis(i)) =&gt; {
                 <span class="kw">let </span>offset = <span class="kw">if </span>i.zk_rows {
                     -(c.zk_rows <span class="kw">as </span>i32) + i.offset
                 } <span class="kw">else </span>{
@@ -5239,7 +5270,7 @@
                 };
                 <span class="prelude-val">Ok</span>(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, offset, <span class="kw-2">&amp;</span>pt))
             }
-            Cell(v) =&gt; v.evaluate(evals),
+            Atom(Cell(v)) =&gt; v.evaluate(evals),
             Cache(<span class="kw">_</span>, e) =&gt; e.evaluate_(d, pt, evals, c, chals),
             IfFeature(feature, e1, e2) =&gt; {
                 <span class="kw">if </span>feature.is_enabled() {
@@ -5283,8 +5314,9 @@
         evals: <span class="kw-2">&amp;</span>Evaluations,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Constant(x) =&gt; <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>x),
+            Atom(Constant(x)) =&gt; <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>x),
             Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
             Double(x) =&gt; x.evaluate(d, pt, zk_rows, evals).map(|x| x.double()),
             Square(x) =&gt; x.evaluate(d, pt, zk_rows, evals).map(|x| x.square()),
@@ -5303,10 +5335,10 @@
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x - y)
             }
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="prelude-val">Ok</span>(eval_vanishes_on_last_n_rows(d, zk_rows + <span class="number">1</span>, pt))
             }
-            UnnormalizedLagrangeBasis(i) =&gt; {
+            Atom(UnnormalizedLagrangeBasis(i)) =&gt; {
                 <span class="kw">let </span>offset = <span class="kw">if </span>i.zk_rows {
                     -(zk_rows <span class="kw">as </span>i32) + i.offset
                 } <span class="kw">else </span>{
@@ -5314,7 +5346,7 @@
                 };
                 <span class="prelude-val">Ok</span>(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, offset, <span class="kw-2">&amp;</span>pt))
             }
-            Cell(v) =&gt; v.evaluate(evals),
+            Atom(Cell(v)) =&gt; v.evaluate(evals),
             Cache(<span class="kw">_</span>, e) =&gt; e.evaluate(d, pt, zk_rows, evals),
             IfFeature(feature, e1, e2) =&gt; {
                 <span class="kw">if </span>feature.is_enabled() {
@@ -5448,13 +5480,13 @@
                     }
                 }
             }
-            Expr::VanishesOnZeroKnowledgeAndPreviousRows =&gt; EvalResult::SubEvals {
+            Expr::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) =&gt; EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: <span class="number">0</span>,
                 evals: env.vanishes_on_zero_knowledge_and_previous_rows(),
             },
-            Expr::Constant(x) =&gt; EvalResult::Constant(<span class="kw-2">*</span>x),
-            Expr::UnnormalizedLagrangeBasis(i) =&gt; {
+            Expr::Atom(ExprInner::Constant(x)) =&gt; EvalResult::Constant(<span class="kw-2">*</span>x),
+            Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) =&gt; {
                 <span class="kw">let </span>offset = <span class="kw">if </span>i.zk_rows {
                     -(env.get_constants().zk_rows <span class="kw">as </span>i32) + i.offset
                 } <span class="kw">else </span>{
@@ -5465,7 +5497,7 @@
                     evals: unnormalized_lagrange_evals(env.l0_1(), offset, d, env),
                 }
             }
-            Expr::Cell(Variable { col, row }) =&gt; {
+            Expr::Atom(ExprInner::Cell(Variable { col, row })) =&gt; {
                 <span class="kw">let </span>evals: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt; = {
                     <span class="kw">match </span>env.get_column(col) {
                         <span class="prelude-val">None </span>=&gt; <span class="kw">return </span>Either::Left(EvalResult::Constant(F::zero())),
@@ -5633,8 +5665,9 @@
     </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>pow(<span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">if </span>p == <span class="number">0 </span>{
-            <span class="kw">return </span>Constant(F::one());
+            <span class="kw">return </span>Atom(Constant(F::one()));
         }
         Pow(Box::new(<span class="self">self</span>), p)
     }
@@ -5672,15 +5705,16 @@
     // a small input when producing the verification key.
     </span><span class="kw">fn </span>is_constant(<span class="kw-2">&amp;</span><span class="self">self</span>, evaluated: <span class="kw-2">&amp;</span>HashSet&lt;Column&gt;) -&gt; bool {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Pow(x, <span class="kw">_</span>) =&gt; x.is_constant(evaluated),
             Square(x) =&gt; x.is_constant(evaluated),
-            Constant(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-            Cell(v) =&gt; evaluated.contains(<span class="kw-2">&amp;</span>v.col),
+            Atom(Constant(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
+            Atom(Cell(v)) =&gt; evaluated.contains(<span class="kw-2">&amp;</span>v.col),
             Double(x) =&gt; x.is_constant(evaluated),
             BinOp(<span class="kw">_</span>, x, y) =&gt; x.is_constant(evaluated) &amp;&amp; y.is_constant(evaluated),
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; <span class="bool-val">true</span>,
-            UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; <span class="bool-val">true</span>,
+            Atom(UnnormalizedLagrangeBasis(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
             Cache(<span class="kw">_</span>, x) =&gt; x.is_constant(evaluated),
             IfFeature(<span class="kw">_</span>, e1, e2) =&gt; e1.is_constant(evaluated) &amp;&amp; e2.is_constant(evaluated),
         }
@@ -5694,6 +5728,7 @@
         };
         <span class="kw">let </span>constant = |e: Expr&lt;F, Column&gt;| sing(<span class="macro">vec!</span>[], e);
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
 
         <span class="kw">if </span><span class="self">self</span>.is_constant(ev) {
             <span class="kw">return </span>constant(<span class="self">self</span>.clone());
@@ -5724,12 +5759,12 @@
                 HashMap::from_iter(e.monomials(ev).into_iter().map(|(m, c)| (m, c.double())))
             }
             Cache(<span class="kw">_</span>, e) =&gt; e.monomials(ev),
-            UnnormalizedLagrangeBasis(i) =&gt; constant(UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i)),
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
-                constant(VanishesOnZeroKnowledgeAndPreviousRows)
+            Atom(UnnormalizedLagrangeBasis(i)) =&gt; constant(Atom(UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i))),
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
+                constant(Atom(VanishesOnZeroKnowledgeAndPreviousRows))
             }
-            Constant(c) =&gt; constant(Constant(c.clone())),
-            Cell(var) =&gt; sing(<span class="macro">vec!</span>[<span class="kw-2">*</span>var], Constant(F::one())),
+            Atom(Constant(c)) =&gt; constant(Atom(Constant(c.clone()))),
+            Atom(Cell(var)) =&gt; sing(<span class="macro">vec!</span>[<span class="kw-2">*</span>var], Atom(Constant(F::one()))),
             BinOp(Op2::Add, e1, e2) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>res = e1.monomials(ev);
                 <span class="kw">for </span>(m, c) <span class="kw">in </span>e2.monomials(ev) {
@@ -5819,7 +5854,9 @@
         <span class="kw">for </span>(m, c) <span class="kw">in </span>monomials {
             <span class="kw">let </span>(evaluated, <span class="kw-2">mut </span>unevaluated): (Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>) =
                 m.into_iter().partition(|v| evaluated.contains(<span class="kw-2">&amp;</span>v.col));
-            <span class="kw">let </span>c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
+            <span class="kw">let </span>c = evaluated
+                .into_iter()
+                .fold(c, |acc, v| acc * Expr::Atom(ExprInner::Cell(v)));
             <span class="kw">if </span>unevaluated.is_empty() {
                 constant_term += c;
             } <span class="kw">else if </span>unevaluated.len() == <span class="number">1 </span>{
@@ -5979,12 +6016,12 @@
 
 <span class="kw">impl</span>&lt;F: Zero, Column&gt; Zero <span class="kw">for </span>Expr&lt;F, Column&gt; {
     <span class="kw">fn </span>zero() -&gt; <span class="self">Self </span>{
-        Expr::Constant(F::zero())
+        Expr::Atom(ExprInner::Constant(F::zero()))
     }
 
     <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
-            Expr::Constant(x) =&gt; x.is_zero(),
+            Expr::Atom(ExprInner::Constant(x)) =&gt; x.is_zero(),
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
@@ -5992,12 +6029,12 @@
 
 <span class="kw">impl</span>&lt;F: Zero + One + PartialEq, Column: PartialEq&gt; One <span class="kw">for </span>Expr&lt;F, Column&gt; {
     <span class="kw">fn </span>one() -&gt; <span class="self">Self </span>{
-        Expr::Constant(F::one())
+        Expr::Atom(ExprInner::Constant(F::one()))
     }
 
     <span class="kw">fn </span>is_one(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
-            Expr::Constant(x) =&gt; x.is_one(),
+            Expr::Atom(ExprInner::Constant(x)) =&gt; x.is_one(),
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
@@ -6008,10 +6045,10 @@
 
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; Expr&lt;F, Column&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            Expr::Constant(x) =&gt; Expr::Constant(x.neg()),
+            Expr::Atom(ExprInner::Constant(x)) =&gt; Expr::Atom(ExprInner::Constant(x.neg())),
             e =&gt; Expr::BinOp(
                 Op2::Mul,
-                Box::new(Expr::Constant(F::one().neg())),
+                Box::new(Expr::Atom(ExprInner::Constant(F::one().neg()))),
                 Box::new(e),
             ),
         }
@@ -6086,7 +6123,7 @@
 
 <span class="kw">impl</span>&lt;F: Field, Column&gt; From&lt;u64&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
     <span class="kw">fn </span>from(x: u64) -&gt; <span class="self">Self </span>{
-        Expr::Constant(F::from(x))
+        Expr::Atom(ExprInner::Constant(F::from(x)))
     }
 }
 
@@ -6389,21 +6426,22 @@
         cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
     ) -&gt; String {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.ocaml(cache)),
-            Constant(x) =&gt; {
+            Atom(Constant(x)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_cache = HashMap::new();
                 <span class="kw">let </span>res = x.ocaml(<span class="kw-2">&amp;mut </span>inner_cache);
                 inner_cache.into_iter().for_each(|(k, v)| {
-                    <span class="kw">let _ </span>= cache.insert(k, Constant(v));
+                    <span class="kw">let _ </span>= cache.insert(k, Atom(Constant(v)));
                 });
                 res
             }
-            Cell(v) =&gt; <span class="macro">format!</span>(<span class="string">&quot;cell({})&quot;</span>, v.ocaml()),
-            UnnormalizedLagrangeBasis(i) =&gt; {
+            Atom(Cell(v)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;cell({})&quot;</span>, v.ocaml()),
+            Atom(UnnormalizedLagrangeBasis(i)) =&gt; {
                 <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis({}, {})&quot;</span>, i.zk_rows, i.offset)
             }
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="string">&quot;vanishes_on_zero_knowledge_and_previous_rows&quot;</span>.to_string()
             }
             BinOp(Op2::Add, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
@@ -6452,30 +6490,31 @@
         cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
     ) -&gt; String {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;2 ({})&quot;</span>, x.latex(cache)),
-            Constant(x) =&gt; {
+            Atom(Constant(x)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_cache = HashMap::new();
                 <span class="kw">let </span>res = x.latex(<span class="kw-2">&amp;mut </span>inner_cache);
                 inner_cache.into_iter().for_each(|(k, v)| {
-                    <span class="kw">let _ </span>= cache.insert(k, Constant(v));
+                    <span class="kw">let _ </span>= cache.insert(k, Atom(Constant(v)));
                 });
                 res
             }
-            Cell(v) =&gt; v.latex(),
-            UnnormalizedLagrangeBasis(RowOffset {
+            Atom(Cell(v)) =&gt; v.latex(),
+            Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">true</span>,
                 offset: i,
-            }) =&gt; {
+            })) =&gt; {
                 <span class="macro">format!</span>(<span class="string">&quot;unnormalized\\_lagrange\\_basis(zk\\_rows + {})&quot;</span>, <span class="kw-2">*</span>i)
             }
-            UnnormalizedLagrangeBasis(RowOffset {
+            Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">false</span>,
                 offset: i,
-            }) =&gt; {
+            })) =&gt; {
                 <span class="macro">format!</span>(<span class="string">&quot;unnormalized\\_lagrange\\_basis({})&quot;</span>, <span class="kw-2">*</span>i)
             }
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="string">&quot;vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row&quot;</span>.to_string()
             }
             BinOp(Op2::Add, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.latex(cache), y.latex(cache)),
@@ -6498,32 +6537,33 @@
         cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
     ) -&gt; String {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.text(cache)),
-            Constant(x) =&gt; {
+            Atom(Constant(x)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_cache = HashMap::new();
                 <span class="kw">let </span>res = x.text(<span class="kw-2">&amp;mut </span>inner_cache);
                 inner_cache.into_iter().for_each(|(k, v)| {
-                    <span class="kw">let _ </span>= cache.insert(k, Constant(v));
+                    <span class="kw">let _ </span>= cache.insert(k, Atom(Constant(v)));
                 });
                 res
             }
-            Cell(v) =&gt; v.text(),
-            UnnormalizedLagrangeBasis(RowOffset {
+            Atom(Cell(v)) =&gt; v.text(),
+            Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">true</span>,
                 offset: i,
-            }) =&gt; <span class="kw">match </span>i.cmp(<span class="kw-2">&amp;</span><span class="number">0</span>) {
+            })) =&gt; <span class="kw">match </span>i.cmp(<span class="kw-2">&amp;</span><span class="number">0</span>) {
                 Ordering::Greater =&gt; <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis(zk_rows + {})&quot;</span>, <span class="kw-2">*</span>i),
                 Ordering::Equal =&gt; <span class="string">&quot;unnormalized_lagrange_basis(zk_rows)&quot;</span>.to_string(),
                 Ordering::Less =&gt; <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis(zk_rows - {})&quot;</span>, (-<span class="kw-2">*</span>i)),
             },
-            UnnormalizedLagrangeBasis(RowOffset {
+            Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">false</span>,
                 offset: i,
-            }) =&gt; {
+            })) =&gt; {
                 <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis({})&quot;</span>, <span class="kw-2">*</span>i)
             }
-            VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+            Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="string">&quot;vanishes_on_zero_knowledge_and_previous_rows&quot;</span>.to_string()
             }
             BinOp(Op2::Add, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(cache), y.text(cache)),
@@ -6699,7 +6739,7 @@
         }
 
         <span class="kw">fn </span>constant(expr: ConstantExpr&lt;F&gt;, <span class="kw">_</span>: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ArgumentData&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
-            Expr::Constant(expr)
+            Expr::from(expr)
         }
 
         <span class="kw">fn </span>cache(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; <span class="self">Self </span>{

@@ -404,7 +404,7 @@
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{ConstantExpr, Expr, Variable},
+    expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
@@ -445,10 +445,10 @@
     </span>}
 
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: MIPSColumn::InstructionCounter,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>fetch_register(
@@ -456,10 +456,10 @@
         _idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: output,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>push_register_if(
@@ -476,10 +476,10 @@
         _idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: output,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>push_register_access_if(
@@ -496,10 +496,10 @@
         _addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: output,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>push_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, _value: <span class="self">Self</span>::Variable) {
@@ -511,10 +511,10 @@
         _addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: output,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>push_memory_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, _value: <span class="self">Self</span>::Variable) {
@@ -532,10 +532,10 @@
         _lowest_bit: u32,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>shift_left(
@@ -544,10 +544,10 @@
         _by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>shift_right(
@@ -556,10 +556,10 @@
         _by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>shift_right_arithmetic(
@@ -568,10 +568,10 @@
         _by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>test_zero(
@@ -579,10 +579,10 @@
         _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>inverse_or_zero(
@@ -590,10 +590,10 @@
         _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>test_less_than(
@@ -602,10 +602,10 @@
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>test_less_than_signed(
@@ -614,10 +614,10 @@
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>and_witness(
@@ -626,10 +626,10 @@
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>nor_witness(
@@ -638,10 +638,10 @@
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>or_witness(
@@ -650,10 +650,10 @@
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>xor_witness(
@@ -662,10 +662,10 @@
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>mul_signed_witness(
@@ -674,10 +674,10 @@
         _y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">unsafe fn </span>mul_hi_lo_signed(
@@ -688,14 +688,14 @@
         position_lo: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
         (
-            Expr::Cell(Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_hi,
                 row: CurrOrNext::Curr,
-            }),
-            Expr::Cell(Variable {
+            })),
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_lo,
                 row: CurrOrNext::Curr,
-            }),
+            })),
         )
     }
 
@@ -707,14 +707,14 @@
         position_lo: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
         (
-            Expr::Cell(Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_hi,
                 row: CurrOrNext::Curr,
-            }),
-            Expr::Cell(Variable {
+            })),
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_lo,
                 row: CurrOrNext::Curr,
-            }),
+            })),
         )
     }
 
@@ -726,14 +726,14 @@
         position_remainder: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
         (
-            Expr::Cell(Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_quotient,
                 row: CurrOrNext::Curr,
-            }),
-            Expr::Cell(Variable {
+            })),
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_remainder,
                 row: CurrOrNext::Curr,
-            }),
+            })),
         )
     }
 
@@ -745,14 +745,14 @@
         position_remainder: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
         (
-            Expr::Cell(Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_quotient,
                 row: CurrOrNext::Curr,
-            }),
-            Expr::Cell(Variable {
+            })),
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: position_remainder,
                 row: CurrOrNext::Curr,
-            }),
+            })),
         )
     }
 
@@ -761,17 +761,17 @@
         _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = Expr::Cell(Variable {
+        <span class="kw">let </span>res = Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        });
+        }));
         <span class="self">self</span>.constraints.push(x.clone() - res.clone());
         res
     }
@@ -788,10 +788,10 @@
         _len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         pos: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Cell(Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
             col: pos,
             row: CurrOrNext::Curr,
-        })
+        }))
     }
 
     <span class="kw">fn </span>request_hint_write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, _len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {

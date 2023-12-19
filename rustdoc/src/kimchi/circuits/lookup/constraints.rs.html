@@ -793,7 +793,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns::Column,
-        expr::{prologue::<span class="kw-2">*</span>, ChallengeTerm, ConstantExpr, ConstantTerm, RowOffset},
+        expr::{prologue::<span class="kw-2">*</span>, ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -1185,7 +1185,7 @@
     <span class="kw">let </span>column = |col: Column| E::cell(col, Curr);
 
     <span class="comment">// gamma * (beta + 1)
-    </span><span class="kw">let </span>gammabeta1 = E::&lt;F&gt;::Constant(
+    </span><span class="kw">let </span>gammabeta1 = E::&lt;F&gt;::from(
         ConstantExpr::from(ChallengeTerm::Gamma)
             * (ConstantExpr::from(ChallengeTerm::Beta) + ConstantExpr::one()),
     );
@@ -1247,7 +1247,7 @@
 
         <span class="comment">// (1 + beta)^max_per_row
         </span><span class="kw">let </span>beta1_per_row: E&lt;F&gt; = {
-            <span class="kw">let </span>beta1 = E::Constant(ConstantExpr::one() + ChallengeTerm::Beta.into());
+            <span class="kw">let </span>beta1 = E::from(ConstantExpr::one() + ChallengeTerm::Beta.into());
             <span class="comment">// Compute beta1.pow(lookup_info.max_per_row)
             </span><span class="kw">let </span><span class="kw-2">mut </span>res = beta1.clone();
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..lookup_info.max_per_row {
@@ -1405,14 +1405,14 @@
     <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[
         <span class="comment">// the accumulator except for the last zk_rows+1 rows
         // (contains the zk-rows and the last value of the accumulator)
-        </span>E::VanishesOnZeroKnowledgeAndPreviousRows * aggreg_equation,
+        </span>E::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) * aggreg_equation,
         <span class="comment">// the initial value of the accumulator
-        </span>E::UnnormalizedLagrangeBasis(RowOffset {
+        </span>E::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
             zk_rows: <span class="bool-val">false</span>,
             offset: <span class="number">0</span>,
-        }) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        })) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         <span class="comment">// Check that the final value of the accumulator is 1
-        </span>E::UnnormalizedLagrangeBasis(final_lookup_row)
+        </span>E::Atom(ExprInner::UnnormalizedLagrangeBasis(final_lookup_row))
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
 
@@ -1429,7 +1429,7 @@
                     offset: <span class="number">0</span>,
                 }
             };
-            <span class="kw">let </span><span class="kw-2">mut </span>expr = E::UnnormalizedLagrangeBasis(first_or_last)
+            <span class="kw">let </span><span class="kw-2">mut </span>expr = E::Atom(ExprInner::UnnormalizedLagrangeBasis(first_or_last))
                 * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + <span class="number">1</span>)));
             <span class="kw">if </span>generate_feature_flags {
                 expr = E::IfFeature(

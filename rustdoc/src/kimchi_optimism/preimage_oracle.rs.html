@@ -224,6 +224,74 @@
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{
     Hint, HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD,
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
@@ -250,6 +318,57 @@
 
 <span class="kw">pub struct </span>RW(<span class="kw">pub </span>ReadWrite&lt;PipeReader, PipeWriter&gt;);
 
+<span class="comment">// Here, we implement `os_pipe::pipe` in a way that allows us to pass flags. In particular, we
+// don&#39;t pass the `CLOEXEC` flag, because we want these pipes to survive an exec, and we set
+// `DIRECT` to handle writes as single atomic operations (up to splitting at the buffer size).
+// This fixes the IPC hangs. This is bad, but the hang is worse.
+
+</span><span class="attr">#[cfg(not(any(target_os = <span class="string">&quot;ios&quot;</span>, target_os = <span class="string">&quot;macos&quot;</span>, target_os = <span class="string">&quot;haiku&quot;</span>, windows)))]
+</span><span class="kw">fn </span>create_pipe() -&gt; std::io::Result&lt;(PipeReader, PipeWriter)&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>fds: [libc::c_int; <span class="number">2</span>] = [<span class="number">0</span>; <span class="number">2</span>];
+    <span class="kw">let </span>res = <span class="kw">unsafe </span>{ libc::pipe2(fds.as_mut_ptr(), libc::O_DIRECT) };
+    <span class="kw">if </span>res != <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::last_os_error());
+    }
+    <span class="kw">unsafe </span>{
+        <span class="kw">use </span>std::os::fd::FromRawFd;
+        <span class="prelude-val">Ok</span>((
+            PipeReader::from_raw_fd(fds[<span class="number">0</span>]),
+            PipeWriter::from_raw_fd(fds[<span class="number">1</span>]),
+        ))
+    }
+}
+
+<span class="attr">#[cfg(any(target_os = <span class="string">&quot;ios&quot;</span>, target_os = <span class="string">&quot;macos&quot;</span>, target_os = <span class="string">&quot;haiku&quot;</span>))]
+</span><span class="kw">pub fn </span>create_pipe() -&gt; std::io::Result&lt;(PipeReader, PipeWriter)&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>fds: [libc::c_int; <span class="number">2</span>] = [<span class="number">0</span>; <span class="number">2</span>];
+    <span class="kw">let </span>res = <span class="kw">unsafe </span>{ libc::pipe(fds.as_mut_ptr()) };
+    <span class="kw">if </span>res != <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::last_os_error());
+    }
+    <span class="comment">// It appears that Mac and friends don&#39;t have DIRECT. Oh well. Don&#39;t use a Mac.
+    </span><span class="kw">let </span>res = <span class="kw">unsafe </span>{ libc::fcntl(fds[<span class="number">0</span>], libc::F_SETFD, <span class="number">0</span>) };
+    <span class="kw">if </span>res != <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::last_os_error());
+    }
+    <span class="kw">let </span>res = <span class="kw">unsafe </span>{ libc::fcntl(fds[<span class="number">1</span>], libc::F_SETFD, <span class="number">0</span>) };
+    <span class="kw">if </span>res != <span class="number">0 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::last_os_error());
+    }
+    <span class="kw">unsafe </span>{
+        <span class="kw">use </span>std::os::fd::FromRawFd;
+        <span class="prelude-val">Ok</span>((
+            PipeReader::from_raw_fd(fds[<span class="number">0</span>]),
+            PipeWriter::from_raw_fd(fds[<span class="number">1</span>]),
+        ))
+    }
+}
+
+<span class="attr">#[cfg(windows)]
+</span><span class="kw">pub fn </span>create_pipe() -&gt; std::io::Result&lt;(PipeReader, PipeWriter)&gt; {
+    os_pipe::pipe()
+}
+
 <span class="comment">// Create bidirectional channel between A and B
 //
 // Schematically we create 2 unidirectional pipes and creates 2 structures made
@@ -260,8 +379,8 @@
 //     |     aw  ----&gt; br    |
 //
 </span><span class="kw">pub fn </span>create_bidirectional_channel() -&gt; <span class="prelude-ty">Option</span>&lt;(RW, RW)&gt; {
-    <span class="kw">let </span>(ar, bw) = os_pipe::pipe().ok()<span class="question-mark">?</span>;
-    <span class="kw">let </span>(br, aw) = os_pipe::pipe().ok()<span class="question-mark">?</span>;
+    <span class="kw">let </span>(ar, bw) = create_pipe().ok()<span class="question-mark">?</span>;
+    <span class="kw">let </span>(br, aw) = create_pipe().ok()<span class="question-mark">?</span>;
     <span class="prelude-val">Some</span>((
         RW(ReadWrite {
             reader: ar,
@@ -403,51 +522,68 @@
     </span><span class="kw">fn </span>test_bidir_channels() {
         <span class="kw">let </span>(<span class="kw-2">mut </span>c0, <span class="kw-2">mut </span>c1) = create_bidirectional_channel().unwrap();
 
-        <span class="comment">// 1. First send a single byte message
+        <span class="comment">// Send a single byte message
         </span><span class="kw">let </span>msg = [<span class="number">42_u8</span>];
         <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0_u8</span>; <span class="number">1</span>];
 
-        <span class="kw">let </span>r = c0.<span class="number">0</span>.writer.write(<span class="kw-2">&amp;</span>msg);
-        <span class="macro">assert!</span>(r.is_ok());
+        <span class="kw">let </span>writer_joiner = std::thread::spawn(<span class="kw">move </span>|| {
+            <span class="kw">let </span>r = c0.<span class="number">0</span>.writer.write(<span class="kw-2">&amp;</span>msg);
+            <span class="macro">assert!</span>(r.is_ok());
+        });
 
-        <span class="kw">let </span>r = c1.<span class="number">0</span>.reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
-        <span class="macro">assert!</span>(r.is_ok());
+        <span class="kw">let </span>reader_joiner = std::thread::spawn(<span class="kw">move </span>|| {
+            <span class="kw">let </span>r = c1.<span class="number">0</span>.reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
+            <span class="macro">assert!</span>(r.is_ok());
+            buf
+        });
 
-        <span class="comment">// 2. Check that we correctly read the single byte message
+        <span class="comment">// Retrieve the buffer from the reader
+        </span><span class="kw">let </span>buf = reader_joiner.join().unwrap();
+        <span class="comment">// Ensure that the writer has completed
+        </span>writer_joiner.join().unwrap();
+
+        <span class="comment">// Check that we correctly read the single byte message
         </span><span class="macro">assert_eq!</span>(msg, buf);
 
-        <span class="comment">// 3. Create a more structured message with the preimage format
+        <span class="comment">// Create a more structured message with the preimage format
         //      +------------+--------------------+
         //      | length &lt;8&gt; | pre-image &lt;length&gt; |
         //      +---------------------------------+
         //   Here we&#39;ll use a length of 2
-        </span><span class="kw">let </span>len = <span class="number">2_u64</span>;
-        <span class="kw">let </span>msg2 = <span class="macro">vec!</span>[<span class="number">42_u8</span>, <span class="number">43_u8</span>];
+        </span><span class="kw">let </span>msg2 = <span class="macro">vec!</span>[<span class="number">42_u8</span>, <span class="number">43_u8</span>];
+        <span class="kw">let </span>len = msg2.len() <span class="kw">as </span>u64;
         <span class="kw">let </span><span class="kw-2">mut </span>msg = u64::to_be_bytes(len).to_vec();
         msg.extend_from_slice(<span class="kw-2">&amp;</span>msg2);
 
-        <span class="comment">// 4. Write the message
-        </span><span class="kw">let </span>r = c1.<span class="number">0</span>.writer.write(<span class="kw-2">&amp;</span>msg);
-        <span class="macro">assert!</span>(r.is_ok());
+        <span class="comment">// Write the message
+        </span><span class="kw">let </span>writer_joiner = std::thread::spawn(<span class="kw">move </span>|| {
+            <span class="kw">let </span>r = c1.<span class="number">0</span>.writer.write(<span class="kw-2">&amp;</span>msg);
+            <span class="macro">assert!</span>(r.is_ok());
+            msg
+        });
 
-        <span class="comment">// 5. Read back the length from the other end of the bidirectionnal
-        // channel
-        </span><span class="kw">let </span><span class="kw-2">mut </span>len_buf: [u8; <span class="number">8</span>] = [<span class="number">0_u8</span>; <span class="number">8</span>];
-        <span class="kw">let </span>r = c0.<span class="number">0</span>.reader.read_exact(<span class="kw-2">&amp;mut </span>len_buf);
-        <span class="macro">assert!</span>(r.is_ok());
+        <span class="comment">// Read back the length from the other end of the bidirectionnal channel
+        </span><span class="kw">let </span>reader_joiner = std::thread::spawn(<span class="kw">move </span>|| {
+            <span class="kw">let </span><span class="kw-2">mut </span>response_vec = <span class="macro">vec!</span>[];
+            <span class="comment">// We do a single read to mirror go, even though we should *really* do 2. &#39;Go&#39; figure.
+            </span><span class="kw">let </span>r = c0.<span class="number">0</span>.reader.read_to_end(<span class="kw-2">&amp;mut </span>response_vec);
+            <span class="macro">assert!</span>(r.is_ok());
 
-        <span class="comment">// 6. Check it is the expected length
-        </span><span class="kw">let </span>n = u64::from_be_bytes(len_buf);
-        <span class="macro">assert_eq!</span>(n, len);
+            <span class="kw">let </span>n = u64::from_be_bytes(response_vec[<span class="number">0</span>..<span class="number">8</span>].try_into().unwrap());
 
-        <span class="comment">// 7. Read the data
-        </span><span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">vec!</span>[<span class="number">0_u8</span>; n <span class="kw">as </span>usize];
-        <span class="kw">let </span><span class="kw-2">mut </span>h = c0.<span class="number">0</span>.reader.take(len);
-        <span class="kw">let </span>r = h.read(<span class="kw-2">&amp;mut </span>data);
-        <span class="macro">assert!</span>(r.is_ok());
+            <span class="kw">let </span>data = response_vec[<span class="number">8</span>..(n + <span class="number">8</span>) <span class="kw">as </span>usize].to_vec();
+            (n, data)
+        });
 
-        <span class="comment">// 8. Check they are equal to the message
-        </span><span class="macro">assert_eq!</span>(data, msg2);
+        <span class="comment">// Retrieve the data from the reader
+        </span><span class="kw">let </span>(n, data) = reader_joiner.join().unwrap();
+
+        <span class="comment">// Ensure that the writer has completed
+        </span>writer_joiner.join().unwrap();
+
+        <span class="comment">// Check that the responses are equal
+        </span><span class="macro">assert_eq!</span>(n, len);
+        <span class="macro">assert_eq!</span>(data, msg2);
     }
 }
 </code></pre></div></section></main></body></html>
