@@ -3323,6 +3323,26 @@
 <a href="#3323" id="3323">3323</a>
 <a href="#3324" id="3324">3324</a>
 <a href="#3325" id="3325">3325</a>
+<a href="#3326" id="3326">3326</a>
+<a href="#3327" id="3327">3327</a>
+<a href="#3328" id="3328">3328</a>
+<a href="#3329" id="3329">3329</a>
+<a href="#3330" id="3330">3330</a>
+<a href="#3331" id="3331">3331</a>
+<a href="#3332" id="3332">3332</a>
+<a href="#3333" id="3333">3333</a>
+<a href="#3334" id="3334">3334</a>
+<a href="#3335" id="3335">3335</a>
+<a href="#3336" id="3336">3336</a>
+<a href="#3337" id="3337">3337</a>
+<a href="#3338" id="3338">3338</a>
+<a href="#3339" id="3339">3339</a>
+<a href="#3340" id="3340">3340</a>
+<a href="#3341" id="3341">3341</a>
+<a href="#3342" id="3342">3342</a>
+<a href="#3343" id="3343">3343</a>
+<a href="#3344" id="3344">3344</a>
+<a href="#3345" id="3345">3345</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3639,6 +3659,8 @@
     Add(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
     Mul(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
     Sub(Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
+    Double(Box&lt;Operations&lt;T&gt;&gt;),
+    Square(Box&lt;Operations&lt;T&gt;&gt;),
 }
 
 <span class="kw">impl</span>&lt;T&gt; From&lt;T&gt; <span class="kw">for </span>Operations&lt;T&gt; {
@@ -3719,6 +3741,16 @@
                 x.to_polish(res);
                 res.push(PolishToken::Pow(<span class="kw-2">*</span>n))
             }
+            Operations::Double(x) =&gt; {
+                x.to_polish(res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Add);
+            }
+            Operations::Square(x) =&gt; {
+                x.to_polish(res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Mul);
+            }
         }
     }
 }
@@ -3758,6 +3790,8 @@
             Mul(x, y) =&gt; x.value(c, chals) * y.value(c, chals),
             Add(x, y) =&gt; x.value(c, chals) + y.value(c, chals),
             Sub(x, y) =&gt; x.value(c, chals) - y.value(c, chals),
+            Double(x) =&gt; x.value(c, chals).double(),
+            Square(x) =&gt; x.value(c, chals).square(),
         }
     }
 }
@@ -5986,6 +6020,8 @@
             Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(), y.ocaml()),
             Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.ocaml(), y.ocaml()),
             Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.ocaml(), y.ocaml()),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.ocaml()),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.ocaml()),
         }
     }
 
@@ -5997,6 +6033,8 @@
             Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.latex(), y.latex()),
             Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} \\cdot {})&quot;</span>, x.latex(), y.latex()),
             Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.latex(), y.latex()),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;2 ({})&quot;</span>, x.latex()),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({})^2&quot;</span>, x.latex()),
         }
     }
 
@@ -6008,6 +6046,8 @@
             Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(), y.text()),
             Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.text(), y.text()),
             Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.text(), y.text()),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.text()),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.text()),
         }
     }
 }
