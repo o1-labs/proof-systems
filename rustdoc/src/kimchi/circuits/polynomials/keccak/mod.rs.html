@@ -414,6 +414,16 @@
 <a href="#414" id="414">414</a>
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak hash module
 </span><span class="kw">pub mod </span>circuitgates;
 <span class="kw">pub mod </span>constants;
@@ -621,15 +631,11 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
 
+    <span class="kw">use </span>rand::thread_rng;
     <span class="kw">use </span>rand::{rngs::StdRng, Rng};
     <span class="kw">use </span>rand_core::SeedableRng;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
-    <span class="kw">const </span>RNG_SEED: [u8; <span class="number">32</span>] = [
-        <span class="number">211</span>, <span class="number">31</span>, <span class="number">143</span>, <span class="number">75</span>, <span class="number">29</span>, <span class="number">255</span>, <span class="number">0</span>, <span class="number">126</span>, <span class="number">237</span>, <span class="number">193</span>, <span class="number">86</span>, <span class="number">160</span>, <span class="number">1</span>, <span class="number">90</span>, <span class="number">131</span>, <span class="number">221</span>, <span class="number">186</span>, <span class="number">168</span>, <span class="number">4</span>, <span class="number">95</span>, <span class="number">50</span>,
-        <span class="number">48</span>, <span class="number">89</span>, <span class="number">29</span>, <span class="number">13</span>, <span class="number">250</span>, <span class="number">215</span>, <span class="number">172</span>, <span class="number">130</span>, <span class="number">24</span>, <span class="number">164</span>, <span class="number">162</span>,
-    ];
 
     <span class="attr">#[test]
     </span><span class="comment">// Shows that the expansion of the 16-bit dense quarters into 64-bit sparse quarters
@@ -680,7 +686,9 @@
     <span class="attr">#[test]
     </span><span class="comment">// Tests that the shifts are computed correctly
     </span><span class="kw">fn </span>test_shifts() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>sparse = Keccak::sparse(word);
         <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>sparse);
@@ -695,7 +703,9 @@
     <span class="attr">#[test]
     </span><span class="comment">// Checks that reset function returns shift0, as the first positions of the shifts vector
     </span><span class="kw">fn </span>test_reset() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>Keccak::sparse(word));
         <span class="kw">let </span>reset = Keccak::reset(<span class="kw-2">&amp;</span>shifts);
@@ -709,7 +719,9 @@
     <span class="attr">#[test]
     </span><span class="comment">// Checks that one can obtain the original word from the resets of the expanded word
     </span><span class="kw">fn </span>test_collapse() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>dense = Keccak::compose(<span class="kw-2">&amp;</span>Keccak::collapse(<span class="kw-2">&amp;</span>Keccak::reset(<span class="kw-2">&amp;</span>Keccak::shift(
             <span class="kw-2">&amp;</span>Keccak::sparse(word),
@@ -721,7 +733,9 @@
     </span><span class="comment">// Checks that concatenating the maximum number of carries (15 per bit) result
     // in the same original dense word, and just one more carry results in a different word
     </span><span class="kw">fn </span>test_max_carries() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
         <span class="kw">let </span>word: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>carries = <span class="number">0xEEEE</span>;
         <span class="comment">// add a few carry bits to the canonical representation
@@ -742,7 +756,9 @@
     </span><span class="comment">// Tests that the XOR can be represented in the 4i-th
     // positions of the addition of sparse representations
     </span><span class="kw">fn </span>test_sparse_xor() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
         <span class="kw">let </span>a: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>b: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>xor = a ^ b;
@@ -765,7 +781,9 @@
     </span><span class="comment">// Tests that the AND can be represented in the (4i+1)-th positions of the
     // addition of canonical sparse representations
     </span><span class="kw">fn </span>test_sparse_and() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
         <span class="kw">let </span>a: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>b: u64 = rng.gen_range(<span class="number">0</span>..<span class="number">2u128</span>.pow(<span class="number">64</span>)) <span class="kw">as </span>u64;
         <span class="kw">let </span>and = a &amp; b;
@@ -788,7 +806,9 @@
     </span><span class="comment">// Tests that the NOT can be represented as subtraction with the expansion of
     // the 16-bit dense quarter.
     </span><span class="kw">fn </span>test_sparse_not() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">&quot;Seed: {:?}&quot;</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
         <span class="kw">let </span>word = rng.gen_range(<span class="number">0</span>..<span class="number">2u64</span>.pow(<span class="number">16</span>));
         <span class="kw">let </span>expanded = Keccak::expand(word);
 
