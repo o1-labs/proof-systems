@@ -24,6 +24,57 @@ pub struct ReadWrite<R, W> {
 
 pub struct RW(pub ReadWrite<PipeReader, PipeWriter>);
 
+// Here, we implement `os_pipe::pipe` in a way that allows us to pass flags. In particular, we
+// don't pass the `CLOEXEC` flag, because we want these pipes to survive an exec, and we set
+// `DIRECT` to handle writes as single atomic operations (up to splitting at the buffer size).
+// This fixes the IPC hangs. This is bad, but the hang is worse.
+
+#[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "haiku", windows)))]
+fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
+    let mut fds: [libc::c_int; 2] = [0; 2];
+    let res = unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_DIRECT) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    unsafe {
+        use std::os::fd::FromRawFd;
+        Ok((
+            PipeReader::from_raw_fd(fds[0]),
+            PipeWriter::from_raw_fd(fds[1]),
+        ))
+    }
+}
+
+#[cfg(any(target_os = "ios", target_os = "macos", target_os = "haiku"))]
+pub fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
+    let mut fds: [libc::c_int; 2] = [0; 2];
+    let res = unsafe { libc::pipe(fds.as_mut_ptr()) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    // It appears that Mac and friends don't have DIRECT. Oh well. Don't use a Mac.
+    let res = unsafe { libc::fcntl(fds[0], libc::F_SETFD, 0) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let res = unsafe { libc::fcntl(fds[1], libc::F_SETFD, 0) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    unsafe {
+        use std::os::fd::FromRawFd;
+        Ok((
+            PipeReader::from_raw_fd(fds[0]),
+            PipeWriter::from_raw_fd(fds[1]),
+        ))
+    }
+}
+
+#[cfg(windows)]
+pub fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
+    os_pipe::pipe()
+}
+
 // Create bidirectional channel between A and B
 //
 // Schematically we create 2 unidirectional pipes and creates 2 structures made
@@ -34,8 +85,8 @@ pub struct RW(pub ReadWrite<PipeReader, PipeWriter>);
 //     |     aw  ----> br    |
 //
 pub fn create_bidirectional_channel() -> Option<(RW, RW)> {
-    let (ar, bw) = os_pipe::pipe().ok()?;
-    let (br, aw) = os_pipe::pipe().ok()?;
+    let (ar, bw) = create_pipe().ok()?;
+    let (br, aw) = create_pipe().ok()?;
     Some((
         RW(ReadWrite {
             reader: ar,
