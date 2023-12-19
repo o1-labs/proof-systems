@@ -317,6 +317,7 @@ pub enum Operations<T> {
     Double(Box<Operations<T>>),
     Square(Box<Operations<T>>),
     Cache(CacheId, Box<Operations<T>>),
+    IfFeature(FeatureFlag, Box<Operations<T>>, Box<Operations<T>>),
 }
 
 impl<T> From<T> for Operations<T> {
@@ -430,6 +431,33 @@ impl<F, Column, T: ToPolish<F, Column>> ToPolish<F, Column> for Operations<T> {
                     }
                 }
             }
+            Operations::IfFeature(feature, if_true, if_false) => {
+                {
+                    // True branch
+                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    res.push(tok);
+                    let len_before = res.len();
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is off. */
+                    let mut cache = cache.clone();
+                    if_true.to_polish(&mut cache, res);
+                    let len_after = res.len();
+                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                }
+
+                {
+                    // False branch
+                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    res.push(tok);
+                    let len_before = res.len();
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is on. */
+                    let mut cache = cache.clone();
+                    if_false.to_polish(&mut cache, res);
+                    let len_after = res.len();
+                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                }
+            }
         }
     }
 }
@@ -475,6 +503,7 @@ impl<F: Field> ConstantExpr<F> {
                 // TODO: Use cache ID
                 x.value(c, chals)
             }
+            IfFeature(_flag, _if_true, _if_false) => todo!(),
         }
     }
 }
@@ -2758,6 +2787,14 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            IfFeature(feature, e1, e2) => {
+                format!(
+                    "if_feature({:?}, (fun () -> {}), (fun () -> {}))",
+                    feature,
+                    e1.ocaml(cache),
+                    e2.ocaml(cache)
+                )
+            }
         }
     }
 
@@ -2782,6 +2819,7 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
 
@@ -2806,6 +2844,7 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
 }
