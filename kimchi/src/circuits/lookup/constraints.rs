@@ -1,7 +1,7 @@
 use crate::{
     circuits::{
         berkeley_columns::Column,
-        expr::{prologue::*, ConstantExpr, RowOffset},
+        expr::{prologue::*, ChallengeTerm, ConstantExpr, ConstantTerm, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -393,8 +393,10 @@ pub fn constraints<F: FftField>(
     let column = |col: Column| E::cell(col, Curr);
 
     // gamma * (beta + 1)
-    let gammabeta1 =
-        E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
+    let gammabeta1 = E::<F>::Constant(
+        ConstantExpr::Challenge(ChallengeTerm::Gamma)
+            * (ConstantExpr::Challenge(ChallengeTerm::Beta) + ConstantExpr::one()),
+    );
 
     // the numerator part in the multiset check of plookup
     let numerator = {
@@ -421,7 +423,7 @@ pub fn constraints<F: FftField>(
             E::one() - lookup_indicator
         };
 
-        let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
+        let joint_combiner = E::Constant(ConstantExpr::Challenge(ChallengeTerm::JointCombiner));
         let table_id_combiner =
             // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
             // needed.
@@ -444,16 +446,19 @@ pub fn constraints<F: FftField>(
                     .dummy_lookup
                     .entry
                     .iter()
-                    .map(|x| E::Constant(ConstantExpr::Literal(*x)))
+                    .map(|x| E::Constant(ConstantExpr::Constant(ConstantTerm::Literal(*x))))
                     .collect(),
-                table_id: E::Constant(ConstantExpr::Literal(configuration.dummy_lookup.table_id)),
+                table_id: E::Constant(ConstantExpr::Constant(ConstantTerm::Literal(
+                    configuration.dummy_lookup.table_id,
+                ))),
             };
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
         };
 
         // (1 + beta)^max_per_row
         let beta1_per_row: E<F> = {
-            let beta1 = E::Constant(ConstantExpr::one() + ConstantExpr::Beta);
+            let beta1 =
+                E::Constant(ConstantExpr::one() + ConstantExpr::Challenge(ChallengeTerm::Beta));
             // Compute beta1.pow(lookup_info.max_per_row)
             let mut res = beta1.clone();
             for i in 1..lookup_info.max_per_row {
@@ -475,7 +480,8 @@ pub fn constraints<F: FftField>(
         // as we need to multiply the denominator with this eventually
         let dummy_padding = |spec_len| {
             let mut res = E::one();
-            let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup.clone();
+            let dummy =
+                E::Constant(ConstantExpr::Challenge(ChallengeTerm::Gamma)) + dummy_lookup.clone();
             for i in spec_len..lookup_info.max_per_row {
                 let mut dummy_used = dummy.clone();
                 if generate_feature_flags {
@@ -508,7 +514,7 @@ pub fn constraints<F: FftField>(
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
                 .map(|j| {
-                    E::Constant(ConstantExpr::Gamma)
+                    E::Constant(ConstantExpr::Challenge(ChallengeTerm::Gamma))
                         + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
                 })
                 .fold(padding, |acc: E<F>, x| acc * x)
