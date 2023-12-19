@@ -3146,6 +3146,14 @@
 <a href="#3146" id="3146">3146</a>
 <a href="#3147" id="3147">3147</a>
 <a href="#3148" id="3148">3148</a>
+<a href="#3149" id="3149">3149</a>
+<a href="#3150" id="3150">3150</a>
+<a href="#3151" id="3151">3151</a>
+<a href="#3152" id="3152">3152</a>
+<a href="#3153" id="3153">3153</a>
+<a href="#3154" id="3154">3154</a>
+<a href="#3155" id="3155">3155</a>
+<a href="#3156" id="3156">3156</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3436,32 +3444,40 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Copy&gt; ConstantExpr&lt;F&gt; {
-    <span class="kw">fn </span>to_polish_&lt;Column&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;) {
+<span class="kw">pub trait </span>ToPolish&lt;F, Column&gt; {
+    <span class="kw">fn </span>to_polish(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;);
+}
+
+<span class="kw">impl</span>&lt;F: Copy, Column&gt; ToPolish&lt;F, Column&gt; <span class="kw">for </span>ConstantExprInner&lt;F&gt; {
+    <span class="kw">fn </span>to_polish(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;) {
         <span class="kw">match </span><span class="self">self </span>{
-            ConstantExpr::Atom(ConstantExprInner::Challenge(chal)) =&gt; {
-                res.push(PolishToken::Challenge(<span class="kw-2">*</span>chal))
-            }
-            ConstantExpr::Atom(ConstantExprInner::Constant(c)) =&gt; {
-                res.push(PolishToken::Constant(<span class="kw-2">*</span>c))
-            }
-            ConstantExpr::Add(x, y) =&gt; {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            ConstantExprInner::Challenge(chal) =&gt; res.push(PolishToken::Challenge(<span class="kw-2">*</span>chal)),
+            ConstantExprInner::Constant(c) =&gt; res.push(PolishToken::Constant(<span class="kw-2">*</span>c)),
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;F, Column, T: ToPolish&lt;F, Column&gt;&gt; ToPolish&lt;F, Column&gt; <span class="kw">for </span>Operations&lt;T&gt; {
+    <span class="kw">fn </span>to_polish(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;) {
+        <span class="kw">match </span><span class="self">self </span>{
+            Operations::Atom(atom) =&gt; atom.to_polish(res),
+            Operations::Add(x, y) =&gt; {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Add)
             }
-            ConstantExpr::Mul(x, y) =&gt; {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            Operations::Mul(x, y) =&gt; {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Mul)
             }
-            ConstantExpr::Sub(x, y) =&gt; {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            Operations::Sub(x, y) =&gt; {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Sub)
             }
-            ConstantExpr::Pow(x, n) =&gt; {
-                x.to_polish_(res);
+            Operations::Pow(x, n) =&gt; {
+                x.to_polish(res);
                 res.push(PolishToken::Pow(<span class="kw-2">*</span>n))
             }
         }
@@ -4576,7 +4592,7 @@
                 res.push(PolishToken::Pow(<span class="kw-2">*</span>d))
             }
             Expr::Constant(c) =&gt; {
-                c.to_polish_(res);
+                c.to_polish(res);
             }
             Expr::Cell(v) =&gt; res.push(PolishToken::Cell(<span class="kw-2">*</span>v)),
             Expr::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
