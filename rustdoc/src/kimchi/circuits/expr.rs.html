@@ -3467,6 +3467,45 @@
 <a href="#3467" id="3467">3467</a>
 <a href="#3468" id="3468">3468</a>
 <a href="#3469" id="3469">3469</a>
+<a href="#3470" id="3470">3470</a>
+<a href="#3471" id="3471">3471</a>
+<a href="#3472" id="3472">3472</a>
+<a href="#3473" id="3473">3473</a>
+<a href="#3474" id="3474">3474</a>
+<a href="#3475" id="3475">3475</a>
+<a href="#3476" id="3476">3476</a>
+<a href="#3477" id="3477">3477</a>
+<a href="#3478" id="3478">3478</a>
+<a href="#3479" id="3479">3479</a>
+<a href="#3480" id="3480">3480</a>
+<a href="#3481" id="3481">3481</a>
+<a href="#3482" id="3482">3482</a>
+<a href="#3483" id="3483">3483</a>
+<a href="#3484" id="3484">3484</a>
+<a href="#3485" id="3485">3485</a>
+<a href="#3486" id="3486">3486</a>
+<a href="#3487" id="3487">3487</a>
+<a href="#3488" id="3488">3488</a>
+<a href="#3489" id="3489">3489</a>
+<a href="#3490" id="3490">3490</a>
+<a href="#3491" id="3491">3491</a>
+<a href="#3492" id="3492">3492</a>
+<a href="#3493" id="3493">3493</a>
+<a href="#3494" id="3494">3494</a>
+<a href="#3495" id="3495">3495</a>
+<a href="#3496" id="3496">3496</a>
+<a href="#3497" id="3497">3497</a>
+<a href="#3498" id="3498">3498</a>
+<a href="#3499" id="3499">3499</a>
+<a href="#3500" id="3500">3500</a>
+<a href="#3501" id="3501">3501</a>
+<a href="#3502" id="3502">3502</a>
+<a href="#3503" id="3503">3503</a>
+<a href="#3504" id="3504">3504</a>
+<a href="#3505" id="3505">3505</a>
+<a href="#3506" id="3506">3506</a>
+<a href="#3507" id="3507">3507</a>
+<a href="#3508" id="3508">3508</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3786,6 +3825,7 @@
     Double(Box&lt;Operations&lt;T&gt;&gt;),
     Square(Box&lt;Operations&lt;T&gt;&gt;),
     Cache(CacheId, Box&lt;Operations&lt;T&gt;&gt;),
+    IfFeature(FeatureFlag, Box&lt;Operations&lt;T&gt;&gt;, Box&lt;Operations&lt;T&gt;&gt;),
 }
 
 <span class="kw">impl</span>&lt;T&gt; From&lt;T&gt; <span class="kw">for </span>Operations&lt;T&gt; {
@@ -3899,6 +3939,33 @@
                     }
                 }
             }
+            Operations::IfFeature(feature, if_true, if_false) =&gt; {
+                {
+                    <span class="comment">// True branch
+                    </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
+                    res.push(tok);
+                    <span class="kw">let </span>len_before = res.len();
+                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    when the feature flag is off. */
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
+                    if_true.to_polish(<span class="kw-2">&amp;mut </span>cache, res);
+                    <span class="kw">let </span>len_after = res.len();
+                    res[len_before - <span class="number">1</span>] = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, len_after - len_before);
+                }
+
+                {
+                    <span class="comment">// False branch
+                    </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
+                    res.push(tok);
+                    <span class="kw">let </span>len_before = res.len();
+                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    when the feature flag is on. */
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
+                    if_false.to_polish(<span class="kw-2">&amp;mut </span>cache, res);
+                    <span class="kw">let </span>len_after = res.len();
+                    res[len_before - <span class="number">1</span>] = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, len_after - len_before);
+                }
+            }
         }
     }
 }
@@ -3944,6 +4011,7 @@
                 <span class="comment">// TODO: Use cache ID
                 </span>x.value(c, chals)
             }
+            IfFeature(_flag, _if_true, _if_false) =&gt; <span class="macro">todo!</span>(),
         }
     }
 }
@@ -6227,6 +6295,14 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
+            IfFeature(feature, e1, e2) =&gt; {
+                <span class="macro">format!</span>(
+                    <span class="string">&quot;if_feature({:?}, (fun () -&gt; {}), (fun () -&gt; {}))&quot;</span>,
+                    feature,
+                    e1.ocaml(cache),
+                    e2.ocaml(cache)
+                )
+            }
         }
     }
 
@@ -6251,6 +6327,7 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
         }
     }
 
@@ -6275,6 +6352,7 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
         }
     }
 }
