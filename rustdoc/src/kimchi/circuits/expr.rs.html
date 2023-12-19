@@ -3320,6 +3320,9 @@
 <a href="#3320" id="3320">3320</a>
 <a href="#3321" id="3321">3321</a>
 <a href="#3322" id="3322">3322</a>
+<a href="#3323" id="3323">3323</a>
+<a href="#3324" id="3324">3324</a>
+<a href="#3325" id="3325">3325</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3720,20 +3723,23 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field&gt; ConstantExpr&lt;F&gt; {
+<span class="kw">impl</span>&lt;T: Literal&gt; Operations&lt;T&gt;
+<span class="kw">where
+    </span>T::F: Field,
+{
     <span class="doccomment">/// Exponentiate a constant expression.
     </span><span class="kw">pub fn </span>pow(<span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>ConstantExprInner::<span class="kw-2">*</span>;
-        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">if </span>p == <span class="number">0 </span>{
-            <span class="kw">return </span>ConstantTerm::Literal(F::one()).into();
+            <span class="kw">return </span><span class="self">Self</span>::literal(T::F::one());
         }
-        <span class="kw">match </span><span class="self">self </span>{
-            Atom(Constant(ConstantTerm::Literal(x))) =&gt; ConstantTerm::Literal(x.pow([p])).into(),
-            x =&gt; Pow(Box::new(x), p),
+        <span class="kw">match </span><span class="self">self</span>.to_literal() {
+            <span class="prelude-val">Ok</span>(l) =&gt; <span class="self">Self</span>::literal(&lt;T::F <span class="kw">as </span>Field&gt;::pow(<span class="kw-2">&amp;</span>l, [p])),
+            <span class="prelude-val">Err</span>(x) =&gt; <span class="self">Self</span>::Pow(Box::new(x), p),
         }
     }
+}
 
+<span class="kw">impl</span>&lt;F: Field&gt; ConstantExpr&lt;F&gt; {
     <span class="doccomment">/// Evaluate the given constant expression to a field element.
     </span><span class="kw">pub fn </span>value(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;) -&gt; F {
         <span class="kw">use </span>ConstantExprInner::<span class="kw-2">*</span>;
