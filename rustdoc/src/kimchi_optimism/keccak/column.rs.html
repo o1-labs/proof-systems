@@ -214,6 +214,21 @@
 <a href="#214" id="214">214</a>
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::Zero;
@@ -229,6 +244,9 @@
     </span>FlagRoot,                                 <span class="comment">// Coeff Root = 0 | 1
     </span>FlagPad,                                  <span class="comment">// Coeff Pad = 0 | 1
     </span>FlagLength,                               <span class="comment">// Coeff Length 0 | 1 .. 136
+    </span>TwoToPad,                                 <span class="comment">// 2^PadLength
+    </span>FlagsBytes(usize),                        <span class="comment">// 136 boolean values
+    </span>PadSuffix(usize),                         <span class="comment">// 5 values with padding suffix
     </span>RoundConstants(usize),                    <span class="comment">// Round constants
     </span>ThetaStateA(usize, usize, usize),         <span class="comment">// Round Curr[0..100)
     </span>ThetaShiftsC(usize, usize, usize),        <span class="comment">// Round Curr[100..180)
@@ -260,6 +278,9 @@
     </span><span class="kw">pub </span>flag_root: T,                <span class="comment">// Coeff Root = 0 | 1
     </span><span class="kw">pub </span>flag_pad: T,                 <span class="comment">// Coeff Pad = 0 | 1
     </span><span class="kw">pub </span>flag_length: T,              <span class="comment">// Coeff Length 0 | 1 .. 136
+    </span><span class="kw">pub </span>two_to_pad: T,               <span class="comment">// 2^PadLength
+    </span><span class="kw">pub </span>flags_bytes: Vec&lt;T&gt;,         <span class="comment">// 136 boolean values
+    </span><span class="kw">pub </span>pad_suffix: Vec&lt;T&gt;,          <span class="comment">// 5 values with padding suffix
     </span><span class="kw">pub </span>round_constants: Vec&lt;T&gt;,     <span class="comment">// Round constants
     </span><span class="kw">pub </span>theta_state_a: Vec&lt;T&gt;,       <span class="comment">// Round Curr[0..100)
     </span><span class="kw">pub </span>theta_shifts_c: Vec&lt;T&gt;,      <span class="comment">// Round Curr[100..180)
@@ -292,6 +313,9 @@
             flag_root: T::zero(),
             flag_pad: T::zero(),
             flag_length: T::zero(),
+            two_to_pad: T::zero(),
+            flags_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">136</span>],
+            pad_suffix: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
             round_constants: <span class="macro">vec!</span>[T::zero(); <span class="number">4</span>],
             theta_state_a: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
             theta_shifts_c: <span class="macro">vec!</span>[T::zero(); <span class="number">80</span>],
@@ -328,6 +352,9 @@
             KeccakColumn::FlagRoot =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_root,
             KeccakColumn::FlagPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_pad,
             KeccakColumn::FlagLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_length,
+            KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.two_to_pad,
+            KeccakColumn::FlagsBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flags_bytes[i],
+            KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pad_suffix[i],
             KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.round_constants[q],
             KeccakColumn::ThetaStateA(y, x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.theta_state_a[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)],
             KeccakColumn::ThetaShiftsC(i, x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.theta_shifts_c[grid_index(<span class="number">80</span>, i, <span class="number">0</span>, x, q)],
@@ -380,6 +407,9 @@
             KeccakColumn::FlagRoot =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_root,
             KeccakColumn::FlagPad =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_pad,
             KeccakColumn::FlagLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_length,
+            KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.two_to_pad,
+            KeccakColumn::FlagsBytes(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flags_bytes[i],
+            KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_suffix[i],
             KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.round_constants[q],
             KeccakColumn::ThetaStateA(y, x, q) =&gt; {
                 <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_state_a[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
