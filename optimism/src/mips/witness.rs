@@ -221,7 +221,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_write_index_page_idx = self.get_memory_access_page_index(page);
         let value = self.memory_write_index[memory_write_index_page_idx].1[page_address];
-        self.write_column(output, value.into());
+        self.write_column(output, value);
         value
     }
 
@@ -247,7 +247,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let x: u32 = (*x).try_into().unwrap();
         let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res = res as u64;
-        self.write_column(position, res.into());
+        self.write_column(position, res);
         res
     }
 
@@ -295,7 +295,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         let res = if *x == 0 { 1 } else { 0 };
-        self.write_column(position, res.into());
+        self.write_column(position, res);
         res
     }
 
@@ -308,7 +308,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.write_column(position, 0);
             0
         } else {
-            self.write_field_column(position, Fp::from(*x as u64).inverse().unwrap());
+            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
             1 // Placeholder value
         }
     }
@@ -351,7 +351,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let y: u32 = (*y).try_into().unwrap();
         let res = x & y;
         let res = res as u64;
-        self.write_column(position, res.into());
+        self.write_column(position, res);
         res
     }
 
@@ -379,7 +379,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let y: u32 = (*y).try_into().unwrap();
         let res = x | y;
         let res = res as u64;
-        self.write_column(position, res.into());
+        self.write_column(position, res);
         res
     }
 
@@ -393,7 +393,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let y: u32 = (*y).try_into().unwrap();
         let res = x ^ y;
         let res = res as u64;
-        self.write_column(position, res.into());
+        self.write_column(position, res);
         res
     }
 
@@ -534,7 +534,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        self.write_column(position, (*x).into());
+        self.write_column(position, *x);
         *x
     }
 
@@ -607,7 +607,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             }
         }
-        self.write_column(pos, actual_read_len.into());
+        self.write_column(pos, actual_read_len);
         actual_read_len
     }
 
@@ -971,7 +971,7 @@ impl<Fp: Field> Env<Fp> {
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {
-        let m: u64 = self.instruction_counter as u64;
+        let m: u64 = self.instruction_counter;
         match at {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
@@ -1030,7 +1030,7 @@ impl<Fp: Field> Env<Fp> {
             let s: State = State {
                 pc: self.registers.current_instruction_pointer,
                 next_pc: self.registers.next_instruction_pointer,
-                step: self.instruction_counter as u64,
+                step: self.instruction_counter,
                 registers: self.registers.general_purpose,
                 lo: self.registers.lo,
                 hi: self.registers.hi,
