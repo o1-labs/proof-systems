@@ -5,7 +5,10 @@ use crate::circuits::{
 };
 use ark_ff::{PrimeField, SquareRootField};
 
-use super::{expand_word, padded_length, RATE_IN_BYTES, RC, ROUNDS};
+use super::{
+    constants::{RATE_IN_BYTES, ROUNDS},
+    Keccak, RC,
+};
 
 const SPONGE_COEFFS: usize = 336;
 
@@ -22,7 +25,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
     /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, message of a given bytelength
     fn create_keccak(new_row: usize, bytelength: usize) -> Vec<Self> {
-        let padded_len = padded_length(bytelength);
+        let padded_len = Keccak::padded_length(bytelength);
         let extra_bytes = padded_len - bytelength;
         let num_blocks = padded_len / RATE_IN_BYTES;
         let mut gates = vec![];
@@ -84,7 +87,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         CircuitGate {
             typ: GateType::KeccakRound,
             wires: Wire::for_row(new_row),
-            coeffs: expand_word(RC[round]),
+            coeffs: Keccak::expand_word(RC[round]),
         }
     }
 }
