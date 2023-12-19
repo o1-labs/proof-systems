@@ -260,10 +260,6 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -377,12 +373,10 @@
             }
             <span class="comment">// Check that the padding is located at the end of the message
             // TODO: get power of two from lookup table
-            </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::constant(Fp::zero()), |acc, i| {
-                acc * <span class="self">Self</span>::constant(Fp::from(<span class="number">2u8</span>)) + <span class="self">self</span>.sponge_bytes(i)
+            </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
+                acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_bytes(i)
             });
-            <span class="self">self</span>.constrain(
-                <span class="self">self</span>.pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::constant(Fp::one()) - pad_at_end),
-            );
+            <span class="self">self</span>.constrain(<span class="self">self</span>.pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
             <span class="comment">// Check that the padding value is correct
             // TODO: get suffix from lookup table
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">5 </span>{
@@ -397,16 +391,14 @@
             // self.round() = [0..24)
 
             // Define vectors storing expressions which are not in the witness layout for efficiency
-            </span><span class="kw">let </span><span class="kw-2">mut </span>state_c: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM];
-            <span class="kw">let </span><span class="kw-2">mut </span>state_d: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM];
+            </span><span class="kw">let </span><span class="kw-2">mut </span>state_c: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
+            <span class="kw">let </span><span class="kw-2">mut </span>state_d: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
             <span class="kw">let </span><span class="kw-2">mut </span>state_e: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM]; DIM];
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
             <span class="kw">let </span><span class="kw-2">mut </span>state_b: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM]; DIM];
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
             <span class="kw">let </span><span class="kw-2">mut </span>state_f: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::constant(Fp::zero()); QUARTERS]; DIM]; DIM];
+                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
 
             <span class="comment">// STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
             </span><span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
@@ -487,7 +479,7 @@
             </span><span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                 <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
                     <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
-                        <span class="kw">let </span>not = <span class="self">Self</span>::constant(Fp::from(<span class="number">0x1111111111111111u64</span>))
+                        <span class="kw">let </span>not = <span class="self">Self</span>::constant(<span class="number">0x1111111111111111u64</span>)
                             - <span class="self">self</span>.shifts_b(<span class="number">0</span>, y, (x + <span class="number">1</span>) % DIM, q);
                         <span class="kw">let </span>sum = not + <span class="self">self</span>.shifts_b(<span class="number">0</span>, y, (x + <span class="number">2</span>) % DIM, q);
                         <span class="kw">let </span>and = <span class="self">self</span>.shifts_sum(<span class="number">1</span>, y, x, q);

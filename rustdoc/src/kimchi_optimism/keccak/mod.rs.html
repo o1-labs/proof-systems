@@ -62,6 +62,11 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS},
@@ -122,7 +127,12 @@
         + Clone;
     <span class="kw">type </span>Fp: std::ops::Neg&lt;Output = <span class="self">Self</span>::Fp&gt;;
 
-    <span class="kw">fn </span>constant(x: <span class="self">Self</span>::Fp) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>constant(x: u64) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>constant_field(x: <span class="self">Self</span>::Fp) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>zero() -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>one() -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>two() -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable;
 }

@@ -433,6 +433,19 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -440,6 +453,7 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::Lookup;
 <span class="kw">use </span>ark_ff::{Field, One};
+<span class="kw">use </span>kimchi::circuits::expr::Operations;
 <span class="kw">use </span>kimchi::{
     auto_clone_array,
     circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::ROUNDS},
@@ -471,11 +485,11 @@
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; KeccakEnv&lt;Fp&gt; {
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: u64) {
-        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant(value.into());
+        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant(value);
     }
 
     <span class="kw">pub fn </span>write_column_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: Fp) {
-        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant(value);
+        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant_field(value);
     }
 
     <span class="kw">pub fn </span>null_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -546,11 +560,23 @@
     <span class="kw">type </span>Column = KeccakColumn;
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
     <span class="kw">type </span>Fp = Fp;
-    <span class="kw">fn </span>constant(x: <span class="self">Self</span>::Fp) -&gt; <span class="self">Self</span>::Variable {
-        Literal(x).into()
+    <span class="kw">fn </span>constant(x: u64) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">Self</span>::constant_field(<span class="self">Self</span>::Fp::from(x))
+    }
+    <span class="kw">fn </span>constant_field(x: <span class="self">Self</span>::Fp) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">Self</span>::Variable::constant(Operations::from(Literal(x)))
+    }
+    <span class="kw">fn </span>zero() -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">Self</span>::constant(<span class="number">0</span>)
+    }
+    <span class="kw">fn </span>one() -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">Self</span>::constant(<span class="number">1</span>)
+    }
+    <span class="kw">fn </span>two() -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">Self</span>::constant(<span class="number">2</span>)
     }
     <span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::constant(<span class="self">Self</span>::Fp::two_pow(x))
+        <span class="self">Self</span>::constant_field(<span class="self">Self</span>::Fp::two_pow(x))
     }
 }
 
@@ -773,8 +799,8 @@
         <span class="kw">let </span>pad = bytes
             .iter()
             .zip(flags)
-            .fold(<span class="self">Self</span>::constant(Fp::zero()), |acc, (byte, flag)| {
-                acc + byte.clone() * flag * <span class="self">Self</span>::constant(<span class="self">Self</span>::Fp::from(<span class="number">256u16</span>))
+            .fold(<span class="self">Self</span>::zero(), |acc, (byte, flag)| {
+                acc + byte.clone() * flag * <span class="self">Self</span>::two_pow(<span class="number">8</span>)
             });
 
         pad
