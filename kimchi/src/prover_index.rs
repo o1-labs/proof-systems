@@ -69,8 +69,7 @@ where
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) =
-            expr_linearization(Some(&cs.feature_flags), true, cs.zk_rows as usize);
+        let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
