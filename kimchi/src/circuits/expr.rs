@@ -57,17 +57,19 @@ pub enum ExprError<Column> {
     MissingRuntime,
 }
 
-/// The collection of constants required to evaluate an `Expr`.
-pub struct Constants<F: 'static> {
+pub struct Challenges<F> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
     /// The challenge beta from the PLONK IOP.
     pub beta: F,
     /// The challenge gamma from the PLONK IOP.
     pub gamma: F,
-    /// The challenge joint_combiner which is used to combine
-    /// joint lookup tables.
+    /// The challenge joint_combiner which is used to combine joint lookup tables.
     pub joint_combiner: Option<F>,
+}
+
+/// The collection of constants required to evaluate an `Expr`.
+pub struct Constants<F: 'static> {
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
@@ -114,6 +116,8 @@ pub struct Environment<'a, F: FftField> {
     pub l0_1: F,
     /// Constant values required
     pub constants: Constants<F>,
+    /// Challenges from the IOP.
+    pub challenges: Challenges<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
@@ -125,6 +129,7 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
     fn get_domain(&self, d: Domain) -> D<F>;
     fn get_constants(&self) -> &Constants<F>;
+    fn get_challenges(&self) -> &Challenges<F>;
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
     fn l0_1(&self) -> F;
 }
@@ -164,6 +169,10 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
 
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
+    }
+
+    fn get_challenges(&self) -> &Challenges<F> {
+        &self.challenges
     }
 
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
@@ -217,61 +226,102 @@ pub struct Variable<Column> {
     pub row: CurrOrNext,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-/// An arithmetic expression over
-///
-/// - the operations *, +, -, ^
-/// - the constants `alpha`, `beta`, `gamma`, `joint_combiner`, and literal field elements.
-pub enum ConstantExpr<F> {
-    // TODO: Factor these out into an enum just for Alpha, Beta, Gamma, JointCombiner
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ChallengeTerm {
     Alpha,
     Beta,
     Gamma,
     JointCombiner,
-    // TODO: EndoCoefficient and Mds differ from the other 4 base constants in
-    // that they are known at compile time. This should be extracted out into two
-    // separate constant expression types.
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ConstantTerm<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     Literal(F),
-    Pow(Box<ConstantExpr<F>>, u64),
-    // TODO: I think having separate Add, Sub, Mul constructors is faster than
-    // having a BinOp constructor :(
-    Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
-    Mul(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
-    Sub(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
 }
 
-impl<F: Copy> ConstantExpr<F> {
-    fn to_polish_<Column>(&self, res: &mut Vec<PolishToken<F, Column>>) {
+#[derive(Clone, Debug, PartialEq)]
+pub enum ConstantExprInner<F> {
+    Challenge(ChallengeTerm),
+    Constant(ConstantTerm<F>),
+}
+
+impl<F> From<ChallengeTerm> for ConstantExprInner<F> {
+    fn from(x: ChallengeTerm) -> Self {
+        ConstantExprInner::Challenge(x)
+    }
+}
+
+impl<F> From<ConstantTerm<F>> for ConstantExprInner<F> {
+    fn from(x: ConstantTerm<F>) -> Self {
+        ConstantExprInner::Constant(x)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Operations<T> {
+    Atom(T),
+    Pow(Box<Operations<T>>, u64),
+    Add(Box<Operations<T>>, Box<Operations<T>>),
+    Mul(Box<Operations<T>>, Box<Operations<T>>),
+    Sub(Box<Operations<T>>, Box<Operations<T>>),
+}
+
+impl<T> From<T> for Operations<T> {
+    fn from(x: T) -> Self {
+        Operations::Atom(x)
+    }
+}
+
+pub type ConstantExpr<F> = Operations<ConstantExprInner<F>>;
+
+impl<F> From<ConstantTerm<F>> for ConstantExpr<F> {
+    fn from(x: ConstantTerm<F>) -> Self {
+        ConstantExprInner::from(x).into()
+    }
+}
+
+impl<F> From<ChallengeTerm> for ConstantExpr<F> {
+    fn from(x: ChallengeTerm) -> Self {
+        ConstantExprInner::from(x).into()
+    }
+}
+
+pub trait ToPolish<F, Column> {
+    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>);
+}
+
+impl<F: Copy, Column> ToPolish<F, Column> for ConstantExprInner<F> {
+    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>) {
         match self {
-            ConstantExpr::Alpha => res.push(PolishToken::Alpha),
-            ConstantExpr::Beta => res.push(PolishToken::Beta),
-            ConstantExpr::Gamma => res.push(PolishToken::Gamma),
-            ConstantExpr::JointCombiner => res.push(PolishToken::JointCombiner),
-            ConstantExpr::EndoCoefficient => res.push(PolishToken::EndoCoefficient),
-            ConstantExpr::Mds { row, col } => res.push(PolishToken::Mds {
-                row: *row,
-                col: *col,
-            }),
-            ConstantExpr::Add(x, y) => {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            ConstantExprInner::Challenge(chal) => res.push(PolishToken::Challenge(*chal)),
+            ConstantExprInner::Constant(c) => res.push(PolishToken::Constant(*c)),
+        }
+    }
+}
+
+impl<F, Column, T: ToPolish<F, Column>> ToPolish<F, Column> for Operations<T> {
+    fn to_polish(&self, res: &mut Vec<PolishToken<F, Column>>) {
+        match self {
+            Operations::Atom(atom) => atom.to_polish(res),
+            Operations::Add(x, y) => {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Add)
             }
-            ConstantExpr::Mul(x, y) => {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            Operations::Mul(x, y) => {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Mul)
             }
-            ConstantExpr::Sub(x, y) => {
-                x.as_ref().to_polish_(res);
-                y.as_ref().to_polish_(res);
+            Operations::Sub(x, y) => {
+                x.as_ref().to_polish(res);
+                y.as_ref().to_polish(res);
                 res.push(PolishToken::Sub)
             }
-            ConstantExpr::Literal(x) => res.push(PolishToken::Literal(*x)),
-            ConstantExpr::Pow(x, n) => {
-                x.to_polish_(res);
+            Operations::Pow(x, n) => {
+                x.to_polish(res);
                 res.push(PolishToken::Pow(*n))
             }
         }
@@ -281,31 +331,35 @@ impl<F: Copy> ConstantExpr<F> {
 impl<F: Field> ConstantExpr<F> {
     /// Exponentiate a constant expression.
     pub fn pow(self, p: u64) -> Self {
+        use ConstantExprInner::*;
+        use Operations::*;
         if p == 0 {
-            return Literal(F::one());
+            return ConstantTerm::Literal(F::one()).into();
         }
-        use ConstantExpr::*;
         match self {
-            Literal(x) => Literal(x.pow([p])),
+            Atom(Constant(ConstantTerm::Literal(x))) => ConstantTerm::Literal(x.pow([p])).into(),
             x => Pow(Box::new(x), p),
         }
     }
 
     /// Evaluate the given constant expression to a field element.
-    pub fn value(&self, c: &Constants<F>) -> F {
-        use ConstantExpr::*;
+    pub fn value(&self, c: &Constants<F>, chals: &Challenges<F>) -> F {
+        use ConstantExprInner::*;
+        use Operations::*;
         match self {
-            Alpha => c.alpha,
-            Beta => c.beta,
-            Gamma => c.gamma,
-            JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
-            EndoCoefficient => c.endo_coefficient,
-            Mds { row, col } => c.mds[*row][*col],
-            Literal(x) => *x,
-            Pow(x, p) => x.value(c).pow([*p]),
-            Mul(x, y) => x.value(c) * y.value(c),
-            Add(x, y) => x.value(c) + y.value(c),
-            Sub(x, y) => x.value(c) - y.value(c),
+            Atom(Challenge(ChallengeTerm::Alpha)) => chals.alpha,
+            Atom(Challenge(ChallengeTerm::Beta)) => chals.beta,
+            Atom(Challenge(ChallengeTerm::Gamma)) => chals.gamma,
+            Atom(Challenge(ChallengeTerm::JointCombiner)) => {
+                chals.joint_combiner.expect("joint lookup was not expected")
+            }
+            Atom(Constant(ConstantTerm::EndoCoefficient)) => c.endo_coefficient,
+            Atom(Constant(ConstantTerm::Mds { row, col })) => c.mds[*row][*col],
+            Atom(Constant(ConstantTerm::Literal(x))) => *x,
+            Pow(x, p) => x.value(c, chals).pow([*p]),
+            Mul(x, y) => x.value(c, chals) * y.value(c, chals),
+            Add(x, y) => x.value(c, chals) + y.value(c, chals),
+            Sub(x, y) => x.value(c, chals) - y.value(c, chals),
         }
     }
 }
@@ -447,6 +501,24 @@ pub enum Expr<C, Column> {
     Cache(CacheId, Box<Expr<C, Column>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
     IfFeature(FeatureFlag, Box<Expr<C, Column>>, Box<Expr<C, Column>>),
+}
+
+impl<F, Column> From<ConstantExpr<F>> for Expr<ConstantExpr<F>, Column> {
+    fn from(x: ConstantExpr<F>) -> Self {
+        Expr::Constant(x)
+    }
+}
+
+impl<F, Column> From<ConstantTerm<F>> for Expr<ConstantExpr<F>, Column> {
+    fn from(x: ConstantTerm<F>) -> Self {
+        ConstantExpr::from(x).into()
+    }
+}
+
+impl<F, Column> From<ChallengeTerm> for Expr<ConstantExpr<F>, Column> {
+    fn from(x: ChallengeTerm) -> Self {
+        ConstantExpr::from(x).into()
+    }
 }
 
 impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + PartialEq>
@@ -597,16 +669,8 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PolishToken<F, Column> {
-    Alpha,
-    Beta,
-    Gamma,
-    JointCombiner,
-    EndoCoefficient,
-    Mds {
-        row: usize,
-        col: usize,
-    },
-    Literal(F),
+    Constant(ConstantTerm<F>),
+    Challenge(ChallengeTerm),
     Cell(Variable<Column>),
     Dup,
     Pow(u64),
@@ -649,6 +713,7 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
+        chals: &Challenges<F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
@@ -660,16 +725,18 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
                 skip_count -= 1;
                 continue;
             }
+            use ChallengeTerm::*;
+            use ConstantTerm::*;
             use PolishToken::*;
             match t {
-                Alpha => stack.push(c.alpha),
-                Beta => stack.push(c.beta),
-                Gamma => stack.push(c.gamma),
-                JointCombiner => {
-                    stack.push(c.joint_combiner.expect("no joint lookup was expected"))
+                Challenge(Alpha) => stack.push(chals.alpha),
+                Challenge(Beta) => stack.push(chals.beta),
+                Challenge(Gamma) => stack.push(chals.gamma),
+                Challenge(JointCombiner) => {
+                    stack.push(chals.joint_combiner.expect("no joint lookup was expected"))
                 }
-                EndoCoefficient => stack.push(c.endo_coefficient),
-                Mds { row, col } => stack.push(c.mds[*row][*col]),
+                Constant(EndoCoefficient) => stack.push(c.endo_coefficient),
+                Constant(Mds { row, col }) => stack.push(c.mds[*row][*col]),
                 VanishesOnZeroKnowledgeAndPreviousRows => {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
                 }
@@ -681,7 +748,7 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
                     };
                     stack.push(unnormalized_lagrange_basis(&d, offset, &pt))
                 }
-                Literal(x) => stack.push(*x),
+                Constant(Literal(x)) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) => match v.evaluate(evals) {
                     Ok(x) => stack.push(x),
@@ -1323,7 +1390,7 @@ impl<F: Field, Column: PartialEq> Expr<ConstantExpr<F>, Column> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
-        Expr::Constant(ConstantExpr::Literal(x))
+        ConstantTerm::Literal(x).into()
     }
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
@@ -1332,7 +1399,9 @@ impl<F: Field, Column: PartialEq> Expr<ConstantExpr<F>, Column> {
         let zero = Expr::<ConstantExpr<F>, Column>::zero();
         cs.into_iter()
             .zip_eq(alphas)
-            .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i as u64)) * c)
+            .map(|(c, i)| {
+                Expr::Constant(ConstantExpr::pow(ChallengeTerm::Alpha.into(), i as u64)) * c
+            })
             .fold(zero, |acc, x| acc + x)
     }
 }
@@ -1367,7 +1436,7 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
                 res.push(PolishToken::Pow(*d))
             }
             Expr::Constant(c) => {
-                c.to_polish_(res);
+                c.to_polish(res);
             }
             Expr::Cell(v) => res.push(PolishToken::Cell(*v)),
             Expr::VanishesOnZeroKnowledgeAndPreviousRows => {
@@ -1428,30 +1497,36 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
 
     /// The expression `beta`.
     pub fn beta() -> Self {
-        Expr::Constant(ConstantExpr::Beta)
+        ChallengeTerm::Beta.into()
     }
 }
 
 impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>, Column> {
-    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F, Column> {
+    fn evaluate_constants_(&self, c: &Constants<F>, chals: &Challenges<F>) -> Expr<F, Column> {
         use Expr::*;
         // TODO: Use cache
         match self {
-            Double(x) => x.evaluate_constants_(c).double(),
-            Pow(x, d) => x.evaluate_constants_(c).pow(*d),
-            Square(x) => x.evaluate_constants_(c).square(),
-            Constant(x) => Constant(x.value(c)),
+            Double(x) => x.evaluate_constants_(c, chals).double(),
+            Pow(x, d) => x.evaluate_constants_(c, chals).pow(*d),
+            Square(x) => x.evaluate_constants_(c, chals).square(),
+            Constant(x) => Constant(x.value(c, chals)),
             Cell(v) => Cell(*v),
             VanishesOnZeroKnowledgeAndPreviousRows => VanishesOnZeroKnowledgeAndPreviousRows,
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
-            BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
-            BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
-            BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
-            Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
+            BinOp(Op2::Add, x, y) => {
+                x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals)
+            }
+            BinOp(Op2::Mul, x, y) => {
+                x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals)
+            }
+            BinOp(Op2::Sub, x, y) => {
+                x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals)
+            }
+            Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c, chals))),
             IfFeature(feature, e1, e2) => IfFeature(
                 *feature,
-                Box::new(e1.evaluate_constants_(c)),
-                Box::new(e2.evaluate_constants_(c)),
+                Box::new(e1.evaluate_constants_(c, chals)),
+                Box::new(e2.evaluate_constants_(c, chals)),
             ),
         }
     }
@@ -1468,7 +1543,7 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         evals: &Evaluations,
         env: &Environment,
     ) -> Result<F, ExprError<Column>> {
-        self.evaluate_(d, pt, evals, env.get_constants())
+        self.evaluate_(d, pt, evals, env.get_constants(), env.get_challenges())
     }
 
     /// Evaluate an expression as a field element against the constants.
@@ -1478,26 +1553,27 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         pt: F,
         evals: &Evaluations,
         c: &Constants<F>,
+        chals: &Challenges<F>,
     ) -> Result<F, ExprError<Column>> {
         use Expr::*;
         match self {
-            Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
-            Constant(x) => Ok(x.value(c)),
-            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow([*p])),
+            Double(x) => x.evaluate_(d, pt, evals, c, chals).map(|x| x.double()),
+            Constant(x) => Ok(x.value(c, chals)),
+            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c, chals)?.pow([*p])),
             BinOp(Op2::Mul, x, y) => {
-                let x = (*x).evaluate_(d, pt, evals, c)?;
-                let y = (*y).evaluate_(d, pt, evals, c)?;
+                let x = (*x).evaluate_(d, pt, evals, c, chals)?;
+                let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x * y)
             }
-            Square(x) => Ok(x.evaluate_(d, pt, evals, c)?.square()),
+            Square(x) => Ok(x.evaluate_(d, pt, evals, c, chals)?.square()),
             BinOp(Op2::Add, x, y) => {
-                let x = (*x).evaluate_(d, pt, evals, c)?;
-                let y = (*y).evaluate_(d, pt, evals, c)?;
+                let x = (*x).evaluate_(d, pt, evals, c, chals)?;
+                let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x + y)
             }
             BinOp(Op2::Sub, x, y) => {
-                let x = (*x).evaluate_(d, pt, evals, c)?;
-                let y = (*y).evaluate_(d, pt, evals, c)?;
+                let x = (*x).evaluate_(d, pt, evals, c, chals)?;
+                let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x - y)
             }
             VanishesOnZeroKnowledgeAndPreviousRows => {
@@ -1512,12 +1588,12 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
                 Ok(unnormalized_lagrange_basis(&d, offset, &pt))
             }
             Cell(v) => v.evaluate(evals),
-            Cache(_, e) => e.evaluate_(d, pt, evals, c),
+            Cache(_, e) => e.evaluate_(d, pt, evals, c, chals),
             IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
-                    e1.evaluate_(d, pt, evals, c)
+                    e1.evaluate_(d, pt, evals, c, chals)
                 } else {
-                    e2.evaluate_(d, pt, evals, c)
+                    e2.evaluate_(d, pt, evals, c, chals)
                 }
             }
         }
@@ -1528,7 +1604,7 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         &self,
         env: &Environment,
     ) -> Expr<F, Column> {
-        self.evaluate_constants_(env.get_constants())
+        self.evaluate_constants_(env.get_constants(), env.get_challenges())
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
@@ -1838,11 +1914,12 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
         evals: &ColEvaluations,
     ) -> (F, Evaluations<F, D<F>>) {
         let cs = env.get_constants();
+        let chals = env.get_challenges();
         let d1 = env.get_domain(Domain::D1);
         let n = d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = PolishToken::evaluate(c, d1, pt, evals, cs).unwrap();
+            let c = PolishToken::evaluate(c, d1, pt, evals, cs, chals).unwrap();
             let e = env
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
@@ -1853,7 +1930,7 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, d1);
         (
-            PolishToken::evaluate(&self.constant_term, d1, pt, evals, cs).unwrap(),
+            PolishToken::evaluate(&self.constant_term, d1, pt, evals, cs, chals).unwrap(),
             p,
         )
     }
@@ -1875,11 +1952,12 @@ impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
         evals: &ColEvaluations,
     ) -> (F, DensePolynomial<F>) {
         let cs = env.get_constants();
+        let chals = env.get_challenges();
         let d1 = env.get_domain(Domain::D1);
         let n = d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = c.evaluate_(d1, pt, evals, cs).unwrap();
+            let c = c.evaluate_(d1, pt, evals, cs, chals).unwrap();
             let e = env
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
@@ -1889,7 +1967,12 @@ impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
                 .for_each(|(i, r)| *r += c * e.evals[scale * i])
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, d1).interpolate();
-        (self.constant_term.evaluate_(d1, pt, evals, cs).unwrap(), p)
+        (
+            self.constant_term
+                .evaluate_(d1, pt, evals, cs, chals)
+                .unwrap(),
+            p,
+        )
     }
 }
 
@@ -2127,12 +2210,12 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
 
 impl<F: Field> Zero for ConstantExpr<F> {
     fn zero() -> Self {
-        ConstantExpr::Literal(F::zero())
+        ConstantTerm::Literal(F::zero()).into()
     }
 
     fn is_zero(&self) -> bool {
         match self {
-            ConstantExpr::Literal(x) => x.is_zero(),
+            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) => x.is_zero(),
             _ => false,
         }
     }
@@ -2140,12 +2223,12 @@ impl<F: Field> Zero for ConstantExpr<F> {
 
 impl<F: Field> One for ConstantExpr<F> {
     fn one() -> Self {
-        ConstantExpr::Literal(F::one())
+        ConstantTerm::Literal(F::one()).into()
     }
 
     fn is_one(&self) -> bool {
         match self {
-            ConstantExpr::Literal(x) => x.is_one(),
+            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) => x.is_one(),
             _ => false,
         }
     }
@@ -2156,8 +2239,13 @@ impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
 
     fn neg(self) -> ConstantExpr<F> {
         match self {
-            ConstantExpr::Literal(x) => ConstantExpr::Literal(x.neg()),
-            e => ConstantExpr::Mul(Box::new(ConstantExpr::Literal(F::one().neg())), Box::new(e)),
+            Operations::Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))) => {
+                ConstantTerm::Literal(x.neg()).into()
+            }
+            e => ConstantExpr::Mul(
+                Box::new(ConstantTerm::Literal(F::one().neg()).into()),
+                Box::new(e),
+            ),
         }
     }
 }
@@ -2165,7 +2253,7 @@ impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
 impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn add(self, other: Self) -> Self {
-        use ConstantExpr::{Add, Literal};
+        use Operations::{Add, Atom};
         if self.is_zero() {
             return other;
         }
@@ -2173,7 +2261,10 @@ impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
             return self;
         }
         match (self, other) {
-            (Literal(x), Literal(y)) => Literal(x + y),
+            (
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
+            ) => ConstantTerm::Literal(x + y).into(),
             (x, y) => Add(Box::new(x), Box::new(y)),
         }
     }
@@ -2182,12 +2273,15 @@ impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn sub(self, other: Self) -> Self {
-        use ConstantExpr::{Literal, Sub};
+        use Operations::{Atom, Sub};
         if other.is_zero() {
             return self;
         }
         match (self, other) {
-            (Literal(x), Literal(y)) => Literal(x - y),
+            (
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
+            ) => ConstantTerm::Literal(x - y).into(),
             (x, y) => Sub(Box::new(x), Box::new(y)),
         }
     }
@@ -2196,7 +2290,7 @@ impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn mul(self, other: Self) -> Self {
-        use ConstantExpr::{Literal, Mul};
+        use Operations::{Atom, Mul};
         if self.is_one() {
             return other;
         }
@@ -2204,7 +2298,10 @@ impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
             return self;
         }
         match (self, other) {
-            (Literal(x), Literal(y)) => Literal(x * y),
+            (
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(x))),
+                Atom(ConstantExprInner::Constant(ConstantTerm::Literal(y))),
+            ) => ConstantTerm::Literal(x * y).into(),
             (x, y) => Mul(Box::new(x), Box::new(y)),
         }
     }
@@ -2325,13 +2422,13 @@ impl<F: Field, Column> From<u64> for Expr<F, Column> {
 
 impl<F: Field, Column> From<u64> for Expr<ConstantExpr<F>, Column> {
     fn from(x: u64) -> Self {
-        Expr::Constant(ConstantExpr::Literal(F::from(x)))
+        ConstantTerm::Literal(F::from(x)).into()
     }
 }
 
 impl<F: Field> From<u64> for ConstantExpr<F> {
     fn from(x: u64) -> Self {
-        ConstantExpr::Literal(F::from(x))
+        ConstantTerm::Literal(F::from(x)).into()
     }
 }
 
@@ -2339,7 +2436,7 @@ impl<F: Field, Column: PartialEq> Mul<F> for Expr<ConstantExpr<F>, Column> {
     type Output = Expr<ConstantExpr<F>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
-        Expr::Constant(ConstantExpr::Literal(y)) * self
+        Expr::from(ConstantTerm::Literal(y)) * self
     }
 }
 
@@ -2352,17 +2449,20 @@ where
     F: PrimeField,
 {
     fn ocaml(&self) -> String {
-        use ConstantExpr::*;
+        use ChallengeTerm::*;
+        use ConstantExprInner::*;
+        use ConstantTerm::*;
+        use Operations::*;
         match self {
-            Alpha => "alpha".to_string(),
-            Beta => "beta".to_string(),
-            Gamma => "gamma".to_string(),
-            JointCombiner => "joint_combiner".to_string(),
-            EndoCoefficient => "endo_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
+            Atom(Challenge(Alpha)) => "alpha".to_string(),
+            Atom(Challenge(Beta)) => "beta".to_string(),
+            Atom(Challenge(Gamma)) => "gamma".to_string(),
+            Atom(Challenge(JointCombiner)) => "joint_combiner".to_string(),
+            Atom(Constant(EndoCoefficient)) => "endo_coefficient".to_string(),
+            Atom(Constant(Mds { row, col })) => format!("mds({row}, {col})"),
+            Atom(Constant(Literal(x))) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("alpha_pow({n})"),
+                Atom(Challenge(Alpha)) => format!("alpha_pow({n})"),
                 x => format!("pow({}, {n})", x.ocaml()),
             },
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
@@ -2372,17 +2472,20 @@ where
     }
 
     fn latex(&self) -> String {
-        use ConstantExpr::*;
+        use ChallengeTerm::*;
+        use ConstantExprInner::*;
+        use ConstantTerm::*;
+        use Operations::*;
         match self {
-            Alpha => "\\alpha".to_string(),
-            Beta => "\\beta".to_string(),
-            Gamma => "\\gamma".to_string(),
-            JointCombiner => "joint\\_combiner".to_string(),
-            EndoCoefficient => "endo\\_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
+            Atom(Challenge(Alpha)) => "\\alpha".to_string(),
+            Atom(Challenge(Beta)) => "\\beta".to_string(),
+            Atom(Challenge(Gamma)) => "\\gamma".to_string(),
+            Atom(Challenge(JointCombiner)) => "joint\\_combiner".to_string(),
+            Atom(Constant(EndoCoefficient)) => "endo\\_coefficient".to_string(),
+            Atom(Constant(Mds { row, col })) => format!("mds({row}, {col})"),
+            Atom(Constant(Literal(x))) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("\\alpha^{{{n}}}"),
+                Atom(Challenge(Alpha)) => format!("\\alpha^{{{n}}}"),
                 x => format!("{}^{n}", x.ocaml()),
             },
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
@@ -2392,17 +2495,20 @@ where
     }
 
     fn text(&self) -> String {
-        use ConstantExpr::*;
+        use ChallengeTerm::*;
+        use ConstantExprInner::*;
+        use ConstantTerm::*;
+        use Operations::*;
         match self {
-            Alpha => "alpha".to_string(),
-            Beta => "beta".to_string(),
-            Gamma => "gamma".to_string(),
-            JointCombiner => "joint_combiner".to_string(),
-            EndoCoefficient => "endo_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("0x{}", x.to_hex()),
+            Atom(Challenge(Alpha)) => "alpha".to_string(),
+            Atom(Challenge(Beta)) => "beta".to_string(),
+            Atom(Challenge(Gamma)) => "gamma".to_string(),
+            Atom(Challenge(JointCombiner)) => "joint_combiner".to_string(),
+            Atom(Constant(EndoCoefficient)) => "endo_coefficient".to_string(),
+            Atom(Constant(Mds { row, col })) => format!("mds({row}, {col})"),
+            Atom(Constant(Literal(x))) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("alpha^{n}"),
+                Atom(Challenge(Alpha)) => format!("alpha^{n}"),
                 x => format!("{}^{n}", x.text()),
             },
             Add(x, y) => format!("({} + {})", x.text(), y.text()),
@@ -2721,7 +2827,7 @@ pub mod constraints {
         }
 
         fn literal(x: F) -> Self {
-            Expr::Constant(ConstantExpr::Literal(x))
+            ConstantTerm::Literal(x).into()
         }
 
         fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
@@ -2798,7 +2904,7 @@ pub mod constraints {
 
         fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
             match env {
-                Some(data) => expr.value(&data.constants),
+                Some(data) => expr.value(&data.constants, &data.challenges),
                 None => panic!("Missing constants"),
             }
         }
@@ -2837,7 +2943,7 @@ pub type E<F> = Expr<ConstantExpr<F>, berkeley_columns::Column>;
 
 /// Convenience function to create a constant as [Expr].
 pub fn constant<F>(x: F) -> E<F> {
-    Expr::Constant(ConstantExpr::Literal(x))
+    ConstantTerm::Literal(x).into()
 }
 
 /// Helper function to quickly create an expression for a witness.
@@ -2970,13 +3076,15 @@ pub mod test {
 
         let env = Environment {
             constants: Constants {
+                endo_coefficient: one,
+                mds: &Vesta::sponge_params().mds,
+                zk_rows: 3,
+            },
+            challenges: Challenges {
                 alpha: one,
                 beta: one,
                 gamma: one,
                 joint_combiner: None,
-                endo_coefficient: one,
-                mds: &Vesta::sponge_params().mds,
-                zk_rows: 3,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &index.column_evaluations.coefficients8,
