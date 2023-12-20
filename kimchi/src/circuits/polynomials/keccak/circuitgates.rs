@@ -1,5 +1,5 @@
 //! Keccak gadget
-use super::{DIM, OFF, QUARTERS, STATE_LEN};
+use super::{constants::*, OFF};
 use crate::{
     auto_clone, auto_clone_array,
     circuits::{
@@ -99,25 +99,70 @@ where
 
         // LOAD STATES FROM WITNESS LAYOUT
         // THETA
-        let state_a = grid!(100, env.witness_curr_chunk(0, 100));
-        let shifts_c = grid!(80, env.witness_curr_chunk(100, 180));
-        let dense_c = grid!(20, env.witness_curr_chunk(180, 200));
-        let quotient_c = grid!(5, env.witness_curr_chunk(200, 205));
-        let remainder_c = grid!(20, env.witness_curr_chunk(205, 225));
-        let dense_rot_c = grid!(20, env.witness_curr_chunk(225, 245));
-        let expand_rot_c = grid!(20, env.witness_curr_chunk(245, 265));
+        let state_a = grid!(
+            100,
+            env.witness_curr_chunk(THETA_STATE_A_OFF, THETA_SHIFTS_C_OFF)
+        );
+        let shifts_c = grid!(
+            80,
+            env.witness_curr_chunk(THETA_SHIFTS_C_OFF, THETA_DENSE_C_OFF)
+        );
+        let dense_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_DENSE_C_OFF, THETA_QUOTIENT_C_OFF)
+        );
+        let quotient_c = grid!(
+            5,
+            env.witness_curr_chunk(THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF)
+        );
+        let remainder_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_REMAINDER_C_OFF, THETA_DENSE_ROT_C_OFF)
+        );
+        let dense_rot_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF)
+        );
+        let expand_rot_c = grid!(
+            20,
+            env.witness_curr_chunk(THETA_EXPAND_ROT_C_OFF, PIRHO_DENSE_E_OFF)
+        );
         // PI-RHO
-        let shifts_e = grid!(400, env.witness_curr_chunk(265, 665));
-        let dense_e = grid!(100, env.witness_curr_chunk(665, 765));
-        let quotient_e = grid!(100, env.witness_curr_chunk(765, 865));
-        let remainder_e = grid!(100, env.witness_curr_chunk(865, 965));
-        let dense_rot_e = grid!(100, env.witness_curr_chunk(965, 1065));
-        let expand_rot_e = grid!(100, env.witness_curr_chunk(1065, 1165));
+        let shifts_e = grid!(
+            400,
+            env.witness_curr_chunk(PIRHO_SHIFTS_E_OFF, PIRHO_DENSE_E_OFF)
+        );
+        let dense_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_DENSE_E_OFF, PIRHO_QUOTIENT_E_OFF)
+        );
+        let quotient_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF)
+        );
+        let remainder_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_REMAINDER_E_OFF, PIRHO_DENSE_ROT_E_OFF)
+        );
+        let dense_rot_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_OFF)
+        );
+        let expand_rot_e = grid!(
+            100,
+            env.witness_curr_chunk(PIRHO_EXPAND_ROT_E_OFF, CHI_SHIFTS_B_OFF)
+        );
         // CHI
-        let shifts_b = grid!(400, env.witness_curr_chunk(1165, 1565));
-        let shifts_sum = grid!(400, env.witness_curr_chunk(1565, 1965));
+        let shifts_b = grid!(
+            400,
+            env.witness_curr_chunk(CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF)
+        );
+        let shifts_sum = grid!(
+            400,
+            env.witness_curr_chunk(CHI_SHIFTS_SUM_OFF, IOTA_STATE_G_OFF)
+        );
         // IOTA
-        let state_g = grid!(100, env.witness_next_chunk(0, 100));
+        let state_g = grid!(100, env.witness_next_chunk(0, IOTA_STATE_G_LEN));
 
         // Define vectors containing witness expressions which are not in the layout for efficiency
         let mut state_c: Vec<Vec<T>> = vec![vec![T::zero(); QUARTERS]; DIM];
@@ -220,14 +265,15 @@ where
         let mut constraints = vec![];
 
         // LOAD WITNESS
-        let old_state = env.witness_curr_chunk(0, 100);
-        let new_block = env.witness_curr_chunk(100, 200);
-        let zeros = env.witness_curr_chunk(168, 200);
-        let xor_state = env.witness_next_chunk(0, 100);
-        let bytes = env.witness_curr_chunk(200, 400);
-        let shifts = env.witness_curr_chunk(400, 800);
+        let old_state = env.witness_curr_chunk(SPONGE_OLD_STATE_OFF, SPONGE_NEW_STATE_OFF);
+        let new_state = env.witness_curr_chunk(SPONGE_NEW_STATE_OFF, SPONGE_BYTES_OFF);
+        let zeros = env.witness_curr_chunk(SPONGE_ZEROS_OFF, SPONGE_BYTES_OFF);
+        let xor_state = env.witness_next_chunk(0, SPONGE_XOR_STATE_LEN);
+        let bytes = env.witness_curr_chunk(SPONGE_BYTES_OFF, SPONGE_SHIFTS_OFF);
+        let shifts =
+            env.witness_curr_chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_OFF + SPONGE_SHIFTS_LEN);
         auto_clone_array!(old_state);
-        auto_clone_array!(new_block);
+        auto_clone_array!(new_state);
         auto_clone_array!(xor_state);
         auto_clone_array!(bytes);
         auto_clone_array!(shifts);
@@ -253,9 +299,9 @@ where
             // In first absorb, root state is all zeros
             constraints.push(root() * old_state(i));
             // Absorbs the new block by performing XOR with the old state
-            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
+            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_state(i))));
             // In absorb, Check shifts correspond to the decomposition of the new state
-            constraints.push(absorb() * (new_block(i) - from_shifts!(shifts, i)));
+            constraints.push(absorb() * (new_state(i) - from_shifts!(shifts, i)));
         }
         for i in 0..64 {
             // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)

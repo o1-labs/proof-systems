@@ -40,5 +40,6 @@ strum_macros = "0.24.0"
 log = "0.4.20"
 env_logger = "0.10.0"
 command-fds = "0.2.3"
-os_pipe = "1.1.4"
+os_pipe = { version = "1.1.4", features = [ "io_safety" ] }
 rand = "0.8.5"
+libc = "0.2.62"
