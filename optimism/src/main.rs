@@ -107,6 +107,17 @@ pub fn main() -> ExitCode {
         }
     }
     if current_chunk.instruction_counter.len() > 0 {
+        use ark_ff::Zero;
+        let remaining = domain_size - current_chunk.instruction_counter.len();
+        for scratch in current_chunk.scratch.iter_mut() {
+            scratch.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+        }
+        current_chunk
+            .instruction_counter
+            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+        current_chunk
+            .error
+            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         proof::fold::<
             _,
             poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
