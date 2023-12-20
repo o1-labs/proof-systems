@@ -130,7 +130,7 @@ pub fn fold<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     accumulator: &mut ProofInputs<G>,
-    inputs: WitnessColumns<Vec<G::ScalarField>>,
+    inputs: &WitnessColumns<Vec<G::ScalarField>>,
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {

@@ -62,13 +62,23 @@ pub fn main() -> ExitCode {
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::new();
 
-    let new_chunk = || proof::WitnessColumns {
+    let reset_chunk = |witness_columns: &mut proof::WitnessColumns<Vec<_>>| {
+        let proof::WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+        } = witness_columns;
+        // Resize without deallocating
+        scratch.iter_mut().for_each(Vec::clear);
+        instruction_counter.clear();
+        error.clear();
+    };
+
+    let mut current_chunk = proof::WitnessColumns {
         scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         instruction_counter: Vec::with_capacity(domain_size),
         error: Vec::with_capacity(domain_size),
     };
-
-    let mut current_chunk = new_chunk();
 
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
@@ -102,8 +112,8 @@ pub fn main() -> ExitCode {
                 poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
                 BaseSponge,
                 ScalarSponge,
-            >(domain, &srs, &mut accumulator, current_chunk);
-            current_chunk = new_chunk();
+            >(domain, &srs, &mut accumulator, &current_chunk);
+            reset_chunk(&mut current_chunk);
         }
     }
     if current_chunk.instruction_counter.len() > 0 {
@@ -123,7 +133,7 @@ pub fn main() -> ExitCode {
             poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
             BaseSponge,
             ScalarSponge,
-        >(domain, &srs, &mut accumulator, current_chunk);
+        >(domain, &srs, &mut accumulator, &current_chunk);
     }
 
     {
