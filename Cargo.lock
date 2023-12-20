@@ -1332,6 +1332,7 @@ dependencies = [
  "groupmap",
  "hex",
  "kimchi",
+ "libc",
  "libflate",
  "log",
  "mina-curves",
