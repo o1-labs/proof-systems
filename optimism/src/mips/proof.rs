@@ -39,6 +39,93 @@ pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     opening_proof: OpeningProof,
 }
 
+pub fn fold<
+    G: KimchiCurve,
+    OpeningProof: OpenProof<G>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+>(
+    domain: EvaluationDomains<G::ScalarField>,
+    srs: &OpeningProof::SRS,
+    mut accumulator: ProofInputs<G>,
+    inputs: WitnessColumns<Vec<G::ScalarField>>,
+) -> ProofInputs<G>
+where
+    <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
+{
+    let polys = {
+        let WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+        } = &inputs;
+        let eval_col = |evals: &Vec<G::ScalarField>| {
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                evals.clone(),
+                domain.d1,
+            )
+        };
+        let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
+        WitnessColumns {
+            scratch: scratch.try_into().unwrap(),
+            instruction_counter: eval_col(instruction_counter),
+            error: eval_col(error),
+        }
+    };
+    let commitments = {
+        let WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+        } = &polys;
+        let comm = |evals: &Evaluations<G::ScalarField, D<G::ScalarField>>| {
+            srs.commit_evaluations_non_hiding(domain.d1, evals)
+        };
+        let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
+        WitnessColumns {
+            scratch: scratch.try_into().unwrap(),
+            instruction_counter: comm(instruction_counter),
+            error: comm(error),
+        }
+    };
+    let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
+    for comm in commitments.scratch.iter() {
+        absorb_commitment(&mut fq_sponge, comm)
+    }
+    absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
+    absorb_commitment(&mut fq_sponge, &commitments.error);
+    let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
+    let (_, endo_r) = G::endos();
+    let scaling_challenge = scaling_challenge.to_field(endo_r);
+    for (acc_eval, new_eval) in accumulator
+        .evaluations
+        .scratch
+        .iter_mut()
+        .zip(inputs.scratch.iter())
+    {
+        for (acc_eval, new_eval) in acc_eval.iter_mut().zip(new_eval.iter()) {
+            *acc_eval = *acc_eval * scaling_challenge + *new_eval
+        }
+    }
+    for (acc_eval, new_eval) in accumulator
+        .evaluations
+        .instruction_counter
+        .iter_mut()
+        .zip(inputs.instruction_counter.iter())
+    {
+        *acc_eval = *acc_eval * scaling_challenge + *new_eval
+    }
+    for (acc_eval, new_eval) in accumulator
+        .evaluations
+        .error
+        .iter_mut()
+        .zip(inputs.error.iter())
+    {
+        *acc_eval = *acc_eval * scaling_challenge + *new_eval
+    }
+    accumulator
+}
+
 pub fn prove<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
