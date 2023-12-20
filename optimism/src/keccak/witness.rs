@@ -113,7 +113,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         // Values between 0 (dummy, for sponges) and 24
         self.write_column(KeccakColumn::FlagRound, round);
         if round != 0 {
-            self.write_column_field(KeccakColumn::FlagRound, Fp::from(round).inverse().unwrap());
+            self.write_column_field(
+                KeccakColumn::InverseRound,
+                Fp::from(round).inverse().unwrap(),
+            );
         }
     }
 

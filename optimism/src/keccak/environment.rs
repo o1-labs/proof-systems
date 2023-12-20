@@ -5,14 +5,10 @@ use super::{
 };
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
+use kimchi::circuits::expr::Operations;
 use kimchi::{
-    auto_clone_array,
-    circuits::{
-        expr::{ConstantExpr, ConstantTerm, Expr},
-        polynomials::keccak::constants::*,
-    },
-    grid,
-    o1_utils::Two,
+    auto_clone_array, circuits::expr::ConstantTerm::Literal,
+    circuits::polynomials::keccak::constants::*, grid, o1_utils::Two,
 };
 
 #[derive(Clone, Debug)]
@@ -20,8 +16,8 @@ pub struct KeccakEnv<Fp> {
     /// Constraints that are added to the circuit
     pub(crate) constraints: Vec<E<Fp>>,
     /// Values that are looked up in the circuit
-    pub(crate) lookups: Vec<Lookup<E<Fp>>>, // at most 5 values are looked up at a time
-    /// Expanded block of previous step    
+    pub(crate) lookups: Vec<Lookup<E<Fp>>>,
+    /// Expanded block of previous step
     pub(crate) prev_block: Vec<u64>,
     /// Padded preimage data
     pub(crate) padded: Vec<u8>,
@@ -118,7 +114,7 @@ impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
         Self::constant_field(Self::Fp::from(x))
     }
     fn constant_field(x: Self::Fp) -> Self::Variable {
-        Expr::Constant(ConstantExpr::Constant(ConstantTerm::Literal(x)))
+        Self::Variable::constant(Operations::from(Literal(x)))
     }
     fn zero() -> Self::Variable {
         Self::constant(0)
