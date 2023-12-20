@@ -68,7 +68,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 self.add_lookup(Lookup {
                     numerator: Signed::read_one(),
                     table_id: LookupTable::SparseLookup,
-                    value: vec![self.sponge_shift(i)],
+                    value: vec![self.sponge_shifts(i)],
                 })
             }
             for i in 0..STATE_LEN {
@@ -78,7 +78,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                     table_id: LookupTable::ResetLookup,
                     value: vec![
                         self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8),
-                        self.sponge_shift(i),
+                        self.sponge_shifts(i),
                     ],
                 })
             }
