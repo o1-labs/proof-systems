@@ -460,7 +460,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::ChiShiftsSum(i, y, x, q)].clone()
     }
 
-    fn state_g(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
+    fn state_g(&self, q: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::IotaStateG(q)].clone()
     }
 }
