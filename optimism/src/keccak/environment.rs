@@ -186,7 +186,7 @@ pub(crate) trait KeccakEnvironment {
 
     fn new_block(&self, i: usize) -> Self::Variable;
 
-    fn next_state(&self, i: usize) -> Self::Variable;
+    fn xor_state(&self, i: usize) -> Self::Variable;
 
     fn sponge_zeros(&self) -> Vec<Self::Variable>;
 
@@ -225,6 +225,8 @@ pub(crate) trait KeccakEnvironment {
     fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
+
+    fn state_g(&self, i: usize) -> Self::Variable;
 }
 
 impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
@@ -378,8 +380,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::SpongeNewState(i)].clone()
     }
 
-    fn next_state(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::NextState(i)].clone()
+    fn xor_state(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
     }
 
     fn sponge_zeros(&self) -> Vec<Self::Variable> {
@@ -456,5 +458,9 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ChiShiftsSum(i, y, x, q)].clone()
+    }
+
+    fn state_g(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
     }
 }

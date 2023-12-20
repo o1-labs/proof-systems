@@ -83,7 +83,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 // Absorbs the new block by performing XOR with the old state
                 self.constrain(
                     self.is_absorb()
-                        * (self.next_state(i) - (self.old_state(i) + self.new_block(i))),
+                        * (self.xor_state(i) - (self.old_state(i) + self.new_block(i))),
                 );
                 // In absorb, Check shifts correspond to the decomposition of the new state
                 self.constrain(
@@ -246,7 +246,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             // STEP iota: 4 constraints
             for (q, c) in self.round_constants().iter().enumerate() {
                 self.constrain(
-                    self.is_round() * (self.next_state(q) - (state_f[0][0][q].clone() + c.clone())),
+                    self.is_round() * (self.state_g(q) - (state_f[0][0][q].clone() + c.clone())),
                 );
             } // END iota
         }
