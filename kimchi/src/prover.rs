@@ -4,7 +4,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::zk_rows_strict_lower_bound,
-        expr::{self, l0_1, Constants, Environment, LookupEnvironment},
+        expr::{self, l0_1, Challenges, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -704,13 +704,15 @@ where
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
+                    endo_coefficient: index.cs.endo,
+                    mds,
+                    zk_rows: index.cs.zk_rows,
+                },
+                challenges: Challenges {
                     alpha,
                     beta,
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
-                    endo_coefficient: index.cs.endo,
-                    mds,
-                    zk_rows: index.cs.zk_rows,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,

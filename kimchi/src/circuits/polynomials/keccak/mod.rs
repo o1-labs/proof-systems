@@ -1,17 +1,13 @@
 //! Keccak hash module
 pub mod circuitgates;
+pub mod constants;
 pub mod gadget;
 pub mod witness;
 
-pub const DIM: usize = 5;
-pub const QUARTERS: usize = 4;
-pub const ROUNDS: usize = 24;
-pub const RATE_IN_BYTES: usize = 1088 / 8;
-pub const CAPACITY_IN_BYTES: usize = 512 / 8;
-pub const KECCAK_COLS: usize = 2344;
-
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
+
+use self::constants::{DIM, QUARTERS, RATE_IN_BYTES};
 
 #[macro_export]
 macro_rules! grid {
@@ -209,15 +205,11 @@ impl Keccak {
 #[cfg(test)]
 mod tests {
 
+    use rand::thread_rng;
     use rand::{rngs::StdRng, Rng};
     use rand_core::SeedableRng;
 
     use super::*;
-
-    const RNG_SEED: [u8; 32] = [
-        211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50,
-        48, 89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
-    ];
 
     #[test]
     // Shows that the expansion of the 16-bit dense quarters into 64-bit sparse quarters
@@ -268,7 +260,9 @@ mod tests {
     #[test]
     // Tests that the shifts are computed correctly
     fn test_shifts() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
         let word: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let sparse = Keccak::sparse(word);
         let shifts = Keccak::shift(&sparse);
@@ -283,7 +277,9 @@ mod tests {
     #[test]
     // Checks that reset function returns shift0, as the first positions of the shifts vector
     fn test_reset() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
         let word: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let shifts = Keccak::shift(&Keccak::sparse(word));
         let reset = Keccak::reset(&shifts);
@@ -297,7 +293,9 @@ mod tests {
     #[test]
     // Checks that one can obtain the original word from the resets of the expanded word
     fn test_collapse() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
         let word: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let dense = Keccak::compose(&Keccak::collapse(&Keccak::reset(&Keccak::shift(
             &Keccak::sparse(word),
@@ -309,7 +307,9 @@ mod tests {
     // Checks that concatenating the maximum number of carries (15 per bit) result
     // in the same original dense word, and just one more carry results in a different word
     fn test_max_carries() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
         let word: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let carries = 0xEEEE;
         // add a few carry bits to the canonical representation
@@ -330,7 +330,9 @@ mod tests {
     // Tests that the XOR can be represented in the 4i-th
     // positions of the addition of sparse representations
     fn test_sparse_xor() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
         let a: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let b: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let xor = a ^ b;
@@ -353,7 +355,9 @@ mod tests {
     // Tests that the AND can be represented in the (4i+1)-th positions of the
     // addition of canonical sparse representations
     fn test_sparse_and() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
         let a: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let b: u64 = rng.gen_range(0..2u128.pow(64)) as u64;
         let and = a & b;
@@ -376,7 +380,9 @@ mod tests {
     // Tests that the NOT can be represented as subtraction with the expansion of
     // the 16-bit dense quarter.
     fn test_sparse_not() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
         let word = rng.gen_range(0..2u64.pow(16));
         let expanded = Keccak::expand(word);
 
