@@ -157,29 +157,16 @@ pub fn fold<
     let scaling_challenge = scaling_challenge.to_field(endo_r);
     accumulator
         .evaluations
-        .scratch
         .par_iter_mut()
-        .zip(inputs.scratch.par_iter())
-        .for_each(|(acc_eval, new_eval)| {
-            acc_eval
-                .iter_mut()
-                .zip(new_eval.iter())
-                .for_each(|(acc_eval, new_eval)| {
-                    *acc_eval = *acc_eval * scaling_challenge + *new_eval
+        .zip(inputs.par_iter())
+        .for_each(|(accumulator, inputs)| {
+            accumulator
+                .par_iter_mut()
+                .zip(inputs.par_iter())
+                .for_each(|(accumulator, input)| {
+                    *accumulator = *input + scaling_challenge * *accumulator
                 });
         });
-    accumulator
-        .evaluations
-        .instruction_counter
-        .par_iter_mut()
-        .zip(inputs.instruction_counter.par_iter())
-        .for_each(|(acc_eval, new_eval)| *acc_eval = *acc_eval * scaling_challenge + *new_eval);
-    accumulator
-        .evaluations
-        .error
-        .par_iter_mut()
-        .zip(inputs.error.par_iter())
-        .for_each(|(acc_eval, new_eval)| *acc_eval = *acc_eval * scaling_challenge + *new_eval);
 }
 
 pub fn prove<
