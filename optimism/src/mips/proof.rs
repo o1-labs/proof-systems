@@ -18,9 +18,10 @@ use poly_commitment::{
     OpenProof, SRS as _,
 };
 use rand::thread_rng;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IntoParallelRefMutIterator, ParallelIterator,
+};
 
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
@@ -69,33 +70,18 @@ pub fn fold<
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {
-    let polys = {
-        let WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-        } = &inputs;
-        let eval_col = |evals: &Vec<G::ScalarField>| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                evals.clone(),
-                domain.d1,
-            )
-        };
-        let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
-        WitnessColumns {
-            scratch: scratch.try_into().unwrap(),
-            instruction_counter: eval_col(instruction_counter),
-            error: eval_col(error),
-        }
-    };
     let commitments = {
         let WitnessColumns {
             scratch,
             instruction_counter,
             error,
-        } = &polys;
-        let comm = |evals: &Evaluations<G::ScalarField, D<G::ScalarField>>| {
-            srs.commit_evaluations_non_hiding(domain.d1, evals)
+        } = &inputs;
+        let comm = |evals: &Vec<G::ScalarField>| {
+            let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                evals.clone(),
+                domain.d1,
+            );
+            srs.commit_evaluations_non_hiding(domain.d1, &evals)
         };
         let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
         WitnessColumns {
@@ -113,32 +99,29 @@ pub fn fold<
     let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let scaling_challenge = scaling_challenge.to_field(endo_r);
-    for (acc_eval, new_eval) in accumulator
+    accumulator
         .evaluations
         .scratch
-        .iter_mut()
-        .zip(inputs.scratch.iter())
+        .par_iter_mut()
+        .zip(inputs.scratch.par_iter()).for_each(|(acc_eval, new_eval)|
     {
-        for (acc_eval, new_eval) in acc_eval.iter_mut().zip(new_eval.iter()) {
-            *acc_eval = *acc_eval * scaling_challenge + *new_eval
-        }
-    }
-    for (acc_eval, new_eval) in accumulator
+        acc_eval
+            .iter_mut()
+            .zip(new_eval.iter())
+            .for_each(|(acc_eval, new_eval)| *acc_eval = *acc_eval * scaling_challenge + *new_eval);
+    });
+    accumulator
         .evaluations
         .instruction_counter
-        .iter_mut()
-        .zip(inputs.instruction_counter.iter())
-    {
-        *acc_eval = *acc_eval * scaling_challenge + *new_eval
-    }
-    for (acc_eval, new_eval) in accumulator
+        .par_iter_mut()
+        .zip(inputs.instruction_counter.par_iter())
+        .for_each(|(acc_eval, new_eval)| *acc_eval = *acc_eval * scaling_challenge + *new_eval);
+    accumulator
         .evaluations
         .error
-        .iter_mut()
-        .zip(inputs.error.iter())
-    {
-        *acc_eval = *acc_eval * scaling_challenge + *new_eval
-    }
+        .par_iter_mut()
+        .zip(inputs.error.par_iter())
+        .for_each(|(acc_eval, new_eval)| *acc_eval = *acc_eval * scaling_challenge + *new_eval);
 }
 
 pub fn prove<
