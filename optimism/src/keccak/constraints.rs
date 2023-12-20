@@ -4,7 +4,10 @@ use crate::keccak::{
     {ArithOps, BoolOps, E, WORDS_IN_HASH},
 };
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{DIM, OFF, QUARTERS, RATE_IN_BYTES};
+use kimchi::circuits::polynomials::keccak::{
+    constants::{DIM, QUARTERS, RATE_IN_BYTES},
+    OFF,
+};
 
 pub trait Constraints {
     type Column;
