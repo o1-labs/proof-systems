@@ -251,16 +251,23 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
         let constants = expr::Constants {
-            alpha: F::one(),
-            beta: F::one(),
-            gamma: F::one(),
-            joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
             zk_rows: cs.zk_rows,
         };
+        let challenges = expr::Challenges {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: Some(F::one()),
+        };
         // Create the argument environment for the constraints over field elements
-        let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
+        let env = ArgumentEnv::<F, F>::create(
+            argument_witness,
+            self.coeffs.clone(),
+            constants,
+            challenges,
+        );
 
         // Check the wiring (i.e. copy constraints) for this gate
         // Note: Gates can operated on row Curr or Curr and Next.

@@ -46,7 +46,7 @@ pub fn main_cli() -> clap::Command {
         )
         .arg(
             Arg::new("pprof-cpu")
-                .long("pprof-cpu")
+                .long("pprof.cpu")
                 .action(ArgAction::SetTrue),
         )
         .arg(
