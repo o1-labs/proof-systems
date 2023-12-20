@@ -575,17 +575,6 @@ pub enum Op2 {
     Sub,
 }
 
-impl Op2 {
-    fn to_polish<A, Column>(&self) -> PolishToken<A, Column> {
-        use Op2::*;
-        match self {
-            Add => PolishToken::Add,
-            Mul => PolishToken::Mul,
-            Sub => PolishToken::Sub,
-        }
-    }
-}
-
 /// The feature flags that can be used to enable or disable parts of constraints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
@@ -640,17 +629,7 @@ pub enum ExprInner<C, Column> {
 /// This represents a PLONK "custom constraint", which enforces that
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Expr<C, Column> {
-    Atom(ExprInner<C, Column>),
-    Double(Box<Expr<C, Column>>),
-    Square(Box<Expr<C, Column>>),
-    BinOp(Op2, Box<Expr<C, Column>>, Box<Expr<C, Column>>),
-    Pow(Box<Expr<C, Column>>, u64),
-    Cache(CacheId, Box<Expr<C, Column>>),
-    /// If the feature flag is enabled, return the first expression; otherwise, return the second.
-    IfFeature(FeatureFlag, Box<Expr<C, Column>>, Box<Expr<C, Column>>),
-}
+pub type Expr<C, Column> = Operations<ExprInner<C, Column>>;
 
 impl<F, Column> From<ConstantExpr<F>> for Expr<ConstantExpr<F>, Column> {
     fn from(x: ConstantExpr<F>) -> Self {
@@ -674,8 +653,8 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
     Expr<C, Column>
 {
     fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C, Column>, bool) {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Atom(
                 Constant(_)
@@ -699,62 +678,53 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
                     (Square(Box::new(c_reduced)), false)
                 }
             }
-            BinOp(op, c1, c2) => {
+            Add(c1, c2) => {
                 let (c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
                 let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
-                match op {
-                    Op2::Add => {
-                        if reduce_further1 && c1_reduced.is_zero() {
-                            if reduce_further2 && c2_reduced.is_zero() {
-                                (Expr::zero(), true)
-                            } else {
-                                (c2_reduced, false)
-                            }
-                        } else if reduce_further2 && c2_reduced.is_zero() {
-                            (c1_reduced, false)
-                        } else {
-                            (
-                                BinOp(Op2::Add, Box::new(c1_reduced), Box::new(c2_reduced)),
-                                false,
-                            )
-                        }
+                if reduce_further1 && c1_reduced.is_zero() {
+                    if reduce_further2 && c2_reduced.is_zero() {
+                        (Expr::zero(), true)
+                    } else {
+                        (c2_reduced, false)
                     }
-                    Op2::Sub => {
-                        if reduce_further1 && c1_reduced.is_zero() {
-                            if reduce_further2 && c2_reduced.is_zero() {
-                                (Expr::zero(), true)
-                            } else {
-                                (-c2_reduced, false)
-                            }
-                        } else if reduce_further2 && c2_reduced.is_zero() {
-                            (c1_reduced, false)
-                        } else {
-                            (
-                                BinOp(Op2::Sub, Box::new(c1_reduced), Box::new(c2_reduced)),
-                                false,
-                            )
-                        }
+                } else if reduce_further2 && c2_reduced.is_zero() {
+                    (c1_reduced, false)
+                } else {
+                    (Add(Box::new(c1_reduced), Box::new(c2_reduced)), false)
+                }
+            }
+            Sub(c1, c2) => {
+                let (c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                if reduce_further1 && c1_reduced.is_zero() {
+                    if reduce_further2 && c2_reduced.is_zero() {
+                        (Expr::zero(), true)
+                    } else {
+                        (-c2_reduced, false)
                     }
-                    Op2::Mul => {
-                        if reduce_further1 && c1_reduced.is_zero()
-                            || reduce_further2 && c2_reduced.is_zero()
-                        {
-                            (Expr::zero(), true)
-                        } else if reduce_further1 && c1_reduced.is_one() {
-                            if reduce_further2 && c2_reduced.is_one() {
-                                (Expr::one(), true)
-                            } else {
-                                (c2_reduced, false)
-                            }
-                        } else if reduce_further2 && c2_reduced.is_one() {
-                            (c1_reduced, false)
-                        } else {
-                            (
-                                BinOp(Op2::Mul, Box::new(c1_reduced), Box::new(c2_reduced)),
-                                false,
-                            )
-                        }
+                } else if reduce_further2 && c2_reduced.is_zero() {
+                    (c1_reduced, false)
+                } else {
+                    (Sub(Box::new(c1_reduced), Box::new(c2_reduced)), false)
+                }
+            }
+            Mul(c1, c2) => {
+                let (c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                if reduce_further1 && c1_reduced.is_zero()
+                    || reduce_further2 && c2_reduced.is_zero()
+                {
+                    (Expr::zero(), true)
+                } else if reduce_further1 && c1_reduced.is_one() {
+                    if reduce_further2 && c2_reduced.is_one() {
+                        (Expr::one(), true)
+                    } else {
+                        (c2_reduced, false)
                     }
+                } else if reduce_further2 && c2_reduced.is_one() {
+                    (c1_reduced, false)
+                } else {
+                    (Mul(Box::new(c1_reduced), Box::new(c2_reduced)), false)
                 }
             }
             Pow(c, power) => {
@@ -970,8 +940,8 @@ impl<C, Column> Expr<C, Column> {
     }
 
     fn degree(&self, d1_size: u64, zk_rows: u64) -> u64 {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Double(x) => x.degree(d1_size, zk_rows),
             Atom(Constant(_)) => 0,
@@ -979,8 +949,8 @@ impl<C, Column> Expr<C, Column> {
             Atom(UnnormalizedLagrangeBasis(_)) => d1_size,
             Atom(Cell(_)) => d1_size,
             Square(x) => 2 * x.degree(d1_size, zk_rows),
-            BinOp(Op2::Mul, x, y) => (*x).degree(d1_size, zk_rows) + (*y).degree(d1_size, zk_rows),
-            BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) => {
+            Mul(x, y) => (*x).degree(d1_size, zk_rows) + (*y).degree(d1_size, zk_rows),
+            Add(x, y) | Sub(x, y) => {
                 std::cmp::max((*x).degree(d1_size, zk_rows), (*y).degree(d1_size, zk_rows))
             }
             Pow(e, d) => d * e.degree(d1_size, zk_rows),
@@ -1596,10 +1566,20 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
             Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) => {
                 res.push(PolishToken::UnnormalizedLagrangeBasis(*i));
             }
-            Expr::BinOp(op, x, y) => {
+            Expr::Add(x, y) => {
                 x.to_polish_(cache, res);
                 y.to_polish_(cache, res);
-                res.push(op.to_polish());
+                res.push(PolishToken::Add);
+            }
+            Expr::Sub(x, y) => {
+                x.to_polish_(cache, res);
+                y.to_polish_(cache, res);
+                res.push(PolishToken::Sub);
+            }
+            Expr::Mul(x, y) => {
+                x.to_polish_(cache, res);
+                y.to_polish_(cache, res);
+                res.push(PolishToken::Mul);
             }
             Expr::Cache(id, e) => {
                 match cache.get(id) {
@@ -1654,8 +1634,8 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
 
 impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>, Column> {
     fn evaluate_constants_(&self, c: &Constants<F>, chals: &Challenges<F>) -> Expr<F, Column> {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         // TODO: Use cache
         match self {
             Double(x) => x.evaluate_constants_(c, chals).double(),
@@ -1667,15 +1647,9 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
                 Atom(VanishesOnZeroKnowledgeAndPreviousRows)
             }
             Atom(UnnormalizedLagrangeBasis(i)) => Atom(UnnormalizedLagrangeBasis(*i)),
-            BinOp(Op2::Add, x, y) => {
-                x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals)
-            }
-            BinOp(Op2::Mul, x, y) => {
-                x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals)
-            }
-            BinOp(Op2::Sub, x, y) => {
-                x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals)
-            }
+            Add(x, y) => x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals),
+            Mul(x, y) => x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals),
+            Sub(x, y) => x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals),
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c, chals))),
             IfFeature(feature, e1, e2) => IfFeature(
                 *feature,
@@ -1709,24 +1683,24 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         c: &Constants<F>,
         chals: &Challenges<F>,
     ) -> Result<F, ExprError<Column>> {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c, chals).map(|x| x.double()),
             Atom(Constant(x)) => Ok(x.value(c, chals)),
             Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c, chals)?.pow([*p])),
-            BinOp(Op2::Mul, x, y) => {
+            Mul(x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c, chals)?;
                 let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x * y)
             }
             Square(x) => Ok(x.evaluate_(d, pt, evals, c, chals)?.square()),
-            BinOp(Op2::Add, x, y) => {
+            Add(x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c, chals)?;
                 let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x + y)
             }
-            BinOp(Op2::Sub, x, y) => {
+            Sub(x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c, chals)?;
                 let y = (*y).evaluate_(d, pt, evals, c, chals)?;
                 Ok(x - y)
@@ -1785,24 +1759,24 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
         zk_rows: u64,
         evals: &Evaluations,
     ) -> Result<F, ExprError<Column>> {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Atom(Constant(x)) => Ok(*x),
             Pow(x, p) => Ok(x.evaluate(d, pt, zk_rows, evals)?.pow([*p])),
             Double(x) => x.evaluate(d, pt, zk_rows, evals).map(|x| x.double()),
             Square(x) => x.evaluate(d, pt, zk_rows, evals).map(|x| x.square()),
-            BinOp(Op2::Mul, x, y) => {
+            Mul(x, y) => {
                 let x = (*x).evaluate(d, pt, zk_rows, evals)?;
                 let y = (*y).evaluate(d, pt, zk_rows, evals)?;
                 Ok(x * y)
             }
-            BinOp(Op2::Add, x, y) => {
+            Add(x, y) => {
                 let x = (*x).evaluate(d, pt, zk_rows, evals)?;
                 let y = (*y).evaluate(d, pt, zk_rows, evals)?;
                 Ok(x + y)
             }
-            BinOp(Op2::Sub, x, y) => {
+            Sub(x, y) => {
                 let x = (*x).evaluate(d, pt, zk_rows, evals)?;
                 let y = (*y).evaluate(d, pt, zk_rows, evals)?;
                 Ok(x - y)
@@ -1982,13 +1956,39 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
                     evals,
                 }
             }
-            Expr::BinOp(op, e1, e2) => {
+            Expr::Add(e1, e2) => {
                 let dom = (d, env.get_domain(d));
-                let f = |x: EvalResult<F>, y: EvalResult<F>| match op {
-                    Op2::Mul => x.mul(y, dom),
-                    Op2::Add => x.add(y, dom),
-                    Op2::Sub => x.sub(y, dom),
-                };
+                let f = |x: EvalResult<F>, y: EvalResult<F>| x.add(y, dom);
+                let e1 = e1.evaluations_helper(cache, d, env);
+                let e2 = e2.evaluations_helper(cache, d, env);
+                use Either::*;
+                match (e1, e2) {
+                    (Left(e1), Left(e2)) => f(e1, e2),
+                    (Right(id1), Left(e2)) => f(id1.get_from(cache).unwrap(), e2),
+                    (Left(e1), Right(id2)) => f(e1, id2.get_from(cache).unwrap()),
+                    (Right(id1), Right(id2)) => {
+                        f(id1.get_from(cache).unwrap(), id2.get_from(cache).unwrap())
+                    }
+                }
+            }
+            Expr::Sub(e1, e2) => {
+                let dom = (d, env.get_domain(d));
+                let f = |x: EvalResult<F>, y: EvalResult<F>| x.sub(y, dom);
+                let e1 = e1.evaluations_helper(cache, d, env);
+                let e2 = e2.evaluations_helper(cache, d, env);
+                use Either::*;
+                match (e1, e2) {
+                    (Left(e1), Left(e2)) => f(e1, e2),
+                    (Right(id1), Left(e2)) => f(id1.get_from(cache).unwrap(), e2),
+                    (Left(e1), Right(id2)) => f(e1, id2.get_from(cache).unwrap()),
+                    (Right(id1), Right(id2)) => {
+                        f(id1.get_from(cache).unwrap(), id2.get_from(cache).unwrap())
+                    }
+                }
+            }
+            Expr::Mul(e1, e2) => {
+                let dom = (d, env.get_domain(d));
+                let f = |x: EvalResult<F>, y: EvalResult<F>| x.mul(y, dom);
                 let e1 = e1.evaluations_helper(cache, d, env);
                 let e2 = e2.evaluations_helper(cache, d, env);
                 use Either::*;
@@ -2136,8 +2136,8 @@ impl<F: One, Column> Expr<F, Column> {
     /// Exponentiate an expression
     #[must_use]
     pub fn pow(self, p: u64) -> Self {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         if p == 0 {
             return Atom(Constant(F::one()));
         }
@@ -2176,15 +2176,17 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
     // that function. It's ok for now as we only call that function once on
     // a small input when producing the verification key.
     fn is_constant(&self, evaluated: &HashSet<Column>) -> bool {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Pow(x, _) => x.is_constant(evaluated),
             Square(x) => x.is_constant(evaluated),
             Atom(Constant(_)) => true,
             Atom(Cell(v)) => evaluated.contains(&v.col),
             Double(x) => x.is_constant(evaluated),
-            BinOp(_, x, y) => x.is_constant(evaluated) && y.is_constant(evaluated),
+            Add(x, y) | Sub(x, y) | Mul(x, y) => {
+                x.is_constant(evaluated) && y.is_constant(evaluated)
+            }
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => true,
             Atom(UnnormalizedLagrangeBasis(_)) => true,
             Cache(_, x) => x.is_constant(evaluated),
@@ -2199,8 +2201,8 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
             h
         };
         let constant = |e: Expr<F, Column>| sing(vec![], e);
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
 
         if self.is_constant(ev) {
             return constant(self.clone());
@@ -2237,7 +2239,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
             }
             Atom(Constant(c)) => constant(Atom(Constant(c.clone()))),
             Atom(Cell(var)) => sing(vec![*var], Atom(Constant(F::one()))),
-            BinOp(Op2::Add, e1, e2) => {
+            Add(e1, e2) => {
                 let mut res = e1.monomials(ev);
                 for (m, c) in e2.monomials(ev) {
                     let v = match res.remove(&m) {
@@ -2248,7 +2250,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
                 }
                 res
             }
-            BinOp(Op2::Sub, e1, e2) => {
+            Sub(e1, e2) => {
                 let mut res = e1.monomials(ev);
                 for (m, c) in e2.monomials(ev) {
                     let v = match res.remove(&m) {
@@ -2259,7 +2261,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
                 }
                 res
             }
-            BinOp(Op2::Mul, e1, e2) => {
+            Mul(e1, e2) => {
                 let e1 = e1.monomials(ev);
                 let e2 = e2.monomials(ev);
                 mul_monomials(&e1, &e2)
@@ -2518,8 +2520,7 @@ impl<F: One + Neg<Output = F>, Column> Neg for Expr<F, Column> {
     fn neg(self) -> Expr<F, Column> {
         match self {
             Expr::Atom(ExprInner::Constant(x)) => Expr::Atom(ExprInner::Constant(x.neg())),
-            e => Expr::BinOp(
-                Op2::Mul,
+            e => Expr::Mul(
                 Box::new(Expr::Atom(ExprInner::Constant(F::one().neg()))),
                 Box::new(e),
             ),
@@ -2536,7 +2537,7 @@ impl<F: Zero, Column> Add<Expr<F, Column>> for Expr<F, Column> {
         if other.is_zero() {
             return self;
         }
-        Expr::BinOp(Op2::Add, Box::new(self), Box::new(other))
+        Expr::Add(Box::new(self), Box::new(other))
     }
 }
 
@@ -2545,7 +2546,7 @@ impl<F: Zero + Clone, Column: Clone> AddAssign<Expr<F, Column>> for Expr<F, Colu
         if self.is_zero() {
             *self = other;
         } else if !other.is_zero() {
-            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other));
+            *self = Expr::Add(Box::new(self.clone()), Box::new(other));
         }
     }
 }
@@ -2563,7 +2564,7 @@ impl<F: Zero + One + PartialEq, Column: PartialEq> Mul<Expr<F, Column>> for Expr
         if other.is_one() {
             return self;
         }
-        Expr::BinOp(Op2::Mul, Box::new(self), Box::new(other))
+        Expr::Mul(Box::new(self), Box::new(other))
     }
 }
 
@@ -2578,7 +2579,7 @@ where
         } else if self.is_one() {
             *self = other;
         } else if !other.is_one() {
-            *self = Expr::BinOp(Op2::Mul, Box::new(self.clone()), Box::new(other));
+            *self = Expr::Mul(Box::new(self.clone()), Box::new(other));
         }
     }
 }
@@ -2589,7 +2590,7 @@ impl<F: Zero, Column> Sub<Expr<F, Column>> for Expr<F, Column> {
         if other.is_zero() {
             return self;
         }
-        Expr::BinOp(Op2::Sub, Box::new(self), Box::new(other))
+        Expr::Sub(Box::new(self), Box::new(other))
     }
 }
 
@@ -2897,8 +2898,8 @@ where
         &self,
         cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
     ) -> String {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
             Atom(Constant(x)) => {
@@ -2916,9 +2917,9 @@ where
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 "vanishes_on_zero_knowledge_and_previous_rows".to_string()
             }
-            BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
-            BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
-            BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
+            Add(x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
+            Mul(x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
+            Sub(x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.ocaml(cache)),
             Square(x) => format!("square({})", x.ocaml(cache)),
             Cache(id, e) => {
@@ -2961,8 +2962,8 @@ where
         &self,
         cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
     ) -> String {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
             Atom(Constant(x)) => {
@@ -2989,9 +2990,9 @@ where
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 "vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row".to_string()
             }
-            BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
-            BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
-            BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
+            Add(x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
+            Mul(x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
+            Sub(x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
             Pow(x, d) => format!("{}^{{{d}}}", x.latex(cache)),
             Square(x) => format!("({})^2", x.latex(cache)),
             Cache(id, e) => {
@@ -3008,8 +3009,8 @@ where
         &self,
         cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
     ) -> String {
-        use Expr::*;
         use ExprInner::*;
+        use Operations::*;
         match self {
             Double(x) => format!("double({})", x.text(cache)),
             Atom(Constant(x)) => {
@@ -3038,9 +3039,9 @@ where
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) => {
                 "vanishes_on_zero_knowledge_and_previous_rows".to_string()
             }
-            BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
-            BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
-            BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
+            Add(x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
+            Mul(x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
+            Sub(x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.text(cache)),
             Square(x) => format!("square({})", x.text(cache)),
             Cache(id, e) => {
