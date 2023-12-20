@@ -22,6 +22,7 @@ pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
 fn grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
     match size {
+        5 => x,
         20 => q + QUARTERS * x,
         80 => q + QUARTERS * (x + DIM * i),
         100 => q + QUARTERS * (x + DIM * y),
