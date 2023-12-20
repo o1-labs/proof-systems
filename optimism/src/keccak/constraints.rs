@@ -83,12 +83,12 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 // Absorbs the new block by performing XOR with the old state
                 self.constrain(
                     self.is_absorb()
-                        * (self.xor_state(i) - (self.old_state(i) + self.new_block(i))),
+                        * (self.xor_state(i) - (self.old_state(i) + self.new_state(i))),
                 );
                 // In absorb, Check shifts correspond to the decomposition of the new state
                 self.constrain(
                     self.is_absorb()
-                        * (self.new_block(i)
+                        * (self.new_state(i)
                             - Self::from_shifts(
                                 &self.keccak_state.sponge_shifts,
                                 Some(i),
