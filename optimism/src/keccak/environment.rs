@@ -182,7 +182,7 @@ pub(crate) trait KeccakEnvironment {
 
     fn old_state(&self, i: usize) -> Self::Variable;
 
-    fn new_block(&self, i: usize) -> Self::Variable;
+    fn new_state(&self, i: usize) -> Self::Variable;
 
     fn xor_state(&self, i: usize) -> Self::Variable;
 
@@ -387,7 +387,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::SpongeOldState(i)].clone()
     }
 
-    fn new_block(&self, i: usize) -> Self::Variable {
+    fn new_state(&self, i: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::SpongeNewState(i)].clone()
     }
 
