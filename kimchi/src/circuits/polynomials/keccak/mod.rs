@@ -7,7 +7,7 @@ pub mod witness;
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
 
-use self::constants::{DIM, QUARTERS, RATE_IN_BYTES};
+use self::constants::{DIM, QUARTERS, RATE_IN_BYTES, ROUNDS};
 
 #[macro_export]
 macro_rules! grid {
