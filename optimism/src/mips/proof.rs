@@ -22,16 +22,33 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 
+#[derive(Debug)]
 pub struct WitnessColumns<G> {
     pub scratch: [G; crate::mips::witness::SCRATCH_SIZE],
     pub instruction_counter: G,
     pub error: G,
 }
 
+#[derive(Debug)]
 pub struct ProofInputs<G: KimchiCurve> {
     evaluations: WitnessColumns<Vec<G::ScalarField>>,
 }
 
+impl<G: KimchiCurve> ProofInputs<G> {
+    pub fn new() -> Self {
+        ProofInputs {
+            evaluations: WitnessColumns {
+                scratch: std::array::from_fn(|_| {
+                    (0..1 << 15).map(|_| G::ScalarField::zero()).collect()
+                }),
+                instruction_counter: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
+                error: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
+            },
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     commitments: WitnessColumns<PolyComm<G>>,
     zeta_evaluations: WitnessColumns<G::ScalarField>,
@@ -47,10 +64,9 @@ pub fn fold<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    mut accumulator: ProofInputs<G>,
+    accumulator: &mut ProofInputs<G>,
     inputs: WitnessColumns<Vec<G::ScalarField>>,
-) -> ProofInputs<G>
-where
+) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {
     let polys = {
@@ -123,7 +139,6 @@ where
     {
         *acc_eval = *acc_eval * scaling_challenge + *new_eval
     }
-    accumulator
 }
 
 pub fn prove<

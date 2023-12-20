@@ -1,7 +1,7 @@
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    mips::witness,
+    mips::{proof, witness},
     preimage_oracle::PreImageOracle,
 };
 use std::{fs::File, io::BufReader, process::ExitCode};
@@ -40,12 +40,102 @@ pub fn main() -> ExitCode {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE as usize, state, po);
+    let domain_size = 1 << 15;
+
+    let domain =
+        kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(domain_size).unwrap();
+
+    let srs = {
+        use ark_ff::UniformRand;
+
+        // Trusted setup toxic waste
+        let x = ark_bn254::Fr::rand(&mut rand::rngs::OsRng);
+
+        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, domain_size);
+        srs.full_srs.add_lagrange_basis(domain.d1);
+        srs
+    };
+
+    let mut env = witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
+
+    let mut accumulator = proof::ProofInputs::<
+        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+    >::new();
+
+    let new_chunk = || proof::WitnessColumns {
+        scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        instruction_counter: Vec::with_capacity(domain_size),
+        error: Vec::with_capacity(domain_size),
+    };
+
+    let mut current_chunk = new_chunk();
+
+    use mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    };
+    type Fp = ark_bn254::Fr;
+    type SpongeParams = PlonkSpongeConstantsKimchi;
+    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+    type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
     while !env.halt {
         env.step(&configuration, &meta, &start);
+        for (scratch, scratch_chunk) in env
+            .scratch_state
+            .iter()
+            .zip(current_chunk.scratch.iter_mut())
+        {
+            scratch_chunk.push(*scratch);
+        }
+        current_chunk
+            .instruction_counter
+            .push(ark_bn254::Fr::from(env.instruction_counter as u64));
+        // TODO
+        use ark_ff::UniformRand;
+        current_chunk
+            .error
+            .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
+        if current_chunk.instruction_counter.len() == 1 << 15 {
+            proof::fold::<
+                _,
+                poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+                BaseSponge,
+                ScalarSponge,
+            >(domain, &srs, &mut accumulator, current_chunk);
+            current_chunk = new_chunk();
+        }
+    }
+    if current_chunk.instruction_counter.len() > 0 {
+        proof::fold::<
+            _,
+            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+            BaseSponge,
+            ScalarSponge,
+        >(domain, &srs, &mut accumulator, current_chunk);
+    }
+
+    {
+        let proof = proof::prove::<
+            _,
+            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+            BaseSponge,
+            ScalarSponge,
+        >(domain, &srs, accumulator);
+        println!("Generated a proof:\n{:?}", proof);
+        let verifies = proof::verify::<
+            _,
+            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+            BaseSponge,
+            ScalarSponge,
+        >(domain, &srs, &proof);
+        if verifies {
+            println!("The proof verifies")
+        } else {
+            println!("The proof doesn't verify")
+        }
     }
 
     // TODO: Logic
-    ExitCode::FAILURE
+    ExitCode::SUCCESS
 }
