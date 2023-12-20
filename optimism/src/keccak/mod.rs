@@ -1,6 +1,6 @@
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
-    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
 };
 
 use self::column::KeccakColumn;
@@ -15,13 +15,15 @@ pub mod witness;
 pub(crate) const HASH_BITLENGTH: usize = 256;
 pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
 pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
-pub(crate) const _ZKVM_KECCAK_COLS: usize = KECCAK_COLS + 4 + 6;
+pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
+pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
 fn grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
     match size {
+        5 => x,
         20 => q + QUARTERS * x,
         80 => q + QUARTERS * (x + DIM * i),
         100 => q + QUARTERS * (x + DIM * y),
@@ -38,7 +40,7 @@ pub(crate) trait BoolOps {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    fn boolean(x: Self::Variable) -> Self::Variable;
+    fn is_boolean(x: Self::Variable) -> Self::Variable;
 
     fn not(x: Self::Variable) -> Self::Variable;
 

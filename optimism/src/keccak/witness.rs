@@ -183,7 +183,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for i in 0..QUARTERS * DIM * DIM {
             self.write_column(KeccakColumn::SpongeOldState(i), old_state[i]);
             self.write_column(KeccakColumn::SpongeNewState(i), new_state[i]);
-            self.write_column(KeccakColumn::NextState(i), xor_state[i]);
+            self.write_column(KeccakColumn::SpongeXorState(i), xor_state[i]);
         }
         for (i, value) in bytes.iter().enumerate() {
             self.write_column(KeccakColumn::SpongeBytes(i), *value);
@@ -304,7 +304,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // Update columns
         for i in 0..STATE_LEN {
-            self.write_column(KeccakColumn::NextState(i), iota.state_g(i));
+            self.write_column(KeccakColumn::IotaStateG(i), iota.state_g(i));
         }
         for i in 0..QUARTERS {
             self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
