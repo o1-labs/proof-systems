@@ -5,7 +5,7 @@ use super::{
 };
 use crate::mips::interpreter::{Lookup, LookupTable, Signed};
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{QUARTERS, SHIFTS_LEN, STATE_LEN};
+use kimchi::circuits::polynomials::keccak::constants::{QUARTERS, SHIFTS_LEN, STATE_LEN};
 
 pub(crate) trait Lookups {
     type Column;

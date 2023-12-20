@@ -1,4 +1,5 @@
 To run the demo:
+* `git submodule init && git submodule update`
 * create an executable file `rpcs.sh` that looks like
   ```bash
   #!/usr/bin/env bash

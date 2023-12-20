@@ -139,13 +139,15 @@ impl<F: PrimeField> CircuitGate<F> {
         let pt = F::from(123456u64);
 
         let constants = expr::Constants {
+            mds: &G::sponge_params().mds,
+            endo_coefficient: cs.endo,
+            zk_rows: cs.zk_rows,
+        };
+        let challenges = expr::Challenges {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
             joint_combiner: None,
-            mds: &G::sponge_params().mds,
-            endo_coefficient: cs.endo,
-            zk_rows: cs.zk_rows,
         };
 
         let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
@@ -153,7 +155,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         let constraints = EndosclMul::constraints(&mut Cache::default());
         for (i, c) in constraints.iter().enumerate() {
-            match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
+            match c.evaluate_(cs.domain.d1, pt, &evals, &constants, &challenges) {
                 Ok(x) => {
                     if x != F::zero() {
                         return Err(format!("Bad endo equation {i}"));
