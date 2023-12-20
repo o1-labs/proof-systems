@@ -3526,6 +3526,7 @@
 <a href="#3526" id="3526">3526</a>
 <a href="#3527" id="3527">3527</a>
 <a href="#3528" id="3528">3528</a>
+<a href="#3529" id="3529">3529</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -4103,17 +4104,6 @@
     Sub,
 }
 
-<span class="kw">impl </span>Op2 {
-    <span class="kw">fn </span>to_polish&lt;A, Column&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PolishToken&lt;A, Column&gt; {
-        <span class="kw">use </span>Op2::<span class="kw-2">*</span>;
-        <span class="kw">match </span><span class="self">self </span>{
-            Add =&gt; PolishToken::Add,
-            Mul =&gt; PolishToken::Mul,
-            Sub =&gt; PolishToken::Sub,
-        }
-    }
-}
-
 <span class="doccomment">/// The feature flags that can be used to enable or disable parts of constraints.
 </span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
@@ -4168,17 +4158,7 @@
 /// This represents a PLONK &quot;custom constraint&quot;, which enforces that
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub enum </span>Expr&lt;C, Column&gt; {
-    Atom(ExprInner&lt;C, Column&gt;),
-    Double(Box&lt;Expr&lt;C, Column&gt;&gt;),
-    Square(Box&lt;Expr&lt;C, Column&gt;&gt;),
-    BinOp(Op2, Box&lt;Expr&lt;C, Column&gt;&gt;, Box&lt;Expr&lt;C, Column&gt;&gt;),
-    Pow(Box&lt;Expr&lt;C, Column&gt;&gt;, u64),
-    Cache(CacheId, Box&lt;Expr&lt;C, Column&gt;&gt;),
-    <span class="doccomment">/// If the feature flag is enabled, return the first expression; otherwise, return the second.
-    </span>IfFeature(FeatureFlag, Box&lt;Expr&lt;C, Column&gt;&gt;, Box&lt;Expr&lt;C, Column&gt;&gt;),
-}
+</span><span class="kw">pub type </span>Expr&lt;C, Column&gt; = Operations&lt;ExprInner&lt;C, Column&gt;&gt;;
 
 <span class="kw">impl</span>&lt;F, Column&gt; From&lt;ConstantExpr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="kw">fn </span>from(x: ConstantExpr&lt;F&gt;) -&gt; <span class="self">Self </span>{
@@ -4202,8 +4182,8 @@
     Expr&lt;C, Column&gt;
 {
     <span class="kw">fn </span>apply_feature_flags_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; (Expr&lt;C, Column&gt;, bool) {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Atom(
                 Constant(<span class="kw">_</span>)
@@ -4227,62 +4207,53 @@
                     (Square(Box::new(c_reduced)), <span class="bool-val">false</span>)
                 }
             }
-            BinOp(op, c1, c2) =&gt; {
+            Add(c1, c2) =&gt; {
                 <span class="kw">let </span>(c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
                 <span class="kw">let </span>(c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
-                <span class="kw">match </span>op {
-                    Op2::Add =&gt; {
-                        <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
-                            <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
-                                (Expr::zero(), <span class="bool-val">true</span>)
-                            } <span class="kw">else </span>{
-                                (c2_reduced, <span class="bool-val">false</span>)
-                            }
-                        } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
-                            (c1_reduced, <span class="bool-val">false</span>)
-                        } <span class="kw">else </span>{
-                            (
-                                BinOp(Op2::Add, Box::new(c1_reduced), Box::new(c2_reduced)),
-                                <span class="bool-val">false</span>,
-                            )
-                        }
+                <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
+                    <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                        (Expr::zero(), <span class="bool-val">true</span>)
+                    } <span class="kw">else </span>{
+                        (c2_reduced, <span class="bool-val">false</span>)
                     }
-                    Op2::Sub =&gt; {
-                        <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
-                            <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
-                                (Expr::zero(), <span class="bool-val">true</span>)
-                            } <span class="kw">else </span>{
-                                (-c2_reduced, <span class="bool-val">false</span>)
-                            }
-                        } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
-                            (c1_reduced, <span class="bool-val">false</span>)
-                        } <span class="kw">else </span>{
-                            (
-                                BinOp(Op2::Sub, Box::new(c1_reduced), Box::new(c2_reduced)),
-                                <span class="bool-val">false</span>,
-                            )
-                        }
+                } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                    (c1_reduced, <span class="bool-val">false</span>)
+                } <span class="kw">else </span>{
+                    (Add(Box::new(c1_reduced), Box::new(c2_reduced)), <span class="bool-val">false</span>)
+                }
+            }
+            Sub(c1, c2) =&gt; {
+                <span class="kw">let </span>(c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                <span class="kw">let </span>(c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
+                    <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                        (Expr::zero(), <span class="bool-val">true</span>)
+                    } <span class="kw">else </span>{
+                        (-c2_reduced, <span class="bool-val">false</span>)
                     }
-                    Op2::Mul =&gt; {
-                        <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero()
-                            || reduce_further2 &amp;&amp; c2_reduced.is_zero()
-                        {
-                            (Expr::zero(), <span class="bool-val">true</span>)
-                        } <span class="kw">else if </span>reduce_further1 &amp;&amp; c1_reduced.is_one() {
-                            <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_one() {
-                                (Expr::one(), <span class="bool-val">true</span>)
-                            } <span class="kw">else </span>{
-                                (c2_reduced, <span class="bool-val">false</span>)
-                            }
-                        } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_one() {
-                            (c1_reduced, <span class="bool-val">false</span>)
-                        } <span class="kw">else </span>{
-                            (
-                                BinOp(Op2::Mul, Box::new(c1_reduced), Box::new(c2_reduced)),
-                                <span class="bool-val">false</span>,
-                            )
-                        }
+                } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                    (c1_reduced, <span class="bool-val">false</span>)
+                } <span class="kw">else </span>{
+                    (Sub(Box::new(c1_reduced), Box::new(c2_reduced)), <span class="bool-val">false</span>)
+                }
+            }
+            Mul(c1, c2) =&gt; {
+                <span class="kw">let </span>(c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                <span class="kw">let </span>(c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero()
+                    || reduce_further2 &amp;&amp; c2_reduced.is_zero()
+                {
+                    (Expr::zero(), <span class="bool-val">true</span>)
+                } <span class="kw">else if </span>reduce_further1 &amp;&amp; c1_reduced.is_one() {
+                    <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_one() {
+                        (Expr::one(), <span class="bool-val">true</span>)
+                    } <span class="kw">else </span>{
+                        (c2_reduced, <span class="bool-val">false</span>)
                     }
+                } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_one() {
+                    (c1_reduced, <span class="bool-val">false</span>)
+                } <span class="kw">else </span>{
+                    (Mul(Box::new(c1_reduced), Box::new(c2_reduced)), <span class="bool-val">false</span>)
                 }
             }
             Pow(c, power) =&gt; {
@@ -4498,8 +4469,8 @@
     }
 
     <span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>, d1_size: u64, zk_rows: u64) -&gt; u64 {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.degree(d1_size, zk_rows),
             Atom(Constant(<span class="kw">_</span>)) =&gt; <span class="number">0</span>,
@@ -4507,8 +4478,8 @@
             Atom(UnnormalizedLagrangeBasis(<span class="kw">_</span>)) =&gt; d1_size,
             Atom(Cell(<span class="kw">_</span>)) =&gt; d1_size,
             Square(x) =&gt; <span class="number">2 </span>* x.degree(d1_size, zk_rows),
-            BinOp(Op2::Mul, x, y) =&gt; (<span class="kw-2">*</span>x).degree(d1_size, zk_rows) + (<span class="kw-2">*</span>y).degree(d1_size, zk_rows),
-            BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) =&gt; {
+            Mul(x, y) =&gt; (<span class="kw-2">*</span>x).degree(d1_size, zk_rows) + (<span class="kw-2">*</span>y).degree(d1_size, zk_rows),
+            Add(x, y) | Sub(x, y) =&gt; {
                 std::cmp::max((<span class="kw-2">*</span>x).degree(d1_size, zk_rows), (<span class="kw-2">*</span>y).degree(d1_size, zk_rows))
             }
             Pow(e, d) =&gt; d * e.degree(d1_size, zk_rows),
@@ -5124,10 +5095,20 @@
             Expr::Atom(ExprInner::UnnormalizedLagrangeBasis(i)) =&gt; {
                 res.push(PolishToken::UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i));
             }
-            Expr::BinOp(op, x, y) =&gt; {
+            Expr::Add(x, y) =&gt; {
                 x.to_polish_(cache, res);
                 y.to_polish_(cache, res);
-                res.push(op.to_polish());
+                res.push(PolishToken::Add);
+            }
+            Expr::Sub(x, y) =&gt; {
+                x.to_polish_(cache, res);
+                y.to_polish_(cache, res);
+                res.push(PolishToken::Sub);
+            }
+            Expr::Mul(x, y) =&gt; {
+                x.to_polish_(cache, res);
+                y.to_polish_(cache, res);
+                res.push(PolishToken::Mul);
             }
             Expr::Cache(id, e) =&gt; {
                 <span class="kw">match </span>cache.get(id) {
@@ -5182,8 +5163,8 @@
 
 <span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy + GenericColumn&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="kw">fn </span>evaluate_constants_(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;) -&gt; Expr&lt;F, Column&gt; {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="comment">// TODO: Use cache
         </span><span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.evaluate_constants_(c, chals).double(),
@@ -5195,15 +5176,9 @@
                 Atom(VanishesOnZeroKnowledgeAndPreviousRows)
             }
             Atom(UnnormalizedLagrangeBasis(i)) =&gt; Atom(UnnormalizedLagrangeBasis(<span class="kw-2">*</span>i)),
-            BinOp(Op2::Add, x, y) =&gt; {
-                x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals)
-            }
-            BinOp(Op2::Mul, x, y) =&gt; {
-                x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals)
-            }
-            BinOp(Op2::Sub, x, y) =&gt; {
-                x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals)
-            }
+            Add(x, y) =&gt; x.evaluate_constants_(c, chals) + y.evaluate_constants_(c, chals),
+            Mul(x, y) =&gt; x.evaluate_constants_(c, chals) * y.evaluate_constants_(c, chals),
+            Sub(x, y) =&gt; x.evaluate_constants_(c, chals) - y.evaluate_constants_(c, chals),
             Cache(id, e) =&gt; Cache(<span class="kw-2">*</span>id, Box::new(e.evaluate_constants_(c, chals))),
             IfFeature(feature, e1, e2) =&gt; IfFeature(
                 <span class="kw-2">*</span>feature,
@@ -5237,24 +5212,24 @@
         c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;,
         chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.evaluate_(d, pt, evals, c, chals).map(|x| x.double()),
             Atom(Constant(x)) =&gt; <span class="prelude-val">Ok</span>(x.value(c, chals)),
             Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
-            BinOp(Op2::Mul, x, y) =&gt; {
+            Mul(x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x * y)
             }
             Square(x) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>.square()),
-            BinOp(Op2::Add, x, y) =&gt; {
+            Add(x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x + y)
             }
-            BinOp(Op2::Sub, x, y) =&gt; {
+            Sub(x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c, chals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x - y)
@@ -5313,24 +5288,24 @@
         zk_rows: u64,
         evals: <span class="kw-2">&amp;</span>Evaluations,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Atom(Constant(x)) =&gt; <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>x),
             Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
             Double(x) =&gt; x.evaluate(d, pt, zk_rows, evals).map(|x| x.double()),
             Square(x) =&gt; x.evaluate(d, pt, zk_rows, evals).map(|x| x.square()),
-            BinOp(Op2::Mul, x, y) =&gt; {
+            Mul(x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>;
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x * y)
             }
-            BinOp(Op2::Add, x, y) =&gt; {
+            Add(x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>;
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x + y)
             }
-            BinOp(Op2::Sub, x, y) =&gt; {
+            Sub(x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>;
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate(d, pt, zk_rows, evals)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(x - y)
@@ -5510,13 +5485,39 @@
                     evals,
                 }
             }
-            Expr::BinOp(op, e1, e2) =&gt; {
+            Expr::Add(e1, e2) =&gt; {
                 <span class="kw">let </span>dom = (d, env.get_domain(d));
-                <span class="kw">let </span>f = |x: EvalResult&lt;F&gt;, y: EvalResult&lt;F&gt;| <span class="kw">match </span>op {
-                    Op2::Mul =&gt; x.mul(y, dom),
-                    Op2::Add =&gt; x.add(y, dom),
-                    Op2::Sub =&gt; x.sub(y, dom),
-                };
+                <span class="kw">let </span>f = |x: EvalResult&lt;F&gt;, y: EvalResult&lt;F&gt;| x.add(y, dom);
+                <span class="kw">let </span>e1 = e1.evaluations_helper(cache, d, env);
+                <span class="kw">let </span>e2 = e2.evaluations_helper(cache, d, env);
+                <span class="kw">use </span>Either::<span class="kw-2">*</span>;
+                <span class="kw">match </span>(e1, e2) {
+                    (Left(e1), Left(e2)) =&gt; f(e1, e2),
+                    (Right(id1), Left(e2)) =&gt; f(id1.get_from(cache).unwrap(), e2),
+                    (Left(e1), Right(id2)) =&gt; f(e1, id2.get_from(cache).unwrap()),
+                    (Right(id1), Right(id2)) =&gt; {
+                        f(id1.get_from(cache).unwrap(), id2.get_from(cache).unwrap())
+                    }
+                }
+            }
+            Expr::Sub(e1, e2) =&gt; {
+                <span class="kw">let </span>dom = (d, env.get_domain(d));
+                <span class="kw">let </span>f = |x: EvalResult&lt;F&gt;, y: EvalResult&lt;F&gt;| x.sub(y, dom);
+                <span class="kw">let </span>e1 = e1.evaluations_helper(cache, d, env);
+                <span class="kw">let </span>e2 = e2.evaluations_helper(cache, d, env);
+                <span class="kw">use </span>Either::<span class="kw-2">*</span>;
+                <span class="kw">match </span>(e1, e2) {
+                    (Left(e1), Left(e2)) =&gt; f(e1, e2),
+                    (Right(id1), Left(e2)) =&gt; f(id1.get_from(cache).unwrap(), e2),
+                    (Left(e1), Right(id2)) =&gt; f(e1, id2.get_from(cache).unwrap()),
+                    (Right(id1), Right(id2)) =&gt; {
+                        f(id1.get_from(cache).unwrap(), id2.get_from(cache).unwrap())
+                    }
+                }
+            }
+            Expr::Mul(e1, e2) =&gt; {
+                <span class="kw">let </span>dom = (d, env.get_domain(d));
+                <span class="kw">let </span>f = |x: EvalResult&lt;F&gt;, y: EvalResult&lt;F&gt;| x.mul(y, dom);
                 <span class="kw">let </span>e1 = e1.evaluations_helper(cache, d, env);
                 <span class="kw">let </span>e2 = e2.evaluations_helper(cache, d, env);
                 <span class="kw">use </span>Either::<span class="kw-2">*</span>;
@@ -5664,8 +5665,8 @@
     <span class="doccomment">/// Exponentiate an expression
     </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>pow(<span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">if </span>p == <span class="number">0 </span>{
             <span class="kw">return </span>Atom(Constant(F::one()));
         }
@@ -5704,15 +5705,17 @@
     // that function. It&#39;s ok for now as we only call that function once on
     // a small input when producing the verification key.
     </span><span class="kw">fn </span>is_constant(<span class="kw-2">&amp;</span><span class="self">self</span>, evaluated: <span class="kw-2">&amp;</span>HashSet&lt;Column&gt;) -&gt; bool {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Pow(x, <span class="kw">_</span>) =&gt; x.is_constant(evaluated),
             Square(x) =&gt; x.is_constant(evaluated),
             Atom(Constant(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
             Atom(Cell(v)) =&gt; evaluated.contains(<span class="kw-2">&amp;</span>v.col),
             Double(x) =&gt; x.is_constant(evaluated),
-            BinOp(<span class="kw">_</span>, x, y) =&gt; x.is_constant(evaluated) &amp;&amp; y.is_constant(evaluated),
+            Add(x, y) | Sub(x, y) | Mul(x, y) =&gt; {
+                x.is_constant(evaluated) &amp;&amp; y.is_constant(evaluated)
+            }
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; <span class="bool-val">true</span>,
             Atom(UnnormalizedLagrangeBasis(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
             Cache(<span class="kw">_</span>, x) =&gt; x.is_constant(evaluated),
@@ -5727,8 +5730,8 @@
             h
         };
         <span class="kw">let </span>constant = |e: Expr&lt;F, Column&gt;| sing(<span class="macro">vec!</span>[], e);
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
 
         <span class="kw">if </span><span class="self">self</span>.is_constant(ev) {
             <span class="kw">return </span>constant(<span class="self">self</span>.clone());
@@ -5765,7 +5768,7 @@
             }
             Atom(Constant(c)) =&gt; constant(Atom(Constant(c.clone()))),
             Atom(Cell(var)) =&gt; sing(<span class="macro">vec!</span>[<span class="kw-2">*</span>var], Atom(Constant(F::one()))),
-            BinOp(Op2::Add, e1, e2) =&gt; {
+            Add(e1, e2) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>res = e1.monomials(ev);
                 <span class="kw">for </span>(m, c) <span class="kw">in </span>e2.monomials(ev) {
                     <span class="kw">let </span>v = <span class="kw">match </span>res.remove(<span class="kw-2">&amp;</span>m) {
@@ -5776,7 +5779,7 @@
                 }
                 res
             }
-            BinOp(Op2::Sub, e1, e2) =&gt; {
+            Sub(e1, e2) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>res = e1.monomials(ev);
                 <span class="kw">for </span>(m, c) <span class="kw">in </span>e2.monomials(ev) {
                     <span class="kw">let </span>v = <span class="kw">match </span>res.remove(<span class="kw-2">&amp;</span>m) {
@@ -5787,7 +5790,7 @@
                 }
                 res
             }
-            BinOp(Op2::Mul, e1, e2) =&gt; {
+            Mul(e1, e2) =&gt; {
                 <span class="kw">let </span>e1 = e1.monomials(ev);
                 <span class="kw">let </span>e2 = e2.monomials(ev);
                 mul_monomials(<span class="kw-2">&amp;</span>e1, <span class="kw-2">&amp;</span>e2)
@@ -6046,8 +6049,7 @@
     <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; Expr&lt;F, Column&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Expr::Atom(ExprInner::Constant(x)) =&gt; Expr::Atom(ExprInner::Constant(x.neg())),
-            e =&gt; Expr::BinOp(
-                Op2::Mul,
+            e =&gt; Expr::Mul(
                 Box::new(Expr::Atom(ExprInner::Constant(F::one().neg()))),
                 Box::new(e),
             ),
@@ -6064,7 +6066,7 @@
         <span class="kw">if </span>other.is_zero() {
             <span class="kw">return </span><span class="self">self</span>;
         }
-        Expr::BinOp(Op2::Add, Box::new(<span class="self">self</span>), Box::new(other))
+        Expr::Add(Box::new(<span class="self">self</span>), Box::new(other))
     }
 }
 
@@ -6073,7 +6075,7 @@
         <span class="kw">if </span><span class="self">self</span>.is_zero() {
             <span class="kw-2">*</span><span class="self">self </span>= other;
         } <span class="kw">else if </span>!other.is_zero() {
-            <span class="kw-2">*</span><span class="self">self </span>= Expr::BinOp(Op2::Add, Box::new(<span class="self">self</span>.clone()), Box::new(other));
+            <span class="kw-2">*</span><span class="self">self </span>= Expr::Add(Box::new(<span class="self">self</span>.clone()), Box::new(other));
         }
     }
 }
@@ -6091,7 +6093,7 @@
         <span class="kw">if </span>other.is_one() {
             <span class="kw">return </span><span class="self">self</span>;
         }
-        Expr::BinOp(Op2::Mul, Box::new(<span class="self">self</span>), Box::new(other))
+        Expr::Mul(Box::new(<span class="self">self</span>), Box::new(other))
     }
 }
 
@@ -6106,7 +6108,7 @@
         } <span class="kw">else if </span><span class="self">self</span>.is_one() {
             <span class="kw-2">*</span><span class="self">self </span>= other;
         } <span class="kw">else if </span>!other.is_one() {
-            <span class="kw-2">*</span><span class="self">self </span>= Expr::BinOp(Op2::Mul, Box::new(<span class="self">self</span>.clone()), Box::new(other));
+            <span class="kw-2">*</span><span class="self">self </span>= Expr::Mul(Box::new(<span class="self">self</span>.clone()), Box::new(other));
         }
     }
 }
@@ -6117,7 +6119,7 @@
         <span class="kw">if </span>other.is_zero() {
             <span class="kw">return </span><span class="self">self</span>;
         }
-        Expr::BinOp(Op2::Sub, Box::new(<span class="self">self</span>), Box::new(other))
+        Expr::Sub(Box::new(<span class="self">self</span>), Box::new(other))
     }
 }
 
@@ -6425,8 +6427,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
     ) -&gt; String {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.ocaml(cache)),
             Atom(Constant(x)) =&gt; {
@@ -6444,9 +6446,9 @@
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="string">&quot;vanishes_on_zero_knowledge_and_previous_rows&quot;</span>.to_string()
             }
-            BinOp(Op2::Add, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            BinOp(Op2::Mul, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            BinOp(Op2::Sub, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
             Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {d})&quot;</span>, x.ocaml(cache)),
             Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.ocaml(cache)),
             Cache(id, e) =&gt; {
@@ -6489,8 +6491,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
     ) -&gt; String {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;2 ({})&quot;</span>, x.latex(cache)),
             Atom(Constant(x)) =&gt; {
@@ -6517,9 +6519,9 @@
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="string">&quot;vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row&quot;</span>.to_string()
             }
-            BinOp(Op2::Add, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            BinOp(Op2::Mul, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} \\cdot {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            BinOp(Op2::Sub, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.latex(cache), y.latex(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.latex(cache), y.latex(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} \\cdot {})&quot;</span>, x.latex(cache), y.latex(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.latex(cache), y.latex(cache)),
             Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{{{d}}}&quot;</span>, x.latex(cache)),
             Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({})^2&quot;</span>, x.latex(cache)),
             Cache(id, e) =&gt; {
@@ -6536,8 +6538,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
     ) -&gt; String {
-        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.text(cache)),
             Atom(Constant(x)) =&gt; {
@@ -6566,9 +6568,9 @@
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
                 <span class="string">&quot;vanishes_on_zero_knowledge_and_previous_rows&quot;</span>.to_string()
             }
-            BinOp(Op2::Add, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(cache), y.text(cache)),
-            BinOp(Op2::Mul, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.text(cache), y.text(cache)),
-            BinOp(Op2::Sub, x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.text(cache), y.text(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(cache), y.text(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.text(cache), y.text(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.text(cache), y.text(cache)),
             Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {d})&quot;</span>, x.text(cache)),
             Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.text(cache)),
             Cache(id, e) =&gt; {
