@@ -21,8 +21,8 @@ pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
-fn grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
-    match size {
+fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
+    match length {
         5 => x,
         20 => q + QUARTERS * x,
         80 => q + QUARTERS * (x + DIM * i),

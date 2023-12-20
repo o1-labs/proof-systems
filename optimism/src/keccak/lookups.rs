@@ -39,57 +39,50 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // SPONGE LOOKUPS
         {
             // PADDING LOOKUPS
-            {
-                // Power of two corresponds to 2^pad_length
-                // Pad suffixes correspond to 10*1 rule
+            // Power of two corresponds to 2^pad_length
+            // Pad suffixes correspond to 10*1 rule
+            // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
+            self.add_lookup(Lookup {
+                numerator: Signed::read_one(),
+                table_id: LookupTable::PadLookup,
+                value: vec![
+                    self.keccak_state[KeccakColumn::FlagLength].clone(),
+                    self.two_to_pad(),
+                    self.pad_suffix(0),
+                    self.pad_suffix(1),
+                    self.pad_suffix(2),
+                    self.pad_suffix(3),
+                    self.pad_suffix(4),
+                ],
+            });
+            // BYTES LOOKUPS
+            for i in 0..200 {
+                // Bytes are <2^8
                 self.add_lookup(Lookup {
                     numerator: Signed::read_one(),
-                    table_id: LookupTable::PadLookup,
-                    value: vec![
-                        self.keccak_state[KeccakColumn::FlagLength].clone(),
-                        self.two_to_pad(),
-                        self.pad_suffix(0),
-                        self.pad_suffix(1),
-                        self.pad_suffix(2),
-                        self.pad_suffix(3),
-                        self.pad_suffix(4),
-                    ],
+                    table_id: LookupTable::ByteLookup,
+                    value: vec![self.sponge_bytes(i)],
                 })
-                // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
-            }
-            // BYTES LOOKUPS
-            {
-                // Bytes are <2^8
-                for i in 0..200 {
-                    self.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ByteLookup,
-                        value: vec![self.sponge_bytes(i)],
-                    })
-                }
             }
             // SHIFTS LOOKUPS
-            {
+            for i in 100..SHIFTS_LEN {
                 // Shifts1, Shifts2, Shifts3 are in the Sparse table
-                for i in 100..SHIFTS_LEN {
-                    self.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::SparseLookup,
-                        value: vec![self.sponge_shifts(i)],
-                    })
-                }
+                self.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::SparseLookup,
+                    value: vec![self.sponge_shifts(i)],
+                })
+            }
+            for i in 0..STATE_LEN {
                 // Shifts0 together with Bits composition by pairs are in the Reset table
-                for i in 0..STATE_LEN {
-                    self.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: vec![
-                            self.sponge_bytes(2 * i)
-                                + self.sponge_bytes(2 * i + 1) * Self::two_pow(8),
-                            self.sponge_shifts(i),
-                        ],
-                    })
-                }
+                self.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::ResetLookup,
+                    value: vec![
+                        self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8),
+                        self.sponge_shifts(i),
+                    ],
+                })
             }
         }
 
@@ -153,6 +146,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                             table_id: LookupTable::ResetLookup,
                             value: vec![self.dense_e(y, x, q), self.shifts_e(0, y, x, q)],
                         });
+                        // Check that the rest of PiRhoShiftsE are in the Sparse table
                         for i in 1..SHIFTS {
                             self.add_lookup(Lookup {
                                 numerator: Signed::read_one(),

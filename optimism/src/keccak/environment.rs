@@ -150,8 +150,6 @@ pub(crate) trait KeccakEnvironment {
 
     fn is_sponge(&self) -> Self::Variable;
 
-    fn is_round(&self) -> Self::Variable;
-
     fn is_absorb(&self) -> Self::Variable;
 
     fn is_squeeze(&self) -> Self::Variable;
@@ -159,6 +157,8 @@ pub(crate) trait KeccakEnvironment {
     fn is_root(&self) -> Self::Variable;
 
     fn is_pad(&self) -> Self::Variable;
+
+    fn is_round(&self) -> Self::Variable;
 
     fn round(&self) -> Self::Variable;
 
@@ -184,9 +184,9 @@ pub(crate) trait KeccakEnvironment {
 
     fn new_state(&self, i: usize) -> Self::Variable;
 
-    fn sponge_zeros(&self) -> Vec<Self::Variable>;
-
     fn xor_state(&self, i: usize) -> Self::Variable;
+
+    fn sponge_zeros(&self) -> Vec<Self::Variable>;
 
     fn vec_sponge_shifts(&self) -> Vec<Self::Variable>;
     fn sponge_shifts(&self, i: usize) -> Self::Variable;
@@ -301,10 +301,6 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         Self::xor(self.is_absorb(), self.is_squeeze())
     }
 
-    fn is_round(&self) -> Self::Variable {
-        Self::not(self.is_sponge())
-    }
-
     fn is_absorb(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::FlagAbsorb].clone()
     }
@@ -319,6 +315,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn is_pad(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::FlagPad].clone()
+    }
+
+    fn is_round(&self) -> Self::Variable {
+        Self::not(self.is_sponge())
     }
 
     fn round(&self) -> Self::Variable {
@@ -392,12 +392,12 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::SpongeNewState(i)].clone()
     }
 
-    fn sponge_zeros(&self) -> Vec<Self::Variable> {
-        self.keccak_state.chunk(SPONGE_ZEROS_OFF, SPONGE_ZEROS_LEN)
-    }
-
     fn xor_state(&self, i: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
+    }
+
+    fn sponge_zeros(&self) -> Vec<Self::Variable> {
+        self.keccak_state.chunk(SPONGE_ZEROS_OFF, SPONGE_ZEROS_LEN)
     }
 
     fn sponge_bytes(&self, i: usize) -> Self::Variable {
