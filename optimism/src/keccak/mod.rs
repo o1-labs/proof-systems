@@ -38,7 +38,7 @@ pub(crate) trait BoolOps {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    fn boolean(x: Self::Variable) -> Self::Variable;
+    fn is_boolean(x: Self::Variable) -> Self::Variable;
 
     fn not(x: Self::Variable) -> Self::Variable;
 

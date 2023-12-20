@@ -8,7 +8,7 @@ use ark_ff::{Field, One};
 use kimchi::circuits::expr::Operations;
 use kimchi::{
     auto_clone_array,
-    circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::ROUNDS},
+    circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::*},
     grid,
     o1_utils::Two,
 };
@@ -83,7 +83,7 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     type Variable = E<Fp>;
     type Fp = Fp;
 
-    fn boolean(x: Self::Variable) -> Self::Variable {
+    fn is_boolean(x: Self::Variable) -> Self::Variable {
         x.clone() * (x - Self::Variable::one())
     }
 
@@ -152,19 +152,19 @@ pub(crate) trait KeccakEnvironment {
 
     fn is_sponge(&self) -> Self::Variable;
 
+    fn is_absorb(&self) -> Self::Variable;
+
+    fn is_squeeze(&self) -> Self::Variable;
+
+    fn is_root(&self) -> Self::Variable;
+
+    fn is_pad(&self) -> Self::Variable;
+
     fn is_round(&self) -> Self::Variable;
 
     fn round(&self) -> Self::Variable;
 
     fn inverse_round(&self) -> Self::Variable;
-
-    fn absorb(&self) -> Self::Variable;
-
-    fn squeeze(&self) -> Self::Variable;
-
-    fn root(&self) -> Self::Variable;
-
-    fn pad(&self) -> Self::Variable;
 
     fn length(&self) -> Self::Variable;
 
@@ -285,7 +285,23 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_sponge(&self) -> Self::Variable {
-        Self::xor(self.absorb(), self.squeeze())
+        Self::xor(self.is_absorb(), self.is_squeeze())
+    }
+
+    fn is_absorb(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagAbsorb].clone()
+    }
+
+    fn is_squeeze(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagSqueeze].clone()
+    }
+
+    fn is_root(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagRoot].clone()
+    }
+
+    fn is_pad(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagPad].clone()
     }
 
     fn is_round(&self) -> Self::Variable {
@@ -298,22 +314,6 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn inverse_round(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::InverseRound].clone()
-    }
-
-    fn absorb(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagAbsorb].clone()
-    }
-
-    fn squeeze(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagSqueeze].clone()
-    }
-
-    fn root(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagRoot].clone()
-    }
-
-    fn pad(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagPad].clone()
     }
 
     fn length(&self) -> Self::Variable {
