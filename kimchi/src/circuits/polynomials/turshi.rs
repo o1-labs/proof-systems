@@ -221,13 +221,15 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         // Setup circuit constants
         let constants = expr::Constants {
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+            zk_rows: 3,
+        };
+        let challenges = expr::Challenges {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),
             joint_combiner: None,
-            endo_coefficient: cs.endo,
-            mds: &G::sponge_params().mds,
-            zk_rows: 3,
         };
 
         let pt = F::rand(rng);
@@ -235,7 +237,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Evaluate constraints
         match linearized
             .constant_term
-            .evaluate_(cs.domain.d1, pt, &evals, &constants)
+            .evaluate_(cs.domain.d1, pt, &evals, &constants, &challenges)
         {
             Ok(x) => {
                 if x == F::zero() {

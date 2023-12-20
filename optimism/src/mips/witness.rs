@@ -641,6 +641,7 @@ impl<Fp: Field> Env<Fp> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }
 

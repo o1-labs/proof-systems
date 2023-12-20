@@ -5,7 +5,10 @@ use crate::circuits::{
 };
 use ark_ff::{PrimeField, SquareRootField};
 
-use super::{Keccak, RATE_IN_BYTES, RC, ROUNDS};
+use super::{
+    constants::{RATE_IN_BYTES, ROUNDS},
+    Keccak, RC,
+};
 
 const SPONGE_COEFFS: usize = 336;
 
