@@ -23,9 +23,13 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+
     let lookup_table_values: Vec<Vec<_>> = table_sizes
         .iter()
-        .map(|size| (0..*size).map(|_| rand::random()).collect())
+        .map(|size| (0..*size).map(|_| rng.gen()).collect())
         .collect();
     let lookup_tables = lookup_table_values
         .iter()
@@ -55,16 +59,16 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         let num_tables = table_sizes.len();
         let mut tables_used = std::collections::HashSet::new();
         for _ in 0..num_lookups {
-            let table_id = rand::random::<usize>() % num_tables;
+            let table_id = rng.gen::<usize>() % num_tables;
             tables_used.insert(table_id);
             let lookup_table_values: &Vec<Fp> = &lookup_table_values[table_id];
             lookup_table_ids.push((table_id as u64).into());
             for i in 0..3 {
-                let index = rand::random::<usize>() % lookup_table_values.len();
+                let index = rng.gen::<usize>() % lookup_table_values.len();
                 let value = if use_values_from_table {
                     lookup_table_values[index]
                 } else {
-                    rand::random()
+                    rng.gen()
                 };
                 lookup_indexes[i].push((index as u64).into());
                 lookup_values[i].push(value);
