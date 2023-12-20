@@ -19,7 +19,7 @@ use poly_commitment::{
 };
 use rand::thread_rng;
 use rayon::iter::{
-    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    FromParallelIterator, IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
@@ -28,6 +28,70 @@ pub struct WitnessColumns<G> {
     pub scratch: [G; crate::mips::witness::SCRATCH_SIZE],
     pub instruction_counter: G,
     pub error: G,
+}
+
+impl<G> IntoParallelIterator for WitnessColumns<G>
+where
+    Vec<G>: IntoParallelIterator,
+{
+    type Iter = <Vec<G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let mut iter_contents = Vec::with_capacity(crate::mips::witness::SCRATCH_SIZE + 2);
+        iter_contents.extend(self.scratch);
+        iter_contents.push(self.instruction_counter);
+        iter_contents.push(self.error);
+        iter_contents.into_par_iter()
+    }
+}
+
+impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for WitnessColumns<G> {
+    fn from_par_iter<I>(par_iter: I) -> Self
+    where
+        I: IntoParallelIterator<Item = G>,
+    {
+        let mut iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
+        let error = iter_contents.pop().unwrap();
+        let instruction_counter = iter_contents.pop().unwrap();
+        WitnessColumns {
+            scratch: iter_contents.try_into().unwrap(),
+            instruction_counter,
+            error,
+        }
+    }
+}
+
+impl<'data, G> IntoParallelIterator for &'data WitnessColumns<G>
+where
+    Vec<&'data G>: IntoParallelIterator,
+{
+    type Iter = <Vec<&'data G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<&'data G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let mut iter_contents = Vec::with_capacity(crate::mips::witness::SCRATCH_SIZE + 2);
+        iter_contents.extend(self.scratch.iter());
+        iter_contents.push(&self.instruction_counter);
+        iter_contents.push(&self.error);
+        iter_contents.into_par_iter()
+    }
+}
+
+impl<'data, G> IntoParallelIterator for &'data mut WitnessColumns<G>
+where
+    Vec<&'data mut G>: IntoParallelIterator,
+{
+    type Iter = <Vec<&'data mut G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<&'data mut G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let mut iter_contents = Vec::with_capacity(crate::mips::witness::SCRATCH_SIZE + 2);
+        iter_contents.extend(self.scratch.iter_mut());
+        iter_contents.push(&mut self.instruction_counter);
+        iter_contents.push(&mut self.error);
+        iter_contents.into_par_iter()
+    }
 }
 
 #[derive(Debug)]
@@ -71,24 +135,16 @@ pub fn fold<
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {
     let commitments = {
-        let WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-        } = &inputs;
-        let comm = |evals: &Vec<G::ScalarField>| {
-            let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                evals.clone(),
-                domain.d1,
-            );
-            srs.commit_evaluations_non_hiding(domain.d1, &evals)
-        };
-        let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
-        WitnessColumns {
-            scratch: scratch.try_into().unwrap(),
-            instruction_counter: comm(instruction_counter),
-            error: comm(error),
-        }
+        inputs
+            .par_iter()
+            .map(|evals: &Vec<G::ScalarField>| {
+                let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    evals.clone(),
+                    domain.d1,
+                );
+                srs.commit_evaluations_non_hiding(domain.d1, &evals)
+            })
+            .collect::<WitnessColumns<_>>()
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     for comm in commitments.scratch.iter() {
@@ -103,13 +159,15 @@ pub fn fold<
         .evaluations
         .scratch
         .par_iter_mut()
-        .zip(inputs.scratch.par_iter()).for_each(|(acc_eval, new_eval)|
-    {
-        acc_eval
-            .iter_mut()
-            .zip(new_eval.iter())
-            .for_each(|(acc_eval, new_eval)| *acc_eval = *acc_eval * scaling_challenge + *new_eval);
-    });
+        .zip(inputs.scratch.par_iter())
+        .for_each(|(acc_eval, new_eval)| {
+            acc_eval
+                .iter_mut()
+                .zip(new_eval.iter())
+                .for_each(|(acc_eval, new_eval)| {
+                    *acc_eval = *acc_eval * scaling_challenge + *new_eval
+                });
+        });
     accumulator
         .evaluations
         .instruction_counter
