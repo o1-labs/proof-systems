@@ -83,18 +83,10 @@ where
         // reminder: a table is written as a list of columns,
         // not as a list of row entries.
         for row in 0..self.len() {
-            let mut row_zero = true;
-            for col in &self.data {
-                if !col[row].is_zero() {
-                    row_zero = false;
-                    break;
-                }
-            }
-            if row_zero {
+            if self.data.iter().all(|col| col[row].is_zero()) {
                 return true;
             }
         }
-
         false
     }
 
