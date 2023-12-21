@@ -23,10 +23,12 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
-    let lookup_table_values: Vec<Vec<_>> = table_sizes
+    let mut lookup_table_values: Vec<Vec<_>> = table_sizes
         .iter()
         .map(|size| (0..*size).map(|_| rand::random()).collect())
         .collect();
+    // Zero table must have a zero row
+    lookup_table_values[0][0] = From::from(0);
     let lookup_tables = lookup_table_values
         .iter()
         .enumerate()
@@ -205,7 +207,7 @@ fn test_runtime_table() {
     let len = first_column.len();
 
     let mut runtime_tables_setup = vec![];
-    for table_id in 0..num {
+    for table_id in 1..num + 1 {
         let cfg = RuntimeTableCfg {
             id: table_id,
             first_column: first_column.into_iter().map(Into::into).collect(),
@@ -241,7 +243,7 @@ fn test_runtime_table() {
 
         for row in 0..20 {
             // the first register is the table id. We pick one random table.
-            lookup_cols[0][row] = (rng.gen_range(0..num) as u32).into();
+            lookup_cols[0][row] = (rng.gen_range(1..num + 1) as u32).into();
 
             // create queries into our runtime lookup table.
             // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
@@ -598,13 +600,21 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
 
     // Non zero-length table
     let len = 1u32 + rng.gen_range(0u32..max_len);
+    // Table id is 0
     let table_id: i32 = 0;
-    // No index 0 in the table.
+    // Always include index 0 in the table. Maybe even a few.
     let indices: Vec<Fp> = (0..len)
-        .map(|_| 1 + rng.gen_range(0u32..max_len))
+        .map(|i| {
+            if i == 0 {
+                0u32
+            } else {
+                rng.gen_range(0u32..max_len)
+            }
+        })
         .map(Into::into)
         .collect();
-    // No zero value
+    // But no zero values!
+    // So we'll get rows with zeroes that are not full-zero-rows.
     let values: Vec<Fp> = (0..len)
         .map(|_| rng.gen_range(1u32..max_len))
         .map(Into::into)
