@@ -620,6 +620,13 @@ pub mod caml {
         CamlF: From<F>,
     {
         fn from(pe: ProofEvaluations<PointEvaluations<Vec<F>>>) -> Self {
+            let first = pe.public.map(|x: PointEvaluations<Vec<F>>| {
+                // map both fields of each evaluation.
+                x.map(&|x: Vec<F>| {
+                    let y: Vec<CamlF> = into_iter().map(Into::into).collect();
+                    y
+                })
+            });
             let w = (
                 pe.w[0]
                     .clone()
@@ -735,85 +742,83 @@ pub mod caml {
                     .map(&|x| x.into_iter().map(Into::into).collect()),
             );
 
-            (
-                pe.public
+            let second = CamlProofEvaluations {
+                w,
+                coefficients,
+                z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
+                s,
+                generic_selector: pe
+                    .generic_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                poseidon_selector: pe
+                    .poseidon_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                complete_add_selector: pe
+                    .complete_add_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                mul_selector: pe
+                    .mul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                emul_selector: pe
+                    .emul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                endomul_scalar_selector: pe
+                    .endomul_scalar_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                range_check0_selector: pe
+                    .range_check0_selector
                     .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                CamlProofEvaluations {
-                    w,
-                    coefficients,
-                    z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
-                    s,
-                    generic_selector: pe
-                        .generic_selector
-                        .map(&|x| x.into_iter().map(Into::into).collect()),
-                    poseidon_selector: pe
-                        .poseidon_selector
-                        .map(&|x| x.into_iter().map(Into::into).collect()),
-                    complete_add_selector: pe
-                        .complete_add_selector
-                        .map(&|x| x.into_iter().map(Into::into).collect()),
-                    mul_selector: pe
-                        .mul_selector
-                        .map(&|x| x.into_iter().map(Into::into).collect()),
-                    emul_selector: pe
-                        .emul_selector
-                        .map(&|x| x.into_iter().map(Into::into).collect()),
-                    endomul_scalar_selector: pe
-                        .endomul_scalar_selector
-                        .map(&|x| x.into_iter().map(Into::into).collect()),
-                    range_check0_selector: pe
-                        .range_check0_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    range_check1_selector: pe
-                        .range_check1_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    foreign_field_add_selector: pe
-                        .foreign_field_add_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    foreign_field_mul_selector: pe
-                        .foreign_field_mul_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    xor_selector: pe
-                        .xor_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    rot_selector: pe
-                        .rot_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    lookup_aggregation: pe
-                        .lookup_aggregation
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    lookup_table: pe
-                        .lookup_table
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    lookup_sorted: pe
-                        .lookup_sorted
-                        .iter()
-                        .map(|x| {
-                            x.as_ref().map(|x| {
-                                x.map_ref(&|x| x.clone().into_iter().map(Into::into).collect())
-                            })
+                range_check1_selector: pe
+                    .range_check1_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_add_selector: pe
+                    .foreign_field_add_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_selector: pe
+                    .foreign_field_mul_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                xor_selector: pe
+                    .xor_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                rot_selector: pe
+                    .rot_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_aggregation: pe
+                    .lookup_aggregation
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_table: pe
+                    .lookup_table
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_sorted: pe
+                    .lookup_sorted
+                    .iter()
+                    .map(|x| {
+                        x.as_ref().map(|x| {
+                            x.map_ref(&|x| x.clone().into_iter().map(Into::into).collect())
                         })
-                        .collect::<Vec<_>>(),
-                    runtime_lookup_table: pe
-                        .runtime_lookup_table
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    runtime_lookup_table_selector: pe
-                        .runtime_lookup_table_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    xor_lookup_selector: pe
-                        .xor_lookup_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    lookup_gate_lookup_selector: pe
-                        .lookup_gate_lookup_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    range_check_lookup_selector: pe
-                        .range_check_lookup_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                    foreign_field_mul_lookup_selector: pe
-                        .foreign_field_mul_lookup_selector
-                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                },
-            )
+                    })
+                    .collect::<Vec<_>>(),
+                runtime_lookup_table: pe
+                    .runtime_lookup_table
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                runtime_lookup_table_selector: pe
+                    .runtime_lookup_table_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                xor_lookup_selector: pe
+                    .xor_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_gate_lookup_selector: pe
+                    .lookup_gate_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                range_check_lookup_selector: pe
+                    .range_check_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_lookup_selector: pe
+                    .foreign_field_mul_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+            };
+
+            (first, second)
         }
     }
 
