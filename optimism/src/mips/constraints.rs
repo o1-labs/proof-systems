@@ -268,6 +268,44 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }))
     }
 
+    unsafe fn add_witness(
+        &mut self,
+        _y: &Self::Variable,
+        _x: &Self::Variable,
+        out_position: Self::Position,
+        overflow_position: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        (
+            Expr::Cell(Variable {
+                col: out_position,
+                row: CurrOrNext::Curr,
+            }),
+            Expr::Cell(Variable {
+                col: overflow_position,
+                row: CurrOrNext::Curr,
+            }),
+        )
+    }
+
+    unsafe fn sub_witness(
+        &mut self,
+        _y: &Self::Variable,
+        _x: &Self::Variable,
+        out_position: Self::Position,
+        underflow_position: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        (
+            Expr::Cell(Variable {
+                col: out_position,
+                row: CurrOrNext::Curr,
+            }),
+            Expr::Cell(Variable {
+                col: underflow_position,
+                row: CurrOrNext::Curr,
+            }),
+        )
+    }
+
     unsafe fn mul_signed_witness(
         &mut self,
         _x: &Self::Variable,
