@@ -71,7 +71,7 @@ is an element of the polynomial ring <code>F[V]</code>, where <code>V</code> is 
 <code>factor_{V_0}: F[V] -&gt; (F[V_1])[V_0]</code>. That is, polynomials with <code>F</code> coefficients in the variables <code>V = V_0 \cup V_1</code>
 are the same thing as polynomials with <code>F[V_1]</code> coefficients in variables <code>V_0</code>.</p>
 <p>There is also a function
-<code>lin_or_err : (F[V_1])[V_0] -&gt; Result&lt;Vec&lt;(V_0, F[V_2])&gt;, &amp;str&gt;</code></p>
+<code>lin_or_err : (F[V_1])[V_0] -&gt; Result&lt;Vec&lt;(V_0, F[V_1])&gt;, &amp;str&gt;</code></p>
 <p>which checks if the given input is in fact a degree 1 polynomial in the variables <code>V_0</code>
 (i.e., a linear combination of <code>V_0</code> elements with <code>F[V_1]</code> coefficients)
 returning this linear combination if so.</p>
