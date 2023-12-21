@@ -1003,6 +1003,98 @@
 <a href="#1003" id="1003">1003</a>
 <a href="#1004" id="1004">1004</a>
 <a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
 <span class="kw">use crate</span>::{
     cannon::{
@@ -1048,14 +1140,14 @@
 }
 
 <span class="kw">pub struct </span>Env&lt;Fp&gt; {
-    <span class="kw">pub </span>instruction_counter: u32, <span class="comment">// TODO: u32 will not be big enough..
-    </span><span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
+    <span class="kw">pub </span>instruction_counter: u64,
+    <span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
     <span class="kw">pub </span>last_memory_accesses: [usize; <span class="number">3</span>],
-    <span class="kw">pub </span>memory_write_index: Vec&lt;(u32, Vec&lt;u32&gt;)&gt;, <span class="comment">// TODO: u32 will not be big enough..
-    </span><span class="kw">pub </span>last_memory_write_index_accesses: [usize; <span class="number">3</span>],
+    <span class="kw">pub </span>memory_write_index: Vec&lt;(u32, Vec&lt;u64&gt;)&gt;,
+    <span class="kw">pub </span>last_memory_write_index_accesses: [usize; <span class="number">3</span>],
     <span class="kw">pub </span>registers: Registers&lt;u32&gt;,
-    <span class="kw">pub </span>registers_write_index: Registers&lt;u32&gt;, <span class="comment">// TODO: u32 will not be big enough..
-    </span><span class="kw">pub </span>scratch_state_idx: usize,
+    <span class="kw">pub </span>registers_write_index: Registers&lt;u64&gt;,
+    <span class="kw">pub </span>scratch_state_idx: usize,
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
@@ -1112,7 +1204,7 @@
         Column::ScratchState(scratch_idx)
     }
 
-    <span class="kw">type </span>Variable = u32;
+    <span class="kw">type </span>Variable = u64;
 
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _assert_equals_zero: <span class="self">Self</span>::Variable) {
         <span class="comment">// No-op for witness
@@ -1147,8 +1239,8 @@
         idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = <span class="self">self</span>.registers[<span class="kw-2">*</span>idx <span class="kw">as </span>usize];
-        <span class="self">self</span>.write_column(output, res.into());
+        <span class="kw">let </span>res = <span class="self">self</span>.registers[<span class="kw-2">*</span>idx <span class="kw">as </span>usize] <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(output, res);
         res
     }
 
@@ -1158,6 +1250,7 @@
         value: <span class="self">Self</span>::Variable,
         if_is_true: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
     ) {
+        <span class="kw">let </span>value: u32 = value.try_into().unwrap();
         <span class="kw">if </span><span class="kw-2">*</span>if_is_true == <span class="number">1 </span>{
             <span class="self">self</span>.registers[<span class="kw-2">*</span>idx <span class="kw">as </span>usize] = value
         } <span class="kw">else if </span><span class="kw-2">*</span>if_is_true == <span class="number">0 </span>{
@@ -1173,7 +1266,7 @@
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>res = <span class="self">self</span>.registers_write_index[<span class="kw-2">*</span>idx <span class="kw">as </span>usize];
-        <span class="self">self</span>.write_column(output, res.into());
+        <span class="self">self</span>.write_column(output, res);
         res
     }
 
@@ -1197,6 +1290,7 @@
         addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>addr: u32 = (<span class="kw-2">*</span>addr).try_into().unwrap();
         <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
         <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
         <span class="kw">let </span>memory_page_idx = <span class="self">self</span>.get_memory_page_index(page);
@@ -1206,6 +1300,7 @@
     }
 
     <span class="kw">unsafe fn </span>push_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>addr: u32 = (<span class="kw-2">*</span>addr).try_into().unwrap();
         <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
         <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
         <span class="kw">let </span>memory_page_idx = <span class="self">self</span>.get_memory_page_index(page);
@@ -1218,15 +1313,17 @@
         addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>addr: u32 = (<span class="kw-2">*</span>addr).try_into().unwrap();
         <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
         <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
         <span class="kw">let </span>memory_write_index_page_idx = <span class="self">self</span>.get_memory_access_page_index(page);
         <span class="kw">let </span>value = <span class="self">self</span>.memory_write_index[memory_write_index_page_idx].<span class="number">1</span>[page_address];
-        <span class="self">self</span>.write_column(output, value.into());
+        <span class="self">self</span>.write_column(output, value);
         value
     }
 
     <span class="kw">unsafe fn </span>push_memory_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>addr = <span class="kw-2">*</span>addr <span class="kw">as </span>u32;
         <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
         <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
         <span class="kw">let </span>memory_write_index_page_idx = <span class="self">self</span>.get_memory_access_page_index(page);
@@ -1234,7 +1331,7 @@
     }
 
     <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable {
-        x
+        x <span class="kw">as </span>u64
     }
 
     <span class="kw">unsafe fn </span>bitmask(
@@ -1244,8 +1341,10 @@
         lowest_bit: u32,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
         <span class="kw">let </span>res = (x &gt;&gt; lowest_bit) &amp; ((<span class="number">1 </span>&lt;&lt; (highest_bit - lowest_bit)) - <span class="number">1</span>);
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1255,8 +1354,11 @@
         by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>by: u32 = (<span class="kw-2">*</span>by).try_into().unwrap();
         <span class="kw">let </span>res = x &lt;&lt; by;
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1266,8 +1368,11 @@
         by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>by: u32 = (<span class="kw-2">*</span>by).try_into().unwrap();
         <span class="kw">let </span>res = x &gt;&gt; by;
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1277,14 +1382,17 @@
         by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = ((<span class="kw-2">*</span>x <span class="kw">as </span>i32) &gt;&gt; by) <span class="kw">as </span>u32;
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>by: u32 = (<span class="kw-2">*</span>by).try_into().unwrap();
+        <span class="kw">let </span>res = ((x <span class="kw">as </span>i32) &gt;&gt; by) <span class="kw">as </span>u32;
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
     <span class="kw">unsafe fn </span>test_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>res = <span class="kw">if </span><span class="kw-2">*</span>x == <span class="number">0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1297,7 +1405,7 @@
             <span class="self">self</span>.write_column(position, <span class="number">0</span>);
             <span class="number">0
         </span>} <span class="kw">else </span>{
-            <span class="self">self</span>.write_field_column(position, Fp::from(<span class="kw-2">*</span>x <span class="kw">as </span>u64).inverse().unwrap());
+            <span class="self">self</span>.write_field_column(position, Fp::from(<span class="kw-2">*</span>x).inverse().unwrap());
             <span class="number">1 </span><span class="comment">// Placeholder value
         </span>}
     }
@@ -1308,8 +1416,11 @@
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = <span class="kw">if </span><span class="kw-2">*</span>x &lt; <span class="kw-2">*</span>y { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>res = <span class="kw">if </span>x &lt; y { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1319,8 +1430,11 @@
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = <span class="kw">if </span>(<span class="kw-2">*</span>x <span class="kw">as </span>i32) &lt; (<span class="kw-2">*</span>y <span class="kw">as </span>i32) { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>res = <span class="kw">if </span>(x <span class="kw">as </span>i32) &lt; (y <span class="kw">as </span>i32) { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1330,8 +1444,11 @@
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
         <span class="kw">let </span>res = x &amp; y;
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1341,8 +1458,11 @@
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
         <span class="kw">let </span>res = !(x | y);
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1352,8 +1472,11 @@
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
         <span class="kw">let </span>res = x | y;
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1363,9 +1486,48 @@
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = <span class="kw-2">*</span>x ^ <span class="kw-2">*</span>y;
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>res = x ^ y;
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
+    }
+
+    <span class="kw">unsafe fn </span>add_witness(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        out_position: <span class="self">Self</span>::Position,
+        overflow_position: <span class="self">Self</span>::Position,
+    ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>u64_res = x + y;
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>u32_res = x + y;
+        <span class="kw">let </span>u32_res = u32_res <span class="kw">as </span>u64;
+        <span class="kw">let </span>overflows = <span class="kw">if </span>u32_res == u64_res { <span class="number">0u64 </span>} <span class="kw">else </span>{ <span class="number">1u64 </span>};
+        <span class="self">self</span>.write_column(out_position, u32_res);
+        <span class="self">self</span>.write_column(overflow_position, overflows);
+        (u32_res, overflows)
+    }
+
+    <span class="kw">unsafe fn </span>sub_witness(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        out_position: <span class="self">Self</span>::Position,
+        underflow_position: <span class="self">Self</span>::Position,
+    ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>u64_res = x - y;
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>u32_res = x - y;
+        <span class="kw">let </span>u32_res = u32_res <span class="kw">as </span>u64;
+        <span class="kw">let </span>underflows = <span class="kw">if </span>u32_res == u64_res { <span class="number">0u64 </span>} <span class="kw">else </span>{ <span class="number">1u64 </span>};
+        <span class="self">self</span>.write_column(out_position, u32_res);
+        <span class="self">self</span>.write_column(underflow_position, underflows);
+        (u32_res, underflows)
     }
 
     <span class="kw">unsafe fn </span>mul_signed_witness(
@@ -1374,8 +1536,11 @@
         y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = ((<span class="kw-2">*</span>x <span class="kw">as </span>i32) * (<span class="kw-2">*</span>y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>res = ((x <span class="kw">as </span>i32) * (y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
@@ -1386,11 +1551,15 @@
         position_hi: <span class="self">Self</span>::Position,
         position_lo: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
-        <span class="kw">let </span>mul = (((<span class="kw-2">*</span>x <span class="kw">as </span>i32) <span class="kw">as </span>i64) * ((<span class="kw-2">*</span>y <span class="kw">as </span>i32) <span class="kw">as </span>i64)) <span class="kw">as </span>u64;
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>mul = (((x <span class="kw">as </span>i32) <span class="kw">as </span>i64) * ((y <span class="kw">as </span>i32) <span class="kw">as </span>i64)) <span class="kw">as </span>u64;
         <span class="kw">let </span>hi = (mul &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
         <span class="kw">let </span>lo = (mul &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) - <span class="number">1</span>)) <span class="kw">as </span>u32;
-        <span class="self">self</span>.write_column(position_hi, hi.into());
-        <span class="self">self</span>.write_column(position_lo, lo.into());
+        <span class="kw">let </span>hi = hi <span class="kw">as </span>u64;
+        <span class="kw">let </span>lo = lo <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position_hi, hi);
+        <span class="self">self</span>.write_column(position_lo, lo);
         (hi, lo)
     }
 
@@ -1401,11 +1570,15 @@
         position_hi: <span class="self">Self</span>::Position,
         position_lo: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
-        <span class="kw">let </span>mul = (<span class="kw-2">*</span>x <span class="kw">as </span>u64) * (<span class="kw-2">*</span>y <span class="kw">as </span>u64);
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>mul = (x <span class="kw">as </span>u64) * (y <span class="kw">as </span>u64);
         <span class="kw">let </span>hi = (mul &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
         <span class="kw">let </span>lo = (mul &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) - <span class="number">1</span>)) <span class="kw">as </span>u32;
-        <span class="self">self</span>.write_column(position_hi, hi.into());
-        <span class="self">self</span>.write_column(position_lo, lo.into());
+        <span class="kw">let </span>hi = hi <span class="kw">as </span>u64;
+        <span class="kw">let </span>lo = lo <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position_hi, hi);
+        <span class="self">self</span>.write_column(position_lo, lo);
         (hi, lo)
     }
 
@@ -1416,10 +1589,14 @@
         position_quotient: <span class="self">Self</span>::Position,
         position_remainder: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
-        <span class="kw">let </span>q = ((<span class="kw-2">*</span>x <span class="kw">as </span>i32) / (<span class="kw-2">*</span>y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
-        <span class="kw">let </span>r = ((<span class="kw-2">*</span>x <span class="kw">as </span>i32) % (<span class="kw-2">*</span>y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
-        <span class="self">self</span>.write_column(position_quotient, q.into());
-        <span class="self">self</span>.write_column(position_remainder, r.into());
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
+        <span class="kw">let </span>q = ((x <span class="kw">as </span>i32) / (y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
+        <span class="kw">let </span>r = ((x <span class="kw">as </span>i32) % (y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
+        <span class="kw">let </span>q = q <span class="kw">as </span>u64;
+        <span class="kw">let </span>r = r <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position_quotient, q);
+        <span class="self">self</span>.write_column(position_remainder, r);
         (q, r)
     }
 
@@ -1430,10 +1607,14 @@
         position_quotient: <span class="self">Self</span>::Position,
         position_remainder: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>y: u32 = (<span class="kw-2">*</span>y).try_into().unwrap();
         <span class="kw">let </span>q = x / y;
         <span class="kw">let </span>r = x % y;
-        <span class="self">self</span>.write_column(position_quotient, q.into());
-        <span class="self">self</span>.write_column(position_remainder, r.into());
+        <span class="kw">let </span>q = q <span class="kw">as </span>u64;
+        <span class="kw">let </span>r = r <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position_quotient, q);
+        <span class="self">self</span>.write_column(position_remainder, r);
         (q, r)
     }
 
@@ -1442,13 +1623,15 @@
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
         <span class="kw">let </span>res = x.leading_zeros();
-        <span class="self">self</span>.write_column(position, res.into());
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
         res
     }
 
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.write_column(position, (<span class="kw-2">*</span>x).into());
+        <span class="self">self</span>.write_column(position, <span class="kw-2">*</span>x);
         <span class="kw-2">*</span>x
     }
 
@@ -1494,34 +1677,34 @@
             .as_ref()
             .expect(<span class="string">&quot;to have a preimage if we&#39;re requesting it at a non-zero offset&quot;</span>);
         <span class="kw">let </span>preimage_len = preimage.len();
+        <span class="kw">let </span>preimage_offset = <span class="self">self</span>.registers.preimage_offset <span class="kw">as </span>u64;
 
-        <span class="kw">let </span>max_read_len = std::cmp::min(
-            <span class="self">self</span>.registers.preimage_offset + len,
-            (preimage_len + LENGTH_SIZE) <span class="kw">as </span>u32,
-        ) - <span class="self">self</span>.registers.preimage_offset;
+        <span class="kw">let </span>max_read_len =
+            std::cmp::min(preimage_offset + len, (preimage_len + LENGTH_SIZE) <span class="kw">as </span>u64)
+                - preimage_offset;
         <span class="comment">// We read at most 4 bytes, ensuring that we respect word alignment.
         </span><span class="kw">let </span>actual_read_len = std::cmp::min(max_read_len, <span class="number">4 </span>- (addr &amp; <span class="number">3</span>));
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..actual_read_len {
-            <span class="kw">let </span>idx = (<span class="self">self</span>.registers.preimage_offset + i) <span class="kw">as </span>usize;
+            <span class="kw">let </span>idx = (preimage_offset + i) <span class="kw">as </span>usize;
             <span class="comment">// The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             </span><span class="kw">if </span>idx &lt; LENGTH_SIZE {
                 <span class="kw">let </span>length_byte = u64::to_be_bytes(preimage_len <span class="kw">as </span>u64)[idx];
                 <span class="kw">unsafe </span>{
-                    <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), length_byte <span class="kw">as </span>u32);
+                    <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), length_byte <span class="kw">as </span>u64);
                     <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.instruction_counter + <span class="number">1</span>);
                 }
             } <span class="kw">else </span>{
                 <span class="comment">// This should really be handled by the keccak oracle.
                 </span><span class="kw">let </span>preimage_byte = <span class="self">self</span>.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 <span class="kw">unsafe </span>{
-                    <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), preimage_byte <span class="kw">as </span>u32);
+                    <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), preimage_byte <span class="kw">as </span>u64);
                     <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.instruction_counter + <span class="number">1</span>);
                 }
             }
         }
-        <span class="self">self</span>.write_column(pos, actual_read_len.into());
+        <span class="self">self</span>.write_column(pos, actual_read_len);
         actual_read_len
     }
 
@@ -1540,6 +1723,7 @@
             </span><span class="kw">unsafe </span>{ <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.instruction_counter + <span class="number">1</span>) };
             <span class="comment">// Fetch the value without allocating witness columns
             </span><span class="kw">let </span>value = {
+                <span class="kw">let </span>addr: u32 = (<span class="kw-2">*</span>addr).try_into().unwrap();
                 <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
                 <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
                 <span class="kw">let </span>memory_page_idx = <span class="self">self</span>.get_memory_page_index(page);
@@ -1614,12 +1798,12 @@
         };
 
         Env {
-            instruction_counter: state.step <span class="kw">as </span>u32,
+            instruction_counter: state.step,
             memory: initial_memory.clone(),
             last_memory_accesses: [<span class="number">0usize</span>; <span class="number">3</span>],
             memory_write_index: memory_offsets
                 .iter()
-                .map(|offset| (<span class="kw-2">*</span>offset, <span class="macro">vec!</span>[<span class="number">0u32</span>; page_size]))
+                .map(|offset| (<span class="kw-2">*</span>offset, <span class="macro">vec!</span>[<span class="number">0u64</span>; page_size]))
                 .collect(),
             last_memory_write_index_accesses: [<span class="number">0usize</span>; <span class="number">3</span>],
             registers: initial_registers.clone(),
@@ -1696,7 +1880,7 @@
         }
 
         <span class="comment">// Memory not found; dynamically allocate
-        </span><span class="kw">let </span>memory_write_index = <span class="macro">vec!</span>[<span class="number">0u32</span>; PAGE_SIZE <span class="kw">as </span>usize];
+        </span><span class="kw">let </span>memory_write_index = <span class="macro">vec!</span>[<span class="number">0u64</span>; PAGE_SIZE <span class="kw">as </span>usize];
         <span class="self">self</span>.memory_write_index.push((page, memory_write_index));
         <span class="kw">let </span>i = <span class="self">self</span>.memory_write_index.len() - <span class="number">1</span>;
         <span class="self">self</span>.update_last_memory_write_index_access(i);
@@ -1884,7 +2068,7 @@
     }
 
     <span class="kw">fn </span>should_trigger_at(<span class="kw-2">&amp;</span><span class="self">self</span>, at: <span class="kw-2">&amp;</span>StepFrequency) -&gt; bool {
-        <span class="kw">let </span>m: u64 = <span class="self">self</span>.instruction_counter <span class="kw">as </span>u64;
+        <span class="kw">let </span>m: u64 = <span class="self">self</span>.instruction_counter;
         <span class="kw">match </span>at {
             StepFrequency::Never =&gt; <span class="bool-val">false</span>,
             StepFrequency::Always =&gt; <span class="bool-val">true</span>,
@@ -1943,7 +2127,7 @@
             <span class="kw">let </span>s: State = State {
                 pc: <span class="self">self</span>.registers.current_instruction_pointer,
                 next_pc: <span class="self">self</span>.registers.next_instruction_pointer,
-                step: <span class="self">self</span>.instruction_counter <span class="kw">as </span>u64,
+                step: <span class="self">self</span>.instruction_counter,
                 registers: <span class="self">self</span>.registers.general_purpose,
                 lo: <span class="self">self</span>.registers.lo,
                 hi: <span class="self">self</span>.registers.hi,

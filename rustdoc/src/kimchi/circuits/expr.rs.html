@@ -3481,52 +3481,6 @@
 <a href="#3481" id="3481">3481</a>
 <a href="#3482" id="3482">3482</a>
 <a href="#3483" id="3483">3483</a>
-<a href="#3484" id="3484">3484</a>
-<a href="#3485" id="3485">3485</a>
-<a href="#3486" id="3486">3486</a>
-<a href="#3487" id="3487">3487</a>
-<a href="#3488" id="3488">3488</a>
-<a href="#3489" id="3489">3489</a>
-<a href="#3490" id="3490">3490</a>
-<a href="#3491" id="3491">3491</a>
-<a href="#3492" id="3492">3492</a>
-<a href="#3493" id="3493">3493</a>
-<a href="#3494" id="3494">3494</a>
-<a href="#3495" id="3495">3495</a>
-<a href="#3496" id="3496">3496</a>
-<a href="#3497" id="3497">3497</a>
-<a href="#3498" id="3498">3498</a>
-<a href="#3499" id="3499">3499</a>
-<a href="#3500" id="3500">3500</a>
-<a href="#3501" id="3501">3501</a>
-<a href="#3502" id="3502">3502</a>
-<a href="#3503" id="3503">3503</a>
-<a href="#3504" id="3504">3504</a>
-<a href="#3505" id="3505">3505</a>
-<a href="#3506" id="3506">3506</a>
-<a href="#3507" id="3507">3507</a>
-<a href="#3508" id="3508">3508</a>
-<a href="#3509" id="3509">3509</a>
-<a href="#3510" id="3510">3510</a>
-<a href="#3511" id="3511">3511</a>
-<a href="#3512" id="3512">3512</a>
-<a href="#3513" id="3513">3513</a>
-<a href="#3514" id="3514">3514</a>
-<a href="#3515" id="3515">3515</a>
-<a href="#3516" id="3516">3516</a>
-<a href="#3517" id="3517">3517</a>
-<a href="#3518" id="3518">3518</a>
-<a href="#3519" id="3519">3519</a>
-<a href="#3520" id="3520">3520</a>
-<a href="#3521" id="3521">3521</a>
-<a href="#3522" id="3522">3522</a>
-<a href="#3523" id="3523">3523</a>
-<a href="#3524" id="3524">3524</a>
-<a href="#3525" id="3525">3525</a>
-<a href="#3526" id="3526">3526</a>
-<a href="#3527" id="3527">3527</a>
-<a href="#3528" id="3528">3528</a>
-<a href="#3529" id="3529">3529</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3775,6 +3729,19 @@
     <span class="kw">fn </span>literal(x: <span class="self">Self</span>::F) -&gt; <span class="self">Self</span>;
     <span class="kw">fn </span>to_literal(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::F, <span class="self">Self</span>&gt;;
     <span class="kw">fn </span>to_literal_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>::F&gt;;
+}
+
+<span class="kw">impl</span>&lt;F: Field&gt; Literal <span class="kw">for </span>F {
+    <span class="kw">type </span>F = F;
+    <span class="kw">fn </span>literal(x: <span class="self">Self</span>::F) -&gt; <span class="self">Self </span>{
+        x
+    }
+    <span class="kw">fn </span>to_literal(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::F, <span class="self">Self</span>&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>)
+    }
+    <span class="kw">fn </span>to_literal_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>::F&gt; {
+        <span class="prelude-val">Some</span>(<span class="self">self</span>)
+    }
 }
 
 <span class="kw">impl</span>&lt;F&gt; Literal <span class="kw">for </span>ConstantTerm&lt;F&gt; {
@@ -4178,23 +4145,40 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: Zero + One + Neg&lt;Output = C&gt; + PartialEq + Clone, Column: Clone + PartialEq&gt;
-    Expr&lt;C, Column&gt;
+<span class="kw">impl</span>&lt;T: Literal, Column&gt; Literal <span class="kw">for </span>ExprInner&lt;T, Column&gt; {
+    <span class="kw">type </span>F = T::F;
+    <span class="kw">fn </span>literal(x: <span class="self">Self</span>::F) -&gt; <span class="self">Self </span>{
+        ExprInner::Constant(T::literal(x))
+    }
+    <span class="kw">fn </span>to_literal(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::F, <span class="self">Self</span>&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            ExprInner::Constant(x) =&gt; <span class="kw">match </span>x.to_literal() {
+                <span class="prelude-val">Ok</span>(x) =&gt; <span class="prelude-val">Ok</span>(x),
+                <span class="prelude-val">Err</span>(x) =&gt; <span class="prelude-val">Err</span>(ExprInner::Constant(x)),
+            },
+            x =&gt; <span class="prelude-val">Err</span>(x),
+        }
+    }
+    <span class="kw">fn </span>to_literal_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>::F&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            ExprInner::Constant(x) =&gt; x.to_literal_ref(),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;T: Literal + Clone + PartialEq&gt; Operations&lt;T&gt;
+<span class="kw">where
+    </span>T::F: Field,
 {
-    <span class="kw">fn </span>apply_feature_flags_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; (Expr&lt;C, Column&gt;, bool) {
-        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
+    <span class="kw">fn </span>apply_feature_flags_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; (<span class="self">Self</span>, bool) {
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Atom(
-                Constant(<span class="kw">_</span>)
-                | Cell(<span class="kw">_</span>)
-                | VanishesOnZeroKnowledgeAndPreviousRows
-                | UnnormalizedLagrangeBasis(<span class="kw">_</span>),
-            ) =&gt; (<span class="self">self</span>.clone(), <span class="bool-val">false</span>),
+            Atom(<span class="kw">_</span>) =&gt; (<span class="self">self</span>.clone(), <span class="bool-val">false</span>),
             Double(c) =&gt; {
                 <span class="kw">let </span>(c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
                 <span class="kw">if </span>reduce_further &amp;&amp; c_reduced.is_zero() {
-                    (Expr::zero(), <span class="bool-val">true</span>)
+                    (<span class="self">Self</span>::zero(), <span class="bool-val">true</span>)
                 } <span class="kw">else </span>{
                     (Double(Box::new(c_reduced)), <span class="bool-val">false</span>)
                 }
@@ -4212,7 +4196,7 @@
                 <span class="kw">let </span>(c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
                 <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
                     <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
-                        (Expr::zero(), <span class="bool-val">true</span>)
+                        (<span class="self">Self</span>::zero(), <span class="bool-val">true</span>)
                     } <span class="kw">else </span>{
                         (c2_reduced, <span class="bool-val">false</span>)
                     }
@@ -4227,7 +4211,7 @@
                 <span class="kw">let </span>(c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
                 <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
                     <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
-                        (Expr::zero(), <span class="bool-val">true</span>)
+                        (<span class="self">Self</span>::zero(), <span class="bool-val">true</span>)
                     } <span class="kw">else </span>{
                         (-c2_reduced, <span class="bool-val">false</span>)
                     }
@@ -4243,10 +4227,10 @@
                 <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero()
                     || reduce_further2 &amp;&amp; c2_reduced.is_zero()
                 {
-                    (Expr::zero(), <span class="bool-val">true</span>)
+                    (<span class="self">Self</span>::zero(), <span class="bool-val">true</span>)
                 } <span class="kw">else if </span>reduce_further1 &amp;&amp; c1_reduced.is_one() {
                     <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_one() {
-                        (Expr::one(), <span class="bool-val">true</span>)
+                        (<span class="self">Self</span>::one(), <span class="bool-val">true</span>)
                     } <span class="kw">else </span>{
                         (c2_reduced, <span class="bool-val">false</span>)
                     }
@@ -4309,7 +4293,7 @@
             }
         }
     }
-    <span class="kw">pub fn </span>apply_feature_flags(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; Expr&lt;C, Column&gt; {
+    <span class="kw">pub fn </span>apply_feature_flags(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>(res, <span class="kw">_</span>) = <span class="self">self</span>.apply_feature_flags_inner(features);
         res
     }
@@ -5661,19 +5645,6 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: One, Column&gt; Expr&lt;F, Column&gt; {
-    <span class="doccomment">/// Exponentiate an expression
-    </span><span class="attr">#[must_use]
-    </span><span class="kw">pub fn </span>pow(<span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
-        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
-        <span class="kw">if </span>p == <span class="number">0 </span>{
-            <span class="kw">return </span>Atom(Constant(F::one()));
-        }
-        Pow(Box::new(<span class="self">self</span>), p)
-    }
-}
-
 <span class="kw">type </span>Monomials&lt;F, Column&gt; = HashMap&lt;Vec&lt;Variable&lt;Column&gt;&gt;, Expr&lt;F, Column&gt;&gt;;
 
 <span class="kw">fn </span>mul_monomials&lt;
@@ -5682,7 +5653,11 @@
 &gt;(
     e1: <span class="kw-2">&amp;</span>Monomials&lt;F, Column&gt;,
     e2: <span class="kw-2">&amp;</span>Monomials&lt;F, Column&gt;,
-) -&gt; Monomials&lt;F, Column&gt; {
+) -&gt; Monomials&lt;F, Column&gt;
+<span class="kw">where
+    </span>ExprInner&lt;F, Column&gt;: Literal,
+    &lt;ExprInner&lt;F, Column&gt; <span class="kw">as </span>Literal&gt;::F: Field,
+{
     <span class="kw">let </span><span class="kw-2">mut </span>res: HashMap&lt;<span class="kw">_</span>, Expr&lt;F, Column&gt;&gt; = HashMap::new();
     <span class="kw">for </span>(m1, c1) <span class="kw">in </span>e1.iter() {
         <span class="kw">for </span>(m2, c2) <span class="kw">in </span>e2.iter() {
@@ -5699,6 +5674,9 @@
 
 <span class="kw">impl</span>&lt;F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq, Column: Ord + Copy + std::hash::Hash&gt;
     Expr&lt;F, Column&gt;
+<span class="kw">where
+    </span>ExprInner&lt;F, Column&gt;: Literal,
+    &lt;ExprInner&lt;F, Column&gt; <span class="kw">as </span>Literal&gt;::F: Field,
 {
     <span class="comment">// TODO: This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
@@ -5999,6 +5977,10 @@
 {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
     <span class="kw">fn </span>mul(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span><span class="self">self</span>.is_zero() || other.is_zero() {
+            <span class="kw">return </span><span class="self">Self</span>::zero();
+        }
+
         <span class="kw">if </span><span class="self">self</span>.is_one() {
             <span class="kw">return </span>other;
         }
@@ -6017,60 +5999,11 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero, Column&gt; Zero <span class="kw">for </span>Expr&lt;F, Column&gt; {
-    <span class="kw">fn </span>zero() -&gt; <span class="self">Self </span>{
-        Expr::Atom(ExprInner::Constant(F::zero()))
-    }
-
-    <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            Expr::Atom(ExprInner::Constant(x)) =&gt; x.is_zero(),
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;F: Zero + One + PartialEq, Column: PartialEq&gt; One <span class="kw">for </span>Expr&lt;F, Column&gt; {
-    <span class="kw">fn </span>one() -&gt; <span class="self">Self </span>{
-        Expr::Atom(ExprInner::Constant(F::one()))
-    }
-
-    <span class="kw">fn </span>is_one(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">match </span><span class="self">self </span>{
-            Expr::Atom(ExprInner::Constant(x)) =&gt; x.is_one(),
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;F: One + Neg&lt;Output = F&gt;, Column&gt; Neg <span class="kw">for </span>Expr&lt;F, Column&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
-
-    <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; Expr&lt;F, Column&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            Expr::Atom(ExprInner::Constant(x)) =&gt; Expr::Atom(ExprInner::Constant(x.neg())),
-            e =&gt; Expr::Mul(
-                Box::new(Expr::Atom(ExprInner::Constant(F::one().neg()))),
-                Box::new(e),
-            ),
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;F: Zero, Column&gt; Add&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
-    <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">if </span><span class="self">self</span>.is_zero() {
-            <span class="kw">return </span>other;
-        }
-        <span class="kw">if </span>other.is_zero() {
-            <span class="kw">return </span><span class="self">self</span>;
-        }
-        Expr::Add(Box::new(<span class="self">self</span>), Box::new(other))
-    }
-}
-
-<span class="kw">impl</span>&lt;F: Zero + Clone, Column: Clone&gt; AddAssign&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
+<span class="kw">impl</span>&lt;F: Zero + Clone, Column: Clone&gt; AddAssign&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt;
+<span class="kw">where
+    </span>ExprInner&lt;F, Column&gt;: Literal,
+    &lt;ExprInner&lt;F, Column&gt; <span class="kw">as </span>Literal&gt;::F: Field,
+{
     <span class="kw">fn </span>add_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
         <span class="kw">if </span><span class="self">self</span>.is_zero() {
             <span class="kw-2">*</span><span class="self">self </span>= other;
@@ -6080,27 +6013,12 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero + One + PartialEq, Column: PartialEq&gt; Mul&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
-    <span class="kw">fn </span>mul(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">if </span><span class="self">self</span>.is_zero() || other.is_zero() {
-            <span class="kw">return </span><span class="self">Self</span>::zero();
-        }
-
-        <span class="kw">if </span><span class="self">self</span>.is_one() {
-            <span class="kw">return </span>other;
-        }
-        <span class="kw">if </span>other.is_one() {
-            <span class="kw">return </span><span class="self">self</span>;
-        }
-        Expr::Mul(Box::new(<span class="self">self</span>), Box::new(other))
-    }
-}
-
 <span class="kw">impl</span>&lt;F, Column&gt; MulAssign&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt;
 <span class="kw">where
     </span>F: Zero + One + PartialEq + Clone,
     Column: PartialEq + Clone,
+    ExprInner&lt;F, Column&gt;: Literal,
+    &lt;ExprInner&lt;F, Column&gt; <span class="kw">as </span>Literal&gt;::F: Field,
 {
     <span class="kw">fn </span>mul_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
         <span class="kw">if </span><span class="self">self</span>.is_zero() || other.is_zero() {
@@ -6110,16 +6028,6 @@
         } <span class="kw">else if </span>!other.is_one() {
             <span class="kw-2">*</span><span class="self">self </span>= Expr::Mul(Box::new(<span class="self">self</span>.clone()), Box::new(other));
         }
-    }
-}
-
-<span class="kw">impl</span>&lt;F: Zero, Column&gt; Sub&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
-    <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">if </span>other.is_zero() {
-            <span class="kw">return </span><span class="self">self</span>;
-        }
-        Expr::Sub(Box::new(<span class="self">self</span>), Box::new(other))
     }
 }
 
