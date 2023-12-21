@@ -2494,6 +2494,10 @@ where
 {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
+        if self.is_zero() || other.is_zero() {
+            return Self::zero();
+        }
+
         if self.is_one() {
             return other;
         }
