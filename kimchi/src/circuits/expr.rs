@@ -2306,7 +2306,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
     /// are the same thing as polynomials with `F[V_1]` coefficients in variables `V_0`.
     ///
     /// There is also a function
-    /// `lin_or_err : (F[V_1])[V_0] -> Result<Vec<(V_0, F[V_2])>, &str>`
+    /// `lin_or_err : (F[V_1])[V_0] -> Result<Vec<(V_0, F[V_1])>, &str>`
     ///
     /// which checks if the given input is in fact a degree 1 polynomial in the variables `V_0`
     /// (i.e., a linear combination of `V_0` elements with `F[V_1]` coefficients)
