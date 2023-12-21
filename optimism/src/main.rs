@@ -60,7 +60,7 @@ pub fn main() -> ExitCode {
 
     let mut accumulator = proof::ProofInputs::<
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
-    >::new();
+    >::default();
 
     let new_chunk = || proof::WitnessColumns {
         scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
@@ -106,7 +106,7 @@ pub fn main() -> ExitCode {
             current_chunk = new_chunk();
         }
     }
-    if current_chunk.instruction_counter.len() > 0 {
+    if !current_chunk.instruction_counter.is_empty() {
         use ark_ff::Zero;
         let remaining = domain_size - current_chunk.instruction_counter.len();
         for scratch in current_chunk.scratch.iter_mut() {

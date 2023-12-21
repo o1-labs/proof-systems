@@ -29,8 +29,8 @@ pub struct ProofInputs<G: KimchiCurve> {
     evaluations: WitnessColumns<Vec<G::ScalarField>>,
 }
 
-impl<G: KimchiCurve> ProofInputs<G> {
-    pub fn new() -> Self {
+impl<G: KimchiCurve> Default for ProofInputs<G> {
+    fn default() -> Self {
         ProofInputs {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|_| {
