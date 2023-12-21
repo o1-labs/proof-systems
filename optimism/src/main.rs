@@ -90,7 +90,7 @@ pub fn main() -> ExitCode {
         }
         current_chunk
             .instruction_counter
-            .push(ark_bn254::Fr::from(env.instruction_counter as u64));
+            .push(ark_bn254::Fr::from(env.instruction_counter));
         // TODO
         use ark_ff::UniformRand;
         current_chunk
