@@ -276,14 +276,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         overflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
         (
-            Expr::Cell(Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: out_position,
                 row: CurrOrNext::Curr,
-            }),
-            Expr::Cell(Variable {
+            })),
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: overflow_position,
                 row: CurrOrNext::Curr,
-            }),
+            })),
         )
     }
 
@@ -295,14 +295,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         underflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
         (
-            Expr::Cell(Variable {
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: out_position,
                 row: CurrOrNext::Curr,
-            }),
-            Expr::Cell(Variable {
+            })),
+            Expr::Atom(ExprInner::Cell(Variable {
                 col: underflow_position,
                 row: CurrOrNext::Curr,
-            }),
+            })),
         )
     }
 
