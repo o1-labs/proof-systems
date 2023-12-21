@@ -1,9 +1,5 @@
-use ark_ff::UniformRand;
 use ark_ff::Zero;
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
-    Radix2EvaluationDomain as D, UVPolynomial,
-};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::plonk_sponge::FrSponge;
 use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
@@ -11,8 +7,7 @@ use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{
-        absorb_commitment, b_poly_coefficients, combined_inner_product, BatchEvaluationProof,
-        BlindedCommitment, CommitmentCurve, Evaluation, PolyComm,
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
     },
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS as _,
@@ -156,7 +151,6 @@ where
 {
     let ProofInputs { evaluations } = inputs;
     let rng = &mut rand::rngs::OsRng;
-    let z = G::ScalarField::rand(rng);
     let polys = {
         let WitnessColumns {
             scratch,
@@ -236,7 +230,7 @@ where
         .collect();
     let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
-    let sponge_before_evaluations = EFqSponge::new(G::other_curve_sponge_params());
+    fr_sponge.absorb(&fq_sponge.digest());
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .scratch
@@ -263,7 +257,7 @@ where
         &[zeta, zeta_omega],
         v,
         u,
-        sponge_before_evaluations,
+        fq_sponge_before_evaluations,
         rng,
     );
 
@@ -306,7 +300,7 @@ pub fn verify<
 
     let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
-    let sponge_before_evaluations = EFqSponge::new(G::other_curve_sponge_params());
+    fr_sponge.absorb(&fq_sponge.digest());
 
     let mut es: Vec<_> = zeta_evaluations
         .scratch
@@ -383,7 +377,7 @@ pub fn verify<
         combined_inner_product(&[zeta, zeta_omega], &v, &u, es.as_slice(), 1 << 15);
 
     let batch = BatchEvaluationProof {
-        sponge: fq_sponge,
+        sponge: fq_sponge_before_evaluations,
         evaluations,
         evaluation_points: vec![zeta, zeta_omega],
         polyscale: v,
@@ -398,10 +392,12 @@ pub fn verify<
 
 #[test]
 fn test_mips_prover() {
+    use ark_ff::UniformRand;
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+
     type Fp = ark_bn254::Fr;
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
