@@ -2,11 +2,11 @@ use crate::commitment::*;
 use crate::evaluation_proof::combine_polys;
 use crate::srs::SRS;
 use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
-use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
+use ark_ec::{pairing::Pairing, AffineRepr, VariableBaseMSM};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+    DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
@@ -18,23 +18,23 @@ use serde_with::serde_as;
 #[serde(
     bound = "Pair::G1Affine: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize"
 )]
-pub struct PairingProof<Pair: PairingEngine> {
+pub struct PairingProof<Pair: Pairing> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub quotient: Pair::G1Affine,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub blinding: <Pair::G1Affine as AffineCurve>::ScalarField,
+    pub blinding: <Pair::G1Affine as AffineRepr>::ScalarField,
 }
 
-impl<Pair: PairingEngine> Default for PairingProof<Pair> {
+impl<Pair: Pairing> Default for PairingProof<Pair> {
     fn default() -> Self {
         Self {
-            quotient: Pair::G1Affine::prime_subgroup_generator(),
-            blinding: <Pair::G1Affine as AffineCurve>::ScalarField::zero(),
+            quotient: Pair::G1Affine::generator(),
+            blinding: <Pair::G1Affine as AffineRepr>::ScalarField::zero(),
         }
     }
 }
 
-impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
+impl<Pair: Pairing> Clone for PairingProof<Pair> {
     fn clone(&self) -> Self {
         Self {
             quotient: self.quotient,
@@ -44,12 +44,12 @@ impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PairingSRS<Pair: PairingEngine> {
+pub struct PairingSRS<Pair: Pairing> {
     pub full_srs: SRS<Pair::G1Affine>,
     pub verifier_srs: SRS<Pair::G2Affine>,
 }
 
-impl<Pair: PairingEngine> Default for PairingSRS<Pair> {
+impl<Pair: Pairing> Default for PairingSRS<Pair> {
     fn default() -> Self {
         Self {
             full_srs: SRS::default(),
@@ -58,7 +58,7 @@ impl<Pair: PairingEngine> Default for PairingSRS<Pair> {
     }
 }
 
-impl<Pair: PairingEngine> Clone for PairingSRS<Pair> {
+impl<Pair: Pairing> Clone for PairingSRS<Pair> {
     fn clone(&self) -> Self {
         Self {
             full_srs: self.full_srs.clone(),
@@ -71,7 +71,7 @@ impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > PairingSRS<Pair>
 {
     pub fn create(x: F, n: usize) -> Self {
@@ -86,24 +86,24 @@ impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > crate::OpenProof<G> for PairingProof<Pair>
 {
     type SRS = PairingSRS<Pair>;
 
-    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
+    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
         plnms: PolynomialsToCombine<G, D>,
-        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        _evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
-        _sponge: EFqSponge,                      // sponge
+        elm: &[<G as AffineRepr>::ScalarField], // vector of evaluation points
+        polyscale: <G as AffineRepr>::ScalarField, // scaling factor for polynoms
+        _evalscale: <G as AffineRepr>::ScalarField, // scaling factor for evaluation point powers
+        _sponge: EFqSponge,                     // sponge
         _rng: &mut RNG,
     ) -> Self
     where
         EFqSponge:
-            Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
+            Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
         RNG: RngCore + CryptoRng,
     {
         PairingProof::create(srs, plnms, elm, polyscale).unwrap()
@@ -141,7 +141,7 @@ impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > SRSTrait<G> for PairingSRS<Pair>
 {
     fn max_poly_size(&self) -> usize {
@@ -250,7 +250,7 @@ impl<
         F: PrimeField,
         G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
-        Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
+        Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > PairingProof<Pair>
 {
     pub fn create<D: EvaluationDomain<G::ScalarField>>(
@@ -283,6 +283,7 @@ impl<
             blinding: blinding_factor,
         })
     }
+
     pub fn verify(
         &self,
         srs: &PairingSRS<Pair>,           // SRS
@@ -290,7 +291,7 @@ impl<
         polyscale: G::ScalarField,        // scaling factor for polynoms
         elm: &[G::ScalarField],           // vector of evaluation points
     ) -> bool {
-        let poly_commitment = {
+        let poly_commitment: G::Group = {
             let mut scalars: Vec<F> = Vec::new();
             let mut points = Vec::new();
             combine_commitments(
@@ -300,9 +301,9 @@ impl<
                 polyscale,
                 F::one(), /* TODO: This is inefficient */
             );
-            let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
+            let scalars: Vec<_> = scalars.iter().map(|x| x.into_bigint()).collect();
 
-            VariableBaseMSM::multi_scalar_mul(&points, &scalars)
+            G::Group::msm_bigint(&points, &scalars)
         };
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
@@ -314,13 +315,12 @@ impl<
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1)
             .elems[0]
-            .into_projective();
-        let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
+            .into_group();
+        let numerator_commitment_proj: <Pair::G1Affine as AffineRepr>::Group =
+            { poly_commitment - eval_commitment - blinding_commitment };
+        let numerator_commitment_affine: Pair::G1Affine = From::from(numerator_commitment_proj);
 
-        let numerator = Pair::pairing(
-            numerator_commitment,
-            Pair::G2Affine::prime_subgroup_generator(),
-        );
+        let numerator = Pair::pairing(numerator_commitment_affine, Pair::G2Affine::generator());
         let scaled_quotient = Pair::pairing(self.quotient, divisor_commitment);
         numerator == scaled_quotient
     }
@@ -334,12 +334,12 @@ mod tests {
     use crate::srs::SRS;
     use crate::SRS as _;
     use ark_bn254::Fr as ScalarField;
-    use ark_bn254::{G1Affine as G1, G2Affine as G2, Parameters};
+    use ark_bn254::{Config, G1Affine as G1, G2Affine as G2};
     use ark_ec::bn::Bn;
     use ark_ff::UniformRand;
     use ark_poly::{
-        univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain as D,
-        UVPolynomial,
+        univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Polynomial,
+        Radix2EvaluationDomain as D,
     };
 
     use rand::{rngs::StdRng, SeedableRng};
@@ -405,7 +405,7 @@ mod tests {
 
         let polyscale = ScalarField::rand(rng);
 
-        let pairing_proof = PairingProof::<Bn<Parameters>>::create(
+        let pairing_proof = PairingProof::<Bn<Config>>::create(
             &srs,
             polynomials_and_blinders.as_slice(),
             &evaluation_points,
