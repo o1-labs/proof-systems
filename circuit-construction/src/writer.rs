@@ -147,7 +147,7 @@ pub trait Cs<F: PrimeField> {
         self.var(|| {
             let y = g();
             let bits = y.to_bits_le();
-            F::from_repr(F::BigInt::from_bits_le(&bits)).unwrap()
+            F::from_bigint(F::BigInt::from_bits_le(&bits)).unwrap()
         })
     }
 
@@ -169,8 +169,8 @@ pub trait Cs<F: PrimeField> {
             // y = (x - shift) / 2
             // TODO: Could cache value of 1/2 to avoid division
             let y = (x - shift) / two;
-            let bits = y.into_repr().to_bits_le();
-            F::from_repr(F::BigInt::from_bits_le(&bits)).unwrap()
+            let bits = y.into_bigint().to_bits_le();
+            F::from_bigint(F::BigInt::from_bits_le(&bits)).unwrap()
         });
         ShiftedScalar(v)
     }
@@ -481,7 +481,7 @@ pub trait Cs<F: PrimeField> {
             let bits_msb: Vec<bool> = scalar
                 .0
                 .val()
-                .into_repr()
+                .into_bigint()
                 .to_bits_le()
                 .iter()
                 .take(num_bits)
@@ -563,7 +563,7 @@ pub trait Cs<F: PrimeField> {
                     if bits_.is_empty() {
                         bits_ = scalar
                             .val()
-                            .into_repr()
+                            .into_bigint()
                             .to_bits_le()
                             .iter()
                             .take(length_in_bits)

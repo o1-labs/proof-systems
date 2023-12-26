@@ -9,7 +9,7 @@ use crate::{
     verifier::verify,
     verifier_index::VerifierIndex,
 };
-use ark_ec::short_weierstrass_jacobian::GroupAffine;
+use ark_ec::short_weierstrass::Affine;
 use ark_ff::Zero;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -80,11 +80,11 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>> =
+        let mut verifier_index_deserialize: VerifierIndex<Affine<VestaParameters>> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
-        let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
+        let mut srs = SRS::<Affine<VestaParameters>>::create(verifier_index.max_poly_size);
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
@@ -103,11 +103,13 @@ mod tests {
 
     #[test]
     pub fn test_srs_serialization() {
-        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize)
-        where
+        fn create_or_check_srs<T: ark_ec::short_weierstrass::SWCurveConfig + Clone>(
+            curve: &str,
+            exp: usize,
+        ) where
             T::BaseField: PrimeField,
         {
-            let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
+            let srs = SRS::<Affine<T>>::create(pow(2, exp));
 
             let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
             let srs_path: PathBuf = [base_path, "../srs".into(), curve.to_string() + ".srs"]
@@ -139,7 +141,7 @@ mod tests {
 
                 let mut bytes = vec![];
                 file.read_to_end(&mut bytes).expect("failed to read file");
-                let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
+                let srs_serde: SRS<Affine<T>> = rmp_serde::from_slice(&bytes).unwrap();
                 assert_eq!(srs.g, srs_serde.g);
                 assert_eq!(srs.h, srs_serde.h);
             }

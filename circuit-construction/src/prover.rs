@@ -1,5 +1,5 @@
 use crate::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
 use kimchi::{
     circuits::{constraints::ConstraintSystem, gate::GateType, wires::COLUMNS},
@@ -124,7 +124,7 @@ where
 }
 
 /// Handling coordinates in an affine curve
-pub trait CoordinateCurve: AffineCurve {
+pub trait CoordinateCurve: AffineRepr {
     /// Returns the coordinates in the curve as two points of the base field
     fn to_coords(&self) -> Option<(Self::BaseField, Self::BaseField)>;
 }

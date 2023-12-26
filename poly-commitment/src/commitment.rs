@@ -339,7 +339,7 @@ pub fn absorb_commitment<Fq: Field, G: Clone, Fr: PrimeField, EFqSponge: FqSpong
 /// A useful trait extending AffineRepr for commitments.
 /// Unfortunately, we can't specify that `AffineRepr<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
-pub trait CommitmentCurve: AffineRepr {
+pub trait CommitmentCurve: AffineRepr + Sub<Output = Self::Group> {
     type Params: SWCurveConfig;
     type Map: GroupMap<Self::BaseField>;
 

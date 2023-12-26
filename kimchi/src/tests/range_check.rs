@@ -13,7 +13,7 @@ use crate::{
     prover_index::testing::new_index_for_test_with_lookups,
 };
 
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::EvaluationDomain;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
@@ -46,7 +46,7 @@ use super::framework::TestFramework;
 type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
-type PallasField = <Pallas as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineRepr>::BaseField;
 
 const RNG_SEED: [u8; 32] = [
     22, 4, 34, 75, 29, 255, 0, 126, 237, 19, 86, 160, 1, 90, 131, 221, 186, 168, 40, 59, 0, 4, 9,
