@@ -1,8 +1,10 @@
 use crate::{commitment::*, srs::endos};
-use crate::{srs::SRS, PolynomialsToCombine, SRS as _};
-use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
+use crate::PolynomialsToCombine;
+use crate::srs::SRS;
+use crate::SRS as _;
+use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{math, ExtendedDensePolynomial};
@@ -263,22 +265,22 @@ impl<G: CommitmentCurve> SRS<G> {
             let rand_l = <G::ScalarField as UniformRand>::rand(rng);
             let rand_r = <G::ScalarField as UniformRand>::rand(rng);
 
-            let l = VariableBaseMSM::multi_scalar_mul(
+            let l = G::Group::msm_bigint(
                 &[&g[0..n], &[self.h, u]].concat(),
                 &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]]
                     .concat()
                     .iter()
-                    .map(|x| x.into_repr())
+                    .map(|x| x.into_bigint())
                     .collect::<Vec<_>>(),
             )
             .into_affine();
 
-            let r = VariableBaseMSM::multi_scalar_mul(
+            let r = G::Group::msm_bigint(
                 &[&g[n..], &[self.h, u]].concat(),
                 &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]]
                     .concat()
                     .iter()
-                    .map(|x| x.into_repr())
+                    .map(|x| x.into_bigint())
                     .collect::<Vec<_>>(),
             )
             .into_affine();
@@ -337,9 +339,8 @@ impl<G: CommitmentCurve> SRS<G> {
         let d = <G::ScalarField as UniformRand>::rand(rng);
         let r_delta = <G::ScalarField as UniformRand>::rand(rng);
 
-        let delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
-            + self.h.mul(r_delta))
-        .into_affine();
+        let delta = ((g0.into_group() + (u.mul(b0))).into_affine().mul(d) + self.h.mul(r_delta))
+            .into_affine();
 
         sponge.absorb_g(&[delta]);
         let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
@@ -409,7 +410,7 @@ impl<G: CommitmentCurve> SRS<G> {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct OpeningProof<G: AffineCurve> {
+pub struct OpeningProof<G: AffineRepr> {
     /// vector of rounds of L & R commitments
     #[serde_as(as = "Vec<(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)>")]
     pub lr: Vec<(G, G)>,
@@ -425,28 +426,28 @@ pub struct OpeningProof<G: AffineCurve> {
 
 impl<
         BaseField: PrimeField,
-        G: AffineCurve<BaseField = BaseField> + CommitmentCurve + EndoCurve,
+        G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve,
     > crate::OpenProof<G> for OpeningProof<G>
 {
     type SRS = SRS<G>;
 
-    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
+    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
         plnms: &[(
-            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
+            DensePolynomialOrEvaluations<<G as AffineRepr>::ScalarField, D>,
             Option<usize>,
-            PolyComm<<G as AffineCurve>::ScalarField>,
+            PolyComm<<G as AffineRepr>::ScalarField>,
         )], // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
+        elm: &[<G as AffineRepr>::ScalarField], // vector of evaluation points
+        polyscale: <G as AffineRepr>::ScalarField, // scaling factor for polynoms
+        evalscale: <G as AffineRepr>::ScalarField, // scaling factor for evaluation point powers
         sponge: EFqSponge,                       // sponge
         rng: &mut RNG,
     ) -> Self
     where
         EFqSponge:
-            Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
+            Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
         RNG: RngCore + CryptoRng,
     {
         srs.open(group_map, plnms, elm, polyscale, evalscale, sponge, rng)
@@ -471,7 +472,7 @@ pub struct Challenges<F> {
     pub chal_inv: Vec<F>,
 }
 
-impl<G: AffineCurve> OpeningProof<G> {
+impl<G: AffineRepr> OpeningProof<G> {
     pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         sponge: &mut EFqSponge,

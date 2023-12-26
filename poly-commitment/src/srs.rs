@@ -2,8 +2,8 @@
 
 use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
+use ark_ec::{AffineRepr, CurveGroup};
+use ark_ff::{Field, PrimeField, Zero, One};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
@@ -47,10 +47,10 @@ where
     let endo_q: G::BaseField = mina_poseidon::sponge::endo_coefficient();
     let endo_r = {
         let potential_endo_r: G::ScalarField = mina_poseidon::sponge::endo_coefficient();
-        let t = G::prime_subgroup_generator();
+        let t = G::generator();
         let (x, y) = t.to_coordinates().unwrap();
         let phi_t = G::of_coordinates(x * endo_q, y);
-        if t.mul(potential_endo_r) == phi_t.into_projective() {
+        if t.mul(potential_endo_r) == phi_t.into_group() {
             potential_endo_r
         } else {
             potential_endo_r * potential_endo_r
@@ -69,22 +69,8 @@ where
 
     let mut base_fields = Vec::with_capacity(N * extension_degree);
 
-    for base_count in 0..extension_degree {
-        let mut bits = [false; 8 * N];
-        let offset = base_count * N;
-        for i in 0..N {
-            for j in 0..8 {
-                bits[8 * i + j] = (random_bytes[offset + i] >> j) & 1 == 1;
-            }
-        }
-
-        let n =
-            <<G::BaseField as Field>::BasePrimeField as PrimeField>::BigInt::from_bits_be(&bits);
-        let t = <<G::BaseField as Field>::BasePrimeField as PrimeField>::from_repr(n)
-            .expect("packing code has a bug");
-        base_fields.push(t)
-    }
-    let t = G::BaseField::from_base_prime_field_elems(&base_fields).unwrap();
+    let n = <G::BaseField as PrimeField>::BigInt::from_bytes_be(&random_bytes);
+    let t = G::BaseField::from_bigint(n).expect("packing code has a bug");
     let (x, y) = map.to_group(t);
     G::of_coordinates(x, y)
 }
@@ -183,47 +169,42 @@ impl<G: CommitmentCurve> SRS<G> {
         // For each chunk
         for i in 0..num_unshifteds {
             // Initialize the vector with zero curve points
-            let mut lg: Vec<<G as AffineCurve>::Projective> =
-                vec![<G as AffineCurve>::Projective::zero(); n];
+            let mut lg: Vec<<G as AffineRepr>::Group> = vec![<G as AffineRepr>::Group::zero(); n];
             // Overwrite the terms corresponding to that chunk with the SRS curve points
             let start_offset = i * srs_size;
             let num_terms = min((i + 1) * srs_size, n) - start_offset;
             for j in 0..num_terms {
-                lg[start_offset + j] = self.g[j].into_projective()
+                lg[start_offset + j] = self.g[j].into_group()
             }
             // Apply the IFFT
             domain.ifft_in_place(&mut lg);
-            <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
             // Append the 'partial Langrange polynomials' to the vector of unshifted chunks
-            unshifted.push(lg)
+            unshifted.push(<G as AffineRepr>::Group::normalize_batch(lg.as_mut_slice()));
         }
 
         // If the srs size does not exactly divide the domain size
-        let shifted: Option<Vec<<G as AffineCurve>::Projective>> =
-            if n < srs_size || num_unshifteds * srs_size == n {
-                None
-            } else {
-                // Initialize the vector to zero
-                let mut lg: Vec<<G as AffineCurve>::Projective> =
-                    vec![<G as AffineCurve>::Projective::zero(); n];
-                // Overwrite the terms corresponding to the final chunk with the SRS curve points
-                // shifted to the right
-                let start_offset = (num_unshifteds - 1) * srs_size;
-                let num_terms = n - start_offset;
-                let srs_start_offset = srs_size - num_terms;
-                for j in 0..num_terms {
-                    lg[start_offset + j] = self.g[srs_start_offset + j].into_projective()
-                }
-                // Apply the IFFT
-                domain.ifft_in_place(&mut lg);
-                <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-                Some(lg)
-            };
+        let shifted: Option<Vec<G>> = if n < srs_size || num_unshifteds * srs_size == n {
+            None
+        } else {
+            // Initialize the vector to zero
+            let mut lg: Vec<<G as AffineRepr>::Group> = vec![<G as AffineRepr>::Group::zero(); n];
+            // Overwrite the terms corresponding to the final chunk with the SRS curve points
+            // shifted to the right
+            let start_offset = (num_unshifteds - 1) * srs_size;
+            let num_terms = n - start_offset;
+            let srs_start_offset = srs_size - num_terms;
+            for j in 0..num_terms {
+                lg[start_offset + j] = self.g[srs_start_offset + j].into_group()
+            }
+            // Apply the IFFT
+            domain.ifft_in_place(&mut lg);
+            Some(<G as AffineRepr>::Group::normalize_batch(lg.as_mut_slice()))
+        };
 
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
-                unshifted: unshifted.iter().map(|v| v[i].into_affine()).collect(),
-                shifted: shifted.as_ref().map(|v| v[i].into_affine()),
+                unshifted: unshifted.iter().map(|v| v[i]).collect(),
+                shifted: shifted.as_ref().map(|v| v[i]),
             })
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
@@ -236,7 +217,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut x_pow = G::ScalarField::one();
         let g: Vec<_> = (0..depth)
             .map(|_| {
-                let res = G::prime_subgroup_generator().mul(x_pow);
+                let res = G::generator().mul(x_pow);
                 x_pow *= x;
                 res.into_affine()
             })

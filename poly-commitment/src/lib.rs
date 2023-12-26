@@ -14,7 +14,7 @@ pub use commitment::PolyComm;
 use crate::commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve};
 use crate::error::CommitmentError;
 use crate::evaluation_proof::DensePolynomialOrEvaluations;
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::UniformRand;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -100,19 +100,19 @@ pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     type SRS: SRS<G>;
 
     #[allow(clippy::too_many_arguments)]
-    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
+    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineRepr>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
         plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
+        elm: &[<G as AffineRepr>::ScalarField], // vector of evaluation points
+        polyscale: <G as AffineRepr>::ScalarField, // scaling factor for polynoms
+        evalscale: <G as AffineRepr>::ScalarField, // scaling factor for evaluation point powers
         sponge: EFqSponge,                 // sponge
         rng: &mut RNG,
     ) -> Self
     where
         EFqSponge:
-            Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
+            Clone + FqSponge<<G as AffineRepr>::BaseField, G, <G as AffineRepr>::ScalarField>,
         RNG: RngCore + CryptoRng;
 
     fn verify<EFqSponge, RNG>(
