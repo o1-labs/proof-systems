@@ -1086,8 +1086,8 @@ pub mod caml {
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
-                shifted: polycomm.shifted.map(Into::into),
+                unshifted: polycomm.unshifted.into_iter().map(CamlG::from).collect(),
+                shifted: polycomm.shifted.map(CamlG::from),
             }
         }
     }
@@ -1152,12 +1152,12 @@ pub mod caml {
                 lr: opening_proof
                     .lr
                     .into_iter()
-                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .map(|(g1, g2)| (CamlG::from(g1), CamlG::from(g2)))
                     .collect(),
-                delta: opening_proof.delta.into(),
+                delta: CamlG::from(opening_proof.delta),
                 z1: opening_proof.z1.into(),
                 z2: opening_proof.z2.into(),
-                sg: opening_proof.sg.into(),
+                sg: CamlG::from(opening_proof.sg),
             }
         }
     }
