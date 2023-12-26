@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::framework::TestFramework;
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -26,8 +26,8 @@ use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use poly_commitment::evaluation_proof::OpeningProof;
 use rand::{rngs::StdRng, SeedableRng};
 
-type PallasField = <Pallas as AffineCurve>::BaseField;
-type VestaField = <Vesta as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineRepr>::BaseField;
+type VestaField = <Vesta as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
