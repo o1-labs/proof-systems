@@ -6,7 +6,7 @@ use crate::{
         EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
     },
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use poly_commitment::SRS;
@@ -26,7 +26,7 @@ impl Side {
     }
 }
 
-type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineRepr>::ScalarField;
 
 /// Evaluates the expression in the provided side
 pub(crate) fn eval_sided<'a, C: FoldingConfig>(

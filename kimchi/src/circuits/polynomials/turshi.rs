@@ -91,7 +91,7 @@ use crate::{
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-use ark_ff::{FftField, Field, PrimeField, SquareRootField};
+use ark_ff::{FftField, Field, PrimeField};
 use rand::{prelude::StdRng, SeedableRng};
 use std::array;
 use std::marker::PhantomData;
@@ -105,7 +105,7 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 
 // GATE-RELATED
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// This function creates a `CairoClaim` gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
         CircuitGate::new(GateType::CairoClaim, wires, vec![])

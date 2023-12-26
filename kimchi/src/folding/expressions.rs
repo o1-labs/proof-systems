@@ -5,7 +5,7 @@ use crate::{
         FoldingConfig, ScalarField,
     },
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::One;
 use itertools::Itertools;
 use num_traits::Zero;
@@ -27,14 +27,14 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     WitnessExtended(usize),
     Error,
     UnnormalizedLagrangeBasis(usize),
-    Constant(<C::Curve as AffineCurve>::ScalarField),
+    Constant(<C::Curve as AffineRepr>::ScalarField),
     Challenge(C::Challenge),
     Alpha(usize),
 }
 
 #[derive(Clone)]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
-    Constant(<C::Curve as AffineCurve>::ScalarField),
+    Constant(<C::Curve as AffineRepr>::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable<C::Column>),
     VanishesOnZeroKnowledgeAndPreviousRows,
@@ -235,7 +235,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 BinOp(Op2::Mul, e1, e2)
             }
             // TODO: Replace with `Pow`
-            FoldingExp::Pow(_, 0) => Atom(Constant(<C::Curve as AffineCurve>::ScalarField::one())),
+            FoldingExp::Pow(_, 0) => Atom(Constant(<C::Curve as AffineRepr>::ScalarField::one())),
             FoldingExp::Pow(e, 1) => e.into_compatible(),
             FoldingExp::Pow(e, i) => {
                 let e = e.into_compatible();
@@ -439,7 +439,7 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
         Pow(_, 0) => Box::new(
             [Term {
                 exp: FoldingExp::Atom(ExtendedFoldingColumn::Constant(
-                    <C::Curve as AffineCurve>::ScalarField::one(),
+                    <C::Curve as AffineRepr>::ScalarField::one(),
                 )),
                 sign: Sign::Pos,
             }]

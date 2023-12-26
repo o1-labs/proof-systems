@@ -5,7 +5,7 @@ use crate::{
         FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
     },
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use itertools::Itertools;
 use mina_curves::pasta::Pallas;
 use num_traits::Zero;
@@ -86,7 +86,7 @@ impl FoldingConfig for TestConfig {
 
     type Structure = Mock;
 
-    type Env = MockEnv<<Pallas as AffineCurve>::ScalarField, Mock, Mock, u8, Mock>;
+    type Env = MockEnv<<Pallas as AffineRepr>::ScalarField, Mock, Mock, u8, Mock>;
 
     fn rows() -> usize {
         todo!()
@@ -104,7 +104,7 @@ fn test_term_separation() {
     let t2 = col(1).double()
         - (col(2)
             + FoldingExp::Atom(ExtendedFoldingColumn::Constant(
-                <<Pallas as AffineCurve>::ScalarField>::zero(),
+                <<Pallas as AffineRepr>::ScalarField>::zero(),
             )));
     let test_exp = t1 + t2;
     println!("{:#?}", test_exp);

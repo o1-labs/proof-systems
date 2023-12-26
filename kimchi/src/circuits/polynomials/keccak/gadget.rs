@@ -3,7 +3,7 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::Wire,
 };
-use ark_ff::{PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 
 use super::{
     constants::{RATE_IN_BYTES, ROUNDS},
@@ -12,7 +12,7 @@ use super::{
 
 const SPONGE_COEFFS: usize = 336;
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Extends a Keccak circuit to hash one message
     /// Note:
     /// Requires at least one more row after the Keccak gadget so that

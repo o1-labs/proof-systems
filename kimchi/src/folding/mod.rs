@@ -1,5 +1,5 @@
 use crate::circuits::gate::CurrOrNext;
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv, Side};
@@ -18,7 +18,7 @@ mod quadraticization;
 #[cfg(test)]
 mod test;
 
-type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineRepr>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
@@ -30,7 +30,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Witness: Witness<Self::Curve>;
     type Structure;
     type Env: FoldingEnv<
-        <Self::Curve as AffineCurve>::ScalarField,
+        <Self::Curve as AffineRepr>::ScalarField,
         Self::Instance,
         Self::Witness,
         Self::Column,

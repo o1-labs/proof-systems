@@ -16,7 +16,7 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::PrimeField;
 use poly_commitment::{commitment::CommitmentCurve, OpenProof, SRS};
 
@@ -30,8 +30,8 @@ pub struct Witness<F>(pub [Vec<F>; COLUMNS]);
 // aliases
 //
 
-type ScalarField<C> = <C as AffineCurve>::ScalarField;
-type BaseField<C> = <C as AffineCurve>::BaseField;
+type ScalarField<C> = <C as AffineRepr>::ScalarField;
+type BaseField<C> = <C as AffineRepr>::BaseField;
 
 /// A prover index.
 pub struct ProverIndexWrapper<Circuit>
@@ -70,7 +70,7 @@ where
         debug: bool,
     ) -> SnarkyResult<(Proof<Circuit>, Box<Output<Circuit>>)>
     where
-        <Circuit::Curve as AffineCurve>::BaseField: PrimeField,
+        <Circuit::Curve as AffineRepr>::BaseField: PrimeField,
         EFqSponge: Clone
             + FqSponge<BaseField<Circuit::Curve>, Circuit::Curve, ScalarField<Circuit::Curve>>,
         EFrSponge: FrSponge<ScalarField<Circuit::Curve>>,
@@ -174,7 +174,7 @@ where
         public_input: <Circuit::PublicInput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
         public_output: <Circuit::PublicOutput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
     ) where
-        <Circuit::Curve as AffineCurve>::BaseField: PrimeField,
+        <Circuit::Curve as AffineRepr>::BaseField: PrimeField,
         EFqSponge: Clone
             + FqSponge<BaseField<Circuit::Curve>, Circuit::Curve, ScalarField<Circuit::Curve>>,
         EFrSponge: FrSponge<ScalarField<Circuit::Curve>>,
@@ -300,7 +300,7 @@ pub trait SnarkyCircuit: Sized {
         self,
     ) -> SnarkyResult<(ProverIndexWrapper<Self>, VerifierIndexWrapper<Self>)>
     where
-        <Self::Curve as AffineCurve>::BaseField: PrimeField,
+        <Self::Curve as AffineRepr>::BaseField: PrimeField,
     {
         let compiled_circuit = compile(self)?;
 

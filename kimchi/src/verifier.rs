@@ -19,7 +19,7 @@ use crate::{
     proof::{PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -747,7 +747,7 @@ where
 fn to_batch<'a, G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G>>(
     verifier_index: &VerifierIndex<G, OpeningProof>,
     proof: &'a ProverProof<G, OpeningProof>,
-    public_input: &'a [<G as AffineCurve>::ScalarField],
+    public_input: &'a [<G as AffineRepr>::ScalarField],
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge, OpeningProof>>
 where
     G: KimchiCurve,

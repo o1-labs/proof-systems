@@ -5,7 +5,7 @@
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
 use ark_ec::{
-    AffineRepr, // for prime_subgroup_generator()
+    AffineRepr, // for generator()
     CurveGroup,
 };
 use ark_ff::{

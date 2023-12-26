@@ -18,7 +18,7 @@ use crate::{
     error::{DomainCreationError, SetupError},
     prover_index::ProverIndex,
 };
-use ark_ff::{PrimeField, SquareRootField, Zero};
+use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -279,7 +279,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
 }
 
 impl<
-        F: PrimeField + SquareRootField,
+        F: PrimeField,
         G: KimchiCurve<ScalarField = F>,
         OpeningProof: OpenProof<G>,
     > ProverIndex<G, OpeningProof>
@@ -336,7 +336,7 @@ impl<
     }
 }
 
-impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
+impl<F: PrimeField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
@@ -664,7 +664,7 @@ impl FeatureFlags {
     }
 }
 
-impl<F: PrimeField + SquareRootField> Builder<F> {
+impl<F: PrimeField> Builder<F> {
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
     pub fn public(mut self, public: usize) -> Self {
@@ -914,7 +914,7 @@ pub mod tests {
     use super::*;
     use mina_curves::pasta::Fp;
 
-    impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
+    impl<F: PrimeField> ConstraintSystem<F> {
         pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test

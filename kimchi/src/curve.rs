@@ -1,11 +1,12 @@
 //! This module contains a useful trait for recursion: [KimchiCurve],
 //! which defines how a pair of curves interact.
 
-use ark_ec::{short_weierstrass_jacobian::GroupAffine, AffineCurve, ModelParameters};
+use ark_ec::{short_weierstrass::Affine, CurveConfig, AffineRepr};
 use mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
+
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
 use poly_commitment::{
@@ -37,28 +38,28 @@ pub trait KimchiCurve: CommitmentCurve + EndoCurve {
 }
 
 fn vesta_endos() -> &'static (
-    <VestaParameters as ModelParameters>::BaseField,
-    <VestaParameters as ModelParameters>::ScalarField,
+    <VestaParameters as CurveConfig>::BaseField,
+    <VestaParameters as CurveConfig>::ScalarField,
 ) {
     static VESTA_ENDOS: Lazy<(
-        <VestaParameters as ModelParameters>::BaseField,
-        <VestaParameters as ModelParameters>::ScalarField,
-    )> = Lazy::new(endos::<GroupAffine<VestaParameters>>);
+        <VestaParameters as CurveConfig>::BaseField,
+        <VestaParameters as CurveConfig>::ScalarField,
+    )> = Lazy::new(endos::<Affine<VestaParameters>>);
     &VESTA_ENDOS
 }
 
 fn pallas_endos() -> &'static (
-    <PallasParameters as ModelParameters>::BaseField,
-    <PallasParameters as ModelParameters>::ScalarField,
+    <PallasParameters as CurveConfig>::BaseField,
+    <PallasParameters as CurveConfig>::ScalarField,
 ) {
     static PALLAS_ENDOS: Lazy<(
-        <PallasParameters as ModelParameters>::BaseField,
-        <PallasParameters as ModelParameters>::ScalarField,
-    )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
+        <PallasParameters as CurveConfig>::BaseField,
+        <PallasParameters as CurveConfig>::ScalarField,
+    )> = Lazy::new(endos::<Affine<PallasParameters>>);
     &PALLAS_ENDOS
 }
 
-impl KimchiCurve for GroupAffine<VestaParameters> {
+impl KimchiCurve for Affine<VestaParameters> {
     const NAME: &'static str = "vesta";
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
@@ -78,13 +79,13 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
-        GroupAffine::<PallasParameters>::prime_subgroup_generator()
+        Affine::<PallasParameters>::generator()
             .to_coordinates()
             .unwrap()
     }
 }
 
-impl KimchiCurve for GroupAffine<PallasParameters> {
+impl KimchiCurve for Affine<PallasParameters> {
     const NAME: &'static str = "pallas";
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
@@ -104,7 +105,7 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
-        GroupAffine::<VestaParameters>::prime_subgroup_generator()
+        Affine::<VestaParameters>::generator()
             .to_coordinates()
             .unwrap()
     }
@@ -114,7 +115,7 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
 // Legacy curves
 //
 
-impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
+impl KimchiCurve for Affine<LegacyVestaParameters> {
     const NAME: &'static str = "legacy_vesta";
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
@@ -134,13 +135,13 @@ impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
-        GroupAffine::<PallasParameters>::prime_subgroup_generator()
+        Affine::<PallasParameters>::generator()
             .to_coordinates()
             .unwrap()
     }
 }
 
-impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
+impl KimchiCurve for Affine<LegacyPallasParameters> {
     const NAME: &'static str = "legacy_pallas";
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
@@ -160,7 +161,7 @@ impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
-        GroupAffine::<VestaParameters>::prime_subgroup_generator()
+        Affine::<VestaParameters>::generator()
             .to_coordinates()
             .unwrap()
     }
@@ -170,7 +171,7 @@ impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
 use mina_poseidon::dummy_values::kimchi_dummy;
 
 #[cfg(feature = "bn254")]
-impl KimchiCurve for GroupAffine<ark_bn254::g1::Parameters> {
+impl KimchiCurve for Affine<ark_bn254::g1::Config> {
     const NAME: &'static str = "bn254";
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {

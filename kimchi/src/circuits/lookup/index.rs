@@ -8,7 +8,7 @@ use crate::circuits::{
         tables::LookupTable,
     },
 };
-use ark_ff::{FftField, PrimeField, SquareRootField};
+use ark_ff::{FftField, PrimeField};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -192,7 +192,7 @@ pub struct LookupConstraintSystem<F: FftField> {
     pub configuration: LookupConfiguration<F>,
 }
 
-impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
+impl<F: PrimeField> LookupConstraintSystem<F> {
     /// Create the `LookupConstraintSystem`.
     ///
     /// # Errors

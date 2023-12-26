@@ -1337,11 +1337,11 @@ dependencies = [
 name = "kimchi"
 version = "0.1.0"
 dependencies = [
- "ark-bn254 0.3.0",
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
- "ark-poly 0.3.0",
- "ark-serialize 0.3.0",
+ "ark-bn254 0.4.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
  "blake2",
  "colored",
  "criterion",
@@ -1383,8 +1383,8 @@ dependencies = [
 name = "kimchi-visu"
 version = "0.1.0"
 dependencies = [
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
  "kimchi",
  "mina-curves",
  "mina-poseidon",
