@@ -140,7 +140,7 @@ pub mod testing {
         },
         precomputed_srs,
     };
-    use ark_ff::{PrimeField, SquareRootField};
+    use ark_ff::PrimeField;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
 
@@ -161,7 +161,7 @@ pub mod testing {
     ) -> ProverIndex<G, OpeningProof>
     where
         G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         let cs = ConstraintSystem::<G::ScalarField>::create(gates)
@@ -198,7 +198,7 @@ pub mod testing {
     ) -> ProverIndex<G, OpeningProof<G>>
     where
         G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         new_index_for_test_with_lookups_and_custom_srs(
             gates,
@@ -230,7 +230,7 @@ pub mod testing {
     ) -> ProverIndex<G, OpeningProof<G>>
     where
         G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false, None)
     }

@@ -1,9 +1,7 @@
 //! This module implements Plonk circuit gate wires primitive.
 
-use ark_ff::bytes::{FromBytes, ToBytes};
 use serde::{Deserialize, Serialize};
 use std::array;
-use std::io::{Read, Result as IoResult, Write};
 
 /// Number of registers
 pub const COLUMNS: usize = 15;
@@ -62,24 +60,6 @@ impl Wirable for GateWires {
         assert!(col < PERMUTS);
         self[col] = to;
         self
-    }
-}
-
-impl ToBytes for Wire {
-    #[inline]
-    fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
-        (self.row as u32).write(&mut w)?;
-        (self.col as u32).write(&mut w)?;
-        Ok(())
-    }
-}
-
-impl FromBytes for Wire {
-    #[inline]
-    fn read<R: Read>(mut r: R) -> IoResult<Self> {
-        let row = u32::read(&mut r)? as usize;
-        let col = u32::read(&mut r)? as usize;
-        Ok(Wire { row, col })
     }
 }
 
