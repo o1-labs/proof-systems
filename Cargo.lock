@@ -3169,3 +3169,35 @@ dependencies = [
  "quote 1.0.29",
  "syn 2.0.38",
 ]
+
+[[package]]
+name = "zkwasm"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ff",
+ "ark-poly",
+ "base64",
+ "clap 4.4.6",
+ "command-fds",
+ "elf",
+ "env_logger",
+ "groupmap",
+ "hex",
+ "kimchi",
+ "libc",
+ "libflate",
+ "log",
+ "mina-curves",
+ "mina-poseidon",
+ "os_pipe",
+ "poly-commitment",
+ "rand",
+ "regex",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "strum",
+ "strum_macros",
+]
