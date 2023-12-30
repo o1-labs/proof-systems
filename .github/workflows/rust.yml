@@ -16,7 +16,7 @@ jobs:
   run_checks:
     strategy:
       matrix:
-        rust_toolchain_version: ["1.71", "1.72", "1.73", "1.74"]
+        rust_toolchain_version: ["1.71", "1.72", "1.73", "1.74", "1.75"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
