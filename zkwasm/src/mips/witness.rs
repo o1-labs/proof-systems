@@ -7,10 +7,7 @@ use crate::{
     keccak::environment::KeccakEnv,
     mips::{
         column::Column,
-        interpreter::{
-            self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
-            JTypeInstruction, RTypeInstruction,
-        },
+        interpreter::{self, debugging::InstructionParts, Instruction, InterpreterEnv},
         registers::Registers,
     },
     preimage_oracle::PreImageOracle,
@@ -797,6 +794,7 @@ impl<Fp: Field> Env<Fp> {
         self.memory[memory_idx].1[page_address]
     }
 
+    /*
     pub fn decode_instruction(&mut self) -> (Instruction, u32) {
         let instruction =
             ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
@@ -930,11 +928,11 @@ impl<Fp: Field> Env<Fp> {
             }
         };
         (opcode, instruction)
-    }
+    }*/
 
     pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
         self.reset_scratch_state();
-        let (opcode, instruction) = self.decode_instruction();
+        let (opcode, instruction) = panic!("TODO: Decode instructions");
         let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
         debug!("instruction: {:?}", opcode);
         debug!("Instruction hex: {:#010x}", instruction);

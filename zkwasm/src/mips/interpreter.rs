@@ -24,94 +24,100 @@ pub const SYSCALL_READ: u32 = 4003;
 pub const SYSCALL_WRITE: u32 = 4004;
 pub const SYSCALL_FCNTL: u32 = 4055;
 
+/*
+* Numeric instructions
+ *
+ * nn, mm ::= 32 | 64
+sx ::= u | s
+instr ::= inn.const unn | fnn.const f nn
+| inn.iunop | fnn.funop
+| inn.ibinop | fnn.fbinop
+| inn.itestop
+| inn.irelop | fnn.frelop
+| inn.extend8_s | inn.extend16_s | i64.extend32_s
+| i32.wrap_i64 | i64.extend_i32_sx | inn.trunc_fmm_sx
+| inn.trunc_sat_fmm_sx
+| f32.demote_f64 | f64.promote_f32 | fnn.convert_imm_sx
+| inn.reinterpret_fnn | fnn.reinterpret_inn
+| . . .
+iunop ::= clz | ctz | popcnt
+ibinop ::= add | sub | mul | div_sx | rem_sx
+| and | or | xor | shl | shr_sx | rotl | rotr
+funop ::= abs | neg | sqrt | ceil | floor | trunc | nearest
+fbinop ::= add | sub | mul | div | min | max | copysign
+itestop ::= eqz
+irelop ::= eq | ne | lt_sx | gt_sx | le_sx | ge_sx
+frelop ::= eq | ne | lt | gt | le | ge
+ *
+ */
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum NumericInstruction {
+    IConst(Width, u32),
+    IUnOp(Width, IUnOp),
+    IBinOp(Width, IBinOp),
+    ITestOp(Width, ITestOp),
+    IRelOp(Width, IRelOp),
+    IExtend8_s(Width),
+    IExtend16_s(Width),
+    I64Extend32_s,
+    I32Wrap_i64,
+    I64Extend_i32(Signedness),
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+pub enum IUnOp {
+    CountLeadingZeroBits,  // clz
+    CountTrailingZeroBits, // ctz
+    PopCount,              // popcnt
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum IBinOp {
+    Add,                    // add
+    Sub,                    // sub
+    Mul,                    // mul
+    Div(Signedness),        // div_sx
+    Rem(Signedness),        // rem_sx
+    And,                    // and
+    Or,                     // or
+    Xor,                    // xor
+    ShiftLeft,              // shl
+    ShiftRight(Signedness), // shr_sx
+    RotateLeft,             // rotl
+    RotateRight,            // rotr
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+pub enum ITestOp {
+    EqualZero, // eqz
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum IRelOp {
+    Equal,                          // eq
+    NotEqual,                       // ne
+    LessThan(Signedness),           // lt_sx
+    GreaterThan(Signedness),        // gt_sx
+    LessThanOrEqual(Signedness),    // le_sx
+    GreaterThanOrEqual(Signedness), // ge_sx
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+pub enum Width {
+    ThirtyTwo,
+    SixtyFour,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+pub enum Signedness {
+    Unsigned,
+    Signed,
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Instruction {
-    RType(RTypeInstruction),
-    JType(JTypeInstruction),
-    IType(ITypeInstruction),
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum RTypeInstruction {
-    ShiftLeftLogical,             // sll
-    ShiftRightLogical,            // srl
-    ShiftRightArithmetic,         // sra
-    ShiftLeftLogicalVariable,     // sllv
-    ShiftRightLogicalVariable,    // srlv
-    ShiftRightArithmeticVariable, // srav
-    JumpRegister,                 // jr
-    JumpAndLinkRegister,          // jalr
-    SyscallMmap,                  // syscall (Mmap)
-    SyscallExitGroup,             // syscall (ExitGroup)
-    SyscallReadHint,              // syscall (Read 3)
-    SyscallReadPreimage,          // syscall (Read 5)
-    SyscallReadOther,             // syscall (Read ?)
-    SyscallWriteHint,             // syscall (Write 4)
-    SyscallWritePreimage,         // syscall (Write 6)
-    SyscallWriteOther,            // syscall (Write ?)
-    SyscallFcntl,                 // syscall (Fcntl)
-    SyscallOther,                 // syscall (Brk, Clone, ?)
-    MoveZero,                     // movz
-    MoveNonZero,                  // movn
-    Sync,                         // sync
-    MoveFromHi,                   // mfhi
-    MoveToHi,                     // mthi
-    MoveFromLo,                   // mflo
-    MoveToLo,                     // mtlo
-    Multiply,                     // mult
-    MultiplyUnsigned,             // multu
-    Div,                          // div
-    DivUnsigned,                  // divu
-    Add,                          // add
-    AddUnsigned,                  // addu
-    Sub,                          // sub
-    SubUnsigned,                  // subu
-    And,                          // and
-    Or,                           // or
-    Xor,                          // xor
-    Nor,                          // nor
-    SetLessThan,                  // slt
-    SetLessThanUnsigned,          // sltu
-    MultiplyToRegister,           // mul
-    CountLeadingOnes,             // clo
-    CountLeadingZeros,            // clz
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum JTypeInstruction {
-    Jump,        // j
-    JumpAndLink, // jal
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum ITypeInstruction {
-    BranchEq,                     // beq
-    BranchNeq,                    // bne
-    BranchLeqZero,                // blez
-    BranchGtZero,                 // bgtz
-    BranchLtZero,                 // bltz
-    BranchGeqZero,                // bgez
-    AddImmediate,                 // addi
-    AddImmediateUnsigned,         // addiu
-    SetLessThanImmediate,         // slti
-    SetLessThanImmediateUnsigned, // sltiu
-    AndImmediate,                 // andi
-    OrImmediate,                  // ori
-    XorImmediate,                 // xori
-    LoadUpperImmediate,           // lui
-    Load8,                        // lb
-    Load16,                       // lh
-    Load32,                       // lw
-    Load8Unsigned,                // lbu
-    Load16Unsigned,               // lhu
-    LoadWordLeft,                 // lwl
-    LoadWordRight,                // lwr
-    Store8,                       // sb
-    Store16,                      // sh
-    Store32,                      // sw
-    Store32Conditional,           // sc
-    StoreWordLeft,                // swl
-    StoreWordRight,               // swr
+    NumericType(NumericInstruction),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -909,12 +915,11 @@ pub trait InterpreterEnv {
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
     match instr {
-        Instruction::RType(instr) => interpret_rtype(env, instr),
-        Instruction::JType(instr) => interpret_jtype(env, instr),
-        Instruction::IType(instr) => interpret_itype(env, instr),
+        _ => panic!("TODO: Implement instruction intepretation"),
     }
 }
 
+/*
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
     let next_instruction_pointer = env.get_next_instruction_pointer();
@@ -2548,7 +2553,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
     }
-}
+}*/
 
 pub mod debugging {
     use serde::{Deserialize, Serialize};
