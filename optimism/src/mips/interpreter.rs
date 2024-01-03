@@ -5,6 +5,7 @@ use crate::{
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
 };
+use ark_ff::One;
 use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
@@ -124,6 +125,21 @@ pub enum Sign {
 pub struct Signed<T> {
     pub sign: Sign,
     pub magnitude: T,
+}
+
+impl<T: One> Signed<T> {
+    pub fn read_one() -> Self {
+        Self {
+            sign: Sign::Neg,
+            magnitude: T::one(),
+        }
+    }
+    pub fn write_one() -> Self {
+        Self {
+            sign: Sign::Pos,
+            magnitude: T::one(),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
