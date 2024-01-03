@@ -109,8 +109,15 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     fn set_flag_round(&mut self, round: u64) {
-        assert!(round < ROUNDS as u64);
+        assert!(round <= ROUNDS as u64);
+        // Values between 0 (dummy, for sponges) and 24
         self.write_column(KeccakColumn::FlagRound, round);
+        if round != 0 {
+            self.write_column_field(
+                KeccakColumn::InverseRound,
+                Fp::from(round).inverse().unwrap(),
+            );
+        }
     }
 
     fn run_sponge(&mut self, sponge: Sponge) {

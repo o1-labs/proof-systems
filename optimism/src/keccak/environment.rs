@@ -51,11 +51,11 @@ impl<Fp: Field> KeccakEnv<Fp> {
         match self.curr_step {
             Some(step) => match step {
                 KeccakStep::Sponge(sponge) => match sponge {
-                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(0)),
+                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(1)),
                     Sponge::Squeeze => self.curr_step = None,
                 },
                 KeccakStep::Round(round) => {
-                    if round < ROUNDS as u64 - 1 {
+                    if round < ROUNDS as u64 {
                         self.curr_step = Some(KeccakStep::Round(round + 1));
                     } else {
                         self.blocks_left_to_absorb -= 1;
@@ -155,6 +155,8 @@ pub(crate) trait KeccakEnvironment {
     fn is_round(&self) -> Self::Variable;
 
     fn round(&self) -> Self::Variable;
+
+    fn inverse_round(&self) -> Self::Variable;
 
     fn absorb(&self) -> Self::Variable;
 
@@ -292,6 +294,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn round(&self) -> Self::Variable {
         self.keccak_state[KeccakColumn::FlagRound].clone()
+    }
+
+    fn inverse_round(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::InverseRound].clone()
     }
 
     fn absorb(&self) -> Self::Variable {
