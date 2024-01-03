@@ -225,7 +225,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         for i in 0..QUARTERS {
             // Check round constants correspond with the current round
             self.add_lookup(Lookup {
-                numerator: Signed::new(rw, None),
+                numerator: Signed::new(rw, Some(self.is_round())),
                 table_id: LookupTable::RoundConstantsLookup,
                 value: vec![self.round(), self.round_constants()[i].clone()],
             });

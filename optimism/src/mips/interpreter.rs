@@ -135,7 +135,6 @@ pub enum LookupMode {
 
 impl<T: One> Signed<T> {
     /// Creates a new Signed element, either a Read or a Write, and can be null if the flag is zero
-    // TODO: if the flag trick works, then RC does not need to be length 25 anymore nor nonzero default column values
     // FIXME: check what is the value of the flags at the witness stage
     pub fn new(rw: LookupMode, flag: Option<T>) -> Self {
         match rw {
