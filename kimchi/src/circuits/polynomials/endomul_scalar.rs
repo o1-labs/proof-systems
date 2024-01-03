@@ -167,7 +167,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);
@@ -177,8 +177,6 @@ where
 
         // x0..x7
         let xs: [_; 8] = array::from_fn(|i| env.witness_curr(6 + i));
-
-        let mut cache = Cache::default();
 
         let c_coeffs = [
             F::zero(),

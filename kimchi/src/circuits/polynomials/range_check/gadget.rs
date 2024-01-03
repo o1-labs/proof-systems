@@ -6,7 +6,7 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::Argument,
-        expr::E,
+        expr::{Cache, E},
         gate::{CircuitGate, Connect, GateType},
         lookup::{
             self,
@@ -136,17 +136,22 @@ pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_constraints<F: PrimeField>(
+    typ: GateType,
+    alphas: &Alphas<F>,
+    cache: &mut Cache,
+) -> E<F> {
     match typ {
-        GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas),
-        GateType::RangeCheck1 => RangeCheck1::combined_constraints(alphas),
+        GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas, cache),
+        GateType::RangeCheck1 => RangeCheck1::combined_constraints(alphas, cache),
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all range check circuit gate types
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    RangeCheck0::combined_constraints(alphas) + RangeCheck1::combined_constraints(alphas)
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
+    RangeCheck0::combined_constraints(alphas, cache)
+        + RangeCheck1::combined_constraints(alphas, cache)
 }
 
 /// Get the range check lookup table

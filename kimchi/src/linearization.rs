@@ -2,10 +2,11 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::expr;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
     constraints::LookupConfiguration,
-    lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+    lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
@@ -48,14 +49,17 @@ pub fn constraints_expr<F: PrimeField>(
         VarbaseMul::<F>::CONSTRAINTS,
     );
 
-    let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
-    expr += VarbaseMul::combined_constraints(&powers_of_alpha);
-    expr += CompleteAdd::combined_constraints(&powers_of_alpha);
-    expr += EndosclMul::combined_constraints(&powers_of_alpha);
-    expr += EndomulScalar::combined_constraints(&powers_of_alpha);
+    let mut cache = expr::Cache::default();
+
+    let mut expr = Poseidon::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += VarbaseMul::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += CompleteAdd::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndosclMul::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndomulScalar::combined_constraints(&powers_of_alpha, &mut cache);
 
     {
-        let range_check0_expr = || RangeCheck0::combined_constraints(&powers_of_alpha);
+        let mut range_check0_expr =
+            || RangeCheck0::combined_constraints(&powers_of_alpha, &mut cache);
 
         if let Some(feature_flags) = feature_flags {
             if feature_flags.range_check0 {
@@ -71,7 +75,8 @@ pub fn constraints_expr<F: PrimeField>(
     }
 
     {
-        let range_check1_expr = || RangeCheck1::combined_constraints(&powers_of_alpha);
+        let mut range_check1_expr =
+            || RangeCheck1::combined_constraints(&powers_of_alpha, &mut cache);
 
         if let Some(feature_flags) = feature_flags {
             if feature_flags.range_check1 {
@@ -87,7 +92,8 @@ pub fn constraints_expr<F: PrimeField>(
     }
 
     {
-        let foreign_field_add_expr = || ForeignFieldAdd::combined_constraints(&powers_of_alpha);
+        let mut foreign_field_add_expr =
+            || ForeignFieldAdd::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_add {
                 expr += foreign_field_add_expr();
@@ -102,7 +108,8 @@ pub fn constraints_expr<F: PrimeField>(
     }
 
     {
-        let foreign_field_mul_expr = || ForeignFieldMul::combined_constraints(&powers_of_alpha);
+        let mut foreign_field_mul_expr =
+            || ForeignFieldMul::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_mul {
                 expr += foreign_field_mul_expr();
@@ -117,7 +124,7 @@ pub fn constraints_expr<F: PrimeField>(
     }
 
     {
-        let xor_expr = || xor::Xor16::combined_constraints(&powers_of_alpha);
+        let mut xor_expr = || xor::Xor16::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.xor {
                 expr += xor_expr();
@@ -132,7 +139,7 @@ pub fn constraints_expr<F: PrimeField>(
     }
 
     {
-        let rot_expr = || rot::Rot64::combined_constraints(&powers_of_alpha);
+        let mut rot_expr = || rot::Rot64::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.rot {
                 expr += rot_expr();
@@ -147,7 +154,7 @@ pub fn constraints_expr<F: PrimeField>(
     }
 
     if generic {
-        expr += generic::Generic::combined_constraints(&powers_of_alpha);
+        expr += generic::Generic::combined_constraints(&powers_of_alpha, &mut cache);
     }
 
     // permutation
@@ -298,6 +305,26 @@ pub fn linearization_columns<F: FftField>(
     // the generic selector polynomial
     h.insert(Index(GateType::Generic));
 
+    h.insert(Index(GateType::CompleteAdd));
+    h.insert(Index(GateType::VarBaseMul));
+    h.insert(Index(GateType::EndoMul));
+    h.insert(Index(GateType::EndoMulScalar));
+
+    // optional columns
+    h.insert(Index(GateType::RangeCheck0));
+    h.insert(Index(GateType::RangeCheck1));
+    h.insert(Index(GateType::ForeignFieldAdd));
+    h.insert(Index(GateType::ForeignFieldMul));
+    h.insert(Index(GateType::Xor16));
+    h.insert(Index(GateType::Rot64));
+
+    // lookup selectors
+    h.insert(LookupRuntimeSelector);
+    h.insert(LookupKindIndex(LookupPattern::Xor));
+    h.insert(LookupKindIndex(LookupPattern::Lookup));
+    h.insert(LookupKindIndex(LookupPattern::RangeCheck));
+    h.insert(LookupKindIndex(LookupPattern::ForeignFieldMul));
+
     h
 }
 
@@ -321,6 +348,8 @@ pub fn expr_linearization<F: PrimeField>(
         .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish());
+
+    assert_eq!(linearization.index_terms.len(), 0);
 
     (linearization, powers_of_alpha)
 }

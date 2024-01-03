@@ -3,7 +3,7 @@
 use crate::field_helpers::FieldHelpers;
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use std::array;
 use std::fmt::{Debug, Formatter};
 use std::ops::{Index, IndexMut};
@@ -158,6 +158,9 @@ pub trait ForeignFieldHelpers<T> {
 
     /// 2^{2 * LIMB_BITS}
     fn two_to_2limb() -> T;
+
+    /// 2^{3 * LIMB_BITS}
+    fn two_to_3limb() -> T;
 }
 
 impl<F: Field> ForeignFieldHelpers<F> for F {
@@ -167,6 +170,10 @@ impl<F: Field> ForeignFieldHelpers<F> for F {
 
     fn two_to_2limb() -> Self {
         F::from(2u64).pow([2 * LIMB_BITS as u64])
+    }
+
+    fn two_to_3limb() -> Self {
+        F::from(2u64).pow([3 * LIMB_BITS as u64])
     }
 }
 
@@ -184,16 +191,19 @@ pub trait BigUintForeignFieldHelpers {
     /// 2^t
     fn binary_modulus() -> Self;
 
+    /// 2^259 (see foreign field multiplication RFC)
+    fn max_foreign_field_modulus<F: PrimeField>() -> Self;
+
     /// Convert to 3 limbs of LIMB_BITS each
     fn to_limbs(&self) -> [BigUint; 3];
 
-    /// Convert to 2 limbs of 2 * LIMB_BITS each
+    /// Convert to 2 limbs of 2 * LIMB_BITS each. The compressed term is the bottom part
     fn to_compact_limbs(&self) -> [BigUint; 2];
 
     /// Convert to 3 PrimeField limbs of LIMB_BITS each
     fn to_field_limbs<F: Field>(&self) -> [F; 3];
 
-    /// Convert to 2 PrimeField limbs of 2 * LIMB_BITS each
+    /// Convert to 2 PrimeField limbs of 2 * LIMB_BITS each. The compressed term is the bottom part.
     fn to_compact_field_limbs<F: Field>(&self) -> [F; 2];
 
     /// Negate: 2^T - self
@@ -215,6 +225,11 @@ impl BigUintForeignFieldHelpers for BigUint {
 
     fn binary_modulus() -> Self {
         BigUint::two().pow(3 * LIMB_BITS as u32)
+    }
+
+    fn max_foreign_field_modulus<F: PrimeField>() -> Self {
+        // For simplicity and efficiency we use the approximation m = 2^259 - 1
+        BigUint::two().pow(259) - BigUint::one()
     }
 
     fn to_limbs(&self) -> [Self; 3] {
