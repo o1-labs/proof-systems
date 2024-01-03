@@ -5,7 +5,7 @@ use super::{
 };
 use crate::mips::interpreter::{Lookup, LookupTable, Sign, Signed};
 use ark_ff::{Field, One};
-use kimchi::circuits::polynomials::keccak::constants::{SHIFTS_LEN, STATE_LEN};
+use kimchi::circuits::polynomials::keccak::constants::{QUARTERS, SHIFTS_LEN, STATE_LEN};
 
 pub(crate) trait Lookups {
     type Column;
@@ -234,7 +234,19 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 }
             }
             // IOTA LOOKUPS
-            {}
+            {
+                // Check round constants correspond with the current round
+                for i in 0..QUARTERS {
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::RoundConstantsLookup,
+                        value: vec![self.round(), self.keccak_state.round_constants[i].clone()],
+                    });
+                }
+            }
         }
     }
 }
