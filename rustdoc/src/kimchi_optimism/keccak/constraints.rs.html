@@ -339,12 +339,12 @@
                 <span class="comment">// Absorbs the new block by performing XOR with the old state
                 </span><span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_absorb()
-                        * (<span class="self">self</span>.next_state(i) - (<span class="self">self</span>.old_state(i) + <span class="self">self</span>.new_block(i))),
+                        * (<span class="self">self</span>.xor_state(i) - (<span class="self">self</span>.old_state(i) + <span class="self">self</span>.new_state(i))),
                 );
                 <span class="comment">// In absorb, Check shifts correspond to the decomposition of the new state
                 </span><span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_absorb()
-                        * (<span class="self">self</span>.new_block(i)
+                        * (<span class="self">self</span>.new_state(i)
                             - <span class="self">Self</span>::from_shifts(
                                 <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_shifts,
                                 <span class="prelude-val">Some</span>(i),
@@ -502,7 +502,7 @@
             // STEP iota: 4 constraints
             </span><span class="kw">for </span>(q, c) <span class="kw">in </span><span class="self">self</span>.round_constants().iter().enumerate() {
                 <span class="self">self</span>.constrain(
-                    <span class="self">self</span>.is_round() * (<span class="self">self</span>.next_state(q) - (state_f[<span class="number">0</span>][<span class="number">0</span>][q].clone() + c.clone())),
+                    <span class="self">self</span>.is_round() * (<span class="self">self</span>.state_g(q) - (state_f[<span class="number">0</span>][<span class="number">0</span>][q].clone() + c.clone())),
                 );
             } <span class="comment">// END iota
         </span>}

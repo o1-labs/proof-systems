@@ -502,7 +502,7 @@
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
             <span class="self">self</span>.write_column(KeccakColumn::SpongeOldState(i), old_state[i]);
             <span class="self">self</span>.write_column(KeccakColumn::SpongeNewState(i), new_state[i]);
-            <span class="self">self</span>.write_column(KeccakColumn::NextState(i), xor_state[i]);
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeXorState(i), xor_state[i]);
         }
         <span class="kw">for </span>(i, value) <span class="kw">in </span>bytes.iter().enumerate() {
             <span class="self">self</span>.write_column(KeccakColumn::SpongeBytes(i), <span class="kw-2">*</span>value);
@@ -623,7 +623,7 @@
 
         <span class="comment">// Update columns
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
-            <span class="self">self</span>.write_column(KeccakColumn::NextState(i), iota.state_g(i));
+            <span class="self">self</span>.write_column(KeccakColumn::IotaStateG(i), iota.state_g(i));
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
             <span class="self">self</span>.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
