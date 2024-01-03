@@ -190,6 +190,8 @@ pub(crate) trait KeccakEnvironment {
 
     fn sponge_shifts(&self) -> Vec<Self::Variable>;
 
+    fn sponge_shift(&self, i: usize) -> Self::Variable;
+
     fn sponge_bytes(&self, i: usize) -> Self::Variable;
 
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable;
@@ -384,6 +386,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn sponge_shifts(&self) -> Vec<Self::Variable> {
         self.keccak_state.sponge_shifts.clone()
+    }
+
+    fn sponge_shift(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeShifts(i)].clone()
     }
 
     fn state_a(&self, x: usize, y: usize, q: usize) -> Self::Variable {

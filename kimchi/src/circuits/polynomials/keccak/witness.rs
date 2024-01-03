@@ -4,7 +4,9 @@ use crate::{
     auto_clone,
     circuits::{
         polynomials::keccak::{
-            constants::{CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS},
+            constants::{
+                CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS, STATE_LEN,
+            },
             Keccak, OFF, RC,
         },
         witness::{self, IndexCell, Variables, WitnessCell},
@@ -470,7 +472,7 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
 
     // Squeeze phase
 
-    let new_state = vec![0; QUARTERS * DIM * DIM];
+    let new_state = vec![0; STATE_LEN];
     let shifts = Keccak::shift(&state);
     let dense = Keccak::collapse(&Keccak::reset(&shifts));
     let bytes = Keccak::bytestring(&dense);

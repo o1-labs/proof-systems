@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS},
+        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, STATE_LEN},
         witness::{Chi, Iota, PiRho, Theta},
         Keccak,
     },
@@ -55,7 +55,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         };
 
         // Root state is zero
-        self.prev_block = vec![0u64; QUARTERS * DIM * DIM];
+        self.prev_block = vec![0u64; STATE_LEN];
 
         // Pad preimage
         self.padded = Keccak::pad(&preimage);
@@ -299,7 +299,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let iota = Iota::create(state_f, round);
 
         // Update columns
-        for i in 0..QUARTERS * DIM * DIM {
+        for i in 0..STATE_LEN {
             self.write_column(KeccakColumn::NextState(i), iota.state_g(i));
         }
         for i in 0..QUARTERS {
