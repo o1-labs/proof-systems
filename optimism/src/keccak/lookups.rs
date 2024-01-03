@@ -15,19 +15,20 @@ pub(crate) trait Lookups {
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + Clone;
-    type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    /// Adds a given lookup to the environment
+    /// Adds a given Lookup to the environment
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     /// Adds all lookups of Self
     fn lookups(&mut self);
+
+    /// Adds a lookup to the RangeCheck16 table
+    fn lookup_rc16(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
-    type Fp = Fp;
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         self.lookups.push(lookup);
@@ -181,5 +182,13 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 });
             }
         }
+    }
+
+    fn lookup_rc16(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable) {
+        self.add_lookup(Lookup {
+            numerator: Signed::new(rw, Some(flag)),
+            table_id: LookupTable::RangeCheck16Lookup,
+            value: vec![value],
+        });
     }
 }
