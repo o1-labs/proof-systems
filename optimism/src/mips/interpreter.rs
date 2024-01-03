@@ -127,17 +127,26 @@ pub struct Signed<T> {
     pub magnitude: T,
 }
 
+#[derive(Copy, Clone)]
+pub enum LookupMode {
+    Read,
+    Write,
+}
+
 impl<T: One> Signed<T> {
-    pub fn read_one() -> Self {
-        Self {
-            sign: Sign::Neg,
-            magnitude: T::one(),
-        }
-    }
-    pub fn write_one() -> Self {
-        Self {
-            sign: Sign::Pos,
-            magnitude: T::one(),
+    /// Creates a new Signed element, either a Read or a Write, and can be null if the flag is zero
+    // TODO: if the flag trick works, then RC does not need to be length 25 anymore nor nonzero default column values
+    // FIXME: check what is the value of the flags at the witness stage
+    pub fn new(rw: LookupMode, flag: Option<T>) -> Self {
+        match rw {
+            LookupMode::Read => Self {
+                sign: Sign::Neg,
+                magnitude: flag.unwrap_or_else(|| T::one()),
+            },
+            LookupMode::Write => Self {
+                sign: Sign::Pos,
+                magnitude: flag.unwrap_or_else(|| T::one()),
+            },
         }
     }
 }
