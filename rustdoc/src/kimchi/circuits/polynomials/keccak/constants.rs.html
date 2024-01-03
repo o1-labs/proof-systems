@@ -57,6 +57,7 @@
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Constants for each witness&#39; index offsets and lengths
 
 </span><span class="comment">// KECCAK PARAMETERS
@@ -100,7 +101,7 @@
 <span class="kw">pub const </span>CHI_SHIFTS_B_LEN: usize = SHIFTS_LEN;
 <span class="kw">pub const </span>CHI_SHIFTS_SUM_OFF: usize = CHI_SHIFTS_B_OFF + CHI_SHIFTS_B_LEN;
 <span class="kw">pub const </span>CHI_SHIFTS_SUM_LEN: usize = SHIFTS_LEN;
-<span class="kw">pub const </span>IOTA_STATE_G_OFF: usize = CHI_SHIFTS_SUM_OFF + CHI_SHIFTS_SUM_LEN;
+<span class="kw">pub const </span>IOTA_STATE_G_OFF: usize = <span class="number">0</span>;
 <span class="kw">pub const </span>IOTA_STATE_G_LEN: usize = STATE_LEN;
 <span class="comment">// SPONGE INDICES
 </span><span class="kw">pub const </span>SPONGE_OLD_STATE_OFF: usize = <span class="number">0</span>;
@@ -115,5 +116,6 @@
 <span class="kw">pub const </span>SPONGE_BYTES_LEN: usize = <span class="number">2 </span>* STATE_LEN;
 <span class="kw">pub const </span>SPONGE_SHIFTS_OFF: usize = SPONGE_BYTES_OFF + SPONGE_BYTES_LEN;
 <span class="kw">pub const </span>SPONGE_SHIFTS_LEN: usize = SHIFTS_LEN;
+<span class="kw">pub const </span>SPONGE_XOR_STATE_OFF: usize = <span class="number">0</span>;
 <span class="kw">pub const </span>SPONGE_XOR_STATE_LEN: usize = STATE_LEN;
 </code></pre></div></section></main></body></html>
