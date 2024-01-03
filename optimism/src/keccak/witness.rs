@@ -1,3 +1,11 @@
+use super::{
+    column::KeccakColumn,
+    environment::KeccakEnv,
+    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
+    lookups::Lookups,
+    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+};
+use crate::mips::interpreter::LookupMode;
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
@@ -6,13 +14,6 @@ use kimchi::{
         Keccak,
     },
     grid,
-};
-
-use super::{
-    column::KeccakColumn,
-    environment::KeccakEnv,
-    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 
 pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
@@ -79,6 +80,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakStep::Sponge(typ) => self.run_sponge(typ),
             KeccakStep::Round(i) => self.run_round(i),
         }
+
+        // WRITE LOOKUPS
+        self.lookups(LookupMode::Write);
+
         self.update_step();
     }
 

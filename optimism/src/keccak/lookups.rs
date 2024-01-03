@@ -44,7 +44,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // Pad suffixes correspond to 10*1 rule
             // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
             self.add_lookup(Lookup {
-                numerator: Signed::new(LookupMode::Read, None),
+                numerator: Signed::new(rw, None),
                 table_id: LookupTable::PadLookup,
                 value: vec![
                     self.keccak_state[KeccakColumn::FlagLength].clone(),
@@ -60,7 +60,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for i in 0..200 {
                 // Bytes are <2^8
                 self.add_lookup(Lookup {
-                    numerator: Signed::new(LookupMode::Read, None),
+                    numerator: Signed::new(rw, None),
                     table_id: LookupTable::ByteLookup,
                     value: vec![self.sponge_bytes(i)],
                 })
@@ -69,7 +69,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for i in 100..SHIFTS_LEN {
                 // Shifts1, Shifts2, Shifts3 are in the Sparse table
                 self.add_lookup(Lookup {
-                    numerator: Signed::new(LookupMode::Read, None),
+                    numerator: Signed::new(rw, None),
                     table_id: LookupTable::SparseLookup,
                     value: vec![self.sponge_shifts(i)],
                 })
@@ -77,7 +77,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for i in 0..STATE_LEN {
                 // Shifts0 together with Bits composition by pairs are in the Reset table
                 self.add_lookup(Lookup {
-                    numerator: Signed::new(LookupMode::Read, None),
+                    numerator: Signed::new(rw, None),
                     table_id: LookupTable::ResetLookup,
                     value: vec![
                         self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8),
@@ -96,20 +96,20 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                     self.lookup_rc16(rw, self.is_round(), self.remainder_c(x, q));
                     // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
                     self.add_lookup(Lookup {
-                        numerator: Signed::new(LookupMode::Read, None),
+                        numerator: Signed::new(rw, None),
                         table_id: LookupTable::ResetLookup,
                         value: vec![self.dense_rot_c(x, q), self.expand_rot_c(x, q)],
                     });
                     // Check ThetaShiftC0 is the expansion of ThetaDenseC
                     self.add_lookup(Lookup {
-                        numerator: Signed::new(LookupMode::Read, None),
+                        numerator: Signed::new(rw, None),
                         table_id: LookupTable::ResetLookup,
                         value: vec![self.dense_c(x, q), self.shifts_c(0, x, q)],
                     });
                     // Check that the rest of ThetaShiftsC are in the Sparse table
                     for i in 1..SHIFTS {
                         self.add_lookup(Lookup {
-                            numerator: Signed::new(LookupMode::Read, None),
+                            numerator: Signed::new(rw, None),
                             table_id: LookupTable::SparseLookup,
                             value: vec![self.shifts_c(i, x, q)],
                         });
@@ -125,20 +125,20 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                         self.lookup_rc16(rw, self.is_round(), self.quotient_e(y, x, q));
                         // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
                         self.add_lookup(Lookup {
-                            numerator: Signed::new(LookupMode::Read, None),
+                            numerator: Signed::new(rw, None),
                             table_id: LookupTable::ResetLookup,
                             value: vec![self.dense_rot_e(y, x, q), self.expand_rot_e(y, x, q)],
                         });
                         // Check PiRhoShift0E is the expansion of PiRhoDenseE
                         self.add_lookup(Lookup {
-                            numerator: Signed::new(LookupMode::Read, None),
+                            numerator: Signed::new(rw, None),
                             table_id: LookupTable::ResetLookup,
                             value: vec![self.dense_e(y, x, q), self.shifts_e(0, y, x, q)],
                         });
                         // Check that the rest of PiRhoShiftsE are in the Sparse table
                         for i in 1..SHIFTS {
                             self.add_lookup(Lookup {
-                                numerator: Signed::new(LookupMode::Read, None),
+                                numerator: Signed::new(rw, None),
                                 table_id: LookupTable::SparseLookup,
                                 value: vec![self.shifts_e(i, y, x, q)],
                             });
@@ -150,12 +150,12 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for i in 0..SHIFTS_LEN {
                 // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
                 self.add_lookup(Lookup {
-                    numerator: Signed::new(LookupMode::Read, None),
+                    numerator: Signed::new(rw, None),
                     table_id: LookupTable::SparseLookup,
                     value: vec![self.vec_shifts_b()[i].clone()],
                 });
                 self.add_lookup(Lookup {
-                    numerator: Signed::new(LookupMode::Read, None),
+                    numerator: Signed::new(rw, None),
                     table_id: LookupTable::SparseLookup,
                     value: vec![self.vec_shifts_sum()[i].clone()],
                 });
@@ -164,7 +164,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for i in 0..QUARTERS {
                 // Check round constants correspond with the current round
                 self.add_lookup(Lookup {
-                    numerator: Signed::new(LookupMode::Read, None),
+                    numerator: Signed::new(rw, None),
                     table_id: LookupTable::RoundConstantsLookup,
                     value: vec![self.round(), self.round_constants()[i].clone()],
                 });
