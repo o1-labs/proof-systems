@@ -133,7 +133,7 @@ pub enum LookupMode {
     Write,
 }
 
-impl<T: One> Signed<T> {
+impl<T: One + Clone> Signed<T> {
     /// Creates a new Signed element, either a Read or a Write, and can be null if the flag is zero
     // TODO: if the flag trick works, then RC does not need to be length 25 anymore nor nonzero default column values
     // FIXME: check what is the value of the flags at the witness stage
@@ -150,11 +150,19 @@ impl<T: One> Signed<T> {
         }
     }
 
-    pub fn read_one() -> Self {
+    pub fn read_if(if_is_true: &T) -> Self {
+        Self::new(LookupMode::Read, Some(if_is_true.clone()))
+    }
+
+    pub fn write_if(if_is_true: &T) -> Self {
+        Self::new(LookupMode::Write, Some(if_is_true.clone()))
+    }
+
+    pub fn read() -> Self {
         Self::new(LookupMode::Read, None)
     }
 
-    pub fn write_one() -> Self {
+    pub fn write() -> Self {
         Self::new(LookupMode::Write, None)
     }
 }
@@ -194,7 +202,8 @@ pub trait InterpreterEnv {
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug;
+        + std::fmt::Debug
+        + One;
 
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
@@ -336,18 +345,12 @@ pub trait InterpreterEnv {
         };
         unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: if_is_true.clone(),
-            },
+            numerator: Signed::write_if(if_is_true),
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), last_accessed, old_value.clone()],
         });
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: if_is_true.clone(),
-            },
+            numerator: Signed::read_if(if_is_true),
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), new_accessed, new_value.clone()],
         });
@@ -477,18 +480,12 @@ pub trait InterpreterEnv {
         };
         unsafe { self.push_memory_access(addr, new_accessed.clone()) };
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: Self::constant(1),
-            },
+            numerator: Signed::write(),
             table_id: LookupTable::MemoryLookup,
             value: vec![addr.clone(), last_accessed, old_value.clone()],
         });
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: Self::constant(1),
-            },
+            numerator: Signed::read(),
             table_id: LookupTable::MemoryLookup,
             value: vec![addr.clone(), new_accessed, new_value.clone()],
         });
@@ -533,10 +530,7 @@ pub trait InterpreterEnv {
             self.push_register(&idx, ip.clone());
         }
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: Self::constant(1),
-            },
+            numerator: Signed::read(),
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, new_accessed, ip],
         });
@@ -549,10 +543,7 @@ pub trait InterpreterEnv {
             unsafe { self.fetch_register(&idx, value_location) }
         };
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: Self::constant(1),
-            },
+            numerator: Signed::write(),
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, self.instruction_counter(), ip.clone()],
         });
@@ -569,10 +560,7 @@ pub trait InterpreterEnv {
             self.push_register(&idx, ip.clone());
         }
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: Self::constant(1),
-            },
+            numerator: Signed::read(),
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, new_accessed, ip],
         });
@@ -585,10 +573,7 @@ pub trait InterpreterEnv {
             unsafe { self.fetch_register(&idx, value_location) }
         };
         self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: Self::constant(1),
-            },
+            numerator: Signed::write(),
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, self.instruction_counter(), ip.clone()],
         });
