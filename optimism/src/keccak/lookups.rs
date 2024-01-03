@@ -51,6 +51,9 @@ pub(crate) trait Lookups {
 
     /// Adds the lookups required for Chi in the round
     fn lookups_round_chi(&mut self, rw: LookupMode);
+
+    /// Adds the lookups required for Iota in the round
+    fn lookups_round_iota(&mut self, rw: LookupMode);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -76,14 +79,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // CHI LOOKUPS
             self.lookups_round_chi(rw);
             // IOTA LOOKUPS
-            for i in 0..QUARTERS {
-                // Check round constants correspond with the current round
-                self.add_lookup(Lookup {
-                    numerator: Signed::new(rw, None),
-                    table_id: LookupTable::RoundConstantsLookup,
-                    value: vec![self.round(), self.round_constants()[i].clone()],
-                });
-            }
+            self.lookups_round_iota(rw);
         }
     }
 
@@ -222,6 +218,17 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
             self.lookup_sparse(rw, self.is_round(), self.vec_shifts_b()[i].clone());
             self.lookup_sparse(rw, self.is_round(), self.vec_shifts_sum()[i].clone());
+        }
+    }
+
+    fn lookups_round_iota(&mut self, rw: LookupMode) {
+        for i in 0..QUARTERS {
+            // Check round constants correspond with the current round
+            self.add_lookup(Lookup {
+                numerator: Signed::new(rw, None),
+                table_id: LookupTable::RoundConstantsLookup,
+                value: vec![self.round(), self.round_constants()[i].clone()],
+            });
         }
     }
 }
