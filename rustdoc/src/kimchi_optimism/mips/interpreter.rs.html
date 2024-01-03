@@ -2588,8 +2588,6 @@
 <a href="#2588" id="2588">2588</a>
 <a href="#2589" id="2589">2589</a>
 <a href="#2590" id="2590">2590</a>
-<a href="#2591" id="2591">2591</a>
-<a href="#2592" id="2592">2592</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2730,10 +2728,8 @@
     </span>ResetLookup,
     <span class="comment">// 24-row table with all possible values for round and their round constant in expanded form
     </span>RoundConstantsLookup,
-    <span class="comment">// All [0..136] values of possible padding lengths and the 5 corresponding pad suffixes with the 10*1 rule
+    <span class="comment">// All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     </span>PadLookup,
-    <span class="comment">// Powers of two, from 2^0 to 2^136
-    </span>PowersOfTwoLookup,
 }
 
 <span class="attr">#[derive(Clone, Debug)]

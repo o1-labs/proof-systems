@@ -258,8 +258,6 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -372,13 +370,11 @@
                 );
             }
             <span class="comment">// Check that the padding is located at the end of the message
-            // TODO: get power of two from lookup table
             </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
                 acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_bytes(i)
             });
             <span class="self">self</span>.constrain(<span class="self">self</span>.pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
             <span class="comment">// Check that the padding value is correct
-            // TODO: get suffix from lookup table
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">5 </span>{
                 <span class="self">self</span>.constrain(<span class="self">self</span>.pad() * (<span class="self">self</span>.block_in_padding(i) - <span class="self">self</span>.pad_suffix(i)));
             }
