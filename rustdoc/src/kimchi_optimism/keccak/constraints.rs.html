@@ -254,8 +254,6 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -297,30 +295,30 @@
             // Booleanity of sponge flags
             </span>{
                 <span class="comment">// Absorb is either true or false
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::boolean(<span class="self">self</span>.absorb()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_absorb()));
                 <span class="comment">// Squeeze is either true or false
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::boolean(<span class="self">self</span>.squeeze()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_squeeze()));
                 <span class="comment">// Root is either true or false
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::boolean(<span class="self">self</span>.root()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_root()));
                 <span class="comment">// Pad is either true or false
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::boolean(<span class="self">self</span>.pad()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_pad()));
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
                     <span class="comment">// Bytes are either involved on padding or not
-                    </span><span class="self">self</span>.constrain(<span class="self">Self</span>::boolean(<span class="self">self</span>.in_padding(i)));
+                    </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.in_padding(i)));
                 }
             }
             <span class="comment">// Mutually exclusiveness of flags
             </span>{
                 <span class="comment">// Squeeze and Root are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.squeeze(), <span class="self">self</span>.root()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_root()));
                 <span class="comment">// Squeeze and Pad are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.squeeze(), <span class="self">self</span>.pad()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_pad()));
                 <span class="comment">// Round and Pad are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_round(), <span class="self">self</span>.pad()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_pad()));
                 <span class="comment">// Round and Root are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_round(), <span class="self">self</span>.root()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_root()));
                 <span class="comment">// Absorb and Squeeze cannot happen at the same time
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.absorb(), <span class="self">self</span>.squeeze()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_absorb(), <span class="self">self</span>.is_squeeze()));
                 <span class="comment">// Only one of Round and Sponge can be zero
                 // This means either Sponge is true or Round is nonzero -&gt; has an inverse
                 </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_sponge() * <span class="self">self</span>.round());
@@ -333,18 +331,19 @@
         </span>{
             <span class="kw">for </span>z <span class="kw">in </span><span class="self">self</span>.sponge_zeros() {
                 <span class="comment">// Absorb phase pads with zeros the new state
-                </span><span class="self">self</span>.constrain(<span class="self">self</span>.absorb() * z.clone());
+                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_absorb() * z.clone());
             }
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
                 <span class="comment">// In first absorb, root state is all zeros
-                </span><span class="self">self</span>.constrain(<span class="self">self</span>.root() * <span class="self">self</span>.old_state(i));
+                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_root() * <span class="self">self</span>.old_state(i));
                 <span class="comment">// Absorbs the new block by performing XOR with the old state
                 </span><span class="self">self</span>.constrain(
-                    <span class="self">self</span>.absorb() * (<span class="self">self</span>.next_state(i) - (<span class="self">self</span>.old_state(i) + <span class="self">self</span>.new_block(i))),
+                    <span class="self">self</span>.is_absorb()
+                        * (<span class="self">self</span>.next_state(i) - (<span class="self">self</span>.old_state(i) + <span class="self">self</span>.new_block(i))),
                 );
                 <span class="comment">// In absorb, Check shifts correspond to the decomposition of the new state
                 </span><span class="self">self</span>.constrain(
-                    <span class="self">self</span>.absorb()
+                    <span class="self">self</span>.is_absorb()
                         * (<span class="self">self</span>.new_block(i)
                             - <span class="self">Self</span>::from_shifts(
                                 <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_shifts,
@@ -358,7 +357,7 @@
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * WORDS_IN_HASH {
                 <span class="comment">// In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
                 </span><span class="self">self</span>.constrain(
-                    <span class="self">self</span>.squeeze()
+                    <span class="self">self</span>.is_squeeze()
                         * (<span class="self">self</span>.old_state(i)
                             - <span class="self">Self</span>::from_shifts(
                                 <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_shifts,
@@ -373,24 +372,21 @@
             </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
                 acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_bytes(i)
             });
-            <span class="self">self</span>.constrain(<span class="self">self</span>.pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
+            <span class="self">self</span>.constrain(<span class="self">self</span>.is_pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
             <span class="comment">// Check that the padding value is correct
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">5 </span>{
-                <span class="self">self</span>.constrain(<span class="self">self</span>.pad() * (<span class="self">self</span>.block_in_padding(i) - <span class="self">self</span>.pad_suffix(i)));
+                <span class="self">self</span>.constrain(<span class="self">self</span>.is_pad() * (<span class="self">self</span>.block_in_padding(i) - <span class="self">self</span>.pad_suffix(i)));
             }
         }
 
         <span class="comment">// ROUND CONSTRAINTS
         </span>{
             <span class="comment">// Define vectors storing expressions which are not in the witness layout for efficiency
-            </span><span class="kw">let </span><span class="kw-2">mut </span>state_c: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
-            <span class="kw">let </span><span class="kw-2">mut </span>state_d: Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt; = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
-            <span class="kw">let </span><span class="kw-2">mut </span>state_e: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
-            <span class="kw">let </span><span class="kw-2">mut </span>state_b: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
-            <span class="kw">let </span><span class="kw-2">mut </span>state_f: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; =
-                <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
+            </span><span class="kw">let </span><span class="kw-2">mut </span>state_c = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
+            <span class="kw">let </span><span class="kw-2">mut </span>state_d = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
+            <span class="kw">let </span><span class="kw-2">mut </span>state_e = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
+            <span class="kw">let </span><span class="kw-2">mut </span>state_b = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
+            <span class="kw">let </span><span class="kw-2">mut </span>state_f = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
 
             <span class="comment">// STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
             </span><span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
@@ -404,7 +400,7 @@
                             - (<span class="self">self</span>.quotient_c(x) * <span class="self">Self</span>::two_pow(<span class="number">64</span>) + rem_c.clone())),
                 );
                 <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (rot_c - (<span class="self">self</span>.quotient_c(x) + rem_c)));
-                <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (<span class="self">Self</span>::boolean(<span class="self">self</span>.quotient_c(x))));
+                <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (<span class="self">Self</span>::is_boolean(<span class="self">self</span>.quotient_c(x))));
 
                 <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                     state_c[x][q] = <span class="self">self</span>.state_a(<span class="number">0</span>, x, q)

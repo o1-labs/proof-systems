@@ -468,7 +468,7 @@
 <span class="kw">use </span>kimchi::circuits::expr::Operations;
 <span class="kw">use </span>kimchi::{
     auto_clone_array,
-    circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::ROUNDS},
+    circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::<span class="kw-2">*</span>},
     grid,
     o1_utils::Two,
 };
@@ -543,7 +543,7 @@
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
     <span class="kw">type </span>Fp = Fp;
 
-    <span class="kw">fn </span>boolean(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+    <span class="kw">fn </span>is_boolean(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         x.clone() * (x - <span class="self">Self</span>::Variable::one())
     }
 
@@ -612,19 +612,19 @@
 
     <span class="kw">fn </span>is_sponge(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="kw">fn </span>is_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>is_squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>is_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>is_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+
     <span class="kw">fn </span>is_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>inverse_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
@@ -745,7 +745,23 @@
     }
 
     <span class="kw">fn </span>is_sponge(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::xor(<span class="self">self</span>.absorb(), <span class="self">self</span>.squeeze())
+        <span class="self">Self</span>::xor(<span class="self">self</span>.is_absorb(), <span class="self">self</span>.is_squeeze())
+    }
+
+    <span class="kw">fn </span>is_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::FlagAbsorb].clone()
+    }
+
+    <span class="kw">fn </span>is_squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::FlagSqueeze].clone()
+    }
+
+    <span class="kw">fn </span>is_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::FlagRoot].clone()
+    }
+
+    <span class="kw">fn </span>is_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::FlagPad].clone()
     }
 
     <span class="kw">fn </span>is_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -758,22 +774,6 @@
 
     <span class="kw">fn </span>inverse_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.keccak_state[KeccakColumn::InverseRound].clone()
-    }
-
-    <span class="kw">fn </span>absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagAbsorb].clone()
-    }
-
-    <span class="kw">fn </span>squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagSqueeze].clone()
-    }
-
-    <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagRoot].clone()
-    }
-
-    <span class="kw">fn </span>pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagPad].clone()
     }
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
