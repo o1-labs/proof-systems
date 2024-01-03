@@ -127,7 +127,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // Pad suffixes correspond to 10*1 rule
         // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
         self.add_lookup(Lookup {
-            numerator: Signed::new(rw, None),
+            numerator: Signed::new(rw, Some(self.is_sponge())),
             table_id: LookupTable::PadLookup,
             value: vec![
                 self.keccak_state[KeccakColumn::FlagLength].clone(),
