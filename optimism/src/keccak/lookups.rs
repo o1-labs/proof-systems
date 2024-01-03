@@ -24,6 +24,15 @@ pub(crate) trait Lookups {
 
     /// Adds a lookup to the RangeCheck16 table
     fn lookup_rc16(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable);
+
+    /// Adds a lookup to the Reset table
+    fn lookup_reset(
+        &mut self,
+        rw: LookupMode,
+        flag: Self::Variable,
+        dense: Self::Variable,
+        sparse: Self::Variable,
+    );
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -76,14 +85,9 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             }
             for i in 0..STATE_LEN {
                 // Shifts0 together with Bits composition by pairs are in the Reset table
-                self.add_lookup(Lookup {
-                    numerator: Signed::new(rw, None),
-                    table_id: LookupTable::ResetLookup,
-                    value: vec![
-                        self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8),
-                        self.sponge_shifts(i),
-                    ],
-                })
+                let dense =
+                    self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8);
+                self.lookup_reset(rw, self.is_sponge(), dense, self.sponge_shifts(i));
             }
         }
 
@@ -95,17 +99,19 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                     // Check that ThetaRemainderC < 2^64
                     self.lookup_rc16(rw, self.is_round(), self.remainder_c(x, q));
                     // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
-                    self.add_lookup(Lookup {
-                        numerator: Signed::new(rw, None),
-                        table_id: LookupTable::ResetLookup,
-                        value: vec![self.dense_rot_c(x, q), self.expand_rot_c(x, q)],
-                    });
+                    self.lookup_reset(
+                        rw,
+                        self.is_round(),
+                        self.dense_rot_c(x, q),
+                        self.expand_rot_c(x, q),
+                    );
                     // Check ThetaShiftC0 is the expansion of ThetaDenseC
-                    self.add_lookup(Lookup {
-                        numerator: Signed::new(rw, None),
-                        table_id: LookupTable::ResetLookup,
-                        value: vec![self.dense_c(x, q), self.shifts_c(0, x, q)],
-                    });
+                    self.lookup_reset(
+                        rw,
+                        self.is_round(),
+                        self.dense_c(x, q),
+                        self.shifts_c(0, x, q),
+                    );
                     // Check that the rest of ThetaShiftsC are in the Sparse table
                     for i in 1..SHIFTS {
                         self.add_lookup(Lookup {
@@ -124,17 +130,19 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                         self.lookup_rc16(rw, self.is_round(), self.remainder_e(y, x, q));
                         self.lookup_rc16(rw, self.is_round(), self.quotient_e(y, x, q));
                         // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
-                        self.add_lookup(Lookup {
-                            numerator: Signed::new(rw, None),
-                            table_id: LookupTable::ResetLookup,
-                            value: vec![self.dense_rot_e(y, x, q), self.expand_rot_e(y, x, q)],
-                        });
+                        self.lookup_reset(
+                            rw,
+                            self.is_round(),
+                            self.dense_rot_e(y, x, q),
+                            self.expand_rot_e(y, x, q),
+                        );
                         // Check PiRhoShift0E is the expansion of PiRhoDenseE
-                        self.add_lookup(Lookup {
-                            numerator: Signed::new(rw, None),
-                            table_id: LookupTable::ResetLookup,
-                            value: vec![self.dense_e(y, x, q), self.shifts_e(0, y, x, q)],
-                        });
+                        self.lookup_reset(
+                            rw,
+                            self.is_round(),
+                            self.dense_e(y, x, q),
+                            self.shifts_e(0, y, x, q),
+                        );
                         // Check that the rest of PiRhoShiftsE are in the Sparse table
                         for i in 1..SHIFTS {
                             self.add_lookup(Lookup {
@@ -177,6 +185,20 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             numerator: Signed::new(rw, Some(flag)),
             table_id: LookupTable::RangeCheck16Lookup,
             value: vec![value],
+        });
+    }
+
+    fn lookup_reset(
+        &mut self,
+        rw: LookupMode,
+        flag: Self::Variable,
+        dense: Self::Variable,
+        sparse: Self::Variable,
+    ) {
+        self.add_lookup(Lookup {
+            numerator: Signed::new(rw, Some(flag)),
+            table_id: LookupTable::ResetLookup,
+            value: vec![dense, sparse],
         });
     }
 }
