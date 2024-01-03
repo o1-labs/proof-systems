@@ -861,8 +861,8 @@
         <span class="self">Self </span>{ state_g, rc }
     }
 
-    <span class="kw">pub fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; u64 {
-        <span class="self">self</span>.state_g[i]
+    <span class="kw">pub fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u64&gt; {
+        <span class="self">self</span>.state_g.clone()
     }
 
     <span class="kw">pub fn </span>rc(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; u64 {

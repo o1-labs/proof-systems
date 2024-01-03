@@ -314,6 +314,10 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
@@ -528,10 +532,11 @@
         <span class="kw">let </span>state_e = <span class="self">self</span>.run_theta(<span class="kw-2">&amp;</span>state_a);
         <span class="kw">let </span>state_b = <span class="self">self</span>.run_pirho(<span class="kw-2">&amp;</span>state_e);
         <span class="kw">let </span>state_f = <span class="self">self</span>.run_chi(<span class="kw-2">&amp;</span>state_b);
-        <span class="self">self</span>.run_iota(<span class="kw-2">&amp;</span>state_f, round <span class="kw">as </span>usize);
+        <span class="kw">let </span>state_g = <span class="self">self</span>.run_iota(<span class="kw-2">&amp;</span>state_f, round <span class="kw">as </span>usize);
 
-        <span class="comment">// Compute witness values
-    </span>}
+        <span class="comment">// Update block for next step with the output of the round
+        </span><span class="self">self</span>.prev_block = state_g;
+    }
 
     <span class="kw">fn </span>run_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state_a: <span class="kw-2">&amp;</span>[u64]) -&gt; Vec&lt;u64&gt; {
         <span class="kw">let </span>theta = Theta::create(state_a);
@@ -618,16 +623,19 @@
         chi.state_f()
     }
 
-    <span class="kw">fn </span>run_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state_f: <span class="kw-2">&amp;</span>[u64], round: usize) {
+    <span class="kw">fn </span>run_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state_f: <span class="kw-2">&amp;</span>[u64], round: usize) -&gt; Vec&lt;u64&gt; {
         <span class="kw">let </span>iota = Iota::create(state_f, round);
+        <span class="kw">let </span>state_g = iota.state_g();
 
         <span class="comment">// Update columns
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
-            <span class="self">self</span>.write_column(KeccakColumn::IotaStateG(i), iota.state_g(i));
+        </span><span class="kw">for </span>(i, g) <span class="kw">in </span>state_g.iter().enumerate() {
+            <span class="self">self</span>.write_column(KeccakColumn::IotaStateG(i), <span class="kw-2">*</span>g);
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
             <span class="self">self</span>.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
         }
+
+        state_g
     }
 }
 </code></pre></div></section></main></body></html>
