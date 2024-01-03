@@ -316,8 +316,7 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak gadget
-</span><span class="kw">use super</span>::{constants::<span class="kw-2">*</span>, OFF};
-<span class="kw">use crate</span>::{
+</span><span class="kw">use crate</span>::{
     auto_clone, auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
@@ -326,6 +325,7 @@
             Cache,
         },
         gate::GateType,
+        polynomials::keccak::{constants::<span class="kw-2">*</span>, OFF},
     },
     grid,
 };

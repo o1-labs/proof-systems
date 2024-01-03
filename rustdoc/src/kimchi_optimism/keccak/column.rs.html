@@ -229,6 +229,11 @@
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -238,13 +243,14 @@
 
 <span class="attr">#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>KeccakColumn {
-    FlagRound,                                <span class="comment">// Coeff Round = 0 | 1
+    FlagRound,                                <span class="comment">// Coeff Round = 0 | 1 .. 24
     </span>FlagAbsorb,                               <span class="comment">// Coeff Absorb = 0 | 1
     </span>FlagSqueeze,                              <span class="comment">// Coeff Squeeze = 0 | 1
     </span>FlagRoot,                                 <span class="comment">// Coeff Root = 0 | 1
     </span>FlagPad,                                  <span class="comment">// Coeff Pad = 0 | 1
     </span>FlagLength,                               <span class="comment">// Coeff Length 0 | 1 .. 136
     </span>TwoToPad,                                 <span class="comment">// 2^PadLength
+    </span>InverseRound,                             <span class="comment">// Round^-1
     </span>FlagsBytes(usize),                        <span class="comment">// 136 boolean values
     </span>PadSuffix(usize),                         <span class="comment">// 5 values with padding suffix
     </span>RoundConstants(usize),                    <span class="comment">// Round constants
@@ -272,13 +278,14 @@
 
 <span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
-    <span class="kw">pub </span>flag_round: T,               <span class="comment">// Coeff Round = [0..24)
+    <span class="kw">pub </span>flag_round: T,               <span class="comment">// Coeff Round = 0 | 1 .. 24
     </span><span class="kw">pub </span>flag_absorb: T,              <span class="comment">// Coeff Absorb = 0 | 1
     </span><span class="kw">pub </span>flag_squeeze: T,             <span class="comment">// Coeff Squeeze = 0 | 1
     </span><span class="kw">pub </span>flag_root: T,                <span class="comment">// Coeff Root = 0 | 1
     </span><span class="kw">pub </span>flag_pad: T,                 <span class="comment">// Coeff Pad = 0 | 1
     </span><span class="kw">pub </span>flag_length: T,              <span class="comment">// Coeff Length 0 | 1 .. 136
     </span><span class="kw">pub </span>two_to_pad: T,               <span class="comment">// 2^PadLength
+    </span><span class="kw">pub </span>inverse_round: T,            <span class="comment">// Round^-1
     </span><span class="kw">pub </span>flags_bytes: Vec&lt;T&gt;,         <span class="comment">// 136 boolean values
     </span><span class="kw">pub </span>pad_suffix: Vec&lt;T&gt;,          <span class="comment">// 5 values with padding suffix
     </span><span class="kw">pub </span>round_constants: Vec&lt;T&gt;,     <span class="comment">// Round constants
@@ -314,10 +321,11 @@
             flag_pad: T::zero(),
             flag_length: T::zero(),
             two_to_pad: T::one(), <span class="comment">// So that default 2^0 is in the table
-            </span>flags_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">136</span>],
+            </span>inverse_round: T::zero(),
+            flags_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">136</span>],
             pad_suffix: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
-            round_constants: <span class="macro">vec!</span>[T::zero(); <span class="number">4</span>],
-            theta_state_a: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            round_constants: <span class="macro">vec!</span>[T::zero(); <span class="number">4</span>], <span class="comment">// RC[0] is set to be all zeros
+            </span>theta_state_a: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
             theta_shifts_c: <span class="macro">vec!</span>[T::zero(); <span class="number">80</span>],
             theta_dense_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
             theta_quotient_c: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
@@ -353,6 +361,7 @@
             KeccakColumn::FlagPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_pad,
             KeccakColumn::FlagLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_length,
             KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.two_to_pad,
+            KeccakColumn::InverseRound =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.inverse_round,
             KeccakColumn::FlagsBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flags_bytes[i],
             KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pad_suffix[i],
             KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.round_constants[q],
@@ -408,6 +417,7 @@
             KeccakColumn::FlagPad =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_pad,
             KeccakColumn::FlagLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_length,
             KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.two_to_pad,
+            KeccakColumn::InverseRound =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.inverse_round,
             KeccakColumn::FlagsBytes(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flags_bytes[i],
             KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_suffix[i],
             KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.round_constants[q],
