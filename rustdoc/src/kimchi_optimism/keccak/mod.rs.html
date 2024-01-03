@@ -68,6 +68,7 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS},
@@ -92,6 +93,7 @@
 
 <span class="kw">fn </span>grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -&gt; usize {
     <span class="kw">match </span>size {
+        <span class="number">5 </span>=&gt; x,
         <span class="number">20 </span>=&gt; q + QUARTERS * x,
         <span class="number">80 </span>=&gt; q + QUARTERS * (x + DIM * i),
         <span class="number">100 </span>=&gt; q + QUARTERS * (x + DIM * y),
