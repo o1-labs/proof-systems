@@ -38,8 +38,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 pad,
                 extra_bytes,
             ));
-            // Start by 1 to avoid the dummy entry
-            for round in 1..=ROUNDS {
+            for round in 0..ROUNDS {
                 gates.push(Self::create_keccak_round(new_row + gates.len(), round));
             }
         }
