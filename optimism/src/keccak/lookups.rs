@@ -48,6 +48,9 @@ pub(crate) trait Lookups {
 
     /// Adds the lookups required for PiRho in the round
     fn lookups_round_pirho(&mut self, rw: LookupMode);
+
+    /// Adds the lookups required for Chi in the round
+    fn lookups_round_chi(&mut self, rw: LookupMode);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -71,11 +74,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // PIRHO LOOKUPS
             self.lookups_round_pirho(rw);
             // CHI LOOKUPS
-            for i in 0..SHIFTS_LEN {
-                // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-                self.lookup_sparse(rw, self.is_round(), self.vec_shifts_b()[i].clone());
-                self.lookup_sparse(rw, self.is_round(), self.vec_shifts_sum()[i].clone());
-            }
+            self.lookups_round_chi(rw);
             // IOTA LOOKUPS
             for i in 0..QUARTERS {
                 // Check round constants correspond with the current round
@@ -215,6 +214,14 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                     }
                 }
             }
+        }
+    }
+
+    fn lookups_round_chi(&mut self, rw: LookupMode) {
+        for i in 0..SHIFTS_LEN {
+            // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
+            self.lookup_sparse(rw, self.is_round(), self.vec_shifts_b()[i].clone());
+            self.lookup_sparse(rw, self.is_round(), self.vec_shifts_sum()[i].clone());
         }
     }
 }
