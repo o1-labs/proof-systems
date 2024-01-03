@@ -33,11 +33,12 @@ pub enum KeccakColumn {
     PiRhoExpandRotE(usize, usize, usize),     // Round Curr[1065..1165)
     ChiShiftsB(usize, usize, usize, usize),   // Round Curr[1165..1565)
     ChiShiftsSum(usize, usize, usize, usize), // Round Curr[1565..1965)
+    IotaStateG(usize),                        // Round Next[0..100)
     SpongeOldState(usize),                    // Sponge Curr[0..100)
     SpongeNewState(usize),                    // Sponge Curr[100..200)
     SpongeBytes(usize),                       // Sponge Curr[200..400)
     SpongeShifts(usize),                      // Sponge Curr[400..800)
-    NextState(usize),                         // Sponge Next[0..100)
+    SpongeXorState(usize),                    // Absorb Next[0..100)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -68,11 +69,12 @@ pub struct KeccakColumns<T> {
     pub pi_rho_expand_rot_e: Vec<T>, // Round Curr[1065..1165)
     pub chi_shifts_b: Vec<T>,        // Round Curr[1165..1565)
     pub chi_shifts_sum: Vec<T>,      // Round Curr[1565..1965)
+    pub iota_state_g: Vec<T>,        // Round Next[0..100)
     pub sponge_old_state: Vec<T>,    // Sponge Curr[0..100)
     pub sponge_new_state: Vec<T>,    // Sponge Curr[100..200)
     pub sponge_bytes: Vec<T>,        // Sponge Curr[200..400)
     pub sponge_shifts: Vec<T>,       // Sponge Curr[400..800)
-    pub next_state: Vec<T>,          // Sponge Next[0..100)
+    pub sponge_xor_state: Vec<T>,    // Absorb Next[0..100)
 }
 
 impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
@@ -104,11 +106,12 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
             pi_rho_expand_rot_e: vec![T::zero(); 100],
             chi_shifts_b: vec![T::zero(); 400],
             chi_shifts_sum: vec![T::zero(); 400],
+            iota_state_g: vec![T::zero(); 100],
             sponge_old_state: vec![T::zero(); 100],
             sponge_new_state: vec![T::zero(); 100],
             sponge_bytes: vec![T::zero(); 200],
             sponge_shifts: vec![T::zero(); 400],
-            next_state: vec![T::zero(); 100],
+            sponge_xor_state: vec![T::zero(); 100],
         }
     }
 }
@@ -162,11 +165,12 @@ impl<A> Index<KeccakColumn> for KeccakColumns<A> {
             KeccakColumn::ChiShiftsSum(i, y, x, q) => {
                 &self.chi_shifts_sum[grid_index(400, i, y, x, q)]
             }
+            KeccakColumn::IotaStateG(i) => &self.iota_state_g[i],
             KeccakColumn::SpongeOldState(i) => &self.sponge_old_state[i],
             KeccakColumn::SpongeNewState(i) => &self.sponge_new_state[i],
             KeccakColumn::SpongeBytes(i) => &self.sponge_bytes[i],
             KeccakColumn::SpongeShifts(i) => &self.sponge_shifts[i],
-            KeccakColumn::NextState(i) => &self.next_state[i],
+            KeccakColumn::SpongeXorState(i) => &self.sponge_xor_state[i],
         }
     }
 }
@@ -226,11 +230,12 @@ impl<A> IndexMut<KeccakColumn> for KeccakColumns<A> {
             KeccakColumn::ChiShiftsSum(i, y, x, q) => {
                 &mut self.chi_shifts_sum[grid_index(400, i, y, x, q)]
             }
+            KeccakColumn::IotaStateG(i) => &mut self.iota_state_g[i],
             KeccakColumn::SpongeOldState(i) => &mut self.sponge_old_state[i],
             KeccakColumn::SpongeNewState(i) => &mut self.sponge_new_state[i],
             KeccakColumn::SpongeBytes(i) => &mut self.sponge_bytes[i],
             KeccakColumn::SpongeShifts(i) => &mut self.sponge_shifts[i],
-            KeccakColumn::NextState(i) => &mut self.next_state[i],
+            KeccakColumn::SpongeXorState(i) => &mut self.sponge_xor_state[i],
         }
     }
 }
