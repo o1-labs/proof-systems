@@ -487,13 +487,17 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
 </span><span class="kw">use crate</span>::{
     auto_clone,
     circuits::{
         polynomials::keccak::{
-            constants::{CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS},
+            constants::{
+                CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS, STATE_LEN,
+            },
             Keccak, OFF, RC,
         },
         witness::{<span class="self">self</span>, IndexCell, Variables, WitnessCell},
@@ -959,7 +963,7 @@
 
     <span class="comment">// Squeeze phase
 
-    </span><span class="kw">let </span>new_state = <span class="macro">vec!</span>[<span class="number">0</span>; QUARTERS * DIM * DIM];
+    </span><span class="kw">let </span>new_state = <span class="macro">vec!</span>[<span class="number">0</span>; STATE_LEN];
     <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>state);
     <span class="kw">let </span>dense = Keccak::collapse(<span class="kw-2">&amp;</span>Keccak::reset(<span class="kw-2">&amp;</span>shifts));
     <span class="kw">let </span>bytes = Keccak::bytestring(<span class="kw-2">&amp;</span>dense);

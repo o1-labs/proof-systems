@@ -310,7 +310,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS},
+        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, STATE_LEN},
         witness::{Chi, Iota, PiRho, Theta},
         Keccak,
     },
@@ -364,7 +364,7 @@
         };
 
         <span class="comment">// Root state is zero
-        </span><span class="self">self</span>.prev_block = <span class="macro">vec!</span>[<span class="number">0u64</span>; QUARTERS * DIM * DIM];
+        </span><span class="self">self</span>.prev_block = <span class="macro">vec!</span>[<span class="number">0u64</span>; STATE_LEN];
 
         <span class="comment">// Pad preimage
         </span><span class="self">self</span>.padded = Keccak::pad(<span class="kw-2">&amp;</span>preimage);
@@ -608,7 +608,7 @@
         <span class="kw">let </span>iota = Iota::create(state_f, round);
 
         <span class="comment">// Update columns
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
             <span class="self">self</span>.write_column(KeccakColumn::NextState(i), iota.state_g(i));
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
