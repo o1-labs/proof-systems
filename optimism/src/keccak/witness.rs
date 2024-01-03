@@ -308,8 +308,8 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let state_g = iota.state_g();
 
         // Update columns
-        for i in 0..STATE_LEN {
-            self.write_column(KeccakColumn::IotaStateG(i), state_g[i]);
+        for (i, g) in state_g.iter().enumerate() {
+            self.write_column(KeccakColumn::IotaStateG(i), *g);
         }
         for i in 0..QUARTERS {
             self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
