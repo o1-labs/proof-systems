@@ -1,8 +1,11 @@
-use ark_ff::Field;
+use crate::mips::interpreter::{Lookup, LookupTable, Sign, Signed};
+use ark_ff::{Field, One};
 
-use crate::mips::interpreter::Lookup;
-
-use super::{column::KeccakColumn, environment::KeccakEnv, E};
+use super::{
+    column::KeccakColumn,
+    environment::{KeccakEnv, KeccakEnvironment},
+    E,
+};
 
 pub(crate) trait Lookups {
     type Column;
@@ -34,7 +37,27 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // SPONGE LOOKUPS
         {
             // PADDING LOOKUPS
-            {}
+            {
+                // Power of two corresponds to 2^pad_length
+                // Pad suffixes correspond to 10*1 rule
+                self.add_lookup(Lookup {
+                    numerator: Signed {
+                        sign: Sign::Neg,
+                        magnitude: Self::Variable::one(),
+                    },
+                    table_id: LookupTable::PadLookup,
+                    value: vec![
+                        self.keccak_state[KeccakColumn::FlagLength].clone(),
+                        self.two_to_pad(),
+                        self.pad_suffix(0),
+                        self.pad_suffix(1),
+                        self.pad_suffix(2),
+                        self.pad_suffix(3),
+                        self.pad_suffix(4),
+                    ],
+                })
+                // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
+            }
             // OTHER LOOKUPS
             {}
         }
