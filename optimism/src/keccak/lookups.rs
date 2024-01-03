@@ -23,7 +23,7 @@ pub(crate) trait Lookups {
     fn lookups(&mut self, rw: LookupMode);
 
     /// Adds a lookup to the RangeCheck16 table
-    fn lookup_rc16(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable);
+    fn lookup_rc16(&mut self, rw: LookupMode, flag: Option<Self::Variable>, value: Self::Variable);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -93,7 +93,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for q in 0..QUARTERS {
                 for x in 0..DIM {
                     // Check that ThetaRemainderC < 2^64
-                    self.lookup_rc16(rw, self.is_round(), self.remainder_c(x, q));
+                    self.lookup_rc16(rw, Some(self.is_round()), self.remainder_c(x, q));
                     // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
                     self.add_lookup(Lookup {
                         numerator: Signed::new(rw, None),
@@ -121,8 +121,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 for x in 0..DIM {
                     for y in 0..DIM {
                         // Check that PiRhoRemainderE < 2^64 and PiRhoQuotientE < 2^64
-                        self.lookup_rc16(rw, self.is_round(), self.remainder_e(y, x, q));
-                        self.lookup_rc16(rw, self.is_round(), self.quotient_e(y, x, q));
+                        self.lookup_rc16(rw, Some(self.is_round()), self.remainder_e(y, x, q));
+                        self.lookup_rc16(rw, Some(self.is_round()), self.quotient_e(y, x, q));
                         // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
                         self.add_lookup(Lookup {
                             numerator: Signed::new(rw, None),
@@ -172,9 +172,9 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         }
     }
 
-    fn lookup_rc16(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable) {
+    fn lookup_rc16(&mut self, rw: LookupMode, flag: Option<Self::Variable>, value: Self::Variable) {
         self.add_lookup(Lookup {
-            numerator: Signed::new(rw, Some(flag)),
+            numerator: Signed::new(rw, flag),
             table_id: LookupTable::RangeCheck16Lookup,
             value: vec![value],
         });
