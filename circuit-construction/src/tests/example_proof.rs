@@ -1,10 +1,11 @@
 use crate::prologue::*;
 use kimchi::curve::KimchiCurve;
+use std::ops::Mul;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
-pub struct Witness<G: AffineCurve> {
+pub struct Witness<G: AffineRepr> {
     pub s: G::ScalarField,
     pub preimage: G::BaseField,
 }
@@ -12,7 +13,7 @@ pub struct Witness<G: AffineCurve> {
 // Prove knowledge of discrete log and poseidon preimage of a hash
 pub fn circuit<
     F: PrimeField + FftField,
-    G: AffineCurve<BaseField = F> + CoordinateCurve,
+    G: AffineRepr<BaseField = F> + CoordinateCurve,
     Sys: Cs<F>,
 >(
     constants: &Constants<F>,
@@ -29,8 +30,8 @@ pub fn circuit<
         (x, y)
     };
 
-    let base = constant_curve_pt(sys, G::prime_subgroup_generator().to_coords().unwrap());
-    let scalar = sys.scalar(G::ScalarField::size_in_bits(), || {
+    let base = constant_curve_pt(sys, G::generator().to_coords().unwrap());
+    let scalar = sys.scalar(G::ScalarField::MODULUS_BIT_SIZE as usize, || {
         witness.as_ref().unwrap().s
     });
     let actual = sys.scalar_mul(zero, base, scalar);
@@ -68,8 +69,8 @@ fn test_example_circuit() {
     let mut rng = rand::thread_rng();
 
     // create witness
-    let private_key = <Pallas as AffineCurve>::ScalarField::rand(&mut rng);
-    let preimage = <Pallas as AffineCurve>::BaseField::rand(&mut rng);
+    let private_key = <Pallas as AffineRepr>::ScalarField::rand(&mut rng);
+    let preimage = <Pallas as AffineRepr>::BaseField::rand(&mut rng);
 
     let witness = Witness {
         s: private_key,
@@ -77,9 +78,7 @@ fn test_example_circuit() {
     };
 
     // create public input
-    let public_key = Pallas::prime_subgroup_generator()
-        .mul(private_key)
-        .into_affine();
+    let public_key = Pallas::generator().mul(private_key).into_affine();
     let hash = {
         let mut s: ArithmeticSponge<_, PlonkSpongeConstantsKimchi> =
             ArithmeticSponge::new(Vesta::sponge_params());

@@ -1,6 +1,6 @@
 //! This module obtains the gates of a foreign field addition circuit.
 
-use ark_ff::{PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
@@ -23,7 +23,7 @@ use super::circuitgates::ForeignFieldMul;
 /// Number of gates in this gadget
 pub const GATE_COUNT: usize = 1;
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field multiplication gate
     ///     Inputs the starting row
     ///     Outputs tuple (next_row, circuit_gates) where

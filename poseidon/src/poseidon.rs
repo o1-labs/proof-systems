@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering::SeqCst};
 use crate::constants::SpongeConstants;
 use crate::permutation::{full_round, poseidon_block_cipher};
 use ark_ff::Field;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -37,7 +38,7 @@ pub enum SpongeState {
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
-pub struct ArithmeticSpongeParams<F: Field> {
+pub struct ArithmeticSpongeParams<F: Field + CanonicalSerialize + CanonicalDeserialize> {
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub round_constants: Vec<Vec<F>>,
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]

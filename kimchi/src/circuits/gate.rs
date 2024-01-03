@@ -13,12 +13,10 @@ use crate::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
-use num_traits::cast::ToPrimitive;
+use ark_ff::PrimeField;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
 use super::{
@@ -164,24 +162,7 @@ where
     }
 }
 
-impl<F: PrimeField> ToBytes for CircuitGate<F> {
-    #[inline]
-    fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
-        let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
-        typ.write(&mut w)?;
-        for i in 0..COLUMNS {
-            self.wires[i].write(&mut w)?;
-        }
-
-        (self.coeffs.len() as u8).write(&mut w)?;
-        for x in &self.coeffs {
-            x.write(&mut w)?;
-        }
-        Ok(())
-    }
-}
-
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate::new(GateType::Zero, wires, vec![])

@@ -6,12 +6,12 @@ use crate::circuits::{
     polynomials::keccak::{self, ROT_TAB},
     wires::Wire,
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use mina_curves::pasta::{Fp, Pallas, Vesta};
 use rand::Rng;
 
 //use super::framework::TestFramework;
-type PallasField = <Pallas as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineRepr>::BaseField;
 
 fn create_test_constraint_system() -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_keccak(0) };

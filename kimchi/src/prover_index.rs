@@ -137,7 +137,7 @@ pub mod testing {
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
-    use ark_ff::{PrimeField, SquareRootField};
+    use ark_ff::PrimeField;
     use poly_commitment::srs::endos;
 
     /// Create new index for lookups.
@@ -155,7 +155,7 @@ pub mod testing {
     ) -> ProverIndex<G>
     where
         G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         let cs = ConstraintSystem::<G::ScalarField>::create(gates)
@@ -180,7 +180,7 @@ pub mod testing {
     ) -> ProverIndex<G>
     where
         G::BaseField: PrimeField,
-        G::ScalarField: PrimeField + SquareRootField,
+        G::ScalarField: PrimeField,
     {
         new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
     }

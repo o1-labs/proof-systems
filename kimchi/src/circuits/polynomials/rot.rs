@@ -16,7 +16,7 @@ use crate::{
     },
     variable_map,
 };
-use ark_ff::{PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 use std::{array, marker::PhantomData};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -25,7 +25,7 @@ pub enum RotMode {
     Right,
 }
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Creates a Rot64 gadget to rotate a word
     /// It will need:
     /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted witness of the rotation

@@ -55,7 +55,7 @@ mod tests {
 
     use super::*;
     use ark_ff::One;
-    use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+    use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
     use mina_curves::pasta::Fp;
 
     #[test]
