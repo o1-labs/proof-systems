@@ -149,6 +149,14 @@ impl<T: One> Signed<T> {
             },
         }
     }
+
+    pub fn read_one() -> Self {
+        Self::new(LookupMode::Read, None)
+    }
+
+    pub fn write_one() -> Self {
+        Self::new(LookupMode::Write, None)
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
