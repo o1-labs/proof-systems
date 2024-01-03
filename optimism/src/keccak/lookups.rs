@@ -155,7 +155,62 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 }
             }
             // PIRHO LOOKUPS
-            {}
+            {
+                for i in 0..STATE_LEN {
+                    // Check PiRhoShift0E is the expansion of PiRhoDenseE
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::ResetLookup,
+                        value: vec![
+                            self.keccak_state.pi_rho_dense_e[i].clone(),
+                            self.keccak_state.pi_rho_shifts_e[i].clone(),
+                        ],
+                    });
+                    // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::ResetLookup,
+                        value: vec![
+                            self.keccak_state.pi_rho_dense_rot_e[i].clone(),
+                            self.keccak_state.pi_rho_expand_rot_e[i].clone(),
+                        ],
+                    });
+                    // Check that PiRhoRemainderE < 2^64 and PiRhoQuotientE < 2^64
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::RangeCheck16Lookup,
+                        value: vec![self.keccak_state.pi_rho_remainder_e[i].clone()],
+                    });
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::RangeCheck16Lookup,
+                        value: vec![self.keccak_state.pi_rho_quotient_e[i].clone()],
+                    });
+                }
+                // Check that the rest of PiRhoShiftsE are in the Sparse table
+                for i in 100..SHIFTS_LEN {
+                    self.add_lookup(Lookup {
+                        numerator: Signed {
+                            sign: Sign::Neg,
+                            magnitude: Self::Variable::one(),
+                        },
+                        table_id: LookupTable::SparseLookup,
+                        value: vec![self.keccak_state.pi_rho_shifts_e[i].clone()],
+                    });
+                }
+            }
             // CHI LOOKUPS
             {}
             // IOTA LOOKUPS
