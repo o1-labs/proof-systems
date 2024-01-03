@@ -13,20 +13,19 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 use super::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
 const ZKVM_KECCAK_COLS_LENGTH: usize =
-    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + QUARTERS + RATE_IN_BYTES + 15;
+    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + QUARTERS + RATE_IN_BYTES + 14;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
     HashIndex,
     StepIndex,
-    FlagRound,              // Coeff Round = 0 | 1 .. 24
+    FlagRound,              // Coeff Round = [0..24)
     FlagAbsorb,             // Coeff Absorb = 0 | 1
     FlagSqueeze,            // Coeff Squeeze = 0 | 1
     FlagRoot,               // Coeff Root = 0 | 1
     FlagPad,                // Coeff Pad = 0 | 1
-    FlagLength,             // Coeff Length 0 | 1 .. 136
+    FlagLength,             // Coeff Length 0 | 1 ..=136
     TwoToPad,               // 2^PadLength
-    InverseRound,           // Round^-1
     FlagsBytes(usize),      // 136 boolean values
     PadSuffix(usize),       // 5 values with padding suffix
     RoundConstants(usize),  // Round constants
@@ -55,14 +54,13 @@ pub enum KeccakColumn {
 pub struct KeccakColumns<T> {
     pub hash_index: T,
     pub step_index: T,
-    pub flag_round: T,                    // Coeff Round = 0 | 1 .. 24
+    pub flag_round: T,                    // Coeff Round = [0..24)
     pub flag_absorb: T,                   // Coeff Absorb = 0 | 1
     pub flag_squeeze: T,                  // Coeff Squeeze = 0 | 1
     pub flag_root: T,                     // Coeff Root = 0 | 1
     pub flag_pad: T,                      // Coeff Pad = 0 | 1
-    pub flag_length: T,                   // Coeff Length 0 | 1 .. 136
+    pub flag_length: T,                   // Coeff Length 0 | 1 ..=136
     pub two_to_pad: T,                    // 2^PadLength
-    pub inverse_round: T,                 // Round^-1
     pub flags_bytes: [T; RATE_IN_BYTES],  // 136 boolean values
     pub pad_suffix: [T; 5],               // 5 values with padding suffix
     pub round_constants: [T; QUARTERS],   // Round constants
@@ -88,10 +86,9 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
             flag_pad: T::zero(),
             flag_length: T::zero(),
             two_to_pad: T::one(), // So that default 2^0 is in the table
-            inverse_round: T::zero(),
             flags_bytes: std::array::from_fn(|_| T::zero()),
             pad_suffix: std::array::from_fn(|_| T::zero()),
-            round_constants: std::array::from_fn(|_| T::zero()), // RC[0] is set to be all zeros
+            round_constants: std::array::from_fn(|_| T::zero()), // default zeros, but lookup only if is round
             curr: std::array::from_fn(|_| T::zero()),
             next: std::array::from_fn(|_| T::zero()),
         }
@@ -112,7 +109,6 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::FlagPad => &self.flag_pad,
             KeccakColumn::FlagLength => &self.flag_length,
             KeccakColumn::TwoToPad => &self.two_to_pad,
-            KeccakColumn::InverseRound => &self.inverse_round,
             KeccakColumn::FlagsBytes(idx) => &self.flags_bytes[idx],
             KeccakColumn::PadSuffix(idx) => &self.pad_suffix[idx],
             KeccakColumn::RoundConstants(idx) => &self.round_constants[idx],
@@ -151,7 +147,6 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::FlagPad => &mut self.flag_pad,
             KeccakColumn::FlagLength => &mut self.flag_length,
             KeccakColumn::TwoToPad => &mut self.two_to_pad,
-            KeccakColumn::InverseRound => &mut self.inverse_round,
             KeccakColumn::FlagsBytes(idx) => &mut self.flags_bytes[idx],
             KeccakColumn::PadSuffix(idx) => &mut self.pad_suffix[idx],
             KeccakColumn::RoundConstants(idx) => &mut self.round_constants[idx],
@@ -193,7 +188,6 @@ impl<F> IntoIterator for KeccakColumns<F> {
         iter_contents.push(self.flag_pad);
         iter_contents.push(self.flag_length);
         iter_contents.push(self.two_to_pad);
-        iter_contents.push(self.inverse_round);
         iter_contents.extend(self.flags_bytes);
         iter_contents.extend(self.pad_suffix);
         iter_contents.extend(self.round_constants);
@@ -221,7 +215,6 @@ where
         iter_contents.push(self.flag_pad);
         iter_contents.push(self.flag_length);
         iter_contents.push(self.two_to_pad);
-        iter_contents.push(self.inverse_round);
         iter_contents.extend(self.flags_bytes);
         iter_contents.extend(self.pad_suffix);
         iter_contents.extend(self.round_constants);
@@ -262,7 +255,6 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
             .collect::<Vec<G>>()
             .try_into()
             .unwrap();
-        let inverse_round = iter_contents.pop().unwrap();
         let two_to_pad = iter_contents.pop().unwrap();
         let flag_length = iter_contents.pop().unwrap();
         let flag_pad = iter_contents.pop().unwrap();
@@ -282,7 +274,6 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
             flag_pad,
             flag_length,
             two_to_pad,
-            inverse_round,
             flags_bytes,
             pad_suffix,
             round_constants,
@@ -310,7 +301,6 @@ where
         iter_contents.push(&self.flag_pad);
         iter_contents.push(&self.flag_length);
         iter_contents.push(&self.two_to_pad);
-        iter_contents.push(&self.inverse_round);
         iter_contents.extend(&self.flags_bytes);
         iter_contents.extend(&self.pad_suffix);
         iter_contents.extend(&self.round_constants);
@@ -338,7 +328,6 @@ where
         iter_contents.push(&mut self.flag_pad);
         iter_contents.push(&mut self.flag_length);
         iter_contents.push(&mut self.two_to_pad);
-        iter_contents.push(&mut self.inverse_round);
         iter_contents.extend(&mut self.flags_bytes);
         iter_contents.extend(&mut self.pad_suffix);
         iter_contents.extend(&mut self.round_constants);
