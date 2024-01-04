@@ -254,10 +254,6 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FftField, One, Zero};
 <span class="kw">use </span>poly_commitment::PolyComm;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -341,19 +337,15 @@
 <span class="kw">where
     </span>F: FftField,
 {
-    <span class="doccomment">/// Return true if the table has an entry containing all zeros.
+    <span class="doccomment">/// Return true if the table has an entry (row) containing all zeros.
     </span><span class="kw">pub fn </span>has_zero_entry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="comment">// reminder: a table is written as a list of columns,
         // not as a list of row entries.
         </span><span class="kw">for </span>row <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.len() {
-            <span class="kw">for </span>col <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.data {
-                <span class="kw">if </span>!col[row].is_zero() {
-                    <span class="kw">continue</span>;
-                }
+            <span class="kw">if </span><span class="self">self</span>.data.iter().all(|col| col[row].is_zero()) {
                 <span class="kw">return </span><span class="bool-val">true</span>;
             }
         }
-
         <span class="bool-val">false
     </span>}
 
