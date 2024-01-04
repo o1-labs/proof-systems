@@ -188,20 +188,6 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -209,7 +195,7 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::{Lookup, LookupTable, Signed};
 <span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{QUARTERS, SHIFTS_LEN, STATE_LEN};
+<span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{QUARTERS, SHIFTS, SHIFTS_LEN, STATE_LEN};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Lookups {
     <span class="kw">type </span>Column;
@@ -241,167 +227,153 @@
         // SPONGE LOOKUPS
         </span>{
             <span class="comment">// PADDING LOOKUPS
-            </span>{
-                <span class="comment">// Power of two corresponds to 2^pad_length
-                // Pad suffixes correspond to 10*1 rule
+            // Power of two corresponds to 2^pad_length
+            // Pad suffixes correspond to 10*1 rule
+            // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
+            </span><span class="self">self</span>.add_lookup(Lookup {
+                numerator: Signed::read_one(),
+                table_id: LookupTable::PadLookup,
+                value: <span class="macro">vec!</span>[
+                    <span class="self">self</span>.keccak_state[KeccakColumn::FlagLength].clone(),
+                    <span class="self">self</span>.two_to_pad(),
+                    <span class="self">self</span>.pad_suffix(<span class="number">0</span>),
+                    <span class="self">self</span>.pad_suffix(<span class="number">1</span>),
+                    <span class="self">self</span>.pad_suffix(<span class="number">2</span>),
+                    <span class="self">self</span>.pad_suffix(<span class="number">3</span>),
+                    <span class="self">self</span>.pad_suffix(<span class="number">4</span>),
+                ],
+            });
+            <span class="comment">// BYTES LOOKUPS
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">200 </span>{
+                <span class="comment">// Bytes are &lt;2^8
                 </span><span class="self">self</span>.add_lookup(Lookup {
                     numerator: Signed::read_one(),
-                    table_id: LookupTable::PadLookup,
-                    value: <span class="macro">vec!</span>[
-                        <span class="self">self</span>.keccak_state[KeccakColumn::FlagLength].clone(),
-                        <span class="self">self</span>.two_to_pad(),
-                        <span class="self">self</span>.pad_suffix(<span class="number">0</span>),
-                        <span class="self">self</span>.pad_suffix(<span class="number">1</span>),
-                        <span class="self">self</span>.pad_suffix(<span class="number">2</span>),
-                        <span class="self">self</span>.pad_suffix(<span class="number">3</span>),
-                        <span class="self">self</span>.pad_suffix(<span class="number">4</span>),
-                    ],
+                    table_id: LookupTable::ByteLookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_bytes(i)],
                 })
-                <span class="comment">// Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
-            </span>}
-            <span class="comment">// BYTES LOOKUPS
-            </span>{
-                <span class="comment">// Bytes are &lt;2^8
-                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">200 </span>{
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ByteLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_bytes(i)],
-                    })
-                }
             }
             <span class="comment">// SHIFTS LOOKUPS
-            </span>{
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
                 <span class="comment">// Shifts1, Shifts2, Shifts3 are in the Sparse table
-                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::SparseLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_shift(i)],
-                    })
-                }
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::SparseLookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_shift(i)],
+                })
+            }
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
                 <span class="comment">// Shifts0 together with Bits composition by pairs are in the Reset table
-                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: <span class="macro">vec!</span>[
-                            <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i)
-                                + <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>),
-                            <span class="self">self</span>.sponge_shift(i),
-                        ],
-                    })
-                }
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::ResetLookup,
+                    value: <span class="macro">vec!</span>[
+                        <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i) + <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>),
+                        <span class="self">self</span>.sponge_shift(i),
+                    ],
+                })
             }
         }
 
         <span class="comment">// ROUND LOOKUPS
         </span>{
             <span class="comment">// THETA LOOKUPS
-            </span>{
-                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">20 </span>{
-                    <span class="comment">// Check ThetaShiftC0 is the expansion of ThetaDenseC
-                    </span><span class="self">self</span>.add_lookup(Lookup {
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">20 </span>{
+                <span class="comment">// Check that ThetaRemainderC &lt; 2^64
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::RangeCheck16Lookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.theta_remainder_c[i].clone()],
+                });
+                <span class="comment">// Check ThetaExpandRotC is the expansion of ThetaDenseRotC
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::ResetLookup,
+                    value: <span class="macro">vec!</span>[
+                        <span class="self">self</span>.keccak_state.theta_dense_rot_c[i].clone(),
+                        <span class="self">self</span>.keccak_state.theta_expand_rot_c[i].clone(),
+                    ],
+                });
+                <span class="comment">// Check ThetaShiftC0 is the expansion of ThetaDenseC
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::ResetLookup,
+                    value: <span class="macro">vec!</span>[
+                        <span class="self">self</span>.keccak_state.theta_dense_c[i].clone(),
+                        <span class="self">self</span>.keccak_state.theta_shifts_c[i].clone(),
+                    ],
+                });
+                <span class="comment">// Check that the rest of ThetaShiftsC are in the Sparse table
+                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">1</span>..SHIFTS {
+                    <span class="self">self</span>.add_lookup(Lookup {
                         numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: <span class="macro">vec!</span>[
-                            <span class="self">self</span>.keccak_state.theta_dense_c[i].clone(),
-                            <span class="self">self</span>.keccak_state.theta_shifts_c[i].clone(),
-                        ],
-                    });
-                    <span class="comment">// Check ThetaExpandRotC is the expansion of ThetaDenseRotC
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: <span class="macro">vec!</span>[
-                            <span class="self">self</span>.keccak_state.theta_dense_rot_c[i].clone(),
-                            <span class="self">self</span>.keccak_state.theta_expand_rot_c[i].clone(),
-                        ],
-                    });
-                    <span class="comment">// Check that the rest of ThetaShiftsC are in the Sparse table
-                    </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">1</span>..<span class="number">4 </span>{
-                        <span class="self">self</span>.add_lookup(Lookup {
-                            numerator: Signed::read_one(),
-                            table_id: LookupTable::SparseLookup,
-                            value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.theta_shifts_c[i + <span class="number">20 </span>* j].clone()],
-                        });
-                    }
-                    <span class="comment">// Check that ThetaRemainderC &lt; 2^64
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::RangeCheck16Lookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.theta_remainder_c[i].clone()],
+                        table_id: LookupTable::SparseLookup,
+                        value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.theta_shifts_c[i + <span class="number">20 </span>* j].clone()],
                     });
                 }
             }
             <span class="comment">// PIRHO LOOKUPS
-            </span>{
-                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
-                    <span class="comment">// Check PiRhoShift0E is the expansion of PiRhoDenseE
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: <span class="macro">vec!</span>[
-                            <span class="self">self</span>.keccak_state.pi_rho_dense_e[i].clone(),
-                            <span class="self">self</span>.keccak_state.pi_rho_shifts_e[i].clone(),
-                        ],
-                    });
-                    <span class="comment">// Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: <span class="macro">vec!</span>[
-                            <span class="self">self</span>.keccak_state.pi_rho_dense_rot_e[i].clone(),
-                            <span class="self">self</span>.keccak_state.pi_rho_expand_rot_e[i].clone(),
-                        ],
-                    });
-                    <span class="comment">// Check that PiRhoRemainderE &lt; 2^64 and PiRhoQuotientE &lt; 2^64
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::RangeCheck16Lookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.pi_rho_remainder_e[i].clone()],
-                    });
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::RangeCheck16Lookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.pi_rho_quotient_e[i].clone()],
-                    });
-                }
-                <span class="comment">// Check that the rest of PiRhoShiftsE are in the Sparse table
-                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::SparseLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.pi_rho_shifts_e[i].clone()],
-                    });
-                }
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
+                <span class="comment">// Check that PiRhoRemainderE &lt; 2^64 and PiRhoQuotientE &lt; 2^64
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::RangeCheck16Lookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.pi_rho_remainder_e[i].clone()],
+                });
+                <span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::RangeCheck16Lookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.pi_rho_quotient_e[i].clone()],
+                });
+                <span class="comment">// Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::ResetLookup,
+                    value: <span class="macro">vec!</span>[
+                        <span class="self">self</span>.keccak_state.pi_rho_dense_rot_e[i].clone(),
+                        <span class="self">self</span>.keccak_state.pi_rho_expand_rot_e[i].clone(),
+                    ],
+                });
+                <span class="comment">// Check PiRhoShift0E is the expansion of PiRhoDenseE
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::ResetLookup,
+                    value: <span class="macro">vec!</span>[
+                        <span class="self">self</span>.keccak_state.pi_rho_dense_e[i].clone(),
+                        <span class="self">self</span>.keccak_state.pi_rho_shifts_e[i].clone(),
+                    ],
+                });
             }
+            <span class="comment">// Check that the rest of PiRhoShiftsE are in the Sparse table
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
+                <span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::SparseLookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.pi_rho_shifts_e[i].clone()],
+                });
+            }
+
             <span class="comment">// CHI LOOKUPS
-            </span>{
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
                 <span class="comment">// Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::SparseLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.chi_shifts_b[i].clone()],
-                    });
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::SparseLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.chi_shifts_sum[i].clone()],
-                    });
-                }
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::SparseLookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.chi_shifts_b[i].clone()],
+                });
+                <span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::SparseLookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.keccak_state.chi_shifts_sum[i].clone()],
+                });
             }
             <span class="comment">// IOTA LOOKUPS
-            </span>{
+            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                 <span class="comment">// Check round constants correspond with the current round
-                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-                    <span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::RoundConstantsLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.round(), <span class="self">self</span>.keccak_state.round_constants[i].clone()],
-                    });
-                }
+                </span><span class="self">self</span>.add_lookup(Lookup {
+                    numerator: Signed::read_one(),
+                    table_id: LookupTable::RoundConstantsLookup,
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.round(), <span class="self">self</span>.keccak_state.round_constants[i].clone()],
+                });
             }
         }
     }
