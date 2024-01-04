@@ -60,3 +60,24 @@ The project is organized in the following way:
 ## Contributing
 
 Check [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in contributing to this project.
+
+## Generate rustdoc locally
+
+An effort is made to have the documentation being self-contained, referring to the mina book for more details when necessary.
+You can build the rust documentation with
+<!-- This must be the same than the content in .github/workflows/gh-page.yml -->
+```
+rustup install nightly
+RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all --no-deps
+```
+
+You can visualize the documentation by opening the file `target/doc/index.html`.
+
+## CI
+
+<!-- Please update this section if you add more workflows -->
+The CI will build different targets.
+- [Deploy Specifications & Docs to GitHub Pages](.github/workflows/gh-page.yml).
+  When CI passes on master, the documentation built from the rust code will be
+  available [here](https://o1-labs.github.io/proof-systems/rustdoc) and the book
+  will be available [here](https://o1-labs.github.io/proof-systems).

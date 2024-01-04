@@ -8,6 +8,7 @@ use crate::{
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
+            keccak::{constants::DIM, OFF},
             rot::{self, RotMode},
         },
         wires::Wire,
@@ -172,22 +173,20 @@ fn test_rot_random() {
     test_rot::<Pallas>(word, rot, RotMode::Right);
 }
 
-#[should_panic]
 #[test]
 // Test that a bad rotation fails as expected
 fn test_zero_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    create_rot_witness::<Vesta>(word, 0, RotMode::Left);
+    test_rot::<Pallas>(word, 0, RotMode::Left);
 }
 
-#[should_panic]
 #[test]
 // Test that a bad rotation fails as expected
 fn test_large_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    create_rot_witness::<Vesta>(word, 64, RotMode::Left);
+    test_rot::<Pallas>(word, 64, RotMode::Left);
 }
 
 #[test]
@@ -249,11 +248,17 @@ fn test_bad_constraints() {
 
     // modify excess
     witness[2][1] += PallasField::one();
+    witness[0][3] += PallasField::one();
     assert_eq!(
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
+    assert_eq!(
+        cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+    );
     witness[2][1] -= PallasField::one();
+    witness[0][3] -= PallasField::one();
 
     // modify shifted
     witness[0][2] += PallasField::one();
@@ -265,6 +270,7 @@ fn test_bad_constraints() {
         cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
+    witness[0][2] -= PallasField::one();
 
     // modify value of shifted to be more than 64 bits
     witness[0][2] += PallasField::two_pow(64);
@@ -281,6 +287,27 @@ fn test_bad_constraints() {
             typ: GateType::RangeCheck0,
             src: Wire { row: 2, col: 2 },
             dst: Wire { row: 0, col: 0 }
+        })
+    );
+    witness[2][2] -= PallasField::one();
+    witness[0][2] -= PallasField::two_pow(64);
+
+    // modify value of excess to be more than 64 bits
+    witness[0][3] += PallasField::two_pow(64);
+    witness[2][1] += PallasField::two_pow(64);
+    assert_eq!(
+        cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+    );
+    // Update decomposition
+    witness[2][3] += PallasField::one();
+    // Make sure the 64-bit check fails
+    assert_eq!(
+        cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        Err(CircuitGateError::CopyConstraint {
+            typ: GateType::RangeCheck0,
+            src: Wire { row: 3, col: 2 },
+            dst: Wire { row: 2, col: 2 }
         })
     );
 }
@@ -358,4 +385,64 @@ fn test_rot_finalization() {
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
+}
+
+#[test]
+// Test that all of the offsets in the rotation table work fine
+fn test_keccak_table() {
+    let zero_row = 0;
+    let mut gates = vec![CircuitGate::<PallasField>::create_generic_gadget(
+        Wire::for_row(zero_row),
+        GenericGateSpec::Pub,
+        None,
+    )];
+    let mut rot_row = zero_row + 1;
+    for col in OFF {
+        for rot in col {
+            // if rotation by 0 bits, no need to create a gate for it
+            if rot == 0 {
+                continue;
+            }
+            let mut rot64_gates = CircuitGate::create_rot64(rot_row, rot as u32);
+            rot_row += rot64_gates.len();
+            // Append them to the full gates vector
+            gates.append(&mut rot64_gates);
+            // Check that 2 most significant limbs of shifted are zero
+            gates.connect_64bit(zero_row, rot_row - 1);
+        }
+    }
+    let cs = ConstraintSystem::create(gates).build().unwrap();
+
+    let state: [[u64; DIM]; DIM] = array::from_fn(|_| {
+        array::from_fn(|_| rand::thread_rng().gen_range(0..2u128.pow(64)) as u64)
+    });
+    let mut witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::zero()]);
+    for (y, col) in OFF.iter().enumerate() {
+        for (x, &rot) in col.iter().enumerate() {
+            if rot == 0 {
+                continue;
+            }
+            rot::extend_rot(&mut witness, state[x][y], rot as u32, RotMode::Left);
+        }
+    }
+
+    for row in 0..=48 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
+            Ok(())
+        );
+    }
+    let mut rot = 0;
+    for (y, col) in OFF.iter().enumerate() {
+        for (x, &bits) in col.iter().enumerate() {
+            if bits == 0 {
+                continue;
+            }
+            assert_eq!(
+                PallasField::from(state[x][y].rotate_left(bits as u32)),
+                witness[1][1 + 3 * rot],
+            );
+            rot += 1;
+        }
+    }
 }

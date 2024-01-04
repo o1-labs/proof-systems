@@ -3,8 +3,9 @@
 use crate::{
     circuits::{
         argument::ArgumentType,
+        berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{Column, Constants, PolishToken},
+        expr::{Challenges, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -85,6 +86,8 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
+                    KeccakRound => todo!(),
+                    KeccakSponge => todo!(),
                 }
             }
         }
@@ -426,13 +429,15 @@ where
             ft_eval0 += numerator * denominator;
 
             let constants = Constants {
+                endo_coefficient: index.endo,
+                mds: &G::sponge_params().mds,
+                zk_rows,
+            };
+            let challenges = Challenges {
                 alpha,
                 beta,
                 gamma,
                 joint_combiner: joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                zk_rows,
             };
 
             ft_eval0 -= PolishToken::evaluate(
@@ -441,6 +446,7 @@ where
                 zeta,
                 &evals,
                 &constants,
+                &challenges,
             )
             .unwrap();
 
@@ -865,15 +871,17 @@ where
 
         // other gates are implemented using the expression framework
         {
-            // TODO: Reuse constants from oracles function
+            // TODO: Reuse constants and challenges from oracles function
             let constants = Constants {
+                endo_coefficient: verifier_index.endo,
+                mds: &G::sponge_params().mds,
+                zk_rows,
+            };
+            let challenges = Challenges {
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: verifier_index.endo,
-                mds: &G::sponge_params().mds,
-                zk_rows,
             };
 
             for (col, tokens) in &verifier_index.linearization.index_terms {
@@ -883,6 +891,7 @@ where
                     oracles.zeta,
                     &evals,
                     &constants,
+                    &challenges,
                 )
                 .expect("should evaluate");
 
@@ -901,7 +910,7 @@ where
     };
 
     //~ 1. Compute the (chuncked) commitment of $ft$
-    //~    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
+    //~    (see [Maller's optimization](../kimchi/maller_15.md)).
     let ft_comm = {
         let zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size as u64]);
         let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);

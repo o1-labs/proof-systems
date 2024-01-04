@@ -238,8 +238,8 @@ pub fn selector_polynomial<F: PrimeField>(
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
-    /// Initializes the [ConstraintSystem<F>] on input `gates` and `fr_sponge_params`.
-    /// Returns a [Builder<F>]
+    /// Initializes the [`ConstraintSystem<F>`] on input `gates` and `fr_sponge_params`.
+    /// Returns a [`Builder<F>`]
     /// It also defaults to the following values of the builder:
     /// - `public: 0`
     /// - `prev_challenges: 0`

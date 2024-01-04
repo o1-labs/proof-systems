@@ -1,6 +1,7 @@
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr, RowOffset},
+        berkeley_columns::Column,
+        expr::{prologue::*, ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -392,8 +393,10 @@ pub fn constraints<F: FftField>(
     let column = |col: Column| E::cell(col, Curr);
 
     // gamma * (beta + 1)
-    let gammabeta1 =
-        E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
+    let gammabeta1 = E::<F>::from(
+        ConstantExpr::from(ChallengeTerm::Gamma)
+            * (ConstantExpr::from(ChallengeTerm::Beta) + ConstantExpr::one()),
+    );
 
     // the numerator part in the multiset check of plookup
     let numerator = {
@@ -420,7 +423,7 @@ pub fn constraints<F: FftField>(
             E::one() - lookup_indicator
         };
 
-        let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
+        let joint_combiner = E::from(ChallengeTerm::JointCombiner);
         let table_id_combiner =
             // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
             // needed.
@@ -443,16 +446,16 @@ pub fn constraints<F: FftField>(
                     .dummy_lookup
                     .entry
                     .iter()
-                    .map(|x| E::Constant(ConstantExpr::Literal(*x)))
+                    .map(|x| ConstantTerm::Literal(*x).into())
                     .collect(),
-                table_id: E::Constant(ConstantExpr::Literal(configuration.dummy_lookup.table_id)),
+                table_id: ConstantTerm::Literal(configuration.dummy_lookup.table_id).into(),
             };
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
         };
 
         // (1 + beta)^max_per_row
         let beta1_per_row: E<F> = {
-            let beta1 = E::Constant(ConstantExpr::one() + ConstantExpr::Beta);
+            let beta1 = E::from(ConstantExpr::one() + ChallengeTerm::Beta.into());
             // Compute beta1.pow(lookup_info.max_per_row)
             let mut res = beta1.clone();
             for i in 1..lookup_info.max_per_row {
@@ -474,7 +477,7 @@ pub fn constraints<F: FftField>(
         // as we need to multiply the denominator with this eventually
         let dummy_padding = |spec_len| {
             let mut res = E::one();
-            let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup.clone();
+            let dummy: E<_> = E::from(ChallengeTerm::Gamma) + dummy_lookup.clone();
             for i in spec_len..lookup_info.max_per_row {
                 let mut dummy_used = dummy.clone();
                 if generate_feature_flags {
@@ -507,10 +510,10 @@ pub fn constraints<F: FftField>(
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
                 .map(|j| {
-                    E::Constant(ConstantExpr::Gamma)
+                    E::from(ChallengeTerm::Gamma)
                         + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
                 })
-                .fold(padding, |acc: E<F>, x| acc * x)
+                .fold(padding, |acc: E<F>, x: E<F>| acc * x)
         };
 
         // f part of the numerator
@@ -610,14 +613,14 @@ pub fn constraints<F: FftField>(
     let mut res = vec![
         // the accumulator except for the last zk_rows+1 rows
         // (contains the zk-rows and the last value of the accumulator)
-        E::VanishesOnZeroKnowledgeAndPreviousRows * aggreg_equation,
+        E::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) * aggreg_equation,
         // the initial value of the accumulator
-        E::UnnormalizedLagrangeBasis(RowOffset {
+        E::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
             zk_rows: false,
             offset: 0,
-        }) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        })) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the final value of the accumulator is 1
-        E::UnnormalizedLagrangeBasis(final_lookup_row)
+        E::Atom(ExprInner::UnnormalizedLagrangeBasis(final_lookup_row))
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
 
@@ -634,7 +637,7 @@ pub fn constraints<F: FftField>(
                     offset: 0,
                 }
             };
-            let mut expr = E::UnnormalizedLagrangeBasis(first_or_last)
+            let mut expr = E::Atom(ExprInner::UnnormalizedLagrangeBasis(first_or_last))
                 * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)));
             if generate_feature_flags {
                 expr = E::IfFeature(
