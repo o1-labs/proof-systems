@@ -1,9 +1,11 @@
+use ark_ec::bn::Bn;
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    mips::witness,
+    mips::{proof, witness},
     preimage_oracle::PreImageOracle,
 };
+use poly_commitment::pairing_proof::PairingProof;
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 pub fn main() -> ExitCode {
@@ -40,12 +42,106 @@ pub fn main() -> ExitCode {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE as usize, state, po);
+    let domain_size = 1 << 15;
+
+    let domain =
+        kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(domain_size).unwrap();
+
+    let srs = {
+        use ark_ff::UniformRand;
+
+        // Trusted setup toxic waste
+        let x = ark_bn254::Fr::rand(&mut rand::rngs::OsRng);
+
+        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, domain_size);
+        srs.full_srs.add_lagrange_basis(domain.d1);
+        srs
+    };
+
+    let mut env = witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
+
+    let mut folded_witness = proof::ProofInputs::<
+        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+    >::default();
+
+    let new_pre_folding_witness = || proof::WitnessColumns {
+        scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        instruction_counter: Vec::with_capacity(domain_size),
+        error: Vec::with_capacity(domain_size),
+    };
+
+    let mut current_pre_folding_witness = new_pre_folding_witness();
+
+    use mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    };
+    type Fp = ark_bn254::Fr;
+    type SpongeParams = PlonkSpongeConstantsKimchi;
+    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+    type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+    type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
 
     while !env.halt {
         env.step(&configuration, &meta, &start);
+        for (scratch, scratch_pre_folding_witness) in env
+            .scratch_state
+            .iter()
+            .zip(current_pre_folding_witness.scratch.iter_mut())
+        {
+            scratch_pre_folding_witness.push(*scratch);
+        }
+        current_pre_folding_witness
+            .instruction_counter
+            .push(ark_bn254::Fr::from(env.instruction_counter));
+        // TODO
+        use ark_ff::UniformRand;
+        current_pre_folding_witness
+            .error
+            .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
+        if current_pre_folding_witness.instruction_counter.len() == 1 << 15 {
+            proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
+                domain,
+                &srs,
+                &mut folded_witness,
+                current_pre_folding_witness,
+            );
+            current_pre_folding_witness = new_pre_folding_witness();
+        }
+    }
+    if !current_pre_folding_witness.instruction_counter.is_empty() {
+        use ark_ff::Zero;
+        let remaining = domain_size - current_pre_folding_witness.instruction_counter.len();
+        for scratch in current_pre_folding_witness.scratch.iter_mut() {
+            scratch.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+        }
+        current_pre_folding_witness
+            .instruction_counter
+            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+        current_pre_folding_witness
+            .error
+            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+        proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
+            domain,
+            &srs,
+            &mut folded_witness,
+            current_pre_folding_witness,
+        );
+    }
+
+    {
+        let proof =
+            proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, folded_witness);
+        println!("Generated a proof:\n{:?}", proof);
+        let verifies =
+            proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+        if verifies {
+            println!("The proof verifies")
+        } else {
+            println!("The proof doesn't verify")
+        }
     }
 
     // TODO: Logic
-    ExitCode::FAILURE
+    ExitCode::SUCCESS
 }
