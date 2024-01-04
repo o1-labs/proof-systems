@@ -4,7 +4,9 @@ use crate::{
     auto_clone,
     circuits::{
         polynomials::keccak::{
-            constants::{CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS},
+            constants::{
+                CAPACITY_IN_BYTES, DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, ROUNDS, STATE_LEN,
+            },
             Keccak, OFF, RC,
         },
         witness::{self, IndexCell, Variables, WitnessCell},
@@ -367,8 +369,8 @@ impl Iota {
         Self { state_g, rc }
     }
 
-    pub fn state_g(&self, i: usize) -> u64 {
-        self.state_g[i]
+    pub fn state_g(&self) -> Vec<u64> {
+        self.state_g.clone()
     }
 
     pub fn rc(&self, i: usize) -> u64 {
@@ -425,7 +427,8 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
 
         let mut ini_state = xor_state.clone();
 
-        for round in 0..ROUNDS {
+        // Start by 1 to avoid dummy entry
+        for round in 1..=ROUNDS {
             // Theta
             let theta = Theta::create(&ini_state);
 
@@ -470,7 +473,7 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
 
     // Squeeze phase
 
-    let new_state = vec![0; QUARTERS * DIM * DIM];
+    let new_state = vec![0; STATE_LEN];
     let shifts = Keccak::shift(&state);
     let dense = Keccak::collapse(&Keccak::reset(&shifts));
     let bytes = Keccak::bytestring(&dense);

@@ -1,5 +1,4 @@
 //! Keccak gadget
-use super::{constants::*, OFF};
 use crate::{
     auto_clone, auto_clone_array,
     circuits::{
@@ -9,6 +8,7 @@ use crate::{
             Cache,
         },
         gate::GateType,
+        polynomials::keccak::{constants::*, OFF},
     },
     grid,
 };
