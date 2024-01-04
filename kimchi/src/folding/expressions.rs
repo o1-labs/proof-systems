@@ -31,21 +31,25 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Alpha(usize),
 }
 
-///designed for easy translation to and from most Expr
-pub enum FoldingCompatibleExpr<C: FoldingConfig> {
+pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable<C::Column>),
-    Double(Box<Self>),
-    Square(Box<Self>),
-    BinOp(Op2, Box<Self>, Box<Self>),
     VanishesOnZeroKnowledgeAndPreviousRows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
-    Pow(Box<Self>, u64),
     ///extra nodes created by folding, should not be passed to folding
     Extensions(ExpExtension),
+}
+
+///designed for easy translation to and from most Expr
+pub enum FoldingCompatibleExpr<C: FoldingConfig> {
+    Atom(FoldingCompatibleExprInner<C>),
+    Double(Box<Self>),
+    Square(Box<Self>),
+    BinOp(Op2, Box<Self>, Box<Self>),
+    Pow(Box<Self>, u64),
 }
 
 /// Extra expressions that can be created by folding
@@ -103,9 +107,20 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
         use FoldingExp::*;
         match self {
-            FoldingCompatibleExpr::Constant(c) => Cell(ExtendedFoldingColumn::Constant(c)),
-            FoldingCompatibleExpr::Challenge(c) => Cell(ExtendedFoldingColumn::Challenge(c)),
-            FoldingCompatibleExpr::Cell(col) => Cell(ExtendedFoldingColumn::Inner(col)),
+            FoldingCompatibleExpr::Atom(atom) => match atom {
+                FoldingCompatibleExprInner::Constant(c) => Cell(ExtendedFoldingColumn::Constant(c)),
+                FoldingCompatibleExprInner::Challenge(c) => {
+                    Cell(ExtendedFoldingColumn::Challenge(c))
+                }
+                FoldingCompatibleExprInner::Cell(col) => Cell(ExtendedFoldingColumn::Inner(col)),
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) => {
+                    Cell(Ex::UnnormalizedLagrangeBasis(i))
+                }
+                FoldingCompatibleExprInner::Extensions(_) => {
+                    panic!("this should only be created by folding itself")
+                }
+            },
             FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::Square(exp) => Square(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::BinOp(op, e1, e2) => {
@@ -117,14 +132,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
                     Op2::Sub => Sub(e1, e2),
                 }
             }
-            FoldingCompatibleExpr::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-            FoldingCompatibleExpr::UnnormalizedLagrangeBasis(i) => {
-                Cell(Ex::UnnormalizedLagrangeBasis(i))
-            }
             FoldingCompatibleExpr::Pow(e, p) => Self::pow_to_mul(e.simplify(), p),
-            FoldingCompatibleExpr::Extensions(_) => {
-                panic!("this should only be created by folding itself")
-            }
         }
     }
 
@@ -186,17 +194,20 @@ impl<C: FoldingConfig> FoldingExp<C> {
 
     fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
+        use FoldingCompatibleExprInner::*;
         match self {
             FoldingExp::Cell(c) => match c {
-                ExtendedFoldingColumn::Inner(col) => Cell(col),
+                ExtendedFoldingColumn::Inner(col) => Atom(Cell(col)),
                 ExtendedFoldingColumn::WitnessExtended(i) => {
-                    Extensions(ExpExtension::ExtendedWitness(i))
+                    Atom(Extensions(ExpExtension::ExtendedWitness(i)))
                 }
-                ExtendedFoldingColumn::Error => Extensions(ExpExtension::Error),
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(i),
-                ExtendedFoldingColumn::Constant(c) => Constant(c),
-                ExtendedFoldingColumn::Challenge(c) => Challenge(c),
-                ExtendedFoldingColumn::Alpha(i) => Extensions(ExpExtension::Alpha(i)),
+                ExtendedFoldingColumn::Error => Atom(Extensions(ExpExtension::Error)),
+                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => {
+                    Atom(UnnormalizedLagrangeBasis(i))
+                }
+                ExtendedFoldingColumn::Constant(c) => Atom(Constant(c)),
+                ExtendedFoldingColumn::Challenge(c) => Atom(Challenge(c)),
+                ExtendedFoldingColumn::Alpha(i) => Atom(Extensions(ExpExtension::Alpha(i))),
             },
             FoldingExp::Double(exp) => Double(Box::new(exp.into_compatible())),
             FoldingExp::Square(exp) => Square(Box::new(exp.into_compatible())),
@@ -323,8 +334,9 @@ impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     ///combines constraints into single expression
     pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
-        ///todo: should use powers of alpha
         use FoldingCompatibleExpr::*;
+        ///todo: should use powers of alpha
+        use FoldingCompatibleExprInner::*;
         let Self {
             degree_0,
             degree_1,
@@ -346,14 +358,18 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
                 })
             })
             .map(|e| e.into_compatible());
-        let u = || Box::new(Extensions(ExpExtension::U));
+        let u = || Box::new(Atom(Extensions(ExpExtension::U)));
         let u2 = || Box::new(Square(u()));
         let d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));
         let d1 = Box::new(BinOp(Op2::Mul, Box::new(d1), u()));
         let d2 = Box::new(d2);
         let exp = Box::new(BinOp(Op2::Add, d0, d1));
         let exp = Box::new(BinOp(Op2::Add, exp, d2));
-        BinOp(Op2::Add, exp, Box::new(Extensions(ExpExtension::Error)))
+        BinOp(
+            Op2::Add,
+            exp,
+            Box::new(Atom(Extensions(ExpExtension::Error))),
+        )
     }
 }
 
