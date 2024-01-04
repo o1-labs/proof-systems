@@ -64,13 +64,23 @@ pub fn main() -> ExitCode {
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
-    let new_pre_folding_witness = || proof::WitnessColumns {
+    let reset_pre_folding_witness = |witness_columns: &mut proof::WitnessColumns<Vec<_>>| {
+        let proof::WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+        } = witness_columns;
+        // Resize without deallocating
+        scratch.iter_mut().for_each(Vec::clear);
+        instruction_counter.clear();
+        error.clear();
+    };
+
+    let mut current_pre_folding_witness = proof::WitnessColumns {
         scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         instruction_counter: Vec::with_capacity(domain_size),
         error: Vec::with_capacity(domain_size),
     };
-
-    let mut current_pre_folding_witness = new_pre_folding_witness();
 
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
@@ -104,9 +114,9 @@ pub fn main() -> ExitCode {
                 domain,
                 &srs,
                 &mut folded_witness,
-                current_pre_folding_witness,
+                &current_pre_folding_witness,
             );
-            current_pre_folding_witness = new_pre_folding_witness();
+            reset_pre_folding_witness(&mut current_pre_folding_witness);
         }
     }
     if !current_pre_folding_witness.instruction_counter.is_empty() {
@@ -125,7 +135,7 @@ pub fn main() -> ExitCode {
             domain,
             &srs,
             &mut folded_witness,
-            current_pre_folding_witness,
+            &current_pre_folding_witness,
         );
     }
 
