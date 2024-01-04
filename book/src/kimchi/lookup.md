@@ -1,44 +1,55 @@
-# Plookup in Kimchi
+# $\plookup$ in Kimchi
 
-In 2020, [plookup](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate Plookup into Plonk.
+In 2020, [$\plookup$](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate $\plookup$ into $\plonk$.
 
-This document specifies how we integrate plookup in kimchi. It assumes that the reader understands the basics behind plookup.
+This document specifies how we integrate $\plookup$ in kimchi. It assumes that the reader understands the basics behind $\plookup$.
 
 ## Overview
 
-We integrate plookup in kimchi with the following differences:
+We integrate $\plookup$ in kimchi with the following differences:
 
 * we snake-ify the sorted table instead of wrapping it around (see later)
 * we allow fixed-ahead-of-time linear combinations of columns of the queries we make
-* we only use a single table (XOR) at the moment of this writing
+* we implemented different tables, like RangeCheck and XOR. <!-- This sentence must be changed if we update ../../../kimchi/src/circuits/lookup/tables/mod.rs -->
 * we allow several lookups (or queries) to be performed within the same row
 * zero-knowledgeness is added in a specific way (see later)
 
 The following document explains the protocol in more detail
 
-### Recap on the grand product argument of plookup
+### Recap on the grand product argument of $\plookup$
 
-As per the Plookup paper, the prover will have to compute three vectors:
+As per the $\plookup$ paper, the prover will have to compute three vectors:
 
 * $f$, the (secret) **query vector**, containing the witness values that the prover wants to prove are part of the lookup table.
 * $t$, the (public) **lookup table**.
 * $s$, the (secret) concatenation of $f$ and $t$, sorted by $t$ (where elements are listed in the order they are listed in $t$).
 
-Essentially, plookup proves that all the elements in $f$ are indeed in the lookup table $t$ if and only if the following multisets are equal:
+Essentially, $\plookup$ proves that all the elements in $f$ are indeed in the lookup table $t$ if and only if the following multisets are equal:
 
 * $\{(1+\beta)f, \text{diff}(t)\}$
 * $\text{diff}(\text{sorted}(f, t))$
 
-where $\text{diff}$ is a new set derived by applying a "randomized difference" between every successive pairs of a vector. For example:
+where $\text{diff}$ is a new set derived by applying a "randomized difference"
+between every successive pairs of a vector, and $(f, t)$ is the set union of $f$
+et $t$.
+
+More precisely, for a set $S =
+\{s_{0}, s_{1}, \cdots, s_{n} \}$, $\text{diff}(S)$ is defined as the set
+$\{s_{0} + \beta s_{1}, s_{1} + \beta s_{2}, \cdots, s_{n - 1} + \beta s_{n}\}$.
+
+For example, with:
 
 * $f = \{5, 4, 1, 5\}$
 * $t = \{1, 4, 5\}$
+
+we have:
+* $\text{sorted}(f,t) = \{1, 1, 4, 4, 5, 5, 5\}$
 * $\{\color{blue}{(1+\beta)f}, \color{green}{\text{diff}(t)}\} = \{\color{blue}{(1+\beta)5, (1+\beta)4, (1+\beta)1, (1+\beta)5}, \color{green}{1+\beta 4, 4+\beta 5}\}$
 * $\text{diff}(\text{sorted}(f, t)) = \{1+\beta 1, 1+\beta 4, 4+\beta 4, 4+\beta 5, 5+\beta 5, 5+\beta 5\}$
 
 > Note: This assumes that the lookup table is a single column. You will see in the next section how to address lookup tables with more than one column.
 
-The equality between the multisets can be proved with the permutation argument of plonk, which would look like enforcing constraints on the following accumulator:
+The equality between the multisets can be proved with the permutation argument of $\plonk$, which would look like enforcing constraints on the following accumulator:
 
 * init: $\mathsf{acc}_0 = 1$
 * final: $\mathsf{acc}_n = 1$
@@ -47,17 +58,18 @@ The equality between the multisets can be proved with the permutation argument o
     \mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(\gamma + (1+\beta) f_{i-1}) \cdot (\gamma + t_{i-1} + \beta t_i)}{(\gamma + s_{i-1} + \beta s_{i})(\gamma + s_{n+i-1} + \beta s_{n+i})}
     $$
 
-Note that the plookup paper uses a slightly different equation to make the proof work. It is possible that the proof would work with the above equation, but for simplicity let's just use the equation published in plookup:
+Note that the $\plookup$ paper uses a slightly different equation to make the proof work. It is possible that the proof would work with the above equation, but for simplicity let's just use the equation published in $\plookup$:
 
 $$
 \mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot (\gamma + f_{i-1}) \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
 $$
 
-> Note: in plookup $s$ is longer than $n$ ($|s| = |f| + |t|$), and thus it needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. This leads to the two terms in the denominator as shown above, so that the degree of $\gamma (1 + \beta)$ is equal in the nominator and denominator.
+> Note: in $\plookup$ $s$ is longer than $n$ ($|s| = |f| + |t|$), and thus it needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. This leads to the two terms in the denominator as shown above, so that the degree of $\gamma (1 + \beta)$ is equal in the nominator and denominator.
 
 ### Lookup tables
 
-Kimchi uses a single **lookup table** at the moment of this writing; the XOR table. The XOR table for values of 1 bit is the following:
+<!-- This sentence must be changed if we update ../../../kimchi/src/circuits/lookup/tables/mod.rs -->
+Kimchi uses different lookup tables, including RangeCheck and XOR. The XOR table for values of 1 bit is the following:
 
 
 | l   | r   | o   |
@@ -73,7 +85,7 @@ Note: the $(0, 0, 0)$ **entry** is at the very end on purpose (as it will be use
 
 ### Querying the table
 
-The plookup paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
+The $\plookup$ paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
 
 * a **query** tells us what registers, in what order, and scaled by how much, are part of a query
 * a **query selector** tells us which rows are using the query. It is pretty much the same as a [gate selector]().
@@ -86,10 +98,16 @@ For example, the following **query** tells us that we want to check if $r_0 \opl
 | :---:    | :---:    | :---:    |
 | 1, $r_0$ | 1, $r_2$ | 2, $r_1$ |
 
-The grand product argument for the lookup consraint will look like this at this point:
+$r_0$, $r_1$ and $r_2$ will be the result of the evaluation at $g^i$ of
+respectively the wire polynomials $w_0$, $w_1$ and $w_2$.
+To perform vector lookups (i.e. lookups over a list of values, not a single
+element), we use a standard technique which consists of coining a combiner value
+$j$ and sum the individual elements of the list using powers of this coin.
+
+The grand product argument for the lookup constraint will look like this at this point:
 
 $$
-\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot {\color{green}(\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i))} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
+\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot {\color{green}(\gamma + j^0 \cdot 1 \cdot w_0(g^i) + j \cdot 1 \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i))} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
 $$
 
 Not all rows need to perform queries into a lookup table. We will use a query selector in the next section to make the constraints work with this in mind.
@@ -104,7 +122,7 @@ The associated **query selector** tells us on which rows the query into the XOR 
 |   1   |       0        |
 
 
-Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time. Currently only the ChaCha gates make use of the lookups.
+Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time.
 
 With the selectors, the grand product argument for the lookup constraint has the following form:
 
@@ -116,7 +134,7 @@ where $\color{green}{\mathsf{query}}$ is constructed so that a dummy query ($0 \
 
 $$
 \begin{align}
-\mathsf{query} := &\ \mathsf{selector} \cdot (\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i)) + \\
+\mathsf{query} := &\ \mathsf{selector} \cdot (\gamma + j^0 \cdot 1 \cdot w_0(g^i) + j \cdot 1 \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i)) + \\
 &\ (1- \mathsf{selector}) \cdot (\gamma + 0 + j \cdot 0 + j^2 \cdot 0)
 \end{align}
 $$
@@ -125,7 +143,10 @@ $$
 
 Since we would like to allow multiple table lookups per row, we define multiple **queries**, where each query is associated with a **lookup selector**.
 
-At the moment of this writing, the `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
+Previously, ChaCha20 was implemented in Kimchi but has been removed as it has become unneeded.
+You can still find the implementation
+[here](https://github.com/o1-labs/proof-systems/blob/601e0adb2a4ba325c9a76468b091ded2bc7b0f70/kimchi/src/circuits/polynomials/chacha.rs).
+The `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
 
 **Important**: to make constraints work, this means that each row must make $4$ queries. Potentially some or all of them are dummy queries.
 
@@ -196,7 +217,7 @@ The denominator thus becomes $\prod_{k=1}^{5} (\gamma (1+\beta) + s_{kn+i-1} + \
 
 There are two things that we haven't touched on:
 
-* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit (for now only one, the XOR lookup table, can be used in the circuit).
+* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit.
 * The vector $s$ representing the sorted multiset of both the queries and the lookup table. This is created by the prover and sent as commitment to the verifier.
 
 The first vector $t$ is quite straightforward to think about:
@@ -208,7 +229,7 @@ What about the second vector $s$?
 
 ## The sorted vector $s$
 
-We said earlier that in original plonk the size of $s$ is equal to $|s| = |f|+|t|$, where $f$ encodes queries, and $t$ encodes the lookup table.
+We said earlier that in original $\plonk$ the size of $s$ is equal to $|s| = |f|+|t|$, where $f$ encodes queries, and $t$ encodes the lookup table.
 With our multi-query approach, the second vector $s$ is of the size
 
 $$n \cdot |\#\text{queries}| + |\text{lookup\_table}|$$
@@ -216,7 +237,7 @@ $$n \cdot |\#\text{queries}| + |\text{lookup\_table}|$$
 That is, it contains the $n$ elements of each **query vectors** (the actual values being looked up, after being combined with the joint combinator, that's $4$ per row), as well as the elements of our lookup table (after being combined as well).
 
 Because the vector $s$ is larger than the domain size $n$, it is split into several vectors of size $n$. Specifically, in the plonkup paper, the two halves of $s$, which are then interpolated as $h_1$ and $h_2$.
-The denominator in plonk in the vector form is
+The denominator in $\plonk$ in the vector form is
 $$
 \big(\gamma(1+\beta) + s_{i-1} + \beta s_{i}\big)\big(\gamma(1+\beta)+s_{n+i-1} + \beta s_{n+i}\big)
 $$
@@ -234,11 +255,11 @@ which is equivalent to checking that $h_1(g^{n-1}) = h_2(1)$.
 
 ## The sorted vector $s$ in kimchi
 
-Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the corresponding polynomial (in case of plookup approach, to $h_1(X),h_2(X)$). To do this in kimchi, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial.
+Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the corresponding polynomial (in case of $\plookup$ approach, to $h_1(X),h_2(X)$). To do this in kimchi, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial.
 
 This means two things for the lookup grand product argument:
 
-1. We cannot use the wrap around trick to make sure that the list is split in two correctly (enforced by $L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$ which is equivalent to $h_1(g^{n-1}) = h_2(1)$ in the plookup paper)
+1. We cannot use the wrap around trick to make sure that the list is split in two correctly (enforced by $L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$ which is equivalent to $h_1(g^{n-1}) = h_2(1)$ in the $\plookup$ paper)
 2. We have even less space to store an entire query vector. Which is actually super correct, as the witness also has some zero-knowledge rows at the end that should not be part of the queries anyway.
 
 The first problem can be solved in two ways:

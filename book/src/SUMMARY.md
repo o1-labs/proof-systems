@@ -7,7 +7,7 @@
 - [Terminology](./fundamentals/zkbook_foundations.md)
 - [Groups](./fundamentals/zkbook_groups.md)
 - [Rings](./fundamentals/zkbook_rings.md)
-- [Fields](./fundamentals/zkbook.md)
+- [Fields](./fundamentals/zkbook_fields.md)
 - [Polynomials](./fundamentals/zkbook_polynomials.md)
   - [Multiplying Polynomials](./fundamentals/zkbook_multiplying_polynomials.md)
   - [Fast Fourier Transform](./fundamentals/zkbook_fft.md)
@@ -65,6 +65,7 @@
 - [Overview](./fundamentals/zkbook_ips.md)
 - [Accumulation](./pickles/accumulation.md)
 - [Deferred Computation](./pickles/deferred.md)
+
 
 # Technical Specifications
 

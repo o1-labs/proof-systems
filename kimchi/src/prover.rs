@@ -4,7 +4,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::zk_rows_strict_lower_bound,
-        expr::{self, l0_1, Constants, Environment, LookupEnvironment},
+        expr::{self, l0_1, Challenges, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -704,13 +704,15 @@ where
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
+                    endo_coefficient: index.cs.endo,
+                    mds,
+                    zk_rows: index.cs.zk_rows,
+                },
+                challenges: Challenges {
                     alpha,
                     beta,
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
-                    endo_coefficient: index.cs.endo,
-                    mds,
-                    zk_rows: index.cs.zk_rows,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,
@@ -1108,7 +1110,7 @@ where
         };
 
         //~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
         internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
         let ft: DensePolynomial<G::ScalarField> = {
             let f_chunked = {
@@ -1131,7 +1133,7 @@ where
 
                 drop(env);
 
-                // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
+                // see https://o1-labs.github.io/mina-book/kimchi/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(num_chunks, index.max_poly_size)
                     .linearize(zeta_to_srs_len)
             };
@@ -1144,7 +1146,7 @@ where
         };
 
         //~ 1. construct the blinding part of the ft polynomial commitment
-        //~    [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
+        //~    [see this section](https://o1-labs.github.io/mina-book/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
         let blinding_ft = {
             let blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
             let blinding_f = G::ScalarField::zero();

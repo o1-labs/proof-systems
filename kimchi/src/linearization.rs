@@ -23,8 +23,9 @@ use crate::circuits::polynomials::{
 };
 
 use crate::circuits::{
+    berkeley_columns::Column,
     constraints::FeatureFlags,
-    expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
+    expr::{ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
     wires::COLUMNS,
 };
@@ -38,7 +39,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
+) -> (Expr<ConstantExpr<F>, Column>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
@@ -336,10 +337,14 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
+#[allow(clippy::type_complexity)]
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
+) -> (
+    Linearization<Vec<PolishToken<F, Column>>, Column>,
+    Alphas<F>,
+) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
     let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
