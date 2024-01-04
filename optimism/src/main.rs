@@ -8,6 +8,8 @@ use kimchi_optimism::{
 use poly_commitment::pairing_proof::PairingProof;
 use std::{fs::File, io::BufReader, process::ExitCode};
 
+type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
+
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
 
@@ -99,7 +101,7 @@ pub fn main() -> ExitCode {
             .error
             .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
         if current_pre_folding_witness.instruction_counter.len() == 1 << 15 {
-            proof::fold::<_, PairingProof<Bn<ark_bn254::Parameters>>, BaseSponge, ScalarSponge>(
+            proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 &mut folded_witness,
@@ -120,7 +122,7 @@ pub fn main() -> ExitCode {
         current_pre_folding_witness
             .error
             .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
-        proof::fold::<_, PairingProof<Bn<ark_bn254::Parameters>>, BaseSponge, ScalarSponge>(
+        proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
             domain,
             &srs,
             &mut folded_witness,
@@ -129,17 +131,11 @@ pub fn main() -> ExitCode {
     }
 
     {
-        let proof = proof::prove::<
-            _,
-            PairingProof<Bn<ark_bn254::Parameters>>,
-            BaseSponge,
-            ScalarSponge,
-        >(domain, &srs, folded_witness);
+        let proof =
+            proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, folded_witness);
         println!("Generated a proof:\n{:?}", proof);
         let verifies =
-            proof::verify::<_, PairingProof<Bn<ark_bn254::Parameters>>, BaseSponge, ScalarSponge>(
-                domain, &srs, &proof,
-            );
+            proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
         if verifies {
             println!("The proof verifies")
         } else {
