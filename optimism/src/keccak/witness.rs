@@ -1,7 +1,7 @@
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS},
+        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, STATE_LEN},
         witness::{Chi, Iota, PiRho, Theta},
         Keccak,
     },
@@ -55,7 +55,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         };
 
         // Root state is zero
-        self.prev_block = vec![0u64; QUARTERS * DIM * DIM];
+        self.prev_block = vec![0u64; STATE_LEN];
 
         // Pad preimage
         self.padded = Keccak::pad(&preimage);
@@ -109,8 +109,15 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     fn set_flag_round(&mut self, round: u64) {
-        assert!(round < ROUNDS as u64);
+        assert!(round <= ROUNDS as u64);
+        // Values between 0 (dummy, for sponges) and 24
         self.write_column(KeccakColumn::FlagRound, round);
+        if round != 0 {
+            self.write_column_field(
+                KeccakColumn::InverseRound,
+                Fp::from(round).inverse().unwrap(),
+            );
+        }
     }
 
     fn run_sponge(&mut self, sponge: Sponge) {
@@ -179,7 +186,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for i in 0..QUARTERS * DIM * DIM {
             self.write_column(KeccakColumn::SpongeOldState(i), old_state[i]);
             self.write_column(KeccakColumn::SpongeNewState(i), new_state[i]);
-            self.write_column(KeccakColumn::NextState(i), xor_state[i]);
+            self.write_column(KeccakColumn::SpongeXorState(i), xor_state[i]);
         }
         for (i, value) in bytes.iter().enumerate() {
             self.write_column(KeccakColumn::SpongeBytes(i), *value);
@@ -205,9 +212,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let state_e = self.run_theta(&state_a);
         let state_b = self.run_pirho(&state_e);
         let state_f = self.run_chi(&state_b);
-        self.run_iota(&state_f, round as usize);
+        let state_g = self.run_iota(&state_f, round as usize);
 
-        // Compute witness values
+        // Update block for next step with the output of the round
+        self.prev_block = state_g;
     }
 
     fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
@@ -295,15 +303,18 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         chi.state_f()
     }
 
-    fn run_iota(&mut self, state_f: &[u64], round: usize) {
+    fn run_iota(&mut self, state_f: &[u64], round: usize) -> Vec<u64> {
         let iota = Iota::create(state_f, round);
+        let state_g = iota.state_g();
 
         // Update columns
-        for i in 0..QUARTERS * DIM * DIM {
-            self.write_column(KeccakColumn::NextState(i), iota.state_g(i));
+        for (i, g) in state_g.iter().enumerate() {
+            self.write_column(KeccakColumn::IotaStateG(i), *g);
         }
         for i in 0..QUARTERS {
             self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
         }
+
+        state_g
     }
 }

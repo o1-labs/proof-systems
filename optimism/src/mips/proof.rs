@@ -178,7 +178,6 @@ where
     OpeningProof::SRS: Sync,
 {
     let ProofInputs { evaluations } = inputs;
-    let rng = &mut rand::rngs::OsRng;
     let polys = {
         let WitnessColumns {
             scratch,
@@ -286,7 +285,7 @@ where
         v,
         u,
         fq_sponge_before_evaluations,
-        rng,
+        &mut rand::rngs::OsRng,
     );
 
     Proof {

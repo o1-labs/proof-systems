@@ -1,9 +1,11 @@
+use ark_ec::bn::Bn;
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     mips::{proof, witness},
     preimage_oracle::PreImageOracle,
 };
+use poly_commitment::pairing_proof::PairingProof;
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 pub fn main() -> ExitCode {
@@ -58,17 +60,17 @@ pub fn main() -> ExitCode {
 
     let mut env = witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    let mut accumulator = proof::ProofInputs::<
+    let mut folded_witness = proof::ProofInputs::<
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
-    let new_chunk = || proof::WitnessColumns {
+    let new_pre_folding_witness = || proof::WitnessColumns {
         scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         instruction_counter: Vec::with_capacity(domain_size),
         error: Vec::with_capacity(domain_size),
     };
 
-    let mut current_chunk = new_chunk();
+    let mut current_pre_folding_witness = new_pre_folding_witness();
 
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
@@ -78,68 +80,61 @@ pub fn main() -> ExitCode {
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+    type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
 
     while !env.halt {
         env.step(&configuration, &meta, &start);
-        for (scratch, scratch_chunk) in env
+        for (scratch, scratch_pre_folding_witness) in env
             .scratch_state
             .iter()
-            .zip(current_chunk.scratch.iter_mut())
+            .zip(current_pre_folding_witness.scratch.iter_mut())
         {
-            scratch_chunk.push(*scratch);
+            scratch_pre_folding_witness.push(*scratch);
         }
-        current_chunk
+        current_pre_folding_witness
             .instruction_counter
             .push(ark_bn254::Fr::from(env.instruction_counter));
         // TODO
         use ark_ff::UniformRand;
-        current_chunk
+        current_pre_folding_witness
             .error
             .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
-        if current_chunk.instruction_counter.len() == 1 << 15 {
-            proof::fold::<
-                _,
-                poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-                BaseSponge,
-                ScalarSponge,
-            >(domain, &srs, &mut accumulator, current_chunk);
-            current_chunk = new_chunk();
+        if current_pre_folding_witness.instruction_counter.len() == 1 << 15 {
+            proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
+                domain,
+                &srs,
+                &mut folded_witness,
+                current_pre_folding_witness,
+            );
+            current_pre_folding_witness = new_pre_folding_witness();
         }
     }
-    if !current_chunk.instruction_counter.is_empty() {
+    if !current_pre_folding_witness.instruction_counter.is_empty() {
         use ark_ff::Zero;
-        let remaining = domain_size - current_chunk.instruction_counter.len();
-        for scratch in current_chunk.scratch.iter_mut() {
+        let remaining = domain_size - current_pre_folding_witness.instruction_counter.len();
+        for scratch in current_pre_folding_witness.scratch.iter_mut() {
             scratch.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         }
-        current_chunk
+        current_pre_folding_witness
             .instruction_counter
             .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
-        current_chunk
+        current_pre_folding_witness
             .error
             .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
-        proof::fold::<
-            _,
-            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-            BaseSponge,
-            ScalarSponge,
-        >(domain, &srs, &mut accumulator, current_chunk);
+        proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
+            domain,
+            &srs,
+            &mut folded_witness,
+            current_pre_folding_witness,
+        );
     }
 
     {
-        let proof = proof::prove::<
-            _,
-            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-            BaseSponge,
-            ScalarSponge,
-        >(domain, &srs, accumulator);
+        let proof =
+            proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, folded_witness);
         println!("Generated a proof:\n{:?}", proof);
-        let verifies = proof::verify::<
-            _,
-            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-            BaseSponge,
-            ScalarSponge,
-        >(domain, &srs, &proof);
+        let verifies =
+            proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
         if verifies {
             println!("The proof verifies")
         } else {
