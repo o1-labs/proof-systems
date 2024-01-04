@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 use ark_ff::{One, Zero};
 use serde::{Deserialize, Serialize};
 
-use super::grid_index;
+use super::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum KeccakColumn {
@@ -75,6 +75,28 @@ pub struct KeccakColumns<T> {
     pub sponge_bytes: Vec<T>,        // Sponge Curr[200..400)
     pub sponge_shifts: Vec<T>,       // Sponge Curr[400..800)
     pub sponge_xor_state: Vec<T>,    // Absorb Next[0..100)
+    pub curr: Vec<T>,                // Curr[0..1965)
+    pub next: Vec<T>,                // Next[0..100)
+}
+
+impl<T: Clone> KeccakColumns<T> {
+    fn _curr(&self, offset: usize, length: usize, i: usize, y: usize, x: usize, q: usize) -> &T {
+        &self.curr[offset + grid_index(length, i, y, x, q)]
+    }
+    fn _mut_curr(
+        &mut self,
+        offset: usize,
+        length: usize,
+        i: usize,
+        y: usize,
+        x: usize,
+        q: usize,
+    ) -> &mut T {
+        &mut self.curr[offset + grid_index(length, i, y, x, q)]
+    }
+    pub fn chunk(&self, offset: usize, length: usize) -> Vec<T> {
+        self.curr[offset..offset + length].to_vec().clone()
+    }
 }
 
 impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
@@ -112,6 +134,8 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
             sponge_bytes: vec![T::zero(); 200],
             sponge_shifts: vec![T::zero(); 400],
             sponge_xor_state: vec![T::zero(); 100],
+            curr: vec![T::zero(); ZKVM_KECCAK_COLS_CURR],
+            next: vec![T::zero(); ZKVM_KECCAK_COLS_NEXT],
         }
     }
 }
