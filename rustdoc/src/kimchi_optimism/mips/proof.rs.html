@@ -441,34 +441,6 @@
 <a href="#441" id="441">441</a>
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -484,80 +456,15 @@
     OpenProof, SRS <span class="kw">as _</span>,
 };
 <span class="kw">use </span>rand::thread_rng;
-<span class="kw">use </span>rayon::iter::{
-    FromParallelIterator, IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
-    IntoParallelRefMutIterator, ParallelIterator,
-};
+<span class="kw">use </span>rayon::iter::IntoParallelIterator;
+<span class="kw">use </span>rayon::iter::IntoParallelRefIterator;
+<span class="kw">use </span>rayon::iter::ParallelIterator;
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>WitnessColumns&lt;G&gt; {
     <span class="kw">pub </span>scratch: [G; <span class="kw">crate</span>::mips::witness::SCRATCH_SIZE],
     <span class="kw">pub </span>instruction_counter: G,
     <span class="kw">pub </span>error: G,
-}
-
-<span class="kw">impl</span>&lt;G&gt; IntoParallelIterator <span class="kw">for </span>WitnessColumns&lt;G&gt;
-<span class="kw">where
-    </span>Vec&lt;G&gt;: IntoParallelIterator,
-{
-    <span class="kw">type </span>Iter = &lt;Vec&lt;G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Iter;
-    <span class="kw">type </span>Item = &lt;Vec&lt;G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Item;
-
-    <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
-        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(<span class="kw">crate</span>::mips::witness::SCRATCH_SIZE + <span class="number">2</span>);
-        iter_contents.extend(<span class="self">self</span>.scratch);
-        iter_contents.push(<span class="self">self</span>.instruction_counter);
-        iter_contents.push(<span class="self">self</span>.error);
-        iter_contents.into_par_iter()
-    }
-}
-
-<span class="kw">impl</span>&lt;G: Send + std::fmt::Debug&gt; FromParallelIterator&lt;G&gt; <span class="kw">for </span>WitnessColumns&lt;G&gt; {
-    <span class="kw">fn </span>from_par_iter&lt;I&gt;(par_iter: I) -&gt; <span class="self">Self
-    </span><span class="kw">where
-        </span>I: IntoParallelIterator&lt;Item = G&gt;,
-    {
-        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = par_iter.into_par_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-        <span class="kw">let </span>error = iter_contents.pop().unwrap();
-        <span class="kw">let </span>instruction_counter = iter_contents.pop().unwrap();
-        WitnessColumns {
-            scratch: iter_contents.try_into().unwrap(),
-            instruction_counter,
-            error,
-        }
-    }
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span>WitnessColumns&lt;G&gt;
-<span class="kw">where
-    </span>Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span>G&gt;: IntoParallelIterator,
-{
-    <span class="kw">type </span>Iter = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Iter;
-    <span class="kw">type </span>Item = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Item;
-
-    <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
-        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(<span class="kw">crate</span>::mips::witness::SCRATCH_SIZE + <span class="number">2</span>);
-        iter_contents.extend(<span class="self">self</span>.scratch.iter());
-        iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.instruction_counter);
-        iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.error);
-        iter_contents.into_par_iter()
-    }
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span><span class="kw-2">mut </span>WitnessColumns&lt;G&gt;
-<span class="kw">where
-    </span>Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span><span class="kw-2">mut </span>G&gt;: IntoParallelIterator,
-{
-    <span class="kw">type </span>Iter = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span><span class="kw-2">mut </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Iter;
-    <span class="kw">type </span>Item = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;data </span><span class="kw-2">mut </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Item;
-
-    <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
-        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(<span class="kw">crate</span>::mips::witness::SCRATCH_SIZE + <span class="number">2</span>);
-        iter_contents.extend(<span class="self">self</span>.scratch.iter_mut());
-        iter_contents.push(<span class="kw-2">&amp;mut </span><span class="self">self</span>.instruction_counter);
-        iter_contents.push(<span class="kw-2">&amp;mut </span><span class="self">self</span>.error);
-        iter_contents.into_par_iter()
-    }
 }
 
 <span class="attr">#[derive(Debug)]
@@ -600,17 +507,40 @@
 ) <span class="kw">where
     </span>&lt;OpeningProof <span class="kw">as </span>poly_commitment::OpenProof&lt;G&gt;&gt;::SRS: std::marker::Sync,
 {
+    <span class="kw">let </span>polys = {
+        <span class="kw">let </span>WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+        } = <span class="kw-2">&amp;</span>inputs;
+        <span class="kw">let </span>eval_col = |evals: <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt;| {
+            Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
+                evals.clone(),
+                domain.d1,
+            )
+        };
+        <span class="kw">let </span>scratch = scratch.into_par_iter().map(eval_col).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        WitnessColumns {
+            scratch: scratch.try_into().unwrap(),
+            instruction_counter: eval_col(instruction_counter),
+            error: eval_col(error),
+        }
+    };
     <span class="kw">let </span>commitments = {
-        inputs
-            .par_iter()
-            .map(|evals: <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt;| {
-                <span class="kw">let </span>evals = Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-                    evals.clone(),
-                    domain.d1,
-                );
-                srs.commit_evaluations_non_hiding(domain.d1, <span class="kw-2">&amp;</span>evals)
-            })
-            .collect::&lt;WitnessColumns&lt;<span class="kw">_</span>&gt;&gt;()
+        <span class="kw">let </span>WitnessColumns {
+            scratch,
+            instruction_counter,
+            error,
+        } = <span class="kw-2">&amp;</span>polys;
+        <span class="kw">let </span>comm = |evals: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;| {
+            srs.commit_evaluations_non_hiding(domain.d1, evals)
+        };
+        <span class="kw">let </span>scratch = scratch.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        WitnessColumns {
+            scratch: scratch.try_into().unwrap(),
+            instruction_counter: comm(instruction_counter),
+            error: comm(error),
+        }
     };
     <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     <span class="kw">for </span>comm <span class="kw">in </span>commitments.scratch.iter() {
@@ -621,18 +551,32 @@
     <span class="kw">let </span>scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
     <span class="kw">let </span>scaling_challenge = scaling_challenge.to_field(endo_r);
-    accumulator
+    <span class="kw">for </span>(acc_eval, new_eval) <span class="kw">in </span>accumulator
         .evaluations
-        .par_iter_mut()
-        .zip(inputs.par_iter())
-        .for_each(|(accumulator, inputs)| {
-            accumulator
-                .par_iter_mut()
-                .zip(inputs.par_iter())
-                .for_each(|(accumulator, input)| {
-                    <span class="kw-2">*</span>accumulator = <span class="kw-2">*</span>input + scaling_challenge * <span class="kw-2">*</span>accumulator
-                });
-        });
+        .scratch
+        .iter_mut()
+        .zip(inputs.scratch.iter())
+    {
+        <span class="kw">for </span>(acc_eval, new_eval) <span class="kw">in </span>acc_eval.iter_mut().zip(new_eval.iter()) {
+            <span class="kw-2">*</span>acc_eval = <span class="kw-2">*</span>acc_eval * scaling_challenge + <span class="kw-2">*</span>new_eval
+        }
+    }
+    <span class="kw">for </span>(acc_eval, new_eval) <span class="kw">in </span>accumulator
+        .evaluations
+        .instruction_counter
+        .iter_mut()
+        .zip(inputs.instruction_counter.iter())
+    {
+        <span class="kw-2">*</span>acc_eval = <span class="kw-2">*</span>acc_eval * scaling_challenge + <span class="kw-2">*</span>new_eval
+    }
+    <span class="kw">for </span>(acc_eval, new_eval) <span class="kw">in </span>accumulator
+        .evaluations
+        .error
+        .iter_mut()
+        .zip(inputs.error.iter())
+    {
+        <span class="kw-2">*</span>acc_eval = <span class="kw-2">*</span>acc_eval * scaling_challenge + <span class="kw-2">*</span>new_eval
+    }
 }
 
 <span class="kw">pub fn </span>prove&lt;
