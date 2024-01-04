@@ -69,9 +69,10 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
-    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
 };
 
 <span class="kw">use </span><span class="self">self</span>::column::KeccakColumn;
@@ -86,13 +87,14 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BITLENGTH: usize = <span class="number">256</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BYTELENGTH: usize = HASH_BITLENGTH / <span class="number">8</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORD_LENGTH_IN_BITS: usize = <span class="number">64</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>_ZKVM_KECCAK_COLS: usize = KECCAK_COLS + <span class="number">4 </span>+ <span class="number">6</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, KeccakColumn&gt;;
 
-<span class="kw">fn </span>grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -&gt; usize {
-    <span class="kw">match </span>size {
+<span class="kw">fn </span>grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -&gt; usize {
+    <span class="kw">match </span>length {
         <span class="number">5 </span>=&gt; x,
         <span class="number">20 </span>=&gt; q + QUARTERS * x,
         <span class="number">80 </span>=&gt; q + QUARTERS * (x + DIM * i),
