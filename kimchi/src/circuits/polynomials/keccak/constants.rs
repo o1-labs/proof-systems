@@ -41,7 +41,7 @@ pub const CHI_SHIFTS_B_OFF: usize = PIRHO_EXPAND_ROT_E_OFF + PIRHO_EXPAND_ROT_E_
 pub const CHI_SHIFTS_B_LEN: usize = SHIFTS_LEN;
 pub const CHI_SHIFTS_SUM_OFF: usize = CHI_SHIFTS_B_OFF + CHI_SHIFTS_B_LEN;
 pub const CHI_SHIFTS_SUM_LEN: usize = SHIFTS_LEN;
-pub const IOTA_STATE_G_OFF: usize = CHI_SHIFTS_SUM_OFF + CHI_SHIFTS_SUM_LEN;
+pub const IOTA_STATE_G_OFF: usize = 0;
 pub const IOTA_STATE_G_LEN: usize = STATE_LEN;
 // SPONGE INDICES
 pub const SPONGE_OLD_STATE_OFF: usize = 0;
@@ -56,4 +56,5 @@ pub const SPONGE_BYTES_OFF: usize = SPONGE_NEW_STATE_OFF + SPONGE_NEW_STATE_LEN;
 pub const SPONGE_BYTES_LEN: usize = 2 * STATE_LEN;
 pub const SPONGE_SHIFTS_OFF: usize = SPONGE_BYTES_OFF + SPONGE_BYTES_LEN;
 pub const SPONGE_SHIFTS_LEN: usize = SHIFTS_LEN;
+pub const SPONGE_XOR_STATE_OFF: usize = 0;
 pub const SPONGE_XOR_STATE_LEN: usize = STATE_LEN;

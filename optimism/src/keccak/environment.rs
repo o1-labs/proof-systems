@@ -8,7 +8,7 @@ use ark_ff::{Field, One};
 use kimchi::circuits::expr::Operations;
 use kimchi::{
     auto_clone_array,
-    circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::ROUNDS},
+    circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::*},
     grid,
     o1_utils::Two,
 };
@@ -51,11 +51,11 @@ impl<Fp: Field> KeccakEnv<Fp> {
         match self.curr_step {
             Some(step) => match step {
                 KeccakStep::Sponge(sponge) => match sponge {
-                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(0)),
+                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(1)),
                     Sponge::Squeeze => self.curr_step = None,
                 },
                 KeccakStep::Round(round) => {
-                    if round < ROUNDS as u64 - 1 {
+                    if round < ROUNDS as u64 {
                         self.curr_step = Some(KeccakStep::Round(round + 1));
                     } else {
                         self.blocks_left_to_absorb -= 1;
@@ -83,7 +83,7 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     type Variable = E<Fp>;
     type Fp = Fp;
 
-    fn boolean(x: Self::Variable) -> Self::Variable {
+    fn is_boolean(x: Self::Variable) -> Self::Variable {
         x.clone() * (x - Self::Variable::one())
     }
 
@@ -152,17 +152,19 @@ pub(crate) trait KeccakEnvironment {
 
     fn is_sponge(&self) -> Self::Variable;
 
+    fn is_absorb(&self) -> Self::Variable;
+
+    fn is_squeeze(&self) -> Self::Variable;
+
+    fn is_root(&self) -> Self::Variable;
+
+    fn is_pad(&self) -> Self::Variable;
+
     fn is_round(&self) -> Self::Variable;
 
     fn round(&self) -> Self::Variable;
 
-    fn absorb(&self) -> Self::Variable;
-
-    fn squeeze(&self) -> Self::Variable;
-
-    fn root(&self) -> Self::Variable;
-
-    fn pad(&self) -> Self::Variable;
+    fn inverse_round(&self) -> Self::Variable;
 
     fn length(&self) -> Self::Variable;
 
@@ -182,13 +184,15 @@ pub(crate) trait KeccakEnvironment {
 
     fn old_state(&self, i: usize) -> Self::Variable;
 
-    fn new_block(&self, i: usize) -> Self::Variable;
+    fn new_state(&self, i: usize) -> Self::Variable;
 
-    fn next_state(&self, i: usize) -> Self::Variable;
+    fn xor_state(&self, i: usize) -> Self::Variable;
 
     fn sponge_zeros(&self) -> Vec<Self::Variable>;
 
     fn sponge_shifts(&self) -> Vec<Self::Variable>;
+
+    fn sponge_shift(&self, i: usize) -> Self::Variable;
 
     fn sponge_bytes(&self, i: usize) -> Self::Variable;
 
@@ -221,6 +225,8 @@ pub(crate) trait KeccakEnvironment {
     fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
+
+    fn state_g(&self, i: usize) -> Self::Variable;
 }
 
 impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
@@ -281,7 +287,23 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_sponge(&self) -> Self::Variable {
-        Self::xor(self.absorb(), self.squeeze())
+        Self::xor(self.is_absorb(), self.is_squeeze())
+    }
+
+    fn is_absorb(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagAbsorb].clone()
+    }
+
+    fn is_squeeze(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagSqueeze].clone()
+    }
+
+    fn is_root(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagRoot].clone()
+    }
+
+    fn is_pad(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagPad].clone()
     }
 
     fn is_round(&self) -> Self::Variable {
@@ -292,20 +314,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::FlagRound].clone()
     }
 
-    fn absorb(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagAbsorb].clone()
-    }
-
-    fn squeeze(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagSqueeze].clone()
-    }
-
-    fn root(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagRoot].clone()
-    }
-
-    fn pad(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagPad].clone()
+    fn inverse_round(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::InverseRound].clone()
     }
 
     fn length(&self) -> Self::Variable {
@@ -366,12 +376,12 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::SpongeOldState(i)].clone()
     }
 
-    fn new_block(&self, i: usize) -> Self::Variable {
+    fn new_state(&self, i: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::SpongeNewState(i)].clone()
     }
 
-    fn next_state(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::NextState(i)].clone()
+    fn xor_state(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
     }
 
     fn sponge_zeros(&self) -> Vec<Self::Variable> {
@@ -384,6 +394,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn sponge_shifts(&self) -> Vec<Self::Variable> {
         self.keccak_state.sponge_shifts.clone()
+    }
+
+    fn sponge_shift(&self, i: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeShifts(i)].clone()
     }
 
     fn state_a(&self, x: usize, y: usize, q: usize) -> Self::Variable {
@@ -444,5 +458,9 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ChiShiftsSum(i, y, x, q)].clone()
+    }
+
+    fn state_g(&self, q: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::IotaStateG(q)].clone()
     }
 }
