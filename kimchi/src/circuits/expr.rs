@@ -2373,7 +2373,10 @@ impl<F> ConstantExpr<F>
 where
     F: PrimeField,
 {
-    fn ocaml(&self) -> String {
+    fn ocaml(&self) -> String
+    where
+        num_bigint::BigUint: From<F::BigInt>,
+    {
         use ConstantExpr::*;
         match self {
             Alpha => "alpha".to_string(),
@@ -2382,7 +2385,10 @@ where
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("field(\"0x{}\")", x.into_bigint()),
+            Literal(x) => format!(
+                "field(\"0x{:064X}\")",
+                num_bigint::BigUint::from(x.into_bigint())
+            ),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
                 x => format!("pow({}, {n})", x.ocaml()),
@@ -2393,7 +2399,10 @@ where
         }
     }
 
-    fn latex(&self) -> String {
+    fn latex(&self) -> String
+    where
+        num_bigint::BigUint: From<F::BigInt>,
+    {
         use ConstantExpr::*;
         match self {
             Alpha => "\\alpha".to_string(),
@@ -2439,7 +2448,10 @@ where
     F: PrimeField,
 {
     /// Converts the expression in OCaml code
-    pub fn ocaml_str(&self) -> String {
+    pub fn ocaml_str(&self) -> String
+    where
+        num_bigint::BigUint: From<F::BigInt>,
+    {
         let mut env = HashMap::new();
         let e = self.ocaml(&mut env);
 
@@ -2461,7 +2473,10 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String
+    where
+        num_bigint::BigUint: From<F::BigInt>,
+    {
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
@@ -2490,7 +2505,10 @@ where
     }
 
     /// Converts the expression in LaTeX
-    pub fn latex_str(&self) -> Vec<String> {
+    pub fn latex_str(&self) -> Vec<String>
+    where
+        num_bigint::BigUint: From<F::BigInt>,
+    {
         let mut env = HashMap::new();
         let e = self.latex(&mut env);
 
@@ -2510,7 +2528,10 @@ where
         res
     }
 
-    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String
+    where
+        num_bigint::BigUint: From<F::BigInt>,
+    {
         use Expr::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
