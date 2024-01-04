@@ -8,8 +8,6 @@ use kimchi_optimism::{
 use poly_commitment::pairing_proof::PairingProof;
 use std::{fs::File, io::BufReader, process::ExitCode};
 
-type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
-
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
 
@@ -82,6 +80,7 @@ pub fn main() -> ExitCode {
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+    type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
 
     while !env.halt {
         env.step(&configuration, &meta, &start);
