@@ -1,9 +1,11 @@
+use ark_ec::bn::Bn;
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     mips::{proof, witness},
     preimage_oracle::PreImageOracle,
 };
+use poly_commitment::pairing_proof::PairingProof;
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 pub fn main() -> ExitCode {
@@ -97,12 +99,7 @@ pub fn main() -> ExitCode {
             .error
             .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
         if current_pre_folding_witness.instruction_counter.len() == 1 << 15 {
-            proof::fold::<
-                _,
-                poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-                BaseSponge,
-                ScalarSponge,
-            >(
+            proof::fold::<_, PairingProof<Bn<ark_bn254::Parameters>>, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 &mut folded_witness,
@@ -123,12 +120,7 @@ pub fn main() -> ExitCode {
         current_pre_folding_witness
             .error
             .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
-        proof::fold::<
-            _,
-            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-            BaseSponge,
-            ScalarSponge,
-        >(
+        proof::fold::<_, PairingProof<Bn<ark_bn254::Parameters>>, BaseSponge, ScalarSponge>(
             domain,
             &srs,
             &mut folded_witness,
@@ -139,17 +131,15 @@ pub fn main() -> ExitCode {
     {
         let proof = proof::prove::<
             _,
-            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+            PairingProof<Bn<ark_bn254::Parameters>>,
             BaseSponge,
             ScalarSponge,
         >(domain, &srs, folded_witness);
         println!("Generated a proof:\n{:?}", proof);
-        let verifies = proof::verify::<
-            _,
-            poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-            BaseSponge,
-            ScalarSponge,
-        >(domain, &srs, &proof);
+        let verifies =
+            proof::verify::<_, PairingProof<Bn<ark_bn254::Parameters>>, BaseSponge, ScalarSponge>(
+                domain, &srs, &proof,
+            );
         if verifies {
             println!("The proof verifies")
         } else {
