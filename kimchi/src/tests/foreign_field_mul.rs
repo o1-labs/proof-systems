@@ -696,6 +696,8 @@ fn test_nonzero_carry0() {
 // Test with nonzero carry10 (this targets only the limbs and the first crumb of carry1)
 fn test_nonzero_carry10() {
     // Max modulus
+    // Actually this is larger than max_foreign_field_modulus, but it's fine because
+    // we can still hold larger than 2^259-1. This is just for the test to produce nonzero carry10.
     let foreign_field_modulus = BigUint::two().pow(259u32);
 
     // Maximum quotient

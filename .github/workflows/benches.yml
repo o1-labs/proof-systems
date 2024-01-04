@@ -5,22 +5,45 @@ on:
     types:
       - labeled
 
+env:
+  OCAML_VERSION: "4.14.0"
+  RUST_TOOLCHAIN_VERSION: "1.71"
+
+
 jobs:
   bench:
     runs-on: ubuntu-latest
-    name: Run some basic checks
+    name: Run benchmarks
     if: github.event.label.name == 'benchmark'
     steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4.1.1
+
+      # as action-rs does not seem to be maintained anymore, building from
+      # scratch the environment using rustup
+      - name: Setup Rust toolchain $RUST_TOOLCHAIN_VERSION
+        run:
+          |
+            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+            chmod +x ./rustup-init
+            ./rustup-init -y --default-toolchain "$RUST_TOOLCHAIN_VERSION" --profile default
+            rm ./rustup-init
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            # overwriting default rust-toolchain
+            echo $RUST_TOOLCHAIN_VERSION > rust-toolchain
+
       - name: Install dependencies
         run: |
           set -x
           cargo install cargo-criterion   # criterion
 
-      - name: Setup OCaml (because of ocaml-gen)
-        run: sudo apt update && sudo apt install ocaml
-
-      - name: Checkout PR
-        uses: actions/checkout@v2
+      - name: Setup OCaml ${{ env.OCAML_VERSION }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ env.OCAML_VERSION }}
+          # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
+          # disable-cache: true
 
 #      - name: Run iai bench
 #        run: |
@@ -31,6 +54,7 @@ jobs:
       - name: Run criterion bench
         run: |
           set -x
+          eval $(opam env)
           cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
           cat criterion_bench
 
@@ -45,7 +69,7 @@ jobs:
             const criterion_bench = fs.readFileSync("criterion_bench", {encoding:'utf8', flag:'r'});
 
             // form message
-            const message = `Hello there👋 
+            const message = `Hello there👋
             Here are some benchmark results using [criterion](https://bheisler.github.io/criterion.rs/). Keep in mind that since this runs in CI, it is not really accurate (as it depends on the host load)
 
             <pre><code>${criterion_bench}</code></pre>`;

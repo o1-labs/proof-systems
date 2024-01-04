@@ -310,10 +310,11 @@ z_2 = &\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
 \end{align}
 $$
 
-If computed correctly, we should have $z(g^{n-3}) = 1$.
+We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
+zero-knowledge to the protocol.
 
-Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
-in order to add zero-knowledge to the protocol.
+For a valid witness, we then have have $z(g^{n-zk_rows}) = 1$.
+
 
 
 ### Lookup
@@ -1597,11 +1598,34 @@ def sample(domain, i):
 The compilation steps to create the common index are as follow:
 
 1. If the circuit is less than 2 gates, abort.
-2. Create a domain for the circuit. That is,
+1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
+   achieve zero-knowledge. The following constraints apply to `zk_rows`:
+   * The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
+     each column for `2*c` evaluations per column, so `zk_rows >= 2*c + 1`.
+   * The permutation argument interacts with the `c` chunks in parallel, so it is
+     possible to cross-correlate between them to compromise zero knowledge. We know
+     that there is some `c >= 1` such that `zk_rows = 2*c + k` from the above. Thus,
+     attempting to find the evaluation at a new point, we find that:
+     * the evaluation of every witness column in the permutation contains `k` unknowns;
+     * the evaluations of the permutation argument aggregation has `k-1` unknowns;
+     * the permutation argument applies on all but `zk_rows - 3` rows;
+     * and thus we form the equation `zk_rows - 3 < 7 * k + (k - 1)` to ensure that we
+       can construct fewer equations than we have unknowns.
+
+   This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
+   We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
+   `zk_rows` and `domain_size` satisfying the fixpoint
+
+   ```text
+   zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
+   domain_size = circuit_size + zk_rows
+   ```
+
+1. Create a domain for the circuit. That is,
    compute the smallest subgroup of the field that
-   has order greater or equal to `n + ZK_ROWS` elements.
-3. Pad the circuit: add zero gates to reach the domain size.
-4. sample the `PERMUTS` shifts.
+   has order greater or equal to `n + zk_rows` elements.
+1. Pad the circuit: add zero gates to reach the domain size.
+1. sample the `PERMUTS` shifts.
 
 
 ### Lookup Index
@@ -1679,7 +1703,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: KimchiCurve> {
+pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1694,7 +1718,8 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -1704,7 +1729,7 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G>>,
+    pub verifier_index: Option<VerifierIndex<G, OpeningProof>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -1742,15 +1767,18 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve> {
+pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
+    /// the number of randomized rows to achieve zero knowledge
+    pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: OnceCell<Arc<SRS<G>>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -1815,7 +1843,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
+    pub permutation_vanishing_polynomial_m: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
@@ -1936,6 +1964,8 @@ pub struct PointEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
+    /// public input polynomials
+    pub public: Option<Evals>,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -2027,12 +2057,16 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<G: AffineCurve, OpeningProof> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
-    pub proof: OpeningProof<G>,
+    #[serde(bound(
+        serialize = "OpeningProof: Serialize",
+        deserialize = "OpeningProof: Deserialize<'de>"
+    ))]
+    pub proof: OpeningProof,
 
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
@@ -2090,10 +2124,10 @@ The prover then follows the following steps to create the proof:
 1. Ensure we have room in the witness for the zero-knowledge rows.
    We currently expect the witness not to be of the same length as the domain,
    but instead be of the length of the (smaller) circuit.
-   If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+   If we cannot add `zk_rows` rows to the columns of the witness before reaching
    the size of the domain, abort.
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-   Then, randomize the last `ZK_ROWS` of each columns.
+   Then, randomize the last `zk_rows` of each columns.
 1. Setup the Fq-Sponge.
 1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
@@ -2157,7 +2191,6 @@ The prover then follows the following steps to create the proof:
    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
    TODO: specify the split of the permutation polynomial into perm and bnd?
 1. commit (hiding) to the quotient polynomial $t$
-   TODO: specify the dummies
 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
@@ -2169,7 +2202,7 @@ The prover then follows the following steps to create the proof:
 	* $s_i$
 	* $w_i$
 	* $z$
-	* lookup (TODO)
+	* lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
 	* generic selector
 	* poseidon selector
 
@@ -2194,7 +2227,6 @@ The prover then follows the following steps to create the proof:
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Absorb the previous recursion challenges.
 1. Compute evaluations for the previous recursion challenges.
-1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	* the public polynomial
@@ -2258,7 +2290,7 @@ We run the following algorithm:
 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
 1. Sample $\alpha'$ with the Fq-Sponge.
 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+1. Enforce that the length of the $t$ commitment is of size 7.
 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).

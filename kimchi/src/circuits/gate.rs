@@ -16,6 +16,7 @@ use crate::{
 use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
+use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
@@ -84,34 +85,34 @@ impl CurrOrNext {
 pub enum GateType {
     #[default]
     /// Zero gate
-    Zero = 0,
+    Zero,
     /// Generic arithmetic gate
-    Generic = 1,
+    Generic,
     /// Poseidon permutation gate
-    Poseidon = 2,
+    Poseidon,
     /// Complete EC addition in Affine form
-    CompleteAdd = 3,
+    CompleteAdd,
     /// EC variable base scalar multiplication
-    VarBaseMul = 4,
+    VarBaseMul,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    EndoMul = 5,
+    EndoMul,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndoMulScalar = 6,
+    EndoMulScalar,
     // Lookup
-    Lookup = 11,
+    Lookup,
     /// Cairo
-    CairoClaim = 12,
-    CairoInstruction = 13,
-    CairoFlags = 14,
-    CairoTransition = 15,
+    CairoClaim,
+    CairoInstruction,
+    CairoFlags,
+    CairoTransition,
     /// Range check
-    RangeCheck0 = 16,
-    RangeCheck1 = 17,
-    ForeignFieldAdd = 18,
-    ForeignFieldMul = 19,
+    RangeCheck0,
+    RangeCheck1,
+    ForeignFieldAdd,
+    ForeignFieldMul,
     // Gates for Keccak
-    Xor16 = 20,
-    Rot64 = 21,
+    Xor16,
+    Rot64,
 }
 
 /// Gate error
@@ -193,11 +194,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    pub fn verify<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify<G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, OpeningProof>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -210,6 +211,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
             EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
+            // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                 self.verify_cairo_gate::<G>(row, witness, &index.cs)
@@ -251,6 +253,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            zk_rows: cs.zk_rows,
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -297,6 +300,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
+                // See https://github.com/MinaProtocol/mina/issues/14011
                 vec![]
             }
             GateType::CairoClaim => turshi::Claim::constraint_checks(&env, &mut cache),

@@ -17,7 +17,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, srs::SRS};
 use std::array;
 use std::time::Instant;
 
@@ -27,19 +27,11 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[cfg(test)]
 mod tests {
-
-    use std::{env, fs, path::PathBuf};
-
-    use ark_ff::PrimeField;
-    use ark_serialize::{Read, Write};
-    use mina_curves::pasta::PallasParameters;
-    use num_traits::pow;
-
     use super::*;
 
     #[test]
     fn test_rmp_serde() {
-        let ctx = BenchmarkCtx::new(1 << 4);
+        let ctx = BenchmarkCtx::new(4);
 
         let (proof, public_input) = ctx.create_proof();
 
@@ -49,7 +41,8 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
+        let de_pf: ProverProof<Vesta, OpeningProof<Vesta>> =
+            rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
         ctx.batch_verification(&vec![(de_pf, public_input)]);
@@ -80,7 +73,7 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>> =
+        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>, _> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
@@ -88,10 +81,11 @@ mod tests {
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
+        verifier_index_deserialize.srs = std::sync::Arc::new(srs);
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge>(
+        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
             &group_map,
             &verifier_index_deserialize,
             &proof,
@@ -99,53 +93,5 @@ mod tests {
         )
         .unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
-    }
-
-    #[test]
-    pub fn test_srs_serialization() {
-        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize)
-        where
-            T::BaseField: PrimeField,
-        {
-            let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
-
-            let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
-            let srs_path: PathBuf = [base_path, "../srs".into(), curve.to_string() + ".srs"]
-                .iter()
-                .collect();
-
-            // Safety check (comment to manually create new SRS)
-            if !srs_path.exists() {
-                panic!("Missing SRS file: {}", srs_path.display());
-            }
-
-            if !srs_path.exists() {
-                // Create SRS
-                let mut file = fs::OpenOptions::new()
-                    .create(true)
-                    .write(true)
-                    .open(srs_path)
-                    .expect("failed to open file");
-
-                let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
-                file.write_all(&srs_bytes).expect("failed to write file");
-                file.flush().expect("failed to flush file");
-            } else {
-                // Check SRS
-                let mut file = fs::OpenOptions::new()
-                    .read(true)
-                    .open(srs_path)
-                    .expect("failed to open file");
-
-                let mut bytes = vec![];
-                file.read_to_end(&mut bytes).expect("failed to read file");
-                let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
-                assert_eq!(srs.g, srs_serde.g);
-                assert_eq!(srs.h, srs_serde.h);
-            }
-        }
-
-        create_or_check_srs::<VestaParameters>("vesta", 16);
-        create_or_check_srs::<PallasParameters>("pallas", 16);
     }
 }

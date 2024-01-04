@@ -5,13 +5,17 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
+        lookup::{
+            index::LookupConstraintSystem,
+            lookups::LookupFeatures,
+            tables::{GateLookupTables, LookupTable},
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-        polynomials::permutation::{Shifts, ZK_ROWS},
+        polynomials::permutation::Shifts,
         wires::*,
     },
     curve::KimchiCurve,
-    error::SetupError,
+    error::{DomainCreationError, SetupError},
     prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, SquareRootField, Zero};
@@ -21,6 +25,7 @@ use ark_poly::{
 };
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
+use poly_commitment::OpenProof;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -31,6 +36,11 @@ use std::sync::Arc;
 //
 
 /// Flags for optional features in the constraint system
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureFlags {
     /// RangeCheck0 gate
@@ -148,6 +158,8 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
+    pub zk_rows: u64,
+
     /// flags for optional features
     pub feature_flags: FeatureFlags,
 
@@ -191,6 +203,7 @@ pub struct Builder<F: PrimeField> {
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
+    max_poly_size: Option<usize>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -248,12 +261,14 @@ impl<F: PrimeField> ConstraintSystem<F> {
             runtime_tables: None,
             precomputations: None,
             disable_gates_checks: false,
+            max_poly_size: None,
         }
     }
 
     pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations
-            .get_or_init(|| Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()))
+        self.precomputations.get_or_init(|| {
+            Arc::new(DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap())
+        })
     }
 
     pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {
@@ -263,7 +278,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+impl<
+        F: PrimeField + SquareRootField,
+        G: KimchiCurve<ScalarField = F>,
+        OpeningProof: OpenProof<G>,
+    > ProverIndex<G, OpeningProof>
+{
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
     ///     witness: wire assignment witness
@@ -307,7 +327,7 @@ impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverInd
             }
 
             // check the gate's satisfiability
-            gate.verify::<G>(row, &witness, self, public)
+            gate.verify(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -360,12 +380,21 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         // compute permutation polynomials
         let shifts = Shifts::new(&self.domain.d1);
 
-        let mut sigmal1: [Vec<F>; PERMUTS] =
-            array::from_fn(|_| vec![F::zero(); self.domain.d1.size()]);
+        let n = self.domain.d1.size();
+
+        let mut sigmal1: [Vec<F>; PERMUTS] = array::from_fn(|_| vec![F::zero(); n]);
 
         for (row, gate) in self.gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
                 sigma[row] = shifts.cell_to_field(cell);
+            }
+        }
+
+        // Zero out the sigmas in the zk rows, to ensure that the permutation aggregation is
+        // quasi-random for those rows.
+        for row in n + 2 - (self.zk_rows as usize)..n - 1 {
+            for sigma in sigmal1.iter_mut() {
+                sigma[row] = F::zero();
             }
         }
 
@@ -590,6 +619,51 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
     }
 }
 
+pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
+    (2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS
+}
+
+impl FeatureFlags {
+    pub fn from_gates_and_lookup_features<F: PrimeField>(
+        gates: &[CircuitGate<F>],
+        lookup_features: LookupFeatures,
+    ) -> FeatureFlags {
+        let mut feature_flags = FeatureFlags {
+            range_check0: false,
+            range_check1: false,
+            lookup_features,
+            foreign_field_add: false,
+            foreign_field_mul: false,
+            xor: false,
+            rot: false,
+        };
+
+        for gate in gates {
+            match gate.typ {
+                GateType::RangeCheck0 => feature_flags.range_check0 = true,
+                GateType::RangeCheck1 => feature_flags.range_check1 = true,
+                GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
+                GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
+                GateType::Xor16 => feature_flags.xor = true,
+                GateType::Rot64 => feature_flags.rot = true,
+                _ => (),
+            }
+        }
+
+        feature_flags
+    }
+
+    pub fn from_gates<F: PrimeField>(
+        gates: &[CircuitGate<F>],
+        uses_runtime_tables: bool,
+    ) -> FeatureFlags {
+        FeatureFlags::from_gates_and_lookup_features(
+            gates,
+            LookupFeatures::from_gates(gates, uses_runtime_tables),
+        )
+    }
+}
+
 impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
@@ -643,6 +717,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
+    pub fn max_poly_size(mut self, max_poly_size: Option<usize>) -> Self {
+        self.max_poly_size = max_poly_size;
+        self
+    }
+
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
@@ -653,43 +732,122 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
+        let feature_flags = FeatureFlags::from_gates(&gates, runtime_tables.is_some());
 
-        let num_lookups = {
-            let mut num_lookups: usize = lookup_tables
+        let lookup_domain_size = {
+            // First we sum over the lookup table size
+            let mut has_table_with_id_0 = false;
+            let mut lookup_domain_size: usize = lookup_tables
                 .iter()
-                .map(
-                    |LookupTable { data, id: _ }| {
-                        if data.is_empty() {
-                            0
-                        } else {
-                            data[0].len()
-                        }
-                    },
-                )
+                .map(|LookupTable { id, data }| {
+                    // See below for the reason
+                    if *id == 0_i32 {
+                        has_table_with_id_0 = true
+                    }
+                    if data.is_empty() {
+                        0
+                    } else {
+                        data[0].len()
+                    }
+                })
                 .sum();
-            for runtime_table in runtime_tables.iter() {
-                num_lookups += runtime_table.len();
-            }
-            let LookupFeatures { patterns, .. } = &lookup_features;
-            for pattern in patterns.into_iter() {
-                if let Some(gate_table) = pattern.table() {
-                    num_lookups += gate_table.table_size();
+            // After that on the runtime tables
+            if let Some(runtime_tables) = runtime_tables.as_ref() {
+                // FIXME: Check that a runtime table with ID 0 is enforced to
+                // contain a zero entry row.
+                for runtime_table in runtime_tables.iter() {
+                    lookup_domain_size += runtime_table.len();
                 }
             }
-            num_lookups
+            // And we add the built-in tables, depending on the features.
+            let LookupFeatures { patterns, .. } = &feature_flags.lookup_features;
+            let mut gate_lookup_tables = GateLookupTables {
+                xor: false,
+                range_check: false,
+            };
+            for pattern in patterns.into_iter() {
+                if let Some(gate_table) = pattern.table() {
+                    gate_lookup_tables[gate_table] = true
+                }
+            }
+            for gate_table in gate_lookup_tables.into_iter() {
+                lookup_domain_size += gate_table.table_size();
+            }
+
+            // A dummy zero entry will be added if there is no table with ID
+            // zero. Therefore we must count this in the size.
+            if has_table_with_id_0 {
+                lookup_domain_size
+            } else {
+                lookup_domain_size + 1
+            }
         };
 
-        //~ 2. Create a domain for the circuit. That is,
+        //~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
+        //~    achieve zero-knowledge. The following constraints apply to `zk_rows`:
+        //~    * The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
+        //~      each column for `2*c` evaluations per column, so `zk_rows >= 2*c + 1`.
+        //~    * The permutation argument interacts with the `c` chunks in parallel, so it is
+        //~      possible to cross-correlate between them to compromise zero knowledge. We know
+        //~      that there is some `c >= 1` such that `zk_rows = 2*c + k` from the above. Thus,
+        //~      attempting to find the evaluation at a new point, we find that:
+        //~      * the evaluation of every witness column in the permutation contains `k` unknowns;
+        //~      * the evaluations of the permutation argument aggregation has `k-1` unknowns;
+        //~      * the permutation argument applies on all but `zk_rows - 3` rows;
+        //~      * and thus we form the equation `zk_rows - 3 < 7 * k + (k - 1)` to ensure that we
+        //~        can construct fewer equations than we have unknowns.
+        //~
+        //~    This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
+        //~    We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
+        //~    `zk_rows` and `domain_size` satisfying the fixpoint
+        //~
+        //~    ```text
+        //~    zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
+        //~    domain_size = circuit_size + zk_rows
+        //~    ```
+        //~
+        let (zk_rows, domain_size_lower_bound) = {
+            // We add 1 to the lookup domain size because there is one element
+            // used to close the permutation argument (the polynomial Z is of
+            // degree n + 1 where n is the order of the subgroup H).
+            let circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + 1);
+            let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
+
+            let mut zk_rows = 3;
+            let mut domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
+            if let Some(max_poly_size) = self.max_poly_size {
+                // Iterate to find a fixed-point where zk_rows is sufficient for the number of
+                // chunks that we use, and also does not cause us to overflow the domain size.
+                // NB: We use iteration here rather than hard-coding an assumption about
+                // `compute_size_of_domain`s internals. In practice, this will never be executed
+                // more than once.
+                while {
+                    let domain_size = D::<F>::compute_size_of_domain(domain_size_lower_bound)
+                        .ok_or(SetupError::DomainCreation(
+                            DomainCreationError::DomainSizeFailed(domain_size_lower_bound),
+                        ))?;
+                    let num_chunks = if domain_size < max_poly_size {
+                        1
+                    } else {
+                        domain_size / max_poly_size
+                    };
+                    zk_rows = (zk_rows_strict_lower_bound(num_chunks) + 1) as u64;
+                    domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
+                    domain_size < domain_size_lower_bound
+                } {}
+            }
+            (zk_rows, domain_size_lower_bound)
+        };
+
+        //~ 1. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
-        //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain_size_lower_bound =
-            std::cmp::max(gates.len(), num_lookups + 1) + ZK_ROWS as usize;
-        let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
+        //~    has order greater or equal to `n + zk_rows` elements.
+        let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)
+            .map_err(SetupError::DomainCreation)?;
 
-        assert!(domain.d1.size > ZK_ROWS);
+        assert!(domain.d1.size > zk_rows);
 
-        //~ 3. Pad the circuit: add zero gates to reach the domain size.
+        //~ 1. Pad the circuit: add zero gates to reach the domain size.
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
@@ -701,37 +859,20 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             .collect();
         gates.append(&mut padding);
 
-        let mut feature_flags = FeatureFlags {
-            range_check0: false,
-            range_check1: false,
-            lookup_features,
-            foreign_field_add: false,
-            foreign_field_mul: false,
-            xor: false,
-            rot: false,
-        };
-
-        for gate in &gates {
-            match gate.typ {
-                GateType::RangeCheck0 => feature_flags.range_check0 = true,
-                GateType::RangeCheck1 => feature_flags.range_check1 = true,
-                GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
-                GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
-                GateType::Xor16 => feature_flags.xor = true,
-                GateType::Rot64 => feature_flags.rot = true,
-                _ => (),
-            }
-        }
-
-        //~ 4. sample the `PERMUTS` shifts.
+        //~ 1. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
         //
         // Lookup
         // ------
-        let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
-                .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
+        let lookup_constraint_system = LookupConstraintSystem::create(
+            &gates,
+            lookup_tables,
+            runtime_tables,
+            &domain,
+            zk_rows as usize,
+        )
+        .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
 
@@ -748,6 +889,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             gates,
             shift: shifts.shifts,
             endo,
+            zk_rows,
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             feature_flags,
@@ -787,6 +929,34 @@ pub mod tests {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
             Self::for_testing(gates)
+        }
+    }
+
+    #[test]
+    pub fn test_domains_computation_with_runtime_tables() {
+        let dummy_gate = CircuitGate {
+            typ: GateType::Generic,
+            wires: [Wire::new(0, 0); PERMUTS],
+            coeffs: vec![Fp::zero()],
+        };
+        // inputs + expected output
+        let data = [((10, 10), 128), ((0, 0), 8), ((5, 100), 512)];
+        for ((number_of_rt_cfgs, size), expected_domain_size) in data.into_iter() {
+            let builder = ConstraintSystem::create(vec![dummy_gate.clone(), dummy_gate.clone()]);
+            let table_ids: Vec<i32> = (0..number_of_rt_cfgs).collect();
+            let rt_cfgs: Vec<RuntimeTableCfg<Fp>> = table_ids
+                .into_iter()
+                .map(|table_id| {
+                    let indexes: Vec<u32> = (0..size).collect();
+                    let first_column: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
+                    RuntimeTableCfg {
+                        id: table_id,
+                        first_column,
+                    }
+                })
+                .collect();
+            let res = builder.runtime(Some(rt_cfgs)).build().unwrap();
+            assert_eq!(res.domain.d1.size, expected_domain_size)
         }
     }
 }

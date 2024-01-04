@@ -5,6 +5,7 @@ use crate::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     evaluation_proof::DensePolynomialOrEvaluations,
     srs::SRS,
+    SRS as _,
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
@@ -28,6 +29,8 @@ where
 
     let size = 1 << 7;
     let srs = SRS::<Vesta>::create(size);
+
+    let num_chunks = 1;
 
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
@@ -79,9 +82,9 @@ where
             let comm = (0..a.len())
                 .map(|i| {
                     (
-                        srs.commit(&a[i].clone(), bounds[i], rng),
+                        srs.commit(&a[i].clone(), num_chunks, bounds[i], rng),
                         x.iter()
-                            .map(|xx| a[i].to_chunked_polynomial(size).evaluate_chunks(*xx))
+                            .map(|xx| a[i].to_chunked_polynomial(1, size).evaluate_chunks(*xx))
                             .collect::<Vec<_>>(),
                         bounds[i],
                     )

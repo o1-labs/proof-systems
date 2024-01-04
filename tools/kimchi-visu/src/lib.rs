@@ -13,7 +13,7 @@ use kimchi::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -75,7 +75,12 @@ where
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
+pub fn visu<G: KimchiCurve>(
+    index: &ProverIndex<G, OpeningProof<G>>,
+    witness: Option<Witness<G::ScalarField>>,
+) where
+    G::BaseField: PrimeField,
+{
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");
     let mut data = format!("const index = {index};");
