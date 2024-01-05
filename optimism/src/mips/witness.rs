@@ -43,13 +43,13 @@ impl SyscallEnv {
 }
 
 pub struct Env<Fp> {
-    pub instruction_counter: u32, // TODO: u32 will not be big enough..
+    pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
     pub last_memory_accesses: [usize; 3],
-    pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
+    pub memory_write_index: Vec<(u32, Vec<u64>)>,
     pub last_memory_write_index_accesses: [usize; 3],
     pub registers: Registers<u32>,
-    pub registers_write_index: Registers<u32>, // TODO: u32 will not be big enough..
+    pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
@@ -107,7 +107,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         Column::ScratchState(scratch_idx)
     }
 
-    type Variable = u32;
+    type Variable = u64;
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
         // No-op for witness
@@ -142,8 +142,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        let res = self.registers[*idx as usize];
-        self.write_column(output, res.into());
+        let res = self.registers[*idx as usize] as u64;
+        self.write_column(output, res);
         res
     }
 
@@ -153,6 +153,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         value: Self::Variable,
         if_is_true: &Self::Variable,
     ) {
+        let value: u32 = value.try_into().unwrap();
         if *if_is_true == 1 {
             self.registers[*idx as usize] = value
         } else if *if_is_true == 0 {
@@ -168,7 +169,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         output: Self::Position,
     ) -> Self::Variable {
         let res = self.registers_write_index[*idx as usize];
-        self.write_column(output, res.into());
+        self.write_column(output, res);
         res
     }
 
@@ -192,6 +193,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         addr: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
+        let addr: u32 = (*addr).try_into().unwrap();
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_page_idx = self.get_memory_page_index(page);
@@ -201,6 +203,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
+        let addr: u32 = (*addr).try_into().unwrap();
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_page_idx = self.get_memory_page_index(page);
@@ -213,15 +216,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         addr: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
+        let addr: u32 = (*addr).try_into().unwrap();
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_write_index_page_idx = self.get_memory_access_page_index(page);
         let value = self.memory_write_index[memory_write_index_page_idx].1[page_address];
-        self.write_column(output, value.into());
+        self.write_column(output, value);
         value
     }
 
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
+        let addr = *addr as u32;
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         let memory_write_index_page_idx = self.get_memory_access_page_index(page);
@@ -229,7 +234,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn constant(x: u32) -> Self::Variable {
-        x
+        x as u64
     }
 
     unsafe fn bitmask(
@@ -239,8 +244,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
         let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
-        self.write_column(position, res.into());
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -250,8 +257,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let by: u32 = (*by).try_into().unwrap();
         let res = x << by;
-        self.write_column(position, res.into());
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -261,8 +271,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let by: u32 = (*by).try_into().unwrap();
         let res = x >> by;
-        self.write_column(position, res.into());
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -272,14 +285,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let res = ((*x as i32) >> by) as u32;
-        self.write_column(position, res.into());
+        let x: u32 = (*x).try_into().unwrap();
+        let by: u32 = (*by).try_into().unwrap();
+        let res = ((x as i32) >> by) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         let res = if *x == 0 { 1 } else { 0 };
-        self.write_column(position, res.into());
+        self.write_column(position, res);
         res
     }
 
@@ -292,7 +308,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.write_column(position, 0);
             0
         } else {
-            self.write_field_column(position, Fp::from(*x as u64).inverse().unwrap());
+            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
             1 // Placeholder value
         }
     }
@@ -303,8 +319,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let res = if *x < *y { 1 } else { 0 };
-        self.write_column(position, res.into());
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = if x < y { 1 } else { 0 };
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -314,8 +333,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let res = if (*x as i32) < (*y as i32) { 1 } else { 0 };
-        self.write_column(position, res.into());
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = if (x as i32) < (y as i32) { 1 } else { 0 };
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -325,8 +347,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
         let res = x & y;
-        self.write_column(position, res.into());
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -336,8 +361,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
         let res = !(x | y);
-        self.write_column(position, res.into());
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -347,8 +375,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
         let res = x | y;
-        self.write_column(position, res.into());
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -358,9 +389,48 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let res = *x ^ *y;
-        self.write_column(position, res.into());
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = x ^ y;
+        let res = res as u64;
+        self.write_column(position, res);
         res
+    }
+
+    unsafe fn add_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        out_position: Self::Position,
+        overflow_position: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let u64_res = x + y;
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let u32_res = x + y;
+        let u32_res = u32_res as u64;
+        let overflows = if u32_res == u64_res { 0u64 } else { 1u64 };
+        self.write_column(out_position, u32_res);
+        self.write_column(overflow_position, overflows);
+        (u32_res, overflows)
+    }
+
+    unsafe fn sub_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        out_position: Self::Position,
+        underflow_position: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let u64_res = x - y;
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let u32_res = x - y;
+        let u32_res = u32_res as u64;
+        let underflows = if u32_res == u64_res { 0u64 } else { 1u64 };
+        self.write_column(out_position, u32_res);
+        self.write_column(underflow_position, underflows);
+        (u32_res, underflows)
     }
 
     unsafe fn mul_signed_witness(
@@ -369,8 +439,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let res = ((*x as i32) * (*y as i32)) as u32;
-        self.write_column(position, res.into());
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let res = ((x as i32) * (y as i32)) as u32;
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
@@ -381,11 +454,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_hi: Self::Position,
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let mul = (((*x as i32) as i64) * ((*y as i32) as i64)) as u64;
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let mul = (((x as i32) as i64) * ((y as i32) as i64)) as u64;
         let hi = (mul >> 32) as u32;
         let lo = (mul & ((1 << 32) - 1)) as u32;
-        self.write_column(position_hi, hi.into());
-        self.write_column(position_lo, lo.into());
+        let hi = hi as u64;
+        let lo = lo as u64;
+        self.write_column(position_hi, hi);
+        self.write_column(position_lo, lo);
         (hi, lo)
     }
 
@@ -396,11 +473,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_hi: Self::Position,
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let mul = (*x as u64) * (*y as u64);
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let mul = (x as u64) * (y as u64);
         let hi = (mul >> 32) as u32;
         let lo = (mul & ((1 << 32) - 1)) as u32;
-        self.write_column(position_hi, hi.into());
-        self.write_column(position_lo, lo.into());
+        let hi = hi as u64;
+        let lo = lo as u64;
+        self.write_column(position_hi, hi);
+        self.write_column(position_lo, lo);
         (hi, lo)
     }
 
@@ -411,10 +492,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_quotient: Self::Position,
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        let q = ((*x as i32) / (*y as i32)) as u32;
-        let r = ((*x as i32) % (*y as i32)) as u32;
-        self.write_column(position_quotient, q.into());
-        self.write_column(position_remainder, r.into());
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
+        let q = ((x as i32) / (y as i32)) as u32;
+        let r = ((x as i32) % (y as i32)) as u32;
+        let q = q as u64;
+        let r = r as u64;
+        self.write_column(position_quotient, q);
+        self.write_column(position_remainder, r);
         (q, r)
     }
 
@@ -425,10 +510,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_quotient: Self::Position,
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
+        let x: u32 = (*x).try_into().unwrap();
+        let y: u32 = (*y).try_into().unwrap();
         let q = x / y;
         let r = x % y;
-        self.write_column(position_quotient, q.into());
-        self.write_column(position_remainder, r.into());
+        let q = q as u64;
+        let r = r as u64;
+        self.write_column(position_quotient, q);
+        self.write_column(position_remainder, r);
         (q, r)
     }
 
@@ -437,13 +526,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
         let res = x.leading_zeros();
-        self.write_column(position, res.into());
+        let res = res as u64;
+        self.write_column(position, res);
         res
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        self.write_column(position, (*x).into());
+        self.write_column(position, *x);
         *x
     }
 
@@ -489,34 +580,34 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             .as_ref()
             .expect("to have a preimage if we're requesting it at a non-zero offset");
         let preimage_len = preimage.len();
+        let preimage_offset = self.registers.preimage_offset as u64;
 
-        let max_read_len = std::cmp::min(
-            self.registers.preimage_offset + len,
-            (preimage_len + LENGTH_SIZE) as u32,
-        ) - self.registers.preimage_offset;
+        let max_read_len =
+            std::cmp::min(preimage_offset + len, (preimage_len + LENGTH_SIZE) as u64)
+                - preimage_offset;
         // We read at most 4 bytes, ensuring that we respect word alignment.
         let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
 
         for i in 0..actual_read_len {
-            let idx = (self.registers.preimage_offset + i) as usize;
+            let idx = (preimage_offset + i) as usize;
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             if idx < LENGTH_SIZE {
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
-                    self.push_memory(&(*addr + i), length_byte as u32);
+                    self.push_memory(&(*addr + i), length_byte as u64);
                     self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
                 }
             } else {
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 unsafe {
-                    self.push_memory(&(*addr + i), preimage_byte as u32);
+                    self.push_memory(&(*addr + i), preimage_byte as u64);
                     self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
                 }
             }
         }
-        self.write_column(pos, actual_read_len.into());
+        self.write_column(pos, actual_read_len);
         actual_read_len
     }
 
@@ -535,6 +626,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             unsafe { self.push_memory_access(&(*addr + i), self.instruction_counter + 1) };
             // Fetch the value without allocating witness columns
             let value = {
+                let addr: u32 = (*addr).try_into().unwrap();
                 let page = addr >> PAGE_ADDRESS_SIZE;
                 let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
                 let memory_page_idx = self.get_memory_page_index(page);
@@ -609,12 +701,12 @@ impl<Fp: Field> Env<Fp> {
         };
 
         Env {
-            instruction_counter: state.step as u32,
+            instruction_counter: state.step,
             memory: initial_memory.clone(),
             last_memory_accesses: [0usize; 3],
             memory_write_index: memory_offsets
                 .iter()
-                .map(|offset| (*offset, vec![0u32; page_size]))
+                .map(|offset| (*offset, vec![0u64; page_size]))
                 .collect(),
             last_memory_write_index_accesses: [0usize; 3],
             registers: initial_registers.clone(),
@@ -691,7 +783,7 @@ impl<Fp: Field> Env<Fp> {
         }
 
         // Memory not found; dynamically allocate
-        let memory_write_index = vec![0u32; PAGE_SIZE as usize];
+        let memory_write_index = vec![0u64; PAGE_SIZE as usize];
         self.memory_write_index.push((page, memory_write_index));
         let i = self.memory_write_index.len() - 1;
         self.update_last_memory_write_index_access(i);
@@ -879,7 +971,7 @@ impl<Fp: Field> Env<Fp> {
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {
-        let m: u64 = self.instruction_counter as u64;
+        let m: u64 = self.instruction_counter;
         match at {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
@@ -938,7 +1030,7 @@ impl<Fp: Field> Env<Fp> {
             let s: State = State {
                 pc: self.registers.current_instruction_pointer,
                 next_pc: self.registers.next_instruction_pointer,
-                step: self.instruction_counter as u64,
+                step: self.instruction_counter,
                 registers: self.registers.general_purpose,
                 lo: self.registers.lo,
                 hi: self.registers.hi,
