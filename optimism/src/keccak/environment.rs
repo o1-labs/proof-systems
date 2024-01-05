@@ -346,9 +346,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn bytes_block(&self, i: usize) -> &[Self::Variable] {
+        let sponge_bytes = self.keccak_state.chunk(SPONGE_BYTES_OFF, SPONGE_BYTES_LEN);
         match i {
-            0 => &self.keccak_state.sponge_bytes[0..12],
-            1..=4 => &self.keccak_state.sponge_bytes[12 + (i - 1) * 31..12 + i * 31],
+            0 => &sponge_bytes[0..12],
+            1..=4 => &sponge_bytes[12 + (i - 1) * 31..12 + i * 31],
             _ => panic!("No more blocks of bytes can be part of padding"),
         }
     }
