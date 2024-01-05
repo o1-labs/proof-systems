@@ -369,8 +369,8 @@ impl Iota {
         Self { state_g, rc }
     }
 
-    pub fn state_g(&self, i: usize) -> u64 {
-        self.state_g[i]
+    pub fn state_g(&self) -> Vec<u64> {
+        self.state_g.clone()
     }
 
     pub fn rc(&self, i: usize) -> u64 {
