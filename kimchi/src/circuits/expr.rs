@@ -248,6 +248,19 @@ pub trait Literal: Sized {
     fn to_literal_ref(&self) -> Option<&Self::F>;
 }
 
+impl<F: Field> Literal for F {
+    type F = F;
+    fn literal(x: Self::F) -> Self {
+        x
+    }
+    fn to_literal(self) -> Result<Self::F, Self> {
+        Ok(self)
+    }
+    fn to_literal_ref(&self) -> Option<&Self::F> {
+        Some(self)
+    }
+}
+
 impl<F> Literal for ConstantTerm<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
@@ -649,23 +662,40 @@ impl<F, Column> From<ChallengeTerm> for Expr<ConstantExpr<F>, Column> {
     }
 }
 
-impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + PartialEq>
-    Expr<C, Column>
+impl<T: Literal, Column> Literal for ExprInner<T, Column> {
+    type F = T::F;
+    fn literal(x: Self::F) -> Self {
+        ExprInner::Constant(T::literal(x))
+    }
+    fn to_literal(self) -> Result<Self::F, Self> {
+        match self {
+            ExprInner::Constant(x) => match x.to_literal() {
+                Ok(x) => Ok(x),
+                Err(x) => Err(ExprInner::Constant(x)),
+            },
+            x => Err(x),
+        }
+    }
+    fn to_literal_ref(&self) -> Option<&Self::F> {
+        match self {
+            ExprInner::Constant(x) => x.to_literal_ref(),
+            _ => None,
+        }
+    }
+}
+
+impl<T: Literal + Clone + PartialEq> Operations<T>
+where
+    T::F: Field,
 {
-    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C, Column>, bool) {
-        use ExprInner::*;
+    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Self, bool) {
         use Operations::*;
         match self {
-            Atom(
-                Constant(_)
-                | Cell(_)
-                | VanishesOnZeroKnowledgeAndPreviousRows
-                | UnnormalizedLagrangeBasis(_),
-            ) => (self.clone(), false),
+            Atom(_) => (self.clone(), false),
             Double(c) => {
                 let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
                 if reduce_further && c_reduced.is_zero() {
-                    (Expr::zero(), true)
+                    (Self::zero(), true)
                 } else {
                     (Double(Box::new(c_reduced)), false)
                 }
@@ -683,7 +713,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
                 let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
                 if reduce_further1 && c1_reduced.is_zero() {
                     if reduce_further2 && c2_reduced.is_zero() {
-                        (Expr::zero(), true)
+                        (Self::zero(), true)
                     } else {
                         (c2_reduced, false)
                     }
@@ -698,7 +728,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
                 let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
                 if reduce_further1 && c1_reduced.is_zero() {
                     if reduce_further2 && c2_reduced.is_zero() {
-                        (Expr::zero(), true)
+                        (Self::zero(), true)
                     } else {
                         (-c2_reduced, false)
                     }
@@ -714,10 +744,10 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
                 if reduce_further1 && c1_reduced.is_zero()
                     || reduce_further2 && c2_reduced.is_zero()
                 {
-                    (Expr::zero(), true)
+                    (Self::zero(), true)
                 } else if reduce_further1 && c1_reduced.is_one() {
                     if reduce_further2 && c2_reduced.is_one() {
-                        (Expr::one(), true)
+                        (Self::one(), true)
                     } else {
                         (c2_reduced, false)
                     }
@@ -780,7 +810,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
             }
         }
     }
-    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C, Column> {
+    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Self {
         let (res, _) = self.apply_feature_flags_inner(features);
         res
     }
@@ -2132,19 +2162,6 @@ impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
     }
 }
 
-impl<F: One, Column> Expr<F, Column> {
-    /// Exponentiate an expression
-    #[must_use]
-    pub fn pow(self, p: u64) -> Self {
-        use ExprInner::*;
-        use Operations::*;
-        if p == 0 {
-            return Atom(Constant(F::one()));
-        }
-        Pow(Box::new(self), p)
-    }
-}
-
 type Monomials<F, Column> = HashMap<Vec<Variable<Column>>, Expr<F, Column>>;
 
 fn mul_monomials<
@@ -2153,7 +2170,11 @@ fn mul_monomials<
 >(
     e1: &Monomials<F, Column>,
     e2: &Monomials<F, Column>,
-) -> Monomials<F, Column> {
+) -> Monomials<F, Column>
+where
+    ExprInner<F, Column>: Literal,
+    <ExprInner<F, Column> as Literal>::F: Field,
+{
     let mut res: HashMap<_, Expr<F, Column>> = HashMap::new();
     for (m1, c1) in e1.iter() {
         for (m2, c2) in e2.iter() {
@@ -2170,6 +2191,9 @@ fn mul_monomials<
 
 impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + std::hash::Hash>
     Expr<F, Column>
+where
+    ExprInner<F, Column>: Literal,
+    <ExprInner<F, Column> as Literal>::F: Field,
 {
     // TODO: This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
@@ -2306,7 +2330,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + s
     /// are the same thing as polynomials with `F[V_1]` coefficients in variables `V_0`.
     ///
     /// There is also a function
-    /// `lin_or_err : (F[V_1])[V_0] -> Result<Vec<(V_0, F[V_2])>, &str>`
+    /// `lin_or_err : (F[V_1])[V_0] -> Result<Vec<(V_0, F[V_1])>, &str>`
     ///
     /// which checks if the given input is in fact a degree 1 polynomial in the variables `V_0`
     /// (i.e., a linear combination of `V_0` elements with `F[V_1]` coefficients)
@@ -2470,6 +2494,10 @@ where
 {
     type Output = Self;
     fn mul(self, other: Self) -> Self {
+        if self.is_zero() || other.is_zero() {
+            return Self::zero();
+        }
+
         if self.is_one() {
             return other;
         }
@@ -2488,60 +2516,11 @@ where
     }
 }
 
-impl<F: Zero, Column> Zero for Expr<F, Column> {
-    fn zero() -> Self {
-        Expr::Atom(ExprInner::Constant(F::zero()))
-    }
-
-    fn is_zero(&self) -> bool {
-        match self {
-            Expr::Atom(ExprInner::Constant(x)) => x.is_zero(),
-            _ => false,
-        }
-    }
-}
-
-impl<F: Zero + One + PartialEq, Column: PartialEq> One for Expr<F, Column> {
-    fn one() -> Self {
-        Expr::Atom(ExprInner::Constant(F::one()))
-    }
-
-    fn is_one(&self) -> bool {
-        match self {
-            Expr::Atom(ExprInner::Constant(x)) => x.is_one(),
-            _ => false,
-        }
-    }
-}
-
-impl<F: One + Neg<Output = F>, Column> Neg for Expr<F, Column> {
-    type Output = Expr<F, Column>;
-
-    fn neg(self) -> Expr<F, Column> {
-        match self {
-            Expr::Atom(ExprInner::Constant(x)) => Expr::Atom(ExprInner::Constant(x.neg())),
-            e => Expr::Mul(
-                Box::new(Expr::Atom(ExprInner::Constant(F::one().neg()))),
-                Box::new(e),
-            ),
-        }
-    }
-}
-
-impl<F: Zero, Column> Add<Expr<F, Column>> for Expr<F, Column> {
-    type Output = Expr<F, Column>;
-    fn add(self, other: Self) -> Self {
-        if self.is_zero() {
-            return other;
-        }
-        if other.is_zero() {
-            return self;
-        }
-        Expr::Add(Box::new(self), Box::new(other))
-    }
-}
-
-impl<F: Zero + Clone, Column: Clone> AddAssign<Expr<F, Column>> for Expr<F, Column> {
+impl<F: Zero + Clone, Column: Clone> AddAssign<Expr<F, Column>> for Expr<F, Column>
+where
+    ExprInner<F, Column>: Literal,
+    <ExprInner<F, Column> as Literal>::F: Field,
+{
     fn add_assign(&mut self, other: Self) {
         if self.is_zero() {
             *self = other;
@@ -2551,27 +2530,12 @@ impl<F: Zero + Clone, Column: Clone> AddAssign<Expr<F, Column>> for Expr<F, Colu
     }
 }
 
-impl<F: Zero + One + PartialEq, Column: PartialEq> Mul<Expr<F, Column>> for Expr<F, Column> {
-    type Output = Expr<F, Column>;
-    fn mul(self, other: Self) -> Self {
-        if self.is_zero() || other.is_zero() {
-            return Self::zero();
-        }
-
-        if self.is_one() {
-            return other;
-        }
-        if other.is_one() {
-            return self;
-        }
-        Expr::Mul(Box::new(self), Box::new(other))
-    }
-}
-
 impl<F, Column> MulAssign<Expr<F, Column>> for Expr<F, Column>
 where
     F: Zero + One + PartialEq + Clone,
     Column: PartialEq + Clone,
+    ExprInner<F, Column>: Literal,
+    <ExprInner<F, Column> as Literal>::F: Field,
 {
     fn mul_assign(&mut self, other: Self) {
         if self.is_zero() || other.is_zero() {
@@ -2581,16 +2545,6 @@ where
         } else if !other.is_one() {
             *self = Expr::Mul(Box::new(self.clone()), Box::new(other));
         }
-    }
-}
-
-impl<F: Zero, Column> Sub<Expr<F, Column>> for Expr<F, Column> {
-    type Output = Expr<F, Column>;
-    fn sub(self, other: Self) -> Self {
-        if other.is_zero() {
-            return self;
-        }
-        Expr::Sub(Box::new(self), Box::new(other))
     }
 }
 
