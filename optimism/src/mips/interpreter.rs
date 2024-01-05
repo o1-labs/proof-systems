@@ -122,33 +122,9 @@ pub enum Sign {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Signed<T> {
-    pub sign: Sign,
-    pub magnitude: T,
-}
-
-#[derive(Copy, Clone)]
 pub enum LookupMode {
     Read,
     Write,
-}
-
-impl<T: One> Signed<T> {
-    /// Creates a new Signed element, either a Read or a Write, and can be null if the flag is zero
-    // TODO: if the flag trick works, then RC does not need to be length 25 anymore nor nonzero default column values
-    // FIXME: check what is the value of the flags at the witness stage
-    pub fn new(rw: LookupMode, flag: Option<T>) -> Self {
-        match rw {
-            LookupMode::Read => Self {
-                sign: Sign::Neg,
-                magnitude: flag.unwrap_or_else(|| T::one()),
-            },
-            LookupMode::Write => Self {
-                sign: Sign::Pos,
-                magnitude: flag.unwrap_or_else(|| T::one()),
-            },
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -172,9 +148,58 @@ pub enum LookupTable {
 
 #[derive(Clone, Debug)]
 pub struct Lookup<Fp> {
-    pub numerator: Signed<Fp>,
+    pub mode: LookupMode,
+    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
+    pub magnitude: Fp,
     pub table_id: LookupTable,
     pub value: Vec<Fp>,
+}
+
+impl<T: One> Lookup<T> {
+    pub fn new(mode: LookupMode, table_id: LookupTable, value: Vec<T>) -> Self {
+        Self {
+            mode,
+            magnitude: T::one(),
+            table_id,
+            value,
+        }
+    }
+
+    pub fn read_if(if_is_true: T, table_id: LookupTable, value: Vec<T>) -> Self {
+        Self {
+            mode: LookupMode::Read,
+            magnitude: if_is_true,
+            table_id,
+            value,
+        }
+    }
+
+    pub fn write_if(if_is_true: T, table_id: LookupTable, value: Vec<T>) -> Self {
+        Self {
+            mode: LookupMode::Write,
+            magnitude: if_is_true,
+            table_id,
+            value,
+        }
+    }
+
+    pub fn read_one(table_id: LookupTable, value: Vec<T>) -> Self {
+        Self {
+            mode: LookupMode::Read,
+            magnitude: T::one(),
+            table_id,
+            value,
+        }
+    }
+
+    pub fn write_one(table_id: LookupTable, value: Vec<T>) -> Self {
+        Self {
+            mode: LookupMode::Write,
+            magnitude: T::one(),
+            table_id,
+            value,
+        }
+    }
 }
 
 pub trait InterpreterEnv {
@@ -186,7 +211,8 @@ pub trait InterpreterEnv {
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug;
+        + std::fmt::Debug
+        + One;
 
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
@@ -327,22 +353,16 @@ pub trait InterpreterEnv {
             instruction_counter + Self::constant(1)
         };
         unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: if_is_true.clone(),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: vec![idx.clone(), last_accessed, old_value.clone()],
-        });
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: if_is_true.clone(),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: vec![idx.clone(), new_accessed, new_value.clone()],
-        });
+        self.add_lookup(Lookup::write_if(
+            if_is_true.clone(),
+            LookupTable::RegisterLookup,
+            vec![idx.clone(), last_accessed, old_value.clone()],
+        ));
+        self.add_lookup(Lookup::read_if(
+            if_is_true.clone(),
+            LookupTable::RegisterLookup,
+            vec![idx.clone(), new_accessed, new_value.clone()],
+        ));
         self.range_check64(&elapsed_time);
     }
 
@@ -468,22 +488,14 @@ pub trait InterpreterEnv {
             instruction_counter + Self::constant(1)
         };
         unsafe { self.push_memory_access(addr, new_accessed.clone()) };
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: Self::constant(1),
-            },
-            table_id: LookupTable::MemoryLookup,
-            value: vec![addr.clone(), last_accessed, old_value.clone()],
-        });
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: Self::constant(1),
-            },
-            table_id: LookupTable::MemoryLookup,
-            value: vec![addr.clone(), new_accessed, new_value.clone()],
-        });
+        self.add_lookup(Lookup::write_one(
+            LookupTable::MemoryLookup,
+            vec![addr.clone(), last_accessed, old_value.clone()],
+        ));
+        self.add_lookup(Lookup::read_one(
+            LookupTable::MemoryLookup,
+            vec![addr.clone(), new_accessed, new_value.clone()],
+        ));
         self.range_check64(&elapsed_time);
     }
 
@@ -524,14 +536,10 @@ pub trait InterpreterEnv {
         unsafe {
             self.push_register(&idx, ip.clone());
         }
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: Self::constant(1),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: vec![idx, new_accessed, ip],
-        });
+        self.add_lookup(Lookup::read_one(
+            LookupTable::RegisterLookup,
+            vec![idx, new_accessed, ip],
+        ));
     }
 
     fn get_instruction_pointer(&mut self) -> Self::Variable {
@@ -540,14 +548,10 @@ pub trait InterpreterEnv {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_register(&idx, value_location) }
         };
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: Self::constant(1),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: vec![idx, self.instruction_counter(), ip.clone()],
-        });
+        self.add_lookup(Lookup::write_one(
+            LookupTable::RegisterLookup,
+            vec![idx, self.instruction_counter(), ip.clone()],
+        ));
         ip
     }
 
@@ -560,14 +564,10 @@ pub trait InterpreterEnv {
         unsafe {
             self.push_register(&idx, ip.clone());
         }
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: Self::constant(1),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: vec![idx, new_accessed, ip],
-        });
+        self.add_lookup(Lookup::read_one(
+            LookupTable::RegisterLookup,
+            vec![idx, new_accessed, ip],
+        ));
     }
 
     fn get_next_instruction_pointer(&mut self) -> Self::Variable {
@@ -576,14 +576,10 @@ pub trait InterpreterEnv {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_register(&idx, value_location) }
         };
-        self.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: Self::constant(1),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: vec![idx, self.instruction_counter(), ip.clone()],
-        });
+        self.add_lookup(Lookup::write_one(
+            LookupTable::RegisterLookup,
+            vec![idx, self.instruction_counter(), ip.clone()],
+        ));
         ip
     }
 
@@ -766,6 +762,36 @@ pub trait InterpreterEnv {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable;
+
+    /// Returns `x + y` and the overflow bit, storing the results in `position_out` and
+    /// `position_overflow` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that they are correctly constructed.
+    unsafe fn add_witness(
+        &mut self,
+        y: &Self::Variable,
+        x: &Self::Variable,
+        out_position: Self::Position,
+        overflow_position: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
+
+    /// Returns `x + y` and the underflow bit, storing the results in `position_out` and
+    /// `position_underflow` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that they are correctly constructed.
+    unsafe fn sub_witness(
+        &mut self,
+        y: &Self::Variable,
+        x: &Self::Variable,
+        out_position: Self::Position,
+        underflow_position: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
 
     /// Returns `x * y`, where `x` and `y` are treated as integers, storing the result in `position`.
     ///
@@ -1475,7 +1501,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::Add => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            env.write_register(&rd, rs + rt);
+            let res = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&rs, &rt, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
+            env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
@@ -1483,7 +1517,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::AddUnsigned => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            env.write_register(&rd, rs + rt);
+            let res = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&rs, &rt, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
+            env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
@@ -1491,7 +1533,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::Sub => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            env.write_register(&rd, rs - rt);
+            let res = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.sub_witness(&rs, &rt, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
+            env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
@@ -1499,7 +1549,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SubUnsigned => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            env.write_register(&rd, rs - rt);
+            let res = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.sub_witness(&rs, &rt, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
+            env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
@@ -1694,8 +1752,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let equals = env.equal(&rs, &rt);
             let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * offset;
             let addr = {
-                let pos = env.alloc_scratch();
-                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
@@ -1707,8 +1775,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let equals = env.equal(&rs, &rt);
             let offset = equals.clone() * Env::constant(4) + (Env::constant(1) - equals) * offset;
             let addr = {
-                let pos = env.alloc_scratch();
-                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
@@ -1727,8 +1805,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset = (Env::constant(1) - less_than_or_equal_to.clone()) * Env::constant(4)
                 + less_than_or_equal_to * offset;
             let addr = {
-                let pos = env.alloc_scratch();
-                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
@@ -1744,8 +1832,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset =
                 (Env::constant(1) - less_than.clone()) * Env::constant(4) + less_than * offset;
             let addr = {
-                let pos = env.alloc_scratch();
-                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
@@ -1761,8 +1859,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset =
                 (Env::constant(1) - less_than.clone()) * Env::constant(4) + less_than * offset;
             let addr = {
-                let pos = env.alloc_scratch();
-                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
@@ -1778,8 +1886,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset =
                 less_than.clone() * Env::constant(4) + (Env::constant(1) - less_than) * offset;
             let addr = {
-                let pos = env.alloc_scratch();
-                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(
+                        &next_instruction_pointer,
+                        &offset,
+                        res_scratch,
+                        overflow_scratch,
+                    )
+                };
+                // FIXME: Requires a range check
+                res
             };
             env.set_instruction_pointer(next_instruction_pointer);
             env.set_next_instruction_pointer(addr);
@@ -1787,7 +1905,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::AddImmediate => {
             let register_rs = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let res = register_rs + offset;
+            let res = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(&register_rs, &offset, res_scratch, overflow_scratch)
+                };
+                // FIXME: Requires a range check
+                res
+            };
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1796,7 +1922,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             debug!("Fetching register: {:?}", rs);
             let register_rs = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let res = register_rs + offset;
+            let res = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) = unsafe {
+                    env.add_witness(&register_rs, &offset, res_scratch, overflow_scratch)
+                };
+                // FIXME: Requires a range check
+                res
+            };
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -1869,7 +2003,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let base = env.read_register(&rs);
             let dest = rt;
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base + offset;
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let v0 = env.read_memory(&addr);
             let value = env.sign_extend(&v0, 8);
             env.write_register(&dest, value);
@@ -1880,7 +2021,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let base = env.read_register(&rs);
             let dest = rt;
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base + offset;
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let v0 = env.read_memory(&addr);
             let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
             let value = (v0 * Env::constant(1 << 8)) + v1;
@@ -1893,7 +2041,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let base = env.read_register(&rs);
             let dest = rt;
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             debug!(
                 "lw {:?}, {:?}({:?})",
                 dest.clone(),
@@ -1918,7 +2073,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let base = env.read_register(&rs);
             let dest = rt;
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base + offset;
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let v0 = env.read_memory(&addr);
             let value = v0;
             env.write_register(&dest, value);
@@ -1929,7 +2091,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let base = env.read_register(&rs);
             let dest = rt;
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let v0 = env.read_memory(&addr);
             let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
             let value = v0 * Env::constant(1 << 8) + v1;
@@ -1940,7 +2109,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::LoadWordLeft => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
 
             let byte_subaddr = {
                 // FIXME: Requires a range check
@@ -2001,7 +2177,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::LoadWordRight => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
 
             let byte_subaddr = {
                 // FIXME: Requires a range check
@@ -2066,7 +2249,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Store8 => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let value = env.read_register(&rt);
             let v0 = {
                 // FIXME: Requires a range check
@@ -2080,7 +2270,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Store16 => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let value = env.read_register(&rt);
             let [v0, v1] = {
                 [
@@ -2104,7 +2301,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Store32 => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let value = env.read_register(&rt);
             let [v0, v1, v2, v3] = {
                 [
@@ -2140,7 +2344,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Store32Conditional => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
             let value = env.read_register(&rt);
             let [v0, v1, v2, v3] = {
                 [
@@ -2178,7 +2389,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::StoreWordLeft => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
 
             let byte_subaddr = {
                 // FIXME: Requires a range check
@@ -2261,7 +2479,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::StoreWordRight => {
             let base = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
-            let addr = base.clone() + offset.clone();
+            let addr = {
+                let res_scratch = env.alloc_scratch();
+                let overflow_scratch = env.alloc_scratch();
+                let (res, _overflow) =
+                    unsafe { env.add_witness(&base, &offset, res_scratch, overflow_scratch) };
+                // FIXME: Requires a range check
+                res
+            };
 
             let byte_subaddr = {
                 // FIXME: Requires a range check
