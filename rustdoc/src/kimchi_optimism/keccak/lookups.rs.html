@@ -167,28 +167,12 @@
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
     ArithOps, E,
 };
-<span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::{Lookup, LookupTable, Signed};
+<span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::{Lookup, LookupTable};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, SHIFTS, SHIFTS_LEN, STATE_LEN,
@@ -227,11 +211,10 @@
             // Power of two corresponds to 2^pad_length
             // Pad suffixes correspond to 10*1 rule
             // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
-            </span><span class="self">self</span>.add_lookup(Lookup {
-                numerator: Signed::read_one(),
-                table_id: LookupTable::PadLookup,
-                value: <span class="macro">vec!</span>[
-                    <span class="self">self</span>.keccak_state[KeccakColumn::FlagLength].clone(),
+            </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                LookupTable::PadLookup,
+                <span class="macro">vec!</span>[
+                    <span class="self">self</span>.length(),
                     <span class="self">self</span>.two_to_pad(),
                     <span class="self">self</span>.pad_suffix(<span class="number">0</span>),
                     <span class="self">self</span>.pad_suffix(<span class="number">1</span>),
@@ -239,35 +222,32 @@
                     <span class="self">self</span>.pad_suffix(<span class="number">3</span>),
                     <span class="self">self</span>.pad_suffix(<span class="number">4</span>),
                 ],
-            });
+            ));
             <span class="comment">// BYTES LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">200 </span>{
                 <span class="comment">// Bytes are &lt;2^8
-                </span><span class="self">self</span>.add_lookup(Lookup {
-                    numerator: Signed::read_one(),
-                    table_id: LookupTable::ByteLookup,
-                    value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_bytes(i)],
-                })
+                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                    LookupTable::ByteLookup,
+                    <span class="macro">vec!</span>[<span class="self">self</span>.sponge_bytes(i)],
+                ));
             }
             <span class="comment">// SHIFTS LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
                 <span class="comment">// Shifts1, Shifts2, Shifts3 are in the Sparse table
-                </span><span class="self">self</span>.add_lookup(Lookup {
-                    numerator: Signed::read_one(),
-                    table_id: LookupTable::SparseLookup,
-                    value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_shifts(i)],
-                })
+                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                    LookupTable::SparseLookup,
+                    <span class="macro">vec!</span>[<span class="self">self</span>.sponge_shifts(i)],
+                ));
             }
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
                 <span class="comment">// Shifts0 together with Bits composition by pairs are in the Reset table
-                </span><span class="self">self</span>.add_lookup(Lookup {
-                    numerator: Signed::read_one(),
-                    table_id: LookupTable::ResetLookup,
-                    value: <span class="macro">vec!</span>[
+                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                    LookupTable::ResetLookup,
+                    <span class="macro">vec!</span>[
                         <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i) + <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>),
                         <span class="self">self</span>.sponge_shifts(i),
                     ],
-                })
+                ));
             }
         }
 
@@ -277,30 +257,26 @@
             </span><span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                 <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
                     <span class="comment">// Check that ThetaRemainderC &lt; 2^64
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::RangeCheck16Lookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.remainder_c(x, q).clone()],
-                    });
+                    </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                        LookupTable::RangeCheck16Lookup,
+                        <span class="macro">vec!</span>[<span class="self">self</span>.remainder_c(x, q)],
+                    ));
                     <span class="comment">// Check ThetaExpandRotC is the expansion of ThetaDenseRotC
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.dense_rot_c(x, q), <span class="self">self</span>.expand_rot_c(x, q)],
-                    });
+                    </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                        LookupTable::ResetLookup,
+                        <span class="macro">vec!</span>[<span class="self">self</span>.dense_rot_c(x, q), <span class="self">self</span>.expand_rot_c(x, q)],
+                    ));
                     <span class="comment">// Check ThetaShiftC0 is the expansion of ThetaDenseC
-                    </span><span class="self">self</span>.add_lookup(Lookup {
-                        numerator: Signed::read_one(),
-                        table_id: LookupTable::ResetLookup,
-                        value: <span class="macro">vec!</span>[<span class="self">self</span>.dense_c(x, q), <span class="self">self</span>.shifts_c(<span class="number">0</span>, x, q)],
-                    });
+                    </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                        LookupTable::ResetLookup,
+                        <span class="macro">vec!</span>[<span class="self">self</span>.dense_c(x, q), <span class="self">self</span>.shifts_c(<span class="number">0</span>, x, q)],
+                    ));
                     <span class="comment">// Check that the rest of ThetaShiftsC are in the Sparse table
                     </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
-                        <span class="self">self</span>.add_lookup(Lookup {
-                            numerator: Signed::read_one(),
-                            table_id: LookupTable::SparseLookup,
-                            value: <span class="macro">vec!</span>[<span class="self">self</span>.shifts_c(i, x, q)],
-                        });
+                        <span class="self">self</span>.add_lookup(Lookup::read_one(
+                            LookupTable::SparseLookup,
+                            <span class="macro">vec!</span>[<span class="self">self</span>.shifts_c(i, x, q)],
+                        ));
                     }
                 }
             }
@@ -309,35 +285,30 @@
                 <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
                     <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
                         <span class="comment">// Check that PiRhoRemainderE &lt; 2^64 and PiRhoQuotientE &lt; 2^64
-                        </span><span class="self">self</span>.add_lookup(Lookup {
-                            numerator: Signed::read_one(),
-                            table_id: LookupTable::RangeCheck16Lookup,
-                            value: <span class="macro">vec!</span>[<span class="self">self</span>.remainder_e(y, x, q)],
-                        });
-                        <span class="self">self</span>.add_lookup(Lookup {
-                            numerator: Signed::read_one(),
-                            table_id: LookupTable::RangeCheck16Lookup,
-                            value: <span class="macro">vec!</span>[<span class="self">self</span>.quotient_e(y, x, q)],
-                        });
+                        </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                            LookupTable::RangeCheck16Lookup,
+                            <span class="macro">vec!</span>[<span class="self">self</span>.remainder_e(y, x, q)],
+                        ));
+                        <span class="self">self</span>.add_lookup(Lookup::read_one(
+                            LookupTable::RangeCheck16Lookup,
+                            <span class="macro">vec!</span>[<span class="self">self</span>.quotient_e(y, x, q)],
+                        ));
                         <span class="comment">// Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
-                        </span><span class="self">self</span>.add_lookup(Lookup {
-                            numerator: Signed::read_one(),
-                            table_id: LookupTable::ResetLookup,
-                            value: <span class="macro">vec!</span>[<span class="self">self</span>.dense_rot_e(y, x, q), <span class="self">self</span>.expand_rot_e(y, x, q)],
-                        });
+                        </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                            LookupTable::ResetLookup,
+                            <span class="macro">vec!</span>[<span class="self">self</span>.dense_rot_e(y, x, q), <span class="self">self</span>.expand_rot_e(y, x, q)],
+                        ));
                         <span class="comment">// Check PiRhoShift0E is the expansion of PiRhoDenseE
-                        </span><span class="self">self</span>.add_lookup(Lookup {
-                            numerator: Signed::read_one(),
-                            table_id: LookupTable::ResetLookup,
-                            value: <span class="macro">vec!</span>[<span class="self">self</span>.dense_e(y, x, q), <span class="self">self</span>.shifts_e(<span class="number">0</span>, y, x, q)],
-                        });
+                        </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                            LookupTable::ResetLookup,
+                            <span class="macro">vec!</span>[<span class="self">self</span>.dense_e(y, x, q), <span class="self">self</span>.shifts_e(<span class="number">0</span>, y, x, q)],
+                        ));
                         <span class="comment">// Check that the rest of PiRhoShiftsE are in the Sparse table
                         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
-                            <span class="self">self</span>.add_lookup(Lookup {
-                                numerator: Signed::read_one(),
-                                table_id: LookupTable::SparseLookup,
-                                value: <span class="macro">vec!</span>[<span class="self">self</span>.shifts_e(i, y, x, q)],
-                            });
+                            <span class="self">self</span>.add_lookup(Lookup::read_one(
+                                LookupTable::SparseLookup,
+                                <span class="macro">vec!</span>[<span class="self">self</span>.shifts_e(i, y, x, q)],
+                            ));
                         }
                     }
                 }
@@ -345,25 +316,22 @@
             <span class="comment">// CHI LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
                 <span class="comment">// Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-                </span><span class="self">self</span>.add_lookup(Lookup {
-                    numerator: Signed::read_one(),
-                    table_id: LookupTable::SparseLookup,
-                    value: <span class="macro">vec!</span>[<span class="self">self</span>.vec_shifts_b()[i].clone()],
-                });
-                <span class="self">self</span>.add_lookup(Lookup {
-                    numerator: Signed::read_one(),
-                    table_id: LookupTable::SparseLookup,
-                    value: <span class="macro">vec!</span>[<span class="self">self</span>.vec_shifts_sum()[i].clone()],
-                });
+                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                    LookupTable::SparseLookup,
+                    <span class="macro">vec!</span>[<span class="self">self</span>.vec_shifts_b()[i].clone()],
+                ));
+                <span class="self">self</span>.add_lookup(Lookup::read_one(
+                    LookupTable::SparseLookup,
+                    <span class="macro">vec!</span>[<span class="self">self</span>.vec_shifts_sum()[i].clone()],
+                ));
             }
             <span class="comment">// IOTA LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                 <span class="comment">// Check round constants correspond with the current round
-                </span><span class="self">self</span>.add_lookup(Lookup {
-                    numerator: Signed::read_one(),
-                    table_id: LookupTable::RoundConstantsLookup,
-                    value: <span class="macro">vec!</span>[<span class="self">self</span>.round(), <span class="self">self</span>.round_constants()[i].clone()],
-                });
+                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
+                    LookupTable::ResetLookup,
+                    <span class="macro">vec!</span>[<span class="self">self</span>.round(), <span class="self">self</span>.round_constants()[i].clone()],
+                ));
             }
         }
     }

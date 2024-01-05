@@ -2603,10 +2603,6 @@
 <a href="#2603" id="2603">2603</a>
 <a href="#2604" id="2604">2604</a>
 <a href="#2605" id="2605">2605</a>
-<a href="#2606" id="2606">2606</a>
-<a href="#2607" id="2607">2607</a>
-<a href="#2608" id="2608">2608</a>
-<a href="#2609" id="2609">2609</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2731,24 +2727,9 @@
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug)]
-</span><span class="kw">pub struct </span>Signed&lt;T&gt; {
-    <span class="kw">pub </span>sign: Sign,
-    <span class="kw">pub </span>magnitude: T,
-}
-
-<span class="kw">impl</span>&lt;T: One&gt; Signed&lt;T&gt; {
-    <span class="kw">pub fn </span>read_one() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            sign: Sign::Neg,
-            magnitude: T::one(),
-        }
-    }
-    <span class="kw">pub fn </span>write_one() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            sign: Sign::Pos,
-            magnitude: T::one(),
-        }
-    }
+</span><span class="kw">pub enum </span>LookupMode {
+    Read,
+    Write,
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug)]
@@ -2772,9 +2753,49 @@
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>Lookup&lt;Fp&gt; {
-    <span class="kw">pub </span>numerator: Signed&lt;Fp&gt;,
+    <span class="kw">pub </span>mode: LookupMode,
+    <span class="doccomment">/// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
+    </span><span class="kw">pub </span>magnitude: Fp,
     <span class="kw">pub </span>table_id: LookupTable,
     <span class="kw">pub </span>value: Vec&lt;Fp&gt;,
+}
+
+<span class="kw">impl</span>&lt;T: One&gt; Lookup&lt;T&gt; {
+    <span class="kw">pub fn </span>read_if(if_is_true: T, table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            mode: LookupMode::Read,
+            magnitude: if_is_true,
+            table_id,
+            value,
+        }
+    }
+
+    <span class="kw">pub fn </span>write_if(if_is_true: T, table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            mode: LookupMode::Write,
+            magnitude: if_is_true,
+            table_id,
+            value,
+        }
+    }
+
+    <span class="kw">pub fn </span>read_one(table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            mode: LookupMode::Read,
+            magnitude: T::one(),
+            table_id,
+            value,
+        }
+    }
+
+    <span class="kw">pub fn </span>write_one(table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            mode: LookupMode::Write,
+            magnitude: T::one(),
+            table_id,
+            value,
+        }
+    }
 }
 
 <span class="kw">pub trait </span>InterpreterEnv {
@@ -2786,7 +2807,8 @@
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::fmt::Debug;
+        + std::fmt::Debug
+        + One;
 
     <span class="doccomment">/// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     </span><span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable);
@@ -2927,22 +2949,16 @@
             </span>instruction_counter + <span class="self">Self</span>::constant(<span class="number">1</span>)
         };
         <span class="kw">unsafe </span>{ <span class="self">self</span>.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: if_is_true.clone(),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: <span class="macro">vec!</span>[idx.clone(), last_accessed, old_value.clone()],
-        });
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: if_is_true.clone(),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: <span class="macro">vec!</span>[idx.clone(), new_accessed, new_value.clone()],
-        });
+        <span class="self">self</span>.add_lookup(Lookup::write_if(
+            if_is_true.clone(),
+            LookupTable::RegisterLookup,
+            <span class="macro">vec!</span>[idx.clone(), last_accessed, old_value.clone()],
+        ));
+        <span class="self">self</span>.add_lookup(Lookup::read_if(
+            if_is_true.clone(),
+            LookupTable::RegisterLookup,
+            <span class="macro">vec!</span>[idx.clone(), new_accessed, new_value.clone()],
+        ));
         <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
     }
 
@@ -3068,22 +3084,14 @@
             </span>instruction_counter + <span class="self">Self</span>::constant(<span class="number">1</span>)
         };
         <span class="kw">unsafe </span>{ <span class="self">self</span>.push_memory_access(addr, new_accessed.clone()) };
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
-            },
-            table_id: LookupTable::MemoryLookup,
-            value: <span class="macro">vec!</span>[addr.clone(), last_accessed, old_value.clone()],
-        });
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
-            },
-            table_id: LookupTable::MemoryLookup,
-            value: <span class="macro">vec!</span>[addr.clone(), new_accessed, new_value.clone()],
-        });
+        <span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTable::MemoryLookup,
+            <span class="macro">vec!</span>[addr.clone(), last_accessed, old_value.clone()],
+        ));
+        <span class="self">self</span>.add_lookup(Lookup::read_one(
+            LookupTable::MemoryLookup,
+            <span class="macro">vec!</span>[addr.clone(), new_accessed, new_value.clone()],
+        ));
         <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
     }
 
@@ -3124,14 +3132,10 @@
         <span class="kw">unsafe </span>{
             <span class="self">self</span>.push_register(<span class="kw-2">&amp;</span>idx, ip.clone());
         }
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: <span class="macro">vec!</span>[idx, new_accessed, ip],
-        });
+        <span class="self">self</span>.add_lookup(Lookup::read_one(
+            LookupTable::RegisterLookup,
+            <span class="macro">vec!</span>[idx, new_accessed, ip],
+        ));
     }
 
     <span class="kw">fn </span>get_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -3140,14 +3144,10 @@
             <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
             <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(<span class="kw-2">&amp;</span>idx, value_location) }
         };
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: <span class="macro">vec!</span>[idx, <span class="self">self</span>.instruction_counter(), ip.clone()],
-        });
+        <span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTable::RegisterLookup,
+            <span class="macro">vec!</span>[idx, <span class="self">self</span>.instruction_counter(), ip.clone()],
+        ));
         ip
     }
 
@@ -3160,14 +3160,10 @@
         <span class="kw">unsafe </span>{
             <span class="self">self</span>.push_register(<span class="kw-2">&amp;</span>idx, ip.clone());
         }
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Neg,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: <span class="macro">vec!</span>[idx, new_accessed, ip],
-        });
+        <span class="self">self</span>.add_lookup(Lookup::read_one(
+            LookupTable::RegisterLookup,
+            <span class="macro">vec!</span>[idx, new_accessed, ip],
+        ));
     }
 
     <span class="kw">fn </span>get_next_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -3176,14 +3172,10 @@
             <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
             <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(<span class="kw-2">&amp;</span>idx, value_location) }
         };
-        <span class="self">self</span>.add_lookup(Lookup {
-            numerator: Signed {
-                sign: Sign::Pos,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
-            },
-            table_id: LookupTable::RegisterLookup,
-            value: <span class="macro">vec!</span>[idx, <span class="self">self</span>.instruction_counter(), ip.clone()],
-        });
+        <span class="self">self</span>.add_lookup(Lookup::write_one(
+            LookupTable::RegisterLookup,
+            <span class="macro">vec!</span>[idx, <span class="self">self</span>.instruction_counter(), ip.clone()],
+        ));
         ip
     }
 
