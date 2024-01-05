@@ -91,7 +91,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                     self.is_absorb()
                         * (self.new_state(i).clone()
                             - Self::from_shifts(
-                                &self.keccak_state.sponge_shifts,
+                                self.vec_sponge_shifts(),
                                 Some(i),
                                 None,
                                 None,
@@ -105,7 +105,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                     self.is_squeeze()
                         * (self.old_state(i).clone()
                             - Self::from_shifts(
-                                &self.keccak_state.sponge_shifts,
+                                self.vec_sponge_shifts(),
                                 Some(i),
                                 None,
                                 None,
@@ -135,9 +135,9 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
 
             // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
             for x in 0..DIM {
-                let word_c = Self::from_quarters(&self.keccak_state.theta_dense_c, None, x);
-                let rem_c = Self::from_quarters(&self.keccak_state.theta_remainder_c, None, x);
-                let rot_c = Self::from_quarters(&self.keccak_state.theta_dense_rot_c, None, x);
+                let word_c = Self::from_quarters(self.vec_dense_c(), None, x);
+                let rem_c = Self::from_quarters(self.vec_remainder_c(), None, x);
+                let rot_c = Self::from_quarters(self.vec_dense_rot_c(), None, x);
 
                 self.constrain(
                     self.is_round()
@@ -157,7 +157,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                         self.is_round()
                             * (state_c[x][q].clone()
                                 - Self::from_shifts(
-                                    &self.keccak_state.theta_shifts_c,
+                                    self.vec_shifts_c(),
                                     None,
                                     None,
                                     Some(x),
@@ -177,13 +177,10 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
             for (y, col) in OFF.iter().enumerate() {
                 for (x, off) in col.iter().enumerate() {
-                    let word_e = Self::from_quarters(&self.keccak_state.pi_rho_dense_e, Some(y), x);
-                    let quo_e =
-                        Self::from_quarters(&self.keccak_state.pi_rho_quotient_e, Some(y), x);
-                    let rem_e =
-                        Self::from_quarters(&self.keccak_state.pi_rho_remainder_e, Some(y), x);
-                    let rot_e =
-                        Self::from_quarters(&self.keccak_state.pi_rho_dense_rot_e, Some(y), x);
+                    let word_e = Self::from_quarters(self.vec_dense_e(), Some(y), x);
+                    let quo_e = Self::from_quarters(self.vec_quotient_e(), Some(y), x);
+                    let rem_e = Self::from_quarters(self.vec_remainder_e(), Some(y), x);
+                    let rot_e = Self::from_quarters(self.vec_dense_rot_e(), Some(y), x);
 
                     self.constrain(
                         word_e * Self::two_pow(*off)
@@ -196,7 +193,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                             self.is_round()
                                 * (state_e[y][x][q].clone()
                                     - Self::from_shifts(
-                                        &self.keccak_state.pi_rho_shifts_e,
+                                        self.vec_shifts_e(),
                                         None,
                                         Some(y),
                                         Some(x),
@@ -221,7 +218,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                             self.is_round()
                                 * (state_b[y][x][q].clone()
                                     - Self::from_shifts(
-                                        &self.keccak_state.chi_shifts_b,
+                                        self.vec_shifts_b(),
                                         None,
                                         Some(y),
                                         Some(x),
@@ -232,7 +229,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                             self.is_round()
                                 * (sum
                                     - Self::from_shifts(
-                                        &self.keccak_state.chi_shifts_sum,
+                                        self.vec_shifts_sum(),
                                         None,
                                         Some(y),
                                         Some(x),
