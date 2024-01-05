@@ -84,8 +84,9 @@ impl<T: Clone> KeccakColumns<T> {
     ) -> &mut T {
         &mut self.curr[offset + grid_index(length, i, y, x, q)]
     }
-    pub fn chunk(&self, offset: usize, length: usize) -> Vec<T> {
-        self.curr[offset..offset + length].to_vec().clone()
+
+    pub fn chunk(&self, offset: usize, length: usize) -> &[T] {
+        &self.curr[offset..offset + length]
     }
 }
 
