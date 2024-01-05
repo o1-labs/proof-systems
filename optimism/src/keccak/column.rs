@@ -1,7 +1,17 @@
 use std::ops::{Index, IndexMut};
 
 use ark_ff::{One, Zero};
-use kimchi::circuits::polynomials::keccak::constants::*;
+use kimchi::circuits::polynomials::keccak::constants::{
+    CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
+    PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
+    PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
+    PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, SPONGE_BYTES_OFF,
+    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, THETA_DENSE_C_LEN,
+    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
+    THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
+    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF, THETA_STATE_A_LEN,
+    THETA_STATE_A_OFF,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
@@ -152,7 +162,7 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
                 self.curr(PIRHO_DENSE_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN, 0, y, x, q)
             }
             KeccakColumn::PiRhoExpandRotE(y, x, q) => {
-                self.curr(PIRHO_EXPAND_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN, 0, y, x, q)
+                self.curr(PIRHO_EXPAND_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN, 0, y, x, q)
             }
             KeccakColumn::ChiShiftsB(i, y, x, q) => {
                 self.curr(CHI_SHIFTS_B_OFF, CHI_SHIFTS_B_LEN, i, y, x, q)
