@@ -127,26 +127,6 @@ pub enum LookupMode {
     Write,
 }
 
-<<<<<<< HEAD
-impl<T: One> Signed<T> {
-    /// Creates a new Signed element, either a Read or a Write, and can be null if the flag is zero
-    // FIXME: check what is the value of the flags at the witness stage
-    pub fn new(rw: LookupMode, flag: Option<T>) -> Self {
-        match rw {
-            LookupMode::Read => Self {
-                sign: Sign::Neg,
-                magnitude: flag.unwrap_or_else(|| T::one()),
-            },
-            LookupMode::Write => Self {
-                sign: Sign::Pos,
-                magnitude: flag.unwrap_or_else(|| T::one()),
-            },
-        }
-    }
-}
-
-=======
->>>>>>> mips/keccak/lookup-helper-iota
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTable {
     MemoryLookup,
