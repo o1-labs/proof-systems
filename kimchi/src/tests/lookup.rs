@@ -23,10 +23,16 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
-    let lookup_table_values: Vec<Vec<_>> = table_sizes
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+
+    let mut lookup_table_values: Vec<Vec<_>> = table_sizes
         .iter()
-        .map(|size| (0..*size).map(|_| rand::random()).collect())
+        .map(|size| (0..*size).map(|_| rng.gen()).collect())
         .collect();
+    // Zero table must have a zero row
+    lookup_table_values[0][0] = From::from(0);
     let lookup_tables = lookup_table_values
         .iter()
         .enumerate()
@@ -55,16 +61,16 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         let num_tables = table_sizes.len();
         let mut tables_used = std::collections::HashSet::new();
         for _ in 0..num_lookups {
-            let table_id = rand::random::<usize>() % num_tables;
+            let table_id = rng.gen::<usize>() % num_tables;
             tables_used.insert(table_id);
             let lookup_table_values: &Vec<Fp> = &lookup_table_values[table_id];
             lookup_table_ids.push((table_id as u64).into());
             for i in 0..3 {
-                let index = rand::random::<usize>() % lookup_table_values.len();
+                let index = rng.gen::<usize>() % lookup_table_values.len();
                 let value = if use_values_from_table {
                     lookup_table_values[index]
                 } else {
-                    rand::random()
+                    rng.gen()
                 };
                 lookup_indexes[i].push((index as u64).into());
                 lookup_values[i].push(value);
@@ -205,7 +211,7 @@ fn test_runtime_table() {
     let len = first_column.len();
 
     let mut runtime_tables_setup = vec![];
-    for table_id in 0..num {
+    for table_id in 1..num + 1 {
         let cfg = RuntimeTableCfg {
             id: table_id,
             first_column: first_column.into_iter().map(Into::into).collect(),
@@ -241,7 +247,7 @@ fn test_runtime_table() {
 
         for row in 0..20 {
             // the first register is the table id. We pick one random table.
-            lookup_cols[0][row] = (rng.gen_range(0..num) as u32).into();
+            lookup_cols[0][row] = (rng.gen_range(1..num + 1) as u32).into();
 
             // create queries into our runtime lookup table.
             // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
@@ -581,6 +587,63 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
     let lookups: Vec<i32> = [0; 20].into();
 
     setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+}
+
+// This test verifies that if there is a table with ID 0, it contains a row with only zeroes.
+// This is to enforce the constraint we have on the so-called "dummy value".
+// FIXME: see https://github.com/o1-labs/proof-systems/issues/1460
+// We should test the error message, "expected" argument of the macro won't be
+// allowed anymore in future release, see clippy output.
+#[test]
+#[should_panic]
+fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
+    let max_len: u32 = 100u32;
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+
+    // Non zero-length table
+    let len = 1u32 + rng.gen_range(0u32..max_len);
+    // Table id is 0
+    let table_id: i32 = 0;
+    // Always include index 0 in the table. Maybe even a few.
+    let indices: Vec<Fp> = (0..len)
+        .map(|i| {
+            if i == 0 {
+                0u32
+            } else {
+                rng.gen_range(0u32..max_len)
+            }
+        })
+        .map(Into::into)
+        .collect();
+    // But no zero values!
+    // So we'll get rows with zeroes that are not full-zero-rows.
+    let values: Vec<Fp> = (0..len)
+        .map(|_| rng.gen_range(1u32..max_len))
+        .map(Into::into)
+        .collect();
+    let lookup_table = LookupTable {
+        id: table_id,
+        data: vec![indices, values],
+    };
+    let lookup_tables = vec![lookup_table];
+    let num_lookups = 20;
+
+    // circuit gates
+    let gates = (0..num_lookups)
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+        .collect();
+
+    // 0 everywhere, it should handle the case (0, 0, 0). We simulate a lot of
+    // lookups with (0, 0, 0).
+    let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
+
+    let _ = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup();
 }
 
 #[test]

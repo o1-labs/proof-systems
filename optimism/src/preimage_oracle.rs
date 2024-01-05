@@ -9,33 +9,6 @@ use std::io::{Read, Write};
 use std::os::fd::AsRawFd;
 use std::process::{Child, Command};
 
-pub enum Key {
-    Keccak([u8; 32]),
-    Local([u8; 32]),
-    Global([u8; 32]),
-}
-
-impl Key {
-    pub fn contents(&self) -> [u8; 32] {
-        use Key::*;
-        match self {
-            Keccak(v) => *v,
-            Local(v) => *v,
-            Global(v) => *v,
-        }
-    }
-
-    // Byte-encoding of key types
-    pub fn typ(&self) -> u8 {
-        use Key::*;
-        match self {
-            Keccak(_) => 2_u8,
-            Local(_) => 1_u8,
-            Global(_) => 3_u8,
-        }
-    }
-}
-
 pub struct PreImageOracle {
     pub cmd: Command,
     pub oracle_client: RW,
@@ -51,6 +24,57 @@ pub struct ReadWrite<R, W> {
 
 pub struct RW(pub ReadWrite<PipeReader, PipeWriter>);
 
+// Here, we implement `os_pipe::pipe` in a way that allows us to pass flags. In particular, we
+// don't pass the `CLOEXEC` flag, because we want these pipes to survive an exec, and we set
+// `DIRECT` to handle writes as single atomic operations (up to splitting at the buffer size).
+// This fixes the IPC hangs. This is bad, but the hang is worse.
+
+#[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "haiku", windows)))]
+fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
+    let mut fds: [libc::c_int; 2] = [0; 2];
+    let res = unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_DIRECT) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    unsafe {
+        use std::os::fd::FromRawFd;
+        Ok((
+            PipeReader::from_raw_fd(fds[0]),
+            PipeWriter::from_raw_fd(fds[1]),
+        ))
+    }
+}
+
+#[cfg(any(target_os = "ios", target_os = "macos", target_os = "haiku"))]
+pub fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
+    let mut fds: [libc::c_int; 2] = [0; 2];
+    let res = unsafe { libc::pipe(fds.as_mut_ptr()) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    // It appears that Mac and friends don't have DIRECT. Oh well. Don't use a Mac.
+    let res = unsafe { libc::fcntl(fds[0], libc::F_SETFD, 0) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let res = unsafe { libc::fcntl(fds[1], libc::F_SETFD, 0) };
+    if res != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    unsafe {
+        use std::os::fd::FromRawFd;
+        Ok((
+            PipeReader::from_raw_fd(fds[0]),
+            PipeWriter::from_raw_fd(fds[1]),
+        ))
+    }
+}
+
+#[cfg(windows)]
+pub fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
+    os_pipe::pipe()
+}
+
 // Create bidirectional channel between A and B
 //
 // Schematically we create 2 unidirectional pipes and creates 2 structures made
@@ -61,8 +85,8 @@ pub struct RW(pub ReadWrite<PipeReader, PipeWriter>);
 //     |     aw  ----> br    |
 //
 pub fn create_bidirectional_channel() -> Option<(RW, RW)> {
-    let (ar, bw) = os_pipe::pipe().ok()?;
-    let (br, aw) = os_pipe::pipe().ok()?;
+    let (ar, bw) = create_pipe().ok()?;
+    let (br, aw) = create_pipe().ok()?;
     Some((
         RW(ReadWrite {
             reader: ar,
@@ -134,21 +158,10 @@ impl PreImageOracle {
     //      +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
-    pub fn get_preimage(&mut self, key: Key) -> Preimage {
+    pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
-        let key_contents = key.contents();
-        let key_type = key.typ();
-
-        let mut msg_key = vec![key_type];
-        msg_key.extend_from_slice(&key_contents[1..32]);
-        debug!(
-            "Sending request {} of size {}",
-            hex::encode(&msg_key),
-            msg_key.len()
-        );
-
-        let r = writer.write_all(&msg_key);
+        let r = writer.write_all(&key);
         assert!(r.is_ok());
         let r = writer.flush();
         assert!(r.is_ok());
@@ -160,9 +173,8 @@ impl PreImageOracle {
 
         debug!("Extracting contents");
         let length = u64::from_be_bytes(buf);
-        let mut handle = reader.take(length);
         let mut preimage = vec![0_u8; length as usize];
-        let resp = handle.read(&mut preimage);
+        let resp = reader.read_exact(&mut preimage);
 
         assert!(resp.is_ok());
 
@@ -216,50 +228,67 @@ mod tests {
     fn test_bidir_channels() {
         let (mut c0, mut c1) = create_bidirectional_channel().unwrap();
 
-        // 1. First send a single byte message
+        // Send a single byte message
         let msg = [42_u8];
         let mut buf = [0_u8; 1];
 
-        let r = c0.0.writer.write(&msg);
-        assert!(r.is_ok());
+        let writer_joiner = std::thread::spawn(move || {
+            let r = c0.0.writer.write(&msg);
+            assert!(r.is_ok());
+        });
 
-        let r = c1.0.reader.read_exact(&mut buf);
-        assert!(r.is_ok());
+        let reader_joiner = std::thread::spawn(move || {
+            let r = c1.0.reader.read_exact(&mut buf);
+            assert!(r.is_ok());
+            buf
+        });
 
-        // 2. Check that we correctly read the single byte message
+        // Retrieve the buffer from the reader
+        let buf = reader_joiner.join().unwrap();
+        // Ensure that the writer has completed
+        writer_joiner.join().unwrap();
+
+        // Check that we correctly read the single byte message
         assert_eq!(msg, buf);
 
-        // 3. Create a more structured message with the preimage format
+        // Create a more structured message with the preimage format
         //      +------------+--------------------+
         //      | length <8> | pre-image <length> |
         //      +---------------------------------+
         //   Here we'll use a length of 2
-        let len = 2_u64;
         let msg2 = vec![42_u8, 43_u8];
+        let len = msg2.len() as u64;
         let mut msg = u64::to_be_bytes(len).to_vec();
         msg.extend_from_slice(&msg2);
 
-        // 4. Write the message
-        let r = c1.0.writer.write(&msg);
-        assert!(r.is_ok());
+        // Write the message
+        let writer_joiner = std::thread::spawn(move || {
+            let r = c1.0.writer.write(&msg);
+            assert!(r.is_ok());
+            msg
+        });
 
-        // 5. Read back the length from the other end of the bidirectionnal
-        // channel
-        let mut len_buf: [u8; 8] = [0_u8; 8];
-        let r = c0.0.reader.read_exact(&mut len_buf);
-        assert!(r.is_ok());
+        // Read back the length from the other end of the bidirectionnal channel
+        let reader_joiner = std::thread::spawn(move || {
+            let mut response_vec = vec![];
+            // We do a single read to mirror go, even though we should *really* do 2. 'Go' figure.
+            let r = c0.0.reader.read_to_end(&mut response_vec);
+            assert!(r.is_ok());
 
-        // 6. Check it is the expected length
-        let n = u64::from_be_bytes(len_buf);
+            let n = u64::from_be_bytes(response_vec[0..8].try_into().unwrap());
+
+            let data = response_vec[8..(n + 8) as usize].to_vec();
+            (n, data)
+        });
+
+        // Retrieve the data from the reader
+        let (n, data) = reader_joiner.join().unwrap();
+
+        // Ensure that the writer has completed
+        writer_joiner.join().unwrap();
+
+        // Check that the responses are equal
         assert_eq!(n, len);
-
-        // 7. Read the data
-        let mut data = vec![0_u8; n as usize];
-        let mut h = c0.0.reader.take(len);
-        let r = h.read(&mut data);
-        assert!(r.is_ok());
-
-        // 8. Check they are equal to the message
         assert_eq!(data, msg2);
     }
 }

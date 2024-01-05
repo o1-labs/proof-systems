@@ -8,7 +8,7 @@ use crate::{
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
-            keccak::{DIM, OFF},
+            keccak::{constants::DIM, OFF},
             rot::{self, RotMode},
         },
         wires::Wire,

@@ -1,20 +1,29 @@
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::{
+    expr::{ConstantExpr, Expr},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
+};
 
-use crate::mips::column::Column;
+use self::column::KeccakColumn;
 
 pub mod column;
+pub mod constraints;
 pub mod environment;
+pub mod interpreter;
+pub mod lookups;
+pub mod witness;
 
-pub const ZKVM_KECCAK_COLS: usize = 1965 + 6;
-pub const RATE: usize = 1088;
-pub const RATE_IN_BYTES: usize = RATE / 8;
-pub const DIM: usize = 5;
-pub const QUARTERS: usize = 4;
+pub(crate) const HASH_BITLENGTH: usize = 256;
+pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
+pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
+pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
+pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
+pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
-pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
+pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
-fn grid_index(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
-    match size {
+fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
+    match length {
+        5 => x,
         20 => q + QUARTERS * x,
         80 => q + QUARTERS * (x + DIM * i),
         100 => q + QUARTERS * (x + DIM * y),
@@ -31,7 +40,7 @@ pub(crate) trait BoolOps {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    fn boolean(x: Self::Variable) -> Self::Variable;
+    fn is_boolean(x: Self::Variable) -> Self::Variable;
 
     fn not(x: Self::Variable) -> Self::Variable;
 
@@ -52,7 +61,12 @@ pub(crate) trait ArithOps {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    fn constant(x: Self::Fp) -> Self::Variable;
+    fn constant(x: u64) -> Self::Variable;
+    fn constant_field(x: Self::Fp) -> Self::Variable;
+
+    fn zero() -> Self::Variable;
+    fn one() -> Self::Variable;
+    fn two() -> Self::Variable;
 
     fn two_pow(x: u64) -> Self::Variable;
 }
