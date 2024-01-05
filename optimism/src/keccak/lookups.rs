@@ -3,7 +3,7 @@ use super::{
     environment::{KeccakEnv, KeccakEnvironment},
     ArithOps, E,
 };
-use crate::mips::interpreter::{Lookup, LookupMode, LookupTable, Signed};
+use crate::mips::interpreter::{Lookup, LookupMode, LookupTable};
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, SHIFTS, SHIFTS_LEN, STATE_LEN,
@@ -85,7 +85,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
 
     fn lookup_rc16(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup {
-            numerator: Signed::new(rw, Some(flag)),
+            mode: rw,
+            magnitude: flag,
             table_id: LookupTable::RangeCheck16Lookup,
             value: vec![value],
         });
@@ -99,7 +100,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         sparse: Self::Variable,
     ) {
         self.add_lookup(Lookup {
-            numerator: Signed::new(rw, Some(flag)),
+            mode: rw,
+            magnitude: flag,
             table_id: LookupTable::ResetLookup,
             value: vec![dense, sparse],
         });
@@ -107,7 +109,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
 
     fn lookup_sparse(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup {
-            numerator: Signed::new(rw, Some(flag)),
+            mode: rw,
+            magnitude: flag,
             table_id: LookupTable::SparseLookup,
             value: vec![value],
         });
@@ -115,7 +118,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
 
     fn lookup_byte(&mut self, rw: LookupMode, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup {
-            numerator: Signed::new(rw, Some(flag)),
+            mode: rw,
+            magnitude: flag,
             table_id: LookupTable::ByteLookup,
             value: vec![value],
         });
@@ -127,10 +131,11 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // Pad suffixes correspond to 10*1 rule
         // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
         self.add_lookup(Lookup {
-            numerator: Signed::new(rw, None),
+            mode: rw,
+            magnitude: self.is_sponge(),
             table_id: LookupTable::PadLookup,
             value: vec![
-                self.keccak_state[KeccakColumn::FlagLength].clone(),
+                self.length(),
                 self.two_to_pad(),
                 self.pad_suffix(0),
                 self.pad_suffix(1),
@@ -225,7 +230,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         for i in 0..QUARTERS {
             // Check round constants correspond with the current round
             self.add_lookup(Lookup {
-                numerator: Signed::new(rw, None),
+                mode: rw,
+                magnitude: self.is_round(),
                 table_id: LookupTable::RoundConstantsLookup,
                 value: vec![self.round(), self.round_constants()[i].clone()],
             });
