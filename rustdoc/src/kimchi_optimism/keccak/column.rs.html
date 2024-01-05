@@ -249,20 +249,24 @@
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
-    CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
-    PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
-    PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
-    PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, SPONGE_BYTES_OFF,
-    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, THETA_DENSE_C_LEN,
-    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
-    THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
-    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF, THETA_STATE_A_LEN,
-    THETA_STATE_A_OFF,
-};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use super</span>::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
@@ -305,26 +309,47 @@
 
 <span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
-    <span class="kw">pub </span>flag_round: T,           <span class="comment">// Coeff Round = 0 | 1 .. 24
-    </span><span class="kw">pub </span>flag_absorb: T,          <span class="comment">// Coeff Absorb = 0 | 1
-    </span><span class="kw">pub </span>flag_squeeze: T,         <span class="comment">// Coeff Squeeze = 0 | 1
-    </span><span class="kw">pub </span>flag_root: T,            <span class="comment">// Coeff Root = 0 | 1
-    </span><span class="kw">pub </span>flag_pad: T,             <span class="comment">// Coeff Pad = 0 | 1
-    </span><span class="kw">pub </span>flag_length: T,          <span class="comment">// Coeff Length 0 | 1 .. 136
-    </span><span class="kw">pub </span>two_to_pad: T,           <span class="comment">// 2^PadLength
-    </span><span class="kw">pub </span>inverse_round: T,        <span class="comment">// Round^-1
-    </span><span class="kw">pub </span>flags_bytes: Vec&lt;T&gt;,     <span class="comment">// 136 boolean values
-    </span><span class="kw">pub </span>pad_suffix: Vec&lt;T&gt;,      <span class="comment">// 5 values with padding suffix
-    </span><span class="kw">pub </span>round_constants: Vec&lt;T&gt;, <span class="comment">// Round constants
-    </span><span class="kw">pub </span>curr: Vec&lt;T&gt;,            <span class="comment">// Curr[0..1965)
-    </span><span class="kw">pub </span>next: Vec&lt;T&gt;,            <span class="comment">// Next[0..100)
+    <span class="kw">pub </span>flag_round: T,               <span class="comment">// Coeff Round = 0 | 1 .. 24
+    </span><span class="kw">pub </span>flag_absorb: T,              <span class="comment">// Coeff Absorb = 0 | 1
+    </span><span class="kw">pub </span>flag_squeeze: T,             <span class="comment">// Coeff Squeeze = 0 | 1
+    </span><span class="kw">pub </span>flag_root: T,                <span class="comment">// Coeff Root = 0 | 1
+    </span><span class="kw">pub </span>flag_pad: T,                 <span class="comment">// Coeff Pad = 0 | 1
+    </span><span class="kw">pub </span>flag_length: T,              <span class="comment">// Coeff Length 0 | 1 .. 136
+    </span><span class="kw">pub </span>two_to_pad: T,               <span class="comment">// 2^PadLength
+    </span><span class="kw">pub </span>inverse_round: T,            <span class="comment">// Round^-1
+    </span><span class="kw">pub </span>flags_bytes: Vec&lt;T&gt;,         <span class="comment">// 136 boolean values
+    </span><span class="kw">pub </span>pad_suffix: Vec&lt;T&gt;,          <span class="comment">// 5 values with padding suffix
+    </span><span class="kw">pub </span>round_constants: Vec&lt;T&gt;,     <span class="comment">// Round constants
+    </span><span class="kw">pub </span>theta_state_a: Vec&lt;T&gt;,       <span class="comment">// Round Curr[0..100)
+    </span><span class="kw">pub </span>theta_shifts_c: Vec&lt;T&gt;,      <span class="comment">// Round Curr[100..180)
+    </span><span class="kw">pub </span>theta_dense_c: Vec&lt;T&gt;,       <span class="comment">// Round Curr[180..200)
+    </span><span class="kw">pub </span>theta_quotient_c: Vec&lt;T&gt;,    <span class="comment">// Round Curr[200..205)
+    </span><span class="kw">pub </span>theta_remainder_c: Vec&lt;T&gt;,   <span class="comment">// Round Curr[205..225)
+    </span><span class="kw">pub </span>theta_dense_rot_c: Vec&lt;T&gt;,   <span class="comment">// Round Curr[225..245)
+    </span><span class="kw">pub </span>theta_expand_rot_c: Vec&lt;T&gt;,  <span class="comment">// Round Curr[245..265)
+    </span><span class="kw">pub </span>pi_rho_shifts_e: Vec&lt;T&gt;,     <span class="comment">// Round Curr[265..665)
+    </span><span class="kw">pub </span>pi_rho_dense_e: Vec&lt;T&gt;,      <span class="comment">// Round Curr[665..765)
+    </span><span class="kw">pub </span>pi_rho_quotient_e: Vec&lt;T&gt;,   <span class="comment">// Round Curr[765..865)
+    </span><span class="kw">pub </span>pi_rho_remainder_e: Vec&lt;T&gt;,  <span class="comment">// Round Curr[865..965)
+    </span><span class="kw">pub </span>pi_rho_dense_rot_e: Vec&lt;T&gt;,  <span class="comment">// Round Curr[965..1065)
+    </span><span class="kw">pub </span>pi_rho_expand_rot_e: Vec&lt;T&gt;, <span class="comment">// Round Curr[1065..1165)
+    </span><span class="kw">pub </span>chi_shifts_b: Vec&lt;T&gt;,        <span class="comment">// Round Curr[1165..1565)
+    </span><span class="kw">pub </span>chi_shifts_sum: Vec&lt;T&gt;,      <span class="comment">// Round Curr[1565..1965)
+    </span><span class="kw">pub </span>iota_state_g: Vec&lt;T&gt;,        <span class="comment">// Round Next[0..100)
+    </span><span class="kw">pub </span>sponge_old_state: Vec&lt;T&gt;,    <span class="comment">// Sponge Curr[0..100)
+    </span><span class="kw">pub </span>sponge_new_state: Vec&lt;T&gt;,    <span class="comment">// Sponge Curr[100..200)
+    </span><span class="kw">pub </span>sponge_bytes: Vec&lt;T&gt;,        <span class="comment">// Sponge Curr[200..400)
+    </span><span class="kw">pub </span>sponge_shifts: Vec&lt;T&gt;,       <span class="comment">// Sponge Curr[400..800)
+    </span><span class="kw">pub </span>sponge_xor_state: Vec&lt;T&gt;,    <span class="comment">// Absorb Next[0..100)
+    </span><span class="kw">pub </span>curr: Vec&lt;T&gt;,                <span class="comment">// Curr[0..1965)
+    </span><span class="kw">pub </span>next: Vec&lt;T&gt;,                <span class="comment">// Next[0..100)
 </span>}
 
 <span class="kw">impl</span>&lt;T: Clone&gt; KeccakColumns&lt;T&gt; {
-    <span class="kw">fn </span>curr(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="kw-2">&amp;</span>T {
+    <span class="kw">fn </span>_curr(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="kw-2">&amp;</span>T {
         <span class="kw-2">&amp;</span><span class="self">self</span>.curr[offset + grid_index(length, i, y, x, q)]
     }
-    <span class="kw">fn </span>mut_curr(
+    <span class="kw">fn </span>_mut_curr(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         offset: usize,
         length: usize,
@@ -355,14 +380,35 @@
             flags_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">136</span>],
             pad_suffix: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
             round_constants: <span class="macro">vec!</span>[T::zero(); <span class="number">4</span>], <span class="comment">// RC[0] is set to be all zeros
-            </span>curr: <span class="macro">vec!</span>[T::zero(); ZKVM_KECCAK_COLS_CURR],
+            </span>theta_state_a: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            theta_shifts_c: <span class="macro">vec!</span>[T::zero(); <span class="number">80</span>],
+            theta_dense_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            theta_quotient_c: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
+            theta_remainder_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            theta_dense_rot_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            theta_expand_rot_c: <span class="macro">vec!</span>[T::zero(); <span class="number">20</span>],
+            pi_rho_shifts_e: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            pi_rho_dense_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_quotient_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_remainder_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_dense_rot_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            pi_rho_expand_rot_e: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            chi_shifts_b: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            chi_shifts_sum: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            iota_state_g: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            sponge_old_state: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            sponge_new_state: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            sponge_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">200</span>],
+            sponge_shifts: <span class="macro">vec!</span>[T::zero(); <span class="number">400</span>],
+            sponge_xor_state: <span class="macro">vec!</span>[T::zero(); <span class="number">100</span>],
+            curr: <span class="macro">vec!</span>[T::zero(); ZKVM_KECCAK_COLS_CURR],
             next: <span class="macro">vec!</span>[T::zero(); ZKVM_KECCAK_COLS_NEXT],
         }
     }
 }
 
-<span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;T&gt; {
-    <span class="kw">type </span>Output = T;
+<span class="kw">impl</span>&lt;A&gt; Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;A&gt; {
+    <span class="kw">type </span>Output = A;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
@@ -377,62 +423,50 @@
             KeccakColumn::FlagsBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flags_bytes[i],
             KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pad_suffix[i],
             KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.round_constants[q],
-            KeccakColumn::ThetaStateA(y, x, q) =&gt; {
-                <span class="self">self</span>.curr(THETA_STATE_A_OFF, THETA_STATE_A_LEN, <span class="number">0</span>, y, x, q)
-            }
-            KeccakColumn::ThetaShiftsC(i, x, q) =&gt; {
-                <span class="self">self</span>.curr(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN, i, <span class="number">0</span>, x, q)
-            }
-            KeccakColumn::ThetaDenseC(x, q) =&gt; {
-                <span class="self">self</span>.curr(THETA_DENSE_C_OFF, THETA_DENSE_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
-            }
-            KeccakColumn::ThetaQuotientC(x) =&gt; {
-                <span class="self">self</span>.curr(THETA_QUOTIENT_C_OFF, THETA_QUOTIENT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, <span class="number">0</span>)
-            }
+            KeccakColumn::ThetaStateA(y, x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.theta_state_a[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)],
+            KeccakColumn::ThetaShiftsC(i, x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.theta_shifts_c[grid_index(<span class="number">80</span>, i, <span class="number">0</span>, x, q)],
+            KeccakColumn::ThetaDenseC(x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.theta_dense_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)],
+            KeccakColumn::ThetaQuotientC(x) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.theta_quotient_c[x],
             KeccakColumn::ThetaRemainderC(x, q) =&gt; {
-                <span class="self">self</span>.curr(THETA_REMAINDER_C_OFF, THETA_REMAINDER_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.theta_remainder_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)]
             }
             KeccakColumn::ThetaDenseRotC(x, q) =&gt; {
-                <span class="self">self</span>.curr(THETA_DENSE_ROT_C_OFF, THETA_DENSE_ROT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.theta_dense_rot_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)]
             }
             KeccakColumn::ThetaExpandRotC(x, q) =&gt; {
-                <span class="self">self</span>.curr(THETA_EXPAND_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.theta_expand_rot_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)]
             }
             KeccakColumn::PiRhoShiftsE(i, y, x, q) =&gt; {
-                <span class="self">self</span>.curr(PIRHO_SHIFTS_E_OFF, PIRHO_SHIFTS_E_LEN, i, y, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.pi_rho_shifts_e[grid_index(<span class="number">400</span>, i, y, x, q)]
             }
-            KeccakColumn::PiRhoDenseE(y, x, q) =&gt; {
-                <span class="self">self</span>.curr(PIRHO_DENSE_E_OFF, PIRHO_DENSE_E_LEN, <span class="number">0</span>, y, x, q)
-            }
+            KeccakColumn::PiRhoDenseE(y, x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pi_rho_dense_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)],
             KeccakColumn::PiRhoQuotientE(y, x, q) =&gt; {
-                <span class="self">self</span>.curr(PIRHO_QUOTIENT_E_OFF, PIRHO_QUOTIENT_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.pi_rho_quotient_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::PiRhoRemainderE(y, x, q) =&gt; {
-                <span class="self">self</span>.curr(PIRHO_REMAINDER_E_OFF, PIRHO_REMAINDER_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.pi_rho_remainder_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::PiRhoDenseRotE(y, x, q) =&gt; {
-                <span class="self">self</span>.curr(PIRHO_DENSE_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.pi_rho_dense_rot_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::PiRhoExpandRotE(y, x, q) =&gt; {
-                <span class="self">self</span>.curr(PIRHO_EXPAND_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.pi_rho_expand_rot_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
-            KeccakColumn::ChiShiftsB(i, y, x, q) =&gt; {
-                <span class="self">self</span>.curr(CHI_SHIFTS_B_OFF, CHI_SHIFTS_B_LEN, i, y, x, q)
-            }
+            KeccakColumn::ChiShiftsB(i, y, x, q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.chi_shifts_b[grid_index(<span class="number">400</span>, i, y, x, q)],
             KeccakColumn::ChiShiftsSum(i, y, x, q) =&gt; {
-                <span class="self">self</span>.curr(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN, i, y, x, q)
+                <span class="kw-2">&amp;</span><span class="self">self</span>.chi_shifts_sum[grid_index(<span class="number">400</span>, i, y, x, q)]
             }
-            KeccakColumn::IotaStateG(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next[i],
-            KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_OLD_STATE_OFF + i],
-            KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_NEW_STATE_OFF + i],
-            KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_BYTES_OFF + i],
-            KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_SHIFTS_OFF + i],
-            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next[i],
+            KeccakColumn::IotaStateG(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.iota_state_g[i],
+            KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_old_state[i],
+            KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_new_state[i],
+            KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_bytes[i],
+            KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_shifts[i],
+            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.sponge_xor_state[i],
         }
     }
 }
 
-<span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;T&gt; {
+<span class="kw">impl</span>&lt;A&gt; IndexMut&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;A&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             KeccakColumn::FlagRound =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_round,
@@ -447,56 +481,52 @@
             KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_suffix[i],
             KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.round_constants[q],
             KeccakColumn::ThetaStateA(y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_STATE_A_OFF, THETA_STATE_A_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_state_a[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::ThetaShiftsC(i, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN, i, <span class="number">0</span>, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_shifts_c[grid_index(<span class="number">80</span>, i, <span class="number">0</span>, x, q)]
             }
-            KeccakColumn::ThetaDenseC(x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_DENSE_C_OFF, THETA_DENSE_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
-            }
-            KeccakColumn::ThetaQuotientC(x) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_QUOTIENT_C_OFF, THETA_QUOTIENT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, <span class="number">0</span>)
-            }
+            KeccakColumn::ThetaDenseC(x, q) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_dense_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)],
+            KeccakColumn::ThetaQuotientC(x) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_quotient_c[x],
             KeccakColumn::ThetaRemainderC(x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_REMAINDER_C_OFF, THETA_REMAINDER_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_remainder_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)]
             }
             KeccakColumn::ThetaDenseRotC(x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_DENSE_ROT_C_OFF, THETA_DENSE_ROT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_dense_rot_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)]
             }
             KeccakColumn::ThetaExpandRotC(x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_EXPAND_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.theta_expand_rot_c[grid_index(<span class="number">20</span>, <span class="number">0</span>, <span class="number">0</span>, x, q)]
             }
             KeccakColumn::PiRhoShiftsE(i, y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(PIRHO_SHIFTS_E_OFF, PIRHO_SHIFTS_E_LEN, i, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.pi_rho_shifts_e[grid_index(<span class="number">400</span>, i, y, x, q)]
             }
             KeccakColumn::PiRhoDenseE(y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(PIRHO_DENSE_E_OFF, PIRHO_DENSE_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.pi_rho_dense_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::PiRhoQuotientE(y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(PIRHO_QUOTIENT_E_OFF, PIRHO_QUOTIENT_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.pi_rho_quotient_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::PiRhoRemainderE(y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(PIRHO_REMAINDER_E_OFF, PIRHO_REMAINDER_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.pi_rho_remainder_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::PiRhoDenseRotE(y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(PIRHO_DENSE_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.pi_rho_dense_rot_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::PiRhoExpandRotE(y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(PIRHO_EXPAND_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN, <span class="number">0</span>, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.pi_rho_expand_rot_e[grid_index(<span class="number">100</span>, <span class="number">0</span>, y, x, q)]
             }
             KeccakColumn::ChiShiftsB(i, y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(CHI_SHIFTS_B_OFF, CHI_SHIFTS_B_LEN, i, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.chi_shifts_b[grid_index(<span class="number">400</span>, i, y, x, q)]
             }
             KeccakColumn::ChiShiftsSum(i, y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN, i, y, x, q)
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.chi_shifts_sum[grid_index(<span class="number">400</span>, i, y, x, q)]
             }
-            KeccakColumn::IotaStateG(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.next[i],
-            KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_OLD_STATE_OFF + i],
-            KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_NEW_STATE_OFF + i],
-            KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_BYTES_OFF + i],
-            KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_SHIFTS_OFF + i],
-            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.next[i],
+            KeccakColumn::IotaStateG(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.iota_state_g[i],
+            KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_old_state[i],
+            KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_new_state[i],
+            KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_bytes[i],
+            KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_shifts[i],
+            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.sponge_xor_state[i],
         }
     }
 }
