@@ -253,9 +253,6 @@
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -349,7 +346,7 @@
                     <span class="self">self</span>.is_absorb()
                         * (<span class="self">self</span>.new_state(i).clone()
                             - <span class="self">Self</span>::from_shifts(
-                                <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_shifts,
+                                <span class="self">self</span>.vec_sponge_shifts(),
                                 <span class="prelude-val">Some</span>(i),
                                 <span class="prelude-val">None</span>,
                                 <span class="prelude-val">None</span>,
@@ -363,7 +360,7 @@
                     <span class="self">self</span>.is_squeeze()
                         * (<span class="self">self</span>.old_state(i).clone()
                             - <span class="self">Self</span>::from_shifts(
-                                <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_shifts,
+                                <span class="self">self</span>.vec_sponge_shifts(),
                                 <span class="prelude-val">Some</span>(i),
                                 <span class="prelude-val">None</span>,
                                 <span class="prelude-val">None</span>,
@@ -393,9 +390,9 @@
 
             <span class="comment">// STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
             </span><span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
-                <span class="kw">let </span>word_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_dense_c, <span class="prelude-val">None</span>, x);
-                <span class="kw">let </span>rem_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_remainder_c, <span class="prelude-val">None</span>, x);
-                <span class="kw">let </span>rot_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_dense_rot_c, <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>word_c = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_c(), <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>rem_c = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_remainder_c(), <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>rot_c = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_rot_c(), <span class="prelude-val">None</span>, x);
 
                 <span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_round()
@@ -415,7 +412,7 @@
                         <span class="self">self</span>.is_round()
                             * (state_c[x][q].clone()
                                 - <span class="self">Self</span>::from_shifts(
-                                    <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.theta_shifts_c,
+                                    <span class="self">self</span>.vec_shifts_c(),
                                     <span class="prelude-val">None</span>,
                                     <span class="prelude-val">None</span>,
                                     <span class="prelude-val">Some</span>(x),
@@ -435,13 +432,10 @@
             // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
             </span><span class="kw">for </span>(y, col) <span class="kw">in </span>OFF.iter().enumerate() {
                 <span class="kw">for </span>(x, off) <span class="kw">in </span>col.iter().enumerate() {
-                    <span class="kw">let </span>word_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.pi_rho_dense_e, <span class="prelude-val">Some</span>(y), x);
-                    <span class="kw">let </span>quo_e =
-                        <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.pi_rho_quotient_e, <span class="prelude-val">Some</span>(y), x);
-                    <span class="kw">let </span>rem_e =
-                        <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.pi_rho_remainder_e, <span class="prelude-val">Some</span>(y), x);
-                    <span class="kw">let </span>rot_e =
-                        <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.pi_rho_dense_rot_e, <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>word_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_e(), <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>quo_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_quotient_e(), <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>rem_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_remainder_e(), <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>rot_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_rot_e(), <span class="prelude-val">Some</span>(y), x);
 
                     <span class="self">self</span>.constrain(
                         word_e * <span class="self">Self</span>::two_pow(<span class="kw-2">*</span>off)
@@ -454,7 +448,7 @@
                             <span class="self">self</span>.is_round()
                                 * (state_e[y][x][q].clone()
                                     - <span class="self">Self</span>::from_shifts(
-                                        <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.pi_rho_shifts_e,
+                                        <span class="self">self</span>.vec_shifts_e(),
                                         <span class="prelude-val">None</span>,
                                         <span class="prelude-val">Some</span>(y),
                                         <span class="prelude-val">Some</span>(x),
@@ -479,7 +473,7 @@
                             <span class="self">self</span>.is_round()
                                 * (state_b[y][x][q].clone()
                                     - <span class="self">Self</span>::from_shifts(
-                                        <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.chi_shifts_b,
+                                        <span class="self">self</span>.vec_shifts_b(),
                                         <span class="prelude-val">None</span>,
                                         <span class="prelude-val">Some</span>(y),
                                         <span class="prelude-val">Some</span>(x),
@@ -490,7 +484,7 @@
                             <span class="self">self</span>.is_round()
                                 * (sum
                                     - <span class="self">Self</span>::from_shifts(
-                                        <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.chi_shifts_sum,
+                                        <span class="self">self</span>.vec_shifts_sum(),
                                         <span class="prelude-val">None</span>,
                                         <span class="prelude-val">Some</span>(y),
                                         <span class="prelude-val">Some</span>(x),
