@@ -7,10 +7,8 @@ use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
 use kimchi::circuits::expr::Operations;
 use kimchi::{
-    auto_clone_array,
-    circuits::{expr::ConstantTerm::Literal, polynomials::keccak::constants::*},
-    grid,
-    o1_utils::Two,
+    auto_clone_array, circuits::expr::ConstantTerm::Literal,
+    circuits::polynomials::keccak::constants::*, grid, o1_utils::Two,
 };
 
 #[derive(Clone, Debug)]
@@ -174,13 +172,13 @@ pub(crate) trait KeccakEnvironment {
 
     fn pad_suffix(&self, i: usize) -> Self::Variable;
 
-    fn bytes_block(&self, i: usize) -> Vec<Self::Variable>;
+    fn bytes_block(&self, i: usize) -> &[Self::Variable];
 
-    fn flags_block(&self, i: usize) -> Vec<Self::Variable>;
+    fn flags_block(&self, i: usize) -> &[Self::Variable];
 
     fn block_in_padding(&self, i: usize) -> Self::Variable;
 
-    fn round_constants(&self) -> Vec<Self::Variable>;
+    fn round_constants(&self) -> &[Self::Variable];
 
     fn old_state(&self, i: usize) -> Self::Variable;
 
@@ -188,45 +186,58 @@ pub(crate) trait KeccakEnvironment {
 
     fn xor_state(&self, i: usize) -> Self::Variable;
 
-    fn sponge_zeros(&self) -> Vec<Self::Variable>;
+    fn sponge_zeros(&self) -> &[Self::Variable];
 
-    fn sponge_shifts(&self) -> Vec<Self::Variable>;
-
-    fn sponge_shift(&self, i: usize) -> Self::Variable;
+    fn vec_sponge_shifts(&self) -> &[Self::Variable];
+    fn sponge_shifts(&self, i: usize) -> Self::Variable;
 
     fn sponge_bytes(&self, i: usize) -> Self::Variable;
 
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_shifts_c(&self) -> &[Self::Variable];
     fn shifts_c(&self, i: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_dense_c(&self) -> &[Self::Variable];
     fn dense_c(&self, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_quotient_c(&self) -> &[Self::Variable];
     fn quotient_c(&self, x: usize) -> Self::Variable;
 
+    fn vec_remainder_c(&self) -> &[Self::Variable];
     fn remainder_c(&self, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_dense_rot_c(&self) -> &[Self::Variable];
     fn dense_rot_c(&self, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_expand_rot_c(&self) -> &[Self::Variable];
     fn expand_rot_c(&self, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_shifts_e(&self) -> &[Self::Variable];
     fn shifts_e(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_dense_e(&self) -> &[Self::Variable];
     fn dense_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_quotient_e(&self) -> &[Self::Variable];
     fn quotient_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_remainder_e(&self) -> &[Self::Variable];
     fn remainder_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_dense_rot_e(&self) -> &[Self::Variable];
     fn dense_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_expand_rot_e(&self) -> &[Self::Variable];
     fn expand_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_shifts_b(&self) -> &[Self::Variable];
     fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
+    fn vec_shifts_sum(&self) -> &[Self::Variable];
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn state_g(&self, i: usize) -> Self::Variable;
+    fn state_g(&self, q: usize) -> Self::Variable;
 }
 
 impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
@@ -287,7 +298,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_sponge(&self) -> Self::Variable {
-        Self::xor(self.is_absorb(), self.is_squeeze())
+        Self::xor(self.is_absorb().clone(), self.is_squeeze().clone())
     }
 
     fn is_absorb(&self) -> Self::Variable {
@@ -334,22 +345,18 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::PadSuffix(i)].clone()
     }
 
-    fn bytes_block(&self, i: usize) -> Vec<Self::Variable> {
+    fn bytes_block(&self, i: usize) -> &[Self::Variable] {
         match i {
-            0 => self.keccak_state.sponge_bytes[0..12].to_vec().clone(),
-            1..=4 => self.keccak_state.sponge_bytes[12 + (i - 1) * 31..12 + i * 31]
-                .to_vec()
-                .clone(),
+            0 => &self.keccak_state.sponge_bytes[0..12],
+            1..=4 => &self.keccak_state.sponge_bytes[12 + (i - 1) * 31..12 + i * 31],
             _ => panic!("No more blocks of bytes can be part of padding"),
         }
     }
 
-    fn flags_block(&self, i: usize) -> Vec<Self::Variable> {
+    fn flags_block(&self, i: usize) -> &[Self::Variable] {
         match i {
-            0 => self.keccak_state.flags_bytes[0..12].to_vec().clone(),
-            1..=4 => self.keccak_state.flags_bytes[12 + (i - 1) * 31..12 + i * 31]
-                .to_vec()
-                .clone(),
+            0 => &self.keccak_state.flags_bytes[0..12],
+            1..=4 => &self.keccak_state.flags_bytes[12 + (i - 1) * 31..12 + i * 31],
             _ => panic!("No more blocks of flags can be part of padding"),
         }
     }
@@ -362,14 +369,14 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .iter()
             .zip(flags)
             .fold(Self::zero(), |acc, (byte, flag)| {
-                acc + byte.clone() * flag * Self::two_pow(8)
+                acc + byte.clone() * flag.clone() * Self::two_pow(8)
             });
 
         pad
     }
 
-    fn round_constants(&self) -> Vec<Self::Variable> {
-        self.keccak_state.round_constants.clone()
+    fn round_constants(&self) -> &[Self::Variable] {
+        &self.keccak_state.round_constants
     }
 
     fn old_state(&self, i: usize) -> Self::Variable {
@@ -384,19 +391,20 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
     }
 
-    fn sponge_zeros(&self) -> Vec<Self::Variable> {
-        self.keccak_state.sponge_new_state[68..100].to_vec().clone()
+    fn sponge_zeros(&self) -> &[Self::Variable] {
+        self.keccak_state.chunk(SPONGE_ZEROS_OFF, SPONGE_ZEROS_LEN)
     }
 
     fn sponge_bytes(&self, i: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::SpongeBytes(i)].clone()
     }
 
-    fn sponge_shifts(&self) -> Vec<Self::Variable> {
-        self.keccak_state.sponge_shifts.clone()
+    fn vec_sponge_shifts(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_LEN)
     }
 
-    fn sponge_shift(&self, i: usize) -> Self::Variable {
+    fn sponge_shifts(&self, i: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::SpongeShifts(i)].clone()
     }
 
@@ -404,56 +412,123 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::ThetaStateA(y, x, q)].clone()
     }
 
+    fn vec_shifts_c(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN)
+    }
     fn shifts_c(&self, i: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ThetaShiftsC(i, x, q)].clone()
+    }
+
+    fn vec_dense_c(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(THETA_DENSE_C_OFF, THETA_DENSE_C_LEN)
     }
 
     fn dense_c(&self, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ThetaDenseC(x, q)].clone()
     }
 
+    fn vec_quotient_c(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(THETA_QUOTIENT_C_OFF, THETA_QUOTIENT_C_LEN)
+    }
+
     fn quotient_c(&self, x: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ThetaQuotientC(x)].clone()
+    }
+
+    fn vec_remainder_c(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(THETA_REMAINDER_C_OFF, THETA_REMAINDER_C_LEN)
     }
 
     fn remainder_c(&self, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ThetaRemainderC(x, q)].clone()
     }
 
+    fn vec_dense_rot_c(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(THETA_DENSE_ROT_C_OFF, THETA_DENSE_ROT_C_LEN)
+    }
+
     fn dense_rot_c(&self, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ThetaDenseRotC(x, q)].clone()
     }
 
+    fn vec_expand_rot_c(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(THETA_EXPAND_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN)
+    }
     fn expand_rot_c(&self, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ThetaExpandRotC(x, q)].clone()
+    }
+
+    fn vec_shifts_e(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(PIRHO_SHIFTS_E_OFF, PIRHO_SHIFTS_E_LEN)
     }
 
     fn shifts_e(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::PiRhoShiftsE(i, y, x, q)].clone()
     }
 
+    fn vec_dense_e(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(PIRHO_DENSE_E_OFF, PIRHO_DENSE_E_LEN)
+    }
+
     fn dense_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::PiRhoDenseE(y, x, q)].clone()
+    }
+
+    fn vec_quotient_e(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(PIRHO_QUOTIENT_E_OFF, PIRHO_QUOTIENT_E_LEN)
     }
 
     fn quotient_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::PiRhoQuotientE(y, x, q)].clone()
     }
 
+    fn vec_remainder_e(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(PIRHO_REMAINDER_E_OFF, PIRHO_REMAINDER_E_LEN)
+    }
+
     fn remainder_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::PiRhoRemainderE(y, x, q)].clone()
+    }
+
+    fn vec_dense_rot_e(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(PIRHO_DENSE_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN)
     }
 
     fn dense_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::PiRhoDenseRotE(y, x, q)].clone()
     }
 
+    fn vec_expand_rot_e(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(PIRHO_EXPAND_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN)
+    }
+
     fn expand_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::PiRhoExpandRotE(y, x, q)].clone()
     }
 
+    fn vec_shifts_b(&self) -> &[Self::Variable] {
+        self.keccak_state.chunk(CHI_SHIFTS_B_OFF, CHI_SHIFTS_B_LEN)
+    }
+
     fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::ChiShiftsB(i, y, x, q)].clone()
+    }
+
+    fn vec_shifts_sum(&self) -> &[Self::Variable] {
+        self.keccak_state
+            .chunk(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN)
     }
 
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
