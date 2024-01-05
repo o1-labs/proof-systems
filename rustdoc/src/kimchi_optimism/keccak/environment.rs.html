@@ -539,6 +539,7 @@
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -887,9 +888,10 @@
     }
 
     <span class="kw">fn </span>bytes_block(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
+        <span class="kw">let </span>sponge_bytes = <span class="self">self</span>.keccak_state.chunk(SPONGE_BYTES_OFF, SPONGE_BYTES_LEN);
         <span class="kw">match </span>i {
-            <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_bytes[<span class="number">0</span>..<span class="number">12</span>],
-            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_bytes[<span class="number">12 </span>+ (i - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ i * <span class="number">31</span>],
+            <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span>sponge_bytes[<span class="number">0</span>..<span class="number">12</span>],
+            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="kw-2">&amp;</span>sponge_bytes[<span class="number">12 </span>+ (i - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ i * <span class="number">31</span>],
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;No more blocks of bytes can be part of padding&quot;</span>),
         }
     }
