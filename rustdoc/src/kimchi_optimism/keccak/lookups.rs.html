@@ -258,7 +258,7 @@
                 </span><span class="self">self</span>.add_lookup(Lookup {
                     numerator: Signed::read_one(),
                     table_id: LookupTable::SparseLookup,
-                    value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_shift(i)],
+                    value: <span class="macro">vec!</span>[<span class="self">self</span>.sponge_shifts(i)],
                 })
             }
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
@@ -268,7 +268,7 @@
                     table_id: LookupTable::ResetLookup,
                     value: <span class="macro">vec!</span>[
                         <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i) + <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>),
-                        <span class="self">self</span>.sponge_shift(i),
+                        <span class="self">self</span>.sponge_shifts(i),
                     ],
                 })
             }

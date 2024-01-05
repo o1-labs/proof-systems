@@ -254,6 +254,8 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -261,7 +263,7 @@
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::{
-    constants::{DIM, QUARTERS, RATE_IN_BYTES},
+    constants::{DIM, QUARTERS, RATE_IN_BYTES, SPONGE_ZEROS_LEN},
     OFF,
 };
 
@@ -329,22 +331,23 @@
 
         <span class="comment">// SPONGE CONSTRAINTS
         </span>{
-            <span class="kw">for </span>z <span class="kw">in </span><span class="self">self</span>.sponge_zeros() {
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SPONGE_ZEROS_LEN {
                 <span class="comment">// Absorb phase pads with zeros the new state
-                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_absorb() * z.clone());
+                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_absorb() * <span class="self">self</span>.sponge_zeros()[i].clone());
             }
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
                 <span class="comment">// In first absorb, root state is all zeros
-                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_root() * <span class="self">self</span>.old_state(i));
+                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_root() * <span class="self">self</span>.old_state(i).clone());
                 <span class="comment">// Absorbs the new block by performing XOR with the old state
                 </span><span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_absorb()
-                        * (<span class="self">self</span>.xor_state(i) - (<span class="self">self</span>.old_state(i) + <span class="self">self</span>.new_state(i))),
+                        * (<span class="self">self</span>.xor_state(i).clone()
+                            - (<span class="self">self</span>.old_state(i).clone() + <span class="self">self</span>.new_state(i).clone())),
                 );
                 <span class="comment">// In absorb, Check shifts correspond to the decomposition of the new state
                 </span><span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_absorb()
-                        * (<span class="self">self</span>.new_state(i)
+                        * (<span class="self">self</span>.new_state(i).clone()
                             - <span class="self">Self</span>::from_shifts(
                                 <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_shifts,
                                 <span class="prelude-val">Some</span>(i),
@@ -358,7 +361,7 @@
                 <span class="comment">// In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
                 </span><span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_squeeze()
-                        * (<span class="self">self</span>.old_state(i)
+                        * (<span class="self">self</span>.old_state(i).clone()
                             - <span class="self">Self</span>::from_shifts(
                                 <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.sponge_shifts,
                                 <span class="prelude-val">Some</span>(i),
@@ -370,7 +373,7 @@
             }
             <span class="comment">// Check that the padding is located at the end of the message
             </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
-                acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_bytes(i)
+                acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_bytes(i).clone()
             });
             <span class="self">self</span>.constrain(<span class="self">self</span>.is_pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
             <span class="comment">// Check that the padding value is correct
@@ -500,9 +503,10 @@
             } <span class="comment">// END chi
 
             // STEP iota: 4 constraints
-            </span><span class="kw">for </span>(q, c) <span class="kw">in </span><span class="self">self</span>.round_constants().iter().enumerate() {
+            </span><span class="kw">for </span>(q, c) <span class="kw">in </span><span class="self">self</span>.round_constants().to_vec().iter().enumerate() {
                 <span class="self">self</span>.constrain(
-                    <span class="self">self</span>.is_round() * (<span class="self">self</span>.state_g(q) - (state_f[<span class="number">0</span>][<span class="number">0</span>][q].clone() + c.clone())),
+                    <span class="self">self</span>.is_round()
+                        * (<span class="self">self</span>.state_g(q).clone() - (state_f[<span class="number">0</span>][<span class="number">0</span>][q].clone() + c.clone())),
                 );
             } <span class="comment">// END iota
         </span>}

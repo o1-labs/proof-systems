@@ -263,6 +263,7 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -359,8 +360,9 @@
     ) -&gt; <span class="kw-2">&amp;mut </span>T {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[offset + grid_index(length, i, y, x, q)]
     }
-    <span class="kw">pub fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; Vec&lt;T&gt; {
-        <span class="self">self</span>.curr[offset..offset + length].to_vec().clone()
+
+    <span class="kw">pub fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; <span class="kw-2">&amp;</span>[T] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.curr[offset..offset + length]
     }
 }
 
