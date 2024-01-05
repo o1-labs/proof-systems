@@ -212,9 +212,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let state_e = self.run_theta(&state_a);
         let state_b = self.run_pirho(&state_e);
         let state_f = self.run_chi(&state_b);
-        self.run_iota(&state_f, round as usize);
+        let state_g = self.run_iota(&state_f, round as usize);
 
-        // Compute witness values
+        // Update block for next step with the output of the round
+        self.prev_block = state_g;
     }
 
     fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
@@ -302,15 +303,18 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         chi.state_f()
     }
 
-    fn run_iota(&mut self, state_f: &[u64], round: usize) {
+    fn run_iota(&mut self, state_f: &[u64], round: usize) -> Vec<u64> {
         let iota = Iota::create(state_f, round);
+        let state_g = iota.state_g();
 
         // Update columns
-        for i in 0..STATE_LEN {
-            self.write_column(KeccakColumn::IotaStateG(i), iota.state_g(i));
+        for (i, g) in state_g.iter().enumerate() {
+            self.write_column(KeccakColumn::IotaStateG(i), *g);
         }
         for i in 0..QUARTERS {
             self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
         }
+
+        state_g
     }
 }
