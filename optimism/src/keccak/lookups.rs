@@ -84,7 +84,12 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 LookupTable::KeccakStepLookup,
                 self.input_of_step(),
             ));
-            // Input for next step
+            // Input for next step is output of current step
+            self.add_lookup(Lookup::new(
+                rw,
+                LookupTable::KeccakStepLookup,
+                self.output_of_step(),
+            ));
         }
     }
 
