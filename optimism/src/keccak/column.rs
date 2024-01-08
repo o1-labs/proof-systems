@@ -6,7 +6,7 @@ use kimchi::circuits::polynomials::keccak::constants::{
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
     PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, SPONGE_BYTES_OFF,
-    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, THETA_DENSE_C_LEN,
+    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN, THETA_DENSE_C_LEN,
     THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
     THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
     THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF, THETA_STATE_A_LEN,
@@ -89,6 +89,13 @@ impl<T: Clone> KeccakColumns<T> {
 
     pub fn chunk(&self, offset: usize, length: usize) -> &[T] {
         &self.curr[offset..offset + length]
+    }
+
+    pub(crate) fn curr_state(&self) -> &[T] {
+        &self.curr[0..STATE_LEN]
+    }
+    pub(crate) fn next_state(&self) -> &[T] {
+        &self.next
     }
 }
 
