@@ -48,9 +48,9 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // Configure first step depending on number of blocks remaining
         self.curr_step = if self.blocks_left_to_absorb == 1 {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
+            Some((0, KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast))))
         } else {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
+            Some((0, KeccakStep::Sponge(Sponge::Absorb(Absorb::First))))
         };
 
         // Root state is zero
@@ -77,8 +77,8 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         // FIXME sparse notation
 
         match self.curr_step.unwrap() {
-            KeccakStep::Sponge(typ) => self.run_sponge(typ),
-            KeccakStep::Round(i) => self.run_round(i),
+            (_, KeccakStep::Sponge(typ)) => self.run_sponge(typ),
+            (_, KeccakStep::Round(i)) => self.run_round(i),
         }
 
         self.update_step();
