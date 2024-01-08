@@ -2,6 +2,7 @@ use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
+    lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
@@ -42,7 +43,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     type Variable = Fp;
 
     fn hash(&mut self, preimage: Vec<u8>) {
-        // FIXME Read preimage for each block
+        // TODO: Read preimage for each block
 
         self.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
 
@@ -70,7 +71,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
 
         // TODO: create READ lookup tables
-        // FIXME: When done, write hash to Syscall channel using `output_of_step()`
+        // TODO: When finish, write hash to Syscall channel using `output_of_step()` on Squeeze step
     }
 
     // FIXME: read preimage from memory and pad and expand
@@ -86,6 +87,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakStep::Round(i) => self.run_round(i),
         }
         self.write_column(KeccakColumn::StepCounter, i);
+
+        // INTER-STEP CHANNEL
+        // Write outputs for next step if not a squeeze
+        self.lookup_output_of_step();
 
         self.update_step();
     }

@@ -33,6 +33,10 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
     }
 
     fn constraints(&mut self) {
+        // INTER-STEP CHANNEL
+        // Read input of current step if not a root
+        self.lookup_input_of_step();
+
         // CORRECTNESS OF FLAGS
         {
             // TODO: remove redundancy if any

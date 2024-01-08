@@ -1,7 +1,7 @@
 use super::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, E,
+    ArithOps, BoolOps, E,
 };
 use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
@@ -21,6 +21,12 @@ pub(crate) trait Lookups {
 
     /// Adds all lookups of Self
     fn lookups(&mut self);
+
+    /// Reads a lookup containing the input of a step
+    fn lookup_input_of_step(&mut self);
+
+    /// Writes a lookup containing the output of a step
+    fn lookup_output_of_step(&mut self);
 
     /// Adds a lookup to the RangeCheck16 table
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable);
@@ -77,18 +83,25 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         }
 
         // STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
-        {
-            // Output of previous step is input of current step
-            self.add_lookup(Lookup::read_one(
-                LookupTable::KeccakStepLookup,
-                self.input_of_step(),
-            ));
-            // Input for next step is output of current step
-            self.add_lookup(Lookup::read_one(
-                LookupTable::KeccakStepLookup,
-                self.output_of_step(),
-            ));
-        }
+        // Must be done inside caller
+    }
+
+    fn lookup_input_of_step(&mut self) {
+        // Output of previous step is input of current step
+        self.add_lookup(Lookup::read_if(
+            Self::not(self.is_root()),
+            LookupTable::KeccakStepLookup,
+            self.input_of_step(),
+        ));
+    }
+
+    fn lookup_output_of_step(&mut self) {
+        // Input for next step is output of current step
+        self.add_lookup(Lookup::write_if(
+            Self::not(self.is_squeeze()),
+            LookupTable::KeccakStepLookup,
+            self.output_of_step(),
+        ));
     }
 
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
