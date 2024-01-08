@@ -48,9 +48,12 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // Configure first step depending on number of blocks remaining
         self.curr_step = if self.blocks_left_to_absorb == 1 {
-            Some((0, KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast))))
+            (
+                0,
+                Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast))),
+            )
         } else {
-            Some((0, KeccakStep::Sponge(Sponge::Absorb(Absorb::First))))
+            (0, Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First))))
         };
 
         // Root state is zero
@@ -62,7 +65,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.pad_len = (self.padded.len() - preimage.len()) as u64;
 
         // Run all steps of hash
-        while self.curr_step.is_some() {
+        while self.curr_step.1.is_some() {
             self.step();
         }
 
@@ -76,10 +79,12 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // FIXME sparse notation
 
-        match self.curr_step.unwrap() {
-            (_, KeccakStep::Sponge(typ)) => self.run_sponge(typ),
-            (_, KeccakStep::Round(i)) => self.run_round(i),
+        let (i, curr_step) = self.curr_step;
+        match curr_step.unwrap() {
+            KeccakStep::Sponge(typ) => self.run_sponge(typ),
+            KeccakStep::Round(i) => self.run_round(i),
         }
+        self.write_column(KeccakColumn::StepCounter, i);
 
         self.update_step();
     }
