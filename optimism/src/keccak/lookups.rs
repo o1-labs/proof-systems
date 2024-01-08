@@ -1,7 +1,7 @@
 use super::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, BoolOps, E,
+    ArithOps, E,
 };
 use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
@@ -79,14 +79,12 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
         {
             // Output of previous step is input of current step
-            self.add_lookup(Lookup::new(
-                rw,
+            self.add_lookup(Lookup::read_one(
                 LookupTable::KeccakStepLookup,
                 self.input_of_step(),
             ));
             // Input for next step is output of current step
-            self.add_lookup(Lookup::new(
-                rw,
+            self.add_lookup(Lookup::read_one(
                 LookupTable::KeccakStepLookup,
                 self.output_of_step(),
             ));

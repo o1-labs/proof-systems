@@ -247,6 +247,8 @@ pub(crate) trait KeccakEnvironment {
 
     fn state_g(&self, q: usize) -> Self::Variable;
 
+    /// Returns the step counter
+    fn step_counter(&self) -> Self::Variable;
     /// Returns a slice of the input variables of the current step
     fn input_of_step(&self) -> Vec<Self::Variable>;
     /// Returns a slice of the output variables of the current step (= input of next step)
@@ -553,13 +555,19 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::IotaStateG(q)].clone()
     }
 
+    fn step_counter(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::StepCounter].clone()
+    }
+
     fn input_of_step(&self) -> Vec<Self::Variable> {
-        let (i, _curr_step) = self.curr_step;
-        [&[Self::constant(i)], self.keccak_state.curr_state()].concat()
+        [&[self.step_counter()], self.keccak_state.curr_state()].concat()
     }
 
     fn output_of_step(&self) -> Vec<Self::Variable> {
-        let (i, _curr_step) = self.curr_step;
-        [&[Self::constant(i + 1)], self.keccak_state.next_state()].concat()
+        [
+            &[self.step_counter() + Self::one()],
+            self.keccak_state.next_state(),
+        ]
+        .concat()
     }
 }

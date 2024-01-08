@@ -42,7 +42,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     type Variable = Fp;
 
     fn hash(&mut self, preimage: Vec<u8>) {
-        // FIXME Read preimage
+        // FIXME Read preimage for each block
 
         self.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
 
@@ -70,6 +70,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
 
         // TODO: create READ lookup tables
+        // FIXME: When done, write hash to Syscall channel using `output_of_step()`
     }
 
     // FIXME: read preimage from memory and pad and expand
