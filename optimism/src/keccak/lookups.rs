@@ -15,19 +15,20 @@ pub(crate) trait Lookups {
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + Clone;
-    type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    /// Adds a given lookup to the environment
+    /// Adds a given Lookup to the environment
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     /// Adds all lookups of Self
     fn lookups(&mut self);
+
+    /// Adds a lookup to the RangeCheck16 table
+    fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
-    type Fp = Fp;
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         self.lookups.push(lookup);
@@ -88,10 +89,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for q in 0..QUARTERS {
                 for x in 0..DIM {
                     // Check that ThetaRemainderC < 2^64
-                    self.add_lookup(Lookup::read_one(
-                        LookupTable::RangeCheck16Lookup,
-                        vec![self.remainder_c(x, q)],
-                    ));
+                    self.lookup_rc16(self.is_round(), self.remainder_c(x, q));
                     // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
                     self.add_lookup(Lookup::read_one(
                         LookupTable::ResetLookup,
@@ -116,14 +114,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 for x in 0..DIM {
                     for y in 0..DIM {
                         // Check that PiRhoRemainderE < 2^64 and PiRhoQuotientE < 2^64
-                        self.add_lookup(Lookup::read_one(
-                            LookupTable::RangeCheck16Lookup,
-                            vec![self.remainder_e(y, x, q)],
-                        ));
-                        self.add_lookup(Lookup::read_one(
-                            LookupTable::RangeCheck16Lookup,
-                            vec![self.quotient_e(y, x, q)],
-                        ));
+                        self.lookup_rc16(self.is_round(), self.remainder_e(y, x, q));
+                        self.lookup_rc16(self.is_round(), self.quotient_e(y, x, q));
                         // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
                         self.add_lookup(Lookup::read_one(
                             LookupTable::ResetLookup,
@@ -160,10 +152,18 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             for i in 0..QUARTERS {
                 // Check round constants correspond with the current round
                 self.add_lookup(Lookup::read_one(
-                    LookupTable::ResetLookup,
+                    LookupTable::RoundConstantsLookup,
                     vec![self.round(), self.round_constants()[i].clone()],
                 ));
             }
         }
+    }
+
+    fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
+        self.add_lookup(Lookup::read_if(
+            flag,
+            LookupTable::RangeCheck16Lookup,
+            vec![value],
+        ));
     }
 }

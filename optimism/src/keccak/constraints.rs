@@ -1,6 +1,7 @@
 use crate::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
+    lookups::Lookups,
     {ArithOps, BoolOps, E, WORDS_IN_HASH},
 };
 use ark_ff::Field;
@@ -250,6 +251,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             } // END iota
         }
 
-        // LOOKUP CONSTRAINTS
+        // READ LOOKUP CONSTRAINTS
+        self.lookups();
     }
 }
