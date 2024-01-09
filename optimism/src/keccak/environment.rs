@@ -322,7 +322,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_round(&self) -> Self::Variable {
-        Self::not(self.is_sponge())
+        Self::is_nonzero(self.round(), self.inverse_round())
     }
 
     fn round(&self) -> Self::Variable {
