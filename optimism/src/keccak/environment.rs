@@ -93,6 +93,10 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
         x - Self::Variable::one()
     }
 
+    fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable {
+        x * x_inv - Self::Variable::one()
+    }
+
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         Self::is_one(x + y)
     }
