@@ -1,11 +1,8 @@
-use crate::{
-    keccak::{
-        column::KeccakColumn,
-        environment::{KeccakEnv, KeccakEnvironment},
-        lookups::Lookups,
-        {ArithOps, BoolOps, E, WORDS_IN_HASH},
-    },
-    mips::interpreter::LookupMode,
+use crate::keccak::{
+    column::KeccakColumn,
+    environment::{KeccakEnv, KeccakEnvironment},
+    lookups::Lookups,
+    {ArithOps, BoolOps, E, WORDS_IN_HASH},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::{
@@ -254,7 +251,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             } // END iota
         }
 
-        // LOOKUP CONSTRAINTS
-        self.lookups(LookupMode::Read);
+        // READ LOOKUP CONSTRAINTS
+        self.lookups();
     }
 }
