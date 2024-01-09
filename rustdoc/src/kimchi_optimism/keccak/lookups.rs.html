@@ -183,10 +183,6 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -216,6 +212,9 @@
 
     <span class="doccomment">/// Adds a lookup to the Reset table
     </span><span class="kw">fn </span>lookup_reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, dense: <span class="self">Self</span>::Variable, sparse: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Adds a lookup to the Shift table
+    </span><span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Adds a lookup to the Byte table
     </span><span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
@@ -258,10 +257,7 @@
             <span class="comment">// SHIFTS LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
                 <span class="comment">// Shifts1, Shifts2, Shifts3 are in the Sparse table
-                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
-                    LookupTable::SparseLookup,
-                    <span class="macro">vec!</span>[<span class="self">self</span>.sponge_shifts(i)],
-                ));
+                </span><span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_sponge(), <span class="self">self</span>.sponge_shifts(i));
             }
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
                 <span class="comment">// Shifts0 together with Bits composition by pairs are in the Reset table
@@ -292,10 +288,7 @@
                     </span><span class="self">self</span>.lookup_reset(<span class="self">self</span>.is_round(), <span class="self">self</span>.dense_c(x, q), <span class="self">self</span>.shifts_c(<span class="number">0</span>, x, q));
                     <span class="comment">// Check that the rest of ThetaShiftsC are in the Sparse table
                     </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
-                        <span class="self">self</span>.add_lookup(Lookup::read_one(
-                            LookupTable::SparseLookup,
-                            <span class="macro">vec!</span>[<span class="self">self</span>.shifts_c(i, x, q)],
-                        ));
+                        <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.shifts_c(i, x, q));
                     }
                 }
             }
@@ -320,10 +313,7 @@
                         );
                         <span class="comment">// Check that the rest of PiRhoShiftsE are in the Sparse table
                         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
-                            <span class="self">self</span>.add_lookup(Lookup::read_one(
-                                LookupTable::SparseLookup,
-                                <span class="macro">vec!</span>[<span class="self">self</span>.shifts_e(i, y, x, q)],
-                            ));
+                            <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.shifts_e(i, y, x, q));
                         }
                     }
                 }
@@ -331,14 +321,8 @@
             <span class="comment">// CHI LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
                 <span class="comment">// Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
-                    LookupTable::SparseLookup,
-                    <span class="macro">vec!</span>[<span class="self">self</span>.vec_shifts_b()[i].clone()],
-                ));
-                <span class="self">self</span>.add_lookup(Lookup::read_one(
-                    LookupTable::SparseLookup,
-                    <span class="macro">vec!</span>[<span class="self">self</span>.vec_shifts_sum()[i].clone()],
-                ));
+                </span><span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_b()[i].clone());
+                <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_sum()[i].clone());
             }
             <span class="comment">// IOTA LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
@@ -369,6 +353,14 @@
             flag,
             LookupTable::ResetLookup,
             <span class="macro">vec!</span>[dense, sparse],
+        ));
+    }
+
+    <span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(
+            flag,
+            LookupTable::SparseLookup,
+            <span class="macro">vec!</span>[value],
         ));
     }
 
