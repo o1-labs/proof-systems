@@ -409,7 +409,7 @@ pub fn verify<
         evaluation_points: vec![zeta, zeta_omega],
         polyscale: v,
         evalscale: u,
-        opening: opening_proof.clone(),
+        opening: opening_proof,
         combined_inner_product,
     };
 
