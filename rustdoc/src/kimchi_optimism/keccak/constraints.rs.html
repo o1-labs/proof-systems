@@ -253,9 +253,12 @@
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
+    lookups::Lookups,
     {ArithOps, BoolOps, E, WORDS_IN_HASH},
 };
 <span class="kw">use </span>ark_ff::Field;
@@ -505,7 +508,8 @@
             } <span class="comment">// END iota
         </span>}
 
-        <span class="comment">// LOOKUP CONSTRAINTS
-    </span>}
+        <span class="comment">// READ LOOKUP CONSTRAINTS
+        </span><span class="self">self</span>.lookups();
+    }
 }
 </code></pre></div></section></main></body></html>

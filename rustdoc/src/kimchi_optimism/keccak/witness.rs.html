@@ -318,7 +318,15 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+</pre></div><pre class="rust"><code><span class="kw">use super</span>::{
+    column::KeccakColumn,
+    environment::KeccakEnv,
+    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
+    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+};
+<span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
         constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, STATE_LEN},
@@ -326,13 +334,6 @@
         Keccak,
     },
     grid,
-};
-
-<span class="kw">use super</span>::{
-    column::KeccakColumn,
-    environment::KeccakEnv,
-    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad_blocks&lt;Fp: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;Fp&gt; {
@@ -386,7 +387,9 @@
         </span><span class="kw">while </span><span class="self">self</span>.curr_step.is_some() {
             <span class="self">self</span>.step();
         }
-    }
+
+        <span class="comment">// TODO: create READ lookup tables
+    </span>}
 
     <span class="comment">// FIXME: read preimage from memory and pad and expand
     </span><span class="kw">fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -399,6 +402,7 @@
             KeccakStep::Sponge(typ) =&gt; <span class="self">self</span>.run_sponge(typ),
             KeccakStep::Round(i) =&gt; <span class="self">self</span>.run_round(i),
         }
+
         <span class="self">self</span>.update_step();
     }
 
