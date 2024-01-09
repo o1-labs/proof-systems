@@ -39,6 +39,9 @@ pub(crate) trait Lookups {
 
     /// Adds the lookups required for Theta in the round
     fn lookups_round_theta(&mut self);
+
+    /// Adds the lookups required for PiRho in the round
+    fn lookups_round_pirho(&mut self);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -60,31 +63,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // THETA LOOKUPS
             self.lookups_round_theta();
             // PIRHO LOOKUPS
-            for q in 0..QUARTERS {
-                for x in 0..DIM {
-                    for y in 0..DIM {
-                        // Check that PiRhoRemainderE < 2^64 and PiRhoQuotientE < 2^64
-                        self.lookup_rc16(self.is_round(), self.remainder_e(y, x, q));
-                        self.lookup_rc16(self.is_round(), self.quotient_e(y, x, q));
-                        // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
-                        self.lookup_reset(
-                            self.is_round(),
-                            self.dense_rot_e(y, x, q),
-                            self.expand_rot_e(y, x, q),
-                        );
-                        // Check PiRhoShift0E is the expansion of PiRhoDenseE
-                        self.lookup_reset(
-                            self.is_round(),
-                            self.dense_e(y, x, q),
-                            self.shifts_e(0, y, x, q),
-                        );
-                        // Check that the rest of PiRhoShiftsE are in the Sparse table
-                        for i in 1..SHIFTS {
-                            self.lookup_sparse(self.is_round(), self.shifts_e(i, y, x, q));
-                        }
-                    }
-                }
-            }
+            self.lookups_round_pirho();
             // CHI LOOKUPS
             for i in 0..SHIFTS_LEN {
                 // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
@@ -186,6 +165,34 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 // Check that the rest of ThetaShiftsC are in the Sparse table
                 for i in 1..SHIFTS {
                     self.lookup_sparse(self.is_round(), self.shifts_c(i, x, q));
+                }
+            }
+        }
+    }
+
+    fn lookups_round_pirho(&mut self) {
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                for y in 0..DIM {
+                    // Check that PiRhoRemainderE < 2^64 and PiRhoQuotientE < 2^64
+                    self.lookup_rc16(self.is_round(), self.remainder_e(y, x, q));
+                    self.lookup_rc16(self.is_round(), self.quotient_e(y, x, q));
+                    // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
+                    self.lookup_reset(
+                        self.is_round(),
+                        self.dense_rot_e(y, x, q),
+                        self.expand_rot_e(y, x, q),
+                    );
+                    // Check PiRhoShift0E is the expansion of PiRhoDenseE
+                    self.lookup_reset(
+                        self.is_round(),
+                        self.dense_e(y, x, q),
+                        self.shifts_e(0, y, x, q),
+                    );
+                    // Check that the rest of PiRhoShiftsE are in the Sparse table
+                    for i in 1..SHIFTS {
+                        self.lookup_sparse(self.is_round(), self.shifts_e(i, y, x, q));
+                    }
                 }
             }
         }
