@@ -2,7 +2,6 @@
 set -euo pipefail
 
 make -C ./ethereum-optimism/op-program op-program
-make -C ./ethereum-optimism/cannon cannon
 
 set -x
 ./ethereum-optimism/op-program/bin/op-program \
