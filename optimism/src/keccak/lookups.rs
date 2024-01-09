@@ -27,6 +27,9 @@ pub(crate) trait Lookups {
 
     /// Adds a lookup to the Reset table
     fn lookup_reset(&mut self, flag: Self::Variable, dense: Self::Variable, sparse: Self::Variable);
+
+    /// Adds a lookup to the Byte table
+    fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -61,10 +64,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // BYTES LOOKUPS
             for i in 0..200 {
                 // Bytes are <2^8
-                self.add_lookup(Lookup::read_one(
-                    LookupTable::ByteLookup,
-                    vec![self.sponge_bytes(i)],
-                ));
+                self.lookup_byte(self.is_sponge(), self.sponge_bytes(i));
             }
             // SHIFTS LOOKUPS
             for i in 100..SHIFTS_LEN {
@@ -181,5 +181,9 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             LookupTable::ResetLookup,
             vec![dense, sparse],
         ));
+    }
+
+    fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
+        self.add_lookup(Lookup::read_if(flag, LookupTable::ByteLookup, vec![value]));
     }
 }
