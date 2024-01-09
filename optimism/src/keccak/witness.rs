@@ -2,10 +2,8 @@ use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
-use crate::mips::interpreter::LookupMode;
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
@@ -67,6 +65,8 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         while self.curr_step.is_some() {
             self.step();
         }
+
+        // TODO: create READ lookup tables
     }
 
     // FIXME: read preimage from memory and pad and expand
@@ -80,9 +80,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakStep::Sponge(typ) => self.run_sponge(typ),
             KeccakStep::Round(i) => self.run_round(i),
         }
-
-        // WRITE LOOKUPS
-        self.lookups(LookupMode::Write);
 
         self.update_step();
     }
