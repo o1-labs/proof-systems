@@ -89,8 +89,8 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.write_column(KeccakColumn::StepCounter, i);
 
         // INTER-STEP CHANNEL
-        // Write outputs for next step if not a squeeze
-        self.lookup_output_of_step();
+        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        self.lookup_steps();
 
         self.update_step();
     }

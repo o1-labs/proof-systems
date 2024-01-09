@@ -22,11 +22,9 @@ pub(crate) trait Lookups {
     /// Adds all lookups of Self
     fn lookups(&mut self);
 
-    /// Reads a lookup containing the input of a step
-    fn lookup_input_of_step(&mut self);
-
-    /// Writes a lookup containing the output of a step
-    fn lookup_output_of_step(&mut self);
+    /// Reads a Lookup containing the input of a step
+    /// and writes a Lookup containing the output of the next step
+    fn lookup_steps(&mut self);
 
     /// Adds a lookup to the RangeCheck16 table
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable);
@@ -86,17 +84,14 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // Must be done inside caller
     }
 
-    fn lookup_input_of_step(&mut self) {
-        // Output of previous step is input of current step
+    fn lookup_steps(&mut self) {
+        // (if not a root) Output of previous step is input of current step
         self.add_lookup(Lookup::read_if(
             Self::not(self.is_root()),
             LookupTable::KeccakStepLookup,
             self.input_of_step(),
         ));
-    }
-
-    fn lookup_output_of_step(&mut self) {
-        // Input for next step is output of current step
+        // (if not a squeeze) Input for next step is output of current step
         self.add_lookup(Lookup::write_if(
             Self::not(self.is_squeeze()),
             LookupTable::KeccakStepLookup,
