@@ -28,6 +28,9 @@ pub(crate) trait Lookups {
     /// Adds a lookup to the Reset table
     fn lookup_reset(&mut self, flag: Self::Variable, dense: Self::Variable, sparse: Self::Variable);
 
+    /// Adds a lookup to the Shift table
+    fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable);
+
     /// Adds a lookup to the Byte table
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable);
 }
@@ -69,10 +72,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // SHIFTS LOOKUPS
             for i in 100..SHIFTS_LEN {
                 // Shifts1, Shifts2, Shifts3 are in the Sparse table
-                self.add_lookup(Lookup::read_one(
-                    LookupTable::SparseLookup,
-                    vec![self.sponge_shifts(i)],
-                ));
+                self.lookup_sparse(self.is_sponge(), self.sponge_shifts(i));
             }
             for i in 0..STATE_LEN {
                 // Shifts0 together with Bits composition by pairs are in the Reset table
@@ -103,10 +103,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                     self.lookup_reset(self.is_round(), self.dense_c(x, q), self.shifts_c(0, x, q));
                     // Check that the rest of ThetaShiftsC are in the Sparse table
                     for i in 1..SHIFTS {
-                        self.add_lookup(Lookup::read_one(
-                            LookupTable::SparseLookup,
-                            vec![self.shifts_c(i, x, q)],
-                        ));
+                        self.lookup_sparse(self.is_round(), self.shifts_c(i, x, q));
                     }
                 }
             }
@@ -131,10 +128,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                         );
                         // Check that the rest of PiRhoShiftsE are in the Sparse table
                         for i in 1..SHIFTS {
-                            self.add_lookup(Lookup::read_one(
-                                LookupTable::SparseLookup,
-                                vec![self.shifts_e(i, y, x, q)],
-                            ));
+                            self.lookup_sparse(self.is_round(), self.shifts_e(i, y, x, q));
                         }
                     }
                 }
@@ -142,14 +136,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // CHI LOOKUPS
             for i in 0..SHIFTS_LEN {
                 // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-                self.add_lookup(Lookup::read_one(
-                    LookupTable::SparseLookup,
-                    vec![self.vec_shifts_b()[i].clone()],
-                ));
-                self.add_lookup(Lookup::read_one(
-                    LookupTable::SparseLookup,
-                    vec![self.vec_shifts_sum()[i].clone()],
-                ));
+                self.lookup_sparse(self.is_round(), self.vec_shifts_b()[i].clone());
+                self.lookup_sparse(self.is_round(), self.vec_shifts_sum()[i].clone());
             }
             // IOTA LOOKUPS
             for i in 0..QUARTERS {
@@ -180,6 +168,14 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             flag,
             LookupTable::ResetLookup,
             vec![dense, sparse],
+        ));
+    }
+
+    fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable) {
+        self.add_lookup(Lookup::read_if(
+            flag,
+            LookupTable::SparseLookup,
+            vec![value],
         ));
     }
 
