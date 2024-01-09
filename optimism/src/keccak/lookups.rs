@@ -33,6 +33,9 @@ pub(crate) trait Lookups {
 
     /// Adds a lookup to the Byte table
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable);
+
+    /// Adds the lookups required for the sponge
+    fn lookups_sponge(&mut self);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -47,44 +50,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // TODO: preimage lookups (somewhere else)
 
         // SPONGE LOOKUPS
-        {
-            // PADDING LOOKUPS
-            // Power of two corresponds to 2^pad_length
-            // Pad suffixes correspond to 10*1 rule
-            // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
-            self.add_lookup(Lookup::read_one(
-                LookupTable::PadLookup,
-                vec![
-                    self.length(),
-                    self.two_to_pad(),
-                    self.pad_suffix(0),
-                    self.pad_suffix(1),
-                    self.pad_suffix(2),
-                    self.pad_suffix(3),
-                    self.pad_suffix(4),
-                ],
-            ));
-            // BYTES LOOKUPS
-            for i in 0..200 {
-                // Bytes are <2^8
-                self.lookup_byte(self.is_sponge(), self.sponge_bytes(i));
-            }
-            // SHIFTS LOOKUPS
-            for i in 100..SHIFTS_LEN {
-                // Shifts1, Shifts2, Shifts3 are in the Sparse table
-                self.lookup_sparse(self.is_sponge(), self.sponge_shifts(i));
-            }
-            for i in 0..STATE_LEN {
-                // Shifts0 together with Bits composition by pairs are in the Reset table
-                self.add_lookup(Lookup::read_one(
-                    LookupTable::ResetLookup,
-                    vec![
-                        self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8),
-                        self.sponge_shifts(i),
-                    ],
-                ));
-            }
-        }
+        self.lookups_sponge();
 
         // ROUND LOOKUPS
         {
@@ -181,5 +147,40 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
 
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(flag, LookupTable::ByteLookup, vec![value]));
+    }
+
+    fn lookups_sponge(&mut self) {
+        // PADDING LOOKUPS
+        // Power of two corresponds to 2^pad_length
+        // Pad suffixes correspond to 10*1 rule
+        // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
+        self.add_lookup(Lookup::read_if(
+            self.is_sponge(),
+            LookupTable::PadLookup,
+            vec![
+                self.length(),
+                self.two_to_pad(),
+                self.pad_suffix(0),
+                self.pad_suffix(1),
+                self.pad_suffix(2),
+                self.pad_suffix(3),
+                self.pad_suffix(4),
+            ],
+        ));
+        // BYTES LOOKUPS
+        for i in 0..200 {
+            // Bytes are <2^8
+            self.lookup_byte(self.is_sponge(), self.sponge_bytes(i));
+        }
+        // SHIFTS LOOKUPS
+        for i in 100..SHIFTS_LEN {
+            // Shifts1, Shifts2, Shifts3 are in the Sparse table
+            self.lookup_sparse(self.is_sponge(), self.sponge_shifts(i));
+        }
+        for i in 0..STATE_LEN {
+            // Shifts0 together with Bits composition by pairs are in the Reset table
+            let dense = self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8);
+            self.lookup_reset(self.is_sponge(), dense, self.sponge_shifts(i));
+        }
     }
 }
