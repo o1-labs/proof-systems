@@ -191,6 +191,13 @@
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -232,6 +239,9 @@
 
     <span class="doccomment">/// Adds the lookups required for Theta in the round
     </span><span class="kw">fn </span>lookups_round_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
+    <span class="doccomment">/// Adds the lookups required for PiRho in the round
+    </span><span class="kw">fn </span>lookups_round_pirho(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; Lookups <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
@@ -253,31 +263,7 @@
             <span class="comment">// THETA LOOKUPS
             </span><span class="self">self</span>.lookups_round_theta();
             <span class="comment">// PIRHO LOOKUPS
-            </span><span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-                <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
-                    <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
-                        <span class="comment">// Check that PiRhoRemainderE &lt; 2^64 and PiRhoQuotientE &lt; 2^64
-                        </span><span class="self">self</span>.lookup_rc16(<span class="self">self</span>.is_round(), <span class="self">self</span>.remainder_e(y, x, q));
-                        <span class="self">self</span>.lookup_rc16(<span class="self">self</span>.is_round(), <span class="self">self</span>.quotient_e(y, x, q));
-                        <span class="comment">// Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
-                        </span><span class="self">self</span>.lookup_reset(
-                            <span class="self">self</span>.is_round(),
-                            <span class="self">self</span>.dense_rot_e(y, x, q),
-                            <span class="self">self</span>.expand_rot_e(y, x, q),
-                        );
-                        <span class="comment">// Check PiRhoShift0E is the expansion of PiRhoDenseE
-                        </span><span class="self">self</span>.lookup_reset(
-                            <span class="self">self</span>.is_round(),
-                            <span class="self">self</span>.dense_e(y, x, q),
-                            <span class="self">self</span>.shifts_e(<span class="number">0</span>, y, x, q),
-                        );
-                        <span class="comment">// Check that the rest of PiRhoShiftsE are in the Sparse table
-                        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
-                            <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.shifts_e(i, y, x, q));
-                        }
-                    }
-                }
-            }
+            </span><span class="self">self</span>.lookups_round_pirho();
             <span class="comment">// CHI LOOKUPS
             </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
                 <span class="comment">// Check ChiShiftsB and ChiShiftsSum are in the Sparse table
@@ -379,6 +365,34 @@
                 <span class="comment">// Check that the rest of ThetaShiftsC are in the Sparse table
                 </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
                     <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.shifts_c(i, x, q));
+                }
+            }
+        }
+    }
+
+    <span class="kw">fn </span>lookups_round_pirho(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
+            <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
+                <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
+                    <span class="comment">// Check that PiRhoRemainderE &lt; 2^64 and PiRhoQuotientE &lt; 2^64
+                    </span><span class="self">self</span>.lookup_rc16(<span class="self">self</span>.is_round(), <span class="self">self</span>.remainder_e(y, x, q));
+                    <span class="self">self</span>.lookup_rc16(<span class="self">self</span>.is_round(), <span class="self">self</span>.quotient_e(y, x, q));
+                    <span class="comment">// Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
+                    </span><span class="self">self</span>.lookup_reset(
+                        <span class="self">self</span>.is_round(),
+                        <span class="self">self</span>.dense_rot_e(y, x, q),
+                        <span class="self">self</span>.expand_rot_e(y, x, q),
+                    );
+                    <span class="comment">// Check PiRhoShift0E is the expansion of PiRhoDenseE
+                    </span><span class="self">self</span>.lookup_reset(
+                        <span class="self">self</span>.is_round(),
+                        <span class="self">self</span>.dense_e(y, x, q),
+                        <span class="self">self</span>.shifts_e(<span class="number">0</span>, y, x, q),
+                    );
+                    <span class="comment">// Check that the rest of PiRhoShiftsE are in the Sparse table
+                    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
+                        <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.shifts_e(i, y, x, q));
+                    }
                 }
             }
         }

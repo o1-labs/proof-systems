@@ -540,6 +540,10 @@
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
 <a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -633,6 +637,10 @@
 
     <span class="kw">fn </span>is_one(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         x - <span class="self">Self</span>::Variable::one()
+    }
+
+    <span class="kw">fn </span>is_nonzero(x: <span class="self">Self</span>::Variable, x_inv: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        x * x_inv - <span class="self">Self</span>::Variable::one()
     }
 
     <span class="kw">fn </span>xor(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
