@@ -156,15 +156,6 @@ pub struct Lookup<Fp> {
 }
 
 impl<T: One> Lookup<T> {
-    pub fn new(mode: LookupMode, table_id: LookupTable, value: Vec<T>) -> Self {
-        Self {
-            mode,
-            magnitude: T::one(),
-            table_id,
-            value,
-        }
-    }
-
     pub fn read_if(if_is_true: T, table_id: LookupTable, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
