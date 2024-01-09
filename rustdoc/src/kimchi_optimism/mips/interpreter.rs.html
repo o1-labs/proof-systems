@@ -2602,7 +2602,6 @@
 <a href="#2602" id="2602">2602</a>
 <a href="#2603" id="2603">2603</a>
 <a href="#2604" id="2604">2604</a>
-<a href="#2605" id="2605">2605</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2746,8 +2745,7 @@
     </span>RoundConstantsLookup,
     <span class="comment">// All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     </span>PadLookup,
-    <span class="comment">// All values that can be stored in a byte
-    // TODO: model as RangeCheck16 for x and a scaled x&#39; = x * 2^8
+    <span class="comment">// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
     </span>ByteLookup,
 }
 
