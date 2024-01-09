@@ -36,6 +36,9 @@ pub(crate) trait Lookups {
 
     /// Adds the lookups required for the sponge
     fn lookups_sponge(&mut self);
+
+    /// Adds the lookups required for Theta in the round
+    fn lookups_round_theta(&mut self);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -55,24 +58,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // ROUND LOOKUPS
         {
             // THETA LOOKUPS
-            for q in 0..QUARTERS {
-                for x in 0..DIM {
-                    // Check that ThetaRemainderC < 2^64
-                    self.lookup_rc16(self.is_round(), self.remainder_c(x, q));
-                    // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
-                    self.lookup_reset(
-                        self.is_round(),
-                        self.dense_rot_c(x, q),
-                        self.expand_rot_c(x, q),
-                    );
-                    // Check ThetaShiftC0 is the expansion of ThetaDenseC
-                    self.lookup_reset(self.is_round(), self.dense_c(x, q), self.shifts_c(0, x, q));
-                    // Check that the rest of ThetaShiftsC are in the Sparse table
-                    for i in 1..SHIFTS {
-                        self.lookup_sparse(self.is_round(), self.shifts_c(i, x, q));
-                    }
-                }
-            }
+            self.lookups_round_theta();
             // PIRHO LOOKUPS
             for q in 0..QUARTERS {
                 for x in 0..DIM {
@@ -181,6 +167,27 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // Shifts0 together with Bits composition by pairs are in the Reset table
             let dense = self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8);
             self.lookup_reset(self.is_sponge(), dense, self.sponge_shifts(i));
+        }
+    }
+
+    fn lookups_round_theta(&mut self) {
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                // Check that ThetaRemainderC < 2^64
+                self.lookup_rc16(self.is_round(), self.remainder_c(x, q));
+                // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
+                self.lookup_reset(
+                    self.is_round(),
+                    self.dense_rot_c(x, q),
+                    self.expand_rot_c(x, q),
+                );
+                // Check ThetaShiftC0 is the expansion of ThetaDenseC
+                self.lookup_reset(self.is_round(), self.dense_c(x, q), self.shifts_c(0, x, q));
+                // Check that the rest of ThetaShiftsC are in the Sparse table
+                for i in 1..SHIFTS {
+                    self.lookup_sparse(self.is_round(), self.shifts_c(i, x, q));
+                }
+            }
         }
     }
 }
