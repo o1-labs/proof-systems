@@ -46,6 +46,8 @@ pub(crate) trait BoolOps {
 
     fn is_one(x: Self::Variable) -> Self::Variable;
 
+    fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable;
+
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable;
 
     fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable;
