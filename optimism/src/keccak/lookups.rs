@@ -1,7 +1,7 @@
 use super::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, E,
+    ArithOps, BoolOps, E,
 };
 use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
@@ -21,6 +21,10 @@ pub(crate) trait Lookups {
 
     /// Adds all lookups of Self
     fn lookups(&mut self);
+
+    /// Reads a Lookup containing the input of a step
+    /// and writes a Lookup containing the output of the next step
+    fn lookup_steps(&mut self);
 
     /// Adds a lookup to the RangeCheck16 table
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable);
@@ -75,6 +79,24 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // IOTA LOOKUPS
             self.lookups_round_iota();
         }
+
+        // STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
+        // Must be done inside caller
+    }
+
+    fn lookup_steps(&mut self) {
+        // (if not a root) Output of previous step is input of current step
+        self.add_lookup(Lookup::read_if(
+            Self::not(self.is_root()),
+            LookupTable::KeccakStepLookup,
+            self.input_of_step(),
+        ));
+        // (if not a squeeze) Input for next step is output of current step
+        self.add_lookup(Lookup::write_if(
+            Self::not(self.is_squeeze()),
+            LookupTable::KeccakStepLookup,
+            self.output_of_step(),
+        ));
     }
 
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {

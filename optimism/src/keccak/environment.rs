@@ -30,7 +30,9 @@ pub struct KeccakEnv<Fp> {
     /// How many blocks are left to absrob (including current absorb)
     pub(crate) blocks_left_to_absorb: u64,
     /// What step of the hash is being executed (or None, if just ended)
-    pub(crate) curr_step: Option<KeccakStep>,
+    pub(crate) keccak_step: Option<KeccakStep>,
+    /// Step counter of the total number of steps executed so far (starts with 0)
+    pub(crate) step_counter: u64,
 }
 
 impl<Fp: Field> KeccakEnv<Fp> {
@@ -46,25 +48,26 @@ impl<Fp: Field> KeccakEnv<Fp> {
         self.keccak_state = KeccakColumns::default();
     }
     pub fn update_step(&mut self) {
-        match self.curr_step {
+        match self.keccak_step {
             Some(step) => match step {
                 KeccakStep::Sponge(sponge) => match sponge {
-                    Sponge::Absorb(_) => self.curr_step = Some(KeccakStep::Round(1)),
-                    Sponge::Squeeze => self.curr_step = None,
+                    Sponge::Absorb(_) => self.keccak_step = Some(KeccakStep::Round(1)),
+
+                    Sponge::Squeeze => self.keccak_step = None,
                 },
                 KeccakStep::Round(round) => {
                     if round < ROUNDS as u64 {
-                        self.curr_step = Some(KeccakStep::Round(round + 1));
+                        self.keccak_step = Some(KeccakStep::Round(round + 1));
                     } else {
                         self.blocks_left_to_absorb -= 1;
                         match self.blocks_left_to_absorb {
-                            0 => self.curr_step = Some(KeccakStep::Sponge(Sponge::Squeeze)),
+                            0 => self.keccak_step = Some(KeccakStep::Sponge(Sponge::Squeeze)),
                             1 => {
-                                self.curr_step =
+                                self.keccak_step =
                                     Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Last)))
                             }
                             _ => {
-                                self.curr_step =
+                                self.keccak_step =
                                     Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Middle)))
                             }
                         }
@@ -73,6 +76,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
             },
             None => panic!("No step to update"),
         }
+        self.step_counter += 1;
     }
 }
 
@@ -238,6 +242,13 @@ pub(crate) trait KeccakEnvironment {
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
     fn state_g(&self, q: usize) -> Self::Variable;
+
+    /// Returns the step counter
+    fn step_counter(&self) -> Self::Variable;
+    /// Returns a slice of the input variables of the current step
+    fn input_of_step(&self) -> Vec<Self::Variable>;
+    /// Returns a slice of the output variables of the current step (= input of next step)
+    fn output_of_step(&self) -> Vec<Self::Variable>;
 }
 
 impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
@@ -538,5 +549,21 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn state_g(&self, q: usize) -> Self::Variable {
         self.keccak_state[KeccakColumn::IotaStateG(q)].clone()
+    }
+
+    fn step_counter(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::StepCounter].clone()
+    }
+
+    fn input_of_step(&self) -> Vec<Self::Variable> {
+        [&[self.step_counter()], self.keccak_state.curr_state()].concat()
+    }
+
+    fn output_of_step(&self) -> Vec<Self::Variable> {
+        [
+            &[self.step_counter() + Self::one()],
+            self.keccak_state.next_state(),
+        ]
+        .concat()
     }
 }

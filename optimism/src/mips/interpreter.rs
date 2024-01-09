@@ -143,6 +143,8 @@ pub enum LookupTable {
     PadLookup,
     // All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
     ByteLookup,
+    // Input/Output of Keccak steps
+    KeccakStepLookup,
 }
 
 #[derive(Clone, Debug)]
