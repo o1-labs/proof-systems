@@ -1,7 +1,7 @@
 use super::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, E,
+    ArithOps, BoolOps, E,
 };
 use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
@@ -21,6 +21,10 @@ pub(crate) trait Lookups {
 
     /// Adds all lookups of Self
     fn lookups(&mut self);
+
+    /// Reads a Lookup containing the input of a step
+    /// and writes a Lookup containing the output of the next step
+    fn lookup_steps(&mut self);
 
     /// Adds a lookup to the RangeCheck16 table
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable);
@@ -42,6 +46,12 @@ pub(crate) trait Lookups {
 
     /// Adds the lookups required for PiRho in the round
     fn lookups_round_pirho(&mut self);
+
+    /// Adds the lookups required for Chi in the round
+    fn lookups_round_chi(&mut self);
+
+    /// Adds the lookups required for Iota in the round
+    fn lookups_round_iota(&mut self);
 }
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -65,20 +75,28 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // PIRHO LOOKUPS
             self.lookups_round_pirho();
             // CHI LOOKUPS
-            for i in 0..SHIFTS_LEN {
-                // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-                self.lookup_sparse(self.is_round(), self.vec_shifts_b()[i].clone());
-                self.lookup_sparse(self.is_round(), self.vec_shifts_sum()[i].clone());
-            }
+            self.lookups_round_chi();
             // IOTA LOOKUPS
-            for i in 0..QUARTERS {
-                // Check round constants correspond with the current round
-                self.add_lookup(Lookup::read_one(
-                    LookupTable::RoundConstantsLookup,
-                    vec![self.round(), self.round_constants()[i].clone()],
-                ));
-            }
+            self.lookups_round_iota();
         }
+
+        // STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
+        // Must be done inside caller
+    }
+
+    fn lookup_steps(&mut self) {
+        // (if not a root) Output of previous step is input of current step
+        self.add_lookup(Lookup::read_if(
+            Self::not(self.is_root()),
+            LookupTable::KeccakStepLookup,
+            self.input_of_step(),
+        ));
+        // (if not a squeeze) Input for next step is output of current step
+        self.add_lookup(Lookup::write_if(
+            Self::not(self.is_squeeze()),
+            LookupTable::KeccakStepLookup,
+            self.output_of_step(),
+        ));
     }
 
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
@@ -195,6 +213,25 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                     }
                 }
             }
+        }
+    }
+
+    fn lookups_round_chi(&mut self) {
+        for i in 0..SHIFTS_LEN {
+            // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
+            self.lookup_sparse(self.is_round(), self.vec_shifts_b()[i].clone());
+            self.lookup_sparse(self.is_round(), self.vec_shifts_sum()[i].clone());
+        }
+    }
+
+    fn lookups_round_iota(&mut self) {
+        for i in 0..QUARTERS {
+            // Check round constants correspond with the current round
+            self.add_lookup(Lookup::read_if(
+                self.is_round(),
+                LookupTable::RoundConstantsLookup,
+                vec![self.round(), self.round_constants()[i].clone()],
+            ));
         }
     }
 }

@@ -6,7 +6,7 @@ use kimchi::circuits::polynomials::keccak::constants::{
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
     PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, SPONGE_BYTES_OFF,
-    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, THETA_DENSE_C_LEN,
+    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN, THETA_DENSE_C_LEN,
     THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
     THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
     THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF, THETA_STATE_A_LEN,
@@ -18,6 +18,7 @@ use super::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum KeccakColumn {
+    StepCounter,
     FlagRound,                                // Coeff Round = 0 | 1 .. 24
     FlagAbsorb,                               // Coeff Absorb = 0 | 1
     FlagSqueeze,                              // Coeff Squeeze = 0 | 1
@@ -54,6 +55,7 @@ pub enum KeccakColumn {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
+    pub step_counter: T,
     pub flag_round: T,           // Coeff Round = 0 | 1 .. 24
     pub flag_absorb: T,          // Coeff Absorb = 0 | 1
     pub flag_squeeze: T,         // Coeff Squeeze = 0 | 1
@@ -88,11 +90,19 @@ impl<T: Clone> KeccakColumns<T> {
     pub fn chunk(&self, offset: usize, length: usize) -> &[T] {
         &self.curr[offset..offset + length]
     }
+
+    pub(crate) fn curr_state(&self) -> &[T] {
+        &self.curr[0..STATE_LEN]
+    }
+    pub(crate) fn next_state(&self) -> &[T] {
+        &self.next
+    }
 }
 
 impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
     fn default() -> Self {
         KeccakColumns {
+            step_counter: T::zero(),
             flag_round: T::zero(),
             flag_absorb: T::zero(),
             flag_squeeze: T::zero(),
@@ -115,6 +125,7 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
         match index {
+            KeccakColumn::StepCounter => &self.step_counter,
             KeccakColumn::FlagRound => &self.flag_round,
             KeccakColumn::FlagAbsorb => &self.flag_absorb,
             KeccakColumn::FlagSqueeze => &self.flag_squeeze,
@@ -184,6 +195,7 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
 impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
     fn index_mut(&mut self, index: KeccakColumn) -> &mut Self::Output {
         match index {
+            KeccakColumn::StepCounter => &mut self.step_counter,
             KeccakColumn::FlagRound => &mut self.flag_round,
             KeccakColumn::FlagAbsorb => &mut self.flag_absorb,
             KeccakColumn::FlagSqueeze => &mut self.flag_squeeze,
