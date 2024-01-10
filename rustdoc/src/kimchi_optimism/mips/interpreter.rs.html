@@ -2602,6 +2602,8 @@
 <a href="#2602" id="2602">2602</a>
 <a href="#2603" id="2603">2603</a>
 <a href="#2604" id="2604">2604</a>
+<a href="#2605" id="2605">2605</a>
+<a href="#2606" id="2606">2606</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2747,6 +2749,8 @@
     </span>PadLookup,
     <span class="comment">// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
     </span>ByteLookup,
+    <span class="comment">// Input/Output of Keccak steps
+    </span>KeccakStepLookup,
 }
 
 <span class="attr">#[derive(Clone, Debug)]

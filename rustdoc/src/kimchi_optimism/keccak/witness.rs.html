@@ -320,10 +320,19 @@
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::KeccakEnv,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
+    lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 <span class="kw">use </span>ark_ff::Field;
@@ -364,16 +373,17 @@
     <span class="kw">type </span>Variable = Fp;
 
     <span class="kw">fn </span>hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, preimage: Vec&lt;u8&gt;) {
-        <span class="comment">// FIXME Read preimage
+        <span class="comment">// TODO: Read preimage for each block
 
         </span><span class="self">self</span>.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) <span class="kw">as </span>u64;
 
         <span class="comment">// Configure first step depending on number of blocks remaining
-        </span><span class="self">self</span>.curr_step = <span class="kw">if </span><span class="self">self</span>.blocks_left_to_absorb == <span class="number">1 </span>{
+        </span><span class="self">self</span>.keccak_step = <span class="kw">if </span><span class="self">self</span>.blocks_left_to_absorb == <span class="number">1 </span>{
             <span class="prelude-val">Some</span>(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
         } <span class="kw">else </span>{
             <span class="prelude-val">Some</span>(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
         };
+        <span class="self">self</span>.step_counter = <span class="number">0</span>;
 
         <span class="comment">// Root state is zero
         </span><span class="self">self</span>.prev_block = <span class="macro">vec!</span>[<span class="number">0u64</span>; STATE_LEN];
@@ -384,11 +394,12 @@
         <span class="self">self</span>.pad_len = (<span class="self">self</span>.padded.len() - preimage.len()) <span class="kw">as </span>u64;
 
         <span class="comment">// Run all steps of hash
-        </span><span class="kw">while </span><span class="self">self</span>.curr_step.is_some() {
+        </span><span class="kw">while </span><span class="self">self</span>.keccak_step.is_some() {
             <span class="self">self</span>.step();
         }
 
         <span class="comment">// TODO: create READ lookup tables
+        // TODO: When finish, write hash to Syscall channel using `output_of_step()` on Squeeze step
     </span>}
 
     <span class="comment">// FIXME: read preimage from memory and pad and expand
@@ -398,10 +409,15 @@
 
         <span class="comment">// FIXME sparse notation
 
-        </span><span class="kw">match </span><span class="self">self</span>.curr_step.unwrap() {
+        </span><span class="kw">match </span><span class="self">self</span>.keccak_step.unwrap() {
             KeccakStep::Sponge(typ) =&gt; <span class="self">self</span>.run_sponge(typ),
             KeccakStep::Round(i) =&gt; <span class="self">self</span>.run_round(i),
         }
+        <span class="self">self</span>.write_column(KeccakColumn::StepCounter, <span class="self">self</span>.step_counter);
+
+        <span class="comment">// INTER-STEP CHANNEL
+        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        </span><span class="self">self</span>.lookup_steps();
 
         <span class="self">self</span>.update_step();
     }

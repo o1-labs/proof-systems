@@ -198,10 +198,47 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, E,
+    ArithOps, BoolOps, E,
 };
 <span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::{Lookup, LookupTable};
 <span class="kw">use </span>ark_ff::Field;
@@ -221,6 +258,10 @@
 
     <span class="doccomment">/// Adds all lookups of Self
     </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
+    <span class="doccomment">/// Reads a Lookup containing the input of a step
+    /// and writes a Lookup containing the output of the next step
+    </span><span class="kw">fn </span>lookup_steps(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
     <span class="doccomment">/// Adds a lookup to the RangeCheck16 table
     </span><span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
@@ -242,6 +283,12 @@
 
     <span class="doccomment">/// Adds the lookups required for PiRho in the round
     </span><span class="kw">fn </span>lookups_round_pirho(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
+    <span class="doccomment">/// Adds the lookups required for Chi in the round
+    </span><span class="kw">fn </span>lookups_round_chi(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
+    <span class="doccomment">/// Adds the lookups required for Iota in the round
+    </span><span class="kw">fn </span>lookups_round_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; Lookups <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
@@ -265,20 +312,28 @@
             <span class="comment">// PIRHO LOOKUPS
             </span><span class="self">self</span>.lookups_round_pirho();
             <span class="comment">// CHI LOOKUPS
-            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
-                <span class="comment">// Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-                </span><span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_b()[i].clone());
-                <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_sum()[i].clone());
-            }
+            </span><span class="self">self</span>.lookups_round_chi();
             <span class="comment">// IOTA LOOKUPS
-            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-                <span class="comment">// Check round constants correspond with the current round
-                </span><span class="self">self</span>.add_lookup(Lookup::read_one(
-                    LookupTable::RoundConstantsLookup,
-                    <span class="macro">vec!</span>[<span class="self">self</span>.round(), <span class="self">self</span>.round_constants()[i].clone()],
-                ));
-            }
+            </span><span class="self">self</span>.lookups_round_iota();
         }
+
+        <span class="comment">// STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
+        // Must be done inside caller
+    </span>}
+
+    <span class="kw">fn </span>lookup_steps(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// (if not a root) Output of previous step is input of current step
+        </span><span class="self">self</span>.add_lookup(Lookup::read_if(
+            <span class="self">Self</span>::not(<span class="self">self</span>.is_root()),
+            LookupTable::KeccakStepLookup,
+            <span class="self">self</span>.input_of_step(),
+        ));
+        <span class="comment">// (if not a squeeze) Input for next step is output of current step
+        </span><span class="self">self</span>.add_lookup(Lookup::write_if(
+            <span class="self">Self</span>::not(<span class="self">self</span>.is_squeeze()),
+            LookupTable::KeccakStepLookup,
+            <span class="self">self</span>.output_of_step(),
+        ));
     }
 
     <span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
@@ -395,6 +450,25 @@
                     }
                 }
             }
+        }
+    }
+
+    <span class="kw">fn </span>lookups_round_chi(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
+            <span class="comment">// Check ChiShiftsB and ChiShiftsSum are in the Sparse table
+            </span><span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_b()[i].clone());
+            <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_sum()[i].clone());
+        }
+    }
+
+    <span class="kw">fn </span>lookups_round_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
+            <span class="comment">// Check round constants correspond with the current round
+            </span><span class="self">self</span>.add_lookup(Lookup::read_if(
+                <span class="self">self</span>.is_round(),
+                LookupTable::RoundConstantsLookup,
+                <span class="macro">vec!</span>[<span class="self">self</span>.round(), <span class="self">self</span>.round_constants()[i].clone()],
+            ));
         }
     }
 }
