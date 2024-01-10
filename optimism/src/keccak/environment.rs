@@ -46,7 +46,8 @@ impl<Fp: Field> Default for KeccakEnv<Fp> {
             keccak_state: KeccakColumns::default(),
             pad_len: 0,
             blocks_left_to_absorb: 0,
-            curr_step: None,
+            keccak_step: None,
+            step_counter: 0,
         }
     }
 }
