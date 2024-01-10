@@ -32,7 +32,7 @@ pub trait KeccakInterpreter {
         + std::fmt::Debug;
 
     // FIXME: read preimage from memory
-    fn hash(&mut self, preimage: Vec<u8>);
+    fn hash(&mut self, preimage: &[u8]);
 
     fn step(&mut self);
 

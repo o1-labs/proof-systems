@@ -1,4 +1,5 @@
 use crate::cannon::{Page, State};
+use crate::keccak::interpreter::KeccakInterpreter;
 use crate::{
     cannon::{
         Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -56,6 +57,7 @@ pub struct Env<Fp> {
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
+    pub preimage_bytes_read: Option<u64>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
 }
 
@@ -587,7 +589,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 - preimage_offset;
         // We read at most 4 bytes, ensuring that we respect word alignment.
         let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
-
         for i in 0..actual_read_len {
             let idx = (preimage_offset + i) as usize;
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
@@ -608,6 +609,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
         }
         self.write_column(pos, actual_read_len);
+
+        // Update the total number of preimage bytes read so far
+        self.preimage_bytes_read = Some(self.preimage_bytes_read.unwrap() + actual_read_len);
+        // If we've read the entire preimage, trigger Keccak workflow
+        if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
+            let mut keccak_env = KeccakEnv::<Fp>::default();
+            keccak_env.hash(self.preimage.as_ref().unwrap());
+            self.keccak_env = Some(keccak_env);
+        }
+
         actual_read_len
     }
 
@@ -717,6 +728,7 @@ impl<Fp: Field> Env<Fp> {
             syscall_env,
             preimage_oracle,
             preimage: state.preimage,
+            preimage_bytes_read: Some(0),
             keccak_env: None,
         }
     }

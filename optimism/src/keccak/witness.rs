@@ -41,7 +41,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
     type Variable = Fp;
 
-    fn hash(&mut self, preimage: Vec<u8>) {
+    fn hash(&mut self, preimage: &[u8]) {
         // FIXME Read preimage
 
         self.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
@@ -57,7 +57,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.prev_block = vec![0u64; STATE_LEN];
 
         // Pad preimage
-        self.padded = Keccak::pad(&preimage);
+        self.padded = Keccak::pad(preimage);
         self.block_idx = 0;
         self.pad_len = (self.padded.len() - preimage.len()) as u64;
 

@@ -33,6 +33,22 @@ pub struct KeccakEnv<Fp> {
     pub(crate) curr_step: Option<KeccakStep>,
 }
 
+impl<Fp: Field> Default for KeccakEnv<Fp> {
+    fn default() -> Self {
+        Self {
+            constraints: vec![],
+            lookups: vec![],
+            prev_block: vec![],
+            padded: vec![],
+            block_idx: 0,
+            keccak_state: KeccakColumns::default(),
+            pad_len: 0,
+            blocks_left_to_absorb: 0,
+            curr_step: None,
+        }
+    }
+}
+
 impl<Fp: Field> KeccakEnv<Fp> {
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
         self.keccak_state[column] = Self::constant(value);
