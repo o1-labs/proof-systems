@@ -1,3 +1,4 @@
+pub mod bn128;
 pub mod fp_kimchi;
 pub mod fp_legacy;
 pub mod fq_kimchi;
