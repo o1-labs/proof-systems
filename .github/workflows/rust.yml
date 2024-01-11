@@ -60,7 +60,7 @@ jobs:
       - name: Install cargo-spec for specifications
         run: |
           eval $(opam env)
-          cargo install cargo-spec
+          cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
         run: |
