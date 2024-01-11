@@ -70,7 +70,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // TODO: create READ lookup tables
 
-        // When finish, write hash to Syscall channel
+        // COMMUNICATION CHANNEL: Write hash output
         self.lookup_syscall_hash();
     }
 
@@ -211,6 +211,9 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             self.write_column_field(KeccakColumn::PadSuffix(i), *value);
         }
         // Rest is zero thanks to null_state
+
+        // COMMUNICATION CHANNEL: read bytes of current block
+        self.lookup_syscall_preimage();
 
         // Update environment
         self.prev_block = xor_state;
