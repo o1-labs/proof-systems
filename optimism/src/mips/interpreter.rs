@@ -145,6 +145,8 @@ pub enum LookupTable {
     ByteLookup,
     // Input/Output of Keccak steps
     KeccakStepLookup,
+    // Syscalls communication channel
+    SyscallLookup,
 }
 
 #[derive(Clone, Debug)]

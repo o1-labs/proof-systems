@@ -69,7 +69,9 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
 
         // TODO: create READ lookup tables
-        // TODO: When finish, write hash to Syscall channel using `output_of_step()` on Squeeze step
+
+        // When finish, write hash to Syscall channel
+        self.lookup_syscall_hash();
     }
 
     // FIXME: read preimage from memory and pad and expand
