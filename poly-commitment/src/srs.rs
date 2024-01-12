@@ -8,6 +8,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -267,6 +268,40 @@ where
         let m = G::Map::setup();
 
         let g: Vec<_> = (0..depth)
+            .map(|i| {
+                let mut h = Blake2b512::new();
+                h.update((i as u32).to_be_bytes());
+                point_of_random_bytes(&m, &h.finalize())
+            })
+            .collect();
+
+        const MISC: usize = 1;
+        let [h]: [G; MISC] = array::from_fn(|i| {
+            let mut h = Blake2b512::new();
+            h.update("srs_misc".as_bytes());
+            h.update((i as u32).to_be_bytes());
+            point_of_random_bytes(&m, &h.finalize())
+        });
+
+        SRS {
+            g,
+            h,
+            lagrange_bases: HashMap::new(),
+        }
+    }
+}
+
+impl<G: CommitmentCurve> SRS<G>
+where
+    <G as CommitmentCurve>::Map: Sync,
+    G::BaseField: PrimeField,
+{
+    /// This function creates SRS instance for circuits with number of rows up to `depth`.
+    pub fn create_parallel(depth: usize) -> Self {
+        let m = G::Map::setup();
+
+        let g: Vec<_> = (0..depth)
+            .into_par_iter()
             .map(|i| {
                 let mut h = Blake2b512::new();
                 h.update((i as u32).to_be_bytes());
