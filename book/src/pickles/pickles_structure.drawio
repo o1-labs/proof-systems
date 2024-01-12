@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2024-01-11T18:04:30.531Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="xV9PyEvGm-SvRRTBIEDH" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2024-01-11T19:15:12.649Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="7cE10G96lYSjepHxlmcv" version="22.1.2" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
     <mxGraphModel dx="3104" dy="1927" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
@@ -3237,7 +3237,7 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="Ft65M6HK2kHEivHgyQuo-45" value="step_main/incrementally_verify_proof" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#b85450;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#f8cecc;" parent="1" vertex="1">
+        <mxCell id="Ft65M6HK2kHEivHgyQuo-45" value="step_main/incrementally_verify_proof" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=none;strokeColor=#0000FF;" parent="1" vertex="1">
           <mxGeometry x="5310" y="4359.67" width="860" height="416" as="geometry" />
         </mxCell>
         <mxCell id="Ft65M6HK2kHEivHgyQuo-46" value="sponge_digest_before_evaluations_actual" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="Ft65M6HK2kHEivHgyQuo-45" vertex="1">
@@ -3348,7 +3348,7 @@
         <mxCell id="Ft65M6HK2kHEivHgyQuo-71" value="proof_state" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="Ft65M6HK2kHEivHgyQuo-69" vertex="1">
           <mxGeometry x="20" y="30" width="80" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="Ft65M6HK2kHEivHgyQuo-72" value="step_verifier/finalize_other_proofs" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#b85450;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#f8cecc;" parent="1" vertex="1">
+        <mxCell id="Ft65M6HK2kHEivHgyQuo-72" value="step_verifier/finalize_other_proof" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#b85450;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#f8cecc;" parent="1" vertex="1">
           <mxGeometry x="4360" y="4892.67" width="680" height="293" as="geometry" />
         </mxCell>
         <mxCell id="Ft65M6HK2kHEivHgyQuo-73" value="new_bulletproof_challenges" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="Ft65M6HK2kHEivHgyQuo-72" vertex="1">
