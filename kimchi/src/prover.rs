@@ -423,7 +423,7 @@ where
                 G::ScalarField::zero()
             };
 
-            //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+            //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
             let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
 
             //~~ * If multiple lookup tables are involved,
@@ -951,7 +951,7 @@ where
         //~
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
-        //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+        //~    TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 
         internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_poly);
         let zeta_evals =

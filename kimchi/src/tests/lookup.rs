@@ -133,7 +133,7 @@ fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
 }
 
-fn setup_successfull_runtime_table_test(
+fn setup_successful_runtime_table_test(
     runtime_table_cfgs: Vec<RuntimeTableCfg<Fp>>,
     runtime_tables: Vec<RuntimeTable<Fp>>,
     lookups: Vec<i32>,
@@ -559,7 +559,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_va
 
     let lookups: Vec<i32> = [0; 20].into();
 
-    setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+    setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
 
 #[test]
@@ -586,7 +586,7 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
 
     let lookups: Vec<i32> = [0; 20].into();
 
-    setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+    setup_successful_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
 
 // This test verifies that if there is a table with ID 0, it contains a row with only zeroes.

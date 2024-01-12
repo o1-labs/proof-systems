@@ -111,7 +111,7 @@ where
     G::BaseField: PrimeField,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
-    // Initalize inputs
+    // Initialize inputs
     // If some input was given then use that one, otherwise generate a random one with the given bits
     let input1 = rng.gen(in1, bits);
     let input2 = rng.gen(in2, bits);
