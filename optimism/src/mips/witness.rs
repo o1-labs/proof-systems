@@ -657,7 +657,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
         // Reset environment
         self.preimage_bytes_read = None;
+        self.preimage = None;
+        self.preimage_key = None;
         self.hash_count += 1;
+
         actual_read_len
     }
 
