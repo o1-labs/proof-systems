@@ -751,7 +751,9 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
 1. Checking $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc}, \vec{G}}$
     1. Receive $c$ form the prover.
     1. Define $\hpoly$ from $\vec{\chalfold}$ (folding challenges, computed above).
-    1. Compute $\openy' \gets c \cdot (\hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega))$, this works since:
+    1. Compute a combined evaluation of the IPA challenge polynomial on two points: $b = \hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega)$
+       - Computationally, $b$ is obtained inside bulletproof folding procedure, by folding the vector $b_{\mathsf{init}}$ such that $b_{\mathsf{init},j} = \zeta^j + v \cdot \zeta^j w^j$ using the same standard bulletproof challenges that constitute $h(X)$. This $b_{\mathsf{init}}$ is a $v$-recombined evaluation point. The equality is by linearity of IPA recombination.
+    1. Compute $\openy' \gets c \cdot b = c \cdot (\hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega))$, this works since:
        $$
        \openx^{(\rounds)} =
        \openx^{(\rounds)}_{\chaleval} + \chalv \cdot \openx^{(\rounds)}_{\chaleval\omega}
