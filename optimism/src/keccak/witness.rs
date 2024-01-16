@@ -1,3 +1,10 @@
+use super::{
+    column::KeccakColumn,
+    environment::KeccakEnv,
+    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
+    lookups::Lookups,
+    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+};
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
@@ -6,13 +13,6 @@ use kimchi::{
         Keccak,
     },
     grid,
-};
-
-use super::{
-    column::KeccakColumn,
-    environment::KeccakEnv,
-    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 
 pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
@@ -43,16 +43,17 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     type Variable = Fp;
 
     fn hash(&mut self, preimage: Vec<u8>) {
-        // FIXME Read preimage
+        // TODO: Read preimage for each block
 
         self.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
 
         // Configure first step depending on number of blocks remaining
-        self.curr_step = if self.blocks_left_to_absorb == 1 {
+        self.keccak_step = if self.blocks_left_to_absorb == 1 {
             Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
         } else {
             Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
         };
+        self.step_counter = 0;
 
         // Root state is zero
         self.prev_block = vec![0u64; STATE_LEN];
@@ -63,9 +64,12 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.pad_len = (self.padded.len() - preimage.len()) as u64;
 
         // Run all steps of hash
-        while self.curr_step.is_some() {
+        while self.keccak_step.is_some() {
             self.step();
         }
+
+        // TODO: create READ lookup tables
+        // TODO: When finish, write hash to Syscall channel using `output_of_step()` on Squeeze step
     }
 
     // FIXME: read preimage from memory and pad and expand
@@ -75,10 +79,16 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // FIXME sparse notation
 
-        match self.curr_step.unwrap() {
+        match self.keccak_step.unwrap() {
             KeccakStep::Sponge(typ) => self.run_sponge(typ),
             KeccakStep::Round(i) => self.run_round(i),
         }
+        self.write_column(KeccakColumn::StepCounter, self.step_counter);
+
+        // INTER-STEP CHANNEL
+        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        self.lookup_steps();
+
         self.update_step();
     }
 
@@ -212,9 +222,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let state_e = self.run_theta(&state_a);
         let state_b = self.run_pirho(&state_e);
         let state_f = self.run_chi(&state_b);
-        self.run_iota(&state_f, round as usize);
+        let state_g = self.run_iota(&state_f, round as usize);
 
-        // Compute witness values
+        // Update block for next step with the output of the round
+        self.prev_block = state_g;
     }
 
     fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
@@ -302,15 +313,18 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         chi.state_f()
     }
 
-    fn run_iota(&mut self, state_f: &[u64], round: usize) {
+    fn run_iota(&mut self, state_f: &[u64], round: usize) -> Vec<u64> {
         let iota = Iota::create(state_f, round);
+        let state_g = iota.state_g();
 
         // Update columns
-        for i in 0..STATE_LEN {
-            self.write_column(KeccakColumn::IotaStateG(i), iota.state_g(i));
+        for (i, g) in state_g.iter().enumerate() {
+            self.write_column(KeccakColumn::IotaStateG(i), *g);
         }
         for i in 0..QUARTERS {
             self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
         }
+
+        state_g
     }
 }
