@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-01-16T17:17:02.700Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="oRJSlKrEPXf20V_SqycH" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2024-01-16T17:39:54.098Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="emv4plKVoB9M_kllutLw" version="22.1.2" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
-    <mxGraphModel dx="1270" dy="805" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="1215" dy="770" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -107,12 +107,6 @@
         </mxCell>
         <mxCell id="BE8Wb5OFAH_yptXNtE9I-33" value="acc0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
           <mxGeometry x="50" y="630" width="40" height="20" as="geometry" />
-        </mxCell>
-        <mxCell id="BE8Wb5OFAH_yptXNtE9I-37" value="C1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
-          <mxGeometry x="301" y="625" width="40" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="BE8Wb5OFAH_yptXNtE9I-38" value="C2" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
-          <mxGeometry x="770" y="625" width="40" height="30" as="geometry" />
         </mxCell>
         <mxCell id="BE8Wb5OFAH_yptXNtE9I-40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" target="BE8Wb5OFAH_yptXNtE9I-43" edge="1" source="1vVqgqgyp8pKWViCEyBv-3">
           <mxGeometry relative="1" as="geometry">
