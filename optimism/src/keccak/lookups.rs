@@ -91,7 +91,10 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_bytes(i)
         });
-        self.add_lookup(Lookup::write_one(LookupTable::SyscallLookup, vec![bytes31]));
+        self.add_lookup(Lookup::write_one(
+            LookupTable::SyscallLookup,
+            vec![self.hash_counter(), bytes31],
+        ));
     }
 
     fn lookup_steps(&mut self) {
