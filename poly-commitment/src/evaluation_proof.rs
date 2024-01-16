@@ -494,12 +494,15 @@ impl<
     }
 }
 
+/// Commitment round challenges (endo mapped) and their inverses.
 pub struct Challenges<F> {
     pub chal: Vec<F>,
     pub chal_inv: Vec<F>,
 }
 
 impl<G: AffineCurve> OpeningProof<G> {
+    /// Computes a log-sized vector of scalar challenges for
+    /// recombining elements inside the IPA.
     pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         sponge: &mut EFqSponge,
@@ -515,6 +518,8 @@ impl<G: AffineCurve> OpeningProof<G> {
             .collect()
     }
 
+    /// Same as `prechallenges`, but maps scalar challenges using the
+    /// provided endomorphism, and computes their inverses.
     pub fn challenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         endo_r: &G::ScalarField,
