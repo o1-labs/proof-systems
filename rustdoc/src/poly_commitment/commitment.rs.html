@@ -1284,7 +1284,7 @@
 <a href="#1284" id="1284">1284</a>
 <a href="#1285" id="1285">1285</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
-//! The folowing functionality is implemented
+//! The following functionality is implemented
 //!
 //! 1. Commit to polynomial with its max degree
 //! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
@@ -1963,7 +1963,7 @@
 
         <span class="kw">let </span>coeffs: Vec&lt;<span class="kw">_</span>&gt; = plnm.iter().map(|c| c.into_repr()).collect();
 
-        <span class="comment">// chunk while commiting
+        <span class="comment">// chunk while committing
         </span><span class="kw">let </span><span class="kw-2">mut </span>unshifted = <span class="macro">vec!</span>[];
         <span class="kw">if </span>is_zero {
             unshifted.push(G::zero());
