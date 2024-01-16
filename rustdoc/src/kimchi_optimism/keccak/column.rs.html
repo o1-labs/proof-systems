@@ -261,6 +261,15 @@
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -318,26 +327,27 @@
 
 <span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
-    <span class="kw">pub </span>step_counter: T,
-    <span class="kw">pub </span>flag_round: T,           <span class="comment">// Coeff Round = 0 | 1 .. 24
-    </span><span class="kw">pub </span>flag_absorb: T,          <span class="comment">// Coeff Absorb = 0 | 1
-    </span><span class="kw">pub </span>flag_squeeze: T,         <span class="comment">// Coeff Squeeze = 0 | 1
-    </span><span class="kw">pub </span>flag_root: T,            <span class="comment">// Coeff Root = 0 | 1
-    </span><span class="kw">pub </span>flag_pad: T,             <span class="comment">// Coeff Pad = 0 | 1
-    </span><span class="kw">pub </span>flag_length: T,          <span class="comment">// Coeff Length 0 | 1 .. 136
-    </span><span class="kw">pub </span>two_to_pad: T,           <span class="comment">// 2^PadLength
-    </span><span class="kw">pub </span>inverse_round: T,        <span class="comment">// Round^-1
-    </span><span class="kw">pub </span>flags_bytes: Vec&lt;T&gt;,     <span class="comment">// 136 boolean values
-    </span><span class="kw">pub </span>pad_suffix: Vec&lt;T&gt;,      <span class="comment">// 5 values with padding suffix
-    </span><span class="kw">pub </span>round_constants: Vec&lt;T&gt;, <span class="comment">// Round constants
-    </span><span class="kw">pub </span>curr: Vec&lt;T&gt;,            <span class="comment">// Curr[0..1965)
-    </span><span class="kw">pub </span>next: Vec&lt;T&gt;,            <span class="comment">// Next[0..100)
+    step_counter: T,
+    flag_round: T,           <span class="comment">// Coeff Round = 0 | 1 .. 24
+    </span>flag_absorb: T,          <span class="comment">// Coeff Absorb = 0 | 1
+    </span>flag_squeeze: T,         <span class="comment">// Coeff Squeeze = 0 | 1
+    </span>flag_root: T,            <span class="comment">// Coeff Root = 0 | 1
+    </span>flag_pad: T,             <span class="comment">// Coeff Pad = 0 | 1
+    </span>flag_length: T,          <span class="comment">// Coeff Length 0 | 1 .. 136
+    </span>two_to_pad: T,           <span class="comment">// 2^PadLength
+    </span>inverse_round: T,        <span class="comment">// Round^-1
+    </span>flags_bytes: Vec&lt;T&gt;,     <span class="comment">// 136 boolean values
+    </span>pad_suffix: Vec&lt;T&gt;,      <span class="comment">// 5 values with padding suffix
+    </span>round_constants: Vec&lt;T&gt;, <span class="comment">// Round constants
+    </span>curr: Vec&lt;T&gt;,            <span class="comment">// Curr[0..1965)
+    </span>next: Vec&lt;T&gt;,            <span class="comment">// Next[0..100)
 </span>}
 
 <span class="kw">impl</span>&lt;T: Clone&gt; KeccakColumns&lt;T&gt; {
     <span class="kw">fn </span>curr(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="kw-2">&amp;</span>T {
         <span class="kw-2">&amp;</span><span class="self">self</span>.curr[offset + grid_index(length, i, y, x, q)]
     }
+
     <span class="kw">fn </span>mut_curr(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         offset: usize,
@@ -359,6 +369,14 @@
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>next_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.next
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.round_constants
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>flags_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.flags_bytes
     }
 }
 

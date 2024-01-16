@@ -944,8 +944,8 @@
 
     <span class="kw">fn </span>flags_block(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
         <span class="kw">match </span>i {
-            <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.flags_bytes[<span class="number">0</span>..<span class="number">12</span>],
-            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.flags_bytes[<span class="number">12 </span>+ (i - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ i * <span class="number">31</span>],
+            <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.flags_bytes()[<span class="number">0</span>..<span class="number">12</span>],
+            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.flags_bytes()[<span class="number">12 </span>+ (i - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ i * <span class="number">31</span>],
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;No more blocks of flags can be part of padding&quot;</span>),
         }
     }
@@ -965,7 +965,7 @@
     }
 
     <span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.round_constants
+        <span class="self">self</span>.keccak_state.round_constants()
     }
 
     <span class="kw">fn </span>old_state(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="self">Self</span>::Variable {
