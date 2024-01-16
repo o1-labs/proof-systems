@@ -1,4 +1,4 @@
-//! This module inlcudes some field helpers that are useful for Cairo
+//! This module includes some field helpers that are useful for Cairo
 
 use ark_ff::Field;
 use o1_utils::FieldHelpers;

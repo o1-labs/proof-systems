@@ -1,5 +1,5 @@
 //! This module implements Dlog-based polynomial commitment schema.
-//! The folowing functionality is implemented
+//! The following functionality is implemented
 //!
 //! 1. Commit to polynomial with its max degree
 //! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
@@ -678,7 +678,7 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
 
         let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
 
-        // chunk while commiting
+        // chunk while committing
         let mut unshifted = vec![];
         if is_zero {
             unshifted.push(G::zero());
