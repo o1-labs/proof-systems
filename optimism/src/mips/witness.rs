@@ -59,6 +59,7 @@ pub struct Env<Fp> {
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
+    pub hash_count: u64,
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
     pub preimage_bytes_read: Option<u64>,
@@ -620,7 +621,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.preimage_bytes_read = Some(self.preimage_bytes_read.unwrap() + actual_read_len);
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
-            let mut keccak_env = KeccakEnv::<Fp>::default();
+            let mut keccak_env = KeccakEnv::<Fp>::new(self.hash_count);
             keccak_env.hash(self.preimage.as_ref().unwrap());
             match self.preimage_key {
                 Some(preimage_key) => {
@@ -636,7 +637,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
             self.keccak_env = Some(keccak_env);
         }
-
+        // Reset Keccak environment
+        self.preimage_bytes_read = Some(0);
+        self.hash_count += 1;
         actual_read_len
     }
 
@@ -744,6 +747,7 @@ impl<Fp: Field> Env<Fp> {
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
+            hash_count: 0,
             preimage_oracle,
             preimage: state.preimage,
             preimage_bytes_read: Some(0),

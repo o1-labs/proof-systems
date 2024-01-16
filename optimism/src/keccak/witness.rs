@@ -168,7 +168,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.set_flag_absorb(absorb);
 
         // Compute witness values
-        let ini_idx = self.block_idx * RATE_IN_BYTES;
+        let ini_idx = RATE_IN_BYTES * self.block_idx as usize;
         let mut block = self.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
 
         // Pad with zeros
