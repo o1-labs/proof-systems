@@ -92,7 +92,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             self.add_lookup(Lookup::read_one(
                 LookupTable::SyscallLookup,
                 vec![
-                    Self::constant((self.block_idx * RATE_IN_BYTES + i) as u64),
+                    self.hash_index(),
+                    Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
                     self.sponge_bytes(i),
                 ],
             ));
@@ -103,7 +104,10 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_bytes(i)
         });
-        self.add_lookup(Lookup::write_one(LookupTable::SyscallLookup, vec![bytes31]));
+        self.add_lookup(Lookup::write_one(
+            LookupTable::SyscallLookup,
+            vec![self.hash_index(), bytes31],
+        ));
     }
 
     fn lookup_steps(&mut self) {

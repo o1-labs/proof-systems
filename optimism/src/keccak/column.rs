@@ -18,7 +18,8 @@ use super::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum KeccakColumn {
-    StepCounter,
+    HashIndex,
+    StepIndex,
     FlagRound,                                // Coeff Round = 0 | 1 .. 24
     FlagAbsorb,                               // Coeff Absorb = 0 | 1
     FlagSqueeze,                              // Coeff Squeeze = 0 | 1
@@ -55,26 +56,28 @@ pub enum KeccakColumn {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
-    pub step_counter: T,
-    pub flag_round: T,           // Coeff Round = 0 | 1 .. 24
-    pub flag_absorb: T,          // Coeff Absorb = 0 | 1
-    pub flag_squeeze: T,         // Coeff Squeeze = 0 | 1
-    pub flag_root: T,            // Coeff Root = 0 | 1
-    pub flag_pad: T,             // Coeff Pad = 0 | 1
-    pub flag_length: T,          // Coeff Length 0 | 1 .. 136
-    pub two_to_pad: T,           // 2^PadLength
-    pub inverse_round: T,        // Round^-1
-    pub flags_bytes: Vec<T>,     // 136 boolean values
-    pub pad_suffix: Vec<T>,      // 5 values with padding suffix
-    pub round_constants: Vec<T>, // Round constants
-    pub curr: Vec<T>,            // Curr[0..1965)
-    pub next: Vec<T>,            // Next[0..100)
+    hash_index: T,
+    step_index: T,
+    flag_round: T,           // Coeff Round = 0 | 1 .. 24
+    flag_absorb: T,          // Coeff Absorb = 0 | 1
+    flag_squeeze: T,         // Coeff Squeeze = 0 | 1
+    flag_root: T,            // Coeff Root = 0 | 1
+    flag_pad: T,             // Coeff Pad = 0 | 1
+    flag_length: T,          // Coeff Length 0 | 1 .. 136
+    two_to_pad: T,           // 2^PadLength
+    inverse_round: T,        // Round^-1
+    flags_bytes: Vec<T>,     // 136 boolean values
+    pad_suffix: Vec<T>,      // 5 values with padding suffix
+    round_constants: Vec<T>, // Round constants
+    curr: Vec<T>,            // Curr[0..1965)
+    next: Vec<T>,            // Next[0..100)
 }
 
 impl<T: Clone> KeccakColumns<T> {
     fn curr(&self, offset: usize, length: usize, i: usize, y: usize, x: usize, q: usize) -> &T {
         &self.curr[offset + grid_index(length, i, y, x, q)]
     }
+
     fn mut_curr(
         &mut self,
         offset: usize,
@@ -97,12 +100,21 @@ impl<T: Clone> KeccakColumns<T> {
     pub(crate) fn next_state(&self) -> &[T] {
         &self.next
     }
+
+    pub(crate) fn round_constants(&self) -> &[T] {
+        &self.round_constants
+    }
+
+    pub(crate) fn flags_bytes(&self) -> &[T] {
+        &self.flags_bytes
+    }
 }
 
 impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
     fn default() -> Self {
         KeccakColumns {
-            step_counter: T::zero(),
+            hash_index: T::zero(),
+            step_index: T::zero(),
             flag_round: T::zero(),
             flag_absorb: T::zero(),
             flag_squeeze: T::zero(),
@@ -125,7 +137,8 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
         match index {
-            KeccakColumn::StepCounter => &self.step_counter,
+            KeccakColumn::HashIndex => &self.hash_index,
+            KeccakColumn::StepIndex => &self.step_index,
             KeccakColumn::FlagRound => &self.flag_round,
             KeccakColumn::FlagAbsorb => &self.flag_absorb,
             KeccakColumn::FlagSqueeze => &self.flag_squeeze,
@@ -195,7 +208,8 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
 impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
     fn index_mut(&mut self, index: KeccakColumn) -> &mut Self::Output {
         match index {
-            KeccakColumn::StepCounter => &mut self.step_counter,
+            KeccakColumn::HashIndex => &mut self.hash_index,
+            KeccakColumn::StepIndex => &mut self.step_index,
             KeccakColumn::FlagRound => &mut self.flag_round,
             KeccakColumn::FlagAbsorb => &mut self.flag_absorb,
             KeccakColumn::FlagSqueeze => &mut self.flag_squeeze,

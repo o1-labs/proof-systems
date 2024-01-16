@@ -43,6 +43,9 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     type Variable = Fp;
 
     fn hash(&mut self, preimage: &[u8]) {
+        // Store hash index
+        self.write_column(KeccakColumn::HashIndex, self.hash_idx);
+
         // FIXME Read preimage for each block
 
         self.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
@@ -53,7 +56,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         } else {
             Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
         };
-        self.step_counter = 0;
+        self.step_idx = 0;
 
         // Root state is zero
         self.prev_block = vec![0u64; STATE_LEN];
@@ -85,7 +88,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakStep::Sponge(typ) => self.run_sponge(typ),
             KeccakStep::Round(i) => self.run_round(i),
         }
-        self.write_column(KeccakColumn::StepCounter, self.step_counter);
+        self.write_column(KeccakColumn::StepIndex, self.step_idx);
 
         // INTER-STEP CHANNEL
         // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
@@ -168,7 +171,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.set_flag_absorb(absorb);
 
         // Compute witness values
-        let ini_idx = self.block_idx * RATE_IN_BYTES;
+        let ini_idx = RATE_IN_BYTES * self.block_idx as usize;
         let mut block = self.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
 
         // Pad with zeros

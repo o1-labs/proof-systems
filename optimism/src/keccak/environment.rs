@@ -17,42 +17,46 @@ pub struct KeccakEnv<Fp> {
     pub(crate) constraints: Vec<E<Fp>>,
     /// Values that are looked up in the circuit
     pub(crate) lookups: Vec<Lookup<E<Fp>>>,
-    /// Expanded block of previous step
-    pub(crate) prev_block: Vec<u64>,
-    /// Padded preimage data
-    pub(crate) padded: Vec<u8>,
-    /// Current block of preimage data
-    pub(crate) block_idx: usize,
+
     /// The full state of the Keccak gate (witness)
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
-    /// Byte-length of the 10*1 pad (<=136)
-    pub(crate) pad_len: u64,
-    /// How many blocks are left to absrob (including current absorb)
-    pub(crate) blocks_left_to_absorb: u64,
     /// What step of the hash is being executed (or None, if just ended)
     pub(crate) keccak_step: Option<KeccakStep>,
-    /// Step counter of the total number of steps executed so far (starts with 0)
-    pub(crate) step_counter: u64,
-}
 
-impl<Fp: Field> Default for KeccakEnv<Fp> {
-    fn default() -> Self {
-        Self {
-            constraints: vec![],
-            lookups: vec![],
-            prev_block: vec![],
-            padded: vec![],
-            block_idx: 0,
-            keccak_state: KeccakColumns::default(),
-            pad_len: 0,
-            blocks_left_to_absorb: 0,
-            keccak_step: None,
-            step_counter: 0,
-        }
-    }
+    /// Hash index in the circuit
+    pub(crate) hash_idx: u64,
+    /// Step counter of the total number of steps executed so far in the current hash (starts with 0)
+    pub(crate) step_idx: u64,
+    /// Current block of preimage data
+    pub(crate) block_idx: u64,
+
+    /// Expanded block of previous step
+    pub(crate) prev_block: Vec<u64>,
+    /// How many blocks are left to absrob (including current absorb)
+    pub(crate) blocks_left_to_absorb: u64,
+    /// Padded preimage data
+    pub(crate) padded: Vec<u8>,
+    /// Byte-length of the 10*1 pad (<=136)
+    pub(crate) pad_len: u64,
 }
 
 impl<Fp: Field> KeccakEnv<Fp> {
+    pub fn new(hash_idx: u64) -> Self {
+        Self {
+            constraints: vec![],
+            lookups: vec![],
+            keccak_state: KeccakColumns::default(),
+            keccak_step: None,
+            hash_idx,
+            step_idx: 0,
+            block_idx: 0,
+            prev_block: vec![],
+            blocks_left_to_absorb: 0,
+            padded: vec![],
+            pad_len: 0,
+        }
+    }
+
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
         self.keccak_state[column] = Self::constant(value);
     }
@@ -93,7 +97,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
             },
             None => panic!("No step to update"),
         }
-        self.step_counter += 1;
+        self.step_idx += 1;
     }
 }
 
@@ -264,8 +268,10 @@ pub(crate) trait KeccakEnvironment {
 
     fn state_g(&self, q: usize) -> Self::Variable;
 
-    /// Returns the step counter
-    fn step_counter(&self) -> Self::Variable;
+    /// Returns the hash index
+    fn hash_index(&self) -> Self::Variable;
+    /// Returns the step index
+    fn step_index(&self) -> Self::Variable;
     /// Returns a slice of the input variables of the current step
     fn input_of_step(&self) -> Vec<Self::Variable>;
     /// Returns a slice of the output variables of the current step (= input of next step)
@@ -388,8 +394,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn flags_block(&self, i: usize) -> &[Self::Variable] {
         match i {
-            0 => &self.keccak_state.flags_bytes[0..12],
-            1..=4 => &self.keccak_state.flags_bytes[12 + (i - 1) * 31..12 + i * 31],
+            0 => &self.keccak_state.flags_bytes()[0..12],
+            1..=4 => &self.keccak_state.flags_bytes()[12 + (i - 1) * 31..12 + i * 31],
             _ => panic!("No more blocks of flags can be part of padding"),
         }
     }
@@ -409,7 +415,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn round_constants(&self) -> &[Self::Variable] {
-        &self.keccak_state.round_constants
+        self.keccak_state.round_constants()
     }
 
     fn old_state(&self, i: usize) -> Self::Variable {
@@ -572,17 +578,24 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::IotaStateG(q)].clone()
     }
 
-    fn step_counter(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::StepCounter].clone()
+    fn hash_index(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::HashIndex].clone()
+    }
+    fn step_index(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::StepIndex].clone()
     }
 
     fn input_of_step(&self) -> Vec<Self::Variable> {
-        [&[self.step_counter()], self.keccak_state.curr_state()].concat()
+        [
+            &[self.hash_index(), self.step_index()],
+            self.keccak_state.curr_state(),
+        ]
+        .concat()
     }
 
     fn output_of_step(&self) -> Vec<Self::Variable> {
         [
-            &[self.step_counter() + Self::one()],
+            &[self.hash_index(), self.step_index() + Self::one()],
             self.keccak_state.next_state(),
         ]
         .concat()
