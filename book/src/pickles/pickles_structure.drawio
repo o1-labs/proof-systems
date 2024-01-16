@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-01-16T13:42:20.741Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="TgK5Pqy_vy6p2puKHQVS" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2024-01-16T13:51:07.206Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="FbNWcGM-fkfcpLdpVCVf" version="22.1.2" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
-    <mxGraphModel dx="3493" dy="2215" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="998" dy="633" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -784,7 +784,7 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="930" y="4995" />
-              <mxPoint x="930" y="4707" />
+              <mxPoint x="930" y="4704" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -966,15 +966,6 @@
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-115" value="ft_eval1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="_LjTmAN7AVqkgN4aoZ2N-112" vertex="1">
           <mxGeometry x="20" y="80" width="60" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-126" value="prev_proof" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" parent="1" vertex="1">
-          <mxGeometry x="1030" y="4692" width="80" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-127" value="app_state" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" parent="1" vertex="1">
-          <mxGeometry x="1040" y="4662" width="70" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-128" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;proof_must_verify&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" parent="1" vertex="1">
-          <mxGeometry x="1010" y="4722" width="100" height="30" as="geometry" />
-        </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-168" style="edgeStyle=orthogonalEdgeStyle;shape=link;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#000000;strokeWidth=2;fontFamily=Helvetica;fontSize=12;fontColor=default;endArrow=classic;" parent="1" source="_LjTmAN7AVqkgN4aoZ2N-139" target="Rct82W0HXJ28LCBq3rn3-222" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
@@ -1016,7 +1007,7 @@
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-148" value="challenge_polynomial_commitments / sgs" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" parent="1" vertex="1">
           <mxGeometry x="1446" y="4632" width="230" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-155" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#0000FF;strokeWidth=2;fontFamily=Helvetica;fontSize=12;fontColor=default;endArrow=classic;startSize=20;startArrow=ERmany;startFill=0;" parent="1" source="_LjTmAN7AVqkgN4aoZ2N-149" target="_LjTmAN7AVqkgN4aoZ2N-85" edge="1">
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-155" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#0000FF;strokeWidth=2;fontFamily=Helvetica;fontSize=12;fontColor=default;endArrow=classic;startSize=6;startArrow=ERmany;startFill=0;" parent="1" source="_LjTmAN7AVqkgN4aoZ2N-149" target="_LjTmAN7AVqkgN4aoZ2N-85" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="1750" y="4677" />
@@ -1070,17 +1061,28 @@
           <mxGeometry x="1446" y="4752" width="60" height="30" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-159" value="expand_proof" style="swimlane;whiteSpace=wrap;html=1;strokeColor=#6c8ebf;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#dae8fc;rounded=1;strokeWidth=2;" parent="1" vertex="1">
-          <mxGeometry x="1120" y="4600" width="310" height="230" as="geometry" />
+          <mxGeometry x="1000" y="4560" width="440" height="300" as="geometry" />
         </mxCell>
-        <mxCell id="Rct82W0HXJ28LCBq3rn3-230" value="This function is somewhat similar to wrap/deferred_values. It partially reruns the previous (wrap) proof and generates data that is necessary to create a step proof about it.&lt;br&gt;1. Unpacks some previous data, e.g. &quot;plonk&quot;, &quot;prev_challenges&quot;, and &quot;prev_statement_with_hashes&quot; (returned as statement_with_hashes).&lt;br&gt;2. Creates an oracle O from (dlog_vk, mfns.challenge_polynomial_commitments, prev_challenges, public_input, proof)&lt;br&gt;3. Computes new_bulletproof_challenges and $b$ using O.opening_prechallenges, O.r, O.zeta, O.zetaw.&lt;br&gt;4. Creates witness: PerProofWitness (that is used inside the circuit)&lt;br&gt;5. Computes combined_inner_product (goes into unfinalized_proofs)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Helvetica;fontColor=default;" vertex="1" parent="_LjTmAN7AVqkgN4aoZ2N-159">
-          <mxGeometry x="10" y="30" width="290" height="190" as="geometry" />
+        <mxCell id="Rct82W0HXJ28LCBq3rn3-230" value="This function partially reruns the previous (wrap) proof and generates data that is necessary to create a step proof about it.&lt;br&gt;1. Unpacks some previous data, e.g. &quot;plonk&quot;, &quot;prev_challenges&quot;, and &quot;prev_statement_with_hashes&quot; (returned as statement_with_hashes).&lt;br&gt;2. Computes deferred values of these wrap proofs using Wrap_deferred_values.expand_deferred.&lt;br&gt;3. Creates an oracle O from (dlog_vk, mfns.challenge_polynomial_commitments, prev_challenges, public_input, proof)&lt;br&gt;4. Computes new_bulletproof_challenges and $b$ using O.opening_prechallenges, O.r, O.zeta, O.zetaw.&lt;br&gt;5. Creates witness: PerProofWitness (that is used inside the circuit)&lt;br&gt;6. Computes combined_inner_product&lt;br&gt;7. Builds unfinalized_proofs from computed components (plonk, combined_inner_product, xi, bulletproof_challenges, b)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Helvetica;fontColor=default;" vertex="1" parent="_LjTmAN7AVqkgN4aoZ2N-159">
+          <mxGeometry x="130" y="30.67" width="300" height="257.33000000000004" as="geometry" />
         </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-166" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#00CC00;strokeWidth=2;fontFamily=Helvetica;fontSize=12;fontColor=default;endArrow=ERmany;startSize=20;endFill=0;startArrow=ERmany;startFill=0;" parent="1" source="_LjTmAN7AVqkgN4aoZ2N-40" target="_LjTmAN7AVqkgN4aoZ2N-81" edge="1">
+        <mxCell id="Rct82W0HXJ28LCBq3rn3-231" value="dlog_vk" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" vertex="1" parent="_LjTmAN7AVqkgN4aoZ2N-159">
+          <mxGeometry x="20" y="67.32999999999993" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-127" value="app_state" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" parent="_LjTmAN7AVqkgN4aoZ2N-159" vertex="1">
+          <mxGeometry x="20" y="97.32999999999993" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-126" value="prev_proof" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" parent="_LjTmAN7AVqkgN4aoZ2N-159" vertex="1">
+          <mxGeometry x="20" y="129.34000000000015" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-128" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;proof_must_verify&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" parent="_LjTmAN7AVqkgN4aoZ2N-159" vertex="1">
+          <mxGeometry x="20" y="159.34000000000015" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-166" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#00CC00;strokeWidth=2;fontFamily=Helvetica;fontSize=12;fontColor=default;endArrow=ERmany;startSize=6;endFill=0;startArrow=ERmany;startFill=0;" parent="1" source="_LjTmAN7AVqkgN4aoZ2N-40" target="_LjTmAN7AVqkgN4aoZ2N-81" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="970" y="4879" />
-              <mxPoint x="970" y="4862" />
-              <mxPoint x="1810" y="4862" />
+              <mxPoint x="1810" y="4880" />
               <mxPoint x="1810" y="4822" />
             </Array>
           </mxGeometry>
@@ -4030,7 +4032,7 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="930" y="4408" />
-              <mxPoint x="930" y="4677" />
+              <mxPoint x="930" y="4672" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -4038,12 +4040,12 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="970" y="4438" />
-              <mxPoint x="970" y="4737" />
+              <mxPoint x="970" y="4734" />
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="Rct82W0HXJ28LCBq3rn3-231" value="dlog_vk" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=default;" vertex="1" parent="1">
-          <mxGeometry x="1040" y="4632" width="70" height="30" as="geometry" />
+        <mxCell id="Rct82W0HXJ28LCBq3rn3-235" value="(Concatenated outputs of expand_proof):" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Helvetica;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1485.5" y="4593" width="136.25" height="28.5" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
