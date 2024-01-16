@@ -21,8 +21,10 @@ pub struct KeccakEnv<Fp> {
     pub(crate) prev_block: Vec<u64>,
     /// Padded preimage data
     pub(crate) padded: Vec<u8>,
+    /// Hash index in the circuit
+    pub(crate) _hash_idx: u64,
     /// Current block of preimage data
-    pub(crate) block_idx: usize,
+    pub(crate) block_idx: u64,
     /// The full state of the Keccak gate (witness)
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
     /// Byte-length of the 10*1 pad (<=136)
@@ -35,13 +37,14 @@ pub struct KeccakEnv<Fp> {
     pub(crate) step_counter: u64,
 }
 
-impl<Fp: Field> Default for KeccakEnv<Fp> {
-    fn default() -> Self {
+impl<Fp: Field> KeccakEnv<Fp> {
+    pub fn new(hash_idx: u64) -> Self {
         Self {
             constraints: vec![],
             lookups: vec![],
             prev_block: vec![],
             padded: vec![],
+            _hash_idx: hash_idx,
             block_idx: 0,
             keccak_state: KeccakColumns::default(),
             pad_len: 0,
@@ -50,9 +53,7 @@ impl<Fp: Field> Default for KeccakEnv<Fp> {
             step_counter: 0,
         }
     }
-}
 
-impl<Fp: Field> KeccakEnv<Fp> {
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
         self.keccak_state[column] = Self::constant(value);
     }
