@@ -1,5 +1,4 @@
 use crate::cannon::{Page, State};
-use crate::keccak::interpreter::KeccakInterpreter;
 use crate::keccak::lookups::Lookups;
 use crate::keccak::ArithOps;
 use crate::mips::interpreter::{Lookup, LookupTable};
