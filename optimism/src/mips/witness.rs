@@ -630,7 +630,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                     });
                     keccak_env.add_lookup(Lookup::read_one(
                         LookupTable::SyscallLookup,
-                        vec![<KeccakEnv<Fp> as ArithOps>::constant_field(bytes31)],
+                        vec![
+                            <KeccakEnv<Fp> as ArithOps>::constant(self.hash_count),
+                            <KeccakEnv<Fp> as ArithOps>::constant_field(bytes31),
+                        ],
                     ));
                 }
                 None => panic!("preimage_key should be set"),
