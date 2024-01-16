@@ -435,6 +435,22 @@
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::expr::{Op2, Variable},
     folding::{
@@ -468,21 +484,25 @@
     Alpha(usize),
 }
 
-<span class="doccomment">///designed for easy translation to and from most Expr
-</span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
+<span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable&lt;C::Column&gt;),
-    Double(Box&lt;<span class="self">Self</span>&gt;),
-    Square(Box&lt;<span class="self">Self</span>&gt;),
-    BinOp(Op2, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
     VanishesOnZeroKnowledgeAndPreviousRows,
     <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     </span>UnnormalizedLagrangeBasis(usize),
-    Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
     <span class="doccomment">///extra nodes created by folding, should not be passed to folding
     </span>Extensions(ExpExtension),
+}
+
+<span class="doccomment">///designed for easy translation to and from most Expr
+</span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
+    Atom(FoldingCompatibleExprInner&lt;C&gt;),
+    Double(Box&lt;<span class="self">Self</span>&gt;),
+    Square(Box&lt;<span class="self">Self</span>&gt;),
+    BinOp(Op2, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
 }
 
 <span class="doccomment">/// Extra expressions that can be created by folding
@@ -540,9 +560,20 @@
         <span class="kw">type </span>Ex&lt;C&gt; = ExtendedFoldingColumn&lt;C&gt;;
         <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            FoldingCompatibleExpr::Constant(c) =&gt; Cell(ExtendedFoldingColumn::Constant(c)),
-            FoldingCompatibleExpr::Challenge(c) =&gt; Cell(ExtendedFoldingColumn::Challenge(c)),
-            FoldingCompatibleExpr::Cell(col) =&gt; Cell(ExtendedFoldingColumn::Inner(col)),
+            FoldingCompatibleExpr::Atom(atom) =&gt; <span class="kw">match </span>atom {
+                FoldingCompatibleExprInner::Constant(c) =&gt; Cell(ExtendedFoldingColumn::Constant(c)),
+                FoldingCompatibleExprInner::Challenge(c) =&gt; {
+                    Cell(ExtendedFoldingColumn::Challenge(c))
+                }
+                FoldingCompatibleExprInner::Cell(col) =&gt; Cell(ExtendedFoldingColumn::Inner(col)),
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; <span class="macro">todo!</span>(),
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) =&gt; {
+                    Cell(Ex::UnnormalizedLagrangeBasis(i))
+                }
+                FoldingCompatibleExprInner::Extensions(<span class="kw">_</span>) =&gt; {
+                    <span class="macro">panic!</span>(<span class="string">&quot;this should only be created by folding itself&quot;</span>)
+                }
+            },
             FoldingCompatibleExpr::Double(exp) =&gt; Double(Box::new((<span class="kw-2">*</span>exp).simplify())),
             FoldingCompatibleExpr::Square(exp) =&gt; Square(Box::new((<span class="kw-2">*</span>exp).simplify())),
             FoldingCompatibleExpr::BinOp(op, e1, e2) =&gt; {
@@ -554,14 +585,7 @@
                     Op2::Sub =&gt; Sub(e1, e2),
                 }
             }
-            FoldingCompatibleExpr::VanishesOnZeroKnowledgeAndPreviousRows =&gt; <span class="macro">todo!</span>(),
-            FoldingCompatibleExpr::UnnormalizedLagrangeBasis(i) =&gt; {
-                Cell(Ex::UnnormalizedLagrangeBasis(i))
-            }
             FoldingCompatibleExpr::Pow(e, p) =&gt; <span class="self">Self</span>::pow_to_mul(e.simplify(), p),
-            FoldingCompatibleExpr::Extensions(<span class="kw">_</span>) =&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;this should only be created by folding itself&quot;</span>)
-            }
         }
     }
 
@@ -623,17 +647,20 @@
 
     <span class="kw">fn </span>into_compatible(<span class="self">self</span>) -&gt; FoldingCompatibleExpr&lt;C&gt; {
         <span class="kw">use </span>FoldingCompatibleExpr::<span class="kw-2">*</span>;
+        <span class="kw">use </span>FoldingCompatibleExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             FoldingExp::Cell(c) =&gt; <span class="kw">match </span>c {
-                ExtendedFoldingColumn::Inner(col) =&gt; Cell(col),
+                ExtendedFoldingColumn::Inner(col) =&gt; Atom(Cell(col)),
                 ExtendedFoldingColumn::WitnessExtended(i) =&gt; {
-                    Extensions(ExpExtension::ExtendedWitness(i))
+                    Atom(Extensions(ExpExtension::ExtendedWitness(i)))
                 }
-                ExtendedFoldingColumn::Error =&gt; Extensions(ExpExtension::Error),
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) =&gt; UnnormalizedLagrangeBasis(i),
-                ExtendedFoldingColumn::Constant(c) =&gt; Constant(c),
-                ExtendedFoldingColumn::Challenge(c) =&gt; Challenge(c),
-                ExtendedFoldingColumn::Alpha(i) =&gt; Extensions(ExpExtension::Alpha(i)),
+                ExtendedFoldingColumn::Error =&gt; Atom(Extensions(ExpExtension::Error)),
+                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) =&gt; {
+                    Atom(UnnormalizedLagrangeBasis(i))
+                }
+                ExtendedFoldingColumn::Constant(c) =&gt; Atom(Constant(c)),
+                ExtendedFoldingColumn::Challenge(c) =&gt; Atom(Challenge(c)),
+                ExtendedFoldingColumn::Alpha(i) =&gt; Atom(Extensions(ExpExtension::Alpha(i))),
             },
             FoldingExp::Double(exp) =&gt; Double(Box::new(exp.into_compatible())),
             FoldingExp::Square(exp) =&gt; Square(Box::new(exp.into_compatible())),
@@ -760,8 +787,9 @@
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; IntegratedFoldingExpr&lt;C&gt; {
     <span class="doccomment">///combines constraints into single expression
     </span><span class="kw">pub fn </span>final_expression(<span class="self">self</span>) -&gt; FoldingCompatibleExpr&lt;C&gt; {
+        <span class="kw">use </span>FoldingCompatibleExpr::<span class="kw-2">*</span>;
         <span class="doccomment">///todo: should use powers of alpha
-        </span><span class="kw">use </span>FoldingCompatibleExpr::<span class="kw-2">*</span>;
+        </span><span class="kw">use </span>FoldingCompatibleExprInner::<span class="kw-2">*</span>;
         <span class="kw">let </span><span class="self">Self </span>{
             degree_0,
             degree_1,
@@ -783,14 +811,18 @@
                 })
             })
             .map(|e| e.into_compatible());
-        <span class="kw">let </span>u = || Box::new(Extensions(ExpExtension::U));
+        <span class="kw">let </span>u = || Box::new(Atom(Extensions(ExpExtension::U)));
         <span class="kw">let </span>u2 = || Box::new(Square(u()));
         <span class="kw">let </span>d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));
         <span class="kw">let </span>d1 = Box::new(BinOp(Op2::Mul, Box::new(d1), u()));
         <span class="kw">let </span>d2 = Box::new(d2);
         <span class="kw">let </span>exp = Box::new(BinOp(Op2::Add, d0, d1));
         <span class="kw">let </span>exp = Box::new(BinOp(Op2::Add, exp, d2));
-        BinOp(Op2::Add, exp, Box::new(Extensions(ExpExtension::Error)))
+        BinOp(
+            Op2::Add,
+            exp,
+            Box::new(Atom(Extensions(ExpExtension::Error))),
+        )
     }
 }
 
