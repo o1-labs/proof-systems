@@ -389,8 +389,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn flags_block(&self, i: usize) -> &[Self::Variable] {
         match i {
-            0 => &self.keccak_state.flags_bytes[0..12],
-            1..=4 => &self.keccak_state.flags_bytes[12 + (i - 1) * 31..12 + i * 31],
+            0 => &self.keccak_state.flags_bytes()[0..12],
+            1..=4 => &self.keccak_state.flags_bytes()[12 + (i - 1) * 31..12 + i * 31],
             _ => panic!("No more blocks of flags can be part of padding"),
         }
     }
@@ -410,7 +410,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn round_constants(&self) -> &[Self::Variable] {
-        &self.keccak_state.round_constants
+        self.keccak_state.round_constants()
     }
 
     fn old_state(&self, i: usize) -> Self::Variable {

@@ -56,27 +56,28 @@ pub enum KeccakColumn {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
-    pub hash_counter: T,
-    pub step_counter: T,
-    pub flag_round: T,           // Coeff Round = 0 | 1 .. 24
-    pub flag_absorb: T,          // Coeff Absorb = 0 | 1
-    pub flag_squeeze: T,         // Coeff Squeeze = 0 | 1
-    pub flag_root: T,            // Coeff Root = 0 | 1
-    pub flag_pad: T,             // Coeff Pad = 0 | 1
-    pub flag_length: T,          // Coeff Length 0 | 1 .. 136
-    pub two_to_pad: T,           // 2^PadLength
-    pub inverse_round: T,        // Round^-1
-    pub flags_bytes: Vec<T>,     // 136 boolean values
-    pub pad_suffix: Vec<T>,      // 5 values with padding suffix
-    pub round_constants: Vec<T>, // Round constants
-    pub curr: Vec<T>,            // Curr[0..1965)
-    pub next: Vec<T>,            // Next[0..100)
+    hash_counter: T,
+    step_counter: T,
+    flag_round: T,           // Coeff Round = 0 | 1 .. 24
+    flag_absorb: T,          // Coeff Absorb = 0 | 1
+    flag_squeeze: T,         // Coeff Squeeze = 0 | 1
+    flag_root: T,            // Coeff Root = 0 | 1
+    flag_pad: T,             // Coeff Pad = 0 | 1
+    flag_length: T,          // Coeff Length 0 | 1 .. 136
+    two_to_pad: T,           // 2^PadLength
+    inverse_round: T,        // Round^-1
+    flags_bytes: Vec<T>,     // 136 boolean values
+    pad_suffix: Vec<T>,      // 5 values with padding suffix
+    round_constants: Vec<T>, // Round constants
+    curr: Vec<T>,            // Curr[0..1965)
+    next: Vec<T>,            // Next[0..100)
 }
 
 impl<T: Clone> KeccakColumns<T> {
     fn curr(&self, offset: usize, length: usize, i: usize, y: usize, x: usize, q: usize) -> &T {
         &self.curr[offset + grid_index(length, i, y, x, q)]
     }
+
     fn mut_curr(
         &mut self,
         offset: usize,
@@ -98,6 +99,14 @@ impl<T: Clone> KeccakColumns<T> {
     }
     pub(crate) fn next_state(&self) -> &[T] {
         &self.next
+    }
+
+    pub(crate) fn round_constants(&self) -> &[T] {
+        &self.round_constants
+    }
+
+    pub(crate) fn flags_bytes(&self) -> &[T] {
+        &self.flags_bytes
     }
 }
 
