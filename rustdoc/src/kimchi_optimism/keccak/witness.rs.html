@@ -372,8 +372,8 @@
 
     <span class="kw">type </span>Variable = Fp;
 
-    <span class="kw">fn </span>hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, preimage: Vec&lt;u8&gt;) {
-        <span class="comment">// TODO: Read preimage for each block
+    <span class="kw">fn </span>hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, preimage: <span class="kw-2">&amp;</span>[u8]) {
+        <span class="comment">// FIXME Read preimage for each block
 
         </span><span class="self">self</span>.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) <span class="kw">as </span>u64;
 
@@ -389,7 +389,7 @@
         </span><span class="self">self</span>.prev_block = <span class="macro">vec!</span>[<span class="number">0u64</span>; STATE_LEN];
 
         <span class="comment">// Pad preimage
-        </span><span class="self">self</span>.padded = Keccak::pad(<span class="kw-2">&amp;</span>preimage);
+        </span><span class="self">self</span>.padded = Keccak::pad(preimage);
         <span class="self">self</span>.block_idx = <span class="number">0</span>;
         <span class="self">self</span>.pad_len = (<span class="self">self</span>.padded.len() - preimage.len()) <span class="kw">as </span>u64;
 
@@ -496,7 +496,7 @@
         <span class="self">self</span>.set_flag_absorb(absorb);
 
         <span class="comment">// Compute witness values
-        </span><span class="kw">let </span>ini_idx = <span class="self">self</span>.block_idx * RATE_IN_BYTES;
+        </span><span class="kw">let </span>ini_idx = RATE_IN_BYTES * <span class="self">self</span>.block_idx <span class="kw">as </span>usize;
         <span class="kw">let </span><span class="kw-2">mut </span>block = <span class="self">self</span>.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
 
         <span class="comment">// Pad with zeros

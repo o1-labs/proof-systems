@@ -1095,7 +1095,24 @@
 <a href="#1095" id="1095">1095</a>
 <a href="#1096" id="1096">1096</a>
 <a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
+<span class="kw">use </span><span class="kw">crate</span>::keccak::interpreter::KeccakInterpreter;
 <span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -1151,8 +1168,10 @@
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
+    <span class="kw">pub </span>hash_count: u64,
     <span class="kw">pub </span>preimage_oracle: PreImageOracle,
     <span class="kw">pub </span>preimage: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    <span class="kw">pub </span>preimage_bytes_read: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     <span class="kw">pub </span>keccak_env: <span class="prelude-ty">Option</span>&lt;KeccakEnv&lt;Fp&gt;&gt;,
 }
 
@@ -1684,7 +1703,6 @@
                 - preimage_offset;
         <span class="comment">// We read at most 4 bytes, ensuring that we respect word alignment.
         </span><span class="kw">let </span>actual_read_len = std::cmp::min(max_read_len, <span class="number">4 </span>- (addr &amp; <span class="number">3</span>));
-
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..actual_read_len {
             <span class="kw">let </span>idx = (preimage_offset + i) <span class="kw">as </span>usize;
             <span class="comment">// The first 8 bytes of the read preimage are the preimage length, followed by the body
@@ -1705,6 +1723,18 @@
             }
         }
         <span class="self">self</span>.write_column(pos, actual_read_len);
+
+        <span class="comment">// Update the total number of preimage bytes read so far
+        </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="self">self</span>.preimage_bytes_read.unwrap() + actual_read_len);
+        <span class="comment">// If we&#39;ve read the entire preimage, trigger Keccak workflow
+        </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read.unwrap() == preimage_len <span class="kw">as </span>u64 {
+            <span class="kw">let </span><span class="kw-2">mut </span>keccak_env = KeccakEnv::&lt;Fp&gt;::new(<span class="self">self</span>.hash_count);
+            keccak_env.hash(<span class="self">self</span>.preimage.as_ref().unwrap());
+            <span class="self">self</span>.keccak_env = <span class="prelude-val">Some</span>(keccak_env);
+        }
+        <span class="comment">// Reset Keccak environment
+        </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="number">0</span>);
+        <span class="self">self</span>.hash_count += <span class="number">1</span>;
         actual_read_len
     }
 
@@ -1812,8 +1842,10 @@
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
+            hash_count: <span class="number">0</span>,
             preimage_oracle,
             preimage: state.preimage,
+            preimage_bytes_read: <span class="prelude-val">Some</span>(<span class="number">0</span>),
             keccak_env: <span class="prelude-val">None</span>,
         }
     }

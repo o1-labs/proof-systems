@@ -84,7 +84,7 @@
         + std::fmt::Debug;
 
     <span class="comment">// FIXME: read preimage from memory
-    </span><span class="kw">fn </span>hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, preimage: Vec&lt;u8&gt;);
+    </span><span class="kw">fn </span>hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, preimage: <span class="kw-2">&amp;</span>[u8]);
 
     <span class="kw">fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 

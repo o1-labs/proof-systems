@@ -270,6 +270,11 @@
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -290,6 +295,7 @@
 
 <span class="attr">#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>KeccakColumn {
+    HashCounter,
     StepCounter,
     FlagRound,                                <span class="comment">// Coeff Round = 0 | 1 .. 24
     </span>FlagAbsorb,                               <span class="comment">// Coeff Absorb = 0 | 1
@@ -327,6 +333,7 @@
 
 <span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
+    hash_counter: T,
     step_counter: T,
     flag_round: T,           <span class="comment">// Coeff Round = 0 | 1 .. 24
     </span>flag_absorb: T,          <span class="comment">// Coeff Absorb = 0 | 1
@@ -383,6 +390,7 @@
 <span class="kw">impl</span>&lt;T: Zero + One + Clone&gt; Default <span class="kw">for </span>KeccakColumns&lt;T&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         KeccakColumns {
+            hash_counter: T::zero(),
             step_counter: T::zero(),
             flag_round: T::zero(),
             flag_absorb: T::zero(),
@@ -406,6 +414,7 @@
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
+            KeccakColumn::HashCounter =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.hash_counter,
             KeccakColumn::StepCounter =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.step_counter,
             KeccakColumn::FlagRound =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_round,
             KeccakColumn::FlagAbsorb =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_absorb,
@@ -476,6 +485,7 @@
 <span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;T&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
+            KeccakColumn::HashCounter =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.hash_counter,
             KeccakColumn::StepCounter =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.step_counter,
             KeccakColumn::FlagRound =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_round,
             KeccakColumn::FlagAbsorb =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flag_absorb,
