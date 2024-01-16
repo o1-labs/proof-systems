@@ -21,7 +21,7 @@ pub struct KeccakEnv<Fp> {
     /// The full state of the Keccak gate (witness)
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
     /// What step of the hash is being executed (or None, if just ended)
-    pub(crate) keccak_step: Option<KeccakStep>,
+    pub keccak_step: Option<KeccakStep>,
 
     /// Hash index in the circuit
     pub(crate) hash_idx: u64,
@@ -68,6 +68,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
     }
+
     pub fn update_step(&mut self) {
         match self.keccak_step {
             Some(step) => match step {

@@ -624,7 +624,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             let mut keccak_env = KeccakEnv::<Fp>::new(self.hash_count);
             keccak_env.hash(self.preimage.as_ref().unwrap());
 
-            // Write preimage bytes to the communication channel
+            // COMMUNICATION CHANNEL: Write preimage bytes
             let preimage = self.preimage.as_ref().unwrap();
             for (i, byte) in preimage.iter().enumerate() {
                 keccak_env.add_lookup(Lookup::write_one(
@@ -637,6 +637,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 ))
             }
 
+            // COMMUNICATION CHANNEL: Read hash output
             match self.preimage_key {
                 Some(preimage_key) => {
                     let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
