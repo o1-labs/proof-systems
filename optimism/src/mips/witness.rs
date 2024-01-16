@@ -621,8 +621,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.preimage_bytes_read = Some(self.preimage_bytes_read.unwrap() + actual_read_len);
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
-            let mut keccak_env = KeccakEnv::<Fp>::new(self.hash_count);
-            keccak_env.hash(self.preimage.as_ref().unwrap());
+            let mut keccak_env =
+                KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
 
             // COMMUNICATION CHANNEL: Write preimage bytes
             let preimage = self.preimage.as_ref().unwrap();
@@ -655,8 +655,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
             self.keccak_env = Some(keccak_env);
         }
-        // Reset Keccak environment
-        self.preimage_bytes_read = Some(0);
+        // Reset environment
+        self.preimage_bytes_read = None;
         self.hash_count += 1;
         actual_read_len
     }

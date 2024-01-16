@@ -102,9 +102,10 @@ pub fn main() -> ExitCode {
                 keccak_env.step();
             }
 
-            // TODO: update the witness with the Keccak step columns
+            // TODO: update the witness with the Keccak step columns before resetting the environment
+            // TODO: create READ lookup tables
 
-            // When the Keccak interpreter is done, we can reset the environment
+            // When the Keccak interpreter is finished, we can reset the environment
             env.keccak_env = None;
         }
 

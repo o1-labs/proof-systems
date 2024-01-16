@@ -5,7 +5,7 @@ use super::{
 };
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
-use kimchi::circuits::expr::Operations;
+use kimchi::circuits::{expr::Operations, polynomials::keccak::Keccak};
 use kimchi::{
     auto_clone_array, circuits::expr::ConstantTerm::Literal,
     circuits::polynomials::keccak::constants::*, grid, o1_utils::Two,
@@ -41,8 +41,8 @@ pub struct KeccakEnv<Fp> {
 }
 
 impl<Fp: Field> KeccakEnv<Fp> {
-    pub fn new(hash_idx: u64) -> Self {
-        Self {
+    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
+        let mut env = Self {
             constraints: vec![],
             lookups: vec![],
             keccak_state: KeccakColumns::default(),
@@ -54,7 +54,30 @@ impl<Fp: Field> KeccakEnv<Fp> {
             blocks_left_to_absorb: 0,
             padded: vec![],
             pad_len: 0,
-        }
+        };
+
+        // Store hash index
+        env.write_column(KeccakColumn::HashIndex, env.hash_idx);
+
+        env.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
+
+        // Configure first step depending on number of blocks remaining
+        env.keccak_step = if env.blocks_left_to_absorb == 1 {
+            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
+        } else {
+            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
+        };
+        env.step_idx = 0;
+
+        // Root state is zero
+        env.prev_block = vec![0u64; STATE_LEN];
+
+        // Pad preimage
+        env.padded = Keccak::pad(preimage);
+        env.block_idx = 0;
+        env.pad_len = (env.padded.len() - preimage.len()) as u64;
+
+        env
     }
 
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
