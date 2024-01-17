@@ -6,7 +6,6 @@ use crate::{
     },
 };
 use ark_ff::One;
-use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -1913,7 +1912,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
         }
         ITypeInstruction::AddImmediateUnsigned => {
-            debug!("Fetching register: {:?}", rs);
             let register_rs = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
             let res = {
@@ -2043,12 +2041,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 // FIXME: Requires a range check
                 res
             };
-            debug!(
-                "lw {:?}, {:?}({:?})",
-                dest.clone(),
-                offset.clone(),
-                addr.clone()
-            );
             // We load 4 bytes, i.e. one word.
             let v0 = env.read_memory(&addr);
             let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
@@ -2058,7 +2050,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 + (v1 * Env::constant(1 << 16))
                 + (v2 * Env::constant(1 << 8))
                 + v3;
-            debug!("Loaded 32 bits value from {:?}: {:?}", addr.clone(), value);
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
