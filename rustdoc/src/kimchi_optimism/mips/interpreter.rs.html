@@ -2604,6 +2604,8 @@
 <a href="#2604" id="2604">2604</a>
 <a href="#2605" id="2605">2605</a>
 <a href="#2606" id="2606">2606</a>
+<a href="#2607" id="2607">2607</a>
+<a href="#2608" id="2608">2608</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2751,6 +2753,8 @@
     </span>ByteLookup,
     <span class="comment">// Input/Output of Keccak steps
     </span>KeccakStepLookup,
+    <span class="comment">// Syscalls communication channel
+    </span>SyscallLookup,
 }
 
 <span class="attr">#[derive(Clone, Debug)]

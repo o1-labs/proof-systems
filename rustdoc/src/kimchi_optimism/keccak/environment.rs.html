@@ -589,6 +589,15 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -613,7 +622,7 @@
     <span class="doccomment">/// Padded preimage data
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) padded: Vec&lt;u8&gt;,
     <span class="doccomment">/// Hash index in the circuit
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) _hash_idx: u64,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) hash_idx: u64,
     <span class="doccomment">/// Current block of preimage data
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_idx: u64,
     <span class="doccomment">/// The full state of the Keccak gate (witness)
@@ -635,7 +644,7 @@
             lookups: <span class="macro">vec!</span>[],
             prev_block: <span class="macro">vec!</span>[],
             padded: <span class="macro">vec!</span>[],
-            _hash_idx: hash_idx,
+            hash_idx,
             block_idx: <span class="number">0</span>,
             keccak_state: KeccakColumns::default(),
             pad_len: <span class="number">0</span>,
@@ -856,6 +865,8 @@
 
     <span class="kw">fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="doccomment">/// Returns the hash counter
+    </span><span class="kw">fn </span>hash_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
     <span class="doccomment">/// Returns the step counter
     </span><span class="kw">fn </span>step_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
     <span class="doccomment">/// Returns a slice of the input variables of the current step
@@ -1164,17 +1175,24 @@
         <span class="self">self</span>.keccak_state[KeccakColumn::IotaStateG(q)].clone()
     }
 
+    <span class="kw">fn </span>hash_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::HashCounter].clone()
+    }
     <span class="kw">fn </span>step_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.keccak_state[KeccakColumn::StepCounter].clone()
     }
 
     <span class="kw">fn </span>input_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
-        [<span class="kw-2">&amp;</span>[<span class="self">self</span>.step_counter()], <span class="self">self</span>.keccak_state.curr_state()].concat()
+        [
+            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_counter(), <span class="self">self</span>.step_counter()],
+            <span class="self">self</span>.keccak_state.curr_state(),
+        ]
+        .concat()
     }
 
     <span class="kw">fn </span>output_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
         [
-            <span class="kw-2">&amp;</span>[<span class="self">self</span>.step_counter() + <span class="self">Self</span>::one()],
+            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_counter(), <span class="self">self</span>.step_counter() + <span class="self">Self</span>::one()],
             <span class="self">self</span>.keccak_state.next_state(),
         ]
         .concat()
