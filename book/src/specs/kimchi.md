@@ -2279,7 +2279,7 @@ We define two helper algorithms below, used in the batch verification of proofs.
 
 We run the following algorithm:
 
-1. Setup the Fq-Sponge.
+1. Setup the Fq-Sponge. This sponge mostly absorbs group
 1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
@@ -2301,7 +2301,7 @@ We run the following algorithm:
 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-1. Setup the Fr-Sponge.
+1. Setup the Fr-Sponge. This sponge absorbs elements from
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Absorb the previous recursion challenges.
 1. Compute evaluations for the previous recursion challenges.
