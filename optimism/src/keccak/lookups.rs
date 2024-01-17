@@ -6,7 +6,7 @@ use super::{
 use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
-    DIM, QUARTERS, SHIFTS, SHIFTS_LEN, STATE_LEN,
+    DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
 pub(crate) trait Lookups {
@@ -21,6 +21,9 @@ pub(crate) trait Lookups {
 
     /// Adds all lookups of Self
     fn lookups(&mut self);
+
+    /// Reads Lookups containing the 136 bytes of the block of the preimage
+    fn lookup_syscall_preimage(&mut self);
 
     /// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
     fn lookup_syscall_hash(&mut self);
@@ -82,9 +85,19 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // IOTA LOOKUPS
             self.lookups_round_iota();
         }
+    }
 
-        // STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
-        // Must be done inside caller
+    fn lookup_syscall_preimage(&mut self) {
+        for i in 0..RATE_IN_BYTES {
+            self.add_lookup(Lookup::read_one(
+                LookupTable::SyscallLookup,
+                vec![
+                    self.hash_index(),
+                    Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
+                    self.sponge_bytes(i),
+                ],
+            ));
+        }
     }
 
     fn lookup_syscall_hash(&mut self) {
@@ -93,7 +106,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         });
         self.add_lookup(Lookup::write_one(
             LookupTable::SyscallLookup,
-            vec![self.hash_counter(), bytes31],
+            vec![self.hash_index(), bytes31],
         ));
     }
 

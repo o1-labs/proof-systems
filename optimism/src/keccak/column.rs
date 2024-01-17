@@ -18,8 +18,8 @@ use super::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum KeccakColumn {
-    HashCounter,
-    StepCounter,
+    HashIndex,
+    StepIndex,
     FlagRound,                                // Coeff Round = 0 | 1 .. 24
     FlagAbsorb,                               // Coeff Absorb = 0 | 1
     FlagSqueeze,                              // Coeff Squeeze = 0 | 1
@@ -56,8 +56,8 @@ pub enum KeccakColumn {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
-    hash_counter: T,
-    step_counter: T,
+    hash_index: T,
+    step_index: T,
     flag_round: T,           // Coeff Round = 0 | 1 .. 24
     flag_absorb: T,          // Coeff Absorb = 0 | 1
     flag_squeeze: T,         // Coeff Squeeze = 0 | 1
@@ -113,8 +113,8 @@ impl<T: Clone> KeccakColumns<T> {
 impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
     fn default() -> Self {
         KeccakColumns {
-            hash_counter: T::zero(),
-            step_counter: T::zero(),
+            hash_index: T::zero(),
+            step_index: T::zero(),
             flag_round: T::zero(),
             flag_absorb: T::zero(),
             flag_squeeze: T::zero(),
@@ -137,8 +137,8 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
         match index {
-            KeccakColumn::HashCounter => &self.hash_counter,
-            KeccakColumn::StepCounter => &self.step_counter,
+            KeccakColumn::HashIndex => &self.hash_index,
+            KeccakColumn::StepIndex => &self.step_index,
             KeccakColumn::FlagRound => &self.flag_round,
             KeccakColumn::FlagAbsorb => &self.flag_absorb,
             KeccakColumn::FlagSqueeze => &self.flag_squeeze,
@@ -208,8 +208,8 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
 impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
     fn index_mut(&mut self, index: KeccakColumn) -> &mut Self::Output {
         match index {
-            KeccakColumn::HashCounter => &mut self.hash_counter,
-            KeccakColumn::StepCounter => &mut self.step_counter,
+            KeccakColumn::HashIndex => &mut self.hash_index,
+            KeccakColumn::StepIndex => &mut self.step_index,
             KeccakColumn::FlagRound => &mut self.flag_round,
             KeccakColumn::FlagAbsorb => &mut self.flag_absorb,
             KeccakColumn::FlagSqueeze => &mut self.flag_squeeze,

@@ -17,24 +17,27 @@ pub struct KeccakEnv<Fp> {
     pub(crate) constraints: Vec<E<Fp>>,
     /// Values that are looked up in the circuit
     pub(crate) lookups: Vec<Lookup<E<Fp>>>,
-    /// Expanded block of previous step
-    pub(crate) prev_block: Vec<u64>,
-    /// Padded preimage data
-    pub(crate) padded: Vec<u8>,
-    /// Hash index in the circuit
-    pub(crate) hash_idx: u64,
-    /// Current block of preimage data
-    pub(crate) block_idx: u64,
+
     /// The full state of the Keccak gate (witness)
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
-    /// Byte-length of the 10*1 pad (<=136)
-    pub(crate) pad_len: u64,
-    /// How many blocks are left to absrob (including current absorb)
-    pub(crate) blocks_left_to_absorb: u64,
     /// What step of the hash is being executed (or None, if just ended)
     pub(crate) keccak_step: Option<KeccakStep>,
-    /// Step counter of the total number of steps executed so far (starts with 0)
-    pub(crate) step_counter: u64,
+
+    /// Hash index in the circuit
+    pub(crate) hash_idx: u64,
+    /// Step counter of the total number of steps executed so far in the current hash (starts with 0)
+    pub(crate) step_idx: u64,
+    /// Current block of preimage data
+    pub(crate) block_idx: u64,
+
+    /// Expanded block of previous step
+    pub(crate) prev_block: Vec<u64>,
+    /// How many blocks are left to absrob (including current absorb)
+    pub(crate) blocks_left_to_absorb: u64,
+    /// Padded preimage data
+    pub(crate) padded: Vec<u8>,
+    /// Byte-length of the 10*1 pad (<=136)
+    pub(crate) pad_len: u64,
 }
 
 impl<Fp: Field> KeccakEnv<Fp> {
@@ -42,15 +45,15 @@ impl<Fp: Field> KeccakEnv<Fp> {
         Self {
             constraints: vec![],
             lookups: vec![],
-            prev_block: vec![],
-            padded: vec![],
-            hash_idx,
-            block_idx: 0,
             keccak_state: KeccakColumns::default(),
-            pad_len: 0,
-            blocks_left_to_absorb: 0,
             keccak_step: None,
-            step_counter: 0,
+            hash_idx,
+            step_idx: 0,
+            block_idx: 0,
+            prev_block: vec![],
+            blocks_left_to_absorb: 0,
+            padded: vec![],
+            pad_len: 0,
         }
     }
 
@@ -94,7 +97,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
             },
             None => panic!("No step to update"),
         }
-        self.step_counter += 1;
+        self.step_idx += 1;
     }
 }
 
@@ -265,10 +268,10 @@ pub(crate) trait KeccakEnvironment {
 
     fn state_g(&self, q: usize) -> Self::Variable;
 
-    /// Returns the hash counter
-    fn hash_counter(&self) -> Self::Variable;
-    /// Returns the step counter
-    fn step_counter(&self) -> Self::Variable;
+    /// Returns the hash index
+    fn hash_index(&self) -> Self::Variable;
+    /// Returns the step index
+    fn step_index(&self) -> Self::Variable;
     /// Returns a slice of the input variables of the current step
     fn input_of_step(&self) -> Vec<Self::Variable>;
     /// Returns a slice of the output variables of the current step (= input of next step)
@@ -575,16 +578,16 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::IotaStateG(q)].clone()
     }
 
-    fn hash_counter(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::HashCounter].clone()
+    fn hash_index(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::HashIndex].clone()
     }
-    fn step_counter(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::StepCounter].clone()
+    fn step_index(&self) -> Self::Variable {
+        self.keccak_state[KeccakColumn::StepIndex].clone()
     }
 
     fn input_of_step(&self) -> Vec<Self::Variable> {
         [
-            &[self.hash_counter(), self.step_counter()],
+            &[self.hash_index(), self.step_index()],
             self.keccak_state.curr_state(),
         ]
         .concat()
@@ -592,7 +595,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn output_of_step(&self) -> Vec<Self::Variable> {
         [
-            &[self.hash_counter(), self.step_counter() + Self::one()],
+            &[self.hash_index(), self.step_index() + Self::one()],
             self.keccak_state.next_state(),
         ]
         .concat()

@@ -623,6 +623,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
             let mut keccak_env = KeccakEnv::<Fp>::new(self.hash_count);
             keccak_env.hash(self.preimage.as_ref().unwrap());
+
+            // Write preimage bytes to the communication channel
+            let preimage = self.preimage.as_ref().unwrap();
+            for (i, byte) in preimage.iter().enumerate() {
+                keccak_env.add_lookup(Lookup::write_one(
+                    LookupTable::SyscallLookup,
+                    vec![
+                        <KeccakEnv<Fp> as ArithOps>::constant(self.hash_count),
+                        <KeccakEnv<Fp> as ArithOps>::constant(i as u64),
+                        <KeccakEnv<Fp> as ArithOps>::constant(*byte as u64),
+                    ],
+                ))
+            }
+
             match self.preimage_key {
                 Some(preimage_key) => {
                     let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {

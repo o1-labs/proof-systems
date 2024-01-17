@@ -44,7 +44,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
     fn hash(&mut self, preimage: &[u8]) {
         // Store hash index
-        self.write_column(KeccakColumn::HashCounter, self.hash_idx);
+        self.write_column(KeccakColumn::HashIndex, self.hash_idx);
 
         // FIXME Read preimage for each block
 
@@ -56,7 +56,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         } else {
             Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
         };
-        self.step_counter = 0;
+        self.step_idx = 0;
 
         // Root state is zero
         self.prev_block = vec![0u64; STATE_LEN];
@@ -73,7 +73,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // TODO: create READ lookup tables
 
-        // When finish, write hash to Syscall channel
+        // COMMUNICATION CHANNEL: Write hash output
         self.lookup_syscall_hash();
     }
 
@@ -88,7 +88,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakStep::Sponge(typ) => self.run_sponge(typ),
             KeccakStep::Round(i) => self.run_round(i),
         }
-        self.write_column(KeccakColumn::StepCounter, self.step_counter);
+        self.write_column(KeccakColumn::StepIndex, self.step_idx);
 
         // INTER-STEP CHANNEL
         // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
@@ -214,6 +214,9 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             self.write_column_field(KeccakColumn::PadSuffix(i), *value);
         }
         // Rest is zero thanks to null_state
+
+        // COMMUNICATION CHANNEL: read bytes of current block
+        self.lookup_syscall_preimage();
 
         // Update environment
         self.prev_block = xor_state;
