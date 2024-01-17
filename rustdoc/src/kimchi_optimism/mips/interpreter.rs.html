@@ -2597,15 +2597,6 @@
 <a href="#2597" id="2597">2597</a>
 <a href="#2598" id="2598">2598</a>
 <a href="#2599" id="2599">2599</a>
-<a href="#2600" id="2600">2600</a>
-<a href="#2601" id="2601">2601</a>
-<a href="#2602" id="2602">2602</a>
-<a href="#2603" id="2603">2603</a>
-<a href="#2604" id="2604">2604</a>
-<a href="#2605" id="2605">2605</a>
-<a href="#2606" id="2606">2606</a>
-<a href="#2607" id="2607">2607</a>
-<a href="#2608" id="2608">2608</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2614,7 +2605,6 @@
     },
 };
 <span class="kw">use </span>ark_ff::One;
-<span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
 
 <span class="kw">pub const </span>FD_STDIN: u32 = <span class="number">0</span>;
@@ -4521,7 +4511,6 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
         }
         ITypeInstruction::AddImmediateUnsigned =&gt; {
-            <span class="macro">debug!</span>(<span class="string">&quot;Fetching register: {:?}&quot;</span>, rs);
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
             <span class="kw">let </span>res = {
@@ -4651,12 +4640,6 @@
                 <span class="comment">// FIXME: Requires a range check
                 </span>res
             };
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;lw {:?}, {:?}({:?})&quot;</span>,
-                dest.clone(),
-                offset.clone(),
-                addr.clone()
-            );
             <span class="comment">// We load 4 bytes, i.e. one word.
             </span><span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>addr);
             <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">1</span>)));
@@ -4666,7 +4649,6 @@
                 + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
                 + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
                 + v3;
-            <span class="macro">debug!</span>(<span class="string">&quot;Loaded 32 bits value from {:?}: {:?}&quot;</span>, addr.clone(), value);
             env.write_register(<span class="kw-2">&amp;</span>dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));

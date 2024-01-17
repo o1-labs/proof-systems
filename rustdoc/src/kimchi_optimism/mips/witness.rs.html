@@ -1141,15 +1141,6 @@
 <a href="#1141" id="1141">1141</a>
 <a href="#1142" id="1142">1142</a>
 <a href="#1143" id="1143">1143</a>
-<a href="#1144" id="1144">1144</a>
-<a href="#1145" id="1145">1145</a>
-<a href="#1146" id="1146">1146</a>
-<a href="#1147" id="1147">1147</a>
-<a href="#1148" id="1148">1148</a>
-<a href="#1149" id="1149">1149</a>
-<a href="#1150" id="1150">1150</a>
-<a href="#1151" id="1151">1151</a>
-<a href="#1152" id="1152">1152</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
 <span class="kw">use </span><span class="kw">crate</span>::keccak::lookups::Lookups;
 <span class="kw">use </span><span class="kw">crate</span>::keccak::ArithOps;
@@ -1163,8 +1154,7 @@
     mips::{
         column::Column,
         interpreter::{
-            <span class="self">self</span>, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
-            JTypeInstruction, RTypeInstruction,
+            <span class="self">self</span>, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
     },
@@ -1772,6 +1762,7 @@
         </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="self">self</span>.preimage_bytes_read.unwrap() + actual_read_len);
         <span class="comment">// If we&#39;ve read the entire preimage, trigger Keccak workflow
         </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read.unwrap() == preimage_len <span class="kw">as </span>u64 {
+            <span class="macro">debug!</span>(<span class="string">&quot;Preimage has been read entirely, triggering Keccak process&quot;</span>);
             <span class="kw">let </span><span class="kw-2">mut </span>keccak_env =
                 KeccakEnv::&lt;Fp&gt;::new(<span class="self">self</span>.hash_count, <span class="self">self</span>.preimage.as_ref().unwrap());
 
@@ -2141,16 +2132,7 @@
 
     <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, config: <span class="kw-2">&amp;</span>VmConfiguration, metadata: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
         <span class="self">self</span>.reset_scratch_state();
-        <span class="kw">let </span>(opcode, instruction) = <span class="self">self</span>.decode_instruction();
-        <span class="kw">let </span>instruction_parts: InstructionParts = InstructionParts::decode(instruction);
-        <span class="macro">debug!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, opcode);
-        <span class="macro">debug!</span>(<span class="string">&quot;Instruction hex: {:#010x}&quot;</span>, instruction);
-        <span class="macro">debug!</span>(<span class="string">&quot;Instruction: {:#034b}&quot;</span>, instruction);
-        <span class="macro">debug!</span>(<span class="string">&quot;Rs: {:#07b}&quot;</span>, instruction_parts.rs);
-        <span class="macro">debug!</span>(<span class="string">&quot;Rt: {:#07b}&quot;</span>, instruction_parts.rt);
-        <span class="macro">debug!</span>(<span class="string">&quot;Rd: {:#07b}&quot;</span>, instruction_parts.rd);
-        <span class="macro">debug!</span>(<span class="string">&quot;Shamt: {:#07b}&quot;</span>, instruction_parts.shamt);
-        <span class="macro">debug!</span>(<span class="string">&quot;Funct: {:#08b}&quot;</span>, instruction_parts.funct);
+        <span class="kw">let </span>(opcode, _instruction) = <span class="self">self</span>.decode_instruction();
 
         <span class="self">self</span>.pp_info(<span class="kw-2">&amp;</span>config.info_at, metadata, start);
         <span class="self">self</span>.snapshot_state_at(<span class="kw-2">&amp;</span>config.snapshot_state_at);
