@@ -655,8 +655,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.keccak_env = Some(keccak_env);
 
             // Reset environment
-            self.preimage_bytes_read = None;
-            self.preimage = None;
+            self.preimage_bytes_read = Some(0);
             self.preimage_key = None;
             self.hash_count += 1;
         }
