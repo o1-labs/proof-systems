@@ -2,6 +2,7 @@ use ark_ec::bn::Bn;
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
+    keccak::interpreter::KeccakInterpreter,
     mips::{proof, witness},
     preimage_oracle::PreImageOracle,
 };
@@ -94,6 +95,20 @@ pub fn main() -> ExitCode {
 
     while !env.halt {
         env.step(&configuration, &meta, &start);
+
+        if let Some(ref mut keccak_env) = env.keccak_env {
+            // Run all steps of hash
+            while keccak_env.keccak_step.is_some() {
+                keccak_env.step();
+            }
+
+            // TODO: update the witness with the Keccak step columns before resetting the environment
+            // TODO: create READ lookup tables
+
+            // When the Keccak interpreter is finished, we can reset the environment
+            env.keccak_env = None;
+        }
+
         for (scratch, scratch_pre_folding_witness) in env
             .scratch_state
             .iter()

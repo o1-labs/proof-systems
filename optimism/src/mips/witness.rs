@@ -1,5 +1,4 @@
 use crate::cannon::{Page, State};
-use crate::keccak::interpreter::KeccakInterpreter;
 use crate::keccak::lookups::Lookups;
 use crate::keccak::ArithOps;
 use crate::mips::interpreter::{Lookup, LookupTable};
@@ -621,10 +620,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.preimage_bytes_read = Some(self.preimage_bytes_read.unwrap() + actual_read_len);
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
-            let mut keccak_env = KeccakEnv::<Fp>::new(self.hash_count);
-            keccak_env.hash(self.preimage.as_ref().unwrap());
+            let mut keccak_env =
+                KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
 
-            // Write preimage bytes to the communication channel
+            // COMMUNICATION CHANNEL: Write preimage bytes
             let preimage = self.preimage.as_ref().unwrap();
             for (i, byte) in preimage.iter().enumerate() {
                 keccak_env.add_lookup(Lookup::write_one(
@@ -637,6 +636,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 ))
             }
 
+            // COMMUNICATION CHANNEL: Read hash output
             match self.preimage_key {
                 Some(preimage_key) => {
                     let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
@@ -653,10 +653,13 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 None => panic!("preimage_key should be set"),
             }
             self.keccak_env = Some(keccak_env);
+
+            // Reset environment
+            self.preimage_bytes_read = Some(0);
+            self.preimage_key = None;
+            self.hash_count += 1;
         }
-        // Reset Keccak environment
-        self.preimage_bytes_read = Some(0);
-        self.hash_count += 1;
+
         actual_read_len
     }
 
