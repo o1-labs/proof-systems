@@ -619,6 +619,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.preimage_bytes_read = Some(self.preimage_bytes_read.unwrap() + actual_read_len);
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
+            debug!("Preimage has been read entirely, triggering Keccak process");
             let mut keccak_env =
                 KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
 
