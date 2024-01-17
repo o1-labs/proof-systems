@@ -333,6 +333,9 @@
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::KeccakEnv,
@@ -379,7 +382,7 @@
 
     <span class="kw">fn </span>hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, preimage: <span class="kw-2">&amp;</span>[u8]) {
         <span class="comment">// Store hash index
-        </span><span class="self">self</span>.write_column(KeccakColumn::HashCounter, <span class="self">self</span>.hash_idx);
+        </span><span class="self">self</span>.write_column(KeccakColumn::HashIndex, <span class="self">self</span>.hash_idx);
 
         <span class="comment">// FIXME Read preimage for each block
 
@@ -391,7 +394,7 @@
         } <span class="kw">else </span>{
             <span class="prelude-val">Some</span>(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
         };
-        <span class="self">self</span>.step_counter = <span class="number">0</span>;
+        <span class="self">self</span>.step_idx = <span class="number">0</span>;
 
         <span class="comment">// Root state is zero
         </span><span class="self">self</span>.prev_block = <span class="macro">vec!</span>[<span class="number">0u64</span>; STATE_LEN];
@@ -408,7 +411,7 @@
 
         <span class="comment">// TODO: create READ lookup tables
 
-        // When finish, write hash to Syscall channel
+        // COMMUNICATION CHANNEL: Write hash output
         </span><span class="self">self</span>.lookup_syscall_hash();
     }
 
@@ -423,7 +426,7 @@
             KeccakStep::Sponge(typ) =&gt; <span class="self">self</span>.run_sponge(typ),
             KeccakStep::Round(i) =&gt; <span class="self">self</span>.run_round(i),
         }
-        <span class="self">self</span>.write_column(KeccakColumn::StepCounter, <span class="self">self</span>.step_counter);
+        <span class="self">self</span>.write_column(KeccakColumn::StepIndex, <span class="self">self</span>.step_idx);
 
         <span class="comment">// INTER-STEP CHANNEL
         // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
@@ -550,7 +553,10 @@
         }
         <span class="comment">// Rest is zero thanks to null_state
 
-        // Update environment
+        // COMMUNICATION CHANNEL: read bytes of current block
+        </span><span class="self">self</span>.lookup_syscall_preimage();
+
+        <span class="comment">// Update environment
         </span><span class="self">self</span>.prev_block = xor_state;
         <span class="self">self</span>.block_idx += <span class="number">1</span>; <span class="comment">// To be used in next absorb (if any)
     </span>}

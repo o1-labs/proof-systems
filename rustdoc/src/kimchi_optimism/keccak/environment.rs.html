@@ -598,6 +598,9 @@
 <a href="#598" id="598">598</a>
 <a href="#599" id="599">599</a>
 <a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -617,24 +620,27 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) constraints: Vec&lt;E&lt;Fp&gt;&gt;,
     <span class="doccomment">/// Values that are looked up in the circuit
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
-    <span class="doccomment">/// Expanded block of previous step
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) prev_block: Vec&lt;u64&gt;,
-    <span class="doccomment">/// Padded preimage data
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) padded: Vec&lt;u8&gt;,
-    <span class="doccomment">/// Hash index in the circuit
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) hash_idx: u64,
-    <span class="doccomment">/// Current block of preimage data
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_idx: u64,
+
     <span class="doccomment">/// The full state of the Keccak gate (witness)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) keccak_state: KeccakColumns&lt;E&lt;Fp&gt;&gt;,
-    <span class="doccomment">/// Byte-length of the 10*1 pad (&lt;=136)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) pad_len: u64,
-    <span class="doccomment">/// How many blocks are left to absrob (including current absorb)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) blocks_left_to_absorb: u64,
     <span class="doccomment">/// What step of the hash is being executed (or None, if just ended)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) keccak_step: <span class="prelude-ty">Option</span>&lt;KeccakStep&gt;,
-    <span class="doccomment">/// Step counter of the total number of steps executed so far (starts with 0)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) step_counter: u64,
+
+    <span class="doccomment">/// Hash index in the circuit
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) hash_idx: u64,
+    <span class="doccomment">/// Step counter of the total number of steps executed so far in the current hash (starts with 0)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) step_idx: u64,
+    <span class="doccomment">/// Current block of preimage data
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_idx: u64,
+
+    <span class="doccomment">/// Expanded block of previous step
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) prev_block: Vec&lt;u64&gt;,
+    <span class="doccomment">/// How many blocks are left to absrob (including current absorb)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) blocks_left_to_absorb: u64,
+    <span class="doccomment">/// Padded preimage data
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) padded: Vec&lt;u8&gt;,
+    <span class="doccomment">/// Byte-length of the 10*1 pad (&lt;=136)
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) pad_len: u64,
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; KeccakEnv&lt;Fp&gt; {
@@ -642,15 +648,15 @@
         <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],
             lookups: <span class="macro">vec!</span>[],
-            prev_block: <span class="macro">vec!</span>[],
-            padded: <span class="macro">vec!</span>[],
-            hash_idx,
-            block_idx: <span class="number">0</span>,
             keccak_state: KeccakColumns::default(),
-            pad_len: <span class="number">0</span>,
-            blocks_left_to_absorb: <span class="number">0</span>,
             keccak_step: <span class="prelude-val">None</span>,
-            step_counter: <span class="number">0</span>,
+            hash_idx,
+            step_idx: <span class="number">0</span>,
+            block_idx: <span class="number">0</span>,
+            prev_block: <span class="macro">vec!</span>[],
+            blocks_left_to_absorb: <span class="number">0</span>,
+            padded: <span class="macro">vec!</span>[],
+            pad_len: <span class="number">0</span>,
         }
     }
 
@@ -694,7 +700,7 @@
             },
             <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;No step to update&quot;</span>),
         }
-        <span class="self">self</span>.step_counter += <span class="number">1</span>;
+        <span class="self">self</span>.step_idx += <span class="number">1</span>;
     }
 }
 
@@ -865,10 +871,10 @@
 
     <span class="kw">fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Returns the hash counter
-    </span><span class="kw">fn </span>hash_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
-    <span class="doccomment">/// Returns the step counter
-    </span><span class="kw">fn </span>step_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns the hash index
+    </span><span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns the step index
+    </span><span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
     <span class="doccomment">/// Returns a slice of the input variables of the current step
     </span><span class="kw">fn </span>input_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
     <span class="doccomment">/// Returns a slice of the output variables of the current step (= input of next step)
@@ -1175,16 +1181,16 @@
         <span class="self">self</span>.keccak_state[KeccakColumn::IotaStateG(q)].clone()
     }
 
-    <span class="kw">fn </span>hash_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::HashCounter].clone()
+    <span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::HashIndex].clone()
     }
-    <span class="kw">fn </span>step_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::StepCounter].clone()
+    <span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.keccak_state[KeccakColumn::StepIndex].clone()
     }
 
     <span class="kw">fn </span>input_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
         [
-            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_counter(), <span class="self">self</span>.step_counter()],
+            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_index(), <span class="self">self</span>.step_index()],
             <span class="self">self</span>.keccak_state.curr_state(),
         ]
         .concat()
@@ -1192,7 +1198,7 @@
 
     <span class="kw">fn </span>output_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
         [
-            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_counter(), <span class="self">self</span>.step_counter() + <span class="self">Self</span>::one()],
+            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_index(), <span class="self">self</span>.step_index() + <span class="self">Self</span>::one()],
             <span class="self">self</span>.keccak_state.next_state(),
         ]
         .concat()

@@ -624,7 +624,7 @@
             <span class="comment">// In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
             </span>constraints.push(squeeze() * (old_state(i) - <span class="macro">from_shifts!</span>(shifts, i)));
         }
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">136 </span>{
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
             <span class="comment">// Check padding
             </span>constraints.push(flags(i) * (pad(i) - bytes(i)));
         }
