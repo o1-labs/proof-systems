@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-01-16T20:49:43.688Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="LqM-xeDsNLn5hYdR0Gvl" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2024-01-17T11:12:05.394Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="2ngzvEg_aDCkj3pakphx" version="22.1.2" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
-    <mxGraphModel dx="1330" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="931" dy="591" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -2605,8 +2605,8 @@
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-673" value="assert" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#dae8fc;" parent="1" vertex="1">
           <mxGeometry x="6020" y="2999" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-670" value="wrap_main/incrementally_verify_proof" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#6c8ebf;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#dae8fc;" parent="1" vertex="1">
-          <mxGeometry x="5100" y="2674" width="860" height="416" as="geometry" />
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-670" value="wrap_verifier/incrementally_verify_proof" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#6c8ebf;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#dae8fc;" parent="1" vertex="1">
+          <mxGeometry x="5100" y="2674" width="860" height="466" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-713" value="sponge_digest_before_evaluations_actual" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-670" vertex="1">
           <mxGeometry x="590" y="82" width="250" height="30" as="geometry" />
@@ -2638,8 +2638,8 @@
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-795" value="advice.combined_inner_product" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-670" vertex="1">
           <mxGeometry x="20" y="323" width="180" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-806" value="&lt;p&gt;Partially verifies the previous step proof, deferring some computations to the next iteration. This&lt;span style=&quot;background-color: initial;&quot;&gt;&amp;nbsp;implicitly (partially?) verifies the correct accumulation.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;What it does:&lt;br&gt;&lt;/p&gt;&lt;p&gt;- Absorbs some inputs, in particular sg_old, (commitments etc), generates \(\hat x\) and absorbs it too.&lt;/p&gt;&lt;p&gt;- Samples joint_combiner, alpha, beta, gamma, zeta&lt;/p&gt;&lt;p&gt;- Computes ft_comm&lt;/p&gt;&lt;p&gt;- Generates bulletproof_challenges&lt;/p&gt;&lt;p&gt;- Checks bulletproofs on bulletproof_challenges&lt;/p&gt;&lt;p&gt;- Asserts plonk that is given is equal to (alpha, beta, gamma, zeta, joint_combiner, feature_flags)&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-670" vertex="1">
-          <mxGeometry x="250" y="46" width="340" height="304" as="geometry" />
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-806" value="&lt;p&gt;Partially verifies the previous step proof, deferring some computations to the next iteration. This&lt;span style=&quot;background-color: initial;&quot;&gt;&amp;nbsp;implicitly (partially?) verifies the correct accumulation.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;What it does:&lt;br&gt;&lt;/p&gt;&lt;p&gt;- Absorbs verifier index, squeezes out index_digest, and absorbs it.&amp;nbsp;&lt;span style=&quot;background-color: initial;&quot;&gt;Absorbs sg_old. C&lt;/span&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;omputes x_hat and absorbs it. Absorbs w_comm. Absorbs runtime tables.&amp;nbsp;&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;- Computes joint_combiner: absorbs lookups, and then samples joint_comibner. Computes lookup_table_comm using joint_combiner and a particular type of accumulator. Computes lookup_sorted.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;- Squeezes beta, gamma. Absorbs some lookup data. Aborbs z_comm. Squeezes alpha. Absorbs t_comm. Squeezes zeta. After no point there are no squeezes/absorbtions.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;- Computes ft_comm&lt;/span&gt;&lt;br&gt;&lt;/p&gt;&lt;p&gt;- Generates bulletproof_challenges&lt;/p&gt;&lt;p&gt;- Checks bulletproof validity on bulletproof_challenges (check_bulletproof)&lt;/p&gt;&lt;p&gt;- Asserts that the given plonk is equal to (alpha, beta, gamma, zeta, joint_combiner, feature_flags) that was computed internally.&lt;/p&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-670" vertex="1">
+          <mxGeometry x="230" y="36" width="370" height="414" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-790" value="sg_old" style="text;html=1;strokeColor=none;fillColor=#FFCCE6;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-670" vertex="1">
           <mxGeometry x="20" y="166" width="60" height="30" as="geometry" />
@@ -2701,7 +2701,7 @@
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-723" value="old_bulletproof_challenges" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="_LjTmAN7AVqkgN4aoZ2N-721" vertex="1">
           <mxGeometry x="20" y="60" width="160" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-757" value="finalize_other_proof" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#6c8ebf;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#dae8fc;" parent="1" vertex="1">
+        <mxCell id="_LjTmAN7AVqkgN4aoZ2N-757" value="wrap_verifier/finalize_other_proof" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#6c8ebf;strokeWidth=2;fontFamily=Helvetica;fontSize=12;startSize=20;fillColor=#dae8fc;" parent="1" vertex="1">
           <mxGeometry x="4150" y="3207" width="680" height="293" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-666" value="new_bulletproof_challenges" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-757" vertex="1">
