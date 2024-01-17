@@ -1147,8 +1147,10 @@
 <a href="#1147" id="1147">1147</a>
 <a href="#1148" id="1148">1148</a>
 <a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
-<span class="kw">use </span><span class="kw">crate</span>::keccak::interpreter::KeccakInterpreter;
 <span class="kw">use </span><span class="kw">crate</span>::keccak::lookups::Lookups;
 <span class="kw">use </span><span class="kw">crate</span>::keccak::ArithOps;
 <span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::{Lookup, LookupTable};
@@ -1770,10 +1772,10 @@
         </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="self">self</span>.preimage_bytes_read.unwrap() + actual_read_len);
         <span class="comment">// If we&#39;ve read the entire preimage, trigger Keccak workflow
         </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read.unwrap() == preimage_len <span class="kw">as </span>u64 {
-            <span class="kw">let </span><span class="kw-2">mut </span>keccak_env = KeccakEnv::&lt;Fp&gt;::new(<span class="self">self</span>.hash_count);
-            keccak_env.hash(<span class="self">self</span>.preimage.as_ref().unwrap());
+            <span class="kw">let </span><span class="kw-2">mut </span>keccak_env =
+                KeccakEnv::&lt;Fp&gt;::new(<span class="self">self</span>.hash_count, <span class="self">self</span>.preimage.as_ref().unwrap());
 
-            <span class="comment">// Write preimage bytes to the communication channel
+            <span class="comment">// COMMUNICATION CHANNEL: Write preimage bytes
             </span><span class="kw">let </span>preimage = <span class="self">self</span>.preimage.as_ref().unwrap();
             <span class="kw">for </span>(i, byte) <span class="kw">in </span>preimage.iter().enumerate() {
                 keccak_env.add_lookup(Lookup::write_one(
@@ -1786,7 +1788,8 @@
                 ))
             }
 
-            <span class="kw">match </span><span class="self">self</span>.preimage_key {
+            <span class="comment">// COMMUNICATION CHANNEL: Read hash output
+            </span><span class="kw">match </span><span class="self">self</span>.preimage_key {
                 <span class="prelude-val">Some</span>(preimage_key) =&gt; {
                     <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(Fp::zero(), |acc, i| {
                         acc * Fp::two_pow(<span class="number">8</span>) + Fp::from(preimage_key[i])
@@ -1802,10 +1805,13 @@
                 <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;preimage_key should be set&quot;</span>),
             }
             <span class="self">self</span>.keccak_env = <span class="prelude-val">Some</span>(keccak_env);
+
+            <span class="comment">// Reset environment
+            </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="number">0</span>);
+            <span class="self">self</span>.preimage_key = <span class="prelude-val">None</span>;
+            <span class="self">self</span>.hash_count += <span class="number">1</span>;
         }
-        <span class="comment">// Reset Keccak environment
-        </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="number">0</span>);
-        <span class="self">self</span>.hash_count += <span class="number">1</span>;
+
         actual_read_len
     }
 

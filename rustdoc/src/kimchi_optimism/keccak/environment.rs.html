@@ -601,6 +601,30 @@
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -608,7 +632,7 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::Lookup;
 <span class="kw">use </span>ark_ff::{Field, One};
-<span class="kw">use </span>kimchi::circuits::expr::Operations;
+<span class="kw">use </span>kimchi::circuits::{expr::Operations, polynomials::keccak::Keccak};
 <span class="kw">use </span>kimchi::{
     auto_clone_array, circuits::expr::ConstantTerm::Literal,
     circuits::polynomials::keccak::constants::<span class="kw-2">*</span>, grid, o1_utils::Two,
@@ -624,7 +648,7 @@
     <span class="doccomment">/// The full state of the Keccak gate (witness)
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) keccak_state: KeccakColumns&lt;E&lt;Fp&gt;&gt;,
     <span class="doccomment">/// What step of the hash is being executed (or None, if just ended)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) keccak_step: <span class="prelude-ty">Option</span>&lt;KeccakStep&gt;,
+    </span><span class="kw">pub </span>keccak_step: <span class="prelude-ty">Option</span>&lt;KeccakStep&gt;,
 
     <span class="doccomment">/// Hash index in the circuit
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) hash_idx: u64,
@@ -644,8 +668,8 @@
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; KeccakEnv&lt;Fp&gt; {
-    <span class="kw">pub fn </span>new(hash_idx: u64) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(hash_idx: u64, preimage: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>env = <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],
             lookups: <span class="macro">vec!</span>[],
             keccak_state: KeccakColumns::default(),
@@ -657,7 +681,30 @@
             blocks_left_to_absorb: <span class="number">0</span>,
             padded: <span class="macro">vec!</span>[],
             pad_len: <span class="number">0</span>,
-        }
+        };
+
+        <span class="comment">// Store hash index
+        </span>env.write_column(KeccakColumn::HashIndex, env.hash_idx);
+
+        env.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) <span class="kw">as </span>u64;
+
+        <span class="comment">// Configure first step depending on number of blocks remaining
+        </span>env.keccak_step = <span class="kw">if </span>env.blocks_left_to_absorb == <span class="number">1 </span>{
+            <span class="prelude-val">Some</span>(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Some</span>(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
+        };
+        env.step_idx = <span class="number">0</span>;
+
+        <span class="comment">// Root state is zero
+        </span>env.prev_block = <span class="macro">vec!</span>[<span class="number">0u64</span>; STATE_LEN];
+
+        <span class="comment">// Pad preimage
+        </span>env.padded = Keccak::pad(preimage);
+        env.block_idx = <span class="number">0</span>;
+        env.pad_len = (env.padded.len() - preimage.len()) <span class="kw">as </span>u64;
+
+        env
     }
 
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: u64) {
@@ -671,6 +718,7 @@
     <span class="kw">pub fn </span>null_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.keccak_state = KeccakColumns::default();
     }
+
     <span class="kw">pub fn </span>update_step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self</span>.keccak_step {
             <span class="prelude-val">Some</span>(step) =&gt; <span class="kw">match </span>step {
