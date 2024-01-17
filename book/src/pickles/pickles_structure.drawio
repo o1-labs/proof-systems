@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-01-17T11:27:48.823Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="M-pfMfi53yVoGJNYKuQl" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2024-01-17T15:58:10.575Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="xO9rfeh5yO9zPJ909y1E" version="22.1.2" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
-    <mxGraphModel dx="2149" dy="1363" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="1996" dy="1266" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -2397,8 +2397,8 @@
             <Array as="points">
               <mxPoint x="640" y="3074" />
               <mxPoint x="640" y="3520" />
-              <mxPoint x="3840" y="3520" />
-              <mxPoint x="3840" y="3472" />
+              <mxPoint x="4130" y="3520" />
+              <mxPoint x="4130" y="3472" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -2415,13 +2415,13 @@
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="3810" y="2849" />
-              <mxPoint x="3810" y="3375" />
+              <mxPoint x="3810" y="3385" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-763" value="prev_proof_state.unfinalized_proofs" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-762" vertex="1" connectable="0">
           <mxGeometry x="0.055" y="3" relative="1" as="geometry">
-            <mxPoint x="17" y="193" as="offset" />
+            <mxPoint x="-3" y="187" as="offset" />
           </mxGeometry>
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-662" value="prev_proof_state" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="1" vertex="1">
@@ -2720,7 +2720,7 @@
           <mxGeometry x="194" y="63" width="298" height="200" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-809" value="StepDeferredValues" style="swimlane;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;gradientColor=none;startSize=20;" parent="_LjTmAN7AVqkgN4aoZ2N-757" vertex="1">
-          <mxGeometry x="10" y="103" width="160" height="110" as="geometry" />
+          <mxGeometry x="10" y="99.5" width="160" height="110" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-810" value="xi" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="_LjTmAN7AVqkgN4aoZ2N-809" vertex="1">
           <mxGeometry x="60" y="20" width="30" height="30" as="geometry" />
@@ -2738,7 +2738,7 @@
           <mxGeometry x="10" y="80" width="130" height="30" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-765" value="unfinalized_proofs: [PerProof]" style="swimlane;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;fontColor=default;fillColor=default;gradientColor=none;strokeColor=default;perimeterSpacing=0;swimlaneLine=1;glass=0;shadow=0;startSize=19;" parent="1" vertex="1">
-          <mxGeometry x="3880" y="3310" width="220" height="130" as="geometry" />
+          <mxGeometry x="3880" y="3320" width="220" height="130" as="geometry" />
         </mxCell>
         <mxCell id="_LjTmAN7AVqkgN4aoZ2N-780" value="sponge_digest_before_evaluations" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#000000;" parent="_LjTmAN7AVqkgN4aoZ2N-765" vertex="1">
           <mxGeometry x="10" y="86.5" width="200" height="30" as="geometry" />
