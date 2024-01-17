@@ -11,8 +11,7 @@ use crate::{
     mips::{
         column::Column,
         interpreter::{
-            self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
-            JTypeInstruction, RTypeInstruction,
+            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
     },
@@ -989,16 +988,7 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
         self.reset_scratch_state();
-        let (opcode, instruction) = self.decode_instruction();
-        let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
-        debug!("instruction: {:?}", opcode);
-        debug!("Instruction hex: {:#010x}", instruction);
-        debug!("Instruction: {:#034b}", instruction);
-        debug!("Rs: {:#07b}", instruction_parts.rs);
-        debug!("Rt: {:#07b}", instruction_parts.rt);
-        debug!("Rd: {:#07b}", instruction_parts.rd);
-        debug!("Shamt: {:#07b}", instruction_parts.shamt);
-        debug!("Funct: {:#08b}", instruction_parts.funct);
+        let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
         self.snapshot_state_at(&config.snapshot_state_at);
