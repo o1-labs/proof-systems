@@ -274,7 +274,6 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -282,18 +281,17 @@
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
-    PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, SPONGE_BYTES_OFF,
-    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN, THETA_DENSE_C_LEN,
-    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
-    THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
-    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF, THETA_STATE_A_LEN,
-    THETA_STATE_A_OFF,
+    PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES,
+    SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN,
+    THETA_DENSE_C_LEN, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF,
+    THETA_EXPAND_ROT_C_LEN, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF,
+    THETA_REMAINDER_C_LEN, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
+    THETA_STATE_A_LEN, THETA_STATE_A_OFF,
 };
-<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="kw">use super</span>::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
-<span class="attr">#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
+<span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>KeccakColumn {
     HashIndex,
     StepIndex,
@@ -331,23 +329,23 @@
     </span>SpongeXorState(usize),                    <span class="comment">// Absorb Next[0..100)
 </span>}
 
-<span class="attr">#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+<span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
     hash_index: T,
     step_index: T,
-    flag_round: T,           <span class="comment">// Coeff Round = 0 | 1 .. 24
-    </span>flag_absorb: T,          <span class="comment">// Coeff Absorb = 0 | 1
-    </span>flag_squeeze: T,         <span class="comment">// Coeff Squeeze = 0 | 1
-    </span>flag_root: T,            <span class="comment">// Coeff Root = 0 | 1
-    </span>flag_pad: T,             <span class="comment">// Coeff Pad = 0 | 1
-    </span>flag_length: T,          <span class="comment">// Coeff Length 0 | 1 .. 136
-    </span>two_to_pad: T,           <span class="comment">// 2^PadLength
-    </span>inverse_round: T,        <span class="comment">// Round^-1
-    </span>flags_bytes: Vec&lt;T&gt;,     <span class="comment">// 136 boolean values
-    </span>pad_suffix: Vec&lt;T&gt;,      <span class="comment">// 5 values with padding suffix
-    </span>round_constants: Vec&lt;T&gt;, <span class="comment">// Round constants
-    </span>curr: Vec&lt;T&gt;,            <span class="comment">// Curr[0..1965)
-    </span>next: Vec&lt;T&gt;,            <span class="comment">// Next[0..100)
+    flag_round: T,                    <span class="comment">// Coeff Round = 0 | 1 .. 24
+    </span>flag_absorb: T,                   <span class="comment">// Coeff Absorb = 0 | 1
+    </span>flag_squeeze: T,                  <span class="comment">// Coeff Squeeze = 0 | 1
+    </span>flag_root: T,                     <span class="comment">// Coeff Root = 0 | 1
+    </span>flag_pad: T,                      <span class="comment">// Coeff Pad = 0 | 1
+    </span>flag_length: T,                   <span class="comment">// Coeff Length 0 | 1 .. 136
+    </span>two_to_pad: T,                    <span class="comment">// 2^PadLength
+    </span>inverse_round: T,                 <span class="comment">// Round^-1
+    </span>flags_bytes: [T; RATE_IN_BYTES],  <span class="comment">// 136 boolean values
+    </span>pad_suffix: [T; <span class="number">5</span>],               <span class="comment">// 5 values with padding suffix
+    </span>round_constants: [T; QUARTERS],   <span class="comment">// Round constants
+    </span>curr: [T; ZKVM_KECCAK_COLS_CURR], <span class="comment">// Curr[0..1965)
+    </span>next: [T; ZKVM_KECCAK_COLS_NEXT], <span class="comment">// Next[0..100)
 </span>}
 
 <span class="kw">impl</span>&lt;T: Clone&gt; KeccakColumns&lt;T&gt; {
@@ -400,11 +398,11 @@
             flag_length: T::zero(),
             two_to_pad: T::one(), <span class="comment">// So that default 2^0 is in the table
             </span>inverse_round: T::zero(),
-            flags_bytes: <span class="macro">vec!</span>[T::zero(); <span class="number">136</span>],
-            pad_suffix: <span class="macro">vec!</span>[T::zero(); <span class="number">5</span>],
-            round_constants: <span class="macro">vec!</span>[T::zero(); <span class="number">4</span>], <span class="comment">// RC[0] is set to be all zeros
-            </span>curr: <span class="macro">vec!</span>[T::zero(); ZKVM_KECCAK_COLS_CURR],
-            next: <span class="macro">vec!</span>[T::zero(); ZKVM_KECCAK_COLS_NEXT],
+            flags_bytes: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
+            pad_suffix: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
+            round_constants: std::array::from_fn(|<span class="kw">_</span>| T::zero()), <span class="comment">// RC[0] is set to be all zeros
+            </span>curr: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
+            next: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
         }
     }
 }
