@@ -22,6 +22,9 @@ pub(crate) trait Lookups {
     /// Adds all lookups of Self
     fn lookups(&mut self);
 
+    /// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    fn lookup_syscall_hash(&mut self);
+
     /// Reads a Lookup containing the input of a step
     /// and writes a Lookup containing the output of the next step
     fn lookup_steps(&mut self);
@@ -82,6 +85,16 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
 
         // STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
         // Must be done inside caller
+    }
+
+    fn lookup_syscall_hash(&mut self) {
+        let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
+            acc * Self::two_pow(8) + self.sponge_bytes(i)
+        });
+        self.add_lookup(Lookup::write_one(
+            LookupTable::SyscallLookup,
+            vec![self.hash_counter(), bytes31],
+        ));
     }
 
     fn lookup_steps(&mut self) {

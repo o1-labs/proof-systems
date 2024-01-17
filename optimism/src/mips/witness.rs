@@ -1,5 +1,8 @@
 use crate::cannon::{Page, State};
 use crate::keccak::interpreter::KeccakInterpreter;
+use crate::keccak::lookups::Lookups;
+use crate::keccak::ArithOps;
+use crate::mips::interpreter::{Lookup, LookupTable};
 use crate::{
     cannon::{
         Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -18,6 +21,7 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
+use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::array;
 use std::fs::File;
@@ -59,6 +63,7 @@ pub struct Env<Fp> {
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
     pub preimage_bytes_read: Option<u64>,
+    pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
 }
 
@@ -574,6 +579,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage);
+            self.preimage_key = Some(preimage_key);
         }
 
         const LENGTH_SIZE: usize = 8;
@@ -617,6 +623,21 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
             let mut keccak_env = KeccakEnv::<Fp>::new(self.hash_count);
             keccak_env.hash(self.preimage.as_ref().unwrap());
+            match self.preimage_key {
+                Some(preimage_key) => {
+                    let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
+                        acc * Fp::two_pow(8) + Fp::from(preimage_key[i])
+                    });
+                    keccak_env.add_lookup(Lookup::read_one(
+                        LookupTable::SyscallLookup,
+                        vec![
+                            <KeccakEnv<Fp> as ArithOps>::constant(self.hash_count),
+                            <KeccakEnv<Fp> as ArithOps>::constant_field(bytes31),
+                        ],
+                    ));
+                }
+                None => panic!("preimage_key should be set"),
+            }
             self.keccak_env = Some(keccak_env);
         }
         // Reset Keccak environment
@@ -733,6 +754,7 @@ impl<Fp: Field> Env<Fp> {
             preimage_oracle,
             preimage: state.preimage,
             preimage_bytes_read: Some(0),
+            preimage_key: None,
             keccak_env: None,
         }
     }
