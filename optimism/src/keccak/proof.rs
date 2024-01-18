@@ -1,6 +1,7 @@
 use super::column::KeccakColumns;
 use ark_ff::{One, Zero};
 use kimchi::curve::KimchiCurve;
+use poly_commitment::{OpenProof, PolyComm};
 
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
@@ -39,4 +40,12 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
             },
         }
     }
+}
+
+#[derive(Debug)]
+pub struct KeccakProof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
+    _commitments: KeccakColumns<PolyComm<G>>,
+    _zeta_evaluations: KeccakColumns<G::ScalarField>,
+    _zeta_omega_evaluations: KeccakColumns<G::ScalarField>,
+    _opening_proof: OpeningProof,
 }
