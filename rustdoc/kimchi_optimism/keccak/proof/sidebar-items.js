@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["KeccakProofInputs"]};
+window.SIDEBAR_ITEMS = {"struct":["KeccakProof","KeccakProofInputs"]};
