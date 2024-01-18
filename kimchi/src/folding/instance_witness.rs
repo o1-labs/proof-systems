@@ -5,7 +5,7 @@ use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 use std::collections::BTreeMap;
 
 pub trait Instance<G: CommitmentCurve>: Sized {
-    ///should return a linear combination
+    /// Should return a linear combination
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
     fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
         let instance = ExtendedInstance::extend(self);
@@ -18,7 +18,7 @@ pub trait Instance<G: CommitmentCurve>: Sized {
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized {
-    ///should return a linear combination
+    /// Should return a linear combination
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
 
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
@@ -70,12 +70,13 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
         &mut self.instance
     }
 
-    ///provides access to commitments to the extra columns added by quadraticization
+    /// Provides access to commitments to the extra columns added by
+    /// quadraticization
     pub fn get_extended_column_commitment(&self, i: usize) -> Option<&PolyComm<G>> {
         self.instance.extended.get(i)
     }
 
-    ///provides access to a commitment to the error column
+    /// Provides access to a commitment to the error column
     pub fn get_error_column_commitment(&self) -> &PolyComm<G> {
         &self.error_commitment
     }
@@ -90,12 +91,12 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
         &mut self.witness
     }
 
-    ///provides access to the extra columns added by quadraticization
+    /// Provides access to the extra columns added by quadraticization
     pub fn get_extended_column(&self, i: &usize) -> Option<&Evals<G::ScalarField>> {
         self.inner().extended.get(i)
     }
 
-    ///provides access to the error column
+    /// Provides access to the error column
     pub fn get_error_column(&self) -> &Evals<G::ScalarField> {
         &self.error_vec
     }
