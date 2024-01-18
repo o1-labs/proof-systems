@@ -3,12 +3,12 @@
 use std::borrow::Cow;
 
 use crate::snarky::{
-    runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::FieldVar,
+    constraint_system::BasicSnarkyConstraint, cvar::FieldVar, runner::RunState,
     snarky_type::SnarkyType,
 };
 use ark_ff::PrimeField;
 
-use super::{runner::Constraint, errors::SnarkyResult};
+use super::{errors::SnarkyResult, runner::Constraint};
 
 trait OutOfCircuitSnarkyType2<F> {
     type InCircuit;
