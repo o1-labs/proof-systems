@@ -10,6 +10,7 @@ use kimchi_optimism::{
 use poly_commitment::pairing_proof::PairingProof;
 use std::{fs::File, io::BufReader, process::ExitCode};
 
+use kimchi_optimism::DOMAIN_SIZE;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -55,7 +56,7 @@ pub fn main() -> ExitCode {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let domain_size = 1 << 15;
+    let domain_size = DOMAIN_SIZE;
 
     let domain =
         kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(domain_size).unwrap();
@@ -123,7 +124,7 @@ pub fn main() -> ExitCode {
         current_pre_folding_witness
             .error
             .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
-        if current_pre_folding_witness.instruction_counter.len() == 1 << 15 {
+        if current_pre_folding_witness.instruction_counter.len() == DOMAIN_SIZE {
             proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
