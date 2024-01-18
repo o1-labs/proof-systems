@@ -1203,7 +1203,7 @@
     <span class="kw">pub </span>hash_count: u64,
     <span class="kw">pub </span>preimage_oracle: PreImageOracle,
     <span class="kw">pub </span>preimage: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
-    <span class="kw">pub </span>preimage_bytes_read: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    <span class="kw">pub </span>preimage_bytes_read: u64,
     <span class="kw">pub </span>preimage_key: <span class="prelude-ty">Option</span>&lt;[u8; <span class="number">32</span>]&gt;,
     <span class="kw">pub </span>keccak_env: <span class="prelude-ty">Option</span>&lt;KeccakEnv&lt;Fp&gt;&gt;,
 }
@@ -1759,9 +1759,9 @@
         <span class="self">self</span>.write_column(pos, actual_read_len);
 
         <span class="comment">// Update the total number of preimage bytes read so far
-        </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="self">self</span>.preimage_bytes_read.unwrap() + actual_read_len);
+        </span><span class="self">self</span>.preimage_bytes_read += actual_read_len;
         <span class="comment">// If we&#39;ve read the entire preimage, trigger Keccak workflow
-        </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read.unwrap() == preimage_len <span class="kw">as </span>u64 {
+        </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read == preimage_len <span class="kw">as </span>u64 {
             <span class="macro">debug!</span>(<span class="string">&quot;Preimage has been read entirely, triggering Keccak process&quot;</span>);
             <span class="kw">let </span><span class="kw-2">mut </span>keccak_env =
                 KeccakEnv::&lt;Fp&gt;::new(<span class="self">self</span>.hash_count, <span class="self">self</span>.preimage.as_ref().unwrap());
@@ -1798,7 +1798,7 @@
             <span class="self">self</span>.keccak_env = <span class="prelude-val">Some</span>(keccak_env);
 
             <span class="comment">// Reset environment
-            </span><span class="self">self</span>.preimage_bytes_read = <span class="prelude-val">Some</span>(<span class="number">0</span>);
+            </span><span class="self">self</span>.preimage_bytes_read = <span class="number">0</span>;
             <span class="self">self</span>.preimage_key = <span class="prelude-val">None</span>;
             <span class="self">self</span>.hash_count += <span class="number">1</span>;
         }
@@ -1913,7 +1913,7 @@
             hash_count: <span class="number">0</span>,
             preimage_oracle,
             preimage: state.preimage,
-            preimage_bytes_read: <span class="prelude-val">Some</span>(<span class="number">0</span>),
+            preimage_bytes_read: <span class="number">0</span>,
             preimage_key: <span class="prelude-val">None</span>,
             keccak_env: <span class="prelude-val">None</span>,
         }
