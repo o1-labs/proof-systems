@@ -1,17 +1,33 @@
 use super::column::KeccakColumns;
 use ark_ff::{One, Zero};
-use kimchi::curve::KimchiCurve;
-use poly_commitment::{OpenProof, PolyComm};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
+use kimchi::groupmap::GroupMap;
+use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
+use mina_poseidon::sponge::ScalarChallenge;
+use mina_poseidon::FqSponge;
+use poly_commitment::OpenProof;
+use poly_commitment::{
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    evaluation_proof::DensePolynomialOrEvaluations,
+    SRS as _,
+};
+use rand::thread_rng;
+use rayon::iter::{
+    FromParallelIterator, IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IntoParallelRefMutIterator, ParallelIterator,
+};
 
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
-    _evaluations: KeccakColumns<Vec<G::ScalarField>>,
+    evaluations: KeccakColumns<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     fn default() -> Self {
         KeccakProofInputs {
-            _evaluations: KeccakColumns {
+            evaluations: KeccakColumns {
                 hash_index: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
                 step_index: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
                 flag_round: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
@@ -48,4 +64,73 @@ pub struct KeccakProof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     _zeta_evaluations: KeccakColumns<G::ScalarField>,
     _zeta_omega_evaluations: KeccakColumns<G::ScalarField>,
     _opening_proof: OpeningProof,
+}
+
+pub fn fold<
+    G: KimchiCurve,
+    OpeningProof: OpenProof<G>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+>(
+    domain: EvaluationDomains<G::ScalarField>,
+    srs: &OpeningProof::SRS,
+    accumulator: &mut KeccakProofInputs<G>,
+    inputs: &KeccakColumns<Vec<G::ScalarField>>,
+) where
+    <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
+{
+    let commitments = {
+        inputs
+            .par_iter()
+            .map(|evals: &Vec<G::ScalarField>| {
+                let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    evals.clone(),
+                    domain.d1,
+                );
+                srs.commit_evaluations_non_hiding(domain.d1, &evals)
+            })
+            .collect::<KeccakColumns<_>>()
+    };
+    let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
+
+    absorb_commitment(&mut fq_sponge, &commitments.hash_index);
+    absorb_commitment(&mut fq_sponge, &commitments.step_index);
+    absorb_commitment(&mut fq_sponge, &commitments.flag_round);
+    absorb_commitment(&mut fq_sponge, &commitments.flag_absorb);
+    absorb_commitment(&mut fq_sponge, &commitments.flag_squeeze);
+    absorb_commitment(&mut fq_sponge, &commitments.flag_root);
+    absorb_commitment(&mut fq_sponge, &commitments.flag_pad);
+    absorb_commitment(&mut fq_sponge, &commitments.flag_length);
+    absorb_commitment(&mut fq_sponge, &commitments.two_to_pad);
+    absorb_commitment(&mut fq_sponge, &commitments.inverse_round);
+    for flags_bytes in commitments.flags_bytes.iter() {
+        absorb_commitment(&mut fq_sponge, flags_bytes);
+    }
+    for pad_suffix in commitments.pad_suffix.iter() {
+        absorb_commitment(&mut fq_sponge, pad_suffix);
+    }
+    for round_constants in commitments.round_constants.iter() {
+        absorb_commitment(&mut fq_sponge, round_constants);
+    }
+    for curr in commitments.curr.iter() {
+        absorb_commitment(&mut fq_sponge, curr);
+    }
+    for next in commitments.next.iter() {
+        absorb_commitment(&mut fq_sponge, next);
+    }
+    let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
+    let (_, endo_r) = G::endos();
+    let scaling_challenge = scaling_challenge.to_field(endo_r);
+    accumulator
+        .evaluations
+        .par_iter_mut()
+        .zip(inputs.par_iter())
+        .for_each(|(accumulator, inputs)| {
+            accumulator
+                .par_iter_mut()
+                .zip(inputs.par_iter())
+                .for_each(|(accumulator, input)| {
+                    *accumulator = *input + scaling_challenge * *accumulator
+                });
+        });
 }
