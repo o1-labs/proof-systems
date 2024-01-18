@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 /// Tarjan's Union-Find Data structure
 pub struct DisjointSet<T> {
     set_size: usize,
@@ -27,9 +27,8 @@ where
 
     pub fn make_set(&mut self, x: T) {
         let len = &mut self.set_size;
-        match self.map.get(&x) {
-            Some(_p) => return,
-            None => {}
+        if self.map.get(&x).is_some() {
+            return;
         }
 
         self.map.insert(x, *len);
@@ -41,13 +40,10 @@ where
     /// Returns Some(num), num is the tag of subset in which x is.
     /// If x is not in the data structure, it returns None.    
     pub fn find(&mut self, x: T) -> Option<usize> {
-        let pos: usize;
-        match self.map.get(&x) {
-            Some(p) => {
-                pos = *p;
-            }
+        let pos = match self.map.get(&x) {
+            Some(p) => *p,
             None => return None,
-        }
+        };
 
         let ret = DisjointSet::<T>::find_internal(&mut self.parent, pos);
         Some(ret)
@@ -64,31 +60,18 @@ where
     }
 
     /// Union the subsets to which x and y belong.
-    /// If it returns Ok<u32>, it is the tag for unified subset.
-    /// it returns Err(), at least one of x and y is not in the disjoint-set.
-    pub fn union(&mut self, x: T, y: T) -> Result<usize, ()> {
-        let x_root;
-        let y_root;
-        match self.find(x) {
-            Some(x_r) => {
-                x_root = x_r;
+    /// If it returns Some<u32>, it is the tag for unified subset.
+    /// If it returns None, at least one of x and y is not in the disjoint-set.
+    pub fn union(&mut self, x: T, y: T) -> Option<usize> {
+        let (x_root, y_root) = match (self.find(x), self.find(y)) {
+            (Some(x), Some(y)) => (x, y),
+            _ => {
+                return None;
             }
-            None => {
-                return Err(());
-            }
-        }
-
-        match self.find(y) {
-            Some(y_r) => {
-                y_root = y_r;
-            }
-            None => {
-                return Err(());
-            }
-        }
+        };
 
         self.parent[x_root] = y_root;
-        Ok(y_root)
+        Some(y_root)
     }
 }
 

@@ -4,6 +4,7 @@ use ark_ff::PrimeField;
 use kimchi::{
     circuits::{
         argument::Argument,
+        expr,
         polynomials::{
             complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
             poseidon::Poseidon, varbasemul::VarbaseMul,
@@ -12,7 +13,7 @@ use kimchi::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -40,7 +41,10 @@ where
     F: PrimeField,
 {
     fn latex() -> Vec<Vec<String>> {
-        Self::constraints().iter().map(|c| c.latex_str()).collect()
+        Self::constraints(&mut expr::Cache::default())
+            .iter()
+            .map(|c| c.latex_str())
+            .collect()
     }
 }
 
@@ -71,7 +75,12 @@ where
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
+pub fn visu<G: KimchiCurve>(
+    index: &ProverIndex<G, OpeningProof<G>>,
+    witness: Option<Witness<G::ScalarField>>,
+) where
+    G::BaseField: PrimeField,
+{
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");
     let mut data = format!("const index = {index};");

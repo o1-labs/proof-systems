@@ -2,18 +2,19 @@
 
 use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
-use o1_utils::foreign_field::BigUintForeignFieldHelpers;
+use o1_utils::foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers};
 
 use crate::{
     alphas::Alphas,
     circuits::{
         argument::Argument,
-        expr::E,
+        expr::{Cache, E},
         gate::{CircuitGate, GateType},
         lookup::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
+        polynomials::generic::GenericGateSpec,
         wires::Wire,
     },
 };
@@ -39,9 +40,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             CircuitGate {
                 typ: GateType::ForeignFieldMul,
                 wires: Wire::for_row(start_row),
-                coeffs: [foreign_field_modulus, neg_foreign_field_modulus]
-                    .concat()
-                    .to_vec(),
+                coeffs: vec![
+                    foreign_field_modulus[2],
+                    neg_foreign_field_modulus[0],
+                    neg_foreign_field_modulus[1],
+                    neg_foreign_field_modulus[2],
+                ],
             },
             CircuitGate {
                 typ: GateType::Zero,
@@ -64,6 +68,18 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
     }
+
+    pub fn extend_high_bounds(
+        gates: &mut Vec<Self>,
+        curr_row: &mut usize,
+        foreign_field_modulus: &BigUint,
+    ) {
+        let r = gates.len();
+        let hi_fmod = foreign_field_modulus.to_field_limbs::<F>()[2];
+        let hi_limb: F = F::two_to_limb() - hi_fmod - F::one();
+        let g = GenericGateSpec::Plus(hi_limb);
+        CircuitGate::extend_generic(gates, curr_row, Wire::for_row(r), g.clone(), Some(g));
+    }
 }
 
 // TODO: Check do we use this anywhere
@@ -80,9 +96,13 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_constraints<F: PrimeField>(
+    typ: GateType,
+    alphas: &Alphas<F>,
+    cache: &mut Cache,
+) -> E<F> {
     match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas),
+        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas, cache),
         _ => panic!("invalid gate type"),
     }
 }
@@ -96,8 +116,8 @@ pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
 }
 
 /// Get the combined constraints for all foreign field multiplication circuit gates
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    ForeignFieldMul::combined_constraints(alphas)
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
+    ForeignFieldMul::combined_constraints(alphas, cache)
 }
 
 /// Get the foreign field multiplication lookup table

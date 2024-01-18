@@ -1,4 +1,5 @@
 mod and;
+mod chunked;
 mod ec;
 mod endomul;
 mod endomul_scalar;
@@ -6,6 +7,7 @@ mod foreign_field_add;
 mod foreign_field_mul;
 mod framework;
 mod generic;
+mod keccak;
 mod lookup;
 mod not;
 mod poseidon;

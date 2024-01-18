@@ -15,6 +15,11 @@ Install cargo-spec:
 $ cargo install cargo-spec
 ```
 
+You will also need markdownlint:
+```console
+$ npm install markdownlint-cli -g
+```
+
 ## Render
 
 To produce a specification, simply run the following command:

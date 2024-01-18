@@ -398,7 +398,7 @@ where
             if env.has_witness && env.eval_constraints {
                 constraint
                     .check_constraint(env)
-                    .map_err(|e| env.runtime_error(e))?;
+                    .map_err(|e| env.runtime_error(*e))?;
             }
 
             if !env.has_witness {
@@ -576,13 +576,13 @@ where
     }
 
     /// Creates a runtime error.
-    pub fn runtime_error(&self, error: SnarkyRuntimeError) -> RealSnarkyError {
-        self.error(SnarkyError::RuntimeError(error))
+    pub fn runtime_error(&self, error: SnarkyRuntimeError) -> Box<RealSnarkyError> {
+        Box::new(self.error(SnarkyError::RuntimeError(error)))
     }
 
     /// Crates a compilation error.
-    pub fn compilation_error(&self, error: SnarkyCompilationError) -> RealSnarkyError {
-        self.error(SnarkyError::CompilationError(error))
+    pub fn compilation_error(&self, error: SnarkyCompilationError) -> Box<RealSnarkyError> {
+        Box::new(self.error(SnarkyError::CompilationError(error)))
     }
 
     pub fn generate_witness_init(&mut self, mut public_input: Vec<F>) -> SnarkyResult<()> {

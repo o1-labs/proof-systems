@@ -188,7 +188,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
         (false, None) => panic!("{missing_field_err}"),
         (true, Some(_)) => panic!("you cannot specify a field via `#[snarky(field = \"...\")] if the type already has a `F: PrimeField`"),  
     };
-    let impl_field_path: syn::Path = syn::parse_str(&format!("{impl_field}")).unwrap();
+    let impl_field_path: syn::Path = syn::parse_str(impl_field).unwrap();
 
     // collect field names and types
     let fields = &item_struct.fields;

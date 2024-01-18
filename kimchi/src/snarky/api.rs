@@ -10,17 +10,17 @@ use crate::{
     groupmap::GroupMap,
     mina_poseidon::FqSponge,
     plonk_sponge::FrSponge,
-    poly_commitment::srs::SRS,
     proof::ProverProof,
     prover_index::ProverIndex,
     verifier::verify,
     verifier_index::VerifierIndex,
 };
+
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{commitment::CommitmentCurve, OpenProof, SRS};
 
-use super::{runner::RunState, errors::SnarkyResult, snarky_type::SnarkyType};
+use super::{errors::SnarkyResult, runner::RunState, snarky_type::SnarkyType};
 
 /// A witness represents the execution trace of a circuit.
 #[derive(Debug)]
@@ -39,8 +39,13 @@ where
     Circuit: SnarkyCircuit,
 {
     compiled_circuit: CompiledCircuit<Circuit>,
-    index: ProverIndex<Circuit::Curve>,
+    index: ProverIndex<Circuit::Curve, Circuit::Proof>,
 }
+
+type Proof<C> = ProverProof<<C as SnarkyCircuit>::Curve, <C as SnarkyCircuit>::Proof>;
+type Output<C> = <<C as SnarkyCircuit>::PublicOutput as SnarkyType<
+    ScalarField<<C as SnarkyCircuit>::Curve>,
+>>::OutOfCircuit;
 
 impl<Circuit> ProverIndexWrapper<Circuit>
 where
@@ -63,10 +68,7 @@ where
         private_input: Circuit::PrivateInput,
         // TODO: rename to verify_witness?
         debug: bool,
-    ) -> SnarkyResult<(
-        ProverProof<Circuit::Curve>,
-        <Circuit::PublicOutput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
-    )>
+    ) -> SnarkyResult<(Proof<Circuit>, Box<Output<Circuit>>)>
     where
         <Circuit::Curve as AffineCurve>::BaseField: PrimeField,
         EFqSponge: Clone
@@ -94,7 +96,7 @@ where
         let (return_cvars, aux) = return_var.to_cvars();
         let mut public_output_values = vec![];
         for cvar in &return_cvars {
-            public_output_values.push(cvar.eval(&mut self.compiled_circuit.sys));
+            public_output_values.push(cvar.eval(&self.compiled_circuit.sys));
         }
 
         // create constraint between public output var and return var
@@ -144,12 +146,12 @@ where
         let group_map = <Circuit::Curve as CommitmentCurve>::Map::setup();
 
         // TODO: return error instead of panicking
-        let proof: ProverProof<Circuit::Curve> =
+        let proof: ProverProof<Circuit::Curve, Circuit::Proof> =
             ProverProof::create::<EFqSponge, EFrSponge>(&group_map, witness.0, &[], &self.index)
                 .unwrap();
 
         // return proof + public output
-        Ok((proof, public_output))
+        Ok((proof, Box::new(public_output)))
     }
 }
 
@@ -158,7 +160,7 @@ pub struct VerifierIndexWrapper<Circuit>
 where
     Circuit: SnarkyCircuit,
 {
-    index: VerifierIndex<Circuit::Curve>,
+    index: VerifierIndex<Circuit::Curve, Circuit::Proof>,
 }
 
 impl<Circuit> VerifierIndexWrapper<Circuit>
@@ -168,7 +170,7 @@ where
     /// Verify a proof for a given public input and public output.
     pub fn verify<EFqSponge, EFrSponge>(
         &self,
-        proof: ProverProof<Circuit::Curve>,
+        proof: ProverProof<Circuit::Curve, Circuit::Proof>,
         public_input: <Circuit::PublicInput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
         public_output: <Circuit::PublicOutput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
     ) where
@@ -183,7 +185,7 @@ where
         // verify the proof
         let group_map = <Circuit::Curve as CommitmentCurve>::Map::setup();
 
-        verify::<Circuit::Curve, EFqSponge, EFrSponge>(
+        verify::<Circuit::Curve, EFqSponge, EFrSponge, Circuit::Proof>(
             &group_map,
             &self.index,
             &proof,
@@ -265,6 +267,7 @@ pub trait SnarkyCircuit: Sized {
     /// which is more strict and needed due to implementation details in kimchi.
     // TODO: if we remove `sponge_params` from KimchiCurve and move it to the Field then we could specify a field here instead.
     type Curve: KimchiCurve;
+    type Proof: OpenProof<Self::Curve>;
 
     /// The private input used by the circuit.
     type PrivateInput;
@@ -308,18 +311,20 @@ pub trait SnarkyCircuit: Sized {
             .unwrap();
 
         // create SRS (for vesta, as the circuit is in Fp)
-        let mut srs = SRS::<Self::Curve>::create(cs.domain.d1.size as usize);
+        // let mut srs = SRS::<Self::Curve>::create(cs.domain.d1.size as usize);
+        let mut srs = <<Self::Proof as OpenProof<Self::Curve>>::SRS as SRS<Self::Curve>>::create(
+            cs.domain.d1.size as usize,
+        );
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = std::sync::Arc::new(srs);
 
-        println!("using an SRS of size {}", srs.g.len());
+        println!("using an SRS of size {}", srs.size());
 
         // create indexes
-        let (endo_q, _endo_r) =
-            <<Self as SnarkyCircuit>::Curve as KimchiCurve>::OtherCurve::endos();
+        let endo_q = <<Self as SnarkyCircuit>::Curve as KimchiCurve>::other_curve_endo();
 
         let prover_index =
-            crate::prover_index::ProverIndex::<Self::Curve>::create(cs, *endo_q, srs);
+            crate::prover_index::ProverIndex::<Self::Curve, Self::Proof>::create(cs, *endo_q, srs);
         let verifier_index = prover_index.verifier_index();
 
         let prover_index = ProverIndexWrapper {

@@ -1668,26 +1668,30 @@ where
     pub fn check_constraint(
         &self,
         env: &impl WitnessGeneration<F>,
-    ) -> Result<(), SnarkyRuntimeError> {
-        match self {
+    ) -> Result<(), Box<SnarkyRuntimeError>> {
+        let result = match self {
             BasicSnarkyConstraint::Boolean(v) => {
                 let v = env.read_var(v);
                 if !(v.is_one() || v.is_zero()) {
-                    return Err(SnarkyRuntimeError::UnsatisfiedBooleanConstraint(
+                    Err(SnarkyRuntimeError::UnsatisfiedBooleanConstraint(
                         env.constraints_counter(),
                         v.to_string(),
-                    ));
+                    ))
+                } else {
+                    Ok(())
                 }
             }
             BasicSnarkyConstraint::Equal(v1, v2) => {
                 let v1 = env.read_var(v1);
                 let v2 = env.read_var(v2);
                 if v1 != v2 {
-                    return Err(SnarkyRuntimeError::UnsatisfiedEqualConstraint(
+                    Err(SnarkyRuntimeError::UnsatisfiedEqualConstraint(
                         env.constraints_counter(),
                         v1.to_string(),
                         v2.to_string(),
-                    ));
+                    ))
+                } else {
+                    Ok(())
                 }
             }
             BasicSnarkyConstraint::Square(v1, v2) => {
@@ -1695,11 +1699,13 @@ where
                 let v2 = env.read_var(v2);
                 let square = v1.square();
                 if square != v2 {
-                    return Err(SnarkyRuntimeError::UnsatisfiedSquareConstraint(
+                    Err(SnarkyRuntimeError::UnsatisfiedSquareConstraint(
                         env.constraints_counter(),
                         v1.to_string(),
                         v2.to_string(),
-                    ));
+                    ))
+                } else {
+                    Ok(())
                 }
             }
             BasicSnarkyConstraint::R1CS(v1, v2, v3) => {
@@ -1708,17 +1714,19 @@ where
                 let v3 = env.read_var(v3);
                 let mul = v1 * v2;
                 if mul != v3 {
-                    return Err(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(
+                    Err(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(
                         env.constraints_counter(),
                         v1.to_string(),
                         v2.to_string(),
                         v3.to_string(),
-                    ));
+                    ))
+                } else {
+                    Ok(())
                 }
             }
         };
 
-        Ok(())
+        result.map_err(Box::new)
     }
 }
 
@@ -1729,7 +1737,7 @@ where
     pub fn check_constraint(
         &self,
         env: &impl WitnessGeneration<F>,
-    ) -> Result<(), SnarkyRuntimeError> {
+    ) -> Result<(), Box<SnarkyRuntimeError>> {
         match self {
             // we only check the basic gate
             KimchiConstraint::Basic(BasicInput {
@@ -1745,7 +1753,7 @@ where
                 let res = *c0 * l + *c1 * r + *c2 * o + l * r * c3 + c4;
                 if !res.is_zero() {
                     // TODO: return different errors depending on the type of generic gate (e.g. addition, cst, mul, etc.)
-                    return Err(SnarkyRuntimeError::UnsatisfiedGenericConstraint(
+                    return Err(Box::new(SnarkyRuntimeError::UnsatisfiedGenericConstraint(
                         c0.to_string(),
                         l.to_string(),
                         c1.to_string(),
@@ -1755,7 +1763,7 @@ where
                         c3.to_string(),
                         c4.to_string(),
                         env.constraints_counter(),
-                    ));
+                    )));
                 }
             }
 

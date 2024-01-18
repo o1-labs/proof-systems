@@ -1,13 +1,8 @@
 //! Constants used for poseidon.
 
-// TODO: move to `poseidon.rs`?
-
-use ark_ec::AffineCurve;
+use crate::curve::KimchiCurve;
 use ark_ff::Field;
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
-use poly_commitment::commitment::CommitmentCurve;
-
-use crate::curve::KimchiCurve;
 
 #[derive(Debug, Clone)]
 pub struct Constants<F: Field> {
@@ -22,10 +17,8 @@ where
 {
     pub fn new<Curve: KimchiCurve<ScalarField = F>>() -> Self {
         let poseidon = Curve::sponge_params().clone();
-        let (endo_q, _endo_r) = Curve::OtherCurve::endos();
-        let base = Curve::OtherCurve::prime_subgroup_generator()
-            .to_coordinates()
-            .unwrap();
+        let endo_q = Curve::other_curve_endo();
+        let base = Curve::other_curve_prime_subgroup_generator();
 
         Self {
             poseidon,

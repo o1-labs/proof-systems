@@ -2,7 +2,10 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::{compact_limb, ExprOps},
+    expr::{
+        constraints::{compact_limb, ExprOps},
+        Cache,
+    },
     gate::GateType,
 };
 use ark_ff::PrimeField;
@@ -17,7 +20,7 @@ use std::{array, marker::PhantomData};
 //~
 //~ ##### Documentation
 //~
-//~  For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
+//~  For more details please see the [Foreign Field Addition](../kimchi/foreign_field_add.md) chapter.
 //~
 //~ ##### Mapping
 //~
@@ -139,7 +142,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 4;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved

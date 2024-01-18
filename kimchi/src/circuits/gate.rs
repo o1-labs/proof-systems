@@ -5,8 +5,8 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, turshi, varbasemul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, keccak,
+            poseidon, range_check, rot, turshi, varbasemul, xor,
         },
         wires::*,
     },
@@ -16,16 +16,13 @@ use crate::{
 use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
+use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{
-    argument::ArgumentWitness,
-    expr,
-    polynomials::{rot, xor},
-};
+use super::{argument::ArgumentWitness, expr};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -84,34 +81,36 @@ impl CurrOrNext {
 pub enum GateType {
     #[default]
     /// Zero gate
-    Zero = 0,
+    Zero,
     /// Generic arithmetic gate
-    Generic = 1,
+    Generic,
     /// Poseidon permutation gate
-    Poseidon = 2,
+    Poseidon,
     /// Complete EC addition in Affine form
-    CompleteAdd = 3,
+    CompleteAdd,
     /// EC variable base scalar multiplication
-    VarBaseMul = 4,
+    VarBaseMul,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    EndoMul = 5,
+    EndoMul,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndoMulScalar = 6,
+    EndoMulScalar,
     // Lookup
-    Lookup = 11,
+    Lookup,
     /// Cairo
-    CairoClaim = 12,
-    CairoInstruction = 13,
-    CairoFlags = 14,
-    CairoTransition = 15,
+    CairoClaim,
+    CairoInstruction,
+    CairoFlags,
+    CairoTransition,
     /// Range check
-    RangeCheck0 = 16,
-    RangeCheck1 = 17,
-    ForeignFieldAdd = 18,
-    ForeignFieldMul = 19,
+    RangeCheck0,
+    RangeCheck1,
+    ForeignFieldAdd,
+    ForeignFieldMul,
     // Gates for Keccak
-    Xor16 = 20,
-    Rot64 = 21,
+    Xor16,
+    Rot64,
+    KeccakRound,
+    KeccakSponge,
 }
 
 /// Gate error
@@ -193,11 +192,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    pub fn verify<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify<G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, OpeningProof>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -210,6 +209,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
             EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
+            // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                 self.verify_cairo_gate::<G>(row, witness, &index.cs)
@@ -229,6 +229,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Rot64 => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
+            KeccakRound => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            KeccakSponge => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -245,15 +251,23 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
         let constants = expr::Constants {
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+            zk_rows: cs.zk_rows,
+        };
+        let challenges = expr::Challenges {
             alpha: F::one(),
             beta: F::one(),
             gamma: F::one(),
             joint_combiner: Some(F::one()),
-            endo_coefficient: cs.endo,
-            mds: &G::sponge_params().mds,
         };
         // Create the argument environment for the constraints over field elements
-        let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
+        let env = ArgumentEnv::<F, F>::create(
+            argument_witness,
+            self.coeffs.clone(),
+            constants,
+            challenges,
+        );
 
         // Check the wiring (i.e. copy constraints) for this gate
         // Note: Gates can operated on row Curr or Curr and Next.
@@ -277,6 +291,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
         }
 
+        let mut cache = expr::Cache::default();
+
         // Perform witness verification on each constraint for this gate
         let results = match self.typ {
             GateType::Zero => {
@@ -286,33 +302,46 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 // TODO: implement the verification for the generic gate
                 vec![]
             }
-            GateType::Poseidon => poseidon::Poseidon::constraint_checks(&env),
-            GateType::CompleteAdd => complete_add::CompleteAdd::constraint_checks(&env),
-            GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env),
-            GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env),
-            GateType::EndoMulScalar => endomul_scalar::EndomulScalar::constraint_checks(&env),
+            GateType::Poseidon => poseidon::Poseidon::constraint_checks(&env, &mut cache),
+            GateType::CompleteAdd => complete_add::CompleteAdd::constraint_checks(&env, &mut cache),
+            GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env, &mut cache),
+            GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env, &mut cache),
+            GateType::EndoMulScalar => {
+                endomul_scalar::EndomulScalar::constraint_checks(&env, &mut cache)
+            }
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
+                // See https://github.com/MinaProtocol/mina/issues/14011
                 vec![]
             }
-            GateType::CairoClaim => turshi::Claim::constraint_checks(&env),
-            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env),
-            GateType::CairoFlags => turshi::Flags::constraint_checks(&env),
-            GateType::CairoTransition => turshi::Transition::constraint_checks(&env),
+            GateType::CairoClaim => turshi::Claim::constraint_checks(&env, &mut cache),
+            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env, &mut cache),
+            GateType::CairoFlags => turshi::Flags::constraint_checks(&env, &mut cache),
+            GateType::CairoTransition => turshi::Transition::constraint_checks(&env, &mut cache),
             GateType::RangeCheck0 => {
-                range_check::circuitgates::RangeCheck0::constraint_checks(&env)
+                range_check::circuitgates::RangeCheck0::constraint_checks(&env, &mut cache)
             }
             GateType::RangeCheck1 => {
-                range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+                range_check::circuitgates::RangeCheck1::constraint_checks(&env, &mut cache)
             }
             GateType::ForeignFieldAdd => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(
+                    &env, &mut cache,
+                )
             }
             GateType::ForeignFieldMul => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
+                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(
+                    &env, &mut cache,
+                )
             }
-            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
-            GateType::Rot64 => rot::Rot64::constraint_checks(&env),
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
+            GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
+            GateType::KeccakRound => {
+                keccak::circuitgates::KeccakRound::constraint_checks(&env, &mut cache)
+            }
+            GateType::KeccakSponge => {
+                keccak::circuitgates::KeccakSponge::constraint_checks(&env, &mut cache)
+            }
         };
 
         // Check for failed constraints

@@ -3,7 +3,7 @@
 ## Introduction
 
 The trick below was originally described in [Halo](https://eprint.iacr.org/2020/499.pdf),
-however we are going to base this post on the abstraction of "accumulation schemes" described by Bünz, Chiesa, Mishra and Spooner in [Proof-Carrying Data from Accumulation Schemes](/https://eprint.iacr.org/2020/499.pdf), in particular the scheme in Appendix A. 2.
+however we are going to base this post on the abstraction of "accumulation schemes" described by Bünz, Chiesa, Mishra and Spooner in [Proof-Carrying Data from Accumulation Schemes](https://eprint.iacr.org/2020/499.pdf), in particular the scheme in Appendix A. 2.
 
 Relevant resources include:
 
@@ -767,7 +767,7 @@ Note that the accumulator verifier must be proven (in addition to the Kimchi/Plo
 
 Note that the "cycles of curves" (e.g. Pasta cycle) does not show up in this part of the code:
 a <u>separate accumulator</u> is needed for each curve and the final verifier must check both accumulators to deem the combined recursive proof valid.
-This takes the form of [`passthough` data](passthrough.html) in pickles.
+This takes the form of `passthough` data in pickles.
 
 Note however, that the accumulation verifier makes use of both $\GG$-operations and $\FF$-operations,
 therefore it (like the Kimchi verifier) also requires [deferred computation](deferred.html).

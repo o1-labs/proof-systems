@@ -13,6 +13,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use poly_commitment::evaluation_proof::OpeningProof;
 
 use super::prelude::*;
 
@@ -29,6 +30,7 @@ struct Priv {
 
 impl SnarkyCircuit for TestCircuit {
     type Curve = Vesta;
+    type Proof = OpeningProof<Self::Curve>;
 
     type PrivateInput = Priv;
     type PublicInput = Boolean<Fp>;
@@ -84,10 +86,10 @@ fn test_simple_circuit() {
             .unwrap();
 
         let expected_public_output = (true, Fp::from(4));
-        assert_eq!(public_output, expected_public_output);
+        assert_eq!(*public_output, expected_public_output);
 
         // verify proof
-        verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
+        verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, *public_output);
     }
 
     // prove a different execution
@@ -104,10 +106,10 @@ fn test_simple_circuit() {
             .unwrap();
 
         let expected_public_output = (true, Fp::from(4));
-        assert_eq!(public_output, expected_public_output);
+        assert_eq!(*public_output, expected_public_output);
 
         // verify proof
-        verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
+        verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, *public_output);
     }
 
     // prove a bad execution

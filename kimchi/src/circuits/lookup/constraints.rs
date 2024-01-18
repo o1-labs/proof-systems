@@ -1,6 +1,7 @@
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr},
+        berkeley_columns::Column,
+        expr::{prologue::*, ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -23,9 +24,6 @@ use super::runtime_tables;
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
-/// The number of random values to append to columns for zero-knowledge.
-pub const ZK_ROWS: usize = 3;
-
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
 ///
@@ -35,13 +33,15 @@ pub const ZK_ROWS: usize = 3;
 pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     mut e: Vec<F>,
     d: D<F>,
+    zk_rows: usize,
     rng: &mut R,
 ) -> Evaluations<F, D<F>> {
     let n = d.size();
     let k = e.len();
-    assert!(k <= n - ZK_ROWS);
-    e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
-    e.extend((0..ZK_ROWS).map(|_| F::rand(rng)));
+    let last_non_zk_row = n - zk_rows;
+    assert!(k <= last_non_zk_row);
+    e.extend((k..last_non_zk_row).map(|_| F::zero()));
+    e.extend((0..zk_rows).map(|_| F::rand(rng)));
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
@@ -93,6 +93,7 @@ pub fn sorted<F: PrimeField>(
     joint_combiner: F,
     table_id_combiner: F,
     lookup_info: &LookupInfo,
+    zk_rows: usize,
 ) -> Result<Vec<Vec<F>>, ProverError> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
@@ -100,7 +101,7 @@ pub fn sorted<F: PrimeField>(
     let n = d1.size();
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - zk_rows - 1;
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
@@ -137,7 +138,7 @@ pub fn sorted<F: PrimeField>(
             let joint_lookup_evaluation =
                 joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
             match counts.get_mut(&joint_lookup_evaluation) {
-                None => return Err(ProverError::ValueNotInTable),
+                None => return Err(ProverError::ValueNotInTable(i)),
                 Some(count) => *count += 1,
             }
         }
@@ -238,13 +239,14 @@ pub fn aggregation<R, F>(
     sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
     lookup_info: &LookupInfo,
+    zk_rows: usize,
 ) -> Result<Evaluations<F, D<F>>, ProverError>
 where
     R: Rng + ?Sized,
     F: PrimeField,
 {
     let n = d1.size();
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - zk_rows - 1;
     let beta1: F = F::one() + beta;
     let gammabeta1 = gamma * beta1;
     let mut lookup_aggreg = vec![F::one()];
@@ -254,6 +256,8 @@ where
             .iter()
             .enumerate()
             .map(|(i, s)| {
+                // Snake pattern: even chunks of s are direct
+                // while the odd ones are reversed
                 let (i1, i2) = if i % 2 == 0 {
                     (row, row + 1)
                 } else {
@@ -316,11 +320,11 @@ where
             lookup_aggreg[i + 1] *= prev;
         });
 
-    let res = zk_patch(lookup_aggreg, d1, rng);
+    let res = zk_patch(lookup_aggreg, d1, zk_rows, rng);
 
     // check that the final evaluation is equal to 1
     if cfg!(debug_assertions) {
-        let final_val = res.evals[d1.size() - (ZK_ROWS + 1)];
+        let final_val = res.evals[d1.size() - (zk_rows + 1)];
         if final_val != F::one() {
             panic!("aggregation incorrect: {final_val}");
         }
@@ -389,8 +393,10 @@ pub fn constraints<F: FftField>(
     let column = |col: Column| E::cell(col, Curr);
 
     // gamma * (beta + 1)
-    let gammabeta1 =
-        E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
+    let gammabeta1 = E::<F>::from(
+        ConstantExpr::from(ChallengeTerm::Gamma)
+            * (ConstantExpr::from(ChallengeTerm::Beta) + ConstantExpr::one()),
+    );
 
     // the numerator part in the multiset check of plookup
     let numerator = {
@@ -417,7 +423,7 @@ pub fn constraints<F: FftField>(
             E::one() - lookup_indicator
         };
 
-        let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
+        let joint_combiner = E::from(ChallengeTerm::JointCombiner);
         let table_id_combiner =
             // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
             // needed.
@@ -440,16 +446,16 @@ pub fn constraints<F: FftField>(
                     .dummy_lookup
                     .entry
                     .iter()
-                    .map(|x| E::Constant(ConstantExpr::Literal(*x)))
+                    .map(|x| ConstantTerm::Literal(*x).into())
                     .collect(),
-                table_id: E::Constant(ConstantExpr::Literal(configuration.dummy_lookup.table_id)),
+                table_id: ConstantTerm::Literal(configuration.dummy_lookup.table_id).into(),
             };
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
         };
 
         // (1 + beta)^max_per_row
         let beta1_per_row: E<F> = {
-            let beta1 = E::Constant(ConstantExpr::one() + ConstantExpr::Beta);
+            let beta1 = E::from(ConstantExpr::one() + ChallengeTerm::Beta.into());
             // Compute beta1.pow(lookup_info.max_per_row)
             let mut res = beta1.clone();
             for i in 1..lookup_info.max_per_row {
@@ -467,11 +473,11 @@ pub fn constraints<F: FftField>(
         };
 
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
-        // each value is also multipled with (1 + beta)^max_per_row
+        // each value is also multiplied with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
         let dummy_padding = |spec_len| {
             let mut res = E::one();
-            let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup.clone();
+            let dummy: E<_> = E::from(ChallengeTerm::Gamma) + dummy_lookup.clone();
             for i in spec_len..lookup_info.max_per_row {
                 let mut dummy_used = dummy.clone();
                 if generate_feature_flags {
@@ -504,10 +510,10 @@ pub fn constraints<F: FftField>(
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
                 .map(|j| {
-                    E::Constant(ConstantExpr::Gamma)
+                    E::from(ChallengeTerm::Gamma)
                         + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
                 })
-                .fold(padding, |acc: E<F>, x| acc * x)
+                .fold(padding, |acc: E<F>, x: E<F>| acc * x)
         };
 
         // f part of the numerator
@@ -599,16 +605,22 @@ pub fn constraints<F: FftField>(
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    let final_lookup_row: i32 = -(ZK_ROWS as i32) - 1;
+    let final_lookup_row = RowOffset {
+        zk_rows: true,
+        offset: -1,
+    };
 
     let mut res = vec![
-        // the accumulator except for the last 4 rows
+        // the accumulator except for the last zk_rows+1 rows
         // (contains the zk-rows and the last value of the accumulator)
-        E::VanishesOnLast4Rows * aggreg_equation,
+        E::Atom(ExprInner::VanishesOnZeroKnowledgeAndPreviousRows) * aggreg_equation,
         // the initial value of the accumulator
-        E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        E::Atom(ExprInner::UnnormalizedLagrangeBasis(RowOffset {
+            zk_rows: false,
+            offset: 0,
+        })) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the final value of the accumulator is 1
-        E::UnnormalizedLagrangeBasis(final_lookup_row)
+        E::Atom(ExprInner::UnnormalizedLagrangeBasis(final_lookup_row))
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
 
@@ -620,9 +632,12 @@ pub fn constraints<F: FftField>(
                 final_lookup_row
             } else {
                 // Check compatibility of the first elements
-                0
+                RowOffset {
+                    zk_rows: false,
+                    offset: 0,
+                }
             };
-            let mut expr = E::UnnormalizedLagrangeBasis(first_or_last)
+            let mut expr = E::Atom(ExprInner::UnnormalizedLagrangeBasis(first_or_last))
                 * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)));
             if generate_feature_flags {
                 expr = E::IfFeature(
@@ -679,12 +694,13 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],
     lookup_info: &LookupInfo,
+    zk_rows: usize,
 ) {
     sorted
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
     let n = d1.size();
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - zk_rows - 1;
 
     // Check that the (desnakified) sorted table is
     // 1. Sorted

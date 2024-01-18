@@ -3,7 +3,8 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        expr::{l0_1, Constants, Environment, LookupEnvironment},
+        constraints::zk_rows_strict_lower_bound,
+        expr::{self, l0_1, Challenges, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -13,7 +14,6 @@ use crate::{
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
-            permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
@@ -27,12 +27,12 @@ use crate::{
     lagrange_basis_evaluations::LagrangeBasisEvaluations,
     plonk_sponge::FrSponge,
     proof::{
-        LookupCommitments, LookupEvaluations, PointEvaluations, ProofEvaluations,
-        ProverCommitments, ProverProof, RecursionChallenge,
+        LookupCommitments, PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+        RecursionChallenge,
     },
     prover_index::ProverIndex,
+    verifier_index::VerifierIndex,
 };
-use ark_ec::ProjectiveCurve;
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -46,6 +46,7 @@ use poly_commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
     evaluation_proof::DensePolynomialOrEvaluations,
+    OpenProof, SRS as _,
 };
 use rayon::prelude::*;
 use std::array;
@@ -104,8 +105,15 @@ where
     aggreg_comm: Option<BlindedCommitment<G>>,
     aggreg8: Option<Evaluations<F, D<F>>>,
 
-    /// The evaluations of the aggregation polynomial for the proof
-    eval: Option<LookupEvaluations<PointEvaluations<Vec<F>>>>,
+    // lookup-related evaluations
+    /// evaluation of lookup aggregation polynomial
+    pub lookup_aggregation_eval: Option<PointEvaluations<Vec<F>>>,
+    /// evaluation of lookup table polynomial
+    pub lookup_table_eval: Option<PointEvaluations<Vec<F>>>,
+    /// evaluation of lookup sorted polynomials
+    pub lookup_sorted_eval: [Option<PointEvaluations<Vec<F>>>; 5],
+    /// evaluation of runtime lookup table polynomial
+    pub runtime_lookup_table_eval: Option<PointEvaluations<Vec<F>>>,
 
     /// Runtime table
     runtime_table: Option<DensePolynomial<F>>,
@@ -114,7 +122,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
 where
     G::BaseField: PrimeField,
 {
@@ -130,8 +138,11 @@ where
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
-    ) -> Result<Self> {
+        index: &ProverIndex<G, OpeningProof>,
+    ) -> Result<Self>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
             witness,
@@ -158,17 +169,23 @@ where
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, OpeningProof>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
-    ) -> Result<Self> {
-        // make sure that the SRS is not smaller than the domain size
+    ) -> Result<Self>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
+        internal_tracing::checkpoint!(internal_traces; create_recursive);
         let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_degree() < d1_size {
-            return Err(ProverError::SRSTooSmall);
-        }
 
         let (_, endo_r) = G::endos();
+
+        let num_chunks = if d1_size < index.max_poly_size {
+            1
+        } else {
+            d1_size / index.max_poly_size
+        };
 
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
@@ -183,19 +200,28 @@ where
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
         //~    We currently expect the witness not to be of the same length as the domain,
         //~    but instead be of the length of the (smaller) circuit.
-        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+        //~    If we cannot add `zk_rows` rows to the columns of the witness before reaching
         //~    the size of the domain, abort.
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        if length_padding < ZK_ROWS as usize {
+        let zero_knowledge_limit = zk_rows_strict_lower_bound(num_chunks);
+        if (index.cs.zk_rows as usize) < zero_knowledge_limit {
+            return Err(ProverError::NotZeroKnowledge(
+                zero_knowledge_limit,
+                index.cs.zk_rows as usize,
+            ));
+        }
+
+        if length_padding < index.cs.zk_rows as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
 
         //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-        //~    Then, randomize the last `ZK_ROWS` of each columns.
+        //~    Then, randomize the last `zk_rows` of each columns.
+        internal_tracing::checkpoint!(internal_traces; pad_witness);
         for w in &mut witness {
             if w.len() != length_witness {
                 return Err(ProverError::WitnessCsInconsistent);
@@ -205,13 +231,14 @@ where
             w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
-            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
+            for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {
                 *row = <G::ScalarField as UniformRand>::rand(rng);
             }
         }
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        internal_tracing::checkpoint!(internal_traces; set_up_fq_sponge);
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
         let verifier_index_digest = index.verifier_index_digest::<EFqSponge>();
@@ -233,7 +260,7 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+        let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks, None);
         let public_comm = {
             index
                 .srs
@@ -256,6 +283,7 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
+        internal_tracing::checkpoint!(internal_traces; commit_to_witness_columns);
         let mut w_comm = vec![];
         for col in 0..COLUMNS {
             // witness coeff -> witness eval
@@ -311,6 +339,10 @@ where
 
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
+            internal_tracing::checkpoint!(internal_traces; use_lookup, {
+                "uses_lookup": true,
+                "uses_runtime_tables": lcs.runtime_tables.is_some(),
+            });
             //~~ * if using runtime table:
             if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
                 //~~~ * check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
@@ -342,7 +374,7 @@ where
                     }
 
                     // zero-knowledge
-                    for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
+                    for e in evals.iter_mut().rev().take(index.cs.zk_rows as usize) {
                         *e = <G::ScalarField as UniformRand>::rand(rng);
                     }
 
@@ -358,7 +390,10 @@ where
 
                 // commit the runtime polynomial
                 // (and save it to the proof)
-                let runtime_table_comm = index.srs.commit(&runtime_table_contribution, None, rng);
+                let runtime_table_comm =
+                    index
+                        .srs
+                        .commit(&runtime_table_contribution, num_chunks, None, rng);
 
                 // absorb the commitment
                 absorb_commitment(&mut fq_sponge, &runtime_table_comm.commitment);
@@ -388,7 +423,7 @@ where
                 G::ScalarField::zero()
             };
 
-            //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+            //~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
             let joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
 
             //~~ * If multiple lookup tables are involved,
@@ -476,13 +511,21 @@ where
                 joint_combiner,
                 table_id_combiner,
                 &lcs.configuration.lookup_info,
+                index.cs.zk_rows as usize,
             )?;
 
             //~~ * Randomize the last `EVALS` rows in each of the sorted polynomials
             //~~   in order to add zero-knowledge to the protocol.
             let sorted: Vec<_> = sorted
                 .into_iter()
-                .map(|chunk| lookup::constraints::zk_patch(chunk, index.cs.domain.d1, rng))
+                .map(|chunk| {
+                    lookup::constraints::zk_patch(
+                        chunk,
+                        index.cs.domain.d1,
+                        index.cs.zk_rows as usize,
+                        rng,
+                    )
+                })
                 .collect();
 
             //~~ * Commit each of the sorted polynomials.
@@ -537,6 +580,7 @@ where
                 lookup_context.sorted.as_ref().unwrap(),
                 rng,
                 &lcs.configuration.lookup_info,
+                index.cs.zk_rows as usize,
             )?;
 
             //~~ * Commit to the aggregation polynomial.
@@ -559,10 +603,11 @@ where
         }
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
+        internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
-        let z_comm = index.srs.commit(&z_poly, None, rng);
+        let z_comm = index.srs.commit(&z_poly, num_chunks, None, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
@@ -600,7 +645,9 @@ where
             None
         };
 
+        internal_tracing::checkpoint!(internal_traces; eval_witness_polynomials_over_domains);
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
+        internal_tracing::checkpoint!(internal_traces; compute_index_evals);
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
@@ -657,16 +704,22 @@ where
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
+                    endo_coefficient: index.cs.endo,
+                    mds,
+                    zk_rows: index.cs.zk_rows,
+                },
+                challenges: Challenges {
                     alpha,
                     beta,
                     gamma,
                     joint_combiner: lookup_context.joint_combiner,
-                    endo_coefficient: index.cs.endo,
-                    mds,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
+                vanishes_on_zero_knowledge_and_previous_rows: &index
+                    .cs
+                    .precomputations()
+                    .vanishes_on_zero_knowledge_and_previous_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
@@ -675,10 +728,15 @@ where
             }
         };
 
+        let mut cache = expr::Cache::default();
+
+        internal_tracing::checkpoint!(internal_traces; compute_quotient_poly);
+
         let quotient_poly = {
             // generic
             let mut t4 = {
-                let generic_constraint = generic::Generic::combined_constraints(&all_alphas);
+                let generic_constraint =
+                    generic::Generic::combined_constraints(&all_alphas, &mut cache);
                 let generic4 = generic_constraint.evaluations(&env);
 
                 if cfg!(debug_assertions) {
@@ -746,7 +804,7 @@ where
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
                 {
-                    let constraint = gate.combined_constraints(&all_alphas);
+                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
                     let eval = constraint.evaluations(&env);
                     if eval.domain().size == t4.domain().size {
                         t4 += &eval;
@@ -810,25 +868,7 @@ where
         };
 
         //~ 1. commit (hiding) to the quotient polynomial $t$
-        //~    TODO: specify the dummies
-        let t_comm = {
-            let mut t_comm = index.srs.commit(&quotient_poly, None, rng);
-
-            let expected_t_size = PERMUTS;
-            let dummies = expected_t_size - t_comm.commitment.unshifted.len();
-            // Add `dummies` many hiding commitments to the 0 polynomial, since if the
-            // number of commitments in `t_comm` is less than the max size, it means that
-            // the higher degree coefficients of `t` are 0.
-            for _ in 0..dummies {
-                let w = <G::ScalarField as UniformRand>::rand(rng);
-                t_comm
-                    .commitment
-                    .unshifted
-                    .push(index.srs.h.mul(w).into_affine());
-                t_comm.blinders.unshifted.push(w);
-            }
-            t_comm
-        };
+        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, None, rng) };
 
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);
@@ -849,7 +889,7 @@ where
                 .aggreg_coeffs
                 .as_ref()
                 .unwrap()
-                .to_chunked_polynomial(index.max_poly_size);
+                .to_chunked_polynomial(num_chunks, index.max_poly_size);
 
             //~~ * the sorted polynomials
             let sorted = lookup_context
@@ -857,42 +897,48 @@ where
                 .as_ref()
                 .unwrap()
                 .iter()
-                .map(|c| c.to_chunked_polynomial(index.max_poly_size));
+                .map(|c| c.to_chunked_polynomial(num_chunks, index.max_poly_size))
+                .collect::<Vec<_>>();
 
             //~~ * the table polynonial
             let joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
-            let joint_table = joint_table.to_chunked_polynomial(index.max_poly_size);
+            let joint_table = joint_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
 
-            lookup_context.eval = Some(LookupEvaluations {
-                aggreg: PointEvaluations {
-                    zeta: aggreg.evaluate_chunks(zeta),
-                    zeta_omega: aggreg.evaluate_chunks(zeta_omega),
-                },
-                sorted: sorted
-                    .map(|sorted| PointEvaluations {
+            lookup_context.lookup_aggregation_eval = Some(PointEvaluations {
+                zeta: aggreg.evaluate_chunks(zeta),
+                zeta_omega: aggreg.evaluate_chunks(zeta_omega),
+            });
+            lookup_context.lookup_table_eval = Some(PointEvaluations {
+                zeta: joint_table.evaluate_chunks(zeta),
+                zeta_omega: joint_table.evaluate_chunks(zeta_omega),
+            });
+            lookup_context.lookup_sorted_eval = array::from_fn(|i| {
+                if i < sorted.len() {
+                    let sorted = &sorted[i];
+                    Some(PointEvaluations {
                         zeta: sorted.evaluate_chunks(zeta),
                         zeta_omega: sorted.evaluate_chunks(zeta_omega),
                     })
-                    .collect(),
-                table: PointEvaluations {
-                    zeta: joint_table.evaluate_chunks(zeta),
-                    zeta_omega: joint_table.evaluate_chunks(zeta_omega),
-                },
-                runtime: lookup_context.runtime_table.as_ref().map(|runtime_table| {
-                    let runtime_table = runtime_table.to_chunked_polynomial(index.max_poly_size);
+                } else {
+                    None
+                }
+            });
+            lookup_context.runtime_lookup_table_eval =
+                lookup_context.runtime_table.as_ref().map(|runtime_table| {
+                    let runtime_table =
+                        runtime_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
                     PointEvaluations {
                         zeta: runtime_table.evaluate_chunks(zeta),
                         zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
                     }
-                }),
-            })
+                });
         }
 
         //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
         //~~ * $s_i$
         //~~ * $w_i$
         //~~ * $z$
-        //~~ * lookup (TODO)
+        //~~ * lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
         //~~ * generic selector
         //~~ * poseidon selector
         //~
@@ -905,24 +951,36 @@ where
         //~
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
-        //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+        //~    TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 
-        let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
-        let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
+        internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_poly);
+        let zeta_evals =
+            LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta);
+        internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_omega_poly);
+        let zeta_omega_evals =
+            LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta_omega);
 
         let chunked_evals_for_selector =
             |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate_boolean(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate_boolean(p)],
+                zeta: zeta_evals.evaluate_boolean(p),
+                zeta_omega: zeta_omega_evals.evaluate_boolean(p),
             };
 
         let chunked_evals_for_evaluations =
             |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate(p)],
+                zeta: zeta_evals.evaluate(p),
+                zeta_omega: zeta_omega_evals.evaluate(p),
             };
 
+        internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
+            public: {
+                let chunked = public_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
+                Some(PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                })
+            },
             s: array::from_fn(|i| {
                 chunked_evals_for_evaluations(
                     &index.column_evaluations.permutation_coefficients8[i],
@@ -932,7 +990,8 @@ where
                 chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
             }),
             w: array::from_fn(|i| {
-                let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
+                let chunked =
+                    witness_poly[i].to_chunked_polynomial(num_chunks, index.max_poly_size);
                 PointEvaluations {
                     zeta: chunked.evaluate_chunks(zeta),
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
@@ -940,19 +999,99 @@ where
             }),
 
             z: {
-                let chunked = z_poly.to_chunked_polynomial(index.max_poly_size);
+                let chunked = z_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
                 PointEvaluations {
                     zeta: chunked.evaluate_chunks(zeta),
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
                 }
             },
 
-            lookup: lookup_context.eval.take(),
+            lookup_aggregation: lookup_context.lookup_aggregation_eval.take(),
+            lookup_table: lookup_context.lookup_table_eval.take(),
+            lookup_sorted: array::from_fn(|i| lookup_context.lookup_sorted_eval[i].take()),
+            runtime_lookup_table: lookup_context.runtime_lookup_table_eval.take(),
             generic_selector: chunked_evals_for_selector(
                 &index.column_evaluations.generic_selector4,
             ),
             poseidon_selector: chunked_evals_for_selector(
                 &index.column_evaluations.poseidon_selector8,
+            ),
+            complete_add_selector: chunked_evals_for_selector(
+                &index.column_evaluations.complete_add_selector4,
+            ),
+            mul_selector: chunked_evals_for_selector(&index.column_evaluations.mul_selector8),
+            emul_selector: chunked_evals_for_selector(&index.column_evaluations.emul_selector8),
+            endomul_scalar_selector: chunked_evals_for_selector(
+                &index.column_evaluations.endomul_scalar_selector8,
+            ),
+
+            range_check0_selector: index
+                .column_evaluations
+                .range_check0_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            range_check1_selector: index
+                .column_evaluations
+                .range_check1_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            foreign_field_add_selector: index
+                .column_evaluations
+                .foreign_field_add_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            foreign_field_mul_selector: index
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            xor_selector: index
+                .column_evaluations
+                .xor_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            rot_selector: index
+                .column_evaluations
+                .rot_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+
+            runtime_lookup_table_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.runtime_selector
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            xor_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .xor
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            lookup_gate_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .lookup
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            range_check_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .range_check
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            foreign_field_mul_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .ffmul
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
             ),
         };
 
@@ -971,7 +1110,8 @@ where
         };
 
         //~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
+        internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
         let ft: DensePolynomial<G::ScalarField> = {
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
@@ -993,20 +1133,20 @@ where
 
                 drop(env);
 
-                // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
-                f.to_chunked_polynomial(index.max_poly_size)
+                // see https://o1-labs.github.io/mina-book/kimchi/maller_15.html#the-prover-side
+                f.to_chunked_polynomial(num_chunks, index.max_poly_size)
                     .linearize(zeta_to_srs_len)
             };
 
             let t_chunked = quotient_poly
-                .to_chunked_polynomial(index.max_poly_size)
+                .to_chunked_polynomial(7 * num_chunks, index.max_poly_size)
                 .linearize(zeta_to_srs_len);
 
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
         };
 
         //~ 1. construct the blinding part of the ft polynomial commitment
-        //~    [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
+        //~    [see this section](https://o1-labs.github.io/mina-book/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
         let blinding_ft = {
             let blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
             let blinding_f = G::ScalarField::zero();
@@ -1021,6 +1161,7 @@ where
         };
 
         //~ 1. Evaluate the ft polynomial at $\zeta\omega$ only.
+        internal_tracing::checkpoint!(internal_traces; ft_eval_zeta_omega);
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
         //~ 1. Setup the Fr-Sponge
@@ -1043,6 +1184,7 @@ where
         fr_sponge.absorb(&prev_challenge_digest);
 
         //~ 1. Compute evaluations for the previous recursion challenges.
+        internal_tracing::checkpoint!(internal_traces; build_polynomials);
         let polys = prev_challenges
             .iter()
             .map(|RecursionChallenge { chals, comm }| {
@@ -1052,16 +1194,6 @@ where
                 )
             })
             .collect::<Vec<_>>();
-
-        //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-        let public_evals = if public_poly.is_zero() {
-            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
-        } else {
-            [
-                vec![public_poly.evaluate(&zeta)],
-                vec![public_poly.evaluate(&zeta_omega)],
-            ]
-        };
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&ft_eval1);
@@ -1073,8 +1205,8 @@ where
         //~~ * poseidon selector
         //~~ * the 15 register/witness
         //~~ * 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_multiple(&public_evals[0]);
-        fr_sponge.absorb_multiple(&public_evals[1]);
+        fr_sponge.absorb_multiple(&chunked_evals.public.as_ref().unwrap().zeta);
+        fr_sponge.absorb_multiple(&chunked_evals.public.as_ref().unwrap().zeta_omega);
         fr_sponge.absorb_evaluations(&chunked_evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
@@ -1118,19 +1250,42 @@ where
         //~~ * the poseidon selector
         //~~ * the 15 registers/witness columns
         //~~ * the 6 sigmas
-        //~~ * optionally, the runtime table
-        polynomials.push((coefficients_form(&public_poly), None, fixed_hiding(1)));
+        polynomials.push((
+            coefficients_form(&public_poly),
+            None,
+            fixed_hiding(num_chunks),
+        ));
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
         polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
         polynomials.push((
             evaluations_form(&index.column_evaluations.generic_selector4),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.poseidon_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.complete_add_selector4),
+            None,
+            fixed_hiding(num_chunks),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.mul_selector8),
+            None,
+            fixed_hiding(num_chunks),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.emul_selector8),
+            None,
+            fixed_hiding(num_chunks),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
+            None,
+            fixed_hiding(num_chunks),
         ));
         polynomials.extend(
             witness_poly
@@ -1144,16 +1299,73 @@ where
                 .column_evaluations
                 .coefficients8
                 .iter()
-                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(1)))
+                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
             index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
                 .iter()
-                .map(|w| (evaluations_form(w), None, non_hiding(1)))
+                .map(|w| (evaluations_form(w), None, non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
 
+        //~~ * the optional gates
+        if let Some(range_check0_selector8) =
+            index.column_evaluations.range_check0_selector8.as_ref()
+        {
+            polynomials.push((
+                evaluations_form(range_check0_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+        if let Some(range_check1_selector8) =
+            index.column_evaluations.range_check1_selector8.as_ref()
+        {
+            polynomials.push((
+                evaluations_form(range_check1_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+        if let Some(foreign_field_add_selector8) = index
+            .column_evaluations
+            .foreign_field_add_selector8
+            .as_ref()
+        {
+            polynomials.push((
+                evaluations_form(foreign_field_add_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+        if let Some(foreign_field_mul_selector8) = index
+            .column_evaluations
+            .foreign_field_mul_selector8
+            .as_ref()
+        {
+            polynomials.push((
+                evaluations_form(foreign_field_mul_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+        if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
+            polynomials.push((
+                evaluations_form(xor_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+        if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
+            polynomials.push((
+                evaluations_form(rot_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+
+        //~~ * optionally, the runtime table
         //~ 1. if using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ * add the lookup sorted polynomials
@@ -1178,14 +1390,19 @@ where
                 let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
 
-                let blinding = runtime_comm.blinders.unshifted[0];
+                let unshifted = runtime_comm
+                    .blinders
+                    .unshifted
+                    .iter()
+                    .map(|blinding| *joint_combiner * blinding)
+                    .collect();
 
                 PolyComm {
-                    unshifted: vec![*joint_combiner * blinding],
+                    unshifted,
                     shifted: None,
                 }
             } else {
-                non_hiding(1)
+                non_hiding(num_chunks)
             };
 
             let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
@@ -1203,10 +1420,42 @@ where
                     runtime_table_comm.blinders.clone(),
                 ));
             }
+
+            //~~ * the lookup selectors
+
+            if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
+                polynomials.push((
+                    evaluations_form(runtime_lookup_table_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(xor_lookup_selector) = lcs.lookup_selectors.xor.as_ref() {
+                polynomials.push((evaluations_form(xor_lookup_selector), None, non_hiding(1)))
+            }
+            if let Some(lookup_gate_selector) = lcs.lookup_selectors.lookup.as_ref() {
+                polynomials.push((evaluations_form(lookup_gate_selector), None, non_hiding(1)))
+            }
+            if let Some(range_check_lookup_selector) = lcs.lookup_selectors.range_check.as_ref() {
+                polynomials.push((
+                    evaluations_form(range_check_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
+                polynomials.push((
+                    evaluations_form(foreign_field_mul_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
         }
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
-        let proof = index.srs.open(
+        internal_tracing::checkpoint!(internal_traces; create_aggregated_evaluation_proof);
+        let proof = OpenProof::open(
+            &*index.srs,
             group_map,
             &polynomials,
             &[zeta, zeta_omega],
@@ -1225,7 +1474,7 @@ where
                 runtime: lookup_context.runtime_table_comm.map(|x| x.commitment),
             });
 
-        Ok(Self {
+        let proof = Self {
             commitments: ProverCommitments {
                 w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
                 z_comm: z_comm.commitment,
@@ -1236,16 +1485,52 @@ where
             evals: chunked_evals,
             ft_eval1,
             prev_challenges,
-        })
+        };
+
+        internal_tracing::checkpoint!(internal_traces; create_recursive_done);
+        Ok(proof)
     }
 }
+
+internal_tracing::decl_traces!(internal_traces;
+    pasta_fp_plonk_proof_create,
+    pasta_fq_plonk_proof_create,
+    create_recursive,
+    pad_witness,
+    set_up_fq_sponge,
+    commit_to_witness_columns,
+    use_lookup,
+    z_permutation_aggregation_polynomial,
+    eval_witness_polynomials_over_domains,
+    compute_index_evals,
+    compute_quotient_poly,
+    lagrange_basis_eval_zeta_poly,
+    lagrange_basis_eval_zeta_omega_poly,
+    chunk_eval_zeta_omega_poly,
+    compute_ft_poly,
+    ft_eval_zeta_omega,
+    build_polynomials,
+    create_aggregated_evaluation_proof,
+    create_recursive_done);
 
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
-    use poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+    use poly_commitment::{
+        commitment::caml::{CamlOpeningProof, CamlPolyComm},
+        evaluation_proof::OpeningProof,
+    };
+
+    #[cfg(feature = "internal_tracing")]
+    pub use internal_traces::caml::CamlTraces as CamlProverTraces;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlProofWithPublic<CamlG, CamlF> {
+        pub public_evals: Option<PointEvaluations<Vec<CamlF>>>,
+        pub proof: CamlProverProof<CamlG, CamlF>,
+    }
 
     //
     // CamlProverProof<CamlG, CamlF>
@@ -1444,37 +1729,50 @@ pub mod caml {
     }
 
     //
-    // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
+    // ProverProof<G> <-> CamlProofWithPublic<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<(ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)>
+        for CamlProofWithPublic<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
-            Self {
-                commitments: pp.0.commitments.into(),
-                proof: pp.0.proof.into(),
-                evals: pp.0.evals.into(),
-                ft_eval1: pp.0.ft_eval1.into(),
-                public: pp.1.into_iter().map(Into::into).collect(),
-                prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
+        fn from(pp: (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)) -> Self {
+            let (public_evals, evals) = pp.0.evals.into();
+            CamlProofWithPublic {
+                public_evals,
+                proof: CamlProverProof {
+                    commitments: pp.0.commitments.into(),
+                    proof: pp.0.proof.into(),
+                    evals,
+                    ft_eval1: pp.0.ft_eval1.into(),
+                    public: pp.1.into_iter().map(Into::into).collect(),
+                    prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
+                },
             }
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
+    impl<G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
+        for (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)
     where
+        CamlF: Clone,
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> (ProverProof<G>, Vec<G::ScalarField>) {
+        fn from(
+            caml_pp: CamlProofWithPublic<CamlG, CamlF>,
+        ) -> (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>) {
+            let CamlProofWithPublic {
+                public_evals,
+                proof: caml_pp,
+            } = caml_pp;
             let proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
-                evals: caml_pp.evals.into(),
+                evals: (public_evals, caml_pp.evals).into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
                 prev_challenges: caml_pp
                     .prev_challenges

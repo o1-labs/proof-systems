@@ -9,18 +9,18 @@
 //! · \[reg0 + off_op0\] +|* val
 //! · \[\[reg0 + off_op0\] + off_op1\]
 //! - Jumps
-//! · jmp abs <address>     // unconditional absolute jump
-//! · jmp rel <offset>      // unconditional relative jump
-//! · jmp rel <offset> if <op> != 0    // conditional jump
+//! · jmp abs <`address`>     // unconditional absolute jump
+//! · jmp rel <`offset`>      // unconditional relative jump
+//! · jmp rel <`offset`> if <`op`> != 0    // conditional jump
 //! - Functions
-//! · call abs <address>    // calls a function (absolute location)
-//! · call rel <offset>     // calls a function (relative location)
+//! · call abs <`address`>    // calls a function (absolute location)
+//! · call rel <`offset`>     // calls a function (relative location)
 //! · ret                   // returns to execution after the call
 //! - Increments
-//! · ap += <op>
+//! · ap += <`op`>
 //! · ap++
 //!
-//! A Cairo program runs accross a number of state transitions.
+//! A Cairo program runs across a number of state transitions.
 //! Each state transition has the following structure:
 //!
 //! * Has access to a read-only memory
@@ -63,7 +63,7 @@
 //!  · 4 = conditional jump (jnz) with step in op1 = `fPC_JNZ` = 1
 //! - `ap_update` \[10..11\]: defines the type of update for the ap
 //!  · 0: means the new ap is the same, same free position
-//!  · 1: means there is an ap+=<op> instruction = `fAP_INC` = 1
+//!  · 1: means there is an ap+=<`op`> instruction = `fAP_INC` = 1
 //!  · 2: means there is an ap++ instruction = `fAP_ADD1` = 1
 //! - opcode \[12..14\]: encodes type of assembly instruction
 //!  · 0: jumps or increments instruction
@@ -82,8 +82,9 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, Cache, Column, E},
+        expr::{self, constraints::ExprOps, Cache, E},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },
@@ -208,7 +209,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         alphas.register(ArgumentType::Gate(self.typ), Instruction::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
-        let constraints = circuit_gate_combined_constraints(self.typ, &alphas);
+        let constraints =
+            circuit_gate_combined_constraints(self.typ, &alphas, &mut Cache::default());
 
         // Linearize
         let linearized = constraints.linearize(polys).unwrap();
@@ -219,12 +221,15 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         // Setup circuit constants
         let constants = expr::Constants {
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+            zk_rows: 3,
+        };
+        let challenges = expr::Challenges {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),
             joint_combiner: None,
-            endo_coefficient: cs.endo,
-            mds: &G::sponge_params().mds,
         };
 
         let pt = F::rand(rng);
@@ -232,7 +237,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Evaluate constraints
         match linearized
             .constant_term
-            .evaluate_(cs.domain.d1, pt, &evals, &constants)
+            .evaluate_(cs.domain.d1, pt, &evals, &constants, &challenges)
         {
             Ok(x) => {
                 if x == F::zero() {
@@ -737,12 +742,16 @@ fn two<F: Field, T: ExprOps<F>>() -> T {
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-pub fn circuit_gate_combined_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_combined_constraints<F: PrimeField>(
+    typ: GateType,
+    alphas: &Alphas<F>,
+    cache: &mut Cache,
+) -> E<F> {
     match typ {
-        GateType::CairoClaim => Claim::combined_constraints(alphas),
-        GateType::CairoInstruction => Instruction::combined_constraints(alphas),
-        GateType::CairoFlags => Flags::combined_constraints(alphas),
-        GateType::CairoTransition => Transition::combined_constraints(alphas),
+        GateType::CairoClaim => Claim::combined_constraints(alphas, cache),
+        GateType::CairoInstruction => Instruction::combined_constraints(alphas, cache),
+        GateType::CairoFlags => Flags::combined_constraints(alphas, cache),
+        GateType::CairoTransition => Transition::combined_constraints(alphas, cache),
         GateType::Zero => E::literal(F::zero()),
         _ => panic!("invalid gate type"),
     }
@@ -759,7 +768,7 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let pc_ini = env.witness_curr(0); // copy from public input
         let ap_ini = env.witness_curr(1); // copy from public input
         let pc_fin = env.witness_curr(2); // copy from public input
@@ -796,7 +805,7 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         // load all variables of the witness corresponding to Cairoinstruction gates
         let pc = env.witness_curr(0);
         let ap = env.witness_curr(1);
@@ -836,7 +845,6 @@ where
         // LIST OF CONSTRAINTS
         // -------------------
         let mut constraints: Vec<T> = vec![];
-        let mut cache = Cache::default();
 
         // INSTRUCTIONS RELATED
 
@@ -943,7 +951,7 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // Load current row
         let f_pc_abs = env.witness_curr(7);
         let f_pc_rel = env.witness_curr(8);
@@ -1010,7 +1018,7 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // load computed updated registers
         let pcup = env.witness_curr(7);
         let apup = env.witness_curr(8);

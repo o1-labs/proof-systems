@@ -131,6 +131,14 @@ pub fn create_chain<F: PrimeField>(
     opcodes: &[FFOps],
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
+    if modulus > BigUint::max_foreign_field_modulus::<F>() {
+        panic!(
+            "foreign_field_modulus exceeds maximum: {} > {}",
+            modulus,
+            BigUint::max_foreign_field_modulus::<F>()
+        );
+    }
+
     let num = inputs.len() - 1; // number of chained additions
 
     // make sure there are as many operands as operations
@@ -177,9 +185,9 @@ fn init_ffadd_row<F: PrimeField>(
     overflow: F,
     carry: F,
 ) {
-    let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
+    let layout: [Vec<Box<dyn WitnessCell<F>>>; 1] = [
         // ForeignFieldAdd row
-        [
+        vec![
             VariableCell::create("left_lo"),
             VariableCell::create("left_mi"),
             VariableCell::create("left_hi"),
@@ -201,7 +209,7 @@ fn init_ffadd_row<F: PrimeField>(
     witness::init(
         witness,
         offset,
-        &witness_shape,
+        &layout,
         &variable_map!["left_lo" => left[LO], "left_mi" => left[MI], "left_hi" => left[HI], "right_lo" => right[LO], "right_mi" => right[MI], "right_hi" => right[HI], "overflow" => overflow, "carry" => carry],
     );
 }
@@ -213,8 +221,8 @@ fn init_bound_rows<F: PrimeField>(
     bound: &[F; 3],
     carry: &F,
 ) {
-    let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
-        [
+    let layout: [Vec<Box<dyn WitnessCell<F>>>; 2] = [
+        vec![
             // ForeignFieldAdd row
             VariableCell::create("result_lo"),
             VariableCell::create("result_mi"),
@@ -232,7 +240,7 @@ fn init_bound_rows<F: PrimeField>(
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
         ],
-        [
+        vec![
             // Zero Row
             VariableCell::create("bound_lo"),
             VariableCell::create("bound_mi"),
@@ -255,7 +263,7 @@ fn init_bound_rows<F: PrimeField>(
     witness::init(
         witness,
         offset,
-        &witness_shape,
+        &layout,
         &variable_map!["carry" => *carry, "result_lo" => result[LO], "result_mi" => result[MI], "result_hi" => result[HI], "bound_lo" => bound[LO], "bound_mi" => bound[MI], "bound_hi" => bound[HI]],
     );
 }
@@ -269,6 +277,13 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     // Convert to types used by this module
     let fe = ForeignElement::<F, 3>::new(*limbs);
     let foreign_field_modulus = ForeignElement::<F, 3>::new(*foreign_field_modulus);
+    if foreign_field_modulus.to_biguint() > BigUint::max_foreign_field_modulus::<F>() {
+        panic!(
+            "foreign_field_modulus exceeds maximum: {} > {}",
+            foreign_field_modulus.to_biguint(),
+            BigUint::max_foreign_field_modulus::<F>()
+        );
+    }
 
     // Compute values for final bound check, needs a 4 limb right input
     let right_input = ForeignElement::<F, 4>::from_biguint(BigUint::binary_modulus());

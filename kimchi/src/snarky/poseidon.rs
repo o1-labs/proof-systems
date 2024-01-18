@@ -44,9 +44,7 @@ pub fn poseidon<F: PrimeField>(
                 let (r0, r1, r2, r3, r4) = (n(), n(), n(), n(), n());
                 [r0, r4, r1, r2, r3].into_iter()
             })
-            .collect_vec()
-            .try_into()
-            .unwrap();
+            .collect_vec();
         let last = iter.next().unwrap();
         let hash = {
             let [a, b, _] = last.clone();
@@ -96,6 +94,22 @@ where
     state: [FieldVar<F>; 3],
 }
 
+impl<F: Default> Default for DuplexState<F>
+where
+    F: PrimeField,
+{
+    fn default() -> Self {
+        let zero = FieldVar::zero();
+        let state = [zero.clone(), zero.clone(), zero];
+        DuplexState {
+            rev_queue: vec![],
+            absorbing: true,
+            squeezed: None,
+            state,
+        }
+    }
+}
+
 /// The rate of the sponge.
 /// The part that is modified when absorbing, and released when squeezing.
 /// Unlike the capacity that must not be touched.
@@ -107,14 +121,7 @@ where
 {
     /// Creates a new sponge.
     pub fn new() -> DuplexState<F> {
-        let zero = FieldVar::zero();
-        let state = [zero.clone(), zero.clone(), zero];
-        DuplexState {
-            rev_queue: vec![],
-            absorbing: true,
-            squeezed: None,
-            state,
-        }
+        Default::default()
     }
 
     /// Absorb.

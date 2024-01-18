@@ -12,13 +12,16 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache, Column, Variable},
+    berkeley_columns::Column,
+    expr::{constraints::ExprOps, Cache, Variable as VariableGen},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::{FftField, PrimeField};
 use std::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
+
+type Variable = VariableGen<Column>;
 
 //~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 //~
@@ -407,7 +410,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let Layout {
             base,
             accs,
@@ -417,8 +420,6 @@ where
             n_next,
         } = Layout::create().new_from_env::<F, T>(env);
 
-        let mut c = Cache::default();
-
         // n'
         // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
         // = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))
@@ -427,7 +428,7 @@ where
 
         for i in 0..5 {
             res.append(&mut single_bit(
-                &mut c,
+                cache,
                 &bits[i],
                 base.clone(),
                 &ss[i],

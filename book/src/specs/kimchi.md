@@ -310,10 +310,11 @@ z_2 = &\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
 \end{align}
 $$
 
-If computed correctly, we should have $z(g^{n-3}) = 1$.
+We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
+zero-knowledge to the protocol.
 
-Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
-in order to add zero-knowledge to the protocol.
+For a valid witness, we then have have $z(g^{n-zk_rows}) = 1$.
+
 
 
 ### Lookup
@@ -328,7 +329,7 @@ Similarly to the generic gate, each values taking part in a lookup can be scaled
 The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user's perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.
 
-Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup feature.
+Please refer to the [lookup RFC](../kimchi/lookup.md) for an overview of the lookup feature.
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
 
@@ -364,6 +365,12 @@ will translate into a scalar multiplication by 0, which is free.
 
 The range check table is a single-column table containing the numbers from 0 to 2^12 (excluded).
 This is used to check that the value fits in 12 bits.
+
+
+##### Runtime tables
+
+Another type of lookup tables has been suggested in the [Extended Lookup Tables](../kimchi/extended-lookup-tables.md).
+
 
 
 #### The Lookup Selectors
@@ -1096,7 +1103,7 @@ left_input +/- right_input = field_overflow * foreign_modulus + result
 
 ##### Documentation
 
- For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
+ For more details please see the [Foreign Field Addition](../kimchi/foreign_field_add.md) chapter.
 
 ##### Mapping
 
@@ -1217,7 +1224,8 @@ left_input * right_input = quotient * foreign_field_modulus + remainder
 
 ##### Documentation
 
-For more details please see the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+For more details please see the [Foreign Field Multiplication](../kimchi/foreign_field_add.md)
+chapter or the original [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 
 ##### Notations
 
@@ -1228,15 +1236,14 @@ In order to relate the two documents, the following mapping between the
 variable names used in the code and those of the RFC can be helpful.
 
 ```text
-left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
-left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder01 => r01
+left_input1 => a1  right_input1 => b1  quotient1 => q1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-   quotient_bound0 => q'0  quotient_bound12 => q'12
+   quotient_hi_bound => q'2
 
-                   quotient_bound_carry => q'_carry01
 ````
 
 ##### Suffixes
@@ -1257,8 +1264,8 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 
 ##### Parameters
 
-* `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
-* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
+* `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
 * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 
 ##### Witness
@@ -1273,30 +1280,29 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
-* `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry` := quotient bound addition carry bit
+* `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 
 ##### Layout
 
 The foreign field multiplication gate's rows are laid out like this
 
-| col | `ForeignFieldMul`            | `Zero`                    |
-| --- | ---------------------------- | ------------------------- |
-|   0 | `left_input0`         (copy) | `remainder0`       (copy) |
-|   1 | `left_input1`         (copy) | `remainder1`       (copy) |
-|   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-|   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
-|   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
-|   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
-|   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-|   7 | `carry1_hi`        (plookup) |                           |
-|   8 | `carry0`                     |                           |
-|   9 | `quotient0`                  |                           |
-|  10 | `quotient1`                  |                           |
-|  11 | `quotient2`                  |                           |
-|  12 | `quotient_bound_carry`       |                           |
-|  13 | `product1_hi_1`              |                           |
-|  14 |                              |                           |
+| col | `ForeignFieldMul`       | `Zero`                     |
+| --- | ----------------------- | -------------------------- |
+|   0 | `left_input0`    (copy) | `remainder01`       (copy) |
+|   1 | `left_input1`    (copy) | `remainder2`        (copy) |
+|   2 | `left_input2`    (copy) | `quotient0`         (copy) |
+|   3 | `right_input0`   (copy) | `quotient1`         (copy) |
+|   4 | `right_input1`   (copy) | `quotient2`         (copy) |
+|   5 | `right_input2`   (copy) | `quotient_hi_bound` (copy) |
+|   6 | `product1_lo`    (copy) | `product1_hi_0`     (copy) |
+|   7 | `carry1_0`    (plookup) | `product1_hi_1`    (dummy) |
+|   8 | `carry1_12    (plookup) | `carry1_48`      (plookup) |
+|   9 | `carry1_24`   (plookup) | `carry1_60`      (plookup) |
+|  10 | `carry1_36`   (plookup) | `carry1_72`      (plookup) |
+|  11 | `carry1_84`             | `carry0`                   |
+|  12 | `carry1_86`             |                            |
+|  13 | `carry1_88`             |                            |
+|  14 | `carry1_90`             |                            |
 
 
 
@@ -1346,25 +1352,25 @@ which is doable with the constraints in a `RangeCheck0` gate. Since our current 
 is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
 and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
 
-| Gate   | `Rot64`             | `RangeCheck0`    |
-| ------ | ------------------- | ---------------- |
-| Column | `Curr`              | `Next`           |
-| ------ | ------------------- | ---------------- |
-|      0 | copy `word`         |`shifted`         |
-|      1 | copy `rotated`      | 0                |
-|      2 |      `excess`       | 0                |
-|      3 |      `bound_limb0`  | `shifted_limb0`  |
-|      4 |      `bound_limb1`  | `shifted_limb1`  |
-|      5 |      `bound_limb2`  | `shifted_limb2`  |
-|      6 |      `bound_limb3`  | `shifted_limb3`  |
-|      7 |      `bound_crumb0` | `shifted_crumb0` |
-|      8 |      `bound_crumb1` | `shifted_crumb1` |
-|      9 |      `bound_crumb2` | `shifted_crumb2` |
-|     10 |      `bound_crumb3` | `shifted_crumb3` |
-|     11 |      `bound_crumb4` | `shifted_crumb4` |
-|     12 |      `bound_crumb5` | `shifted_crumb5` |
-|     13 |      `bound_crumb6` | `shifted_crumb6` |
-|     14 |      `bound_crumb7` | `shifted_crumb7` |
+| Gate   | `Rot64`             | `RangeCheck0` gadgets (designer's duty)                   |
+| ------ | ------------------- | --------------------------------------------------------- |
+| Column | `Curr`              | `Next`           | `Next` + 1      | `Next`+ 2, if needed |
+| ------ | ------------------- | ---------------- | --------------- | -------------------- |
+|      0 | copy `word`         |`shifted`         |   copy `excess` |    copy      `word`  |
+|      1 | copy `rotated`      | 0                |              0  |                  0   |
+|      2 |      `excess`       | 0                |              0  |                  0   |
+|      3 |      `bound_limb0`  | `shifted_limb0`  |  `excess_limb0` |        `word_limb0`  |
+|      4 |      `bound_limb1`  | `shifted_limb1`  |  `excess_limb1` |        `word_limb1`  |
+|      5 |      `bound_limb2`  | `shifted_limb2`  |  `excess_limb2` |        `word_limb2`  |
+|      6 |      `bound_limb3`  | `shifted_limb3`  |  `excess_limb3` |        `word_limb3`  |
+|      7 |      `bound_crumb0` | `shifted_crumb0` | `excess_crumb0` |       `word_crumb0`  |
+|      8 |      `bound_crumb1` | `shifted_crumb1` | `excess_crumb1` |       `word_crumb1`  |
+|      9 |      `bound_crumb2` | `shifted_crumb2` | `excess_crumb2` |       `word_crumb2`  |
+|     10 |      `bound_crumb3` | `shifted_crumb3` | `excess_crumb3` |       `word_crumb3`  |
+|     11 |      `bound_crumb4` | `shifted_crumb4` | `excess_crumb4` |       `word_crumb4`  |
+|     12 |      `bound_crumb5` | `shifted_crumb5` | `excess_crumb5` |       `word_crumb5`  |
+|     13 |      `bound_crumb6` | `shifted_crumb6` | `excess_crumb6` |       `word_crumb6`  |
+|     14 |      `bound_crumb7` | `shifted_crumb7` | `excess_crumb7` |       `word_crumb7`  |
 
 In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
 to perform the rotation are fixed, public, and known in advance, according to the following table,
@@ -1599,11 +1605,34 @@ def sample(domain, i):
 The compilation steps to create the common index are as follow:
 
 1. If the circuit is less than 2 gates, abort.
-2. Create a domain for the circuit. That is,
+1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
+   achieve zero-knowledge. The following constraints apply to `zk_rows`:
+   * The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
+     each column for `2*c` evaluations per column, so `zk_rows >= 2*c + 1`.
+   * The permutation argument interacts with the `c` chunks in parallel, so it is
+     possible to cross-correlate between them to compromise zero knowledge. We know
+     that there is some `c >= 1` such that `zk_rows = 2*c + k` from the above. Thus,
+     attempting to find the evaluation at a new point, we find that:
+     * the evaluation of every witness column in the permutation contains `k` unknowns;
+     * the evaluations of the permutation argument aggregation has `k-1` unknowns;
+     * the permutation argument applies on all but `zk_rows - 3` rows;
+     * and thus we form the equation `zk_rows - 3 < 7 * k + (k - 1)` to ensure that we
+       can construct fewer equations than we have unknowns.
+
+   This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
+   We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
+   `zk_rows` and `domain_size` satisfying the fixpoint
+
+   ```text
+   zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
+   domain_size = circuit_size + zk_rows
+   ```
+
+1. Create a domain for the circuit. That is,
    compute the smallest subgroup of the field that
-   has order greater or equal to `n + ZK_ROWS` elements.
-3. Pad the circuit: add zero gates to reach the domain size.
-4. sample the `PERMUTS` shifts.
+   has order greater or equal to `n + zk_rows` elements.
+1. Pad the circuit: add zero gates to reach the domain size.
+1. sample the `PERMUTS` shifts.
 
 
 ### Lookup Index
@@ -1681,14 +1710,14 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: KimchiCurve> {
+pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField, Column>>, Column>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
@@ -1696,7 +1725,8 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -1706,7 +1736,7 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G>>,
+    pub verifier_index: Option<VerifierIndex<G, OpeningProof>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -1744,15 +1774,18 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve> {
+pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
+    /// the number of randomized rows to achieve zero knowledge
+    pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: OnceCell<Arc<SRS<G>>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -1817,7 +1850,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
+    pub permutation_vanishing_polynomial_m: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
@@ -1830,7 +1863,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField, Column>>, Column>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
@@ -1931,22 +1964,6 @@ pub struct PointEvaluations<Evals> {
     pub zeta_omega: Evals,
 }
 
-/// Evaluations of lookup polynomials
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LookupEvaluations<Evals> {
-    /// sorted lookup table polynomial
-    pub sorted: Vec<Evals>,
-    /// lookup aggregation polynomial
-    pub aggreg: Evals,
-    // TODO: May be possible to optimize this away?
-    /// lookup table polynomial
-    pub table: Evals,
-
-    /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Evals>,
-}
-
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
@@ -1954,6 +1971,8 @@ pub struct LookupEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
+    /// public input polynomials
+    pub public: Option<Evals>,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -1963,12 +1982,54 @@ pub struct ProofEvaluations<Evals> {
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
     pub coefficients: [Evals; COLUMNS],
-    /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the elliptic curve addition selector polynomial
+    pub complete_add_selector: Evals,
+    /// evaluation of the elliptic curve variable base scalar multiplication selector polynomial
+    pub mul_selector: Evals,
+    /// evaluation of the endoscalar multiplication selector polynomial
+    pub emul_selector: Evals,
+    /// evaluation of the endoscalar multiplication scalar computation selector polynomial
+    pub endomul_scalar_selector: Evals,
+
+    // Optional gates
+    /// evaluation of the RangeCheck0 selector polynomial
+    pub range_check0_selector: Option<Evals>,
+    /// evaluation of the RangeCheck1 selector polynomial
+    pub range_check1_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldAdd selector polynomial
+    pub foreign_field_add_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul selector polynomial
+    pub foreign_field_mul_selector: Option<Evals>,
+    /// evaluation of the Xor selector polynomial
+    pub xor_selector: Option<Evals>,
+    /// evaluation of the Rot selector polynomial
+    pub rot_selector: Option<Evals>,
+
+    // lookup-related evaluations
+    /// evaluation of lookup aggregation polynomial
+    pub lookup_aggregation: Option<Evals>,
+    /// evaluation of lookup table polynomial
+    pub lookup_table: Option<Evals>,
+    /// evaluation of lookup sorted polynomials
+    pub lookup_sorted: [Option<Evals>; 5],
+    /// evaluation of runtime lookup table polynomial
+    pub runtime_lookup_table: Option<Evals>,
+
+    // lookup selectors
+    /// evaluation of the runtime lookup table selector polynomial
+    pub runtime_lookup_table_selector: Option<Evals>,
+    /// evaluation of the Xor range check pattern selector polynomial
+    pub xor_lookup_selector: Option<Evals>,
+    /// evaluation of the Lookup range check pattern selector polynomial
+    pub lookup_gate_lookup_selector: Option<Evals>,
+    /// evaluation of the RangeCheck range check pattern selector polynomial
+    pub range_check_lookup_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul range check pattern selector polynomial
+    pub foreign_field_mul_lookup_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -2003,12 +2064,16 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<G: AffineCurve, OpeningProof> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
-    pub proof: OpeningProof<G>,
+    #[serde(bound(
+        serialize = "OpeningProof: Serialize",
+        deserialize = "OpeningProof: Deserialize<'de>"
+    ))]
+    pub proof: OpeningProof,
 
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
@@ -2066,10 +2131,10 @@ The prover then follows the following steps to create the proof:
 1. Ensure we have room in the witness for the zero-knowledge rows.
    We currently expect the witness not to be of the same length as the domain,
    but instead be of the length of the (smaller) circuit.
-   If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+   If we cannot add `zk_rows` rows to the columns of the witness before reaching
    the size of the domain, abort.
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-   Then, randomize the last `ZK_ROWS` of each columns.
+   Then, randomize the last `zk_rows` of each columns.
 1. Setup the Fq-Sponge.
 1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
@@ -2100,7 +2165,7 @@ The prover then follows the following steps to create the proof:
 	* If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
-	* Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	* Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
 	* If multiple lookup tables are involved,
 	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
 	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
@@ -2133,7 +2198,6 @@ The prover then follows the following steps to create the proof:
    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
    TODO: specify the split of the permutation polynomial into perm and bnd?
 1. commit (hiding) to the quotient polynomial $t$
-   TODO: specify the dummies
 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
@@ -2145,7 +2209,7 @@ The prover then follows the following steps to create the proof:
 	* $s_i$
 	* $w_i$
 	* $z$
-	* lookup (TODO)
+	* lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
 	* generic selector
 	* poseidon selector
 
@@ -2158,19 +2222,18 @@ The prover then follows the following steps to create the proof:
 
    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
 
-   TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+   TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 1. Evaluate the same polynomials without chunking them
    (so that each polynomial should correspond to a single value this time).
 1. Compute the ft polynomial.
-   This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+   This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
 1. construct the blinding part of the ft polynomial commitment
-   [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
+   [see this section](https://o1-labs.github.io/mina-book/kimchi/maller_15.html#evaluation-proof-and-blinding-factors)
 1. Evaluate the ft polynomial at $\zeta\omega$ only.
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Absorb the previous recursion challenges.
 1. Compute evaluations for the previous recursion challenges.
-1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	* the public polynomial
@@ -2194,12 +2257,14 @@ The prover then follows the following steps to create the proof:
 	* the poseidon selector
 	* the 15 registers/witness columns
 	* the 6 sigmas
+	* the optional gates
 	* optionally, the runtime table
 1. if using lookup:
 	* add the lookup sorted polynomials
 	* add the lookup aggreg polynomial
 	* add the combined table polynomial
 	* if present, add the runtime table polynomial
+	* the lookup selectors
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
@@ -2232,7 +2297,7 @@ We run the following algorithm:
 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
 1. Sample $\alpha'$ with the Fq-Sponge.
 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+1. Enforce that the length of the $t$ commitment is of size 7.
 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
@@ -2279,7 +2344,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    unless a polynomial has its evaluation provided by the proof
    in which case the evaluation should be used in place of the commitment.
 1. Compute the (chuncked) commitment of $ft$
-   (see [Maller's optimization](../crypto/plonk/maller_15.html)).
+   (see [Maller's optimization](../kimchi/maller_15.md)).
 1. List the polynomial commitments, and their associated evaluations,
    that are associated to the aggregated evaluation proof in the proof:
 	* recursion
@@ -2290,6 +2355,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	* witness commitments
 	* coefficient commitments
 	* sigma commitments
+	* optional gate commitments
 	* lookup commitments
 
 #### Batch verification of proofs
