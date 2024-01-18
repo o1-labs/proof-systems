@@ -88,9 +88,9 @@ fn it_works() {
     ds.union(2, 3).unwrap();
     assert!(ds.find(1) == ds.find(3));
 
-    assert!(ds.find(4) == None);
+    assert!(ds.find(4).is_none());
     ds.make_set(4);
-    assert!(ds.find(4) != None);
+    assert!(ds.find(4).is_some());
 
     ds.make_set(-1);
     assert!(ds.find(-1) != ds.find(3));
