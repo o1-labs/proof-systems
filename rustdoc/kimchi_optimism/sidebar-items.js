@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cannon","cannon_cli","keccak","mips","preimage_oracle"]};
+window.SIDEBAR_ITEMS = {"constant":["DOMAIN_SIZE"],"mod":["cannon","cannon_cli","keccak","mips","preimage_oracle"]};

@@ -3,7 +3,15 @@
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
 <a href="#5" id="5">5</a>
-</pre></div><pre class="rust"><code><span class="kw">pub mod </span>cannon;
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+</pre></div><pre class="rust"><code><span class="comment">// Domain size shared by the keccak evaluations, mips evaluation and main
+// program.
+</span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
+
+<span class="kw">pub mod </span>cannon;
 <span class="kw">pub mod </span>cannon_cli;
 <span class="kw">pub mod </span>keccak;
 <span class="kw">pub mod </span>mips;

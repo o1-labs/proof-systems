@@ -469,7 +469,9 @@
 <a href="#469" id="469">469</a>
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
+<a href="#472" id="472">472</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
+<span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
@@ -570,10 +572,10 @@
         ProofInputs {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..<span class="number">1 </span>&lt;&lt; <span class="number">15</span>).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
+                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
                 }),
-                instruction_counter: (<span class="number">0</span>..<span class="number">1 </span>&lt;&lt; <span class="number">15</span>).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
-                error: (<span class="number">0</span>..<span class="number">1 </span>&lt;&lt; <span class="number">15</span>).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
+                instruction_counter: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
+                error: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
             },
         }
     }
@@ -872,7 +874,7 @@
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
     <span class="kw">let </span>combined_inner_product =
-        combined_inner_product(<span class="kw-2">&amp;</span>[zeta, zeta_omega], <span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice(), <span class="number">1 </span>&lt;&lt; <span class="number">15</span>);
+        combined_inner_product(<span class="kw-2">&amp;</span>[zeta, zeta_omega], <span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice(), DOMAIN_SIZE);
 
     <span class="kw">let </span>batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,
