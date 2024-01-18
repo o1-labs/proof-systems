@@ -326,7 +326,7 @@
 
 <span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
 
-<span class="doccomment">///evaluates the expression in the provided side
+<span class="doccomment">/// Evaluates the expression in the provided side
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_sided&lt;<span class="lifetime">&#39;a</span>, C: FoldingConfig&gt;(
     exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;,
     env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ExtendedEnv&lt;C&gt;,
@@ -565,7 +565,7 @@
         witness.inner_mut().add_witness_evals(i, evals);
     }
 
-    <span class="doccomment">/// computes the extended witness column and the corresponding commitments,
+    <span class="doccomment">/// Computes the extended witness column and the corresponding commitments,
     /// updating the innner instance/witness pairs
     </span><span class="kw">pub fn </span>compute_extension(
         <span class="self">self</span>,

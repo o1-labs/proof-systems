@@ -323,6 +323,7 @@
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::folding::Evals;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>num_traits::One;
@@ -330,7 +331,7 @@
 <span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">pub trait </span>Instance&lt;G: CommitmentCurve&gt;: Sized {
-    <span class="doccomment">///should return a linear combination
+    <span class="doccomment">/// Should return a linear combination
     </span><span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self</span>;
     <span class="kw">fn </span>relax(<span class="self">self</span>, zero_commit: PolyComm&lt;G&gt;) -&gt; RelaxedInstance&lt;G, <span class="self">Self</span>&gt; {
         <span class="kw">let </span>instance = ExtendedInstance::extend(<span class="self">self</span>);
@@ -343,7 +344,7 @@
 }
 
 <span class="kw">pub trait </span>Witness&lt;G: CommitmentCurve&gt;: Sized {
-    <span class="doccomment">///should return a linear combination
+    <span class="doccomment">/// Should return a linear combination
     </span><span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self</span>;
 
     <span class="kw">fn </span>relax(<span class="self">self</span>, zero_poly: <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;) -&gt; RelaxedWitness&lt;G, <span class="self">Self</span>&gt; {
@@ -395,12 +396,13 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.instance
     }
 
-    <span class="doccomment">///provides access to commitments to the extra columns added by quadraticization
+    <span class="doccomment">/// Provides access to commitments to the extra columns added by
+    /// quadraticization
     </span><span class="kw">pub fn </span>get_extended_column_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>PolyComm&lt;G&gt;&gt; {
         <span class="self">self</span>.instance.extended.get(i)
     }
 
-    <span class="doccomment">///provides access to a commitment to the error column
+    <span class="doccomment">/// Provides access to a commitment to the error column
     </span><span class="kw">pub fn </span>get_error_column_commitment(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PolyComm&lt;G&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.error_commitment
     }
@@ -415,12 +417,12 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.witness
     }
 
-    <span class="doccomment">///provides access to the extra columns added by quadraticization
+    <span class="doccomment">/// Provides access to the extra columns added by quadraticization
     </span><span class="kw">pub fn </span>get_extended_column(<span class="kw-2">&amp;</span><span class="self">self</span>, i: <span class="kw-2">&amp;</span>usize) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;&gt; {
         <span class="self">self</span>.inner().extended.get(i)
     }
 
-    <span class="doccomment">///provides access to the error column
+    <span class="doccomment">/// Provides access to the error column
     </span><span class="kw">pub fn </span>get_error_column(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.error_vec
     }
