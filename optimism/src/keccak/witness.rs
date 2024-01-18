@@ -8,7 +8,7 @@ use super::{
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS},
+        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS},
         witness::{Chi, Iota, PiRho, Theta},
         Keccak,
     },
@@ -266,7 +266,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let chi = Chi::create(state_b);
 
         // Write Chi-related columns
-        for i in 0..DIM {
+        for i in 0..SHIFTS {
             for y in 0..DIM {
                 for x in 0..DIM {
                     for q in 0..QUARTERS {
