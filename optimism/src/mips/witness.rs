@@ -60,7 +60,7 @@ pub struct Env<Fp> {
     pub hash_count: u64,
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
-    pub preimage_bytes_read: Option<u64>,
+    pub preimage_bytes_read: u64,
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
 }
@@ -616,9 +616,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.write_column(pos, actual_read_len);
 
         // Update the total number of preimage bytes read so far
-        self.preimage_bytes_read = Some(self.preimage_bytes_read.unwrap() + actual_read_len);
+        self.preimage_bytes_read += actual_read_len;
         // If we've read the entire preimage, trigger Keccak workflow
-        if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
+        if self.preimage_bytes_read == preimage_len as u64 {
             debug!("Preimage has been read entirely, triggering Keccak process");
             let mut keccak_env =
                 KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
@@ -655,7 +655,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.keccak_env = Some(keccak_env);
 
             // Reset environment
-            self.preimage_bytes_read = Some(0);
+            self.preimage_bytes_read = 0;
             self.preimage_key = None;
             self.hash_count += 1;
         }
@@ -770,7 +770,7 @@ impl<Fp: Field> Env<Fp> {
             hash_count: 0,
             preimage_oracle,
             preimage: state.preimage,
-            preimage_bytes_read: Some(0),
+            preimage_bytes_read: 0,
             preimage_key: None,
             keccak_env: None,
         }
