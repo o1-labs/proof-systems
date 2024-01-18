@@ -11,7 +11,7 @@ use crate::{
 use ark_ff::PrimeField;
 use itertools::Itertools;
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi, permutation::full_round2,
+    constants::PlonkSpongeConstantsKimchi, permutation::full_round,
     poseidon::ArithmeticSpongeParams,
 };
 use std::{borrow::Cow, iter::successors};
@@ -73,8 +73,9 @@ fn round<F: PrimeField>(
 ) -> [FieldVar<F>; SPONGE_WIDTH] {
     runner
         .compute(loc, |env| {
-            let state = elements.clone().map(|var| env.read_var(&var));
-            full_round2::<F, PlonkSpongeConstantsKimchi>(params, state, round)
+            let mut state = elements.clone().map(|var| env.read_var(&var)).to_vec();
+            full_round::<F, PlonkSpongeConstantsKimchi>(params, &mut state, round);
+            state.try_into().unwrap()
         })
         .expect("compiler bug")
 }
