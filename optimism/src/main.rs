@@ -1,4 +1,5 @@
 use ark_ec::bn::Bn;
+use ark_ff::{UniformRand, Zero};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
@@ -8,6 +9,18 @@ use kimchi_optimism::{
 };
 use poly_commitment::pairing_proof::PairingProof;
 use std::{fs::File, io::BufReader, process::ExitCode};
+
+use kimchi_optimism::DOMAIN_SIZE;
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+
+type Fp = ark_bn254::Fr;
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
 
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
@@ -43,14 +56,12 @@ pub fn main() -> ExitCode {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let domain_size = 1 << 15;
+    let domain_size = DOMAIN_SIZE;
 
     let domain =
         kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(domain_size).unwrap();
 
     let srs = {
-        use ark_ff::UniformRand;
-
         // Trusted setup toxic waste
         let x = ark_bn254::Fr::rand(&mut rand::rngs::OsRng);
 
@@ -83,16 +94,6 @@ pub fn main() -> ExitCode {
         error: Vec::with_capacity(domain_size),
     };
 
-    use mina_poseidon::{
-        constants::PlonkSpongeConstantsKimchi,
-        sponge::{DefaultFqSponge, DefaultFrSponge},
-    };
-    type Fp = ark_bn254::Fr;
-    type SpongeParams = PlonkSpongeConstantsKimchi;
-    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
-    type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-    type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
-
     while !env.halt {
         env.step(&configuration, &meta, &start);
 
@@ -120,11 +121,10 @@ pub fn main() -> ExitCode {
             .instruction_counter
             .push(ark_bn254::Fr::from(env.instruction_counter));
         // TODO
-        use ark_ff::UniformRand;
         current_pre_folding_witness
             .error
             .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
-        if current_pre_folding_witness.instruction_counter.len() == 1 << 15 {
+        if current_pre_folding_witness.instruction_counter.len() == DOMAIN_SIZE {
             proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -135,7 +135,6 @@ pub fn main() -> ExitCode {
         }
     }
     if !current_pre_folding_witness.instruction_counter.is_empty() {
-        use ark_ff::Zero;
         let remaining = domain_size - current_pre_folding_witness.instruction_counter.len();
         for scratch in current_pre_folding_witness.scratch.iter_mut() {
             scratch.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));

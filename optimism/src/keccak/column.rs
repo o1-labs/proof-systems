@@ -338,7 +338,7 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
         I: IntoParallelIterator<Item = G>,
     {
         let mut iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
-        let next: [G; ZKVM_KECCAK_COLS_NEXT] = iter_contents
+        let next = iter_contents
             .drain(iter_contents.len() - ZKVM_KECCAK_COLS_NEXT..)
             .collect::<Vec<G>>()
             .try_into()
