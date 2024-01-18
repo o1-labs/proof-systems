@@ -1,22 +1,16 @@
 use super::column::KeccakColumns;
 use ark_ff::{One, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
-use kimchi::groupmap::GroupMap;
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
 use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
 use poly_commitment::OpenProof;
 use poly_commitment::{
-    commitment::{
-        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
-    },
-    evaluation_proof::DensePolynomialOrEvaluations,
+    commitment::{absorb_commitment, PolyComm},
     SRS as _,
 };
-use rand::thread_rng;
 use rayon::iter::{
-    FromParallelIterator, IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
-    IntoParallelRefMutIterator, ParallelIterator,
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
 
 #[derive(Debug)]
