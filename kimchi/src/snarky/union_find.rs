@@ -6,7 +6,7 @@ use std::hash::Hash;
 pub struct DisjointSet<T> {
     set_size: usize,
     /// The structure saves the parent information of each subset in continuous
-    /// memory(a vec) for better performance.  
+    /// memory(a vec) for better performance.
     parent: Vec<usize>,
 
     /// Each T entry is mapped onto a usize tag.
@@ -38,7 +38,7 @@ where
     }
 
     /// Returns Some(num), num is the tag of subset in which x is.
-    /// If x is not in the data structure, it returns None.    
+    /// If x is not in the data structure, it returns None.
     pub fn find(&mut self, x: T) -> Option<usize> {
         let pos = match self.map.get(&x) {
             Some(p) => *p,
