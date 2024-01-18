@@ -28,7 +28,7 @@ impl Side {
 
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
-///evaluates the expression in the provided side
+/// Evaluates the expression in the provided side
 pub(crate) fn eval_sided<'a, C: FoldingConfig>(
     exp: &FoldingExp<C>,
     env: &'a ExtendedEnv<C>,
@@ -267,7 +267,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         witness.inner_mut().add_witness_evals(i, evals);
     }
 
-    /// computes the extended witness column and the corresponding commitments,
+    /// Computes the extended witness column and the corresponding commitments,
     /// updating the innner instance/witness pairs
     pub fn compute_extension(
         self,
