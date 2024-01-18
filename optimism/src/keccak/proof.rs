@@ -87,30 +87,8 @@ pub fn fold<
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
-    absorb_commitment(&mut fq_sponge, &commitments.hash_index);
-    absorb_commitment(&mut fq_sponge, &commitments.step_index);
-    absorb_commitment(&mut fq_sponge, &commitments.flag_round);
-    absorb_commitment(&mut fq_sponge, &commitments.flag_absorb);
-    absorb_commitment(&mut fq_sponge, &commitments.flag_squeeze);
-    absorb_commitment(&mut fq_sponge, &commitments.flag_root);
-    absorb_commitment(&mut fq_sponge, &commitments.flag_pad);
-    absorb_commitment(&mut fq_sponge, &commitments.flag_length);
-    absorb_commitment(&mut fq_sponge, &commitments.two_to_pad);
-    absorb_commitment(&mut fq_sponge, &commitments.inverse_round);
-    for flags_bytes in commitments.flags_bytes.iter() {
-        absorb_commitment(&mut fq_sponge, flags_bytes);
-    }
-    for pad_suffix in commitments.pad_suffix.iter() {
-        absorb_commitment(&mut fq_sponge, pad_suffix);
-    }
-    for round_constants in commitments.round_constants.iter() {
-        absorb_commitment(&mut fq_sponge, round_constants);
-    }
-    for curr in commitments.curr.iter() {
-        absorb_commitment(&mut fq_sponge, curr);
-    }
-    for next in commitments.next.iter() {
-        absorb_commitment(&mut fq_sponge, next);
+    for column in commitments.into_iter() {
+        absorb_commitment(&mut fq_sponge, &column);
     }
     let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();

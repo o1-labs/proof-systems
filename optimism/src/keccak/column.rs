@@ -279,6 +279,31 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
     }
 }
 
+impl<F> IntoIterator for KeccakColumns<F> {
+    type Item = F;
+    type IntoIter = std::vec::IntoIter<F>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
+        iter_contents.push(self.hash_index);
+        iter_contents.push(self.step_index);
+        iter_contents.push(self.flag_round);
+        iter_contents.push(self.flag_absorb);
+        iter_contents.push(self.flag_squeeze);
+        iter_contents.push(self.flag_root);
+        iter_contents.push(self.flag_pad);
+        iter_contents.push(self.flag_length);
+        iter_contents.push(self.two_to_pad);
+        iter_contents.push(self.inverse_round);
+        iter_contents.extend(self.flags_bytes);
+        iter_contents.extend(self.pad_suffix);
+        iter_contents.extend(self.round_constants);
+        iter_contents.extend(self.curr);
+        iter_contents.extend(self.next);
+        iter_contents.into_iter()
+    }
+}
+
 impl<G> IntoParallelIterator for KeccakColumns<G>
 where
     Vec<G>: IntoParallelIterator,
