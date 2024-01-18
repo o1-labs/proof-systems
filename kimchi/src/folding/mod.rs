@@ -163,7 +163,11 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
 
 pub trait FoldingEnv<F, I, W, Col, Chal> {
     type Structure;
+<<<<<<< HEAD
     ///a vec of just zeros of the same length as other columns
+=======
+    /// A vec of just zeros of the same length as other columns
+>>>>>>> master
     fn zero_vec(&self) -> Vec<F>;
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
     fn lagrange_basis(&self, i: usize) -> &Vec<F>;

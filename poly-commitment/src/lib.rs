@@ -83,10 +83,13 @@ pub trait SRS<G: CommitmentCurve>: Clone {
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
+<<<<<<< HEAD
     ///for now needed by snarky-rs
     fn create(depth: usize) -> Self;
     fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>);
     fn size(&self) -> usize;
+=======
+>>>>>>> master
 }
 
 #[allow(type_alias_bounds)]
@@ -96,7 +99,11 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
     PolyComm<G::ScalarField>,
 )];
 
+<<<<<<< HEAD
 pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
+=======
+pub trait OpenProof<G: CommitmentCurve>: Sized {
+>>>>>>> master
     type SRS: SRS<G>;
 
     #[allow(clippy::too_many_arguments)]

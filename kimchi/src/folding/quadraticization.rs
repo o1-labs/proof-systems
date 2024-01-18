@@ -11,7 +11,12 @@ pub(crate) struct Quadraticized<C: FoldingConfig> {
     pub(crate) extended_witness_generator: ExtendedWitnessGenerator<C>,
 }
 
+<<<<<<< HEAD
 ///returns the constraints converted into degree 2 or less and the extra contraints added in the process
+=======
+/// Returns the constraints converted into degree 2 or less and the extra
+/// contraints added in the process
+>>>>>>> master
 pub(crate) fn quadraticize<C: FoldingConfig>(constraints: Vec<FoldingExp<C>>) -> Quadraticized<C> {
     let mut recorder = ExpRecorder::new();
     let original_constraints = constraints
@@ -26,7 +31,11 @@ pub(crate) fn quadraticize<C: FoldingConfig>(constraints: Vec<FoldingExp<C>>) ->
     }
 }
 
+<<<<<<< HEAD
 ///records expressions that have been extracted into an extra column
+=======
+/// Records expressions that have been extracted into an extra column
+>>>>>>> master
 struct ExpRecorder<C: FoldingConfig> {
     recorded_exprs: HashMap<FoldingExp<C>, usize>,
     next: usize,
@@ -160,7 +169,11 @@ impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
     }
 }
 
+<<<<<<< HEAD
 ///checks if the expression can be evaluated in the current environment
+=======
+/// Checks if the expression can be evaluated in the current environment
+>>>>>>> master
 fn check_evaluable<C: FoldingConfig>(
     exp: &FoldingExp<C>,
     env: &ExtendedEnv<C>,
