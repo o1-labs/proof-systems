@@ -4,13 +4,13 @@ use kimchi::curve::KimchiCurve;
 
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
-    evaluations: KeccakColumns<Vec<G::ScalarField>>,
+    _evaluations: KeccakColumns<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     fn default() -> Self {
         KeccakProofInputs {
-            evaluations: KeccakColumns {
+            _evaluations: KeccakColumns {
                 hash_index: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
                 step_index: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
                 flag_round: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
