@@ -159,10 +159,7 @@ where
     let commitments = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
         let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
-            polys
-                .into_par_iter()
-                .map(|poly| comm(poly))
-                .collect::<Vec<_>>()
+            polys.into_par_iter().map(comm).collect::<Vec<_>>()
         };
         KeccakColumns {
             hash_index: comm(&polys.hash_index),
@@ -197,7 +194,7 @@ where
     let evals = |point| {
         let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
         let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
-            polys.par_iter().map(|poly| comm(poly)).collect::<Vec<_>>()
+            polys.par_iter().map(comm).collect::<Vec<_>>()
         };
         KeccakColumns {
             hash_index: comm(&polys.hash_index),
