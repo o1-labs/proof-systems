@@ -1,9 +1,5 @@
 use std::time::SystemTime;
 
-mod internal_tracing {
-    pub use crate::*;
-}
-
 #[cfg(feature = "enabled")]
 pub use serde_json::{json, to_writer as json_to_writer, Value as JsonValue};
 
