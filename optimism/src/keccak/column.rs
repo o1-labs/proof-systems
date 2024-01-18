@@ -12,8 +12,12 @@ use kimchi::circuits::polynomials::keccak::constants::{
     THETA_REMAINDER_C_LEN, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
     THETA_STATE_A_LEN, THETA_STATE_A_OFF,
 };
+use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use super::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
+
+const ZKVM_KECCAK_COLS_LENGTH: usize =
+    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + QUARTERS + RATE_IN_BYTES + 15;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
@@ -272,5 +276,150 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::SpongeShifts(i) => &mut self.curr[SPONGE_SHIFTS_OFF + i],
             KeccakColumn::SpongeXorState(i) => &mut self.next[i],
         }
+    }
+}
+
+impl<G> IntoParallelIterator for KeccakColumns<G>
+where
+    Vec<G>: IntoParallelIterator,
+{
+    type Iter = <Vec<G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let mut iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
+        iter_contents.push(self.hash_index);
+        iter_contents.push(self.step_index);
+        iter_contents.push(self.flag_round);
+        iter_contents.push(self.flag_absorb);
+        iter_contents.push(self.flag_squeeze);
+        iter_contents.push(self.flag_root);
+        iter_contents.push(self.flag_pad);
+        iter_contents.push(self.flag_length);
+        iter_contents.push(self.two_to_pad);
+        iter_contents.push(self.inverse_round);
+        iter_contents.extend(self.flags_bytes);
+        iter_contents.extend(self.pad_suffix);
+        iter_contents.extend(self.round_constants);
+        iter_contents.extend(self.curr);
+        iter_contents.extend(self.next);
+        iter_contents.into_par_iter()
+    }
+}
+
+impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
+    fn from_par_iter<I>(par_iter: I) -> Self
+    where
+        I: IntoParallelIterator<Item = G>,
+    {
+        let mut iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
+        let next = iter_contents
+            .drain(iter_contents.len() - ZKVM_KECCAK_COLS_NEXT..)
+            .collect::<Vec<G>>()
+            .try_into()
+            .unwrap();
+        let curr = iter_contents
+            .drain(iter_contents.len() - ZKVM_KECCAK_COLS_CURR..)
+            .collect::<Vec<G>>()
+            .try_into()
+            .unwrap();
+        let round_constants = iter_contents
+            .drain(iter_contents.len() - QUARTERS..)
+            .collect::<Vec<G>>()
+            .try_into()
+            .unwrap();
+        let pad_suffix = iter_contents
+            .drain(iter_contents.len() - 5..)
+            .collect::<Vec<G>>()
+            .try_into()
+            .unwrap();
+        let flags_bytes = iter_contents
+            .drain(iter_contents.len() - RATE_IN_BYTES..)
+            .collect::<Vec<G>>()
+            .try_into()
+            .unwrap();
+        let inverse_round = iter_contents.pop().unwrap();
+        let two_to_pad = iter_contents.pop().unwrap();
+        let flag_length = iter_contents.pop().unwrap();
+        let flag_pad = iter_contents.pop().unwrap();
+        let flag_root = iter_contents.pop().unwrap();
+        let flag_squeeze = iter_contents.pop().unwrap();
+        let flag_absorb = iter_contents.pop().unwrap();
+        let flag_round = iter_contents.pop().unwrap();
+        let step_index = iter_contents.pop().unwrap();
+        let hash_index = iter_contents.pop().unwrap();
+        KeccakColumns {
+            hash_index,
+            step_index,
+            flag_round,
+            flag_absorb,
+            flag_squeeze,
+            flag_root,
+            flag_pad,
+            flag_length,
+            two_to_pad,
+            inverse_round,
+            flags_bytes,
+            pad_suffix,
+            round_constants,
+            curr,
+            next,
+        }
+    }
+}
+
+impl<'data, G> IntoParallelIterator for &'data KeccakColumns<G>
+where
+    Vec<&'data G>: IntoParallelIterator,
+{
+    type Iter = <Vec<&'data G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<&'data G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let mut iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
+        iter_contents.push(&self.hash_index);
+        iter_contents.push(&self.step_index);
+        iter_contents.push(&self.flag_round);
+        iter_contents.push(&self.flag_absorb);
+        iter_contents.push(&self.flag_squeeze);
+        iter_contents.push(&self.flag_root);
+        iter_contents.push(&self.flag_pad);
+        iter_contents.push(&self.flag_length);
+        iter_contents.push(&self.two_to_pad);
+        iter_contents.push(&self.inverse_round);
+        iter_contents.extend(&self.flags_bytes);
+        iter_contents.extend(&self.pad_suffix);
+        iter_contents.extend(&self.round_constants);
+        iter_contents.extend(&self.curr);
+        iter_contents.extend(&self.next);
+        iter_contents.into_par_iter()
+    }
+}
+
+impl<'data, G> IntoParallelIterator for &'data mut KeccakColumns<G>
+where
+    Vec<&'data mut G>: IntoParallelIterator,
+{
+    type Iter = <Vec<&'data mut G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<&'data mut G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let mut iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
+        iter_contents.push(&mut self.hash_index);
+        iter_contents.push(&mut self.step_index);
+        iter_contents.push(&mut self.flag_round);
+        iter_contents.push(&mut self.flag_absorb);
+        iter_contents.push(&mut self.flag_squeeze);
+        iter_contents.push(&mut self.flag_root);
+        iter_contents.push(&mut self.flag_pad);
+        iter_contents.push(&mut self.flag_length);
+        iter_contents.push(&mut self.two_to_pad);
+        iter_contents.push(&mut self.inverse_round);
+        iter_contents.extend(&mut self.flags_bytes);
+        iter_contents.extend(&mut self.pad_suffix);
+        iter_contents.extend(&mut self.round_constants);
+        iter_contents.extend(&mut self.curr);
+        iter_contents.extend(&mut self.next);
+        iter_contents.into_par_iter()
     }
 }
