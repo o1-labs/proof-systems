@@ -22,7 +22,7 @@ pub struct KeccakProofInputs<G: KimchiCurve> {
 impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     fn default() -> Self {
         KeccakProofInputs {
-            _evaluations: KeccakColumns {
+            evaluations: KeccakColumns {
                 hash_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 step_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 flag_round: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
