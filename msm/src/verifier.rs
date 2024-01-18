@@ -25,7 +25,7 @@ pub fn verify<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraint_exprs: &Vec<MSMExpr<G::ScalarField>>,
+    constraint_exprs: &[MSMExpr<G::ScalarField>],
     proof: &Proof<N, G, OpeningProof>,
 ) -> bool {
     let Proof {
@@ -155,8 +155,10 @@ pub fn verify<
         zk_rows: 0,
     };
 
-    let combined_expr =
-        Expr::combine_constraints(0..(constraint_exprs.len() as u32), constraint_exprs.clone());
+    let combined_expr = Expr::combine_constraints(
+        0..(constraint_exprs.len() as u32),
+        constraint_exprs.to_owned(),
+    );
     let ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,

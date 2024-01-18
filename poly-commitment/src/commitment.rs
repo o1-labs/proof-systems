@@ -507,7 +507,7 @@ pub fn combine_commitments<G: CommitmentCurve>(
 }
 
 pub fn combine_evaluations<G: CommitmentCurve>(
-    evaluations: &Vec<Evaluation<G>>,
+    evaluations: &[Evaluation<G>],
     polyscale: G::ScalarField,
 ) -> Vec<G::ScalarField> {
     let mut xi_i = G::ScalarField::one();

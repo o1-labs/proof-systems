@@ -260,7 +260,7 @@ fn full_circuit<F: PrimeField + SquareRootField>(
 
 // Creates the witness with the public input for FFAdd containing the 1 value
 fn short_witness<F: PrimeField>(
-    inputs: &Vec<BigUint>,
+    inputs: &[BigUint],
     opcodes: &[FFOps],
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
@@ -278,7 +278,7 @@ fn short_witness<F: PrimeField>(
 // opcode: true for addition, false for subtraction
 // modulus: modulus of the foreign field
 fn long_witness<F: PrimeField>(
-    inputs: &Vec<BigUint>,
+    inputs: &[BigUint],
     opcodes: &[FFOps],
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
@@ -1401,7 +1401,7 @@ where
 
     // Compute addition witness
     let witness = short_witness(
-        &vec![left_input, right_input],
+        &[left_input, right_input],
         &[FFOps::Add],
         foreign_field_modulus.clone(),
     );
@@ -1476,7 +1476,7 @@ fn test_ffadd_finalization() {
         let left = modulus.clone() - BigUint::one();
         let right = modulus.clone() - BigUint::one();
         // create a chain of 1 addition
-        let add_witness = witness::create_chain::<Fp>(&vec![left, right], operation, modulus);
+        let add_witness = witness::create_chain::<Fp>(&[left, right], operation, modulus);
         for col in 0..COLUMNS {
             witness[col].extend(add_witness[col].iter());
         }
@@ -1548,7 +1548,7 @@ fn test_gate_invalid_foreign_field_modulus() {
 #[test]
 fn test_witness_max_foreign_field_modulus() {
     short_witness::<PallasField>(
-        &vec![BigUint::zero(), BigUint::zero()],
+        &[BigUint::zero(), BigUint::zero()],
         &[FFOps::Add],
         BigUint::max_foreign_field_modulus::<PallasField>(),
     );
@@ -1558,7 +1558,7 @@ fn test_witness_max_foreign_field_modulus() {
 #[should_panic]
 fn test_witness_invalid_foreign_field_modulus() {
     short_witness::<PallasField>(
-        &vec![BigUint::zero(), BigUint::zero()],
+        &[BigUint::zero(), BigUint::zero()],
         &[FFOps::Add],
         BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one(),
     );

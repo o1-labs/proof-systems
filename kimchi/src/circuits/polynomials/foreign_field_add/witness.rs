@@ -127,7 +127,7 @@ fn compute_ffadd_values<F: PrimeField>(
 /// opcode: true for addition, false for subtraction
 /// modulus: modulus of the foreign field
 pub fn create_chain<F: PrimeField>(
-    inputs: &Vec<BigUint>,
+    inputs: &[BigUint],
     opcodes: &[FFOps],
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {

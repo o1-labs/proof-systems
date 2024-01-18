@@ -52,7 +52,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraints: &Vec<MSMExpr<G::ScalarField>>,
+    constraints: &[MSMExpr<G::ScalarField>],
     inputs: ProofInputs<N, G, ID>,
     rng: &mut RNG,
 ) -> Result<Proof<N, G, OpeningProof>, ProverError>
@@ -205,7 +205,7 @@ where
         }
 
         let combined_expr =
-            Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
+            Expr::combine_constraints(0..(constraints.len() as u32), constraints.to_owned());
 
         // An evaluation of our expression E(vec X) on witness columns
         // Every witness column w_i(X) is evaluated first at D1, so we get E(vec w_i(X)) = 0?
