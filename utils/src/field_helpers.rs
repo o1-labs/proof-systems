@@ -85,7 +85,7 @@ pub trait FieldHelpers<F> {
         F: PrimeField,
     {
         big.clone()
-            .try_into()
+            .into()
             .map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
