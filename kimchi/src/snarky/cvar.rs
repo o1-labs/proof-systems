@@ -1,7 +1,7 @@
 use crate::snarky::{
     boolean::Boolean,
-    runner::{RunState, WitnessGeneration},
     constraint_system::SnarkyCvar,
+    runner::{RunState, WitnessGeneration},
     snarky_type::SnarkyType,
 };
 use ark_ff::PrimeField;
@@ -11,9 +11,9 @@ use std::{
 };
 
 use super::{
-    runner::Constraint,
     constraint_system::BasicSnarkyConstraint,
     errors::{SnarkyCompilationError, SnarkyResult},
+    runner::Constraint,
 };
 
 /// A circuit variable represents a field element in the circuit.

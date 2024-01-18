@@ -10,10 +10,7 @@ pub mod constraints;
 pub mod environment;
 pub mod interpreter;
 pub mod lookups;
-<<<<<<< HEAD
-=======
 pub mod proof;
->>>>>>> master
 pub mod witness;
 
 pub(crate) const HASH_BITLENGTH: usize = 256;

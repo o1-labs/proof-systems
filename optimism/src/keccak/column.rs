@@ -5,20 +5,6 @@ use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
-<<<<<<< HEAD
-    PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, SPONGE_BYTES_OFF,
-    SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN, THETA_DENSE_C_LEN,
-    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
-    THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
-    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF, THETA_STATE_A_LEN,
-    THETA_STATE_A_OFF,
-};
-use serde::{Deserialize, Serialize};
-
-use super::{grid_index, ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
-=======
     PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES,
     SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN,
     THETA_DENSE_C_LEN, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF,
@@ -34,7 +20,6 @@ const ZKVM_KECCAK_COLS_LENGTH: usize =
     ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + QUARTERS + RATE_IN_BYTES + 15;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
->>>>>>> master
 pub enum KeccakColumn {
     HashIndex,
     StepIndex,
@@ -72,25 +57,6 @@ pub enum KeccakColumn {
     SpongeXorState(usize),                    // Absorb Next[0..100)
 }
 
-<<<<<<< HEAD
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct KeccakColumns<T> {
-    hash_index: T,
-    step_index: T,
-    flag_round: T,           // Coeff Round = 0 | 1 .. 24
-    flag_absorb: T,          // Coeff Absorb = 0 | 1
-    flag_squeeze: T,         // Coeff Squeeze = 0 | 1
-    flag_root: T,            // Coeff Root = 0 | 1
-    flag_pad: T,             // Coeff Pad = 0 | 1
-    flag_length: T,          // Coeff Length 0 | 1 .. 136
-    two_to_pad: T,           // 2^PadLength
-    inverse_round: T,        // Round^-1
-    flags_bytes: Vec<T>,     // 136 boolean values
-    pad_suffix: Vec<T>,      // 5 values with padding suffix
-    round_constants: Vec<T>, // Round constants
-    curr: Vec<T>,            // Curr[0..1965)
-    next: Vec<T>,            // Next[0..100)
-=======
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
     pub(crate) hash_index: T,
@@ -108,7 +74,6 @@ pub struct KeccakColumns<T> {
     pub(crate) round_constants: [T; QUARTERS],   // Round constants
     pub(crate) curr: [T; ZKVM_KECCAK_COLS_CURR], // Curr[0..1965)
     pub(crate) next: [T; ZKVM_KECCAK_COLS_NEXT], // Next[0..100)
->>>>>>> master
 }
 
 impl<T: Clone> KeccakColumns<T> {
@@ -161,19 +126,11 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
             flag_length: T::zero(),
             two_to_pad: T::one(), // So that default 2^0 is in the table
             inverse_round: T::zero(),
-<<<<<<< HEAD
-            flags_bytes: vec![T::zero(); 136],
-            pad_suffix: vec![T::zero(); 5],
-            round_constants: vec![T::zero(); 4], // RC[0] is set to be all zeros
-            curr: vec![T::zero(); ZKVM_KECCAK_COLS_CURR],
-            next: vec![T::zero(); ZKVM_KECCAK_COLS_NEXT],
-=======
             flags_bytes: std::array::from_fn(|_| T::zero()),
             pad_suffix: std::array::from_fn(|_| T::zero()),
             round_constants: std::array::from_fn(|_| T::zero()), // RC[0] is set to be all zeros
             curr: std::array::from_fn(|_| T::zero()),
             next: std::array::from_fn(|_| T::zero()),
->>>>>>> master
         }
     }
 }
@@ -321,8 +278,6 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
         }
     }
 }
-<<<<<<< HEAD
-=======
 
 impl<G> IntoParallelIterator for KeccakColumns<G>
 where
@@ -468,4 +423,3 @@ where
         iter_contents.into_par_iter()
     }
 }
->>>>>>> master

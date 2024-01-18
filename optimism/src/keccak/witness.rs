@@ -8,11 +8,7 @@ use super::{
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
-<<<<<<< HEAD
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, STATE_LEN},
-=======
         constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS},
->>>>>>> master
         witness::{Chi, Iota, PiRho, Theta},
         Keccak,
     },
@@ -46,54 +42,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
     type Variable = Fp;
 
-<<<<<<< HEAD
-    fn hash(&mut self, preimage: &[u8]) {
-        // Store hash index
-        self.write_column(KeccakColumn::HashIndex, self.hash_idx);
-
-        // FIXME Read preimage for each block
-
-        self.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
-
-        // Configure first step depending on number of blocks remaining
-        self.keccak_step = if self.blocks_left_to_absorb == 1 {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
-        } else {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
-        };
-        self.step_idx = 0;
-
-        // Root state is zero
-        self.prev_block = vec![0u64; STATE_LEN];
-
-        // Pad preimage
-        self.padded = Keccak::pad(preimage);
-        self.block_idx = 0;
-        self.pad_len = (self.padded.len() - preimage.len()) as u64;
-
-        // Run all steps of hash
-        while self.keccak_step.is_some() {
-            self.step();
-        }
-
-        // TODO: create READ lookup tables
-
-        // COMMUNICATION CHANNEL: Write hash output
-        self.lookup_syscall_hash();
-    }
-
-=======
->>>>>>> master
     // FIXME: read preimage from memory and pad and expand
     fn step(&mut self) {
         // Reset columns to zeros to avoid conflicts between steps
         self.null_state();
 
-<<<<<<< HEAD
-        // FIXME sparse notation
-
-=======
->>>>>>> master
         match self.keccak_step.unwrap() {
             KeccakStep::Sponge(typ) => self.run_sponge(typ),
             KeccakStep::Round(i) => self.run_round(i),
@@ -174,12 +127,8 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
         // Rest is zero thanks to null_state
 
-<<<<<<< HEAD
-        // TODO: more updates to the env?
-=======
         // COMMUNICATION CHANNEL: Write hash output
         self.lookup_syscall_hash();
->>>>>>> master
     }
 
     fn run_absorb(&mut self, absorb: Absorb) {
@@ -317,11 +266,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let chi = Chi::create(state_b);
 
         // Write Chi-related columns
-<<<<<<< HEAD
-        for i in 0..DIM {
-=======
         for i in 0..SHIFTS {
->>>>>>> master
             for y in 0..DIM {
                 for x in 0..DIM {
                     for q in 0..QUARTERS {

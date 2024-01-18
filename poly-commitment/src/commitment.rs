@@ -754,7 +754,6 @@ where
     ) -> BlindedCommitment<G> {
         self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
     }
-}
 
     fn create(depth: usize) -> Self {
         SRS::create(depth)

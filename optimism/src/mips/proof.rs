@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 use crate::DOMAIN_SIZE;
->>>>>>> master
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
@@ -103,17 +100,10 @@ impl<G: KimchiCurve> Default for ProofInputs<G> {
         ProofInputs {
             evaluations: WitnessColumns {
                 scratch: std::array::from_fn(|_| {
-<<<<<<< HEAD
-                    (0..1 << 15).map(|_| G::ScalarField::zero()).collect()
-                }),
-                instruction_counter: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
-                error: (0..1 << 15).map(|_| G::ScalarField::zero()).collect(),
-=======
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
                 instruction_counter: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 error: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
->>>>>>> master
             },
         }
     }
@@ -412,11 +402,7 @@ pub fn verify<
     let u = u_chal.to_field(endo_r);
 
     let combined_inner_product =
-<<<<<<< HEAD
-        combined_inner_product(&[zeta, zeta_omega], &v, &u, es.as_slice(), 1 << 15);
-=======
         combined_inner_product(&[zeta, zeta_omega], &v, &u, es.as_slice(), DOMAIN_SIZE);
->>>>>>> master
 
     let batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,

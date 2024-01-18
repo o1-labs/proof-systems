@@ -31,12 +31,6 @@ pub trait KeccakInterpreter {
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
-<<<<<<< HEAD
-    // FIXME: read preimage from memory
-    fn hash(&mut self, preimage: &[u8]);
-
-=======
->>>>>>> master
     fn step(&mut self);
 
     fn set_flag_round(&mut self, round: u64);

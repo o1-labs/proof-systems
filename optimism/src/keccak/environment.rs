@@ -5,11 +5,7 @@ use super::{
 };
 use crate::mips::interpreter::Lookup;
 use ark_ff::{Field, One};
-<<<<<<< HEAD
-use kimchi::circuits::expr::Operations;
-=======
 use kimchi::circuits::{expr::Operations, polynomials::keccak::Keccak};
->>>>>>> master
 use kimchi::{
     auto_clone_array, circuits::expr::ConstantTerm::Literal,
     circuits::polynomials::keccak::constants::*, grid, o1_utils::Two,
@@ -25,11 +21,7 @@ pub struct KeccakEnv<Fp> {
     /// The full state of the Keccak gate (witness)
     pub(crate) keccak_state: KeccakColumns<E<Fp>>,
     /// What step of the hash is being executed (or None, if just ended)
-<<<<<<< HEAD
-    pub(crate) keccak_step: Option<KeccakStep>,
-=======
     pub keccak_step: Option<KeccakStep>,
->>>>>>> master
 
     /// Hash index in the circuit
     pub(crate) hash_idx: u64,
@@ -49,13 +41,8 @@ pub struct KeccakEnv<Fp> {
 }
 
 impl<Fp: Field> KeccakEnv<Fp> {
-<<<<<<< HEAD
-    pub fn new(hash_idx: u64) -> Self {
-        Self {
-=======
     pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
         let mut env = Self {
->>>>>>> master
             constraints: vec![],
             lookups: vec![],
             keccak_state: KeccakColumns::default(),
@@ -67,9 +54,6 @@ impl<Fp: Field> KeccakEnv<Fp> {
             blocks_left_to_absorb: 0,
             padded: vec![],
             pad_len: 0,
-<<<<<<< HEAD
-        }
-=======
         };
 
         // Store hash index
@@ -94,7 +78,6 @@ impl<Fp: Field> KeccakEnv<Fp> {
         env.pad_len = (env.padded.len() - preimage.len()) as u64;
 
         env
->>>>>>> master
     }
 
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
@@ -108,10 +91,6 @@ impl<Fp: Field> KeccakEnv<Fp> {
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
     }
-<<<<<<< HEAD
-=======
-
->>>>>>> master
     pub fn update_step(&mut self) {
         match self.keccak_step {
             Some(step) => match step {

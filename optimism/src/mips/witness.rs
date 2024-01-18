@@ -1,8 +1,4 @@
 use crate::cannon::{Page, State};
-<<<<<<< HEAD
-use crate::keccak::interpreter::KeccakInterpreter;
-=======
->>>>>>> master
 use crate::keccak::lookups::Lookups;
 use crate::keccak::ArithOps;
 use crate::mips::interpreter::{Lookup, LookupTable};
@@ -15,12 +11,7 @@ use crate::{
     mips::{
         column::Column,
         interpreter::{
-<<<<<<< HEAD
-            self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
-            JTypeInstruction, RTypeInstruction,
-=======
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
->>>>>>> master
         },
         registers::Registers,
     },
@@ -69,11 +60,7 @@ pub struct Env<Fp> {
     pub hash_count: u64,
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
-<<<<<<< HEAD
-    pub preimage_bytes_read: Option<u64>,
-=======
     pub preimage_bytes_read: u64,
->>>>>>> master
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
 }
@@ -629,15 +616,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.write_column(pos, actual_read_len);
 
         // Update the total number of preimage bytes read so far
-<<<<<<< HEAD
-        self.preimage_bytes_read = Some(self.preimage_bytes_read.unwrap() + actual_read_len);
-        // If we've read the entire preimage, trigger Keccak workflow
-        if self.preimage_bytes_read.unwrap() == preimage_len as u64 {
-            let mut keccak_env = KeccakEnv::<Fp>::new(self.hash_count);
-            keccak_env.hash(self.preimage.as_ref().unwrap());
-
-            // Write preimage bytes to the communication channel
-=======
         self.preimage_bytes_read += actual_read_len;
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
@@ -646,7 +624,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
 
             // COMMUNICATION CHANNEL: Write preimage bytes
->>>>>>> master
             let preimage = self.preimage.as_ref().unwrap();
             for (i, byte) in preimage.iter().enumerate() {
                 keccak_env.add_lookup(Lookup::write_one(
@@ -659,10 +636,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 ))
             }
 
-<<<<<<< HEAD
-=======
             // COMMUNICATION CHANNEL: Read hash output
->>>>>>> master
             match self.preimage_key {
                 Some(preimage_key) => {
                     let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
@@ -679,12 +653,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 None => panic!("preimage_key should be set"),
             }
             self.keccak_env = Some(keccak_env);
-<<<<<<< HEAD
-        }
-        // Reset Keccak environment
-        self.preimage_bytes_read = Some(0);
-        self.hash_count += 1;
-=======
 
             // Reset environment
             self.preimage_bytes_read = 0;
@@ -692,7 +660,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.hash_count += 1;
         }
 
->>>>>>> master
         actual_read_len
     }
 
@@ -803,11 +770,7 @@ impl<Fp: Field> Env<Fp> {
             hash_count: 0,
             preimage_oracle,
             preimage: state.preimage,
-<<<<<<< HEAD
-            preimage_bytes_read: Some(0),
-=======
             preimage_bytes_read: 0,
->>>>>>> master
             preimage_key: None,
             keccak_env: None,
         }
@@ -1026,20 +989,7 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
         self.reset_scratch_state();
-<<<<<<< HEAD
-        let (opcode, instruction) = self.decode_instruction();
-        let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
-        debug!("instruction: {:?}", opcode);
-        debug!("Instruction hex: {:#010x}", instruction);
-        debug!("Instruction: {:#034b}", instruction);
-        debug!("Rs: {:#07b}", instruction_parts.rs);
-        debug!("Rt: {:#07b}", instruction_parts.rt);
-        debug!("Rd: {:#07b}", instruction_parts.rd);
-        debug!("Shamt: {:#07b}", instruction_parts.shamt);
-        debug!("Funct: {:#08b}", instruction_parts.funct);
-=======
         let (opcode, _instruction) = self.decode_instruction();
->>>>>>> master
 
         self.pp_info(&config.info_at, metadata, start);
         self.snapshot_state_at(&config.snapshot_state_at);
