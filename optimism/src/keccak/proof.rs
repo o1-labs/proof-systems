@@ -6,12 +6,14 @@ use kimchi::groupmap::GroupMap;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
 use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
+use poly_commitment::commitment::{combined_inner_product, BatchEvaluationProof, Evaluation};
 use poly_commitment::evaluation_proof::DensePolynomialOrEvaluations;
 use poly_commitment::OpenProof;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     SRS as _,
 };
+use rand::thread_rng;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
     IntoParallelRefMutIterator, ParallelIterator,
@@ -58,10 +60,10 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
 
 #[derive(Debug)]
 pub struct KeccakProof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    _commitments: KeccakColumns<PolyComm<G>>,
-    _zeta_evaluations: KeccakColumns<G::ScalarField>,
-    _zeta_omega_evaluations: KeccakColumns<G::ScalarField>,
-    _opening_proof: OpeningProof,
+    commitments: KeccakColumns<PolyComm<G>>,
+    zeta_evaluations: KeccakColumns<G::ScalarField>,
+    zeta_omega_evaluations: KeccakColumns<G::ScalarField>,
+    opening_proof: OpeningProof,
 }
 
 pub fn fold<
@@ -261,9 +263,100 @@ where
     );
 
     KeccakProof {
-        _commitments: commitments,
-        _zeta_evaluations: zeta_evaluations,
-        _zeta_omega_evaluations: zeta_omega_evaluations,
-        _opening_proof: opening_proof,
+        commitments,
+        zeta_evaluations,
+        zeta_omega_evaluations,
+        opening_proof,
     }
+}
+
+pub fn verify<
+    G: KimchiCurve,
+    OpeningProof: OpenProof<G>,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+>(
+    domain: EvaluationDomains<G::ScalarField>,
+    srs: &OpeningProof::SRS,
+    proof: &KeccakProof<G, OpeningProof>,
+) -> bool {
+    let KeccakProof {
+        commitments,
+        zeta_evaluations,
+        zeta_omega_evaluations,
+        opening_proof,
+    } = proof;
+
+    let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
+    for column in commitments.clone().into_iter() {
+        absorb_commitment(&mut fq_sponge, &column);
+    }
+    let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+    let (_, endo_r) = G::endos();
+    let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
+    let omega = domain.d1.group_gen;
+    let zeta_omega = zeta * omega;
+
+    let fq_sponge_before_evaluations = fq_sponge.clone();
+    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    fr_sponge.absorb(&fq_sponge.digest());
+
+    let es: Vec<_> = {
+        let mut evals = vec![];
+        for (zeta, zeta_omega) in zeta_evaluations
+            .clone()
+            .into_iter()
+            .zip(zeta_omega_evaluations.clone().into_iter())
+        {
+            evals.push((vec![vec![zeta], vec![zeta_omega]], None));
+        }
+        evals
+    };
+
+    let evaluations: Vec<_> = {
+        let mut evals = vec![];
+        for (commitment, (zeta_eval, zeta_omega_eval)) in commitments.clone().into_iter().zip(
+            zeta_evaluations
+                .clone()
+                .into_iter()
+                .zip(zeta_omega_evaluations.clone().into_iter()),
+        ) {
+            evals.push(Evaluation {
+                commitment: commitment.clone(),
+                evaluations: vec![vec![zeta_eval], vec![zeta_omega_eval]],
+                degree_bound: None,
+            });
+        }
+        evals
+    };
+
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .clone()
+        .into_iter()
+        .zip(zeta_omega_evaluations.clone().into_iter())
+    {
+        fr_sponge.absorb(&zeta_eval);
+        fr_sponge.absorb(&zeta_omega_eval);
+    }
+
+    let v_chal = fr_sponge.challenge();
+    let v = v_chal.to_field(endo_r);
+    let u_chal = fr_sponge.challenge();
+    let u = u_chal.to_field(endo_r);
+
+    let combined_inner_product =
+        combined_inner_product(&[zeta, zeta_omega], &v, &u, es.as_slice(), 1 << 15);
+
+    let batch = BatchEvaluationProof {
+        sponge: fq_sponge_before_evaluations,
+        evaluations,
+        evaluation_points: vec![zeta, zeta_omega],
+        polyscale: v,
+        evalscale: u,
+        opening: opening_proof,
+        combined_inner_product,
+    };
+
+    let group_map = G::Map::setup();
+    OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }
