@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["asm","constants","constraint_system"]};
+window.SIDEBAR_ITEMS = {"mod":["api","asm","boolean","constants","constraint_system","cvar","errors","poseidon","prelude","runner","snarky_type","union_find"]};

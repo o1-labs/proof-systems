@@ -286,9 +286,6 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
 
 </span><span class="kw">use </span><span class="kw">crate</span>::commitment::CommitmentCurve;
@@ -549,10 +546,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt;
-<span class="kw">where
-    </span>G::BaseField: PrimeField,
-{
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
     <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up to `depth`.
     </span><span class="kw">pub fn </span>create(depth: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>m = G::Map::setup();

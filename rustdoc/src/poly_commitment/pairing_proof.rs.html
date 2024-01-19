@@ -428,6 +428,18 @@
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
 <a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::commitment::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
 <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
@@ -640,6 +652,18 @@
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
     ) -&gt; BlindedCommitment&lt;G&gt; {
         <span class="self">self</span>.full_srs.commit_evaluations(domain, plnm, rng)
+    }
+
+    <span class="kw">fn </span>create(_depth: usize) -&gt; <span class="self">Self </span>{
+        <span class="macro">todo!</span>()
+    }
+
+    <span class="kw">fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;&lt;G&gt;::ScalarField&gt;) {
+        <span class="self">self</span>.full_srs.add_lagrange_basis(domain);
+    }
+
+    <span class="kw">fn </span>size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.full_srs.g.len()
     }
 }
 

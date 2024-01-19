@@ -1284,7 +1284,7 @@
             }
 
             <span class="comment">// for public gates, only the left wire is toggled
-            </span><span class="kw">if </span>row &lt; <span class="self">self</span>.cs.public &amp;&amp; gate.coeffs[<span class="number">0</span>] != F::one() {
+            </span><span class="kw">if </span>row &lt; <span class="self">self</span>.cs.public &amp;&amp; gate.coeffs.get(<span class="number">0</span>) != <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>F::one()) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::IncorrectPublic(row));
             }
 
