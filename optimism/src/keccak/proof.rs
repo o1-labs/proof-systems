@@ -361,3 +361,72 @@ pub fn verify<
     let group_map = G::Map::setup();
     OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }
+
+#[test]
+fn test_keccak_prover() {
+    use ark_ff::UniformRand;
+    use mina_poseidon::{
+        constants::PlonkSpongeConstantsKimchi,
+        sponge::{DefaultFqSponge, DefaultFrSponge},
+    };
+
+    type Fp = ark_bn254::Fr;
+    type SpongeParams = PlonkSpongeConstantsKimchi;
+    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+    type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+
+    let rng = &mut rand::rngs::OsRng;
+
+    let proof_inputs = {
+        KeccakProofInputs {
+            evaluations: KeccakColumns {
+                hash_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                step_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                flag_round: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                flag_absorb: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                flag_squeeze: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                flag_root: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                flag_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                flag_length: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                two_to_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                inverse_round: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
+                flags_bytes: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                pad_suffix: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                round_constants: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                curr: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                next: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+            },
+        }
+    };
+    let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
+
+    // Trusted setup toxic waste
+    let x = Fp::rand(rng);
+
+    let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, DOMAIN_SIZE);
+    srs.full_srs.add_lagrange_basis(domain.d1);
+
+    let proof = prove::<
+        _,
+        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        BaseSponge,
+        ScalarSponge,
+    >(domain, &srs, proof_inputs);
+
+    assert!(verify::<
+        _,
+        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        BaseSponge,
+        ScalarSponge,
+    >(domain, &srs, &proof));
+}
