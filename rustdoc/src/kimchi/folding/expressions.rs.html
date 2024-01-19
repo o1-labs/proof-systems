@@ -451,14 +451,64 @@
 <a href="#451" id="451">451</a>
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    circuits::expr::{Op2, Variable},
+    circuits::expr::{Op2, Operations, Variable},
     folding::{
         quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
         FoldingConfig, ScalarField,
     },
 };
 <span class="kw">use </span>ark_ec::AffineCurve;
+<span class="kw">use </span>ark_ff::One;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>num_traits::Zero;
 
@@ -484,7 +534,8 @@
     Alpha(usize),
 }
 
-<span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable&lt;C::Column&gt;),
@@ -497,6 +548,7 @@
 }
 
 <span class="doccomment">///designed for easy translation to and from most Expr
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
     Atom(FoldingCompatibleExprInner&lt;C&gt;),
     Double(Box&lt;<span class="self">Self</span>&gt;),
@@ -506,6 +558,7 @@
 }
 
 <span class="doccomment">/// Extra expressions that can be created by folding
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub enum </span>ExpExtension {
     U,
     Error,
@@ -515,15 +568,7 @@
 }
 
 <span class="doccomment">///Internal expression used for folding, simplified for that purpose
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-</span><span class="kw">pub enum </span>FoldingExp&lt;C: FoldingConfig&gt; {
-    Cell(ExtendedFoldingColumn&lt;C&gt;),
-    Double(Box&lt;FoldingExp&lt;C&gt;&gt;),
-    Square(Box&lt;FoldingExp&lt;C&gt;&gt;),
-    Add(Box&lt;FoldingExp&lt;C&gt;&gt;, Box&lt;FoldingExp&lt;C&gt;&gt;),
-    Sub(Box&lt;FoldingExp&lt;C&gt;&gt;, Box&lt;FoldingExp&lt;C&gt;&gt;),
-    Mul(Box&lt;FoldingExp&lt;C&gt;&gt;, Box&lt;FoldingExp&lt;C&gt;&gt;),
-}
+</span><span class="kw">pub type </span>FoldingExp&lt;C&gt; = Operations&lt;ExtendedFoldingColumn&lt;C&gt;&gt;;
 
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Add <span class="kw">for </span>FoldingExp&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
@@ -558,17 +603,17 @@
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingCompatibleExpr&lt;C&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>simplify(<span class="self">self</span>) -&gt; FoldingExp&lt;C&gt; {
         <span class="kw">type </span>Ex&lt;C&gt; = ExtendedFoldingColumn&lt;C&gt;;
-        <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             FoldingCompatibleExpr::Atom(atom) =&gt; <span class="kw">match </span>atom {
-                FoldingCompatibleExprInner::Constant(c) =&gt; Cell(ExtendedFoldingColumn::Constant(c)),
+                FoldingCompatibleExprInner::Constant(c) =&gt; Atom(ExtendedFoldingColumn::Constant(c)),
                 FoldingCompatibleExprInner::Challenge(c) =&gt; {
-                    Cell(ExtendedFoldingColumn::Challenge(c))
+                    Atom(ExtendedFoldingColumn::Challenge(c))
                 }
-                FoldingCompatibleExprInner::Cell(col) =&gt; Cell(ExtendedFoldingColumn::Inner(col)),
+                FoldingCompatibleExprInner::Cell(col) =&gt; Atom(ExtendedFoldingColumn::Inner(col)),
                 FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; <span class="macro">todo!</span>(),
                 FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) =&gt; {
-                    Cell(Ex::UnnormalizedLagrangeBasis(i))
+                    Atom(Ex::UnnormalizedLagrangeBasis(i))
                 }
                 FoldingCompatibleExprInner::Extensions(<span class="kw">_</span>) =&gt; {
                     <span class="macro">panic!</span>(<span class="string">&quot;this should only be created by folding itself&quot;</span>)
@@ -594,7 +639,7 @@
         </span>C::Column: Clone,
         C::Challenge: Clone,
     {
-        <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
+        <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">let </span>e = Box::new(exp);
         <span class="kw">let </span>e_2 = Box::new(Square(e.clone()));
         <span class="kw">match </span>p {
@@ -627,7 +672,7 @@
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>folding_degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Degree {
         <span class="kw">use </span>Degree::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            FoldingExp::Cell(ex_col) =&gt; <span class="kw">match </span>ex_col {
+            FoldingExp::Atom(ex_col) =&gt; <span class="kw">match </span>ex_col {
                 ExtendedFoldingColumn::Inner(col) =&gt; col.col.degree(),
                 ExtendedFoldingColumn::WitnessExtended(<span class="kw">_</span>) =&gt; One,
                 ExtendedFoldingColumn::Error =&gt; One,
@@ -642,6 +687,18 @@
             FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) =&gt; {
                 e1.folding_degree() + e2.folding_degree()
             }
+            FoldingExp::Pow(<span class="kw">_</span>, <span class="number">0</span>) =&gt; Zero,
+            FoldingExp::Pow(e, <span class="number">1</span>) =&gt; e.folding_degree(),
+            FoldingExp::Pow(e, i) =&gt; {
+                <span class="kw">let </span>degree = e.folding_degree();
+                <span class="kw">let </span><span class="kw-2">mut </span>acc = degree;
+                <span class="kw">for _ in </span><span class="number">1</span>..<span class="kw-2">*</span>i {
+                    acc = <span class="kw-2">&amp;</span>acc * <span class="kw-2">&amp;</span>degree;
+                }
+                acc
+            }
+            FoldingExp::Cache(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            FoldingExp::IfFeature(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 
@@ -649,7 +706,7 @@
         <span class="kw">use </span>FoldingCompatibleExpr::<span class="kw-2">*</span>;
         <span class="kw">use </span>FoldingCompatibleExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            FoldingExp::Cell(c) =&gt; <span class="kw">match </span>c {
+            FoldingExp::Atom(c) =&gt; <span class="kw">match </span>c {
                 ExtendedFoldingColumn::Inner(col) =&gt; Atom(Cell(col)),
                 ExtendedFoldingColumn::WitnessExtended(i) =&gt; {
                     Atom(Extensions(ExpExtension::ExtendedWitness(i)))
@@ -679,6 +736,19 @@
                 <span class="kw">let </span>e2 = Box::new(e2.into_compatible());
                 BinOp(Op2::Mul, e1, e2)
             }
+            <span class="comment">// TODO: Replace with `Pow`
+            </span>FoldingExp::Pow(<span class="kw">_</span>, <span class="number">0</span>) =&gt; Atom(Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField::one())),
+            FoldingExp::Pow(e, <span class="number">1</span>) =&gt; e.into_compatible(),
+            FoldingExp::Pow(e, i) =&gt; {
+                <span class="kw">let </span>e = e.into_compatible();
+                <span class="kw">let </span><span class="kw-2">mut </span>acc = e.clone();
+                <span class="kw">for _ in </span><span class="number">1</span>..i {
+                    acc = BinOp(Op2::Mul, Box::new(e.clone()), Box::new(acc))
+                }
+                acc
+            }
+            FoldingExp::Cache(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            FoldingExp::IfFeature(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 }
@@ -798,7 +868,7 @@
         <span class="kw">let </span>[d0, d1, d2] = [degree_0, degree_1, degree_2]
             .map(|exps| {
                 <span class="kw">let </span>init =
-                    FoldingExp::Cell(ExtendedFoldingColumn::Constant(ScalarField::&lt;C&gt;::zero()));
+                    FoldingExp::Atom(ExtendedFoldingColumn::Constant(ScalarField::&lt;C&gt;::zero()));
                 exps.into_iter().fold(init, |acc, (exp, sign, alpha)| {
                     <span class="kw">let </span>e = <span class="kw">match </span>sign {
                         Sign::Pos =&gt; FoldingExp::Add(Box::new(acc), Box::new(exp)),
@@ -806,7 +876,7 @@
                     };
                     FoldingExp::Mul(
                         Box::new(e),
-                        Box::new(FoldingExp::Cell(ExtendedFoldingColumn::Alpha(alpha))),
+                        Box::new(FoldingExp::Atom(ExtendedFoldingColumn::Alpha(alpha))),
                     )
                 })
             })
@@ -827,9 +897,9 @@
 }
 
 <span class="kw">pub fn </span>extract_terms&lt;C: FoldingConfig&gt;(exp: FoldingExp&lt;C&gt;) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; {
-    <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
+    <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
     <span class="kw">let </span>exps: Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; = <span class="kw">match </span>exp {
-        exp @ Cell(<span class="kw">_</span>) =&gt; Box::new(
+        exp @ Atom(<span class="kw">_</span>) =&gt; Box::new(
             [Term {
                 exp,
                 sign: Sign::Pos,
@@ -868,6 +938,34 @@
             }
             Box::new(combinations.into_iter())
         }
+        Pow(<span class="kw">_</span>, <span class="number">0</span>) =&gt; Box::new(
+            [Term {
+                exp: FoldingExp::Atom(ExtendedFoldingColumn::Constant(
+                    &lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField::one(),
+                )),
+                sign: Sign::Pos,
+            }]
+            .into_iter(),
+        ),
+        Pow(e, <span class="number">1</span>) =&gt; extract_terms(<span class="kw-2">*</span>e),
+        Pow(e, <span class="kw-2">mut </span>i) =&gt; {
+            <span class="kw">let </span>e = extract_terms(<span class="kw-2">*</span>e).collect_vec();
+            <span class="kw">let </span><span class="kw-2">mut </span>acc = e.clone();
+            <span class="comment">// Could do this inplace, but it&#39;s more annoying to write
+            </span><span class="kw">while </span>i &gt; <span class="number">2 </span>{
+                <span class="kw">let </span><span class="kw-2">mut </span>combinations = Vec::with_capacity(e.len() * acc.len());
+                <span class="kw">for </span>t1 <span class="kw">in </span>e.iter() {
+                    <span class="kw">for </span>t2 <span class="kw">in </span>acc.iter() {
+                        combinations.push(t1 * t2)
+                    }
+                }
+                acc = combinations;
+                i -= <span class="number">1</span>;
+            }
+            Box::new(acc.into_iter())
+        }
+        Cache(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        IfFeature(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
     };
     exps
 }

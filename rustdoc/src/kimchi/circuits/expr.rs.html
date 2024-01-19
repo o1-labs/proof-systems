@@ -3803,7 +3803,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone, Debug, PartialEq)]
+<span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub enum </span>Operations&lt;T&gt; {
     Atom(T),
     Pow(Box&lt;Operations&lt;T&gt;&gt;, u64),
@@ -4072,7 +4072,7 @@
 }
 
 <span class="doccomment">/// The feature flags that can be used to enable or disable parts of constraints.
-</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[cfg_attr(
     feature = <span class="string">&quot;ocaml_types&quot;</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)

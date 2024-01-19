@@ -175,10 +175,35 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::folding::{
-    error_term::{eval_sided, ExtendedEnv, Side},
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
-    FoldingConfig,
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    circuits::expr::Operations,
+    folding::{
+        error_term::{eval_sided, ExtendedEnv, Side},
+        expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
+        FoldingConfig,
+    },
 };
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, VecDeque};
 
@@ -232,7 +257,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>witness_generator = VecDeque::with_capacity(recorded_exprs.len());
         <span class="kw">let </span><span class="kw-2">mut </span>new_constraints = BTreeMap::new();
         <span class="kw">for </span>(exp, id) <span class="kw">in </span>recorded_exprs.into_iter() {
-            <span class="kw">let </span>left = FoldingExp::Cell(ExtendedFoldingColumn::WitnessExtended(id));
+            <span class="kw">let </span>left = FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id));
             <span class="kw">let </span>constraint = FoldingExp::Sub(Box::new(left), Box::new(exp));
             new_constraints.insert(id, constraint.clone());
             witness_generator.push_front((id, constraint));
@@ -244,7 +269,7 @@
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingExp&lt;C&gt; {
     <span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
-            e @ FoldingExp::Cell(<span class="kw">_</span>) =&gt; <span class="kw">match </span>e.folding_degree() {
+            e @ FoldingExp::Atom(<span class="kw">_</span>) =&gt; <span class="kw">match </span>e.folding_degree() {
                 Degree::Zero =&gt; <span class="number">0</span>,
                 Degree::One =&gt; <span class="number">1</span>,
                 Degree::Two =&gt; <span class="number">2</span>,
@@ -255,6 +280,9 @@
                 std::cmp::max(e1.degree(), e2.degree())
             }
             FoldingExp::Mul(e1, e2) =&gt; e1.degree() + e2.degree(),
+            FoldingExp::Pow(e, i) =&gt; e.degree() * (<span class="kw-2">*</span>i <span class="kw">as </span>usize),
+            FoldingExp::Cache(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+            FoldingExp::IfFeature(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
     }
 }
@@ -269,7 +297,7 @@
         <span class="kw">_ </span>=&gt; {
             <span class="kw">let </span>exp = lower_degree_to_2(exp, rec);
             <span class="kw">let </span>id = rec.get_id(exp);
-            FoldingExp::Cell(ExtendedFoldingColumn::WitnessExtended(id))
+            FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
         }
     }
 }
@@ -278,14 +306,14 @@
     exp: FoldingExp&lt;C&gt;,
     rec: <span class="kw-2">&amp;mut </span>ExpRecorder&lt;C&gt;,
 ) -&gt; FoldingExp&lt;C&gt; {
-    <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
+    <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
     <span class="kw">let </span>degree = exp.degree();
     <span class="kw">if </span>degree &lt;= <span class="number">2 </span>{
         <span class="kw">return </span>exp;
     }
 
     <span class="kw">match </span>exp {
-        FoldingExp::Cell(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;a column shouldn&#39;t be above degree 1&quot;</span>),
+        FoldingExp::Atom(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;a column shouldn&#39;t be above degree 1&quot;</span>),
         FoldingExp::Double(exp) =&gt; Double(Box::new(lower_degree_to_2(<span class="kw-2">*</span>exp, rec))),
         FoldingExp::Square(exp) =&gt; Square(Box::new(lower_degree_to_1(<span class="kw-2">*</span>exp, rec))),
         FoldingExp::Add(e1, e2) =&gt; {
@@ -310,6 +338,19 @@
             };
             Mul(Box::new(e1), Box::new(e2))
         }
+        exp @ FoldingExp::Pow(<span class="kw">_</span>, <span class="number">0</span>) =&gt; exp,
+        FoldingExp::Pow(e, <span class="number">1</span>) =&gt; lower_degree_to_2(<span class="kw-2">*</span>e, rec),
+        FoldingExp::Pow(e, <span class="number">2</span>) =&gt; FoldingExp::Pow(Box::new(lower_degree_to_1(<span class="kw-2">*</span>e, rec)), <span class="number">2</span>),
+        FoldingExp::Pow(e, i) =&gt; {
+            <span class="kw">let </span>e = lower_degree_to_1(<span class="kw-2">*</span>e, rec);
+            <span class="kw">let </span><span class="kw-2">mut </span>acc = e.clone();
+            <span class="kw">for _ in </span><span class="number">1</span>..i - <span class="number">1 </span>{
+                acc = lower_degree_to_1(FoldingExp::Mul(Box::new(e.clone()), Box::new(acc)), rec);
+            }
+            FoldingExp::Mul(Box::new(e.clone()), Box::new(acc))
+        }
+        FoldingExp::Cache(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        FoldingExp::IfFeature(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
     }
 }
 
@@ -345,11 +386,14 @@
     side: Side,
 ) -&gt; bool {
     <span class="kw">match </span>exp {
-        FoldingExp::Cell(col) =&gt; env.col_try(col, side),
+        FoldingExp::Atom(col) =&gt; env.col_try(col, side),
         FoldingExp::Double(e) | FoldingExp::Square(e) =&gt; check_evaluable(e, env, side),
         FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) | FoldingExp::Mul(e1, e2) =&gt; {
             check_evaluable(e1, env, side) &amp;&amp; check_evaluable(e2, env, side)
         }
+        FoldingExp::Pow(e, <span class="kw">_</span>) =&gt; check_evaluable(e, env, side),
+        FoldingExp::Cache(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+        FoldingExp::IfFeature(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
     }
 }
 </code></pre></div></section></main></body></html>
