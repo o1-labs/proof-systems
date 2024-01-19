@@ -1,5 +1,5 @@
 use crate::{
-    circuits::expr::Variable,
+    circuits::expr::{Operations, Variable},
     folding::{
         expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
         quadraticization::ExtendedWitnessGenerator,
@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use ark_ec::AffineCurve;
-use ark_ff::Field;
+use ark_ff::{Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use poly_commitment::SRS;
 
@@ -34,10 +34,10 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
     env: &'a ExtendedEnv<C>,
     side: Side,
 ) -> EvalLeaf<'a, ScalarField<C>> {
-    use FoldingExp::*;
+    use Operations::*;
 
     match exp {
-        Cell(col) => env.col(col, side),
+        Atom(col) => env.col(col, side),
         Double(e) => {
             let col = eval_exp_error(e, env, side);
             col.map(Field::double, |f| {
@@ -53,6 +53,20 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
         Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
         Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
         Mul(e1, e2) => eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
+        Pow(e, i) => match i {
+            0 => EvalLeaf::Const(ScalarField::<C>::one()),
+            1 => eval_exp_error(e, env, side),
+            i => {
+                let err = eval_exp_error(e, env, side);
+                let mut acc = err.clone();
+                for _ in 1..*i {
+                    acc = acc * err.clone()
+                }
+                acc
+            }
+        },
+        Cache(_, _) => todo!(),
+        IfFeature(_, _, _) => todo!(),
     }
 }
 
@@ -61,10 +75,10 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     env: &'a ExtendedEnv<C>,
     side: Side,
 ) -> EvalLeaf<'a, ScalarField<C>> {
-    use FoldingExp::*;
+    use Operations::*;
 
     match exp {
-        Cell(col) => env.col(col, side),
+        Atom(col) => env.col(col, side),
         Double(e) => {
             let col = eval_exp_error(e, env, side);
             col.map(Field::double, |f| {
@@ -95,6 +109,33 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
             }
             _ => eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
         },
+        Pow(_, 0) => EvalLeaf::Const(ScalarField::<C>::one()),
+        Pow(e, 1) => eval_exp_error(e, env, side),
+        Pow(e, 2) => match (exp.folding_degree(), e.folding_degree()) {
+            (Degree::Two, Degree::One) => {
+                let first = eval_exp_error(e, env, side) * eval_exp_error(e, env, side.other());
+                let second = eval_exp_error(e, env, side.other()) * eval_exp_error(e, env, side);
+                first + second
+            }
+            _ => {
+                let err = eval_exp_error(e, env, side);
+                err.clone() * err
+            }
+        },
+        Pow(e, i) => match exp.folding_degree() {
+            Degree::Zero => {
+                let e = eval_exp_error(e, env, side);
+                // TODO: Implement `pow` here for efficiency
+                let mut acc = e.clone();
+                for _ in 1..*i {
+                    acc = acc * e.clone();
+                }
+                acc
+            }
+            _ => panic!("degree over 2"),
+        },
+        Cache(_, _) => todo!(),
+        IfFeature(_, _, _) => todo!(),
     }
 }
 
