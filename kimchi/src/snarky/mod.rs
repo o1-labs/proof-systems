@@ -14,6 +14,7 @@ pub mod constants;
 pub mod constraint_system;
 pub mod cvar;
 pub mod errors;
+pub mod folding;
 pub mod poseidon;
 pub mod runner;
 pub mod snarky_type;
