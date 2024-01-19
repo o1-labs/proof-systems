@@ -294,7 +294,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             self.write_column(KeccakColumn::IotaStateG(i), *g);
         }
         for i in 0..QUARTERS {
-            self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
+            self.write_column(KeccakColumn::RoundConstants(i), iota.round_constants(i));
         }
 
         state_g

@@ -356,25 +356,28 @@ impl Chi {
 /// Values involved in Iota permutation step
 pub struct Iota {
     state_g: Vec<u64>,
-    rc: Vec<u64>,
+    round_constants: Vec<u64>,
 }
 
 impl Iota {
     pub fn create(state_f: &[u64], round: usize) -> Self {
-        let rc = Keccak::sparse(RC[round]);
+        let round_constants = Keccak::sparse(RC[round]);
         let mut state_g = state_f.to_vec();
-        for (i, c) in rc.iter().enumerate() {
+        for (i, c) in round_constants.iter().enumerate() {
             state_g[i] = state_f[i] + *c;
         }
-        Self { state_g, rc }
+        Self {
+            state_g,
+            round_constants,
+        }
     }
 
     pub fn state_g(&self) -> Vec<u64> {
         self.state_g.clone()
     }
 
-    pub fn rc(&self, i: usize) -> u64 {
-        self.rc[i]
+    pub fn round_constants(&self, i: usize) -> u64 {
+        self.round_constants[i]
     }
 }
 
