@@ -1,5 +1,5 @@
 //! This module implements Dlog-based polynomial commitment schema.
-//! The folowing functionality is implemented
+//! The following functionality is implemented
 //!
 //! 1. Commit to polynomial with its max degree
 //! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
@@ -603,7 +603,10 @@ pub fn combine_evaluations<G: CommitmentCurve>(
     acc
 }
 
-impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
+impl<G> SRSTrait<G> for SRS<G>
+where
+    G: CommitmentCurve,
+{
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize {
         self.g.len()
@@ -678,7 +681,7 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
 
         let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
 
-        // chunk while commiting
+        // chunk while committing
         let mut unshifted = vec![];
         if is_zero {
             unshifted.push(G::zero());
@@ -750,6 +753,18 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
         self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
+    }
+
+    fn create(depth: usize) -> Self {
+        SRS::create(depth)
+    }
+
+    fn add_lagrange_basis(&mut self, domain: D<<G>::ScalarField>) {
+        self.add_lagrange_basis(domain)
+    }
+
+    fn size(&self) -> usize {
+        self.g.len()
     }
 }
 

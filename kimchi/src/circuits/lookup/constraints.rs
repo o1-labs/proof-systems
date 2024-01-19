@@ -473,7 +473,7 @@ pub fn constraints<F: FftField>(
         };
 
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
-        // each value is also multipled with (1 + beta)^max_per_row
+        // each value is also multiplied with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
         let dummy_padding = |spec_len| {
             let mut res = E::one();

@@ -33,7 +33,7 @@ The solution is to "pass" a value $v$ between the two proofs, in other words to 
 
 **Insufficient Field Size:** $p < q$ hence $v$ cannot fit in $\mathbb{F}_p$.
 
-**No Binding:** More concerning, there is *no binding* between the $\tilde{v}$ in the $\mathbb{F}_p$-witness and the $v$ in the $\mathbb{F}_q$-witness: a malicious prover could choose completely unreleated values. This violates soundness of the overall $\mathbb{F}_q/\mathbb{F}_q$-relation being proved.
+**No Binding:** More concerning, there is *no binding* between the $\tilde{v}$ in the $\mathbb{F}_p$-witness and the $v$ in the $\mathbb{F}_q$-witness: a malicious prover could choose completely unrelated values. This violates soundness of the overall $\mathbb{F}_q/\mathbb{F}_q$-relation being proved.
 
 #### Problem 1: Decompose
 

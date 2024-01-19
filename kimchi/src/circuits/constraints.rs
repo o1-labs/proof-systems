@@ -322,7 +322,7 @@ impl<
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.cs.public && gate.coeffs[0] != F::one() {
+            if row < self.cs.public && gate.coeffs.get(0) != Some(&F::one()) {
                 return Err(GateError::IncorrectPublic(row));
             }
 

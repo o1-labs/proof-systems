@@ -84,7 +84,7 @@ where
     let gates = create_test_gates_and::<G>(bytes);
     let cs = ConstraintSystem::create(gates).build().unwrap();
 
-    // Initalize inputs
+    // Initialize inputs
     let input1 = rng.gen(input1, Some(bytes * 8));
     let input2 = rng.gen(input2, Some(bytes * 8));
 

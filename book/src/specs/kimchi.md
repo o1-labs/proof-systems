@@ -2165,7 +2165,7 @@ The prover then follows the following steps to create the proof:
 	* If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
-	* Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	* Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
 	* If multiple lookup tables are involved,
 	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
 	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
@@ -2222,7 +2222,7 @@ The prover then follows the following steps to create the proof:
 
    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
 
-   TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+   TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 1. Evaluate the same polynomials without chunking them
    (so that each polynomial should correspond to a single value this time).
 1. Compute the ft polynomial.

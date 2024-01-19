@@ -10,6 +10,7 @@ pub mod constraints;
 pub mod environment;
 pub mod interpreter;
 pub mod lookups;
+pub mod proof;
 pub mod witness;
 
 pub(crate) const HASH_BITLENGTH: usize = 256;
@@ -45,6 +46,8 @@ pub(crate) trait BoolOps {
     fn not(x: Self::Variable) -> Self::Variable;
 
     fn is_one(x: Self::Variable) -> Self::Variable;
+
+    fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable;
 
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable;
 

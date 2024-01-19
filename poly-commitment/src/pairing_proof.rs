@@ -211,6 +211,18 @@ impl<
     ) -> BlindedCommitment<G> {
         self.full_srs.commit_evaluations(domain, plnm, rng)
     }
+
+    fn create(_depth: usize) -> Self {
+        todo!()
+    }
+
+    fn add_lagrange_basis(&mut self, domain: D<<G>::ScalarField>) {
+        self.full_srs.add_lagrange_basis(domain);
+    }
+
+    fn size(&self) -> usize {
+        self.full_srs.g.len()
+    }
 }
 
 /// The polynomial that evaluates to each of `evals` for the respective `elm`s.

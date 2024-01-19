@@ -307,7 +307,7 @@ where
             // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
             constraints.push(squeeze() * (old_state(i) - from_shifts!(shifts, i)));
         }
-        for i in 0..136 {
+        for i in 0..RATE_IN_BYTES {
             // Check padding
             constraints.push(flags(i) * (pad(i) - bytes(i)));
         }

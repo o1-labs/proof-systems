@@ -85,7 +85,7 @@ where each $G_i$ is distinct and has an unknown discrete logarithm as well.
 I'll often shorten the last formula as the inner product $\langle \vec{x}, \vec{G} \rangle$ for $\vec{x} = (x_1, \cdots, x_k)$ and $\vec{G} = (G_1, \cdots, G_k)$.
 To reveal a commitment, simply reveal the values $x_i$.
 
-Pedersen hashing allow commitents that are non-hiding, but binding, as you can't open them to a different value than the originally comitted one.
+Pedersen hashing allow commitents that are non-hiding, but binding, as you can't open them to a different value than the originally committed one.
 And as you can see, adding the commitment of $x$ and $y$ gives us the commitment of $x+y$:
 
 $$xG + yG = (x+y)G$$

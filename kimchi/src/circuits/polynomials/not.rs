@@ -90,7 +90,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
     // Extends a double generic gate for negation for one or two words
     // Input:
-    // - gates          : full ciricuit to which the not will be added
+    // - gates          : full circuit to which the not will be added
     // - new_row        : row to start the double NOT generic gate
     // - pub_row        : row where the public inputs is stored (the 2^bits - 1) value (in the column 0 of that row)
     // - double_generic : whether to perform two NOTs or only one inside the generic gate

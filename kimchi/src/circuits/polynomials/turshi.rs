@@ -20,7 +20,7 @@
 //! · ap += <`op`>
 //! · ap++
 //!
-//! A Cairo program runs accross a number of state transitions.
+//! A Cairo program runs across a number of state transitions.
 //! Each state transition has the following structure:
 //!
 //! * Has access to a read-only memory
