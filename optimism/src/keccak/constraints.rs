@@ -1,5 +1,3 @@
-use std::array;
-
 use crate::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
