@@ -93,7 +93,6 @@ impl FoldingConfig for TestConfig {
     }
 }
 
-#[ignore]
 #[test]
 //not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
