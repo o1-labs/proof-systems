@@ -91,7 +91,6 @@ impl<Fp: Field> KeccakEnv<Fp> {
     pub fn null_state(&mut self) {
         self.keccak_state = KeccakColumns::default();
     }
-
     pub fn update_step(&mut self) {
         match self.keccak_step {
             Some(step) => match step {

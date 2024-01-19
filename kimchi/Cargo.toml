@@ -37,8 +37,7 @@ hex = "0.4"
 strum = "0.24.0"
 strum_macros = "0.24.0"
 
-# TODO: audit this
-disjoint-set = "0.0.2"
+snarky-deriver = { path = "./snarky-deriver", version = "0.1.0" }
 
 turshi = { path = "../turshi", version = "0.1.0" }
 poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
