@@ -19,7 +19,7 @@ pub struct KeccakEnv<Fp> {
     pub(crate) lookups: Vec<Lookup<E<Fp>>>,
 
     /// The full state of the Keccak gate (witness)
-    pub(crate) keccak_state: KeccakColumns<E<Fp>>,
+    pub keccak_state: KeccakColumns<E<Fp>>,
     /// What step of the hash is being executed (or None, if just ended)
     pub keccak_step: Option<KeccakStep>,
 

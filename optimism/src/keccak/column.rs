@@ -59,21 +59,21 @@ pub enum KeccakColumn {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
-    pub(crate) hash_index: T,
-    pub(crate) step_index: T,
-    pub(crate) flag_round: T,                    // Coeff Round = 0 | 1 .. 24
-    pub(crate) flag_absorb: T,                   // Coeff Absorb = 0 | 1
-    pub(crate) flag_squeeze: T,                  // Coeff Squeeze = 0 | 1
-    pub(crate) flag_root: T,                     // Coeff Root = 0 | 1
-    pub(crate) flag_pad: T,                      // Coeff Pad = 0 | 1
-    pub(crate) flag_length: T,                   // Coeff Length 0 | 1 .. 136
-    pub(crate) two_to_pad: T,                    // 2^PadLength
-    pub(crate) inverse_round: T,                 // Round^-1
-    pub(crate) flags_bytes: [T; RATE_IN_BYTES],  // 136 boolean values
-    pub(crate) pad_suffix: [T; 5],               // 5 values with padding suffix
-    pub(crate) round_constants: [T; QUARTERS],   // Round constants
-    pub(crate) curr: [T; ZKVM_KECCAK_COLS_CURR], // Curr[0..1965)
-    pub(crate) next: [T; ZKVM_KECCAK_COLS_NEXT], // Next[0..100)
+    pub hash_index: T,
+    pub step_index: T,
+    pub flag_round: T,                    // Coeff Round = 0 | 1 .. 24
+    pub flag_absorb: T,                   // Coeff Absorb = 0 | 1
+    pub flag_squeeze: T,                  // Coeff Squeeze = 0 | 1
+    pub flag_root: T,                     // Coeff Root = 0 | 1
+    pub flag_pad: T,                      // Coeff Pad = 0 | 1
+    pub flag_length: T,                   // Coeff Length 0 | 1 .. 136
+    pub two_to_pad: T,                    // 2^PadLength
+    pub inverse_round: T,                 // Round^-1
+    pub flags_bytes: [T; RATE_IN_BYTES],  // 136 boolean values
+    pub pad_suffix: [T; 5],               // 5 values with padding suffix
+    pub round_constants: [T; QUARTERS],   // Round constants
+    pub curr: [T; ZKVM_KECCAK_COLS_CURR], // Curr[0..1965)
+    pub next: [T; ZKVM_KECCAK_COLS_NEXT], // Next[0..100)
 }
 
 impl<T: Clone> KeccakColumns<T> {

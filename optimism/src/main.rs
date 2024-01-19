@@ -1,13 +1,20 @@
+use ark_bn254::FrParameters;
 use ark_ec::bn::Bn;
-use ark_ff::{UniformRand, Zero};
+use ark_ff::{Fp256, UniformRand, Zero};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::interpreter::KeccakInterpreter,
-    mips::{proof, witness},
+    keccak::{
+        column::KeccakColumns,
+        environment::KeccakEnv,
+        interpreter::KeccakInterpreter,
+        proof::{self as keccak_proof, KeccakProofInputs},
+    },
+    mips::{proof, witness as mips_witness},
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::pairing_proof::PairingProof;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator};
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 use kimchi_optimism::DOMAIN_SIZE;
@@ -70,7 +77,7 @@ pub fn main() -> ExitCode {
         srs
     };
 
-    let mut env = witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
 
     let mut folded_witness = proof::ProofInputs::<
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
@@ -94,6 +101,54 @@ pub fn main() -> ExitCode {
         error: Vec::with_capacity(domain_size),
     };
 
+    // The keccak environment is extracted inside the loop
+
+    let mut keccak_folded_witness = KeccakProofInputs::<
+        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+    >::default();
+
+    let keccak_reset_pre_folding_witness =
+        |keccak_columns: &mut KeccakColumns<Vec<Fp256<FrParameters>>>| {
+            // Resize without deallocating
+            keccak_columns.hash_index.clear();
+            keccak_columns.step_index.clear();
+            keccak_columns.flag_round.clear();
+            keccak_columns.flag_absorb.clear();
+            keccak_columns.flag_squeeze.clear();
+            keccak_columns.flag_root.clear();
+            keccak_columns.flag_pad.clear();
+            keccak_columns.flag_length.clear();
+            keccak_columns.two_to_pad.clear();
+            keccak_columns.inverse_round.clear();
+            keccak_columns.flags_bytes.iter_mut().for_each(Vec::clear);
+            keccak_columns.pad_suffix.iter_mut().for_each(Vec::clear);
+            keccak_columns
+                .round_constants
+                .iter_mut()
+                .for_each(Vec::clear);
+            keccak_columns.curr.iter_mut().for_each(Vec::clear);
+            keccak_columns.next.iter_mut().for_each(Vec::clear);
+        };
+
+    let mut keccak_current_pre_folding_witness: KeccakColumns<Vec<Fp256<FrParameters>>> =
+        KeccakColumns {
+            hash_index: Vec::with_capacity(domain_size),
+            step_index: Vec::with_capacity(domain_size),
+            flag_round: Vec::with_capacity(domain_size),
+            flag_absorb: Vec::with_capacity(domain_size),
+            flag_squeeze: Vec::with_capacity(domain_size),
+            flag_root: Vec::with_capacity(domain_size),
+            flag_pad: Vec::with_capacity(domain_size),
+            flag_length: Vec::with_capacity(domain_size),
+            two_to_pad: Vec::with_capacity(domain_size),
+            inverse_round: Vec::with_capacity(domain_size),
+            flags_bytes: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            pad_suffix: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            round_constants: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        };
+
     while !env.halt {
         env.step(&configuration, &meta, &start);
 
@@ -104,6 +159,24 @@ pub fn main() -> ExitCode {
             }
 
             // TODO: update the witness with the Keccak step columns before resetting the environment
+            for (env_wit, pre_fold_wit) in keccak_env
+                .keccak_state
+                .into_iter()
+                .zip(keccak_current_pre_folding_witness.par_iter_mut())
+            {
+                pre_fold_wit.push(env_wit);
+            }
+
+            if keccak_current_pre_folding_witness.step_index.len() == DOMAIN_SIZE {
+                keccak_proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
+                    domain,
+                    &srs,
+                    &mut keccak_folded_witness,
+                    &keccak_current_pre_folding_witness,
+                );
+                keccak_reset_pre_folding_witness(&mut keccak_current_pre_folding_witness);
+            }
+
             // TODO: create READ lookup tables
 
             // When the Keccak interpreter is finished, we can reset the environment
