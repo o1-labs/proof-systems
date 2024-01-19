@@ -6,6 +6,7 @@ members = [
     "groupmap",
     "hasher",
     "kimchi",
+    "kimchi/snarky-deriver/",
     "optimism",
     "poseidon",
     "poseidon/export_test_vectors",

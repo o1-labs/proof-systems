@@ -258,10 +258,7 @@ impl<G: CommitmentCurve> SRS<G> {
     }
 }
 
-impl<G: CommitmentCurve> SRS<G>
-where
-    G::BaseField: PrimeField,
-{
+impl<G: CommitmentCurve> SRS<G> {
     /// This function creates SRS instance for circuits with number of rows up to `depth`.
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
