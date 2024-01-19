@@ -27,17 +27,25 @@ struct FoldingCircuit<C: KimchiCurve, const N: usize> {
 
 ///the value of the input an output of the function being folded
 struct Argument<F, const N: usize>([F; N]);
+
 type Point<F> = [F; 2];
+
+/// Represents the result of a (Poseidon) hash, encoded in the circuit.
 type Hash<F> = FieldVar<F>;
 
-///an element of the other curve's field, it could use 2 limbs
+/// Represents an element of the other curve's field. As the other curve can
+/// have a higher moduler, it could require more than one limbs. We suppose the
+/// other field values can be encoded on two limbs.
 #[derive(Debug, Clone)]
 pub struct ForeignElement<F>([F; 2]);
-///a 127 bits challenge
+
+/// A challenge encoded on 127 bits.
 #[derive(Debug, Clone)]
 struct SmallChallenge<F: PrimeField>(FieldVar<F>);
+
 #[derive(Debug, Clone)]
 pub struct FullChallenge<F>(ForeignElement<F>);
+
 pub struct Private<F, const N: usize> {
     ///first input
     z_0: Argument<F, N>,
@@ -52,7 +60,7 @@ pub struct Private<F, const N: usize> {
     i: F,
 }
 
-/// this should run the inner circuit and provide its output, in our case it may be simpler
+/// This should run the inner circuit and provide its output, in our case it may be simpler
 /// to just run the circuit separatly and provide the variables pointing to the output
 fn apply<F: PrimeField, const N: usize>(
     _z_i: Argument<FieldVar<F>, N>,
@@ -91,7 +99,7 @@ fn ec_scale<F: PrimeField>(
     ///TODO
     todo!()
 }
-///trims to 127 bits
+/// Trims to 127 bits
 fn trim<F: PrimeField>(
     sys: &mut RunState<F>,
     v: &FieldVar<F>,
@@ -106,11 +114,13 @@ fn trim<F: PrimeField>(
         (F::from_repr(high).unwrap(), F::from_repr(low).unwrap())
     })?;
     let composition = high.mul(base, None, loc!(), sys)? + &low;
-    ///TODO: constraint low to 127 bits
+    /// TODO: constraint low to 127 bits
     v.assert_equals(sys, loc!(), &composition)?;
     Ok(low)
 }
 
+/// Compute H(i, z_0, z_1, u) and keep the log2(base) bits of the result.
+/// [base] is supposed to be a power of 2
 fn hash<F: PrimeField, const N: usize>(
     sys: &mut RunState<F>,
     i: FieldVar<F>,
@@ -171,7 +181,8 @@ impl<C: KimchiCurve, const N: usize> SnarkyCircuit for FoldingCircuit<C, N> {
 
         // h(i, z_0, z_1, u_i)
         // q: why the power?
-        // a: the power is more the number of bits we want to keep
+        // a: the power is the number of bits we want to keep, giving as a power
+        // of two
         let inputs_hash = hash(sys, i.clone(), &z_0, &z_i, &u_acc, &power)?;
 
         inputs_hash.assert_equals(sys, loc!(), &hash1)?;

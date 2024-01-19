@@ -98,6 +98,9 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
             }
         }
     }
+
+    // See https://eprint.iacr.org/2021/370.pdf, page 15
+    /// Fold the circuit containing in `sys` with the other circuit `other`.
     pub fn fold(
         self,
         sys: &mut RunState<F>,
@@ -111,6 +114,7 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         // hash1 = hash1 =
         let hash1 = challenge_linear_combination(self.hash1, SmallChallenge(other.hash1), &r);
         let hash2 = challenge_linear_combination(self.hash2, SmallChallenge(other.hash2), &r);
+        // Combining the witnesses commitments, see W <- W1 + r W2
         let witness_commitments = self
             .witness_commitments
             .into_iter()
@@ -124,13 +128,15 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
             })
             .collect();
         let one = FieldVar::constant(F::one());
+
         let u = challenge_linear_combination(self.u, SmallChallenge(one.clone()), &r);
 
         let rr = r.0.mul(&r.0, None, loc!(), sys)?;
-        let [e1, e2] = error_terms;
-        let e1 = ec_scale(e1, &r);
+        // Compute r T + r^2 E_2
+        let [t, e2] = error_terms;
+        let t = ec_scale(t, &r);
         let e2 = ec_scale(e2, &SmallChallenge(rr));
-        let error_commitment = ec_add(e1, e2);
+        let error_commitment = ec_add(t, e2);
 
         let mut new_sets = Vec::with_capacity(self.challenges.len());
         for _ in 0..self.challenges.len() {
