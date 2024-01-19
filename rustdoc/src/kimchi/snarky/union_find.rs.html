@@ -108,7 +108,7 @@
 </span><span class="kw">pub struct </span>DisjointSet&lt;T&gt; {
     set_size: usize,
     <span class="doccomment">/// The structure saves the parent information of each subset in continuous
-    /// memory(a vec) for better performance.  
+    /// memory(a vec) for better performance.
     </span>parent: Vec&lt;usize&gt;,
 
     <span class="doccomment">/// Each T entry is mapped onto a usize tag.
@@ -140,7 +140,7 @@
     }
 
     <span class="doccomment">/// Returns Some(num), num is the tag of subset in which x is.
-    /// If x is not in the data structure, it returns None.    
+    /// If x is not in the data structure, it returns None.
     </span><span class="kw">pub fn </span>find(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: T) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>pos = <span class="kw">match </span><span class="self">self</span>.map.get(<span class="kw-2">&amp;</span>x) {
             <span class="prelude-val">Some</span>(p) =&gt; <span class="kw-2">*</span>p,
