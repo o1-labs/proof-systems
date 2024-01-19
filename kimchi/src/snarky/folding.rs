@@ -10,6 +10,7 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, One, PrimeField};
 use mina_curves::pasta::Fp;
+use poly_commitment::{evaluation_proof::OpeningProof, OpenProof};
 use std::marker::PhantomData;
 use std::ops::Add;
 
@@ -17,8 +18,9 @@ mod instance;
 
 const CHALLENGE_BITS: usize = 127;
 
-struct FoldingCircuit<C: KimchiCurve, const N: usize> {
+struct FoldingCircuit<C: KimchiCurve, P: OpenProof<C>, const N: usize> {
     _field: PhantomData<C>,
+    _proof: PhantomData<P>,
     ///commitment sets an their sizes
     commitments: Vec<usize>,
     ///challenges sets an their sizes
@@ -130,8 +132,9 @@ fn hash<F: PrimeField, const N: usize>(
     trim(sys, &hash, base)
 }
 
-impl<C: KimchiCurve, const N: usize> SnarkyCircuit for FoldingCircuit<C, N> {
+impl<C: KimchiCurve, P: OpenProof<C>, const N: usize> SnarkyCircuit for FoldingCircuit<C, P, N> {
     type Curve = C;
+    type Proof = P;
 
     type PrivateInput = Private<F<C>, N>;
     type PublicInput = ();
@@ -181,7 +184,7 @@ impl<C: KimchiCurve, const N: usize> SnarkyCircuit for FoldingCircuit<C, N> {
 
 #[allow(dead_code)]
 fn example<const N: usize>(private: Private<Fp, N>) {
-    use mina_curves::pasta::VestaParameters;
+    use mina_curves::pasta::{Vesta, VestaParameters};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -191,6 +194,7 @@ fn example<const N: usize>(private: Private<Fp, N>) {
 
     let circuit = FoldingCircuit {
         _field: PhantomData,
+        _proof: PhantomData::<OpeningProof<Vesta>>,
         commitments: vec![15],
         challenges: vec![1, 5],
     };
@@ -199,5 +203,5 @@ fn example<const N: usize>(private: Private<Fp, N>) {
         .prove::<BaseSponge, ScalarSponge>((), private, true)
         .unwrap();
 
-    verifier_index.verify::<BaseSponge, ScalarSponge>(proof, (), public_output);
+    verifier_index.verify::<BaseSponge, ScalarSponge>(proof, (), *public_output);
 }
