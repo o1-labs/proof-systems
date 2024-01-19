@@ -19,9 +19,9 @@ const CHALLENGE_BITS: usize = 127;
 
 struct FoldingCircuit<C: KimchiCurve, const N: usize> {
     _field: PhantomData<C>,
-    ///commitment sets an their sizes
+    /// Commitment setsd an their sizes
     commitments: Vec<usize>,
-    ///challenges sets an their sizes
+    /// Challenges sets an their sizes
     challenges: Vec<usize>,
 }
 
@@ -137,31 +137,41 @@ impl<C: KimchiCurve, const N: usize> SnarkyCircuit for FoldingCircuit<C, N> {
     type PublicInput = ();
     type PublicOutput = [Hash<F<C>>; 2];
 
+    /// Implement the IVC circuit, see https://eprint.iacr.org/2021/370.pdf, Fig
+    /// 4, page 18
     fn circuit(
         &self,
         sys: &mut RunState<C::ScalarField>,
         _public: Self::PublicInput,
         private: Option<&Self::PrivateInput>,
     ) -> SnarkyResult<Self::PublicOutput> {
+
         let one = FieldVar::constant(F::<C>::one());
-        //dividing by this should make a number of 127 bits or less zero
+        // dividing by this should make a number of 127 bits or less zero
+        // (dw): q - the power could be inlined.
         let power = 1u128 << 127;
         let power = F::<C>::from(power);
         let power = FieldVar::Constant(power);
 
+        // u_(i + 1) = NIFS.V(U_i, u_i)
         let u_i: Instance<FieldVar<F<C>>> = Instance::compute(private, sys, &self.commitments)?;
+        // h1
         let hash1 = u_i.hash1.clone();
+        // h2
         let hash2 = u_i.hash2.clone();
         let u_acc: RelaxedInstance<FieldVar<F<C>>> =
             RelaxedInstance::compute(private, sys, &self.commitments, &self.challenges)?;
 
-        //check hash of inputs
+        // check hash of inputs
         let i: FieldVar<F<C>> = sys.compute(loc!(), |_| private.unwrap().i)?;
         let z_0: [FieldVar<F<C>>; N] = sys.compute(loc!(), |_| private.unwrap().z_0.0)?;
         let z_0 = Argument(z_0);
         let z_i: [FieldVar<F<C>>; N] = sys.compute(loc!(), |_| private.unwrap().z_i.0)?;
         let z_i = Argument(z_i);
 
+        // h(i, z_0, z_1, u_i)
+        // q: why the power?
+        // a: the power is more the number of bits we want to keep
         let inputs_hash = hash(sys, i.clone(), &z_0, &z_i, &u_acc, &power)?;
 
         inputs_hash.assert_equals(sys, loc!(), &hash1)?;

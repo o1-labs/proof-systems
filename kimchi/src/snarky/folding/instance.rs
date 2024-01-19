@@ -108,6 +108,7 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         // let mut state = DuplexState::new();
         let mut challenge_generator = ChallengeGenerator::new(sys, &self, &other, None);
         let r = challenge_generator.squeeze_challenge(sys, base)?;
+        // hash1 = hash1 =
         let hash1 = challenge_linear_combination(self.hash1, SmallChallenge(other.hash1), &r);
         let hash2 = challenge_linear_combination(self.hash2, SmallChallenge(other.hash2), &r);
         let witness_commitments = self
