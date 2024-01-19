@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["fold","prove"],"struct":["KeccakProof","KeccakProofInputs"]};
+window.SIDEBAR_ITEMS = {"fn":["fold","prove","verify"],"struct":["KeccakProof","KeccakProofInputs"]};
