@@ -296,8 +296,6 @@
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::KeccakEnv,
@@ -308,7 +306,10 @@
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::{
-    constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS, THETA_STATE_A_LEN},
+    constants::{
+        CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
+        STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
+    },
     witness::{Chi, Iota, PiRho, Theta},
     Keccak,
 };
@@ -460,7 +461,7 @@
         <span class="kw">let </span>bytes = block.iter().map(|b| <span class="kw-2">*</span>b <span class="kw">as </span>u64).collect::&lt;Vec&lt;u64&gt;&gt;();
 
         <span class="comment">// Write absorb-related columns
-        </span><span class="kw">for </span>idx <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
+        </span><span class="kw">for </span>idx <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
             <span class="self">self</span>.write_column(KeccakColumn::Input(idx), old_state[idx]);
             <span class="self">self</span>.write_column(KeccakColumn::SpongeNewState(idx), new_state[idx]);
             <span class="self">self</span>.write_column(KeccakColumn::Output(idx), xor_state[idx]);
@@ -505,19 +506,18 @@
         </span><span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
             <span class="self">self</span>.write_column(KeccakColumn::ThetaQuotientC(x), theta.quotient_c(x));
             <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-                <span class="self">self</span>.write_column(KeccakColumn::ThetaDenseC(x, q), theta.dense_c(x, q));
-                <span class="self">self</span>.write_column(KeccakColumn::ThetaRemainderC(x, q), theta.remainder_c(x, q));
-                <span class="self">self</span>.write_column(KeccakColumn::ThetaDenseRotC(x, q), theta.dense_rot_c(x, q));
-                <span class="self">self</span>.write_column(
-                    KeccakColumn::ThetaExpandRotC(x, q),
-                    theta.expand_rot_c(x, q),
-                );
+                <span class="kw">let </span>idx = grid_index(QUARTERS * DIM, <span class="number">0</span>, <span class="number">0</span>, x, q);
+                <span class="self">self</span>.write_column(KeccakColumn::ThetaDenseC(idx), theta.dense_c(x, q));
+                <span class="self">self</span>.write_column(KeccakColumn::ThetaRemainderC(idx), theta.remainder_c(x, q));
+                <span class="self">self</span>.write_column(KeccakColumn::ThetaDenseRotC(idx), theta.dense_rot_c(x, q));
+                <span class="self">self</span>.write_column(KeccakColumn::ThetaExpandRotC(idx), theta.expand_rot_c(x, q));
                 <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
                     <span class="kw">let </span>idx = grid_index(THETA_STATE_A_LEN, <span class="number">0</span>, y, x, q);
                     <span class="self">self</span>.write_column(KeccakColumn::Input(idx), state_a[idx]);
                 }
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-                    <span class="self">self</span>.write_column(KeccakColumn::ThetaShiftsC(i, x, q), theta.shifts_c(i, x, q));
+                    <span class="kw">let </span>idx = grid_index(THETA_SHIFTS_C_LEN, i, <span class="number">0</span>, x, q);
+                    <span class="self">self</span>.write_column(KeccakColumn::ThetaShiftsC(idx), theta.shifts_c(i, x, q));
                 }
             }
         }
@@ -531,26 +531,24 @@
         </span><span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
             <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
                 <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-                    <span class="self">self</span>.write_column(KeccakColumn::PiRhoDenseE(y, x, q), pirho.dense_e(y, x, q));
+                    <span class="kw">let </span>idx = grid_index(STATE_LEN, <span class="number">0</span>, y, x, q);
+                    <span class="self">self</span>.write_column(KeccakColumn::PiRhoDenseE(idx), pirho.dense_e(y, x, q));
+                    <span class="self">self</span>.write_column(KeccakColumn::PiRhoQuotientE(idx), pirho.quotient_e(y, x, q));
                     <span class="self">self</span>.write_column(
-                        KeccakColumn::PiRhoQuotientE(y, x, q),
-                        pirho.quotient_e(y, x, q),
-                    );
-                    <span class="self">self</span>.write_column(
-                        KeccakColumn::PiRhoRemainderE(y, x, q),
+                        KeccakColumn::PiRhoRemainderE(idx),
                         pirho.remainder_e(y, x, q),
                     );
                     <span class="self">self</span>.write_column(
-                        KeccakColumn::PiRhoDenseRotE(y, x, q),
+                        KeccakColumn::PiRhoDenseRotE(idx),
                         pirho.dense_rot_e(y, x, q),
                     );
                     <span class="self">self</span>.write_column(
-                        KeccakColumn::PiRhoExpandRotE(y, x, q),
+                        KeccakColumn::PiRhoExpandRotE(idx),
                         pirho.expand_rot_e(y, x, q),
                     );
                     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                         <span class="self">self</span>.write_column(
-                            KeccakColumn::PiRhoShiftsE(i, y, x, q),
+                            KeccakColumn::PiRhoShiftsE(grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q)),
                             pirho.shifts_e(i, y, x, q),
                         );
                     }
@@ -568,12 +566,10 @@
             <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
                 <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
                     <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
+                        <span class="kw">let </span>idx = grid_index(SHIFTS_LEN, i, y, x, q);
+                        <span class="self">self</span>.write_column(KeccakColumn::ChiShiftsB(idx), chi.shifts_b(i, y, x, q));
                         <span class="self">self</span>.write_column(
-                            KeccakColumn::ChiShiftsB(i, y, x, q),
-                            chi.shifts_b(i, y, x, q),
-                        );
-                        <span class="self">self</span>.write_column(
-                            KeccakColumn::ChiShiftsSum(i, y, x, q),
+                            KeccakColumn::ChiShiftsSum(idx),
                             chi.shifts_sum(i, y, x, q),
                         );
                     }
