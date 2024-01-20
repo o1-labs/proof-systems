@@ -204,7 +204,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     /// Computing
-    /// ```
+    /// ```text
     /// for x in 0…4
     ///   C[x] = A[x,0] xor A[x,1] xor \
     ///          A[x,2] xor A[x,3] xor \
@@ -241,7 +241,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     /// Computing
-    /// ```
+    /// ```text
     /// for (x,y) in (0…4,0…4)
     ///   B[y,2*x+3*y] = rot(A[x,y], r[x,y])
     /// ```
@@ -282,7 +282,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     /// Computing
-    /// ```
+    /// ```text
     /// for (x,y) in (0…4,0…4)
     ///   A[x, y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y])
     /// ```
@@ -310,7 +310,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     /// Computing
-    /// ```
+    /// ```text
     /// A[0,0] = A[0,0] xor RC
     /// ```
     fn run_iota(&mut self, state_f: &[u64], round: usize) -> Vec<u64> {
