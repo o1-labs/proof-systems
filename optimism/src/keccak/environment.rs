@@ -1,5 +1,8 @@
+use std::array;
+
 use super::{
     column::{KeccakColumn, KeccakColumns},
+    constraints::Constraints,
     grid_index,
     interpreter::{Absorb, KeccakStep, Sponge},
     ArithOps, BoolOps, DIM, E, QUARTERS,
@@ -20,7 +23,7 @@ pub struct KeccakEnv<Fp> {
     pub(crate) lookups: Vec<Lookup<E<Fp>>>,
 
     /// The full state of the Keccak gate (witness)
-    pub(crate) keccak_state: KeccakColumns<E<Fp>>,
+    pub keccak_witness: KeccakColumns<Fp>,
     /// What step of the hash is being executed (or None, if just ended)
     pub keccak_step: Option<KeccakStep>,
 
@@ -46,7 +49,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
         let mut env = Self {
             constraints: vec![],
             lookups: vec![],
-            keccak_state: KeccakColumns::default(),
+            keccak_witness: KeccakColumns::default(),
             keccak_step: None,
             hash_idx,
             step_idx: 0,
@@ -82,16 +85,17 @@ impl<Fp: Field> KeccakEnv<Fp> {
     }
 
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
-        self.keccak_state[column] = Self::constant(value);
+        self.keccak_witness[column] = Fp::from(value);
     }
 
     pub fn write_column_field(&mut self, column: KeccakColumn, value: Fp) {
-        self.keccak_state[column] = Self::constant_field(value);
+        self.keccak_witness[column] = value;
     }
 
     pub fn null_state(&mut self) {
-        self.keccak_state = KeccakColumns::default();
+        self.keccak_witness = KeccakColumns::default();
     }
+
     pub fn update_step(&mut self) {
         match self.keccak_step {
             Some(step) => match step {
@@ -225,13 +229,14 @@ pub(crate) trait KeccakEnvironment {
 
     fn pad_suffix(&self, idx: usize) -> Self::Variable;
 
-    fn bytes_block(&self, idx: usize) -> &[Self::Variable];
+    fn bytes_block(&self, idx: usize) -> Vec<Self::Variable>;
 
-    fn flags_block(&self, idx: usize) -> &[Self::Variable];
+    fn flags_bytes(&self) -> [Self::Variable; RATE_IN_BYTES];
+    fn flags_block(&self, idx: usize) -> Vec<Self::Variable>;
 
     fn block_in_padding(&self, idx: usize) -> Self::Variable;
 
-    fn round_constants(&self) -> &[Self::Variable];
+    fn round_constants(&self) -> [Self::Variable; QUARTERS];
 
     fn old_state(&self, idx: usize) -> Self::Variable;
 
@@ -239,55 +244,56 @@ pub(crate) trait KeccakEnvironment {
 
     fn xor_state(&self, idx: usize) -> Self::Variable;
 
-    fn sponge_zeros(&self) -> &[Self::Variable];
+    fn sponge_zeros(&self) -> [Self::Variable; SPONGE_ZEROS_LEN];
 
-    fn vec_sponge_shifts(&self) -> &[Self::Variable];
+    fn vec_sponge_shifts(&self) -> [Self::Variable; SPONGE_SHIFTS_LEN];
     fn sponge_shifts(&self, idx: usize) -> Self::Variable;
 
-    fn sponge_bytes(&self, idx: usize) -> Self::Variable;
+    fn sponge_byte(&self, idx: usize) -> Self::Variable;
+    fn sponge_bytes(&self) -> [Self::Variable; SPONGE_BYTES_LEN];
 
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_shifts_c(&self) -> &[Self::Variable];
+    fn vec_shifts_c(&self) -> [Self::Variable; THETA_SHIFTS_C_LEN];
     fn shifts_c(&self, i: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_dense_c(&self) -> &[Self::Variable];
+    fn vec_dense_c(&self) -> [Self::Variable; THETA_DENSE_C_LEN];
     fn dense_c(&self, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_quotient_c(&self) -> &[Self::Variable];
-    fn quotient_c(&self, idx: usize) -> Self::Variable;
+    fn vec_quotient_c(&self) -> [Self::Variable; THETA_QUOTIENT_C_LEN];
+    fn quotient_c(&self, x: usize) -> Self::Variable;
 
-    fn vec_remainder_c(&self) -> &[Self::Variable];
+    fn vec_remainder_c(&self) -> [Self::Variable; THETA_REMAINDER_C_LEN];
     fn remainder_c(&self, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_dense_rot_c(&self) -> &[Self::Variable];
+    fn vec_dense_rot_c(&self) -> [Self::Variable; THETA_DENSE_ROT_C_LEN];
     fn dense_rot_c(&self, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_expand_rot_c(&self) -> &[Self::Variable];
+    fn vec_expand_rot_c(&self) -> [Self::Variable; THETA_EXPAND_ROT_C_LEN];
     fn expand_rot_c(&self, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_shifts_e(&self) -> &[Self::Variable];
+    fn vec_shifts_e(&self) -> [Self::Variable; PIRHO_SHIFTS_E_LEN];
     fn shifts_e(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_dense_e(&self) -> &[Self::Variable];
+    fn vec_dense_e(&self) -> [Self::Variable; PIRHO_DENSE_E_LEN];
     fn dense_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_quotient_e(&self) -> &[Self::Variable];
+    fn vec_quotient_e(&self) -> [Self::Variable; PIRHO_QUOTIENT_E_LEN];
     fn quotient_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_remainder_e(&self) -> &[Self::Variable];
+    fn vec_remainder_e(&self) -> [Self::Variable; PIRHO_REMAINDER_E_LEN];
     fn remainder_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_dense_rot_e(&self) -> &[Self::Variable];
+    fn vec_dense_rot_e(&self) -> [Self::Variable; PIRHO_DENSE_ROT_E_LEN];
     fn dense_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_expand_rot_e(&self) -> &[Self::Variable];
+    fn vec_expand_rot_e(&self) -> [Self::Variable; PIRHO_EXPAND_ROT_E_LEN];
     fn expand_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_shifts_b(&self) -> &[Self::Variable];
+    fn vec_shifts_b(&self) -> [Self::Variable; CHI_SHIFTS_B_LEN];
     fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn vec_shifts_sum(&self) -> &[Self::Variable];
+    fn vec_shifts_sum(&self) -> [Self::Variable; CHI_SHIFTS_SUM_LEN];
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
     fn state_g(&self, idx: usize) -> Self::Variable;
@@ -296,8 +302,12 @@ pub(crate) trait KeccakEnvironment {
     fn hash_index(&self) -> Self::Variable;
     /// Returns the step index
     fn step_index(&self) -> Self::Variable;
+    /// Returns the input variables
+    fn input(&self) -> [Self::Variable; STATE_LEN];
     /// Returns a slice of the input variables of the current step
     fn input_of_step(&self) -> Vec<Self::Variable>;
+    /// Returns the output variables
+    fn output(&self) -> [Self::Variable; STATE_LEN];
     /// Returns a slice of the output variables of the current step (= input of next step)
     fn output_of_step(&self) -> Vec<Self::Variable>;
 }
@@ -364,19 +374,19 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_absorb(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagAbsorb].clone()
+        self.variable(KeccakColumn::FlagAbsorb)
     }
 
     fn is_squeeze(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagSqueeze].clone()
+        self.variable(KeccakColumn::FlagSqueeze)
     }
 
     fn is_root(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagRoot].clone()
+        self.variable(KeccakColumn::FlagRoot)
     }
 
     fn is_pad(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagPad].clone()
+        self.variable(KeccakColumn::FlagPad)
     }
 
     fn is_round(&self) -> Self::Variable {
@@ -384,42 +394,45 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn round(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagRound].clone()
+        self.variable(KeccakColumn::FlagRound)
     }
 
     fn inverse_round(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::InverseRound].clone()
+        self.variable(KeccakColumn::InverseRound)
     }
 
     fn length(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagLength].clone()
+        self.variable(KeccakColumn::FlagLength)
     }
 
     fn two_to_pad(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::TwoToPad].clone()
+        self.variable(KeccakColumn::TwoToPad)
     }
 
     fn in_padding(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagsBytes(idx)].clone()
+        self.variable(KeccakColumn::FlagsBytes(idx))
     }
 
     fn pad_suffix(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PadSuffix(idx)].clone()
+        self.variable(KeccakColumn::PadSuffix(idx))
     }
 
-    fn bytes_block(&self, idx: usize) -> &[Self::Variable] {
-        let sponge_bytes = self.keccak_state.chunk(SPONGE_BYTES_OFF, SPONGE_BYTES_LEN);
+    fn bytes_block(&self, idx: usize) -> Vec<Self::Variable> {
         match idx {
-            0 => &sponge_bytes[0..12],
-            1..=4 => &sponge_bytes[12 + (idx - 1) * 31..12 + idx * 31],
+            0 => self.sponge_bytes()[0..12].to_vec(),
+            1..=4 => self.sponge_bytes()[12 + (idx - 1) * 31..12 + idx * 31].to_vec(),
             _ => panic!("No more blocks of bytes can be part of padding"),
         }
     }
 
-    fn flags_block(&self, idx: usize) -> &[Self::Variable] {
+    fn flags_bytes(&self) -> [Self::Variable; RATE_IN_BYTES] {
+        array::from_fn(|idx| self.variable(KeccakColumn::FlagsBytes(idx)))
+    }
+
+    fn flags_block(&self, idx: usize) -> Vec<Self::Variable> {
         match idx {
-            0 => &self.keccak_state.flags_bytes()[0..12],
-            1..=4 => &self.keccak_state.flags_bytes()[12 + (idx - 1) * 31..12 + idx * 31],
+            0 => self.flags_bytes()[0..12].to_vec(),
+            1..=4 => self.flags_bytes()[12 + (idx - 1) * 31..12 + idx * 31].to_vec(),
             _ => panic!("No more blocks of flags can be part of padding"),
         }
     }
@@ -438,204 +451,203 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         pad
     }
 
-    fn round_constants(&self) -> &[Self::Variable] {
-        self.keccak_state.round_constants()
+    fn round_constants(&self) -> [Self::Variable; QUARTERS] {
+        array::from_fn(|idx| self.variable(KeccakColumn::RoundConstants(idx)))
     }
 
     fn old_state(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::Input(idx)].clone()
+        self.variable(KeccakColumn::Input(idx))
     }
 
     fn new_state(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeNewState(idx)].clone()
+        self.variable(KeccakColumn::SpongeNewState(idx))
     }
 
     fn xor_state(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::Output(idx)].clone()
+        self.variable(KeccakColumn::Output(idx))
     }
 
-    fn sponge_zeros(&self) -> &[Self::Variable] {
-        self.keccak_state.chunk(SPONGE_ZEROS_OFF, SPONGE_ZEROS_LEN)
+    fn sponge_zeros(&self) -> [Self::Variable; SPONGE_ZEROS_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::SpongeNewState(SPONGE_ZEROS_OFF + idx)))
     }
 
-    fn sponge_bytes(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeBytes(idx)].clone()
+    fn sponge_byte(&self, idx: usize) -> Self::Variable {
+        self.variable(KeccakColumn::SpongeBytes(idx))
     }
 
-    fn vec_sponge_shifts(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_LEN)
+    fn sponge_bytes(&self) -> [Self::Variable; SPONGE_BYTES_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::SpongeBytes(idx)))
+    }
+
+    fn vec_sponge_shifts(&self) -> [Self::Variable; SPONGE_SHIFTS_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::SpongeShifts(idx)))
     }
 
     fn sponge_shifts(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeShifts(idx)].clone()
+        self.variable(KeccakColumn::SpongeShifts(idx))
     }
 
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(THETA_STATE_A_LEN, 0, y, x, q);
-        self.keccak_state[KeccakColumn::Input(idx)].clone()
+        self.variable(KeccakColumn::Input(idx))
     }
 
-    fn vec_shifts_c(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN)
+    fn vec_shifts_c(&self) -> [Self::Variable; THETA_SHIFTS_C_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ThetaShiftsC(idx)))
     }
     fn shifts_c(&self, i: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(THETA_SHIFTS_C_LEN, i, 0, x, q);
-        self.keccak_state[KeccakColumn::ThetaShiftsC(idx)].clone()
+        self.variable(KeccakColumn::ThetaShiftsC(idx))
     }
 
-    fn vec_dense_c(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(THETA_DENSE_C_OFF, THETA_DENSE_C_LEN)
+    fn vec_dense_c(&self) -> [Self::Variable; THETA_DENSE_C_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ThetaDenseC(idx)))
     }
 
     fn dense_c(&self, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(THETA_DENSE_C_LEN, 0, 0, x, q);
-        self.keccak_state[KeccakColumn::ThetaDenseC(idx)].clone()
+        self.variable(KeccakColumn::ThetaDenseC(idx))
     }
 
-    fn vec_quotient_c(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(THETA_QUOTIENT_C_OFF, THETA_QUOTIENT_C_LEN)
+    fn vec_quotient_c(&self) -> [Self::Variable; THETA_QUOTIENT_C_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ThetaQuotientC(idx)))
     }
 
-    fn quotient_c(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaQuotientC(idx)].clone()
+    fn quotient_c(&self, x: usize) -> Self::Variable {
+        self.variable(KeccakColumn::ThetaQuotientC(x))
     }
 
-    fn vec_remainder_c(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(THETA_REMAINDER_C_OFF, THETA_REMAINDER_C_LEN)
+    fn vec_remainder_c(&self) -> [Self::Variable; THETA_REMAINDER_C_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ThetaRemainderC(idx)))
     }
 
     fn remainder_c(&self, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(THETA_REMAINDER_C_LEN, 0, 0, x, q);
-        self.keccak_state[KeccakColumn::ThetaRemainderC(idx)].clone()
+        self.variable(KeccakColumn::ThetaRemainderC(idx))
     }
 
-    fn vec_dense_rot_c(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(THETA_DENSE_ROT_C_OFF, THETA_DENSE_ROT_C_LEN)
+    fn vec_dense_rot_c(&self) -> [Self::Variable; THETA_DENSE_ROT_C_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ThetaDenseRotC(idx)))
     }
 
     fn dense_rot_c(&self, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(THETA_DENSE_ROT_C_LEN, 0, 0, x, q);
-        self.keccak_state[KeccakColumn::ThetaDenseRotC(idx)].clone()
+        self.variable(KeccakColumn::ThetaDenseRotC(idx))
     }
 
-    fn vec_expand_rot_c(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(THETA_EXPAND_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN)
+    fn vec_expand_rot_c(&self) -> [Self::Variable; THETA_EXPAND_ROT_C_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ThetaExpandRotC(idx)))
     }
+
     fn expand_rot_c(&self, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(THETA_EXPAND_ROT_C_LEN, 0, 0, x, q);
-        self.keccak_state[KeccakColumn::ThetaExpandRotC(idx)].clone()
+        self.variable(KeccakColumn::ThetaExpandRotC(idx))
     }
 
-    fn vec_shifts_e(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(PIRHO_SHIFTS_E_OFF, PIRHO_SHIFTS_E_LEN)
+    fn vec_shifts_e(&self) -> [Self::Variable; PIRHO_SHIFTS_E_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::PiRhoShiftsE(idx)))
     }
 
     fn shifts_e(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q);
-        self.keccak_state[KeccakColumn::PiRhoShiftsE(idx)].clone()
+        self.variable(KeccakColumn::PiRhoShiftsE(idx))
     }
 
-    fn vec_dense_e(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(PIRHO_DENSE_E_OFF, PIRHO_DENSE_E_LEN)
+    fn vec_dense_e(&self) -> [Self::Variable; PIRHO_DENSE_E_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::PiRhoDenseE(idx)))
     }
 
     fn dense_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(PIRHO_DENSE_E_LEN, 0, y, x, q);
-        self.keccak_state[KeccakColumn::PiRhoDenseE(idx)].clone()
+        self.variable(KeccakColumn::PiRhoDenseE(idx))
     }
 
-    fn vec_quotient_e(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(PIRHO_QUOTIENT_E_OFF, PIRHO_QUOTIENT_E_LEN)
+    fn vec_quotient_e(&self) -> [Self::Variable; PIRHO_QUOTIENT_E_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::PiRhoQuotientE(idx)))
     }
 
     fn quotient_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(PIRHO_QUOTIENT_E_LEN, 0, y, x, q);
-        self.keccak_state[KeccakColumn::PiRhoQuotientE(idx)].clone()
+        self.variable(KeccakColumn::PiRhoQuotientE(idx))
     }
 
-    fn vec_remainder_e(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(PIRHO_REMAINDER_E_OFF, PIRHO_REMAINDER_E_LEN)
+    fn vec_remainder_e(&self) -> [Self::Variable; PIRHO_REMAINDER_E_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::PiRhoRemainderE(idx)))
     }
 
     fn remainder_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(PIRHO_REMAINDER_E_LEN, 0, y, x, q);
-        self.keccak_state[KeccakColumn::PiRhoRemainderE(idx)].clone()
+        self.variable(KeccakColumn::PiRhoRemainderE(idx))
     }
 
-    fn vec_dense_rot_e(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(PIRHO_DENSE_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN)
+    fn vec_dense_rot_e(&self) -> [Self::Variable; PIRHO_DENSE_ROT_E_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::PiRhoDenseRotE(idx)))
     }
 
     fn dense_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(PIRHO_DENSE_ROT_E_LEN, 0, y, x, q);
-        self.keccak_state[KeccakColumn::PiRhoDenseRotE(idx)].clone()
+        self.variable(KeccakColumn::PiRhoDenseRotE(idx))
     }
 
-    fn vec_expand_rot_e(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(PIRHO_EXPAND_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN)
+    fn vec_expand_rot_e(&self) -> [Self::Variable; PIRHO_EXPAND_ROT_E_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::PiRhoExpandRotE(idx)))
     }
 
     fn expand_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(PIRHO_EXPAND_ROT_E_LEN, 0, y, x, q);
-        self.keccak_state[KeccakColumn::PiRhoExpandRotE(idx)].clone()
+        self.variable(KeccakColumn::PiRhoExpandRotE(idx))
     }
 
-    fn vec_shifts_b(&self) -> &[Self::Variable] {
-        self.keccak_state.chunk(CHI_SHIFTS_B_OFF, CHI_SHIFTS_B_LEN)
+    fn vec_shifts_b(&self) -> [Self::Variable; CHI_SHIFTS_B_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ChiShiftsB(idx)))
     }
 
     fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(CHI_SHIFTS_B_LEN, i, y, x, q);
-        self.keccak_state[KeccakColumn::ChiShiftsB(idx)].clone()
+        self.variable(KeccakColumn::ChiShiftsB(idx))
     }
 
-    fn vec_shifts_sum(&self) -> &[Self::Variable] {
-        self.keccak_state
-            .chunk(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN)
+    fn vec_shifts_sum(&self) -> [Self::Variable; CHI_SHIFTS_SUM_LEN] {
+        array::from_fn(|idx| self.variable(KeccakColumn::ChiShiftsSum(idx)))
     }
 
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
         let idx = grid_index(CHI_SHIFTS_SUM_LEN, i, y, x, q);
-        self.keccak_state[KeccakColumn::ChiShiftsSum(idx)].clone()
+        self.variable(KeccakColumn::ChiShiftsSum(idx))
     }
 
     fn state_g(&self, idx: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::Output(idx)].clone()
+        self.variable(KeccakColumn::Output(idx))
     }
 
     fn hash_index(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::HashIndex].clone()
+        self.variable(KeccakColumn::HashIndex)
     }
     fn step_index(&self) -> Self::Variable {
-        self.keccak_state[KeccakColumn::StepIndex].clone()
+        self.variable(KeccakColumn::StepIndex)
+    }
+
+    fn input(&self) -> [Self::Variable; STATE_LEN] {
+        array::from_fn::<_, STATE_LEN, _>(|idx| self.variable(KeccakColumn::Input(idx)))
     }
 
     fn input_of_step(&self) -> Vec<Self::Variable> {
-        [
-            &[self.hash_index(), self.step_index()],
-            self.keccak_state.curr_state(),
-        ]
-        .concat()
+        let mut input_of_step = Vec::with_capacity(STATE_LEN + 2);
+        input_of_step.push(self.hash_index());
+        input_of_step.push(self.step_index());
+        input_of_step.extend_from_slice(&self.input());
+        input_of_step
+    }
+
+    fn output(&self) -> [Self::Variable; STATE_LEN] {
+        array::from_fn::<_, STATE_LEN, _>(|idx| self.variable(KeccakColumn::Output(idx)))
     }
 
     fn output_of_step(&self) -> Vec<Self::Variable> {
-        [
-            &[self.hash_index(), self.step_index() + Self::one()],
-            self.keccak_state.next_state(),
-        ]
-        .concat()
+        let mut output_of_step = Vec::with_capacity(STATE_LEN + 2);
+        output_of_step.push(self.hash_index());
+        output_of_step.push(self.step_index() + Self::one());
+        output_of_step.extend_from_slice(&self.output());
+        output_of_step
     }
 }

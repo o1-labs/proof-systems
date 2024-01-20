@@ -4,7 +4,7 @@ use ark_ff::{One, Zero};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
-    QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN,
+    QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
     THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
     THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
 };
@@ -73,21 +73,6 @@ pub struct KeccakColumns<T> {
 impl<T: Clone> KeccakColumns<T> {
     pub fn chunk(&self, offset: usize, length: usize) -> &[T] {
         &self.curr[offset..offset + length]
-    }
-
-    pub(crate) fn curr_state(&self) -> &[T] {
-        &self.curr[0..STATE_LEN]
-    }
-    pub(crate) fn next_state(&self) -> &[T] {
-        &self.next
-    }
-
-    pub(crate) fn round_constants(&self) -> &[T] {
-        &self.round_constants
-    }
-
-    pub(crate) fn flags_bytes(&self) -> &[T] {
-        &self.flags_bytes
     }
 }
 
