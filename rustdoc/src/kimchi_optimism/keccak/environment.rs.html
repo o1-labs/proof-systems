@@ -639,8 +639,23 @@
 <a href="#639" id="639">639</a>
 <a href="#640" id="640">640</a>
 <a href="#641" id="641">641</a>
-</pre></div><pre class="rust"><code><span class="kw">use super</span>::{
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
+
+<span class="kw">use super</span>::{
     column::{KeccakColumn, KeccakColumns},
+    constraints::Constraints,
     grid_index,
     interpreter::{Absorb, KeccakStep, Sponge},
     ArithOps, BoolOps, DIM, E, QUARTERS,
@@ -661,7 +676,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
 
     <span class="doccomment">/// The full state of the Keccak gate (witness)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) keccak_state: KeccakColumns&lt;E&lt;Fp&gt;&gt;,
+    </span><span class="kw">pub </span>keccak_witness: KeccakColumns&lt;Fp&gt;,
     <span class="doccomment">/// What step of the hash is being executed (or None, if just ended)
     </span><span class="kw">pub </span>keccak_step: <span class="prelude-ty">Option</span>&lt;KeccakStep&gt;,
 
@@ -687,7 +702,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>env = <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],
             lookups: <span class="macro">vec!</span>[],
-            keccak_state: KeccakColumns::default(),
+            keccak_witness: KeccakColumns::default(),
             keccak_step: <span class="prelude-val">None</span>,
             hash_idx,
             step_idx: <span class="number">0</span>,
@@ -723,16 +738,17 @@
     }
 
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: u64) {
-        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant(value);
+        <span class="self">self</span>.keccak_witness[column] = Fp::from(value);
     }
 
     <span class="kw">pub fn </span>write_column_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: Fp) {
-        <span class="self">self</span>.keccak_state[column] = <span class="self">Self</span>::constant_field(value);
+        <span class="self">self</span>.keccak_witness[column] = value;
     }
 
     <span class="kw">pub fn </span>null_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.keccak_state = KeccakColumns::default();
+        <span class="self">self</span>.keccak_witness = KeccakColumns::default();
     }
+
     <span class="kw">pub fn </span>update_step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self</span>.keccak_step {
             <span class="prelude-val">Some</span>(step) =&gt; <span class="kw">match </span>step {
@@ -866,13 +882,14 @@
 
     <span class="kw">fn </span>pad_suffix(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>bytes_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>bytes_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
 
-    <span class="kw">fn </span>flags_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>flags_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; RATE_IN_BYTES];
+    <span class="kw">fn </span>flags_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
 
     <span class="kw">fn </span>block_in_padding(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; QUARTERS];
 
     <span class="kw">fn </span>old_state(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
 
@@ -880,55 +897,56 @@
 
     <span class="kw">fn </span>xor_state(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_ZEROS_LEN];
 
-    <span class="kw">fn </span>vec_sponge_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_sponge_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_SHIFTS_LEN];
     <span class="kw">fn </span>sponge_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>sponge_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>sponge_byte(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>sponge_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_BYTES_LEN];
 
     <span class="kw">fn </span>state_a(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_SHIFTS_C_LEN];
     <span class="kw">fn </span>shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_dense_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_dense_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_DENSE_C_LEN];
     <span class="kw">fn </span>dense_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
-    <span class="kw">fn </span>quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>vec_quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_QUOTIENT_C_LEN];
+    <span class="kw">fn </span>quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_remainder_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_remainder_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_REMAINDER_C_LEN];
     <span class="kw">fn </span>remainder_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_DENSE_ROT_C_LEN];
     <span class="kw">fn </span>dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_expand_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_expand_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_EXPAND_ROT_C_LEN];
     <span class="kw">fn </span>expand_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_SHIFTS_E_LEN];
     <span class="kw">fn </span>shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_DENSE_E_LEN];
     <span class="kw">fn </span>dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_QUOTIENT_E_LEN];
     <span class="kw">fn </span>quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_remainder_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_remainder_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_REMAINDER_E_LEN];
     <span class="kw">fn </span>remainder_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_DENSE_ROT_E_LEN];
     <span class="kw">fn </span>dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_expand_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_expand_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_EXPAND_ROT_E_LEN];
     <span class="kw">fn </span>expand_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; CHI_SHIFTS_B_LEN];
     <span class="kw">fn </span>shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>vec_shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable];
+    <span class="kw">fn </span>vec_shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; CHI_SHIFTS_SUM_LEN];
     <span class="kw">fn </span>shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
@@ -937,8 +955,12 @@
     </span><span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
     <span class="doccomment">/// Returns the step index
     </span><span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns the input variables
+    </span><span class="kw">fn </span>input(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; STATE_LEN];
     <span class="doccomment">/// Returns a slice of the input variables of the current step
     </span><span class="kw">fn </span>input_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
+    <span class="doccomment">/// Returns the output variables
+    </span><span class="kw">fn </span>output(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; STATE_LEN];
     <span class="doccomment">/// Returns a slice of the output variables of the current step (= input of next step)
     </span><span class="kw">fn </span>output_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
 }
@@ -1005,19 +1027,19 @@
     }
 
     <span class="kw">fn </span>is_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagAbsorb].clone()
+        <span class="self">self</span>.variable(KeccakColumn::FlagAbsorb)
     }
 
     <span class="kw">fn </span>is_squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagSqueeze].clone()
+        <span class="self">self</span>.variable(KeccakColumn::FlagSqueeze)
     }
 
     <span class="kw">fn </span>is_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagRoot].clone()
+        <span class="self">self</span>.variable(KeccakColumn::FlagRoot)
     }
 
     <span class="kw">fn </span>is_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagPad].clone()
+        <span class="self">self</span>.variable(KeccakColumn::FlagPad)
     }
 
     <span class="kw">fn </span>is_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -1025,42 +1047,45 @@
     }
 
     <span class="kw">fn </span>round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagRound].clone()
+        <span class="self">self</span>.variable(KeccakColumn::FlagRound)
     }
 
     <span class="kw">fn </span>inverse_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::InverseRound].clone()
+        <span class="self">self</span>.variable(KeccakColumn::InverseRound)
     }
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagLength].clone()
+        <span class="self">self</span>.variable(KeccakColumn::FlagLength)
     }
 
     <span class="kw">fn </span>two_to_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::TwoToPad].clone()
+        <span class="self">self</span>.variable(KeccakColumn::TwoToPad)
     }
 
     <span class="kw">fn </span>in_padding(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::FlagsBytes(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::FlagsBytes(idx))
     }
 
     <span class="kw">fn </span>pad_suffix(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::PadSuffix(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::PadSuffix(idx))
     }
 
-    <span class="kw">fn </span>bytes_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="kw">let </span>sponge_bytes = <span class="self">self</span>.keccak_state.chunk(SPONGE_BYTES_OFF, SPONGE_BYTES_LEN);
+    <span class="kw">fn </span>bytes_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
         <span class="kw">match </span>idx {
-            <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span>sponge_bytes[<span class="number">0</span>..<span class="number">12</span>],
-            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="kw-2">&amp;</span>sponge_bytes[<span class="number">12 </span>+ (idx - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ idx * <span class="number">31</span>],
+            <span class="number">0 </span>=&gt; <span class="self">self</span>.sponge_bytes()[<span class="number">0</span>..<span class="number">12</span>].to_vec(),
+            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="self">self</span>.sponge_bytes()[<span class="number">12 </span>+ (idx - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ idx * <span class="number">31</span>].to_vec(),
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;No more blocks of bytes can be part of padding&quot;</span>),
         }
     }
 
-    <span class="kw">fn </span>flags_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
+    <span class="kw">fn </span>flags_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; RATE_IN_BYTES] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::FlagsBytes(idx)))
+    }
+
+    <span class="kw">fn </span>flags_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
         <span class="kw">match </span>idx {
-            <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.flags_bytes()[<span class="number">0</span>..<span class="number">12</span>],
-            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.keccak_state.flags_bytes()[<span class="number">12 </span>+ (idx - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ idx * <span class="number">31</span>],
+            <span class="number">0 </span>=&gt; <span class="self">self</span>.flags_bytes()[<span class="number">0</span>..<span class="number">12</span>].to_vec(),
+            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="self">self</span>.flags_bytes()[<span class="number">12 </span>+ (idx - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ idx * <span class="number">31</span>].to_vec(),
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;No more blocks of flags can be part of padding&quot;</span>),
         }
     }
@@ -1079,205 +1104,204 @@
         pad
     }
 
-    <span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state.round_constants()
+    <span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; QUARTERS] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::RoundConstants(idx)))
     }
 
     <span class="kw">fn </span>old_state(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::Input(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::Input(idx))
     }
 
     <span class="kw">fn </span>new_state(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::SpongeNewState(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::SpongeNewState(idx))
     }
 
     <span class="kw">fn </span>xor_state(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::Output(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::Output(idx))
     }
 
-    <span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state.chunk(SPONGE_ZEROS_OFF, SPONGE_ZEROS_LEN)
+    <span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_ZEROS_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::SpongeNewState(SPONGE_ZEROS_OFF + idx)))
     }
 
-    <span class="kw">fn </span>sponge_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::SpongeBytes(idx)].clone()
+    <span class="kw">fn </span>sponge_byte(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.variable(KeccakColumn::SpongeBytes(idx))
     }
 
-    <span class="kw">fn </span>vec_sponge_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_LEN)
+    <span class="kw">fn </span>sponge_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_BYTES_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::SpongeBytes(idx)))
+    }
+
+    <span class="kw">fn </span>vec_sponge_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_SHIFTS_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::SpongeShifts(idx)))
     }
 
     <span class="kw">fn </span>sponge_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::SpongeShifts(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::SpongeShifts(idx))
     }
 
     <span class="kw">fn </span>state_a(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_STATE_A_LEN, <span class="number">0</span>, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::Input(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::Input(idx))
     }
 
-    <span class="kw">fn </span>vec_shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN)
+    <span class="kw">fn </span>vec_shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_SHIFTS_C_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaShiftsC(idx)))
     }
     <span class="kw">fn </span>shifts_c(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_SHIFTS_C_LEN, i, <span class="number">0</span>, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::ThetaShiftsC(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::ThetaShiftsC(idx))
     }
 
-    <span class="kw">fn </span>vec_dense_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(THETA_DENSE_C_OFF, THETA_DENSE_C_LEN)
+    <span class="kw">fn </span>vec_dense_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_DENSE_C_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaDenseC(idx)))
     }
 
     <span class="kw">fn </span>dense_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_DENSE_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::ThetaDenseC(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::ThetaDenseC(idx))
     }
 
-    <span class="kw">fn </span>vec_quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(THETA_QUOTIENT_C_OFF, THETA_QUOTIENT_C_LEN)
+    <span class="kw">fn </span>vec_quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_QUOTIENT_C_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaQuotientC(idx)))
     }
 
-    <span class="kw">fn </span>quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::ThetaQuotientC(idx)].clone()
+    <span class="kw">fn </span>quotient_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.variable(KeccakColumn::ThetaQuotientC(x))
     }
 
-    <span class="kw">fn </span>vec_remainder_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(THETA_REMAINDER_C_OFF, THETA_REMAINDER_C_LEN)
+    <span class="kw">fn </span>vec_remainder_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_REMAINDER_C_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaRemainderC(idx)))
     }
 
     <span class="kw">fn </span>remainder_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_REMAINDER_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::ThetaRemainderC(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::ThetaRemainderC(idx))
     }
 
-    <span class="kw">fn </span>vec_dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(THETA_DENSE_ROT_C_OFF, THETA_DENSE_ROT_C_LEN)
+    <span class="kw">fn </span>vec_dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_DENSE_ROT_C_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaDenseRotC(idx)))
     }
 
     <span class="kw">fn </span>dense_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_DENSE_ROT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::ThetaDenseRotC(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::ThetaDenseRotC(idx))
     }
 
-    <span class="kw">fn </span>vec_expand_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(THETA_EXPAND_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN)
+    <span class="kw">fn </span>vec_expand_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; THETA_EXPAND_ROT_C_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ThetaExpandRotC(idx)))
     }
+
     <span class="kw">fn </span>expand_rot_c(<span class="kw-2">&amp;</span><span class="self">self</span>, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(THETA_EXPAND_ROT_C_LEN, <span class="number">0</span>, <span class="number">0</span>, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::ThetaExpandRotC(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::ThetaExpandRotC(idx))
     }
 
-    <span class="kw">fn </span>vec_shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(PIRHO_SHIFTS_E_OFF, PIRHO_SHIFTS_E_LEN)
+    <span class="kw">fn </span>vec_shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_SHIFTS_E_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoShiftsE(idx)))
     }
 
     <span class="kw">fn </span>shifts_e(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::PiRhoShiftsE(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::PiRhoShiftsE(idx))
     }
 
-    <span class="kw">fn </span>vec_dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(PIRHO_DENSE_E_OFF, PIRHO_DENSE_E_LEN)
+    <span class="kw">fn </span>vec_dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_DENSE_E_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseE(idx)))
     }
 
     <span class="kw">fn </span>dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_DENSE_E_LEN, <span class="number">0</span>, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::PiRhoDenseE(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseE(idx))
     }
 
-    <span class="kw">fn </span>vec_quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(PIRHO_QUOTIENT_E_OFF, PIRHO_QUOTIENT_E_LEN)
+    <span class="kw">fn </span>vec_quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_QUOTIENT_E_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoQuotientE(idx)))
     }
 
     <span class="kw">fn </span>quotient_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_QUOTIENT_E_LEN, <span class="number">0</span>, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::PiRhoQuotientE(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::PiRhoQuotientE(idx))
     }
 
-    <span class="kw">fn </span>vec_remainder_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(PIRHO_REMAINDER_E_OFF, PIRHO_REMAINDER_E_LEN)
+    <span class="kw">fn </span>vec_remainder_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_REMAINDER_E_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoRemainderE(idx)))
     }
 
     <span class="kw">fn </span>remainder_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_REMAINDER_E_LEN, <span class="number">0</span>, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::PiRhoRemainderE(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::PiRhoRemainderE(idx))
     }
 
-    <span class="kw">fn </span>vec_dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(PIRHO_DENSE_ROT_E_OFF, PIRHO_DENSE_ROT_E_LEN)
+    <span class="kw">fn </span>vec_dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_DENSE_ROT_E_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseRotE(idx)))
     }
 
     <span class="kw">fn </span>dense_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_DENSE_ROT_E_LEN, <span class="number">0</span>, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::PiRhoDenseRotE(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseRotE(idx))
     }
 
-    <span class="kw">fn </span>vec_expand_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(PIRHO_EXPAND_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN)
+    <span class="kw">fn </span>vec_expand_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_EXPAND_ROT_E_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoExpandRotE(idx)))
     }
 
     <span class="kw">fn </span>expand_rot_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(PIRHO_EXPAND_ROT_E_LEN, <span class="number">0</span>, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::PiRhoExpandRotE(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::PiRhoExpandRotE(idx))
     }
 
-    <span class="kw">fn </span>vec_shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state.chunk(CHI_SHIFTS_B_OFF, CHI_SHIFTS_B_LEN)
+    <span class="kw">fn </span>vec_shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; CHI_SHIFTS_B_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ChiShiftsB(idx)))
     }
 
     <span class="kw">fn </span>shifts_b(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(CHI_SHIFTS_B_LEN, i, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::ChiShiftsB(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::ChiShiftsB(idx))
     }
 
-    <span class="kw">fn </span>vec_shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="self">Self</span>::Variable] {
-        <span class="self">self</span>.keccak_state
-            .chunk(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN)
+    <span class="kw">fn </span>vec_shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; CHI_SHIFTS_SUM_LEN] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::ChiShiftsSum(idx)))
     }
 
     <span class="kw">fn </span>shifts_sum(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>idx = grid_index(CHI_SHIFTS_SUM_LEN, i, y, x, q);
-        <span class="self">self</span>.keccak_state[KeccakColumn::ChiShiftsSum(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::ChiShiftsSum(idx))
     }
 
     <span class="kw">fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::Output(idx)].clone()
+        <span class="self">self</span>.variable(KeccakColumn::Output(idx))
     }
 
     <span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::HashIndex].clone()
+        <span class="self">self</span>.variable(KeccakColumn::HashIndex)
     }
     <span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.keccak_state[KeccakColumn::StepIndex].clone()
+        <span class="self">self</span>.variable(KeccakColumn::StepIndex)
+    }
+
+    <span class="kw">fn </span>input(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; STATE_LEN] {
+        array::from_fn::&lt;<span class="kw">_</span>, STATE_LEN, <span class="kw">_</span>&gt;(|idx| <span class="self">self</span>.variable(KeccakColumn::Input(idx)))
     }
 
     <span class="kw">fn </span>input_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
-        [
-            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_index(), <span class="self">self</span>.step_index()],
-            <span class="self">self</span>.keccak_state.curr_state(),
-        ]
-        .concat()
+        <span class="kw">let </span><span class="kw-2">mut </span>input_of_step = Vec::with_capacity(STATE_LEN + <span class="number">2</span>);
+        input_of_step.push(<span class="self">self</span>.hash_index());
+        input_of_step.push(<span class="self">self</span>.step_index());
+        input_of_step.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.input());
+        input_of_step
+    }
+
+    <span class="kw">fn </span>output(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; STATE_LEN] {
+        array::from_fn::&lt;<span class="kw">_</span>, STATE_LEN, <span class="kw">_</span>&gt;(|idx| <span class="self">self</span>.variable(KeccakColumn::Output(idx)))
     }
 
     <span class="kw">fn </span>output_of_step(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
-        [
-            <span class="kw-2">&amp;</span>[<span class="self">self</span>.hash_index(), <span class="self">self</span>.step_index() + <span class="self">Self</span>::one()],
-            <span class="self">self</span>.keccak_state.next_state(),
-        ]
-        .concat()
+        <span class="kw">let </span><span class="kw-2">mut </span>output_of_step = Vec::with_capacity(STATE_LEN + <span class="number">2</span>);
+        output_of_step.push(<span class="self">self</span>.hash_index());
+        output_of_step.push(<span class="self">self</span>.step_index() + <span class="self">Self</span>::one());
+        output_of_step.extend_from_slice(<span class="kw-2">&amp;</span><span class="self">self</span>.output());
+        output_of_step
     }
 }
 </code></pre></div></section></main></body></html>

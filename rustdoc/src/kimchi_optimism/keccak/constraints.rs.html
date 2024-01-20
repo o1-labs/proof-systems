@@ -255,6 +255,19 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -262,9 +275,13 @@
     {ArithOps, BoolOps, E, WORDS_IN_HASH},
 };
 <span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::{
-    constants::{DIM, QUARTERS, RATE_IN_BYTES, SPONGE_ZEROS_LEN},
-    OFF,
+<span class="kw">use </span>kimchi::circuits::{
+    expr::{Expr, ExprInner, Variable},
+    gate::CurrOrNext,
+    polynomials::keccak::{
+        constants::{DIM, QUARTERS, RATE_IN_BYTES, SPONGE_ZEROS_LEN},
+        OFF,
+    },
 };
 
 <span class="kw">pub trait </span>Constraints {
@@ -275,6 +292,8 @@
         + Clone;
     <span class="kw">type </span>Fp: std::ops::Neg&lt;Output = <span class="self">Self</span>::Fp&gt;;
 
+    <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Column) -&gt; <span class="self">Self</span>::Variable;
+
     <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>constraints(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
@@ -284,6 +303,13 @@
     <span class="kw">type </span>Column = KeccakColumn;
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
     <span class="kw">type </span>Fp = Fp;
+
+    <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Column) -&gt; <span class="self">Self</span>::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
 
     <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
         <span class="self">self</span>.constraints.push(x);
@@ -349,7 +375,7 @@
                     <span class="self">self</span>.is_absorb()
                         * (<span class="self">self</span>.new_state(i).clone()
                             - <span class="self">Self</span>::from_shifts(
-                                <span class="self">self</span>.vec_sponge_shifts(),
+                                <span class="kw-2">&amp;</span><span class="self">self</span>.vec_sponge_shifts(),
                                 <span class="prelude-val">Some</span>(i),
                                 <span class="prelude-val">None</span>,
                                 <span class="prelude-val">None</span>,
@@ -363,7 +389,7 @@
                     <span class="self">self</span>.is_squeeze()
                         * (<span class="self">self</span>.old_state(i).clone()
                             - <span class="self">Self</span>::from_shifts(
-                                <span class="self">self</span>.vec_sponge_shifts(),
+                                <span class="kw-2">&amp;</span><span class="self">self</span>.vec_sponge_shifts(),
                                 <span class="prelude-val">Some</span>(i),
                                 <span class="prelude-val">None</span>,
                                 <span class="prelude-val">None</span>,
@@ -373,7 +399,7 @@
             }
             <span class="comment">// Check that the padding is located at the end of the message
             </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
-                acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_bytes(i).clone()
+                acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_byte(i)
             });
             <span class="self">self</span>.constrain(<span class="self">self</span>.is_pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
             <span class="comment">// Check that the padding value is correct
@@ -393,9 +419,9 @@
 
             <span class="comment">// STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
             </span><span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
-                <span class="kw">let </span>word_c = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_c(), <span class="prelude-val">None</span>, x);
-                <span class="kw">let </span>rem_c = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_remainder_c(), <span class="prelude-val">None</span>, x);
-                <span class="kw">let </span>rot_c = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_rot_c(), <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>word_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_c(), <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>rem_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_remainder_c(), <span class="prelude-val">None</span>, x);
+                <span class="kw">let </span>rot_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_rot_c(), <span class="prelude-val">None</span>, x);
 
                 <span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_round()
@@ -415,7 +441,7 @@
                         <span class="self">self</span>.is_round()
                             * (state_c[x][q].clone()
                                 - <span class="self">Self</span>::from_shifts(
-                                    <span class="self">self</span>.vec_shifts_c(),
+                                    <span class="kw-2">&amp;</span><span class="self">self</span>.vec_shifts_c(),
                                     <span class="prelude-val">None</span>,
                                     <span class="prelude-val">None</span>,
                                     <span class="prelude-val">Some</span>(x),
@@ -435,10 +461,10 @@
             // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
             </span><span class="kw">for </span>(y, col) <span class="kw">in </span>OFF.iter().enumerate() {
                 <span class="kw">for </span>(x, off) <span class="kw">in </span>col.iter().enumerate() {
-                    <span class="kw">let </span>word_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_e(), <span class="prelude-val">Some</span>(y), x);
-                    <span class="kw">let </span>quo_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_quotient_e(), <span class="prelude-val">Some</span>(y), x);
-                    <span class="kw">let </span>rem_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_remainder_e(), <span class="prelude-val">Some</span>(y), x);
-                    <span class="kw">let </span>rot_e = <span class="self">Self</span>::from_quarters(<span class="self">self</span>.vec_dense_rot_e(), <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>word_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_e(), <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>quo_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_quotient_e(), <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>rem_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_remainder_e(), <span class="prelude-val">Some</span>(y), x);
+                    <span class="kw">let </span>rot_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_rot_e(), <span class="prelude-val">Some</span>(y), x);
 
                     <span class="self">self</span>.constrain(
                         word_e * <span class="self">Self</span>::two_pow(<span class="kw-2">*</span>off)
@@ -451,7 +477,7 @@
                             <span class="self">self</span>.is_round()
                                 * (state_e[y][x][q].clone()
                                     - <span class="self">Self</span>::from_shifts(
-                                        <span class="self">self</span>.vec_shifts_e(),
+                                        <span class="kw-2">&amp;</span><span class="self">self</span>.vec_shifts_e(),
                                         <span class="prelude-val">None</span>,
                                         <span class="prelude-val">Some</span>(y),
                                         <span class="prelude-val">Some</span>(x),
@@ -476,7 +502,7 @@
                             <span class="self">self</span>.is_round()
                                 * (state_b[y][x][q].clone()
                                     - <span class="self">Self</span>::from_shifts(
-                                        <span class="self">self</span>.vec_shifts_b(),
+                                        <span class="kw-2">&amp;</span><span class="self">self</span>.vec_shifts_b(),
                                         <span class="prelude-val">None</span>,
                                         <span class="prelude-val">Some</span>(y),
                                         <span class="prelude-val">Some</span>(x),
@@ -487,7 +513,7 @@
                             <span class="self">self</span>.is_round()
                                 * (sum
                                     - <span class="self">Self</span>::from_shifts(
-                                        <span class="self">self</span>.vec_shifts_sum(),
+                                        <span class="kw-2">&amp;</span><span class="self">self</span>.vec_shifts_sum(),
                                         <span class="prelude-val">None</span>,
                                         <span class="prelude-val">Some</span>(y),
                                         <span class="prelude-val">Some</span>(x),

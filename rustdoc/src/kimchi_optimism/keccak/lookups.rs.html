@@ -357,7 +357,7 @@
                 <span class="macro">vec!</span>[
                     <span class="self">self</span>.hash_index(),
                     <span class="self">Self</span>::constant(<span class="self">self</span>.block_idx * RATE_IN_BYTES <span class="kw">as </span>u64 + i <span class="kw">as </span>u64),
-                    <span class="self">self</span>.sponge_bytes(i),
+                    <span class="self">self</span>.sponge_byte(i),
                 ],
             ));
         }
@@ -365,7 +365,7 @@
 
     <span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(<span class="self">Self</span>::zero(), |acc, i| {
-            acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_bytes(i)
+            acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_byte(i)
         });
         <span class="self">self</span>.add_lookup(Lookup::write_one(
             LookupTable::SyscallLookup,
@@ -442,7 +442,7 @@
         <span class="comment">// BYTES LOOKUPS
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">200 </span>{
             <span class="comment">// Bytes are &lt;2^8
-            </span><span class="self">self</span>.lookup_byte(<span class="self">self</span>.is_sponge(), <span class="self">self</span>.sponge_bytes(i));
+            </span><span class="self">self</span>.lookup_byte(<span class="self">self</span>.is_sponge(), <span class="self">self</span>.sponge_byte(i));
         }
         <span class="comment">// SHIFTS LOOKUPS
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
@@ -451,7 +451,7 @@
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
             <span class="comment">// Shifts0 together with Bits composition by pairs are in the Reset table
-            </span><span class="kw">let </span>dense = <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i) + <span class="self">self</span>.sponge_bytes(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>);
+            </span><span class="kw">let </span>dense = <span class="self">self</span>.sponge_byte(<span class="number">2 </span>* i) + <span class="self">self</span>.sponge_byte(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>);
             <span class="self">self</span>.lookup_reset(<span class="self">self</span>.is_sponge(), dense, <span class="self">self</span>.sponge_shifts(i));
         }
     }
