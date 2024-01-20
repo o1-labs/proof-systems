@@ -17,7 +17,7 @@ use syn::{
 };
 
 /// The [SnarkyType] derive macro.
-/// It generates implementations of [`kimchi::snarky::SnarkyType`],
+/// It generates implementations of \[`kimchi::snarky::SnarkyType`\],
 /// as long as your structure's fields implement that type as well.
 /// It works very similarly to [`serde`].
 ///
