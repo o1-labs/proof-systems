@@ -596,7 +596,7 @@
             <span class="self">self</span>.write_column(KeccakColumn::IotaStateG(i), <span class="kw-2">*</span>g);
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-            <span class="self">self</span>.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
+            <span class="self">self</span>.write_column(KeccakColumn::RoundConstants(i), iota.round_constants(i));
         }
 
         state_g

@@ -490,6 +490,9 @@
 <a href="#490" id="490">490</a>
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
 </span><span class="kw">use crate</span>::{
@@ -848,25 +851,28 @@
 <span class="doccomment">/// Values involved in Iota permutation step
 </span><span class="kw">pub struct </span>Iota {
     state_g: Vec&lt;u64&gt;,
-    rc: Vec&lt;u64&gt;,
+    round_constants: Vec&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>Iota {
     <span class="kw">pub fn </span>create(state_f: <span class="kw-2">&amp;</span>[u64], round: usize) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>rc = Keccak::sparse(RC[round]);
+        <span class="kw">let </span>round_constants = Keccak::sparse(RC[round]);
         <span class="kw">let </span><span class="kw-2">mut </span>state_g = state_f.to_vec();
-        <span class="kw">for </span>(i, c) <span class="kw">in </span>rc.iter().enumerate() {
+        <span class="kw">for </span>(i, c) <span class="kw">in </span>round_constants.iter().enumerate() {
             state_g[i] = state_f[i] + <span class="kw-2">*</span>c;
         }
-        <span class="self">Self </span>{ state_g, rc }
+        <span class="self">Self </span>{
+            state_g,
+            round_constants,
+        }
     }
 
     <span class="kw">pub fn </span>state_g(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u64&gt; {
         <span class="self">self</span>.state_g.clone()
     }
 
-    <span class="kw">pub fn </span>rc(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; u64 {
-        <span class="self">self</span>.rc[i]
+    <span class="kw">pub fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; u64 {
+        <span class="self">self</span>.round_constants[i]
     }
 }
 
