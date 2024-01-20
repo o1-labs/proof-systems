@@ -203,6 +203,17 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.prev_block = state_g;
     }
 
+    /// Computing
+    /// ```
+    /// for x in 0…4
+    ///   C[x] = A[x,0] xor A[x,1] xor \
+    ///          A[x,2] xor A[x,3] xor \
+    ///          A[x,4]
+    /// for x in 0…4
+    ///   D[x] = C[x-1] xor rot(C[x+1],1)
+    /// for (x,y) in (0…4,0…4)
+    ///   A[x,y] = A[x,y] xor D[x]
+    /// ```
     fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
         let theta = Theta::create(state_a);
 
@@ -229,6 +240,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         theta.state_e()
     }
 
+    /// Computing
+    /// ```
+    /// for (x,y) in (0…4,0…4)
+    ///   B[y,2*x+3*y] = rot(A[x,y], r[x,y])
+    /// ```
     fn run_pirho(&mut self, state_e: &[u64]) -> Vec<u64> {
         let pirho = PiRho::create(state_e);
 
@@ -265,6 +281,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         pirho.state_b()
     }
 
+    /// Computing
+    /// ```
+    /// for (x,y) in (0…4,0…4)
+    ///   A[x, y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y])
+    /// ```
     fn run_chi(&mut self, state_b: &[u64]) -> Vec<u64> {
         let chi = Chi::create(state_b);
 
@@ -288,6 +309,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         chi.state_f()
     }
 
+    /// Computing
+    /// ```
+    /// A[0,0] = A[0,0] xor RC
+    /// ```
     fn run_iota(&mut self, state_f: &[u64], round: usize) -> Vec<u64> {
         let iota = Iota::create(state_f, round);
         let state_g = iota.state_g();
