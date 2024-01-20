@@ -298,23 +298,19 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::KeccakEnv,
+    grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
     lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 <span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::{
-    circuits::polynomials::keccak::{
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS},
-        witness::{Chi, Iota, PiRho, Theta},
-        Keccak,
-    },
-    grid,
+<span class="kw">use </span>kimchi::circuits::polynomials::keccak::{
+    constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS, THETA_STATE_A_LEN},
+    witness::{Chi, Iota, PiRho, Theta},
+    Keccak,
 };
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad_blocks&lt;Fp: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;Fp&gt; {
@@ -417,14 +413,14 @@
         <span class="kw">let </span>bytes = Keccak::bytestring(<span class="kw-2">&amp;</span>dense);
 
         <span class="comment">// Write squeeze-related columns
-        </span><span class="kw">for </span>(i, value) <span class="kw">in </span>state.iter().enumerate() {
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeOldState(i), <span class="kw-2">*</span>value);
+        </span><span class="kw">for </span>(idx, value) <span class="kw">in </span>state.iter().enumerate() {
+            <span class="self">self</span>.write_column(KeccakColumn::Input(idx), <span class="kw-2">*</span>value);
         }
-        <span class="kw">for </span>(i, value) <span class="kw">in </span>bytes.iter().enumerate().take(HASH_BYTELENGTH) {
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeBytes(i), <span class="kw-2">*</span>value);
+        <span class="kw">for </span>(idx, value) <span class="kw">in </span>bytes.iter().enumerate().take(HASH_BYTELENGTH) {
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeBytes(idx), <span class="kw-2">*</span>value);
         }
-        <span class="kw">for </span>(i, value) <span class="kw">in </span>shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(i), <span class="kw-2">*</span>value);
+        <span class="kw">for </span>(idx, value) <span class="kw">in </span>shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(idx), <span class="kw-2">*</span>value);
         }
 
         <span class="comment">// Rest is zero thanks to null_state
@@ -464,20 +460,20 @@
         <span class="kw">let </span>bytes = block.iter().map(|b| <span class="kw-2">*</span>b <span class="kw">as </span>u64).collect::&lt;Vec&lt;u64&gt;&gt;();
 
         <span class="comment">// Write absorb-related columns
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeOldState(i), old_state[i]);
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeNewState(i), new_state[i]);
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeXorState(i), xor_state[i]);
+        </span><span class="kw">for </span>idx <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
+            <span class="self">self</span>.write_column(KeccakColumn::Input(idx), old_state[idx]);
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeNewState(idx), new_state[idx]);
+            <span class="self">self</span>.write_column(KeccakColumn::Output(idx), xor_state[idx]);
         }
-        <span class="kw">for </span>(i, value) <span class="kw">in </span>bytes.iter().enumerate() {
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeBytes(i), <span class="kw-2">*</span>value);
+        <span class="kw">for </span>(idx, value) <span class="kw">in </span>bytes.iter().enumerate() {
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeBytes(idx), <span class="kw-2">*</span>value);
         }
-        <span class="kw">for </span>(i, value) <span class="kw">in </span>shifts.iter().enumerate() {
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(i), <span class="kw-2">*</span>value);
+        <span class="kw">for </span>(idx, value) <span class="kw">in </span>shifts.iter().enumerate() {
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(idx), <span class="kw-2">*</span>value);
         }
         <span class="kw">let </span>pad_blocks = pad_blocks::&lt;Fp&gt;(<span class="self">self</span>.pad_len <span class="kw">as </span>usize);
-        <span class="kw">for </span>(i, value) <span class="kw">in </span>pad_blocks.iter().enumerate() {
-            <span class="self">self</span>.write_column_field(KeccakColumn::PadSuffix(i), <span class="kw-2">*</span>value);
+        <span class="kw">for </span>(idx, value) <span class="kw">in </span>pad_blocks.iter().enumerate() {
+            <span class="self">self</span>.write_column_field(KeccakColumn::PadSuffix(idx), <span class="kw-2">*</span>value);
         }
         <span class="comment">// Rest is zero thanks to null_state
 
@@ -517,8 +513,8 @@
                     theta.expand_rot_c(x, q),
                 );
                 <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
-                    <span class="kw">let </span>state_a = <span class="macro">grid!</span>(<span class="number">100</span>, state_a);
-                    <span class="self">self</span>.write_column(KeccakColumn::ThetaStateA(y, x, q), state_a(y, x, q));
+                    <span class="kw">let </span>idx = grid_index(THETA_STATE_A_LEN, <span class="number">0</span>, y, x, q);
+                    <span class="self">self</span>.write_column(KeccakColumn::Input(idx), state_a[idx]);
                 }
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                     <span class="self">self</span>.write_column(KeccakColumn::ThetaShiftsC(i, x, q), theta.shifts_c(i, x, q));
@@ -592,11 +588,11 @@
         <span class="kw">let </span>state_g = iota.state_g();
 
         <span class="comment">// Update columns
-        </span><span class="kw">for </span>(i, g) <span class="kw">in </span>state_g.iter().enumerate() {
-            <span class="self">self</span>.write_column(KeccakColumn::IotaStateG(i), <span class="kw-2">*</span>g);
+        </span><span class="kw">for </span>(idx, g) <span class="kw">in </span>state_g.iter().enumerate() {
+            <span class="self">self</span>.write_column(KeccakColumn::Output(idx), <span class="kw-2">*</span>g);
         }
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-            <span class="self">self</span>.write_column(KeccakColumn::RoundConstants(i), iota.round_constants(i));
+        <span class="kw">for </span>idx <span class="kw">in </span><span class="number">0</span>..QUARTERS {
+            <span class="self">self</span>.write_column(KeccakColumn::RoundConstants(idx), iota.round_constants(idx));
         }
 
         state_g

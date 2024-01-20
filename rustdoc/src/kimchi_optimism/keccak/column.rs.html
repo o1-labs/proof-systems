@@ -437,17 +437,6 @@
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -456,11 +445,10 @@
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
     PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES,
-    SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN,
-    THETA_DENSE_C_LEN, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF,
-    THETA_EXPAND_ROT_C_LEN, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF,
-    THETA_REMAINDER_C_LEN, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
-    THETA_STATE_A_LEN, THETA_STATE_A_OFF,
+    SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN, THETA_DENSE_C_LEN,
+    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
+    THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
+    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
 };
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
@@ -484,7 +472,7 @@
     </span>FlagsBytes(usize),                        <span class="comment">// 136 boolean values
     </span>PadSuffix(usize),                         <span class="comment">// 5 values with padding suffix
     </span>RoundConstants(usize),                    <span class="comment">// Round constants
-    </span>ThetaStateA(usize, usize, usize),         <span class="comment">// Round Curr[0..100)
+    </span>Input(usize),                             <span class="comment">// Curr[0..100) either ThetaStateA or SpongeOldState
     </span>ThetaShiftsC(usize, usize, usize),        <span class="comment">// Round Curr[100..180)
     </span>ThetaDenseC(usize, usize),                <span class="comment">// Round Curr[180..200)
     </span>ThetaQuotientC(usize),                    <span class="comment">// Round Curr[200..205)
@@ -499,12 +487,10 @@
     </span>PiRhoExpandRotE(usize, usize, usize),     <span class="comment">// Round Curr[1065..1165)
     </span>ChiShiftsB(usize, usize, usize, usize),   <span class="comment">// Round Curr[1165..1565)
     </span>ChiShiftsSum(usize, usize, usize, usize), <span class="comment">// Round Curr[1565..1965)
-    </span>IotaStateG(usize),                        <span class="comment">// Round Next[0..100)
-    </span>SpongeOldState(usize),                    <span class="comment">// Sponge Curr[0..100)
     </span>SpongeNewState(usize),                    <span class="comment">// Sponge Curr[100..200)
     </span>SpongeBytes(usize),                       <span class="comment">// Sponge Curr[200..400)
     </span>SpongeShifts(usize),                      <span class="comment">// Sponge Curr[400..800)
-    </span>SpongeXorState(usize),                    <span class="comment">// Absorb Next[0..100)
+    </span>Output(usize),                            <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
 </span>}
 
 <span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
@@ -600,12 +586,10 @@
             KeccakColumn::FlagLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flag_length,
             KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.two_to_pad,
             KeccakColumn::InverseRound =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.inverse_round,
-            KeccakColumn::FlagsBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flags_bytes[i],
-            KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pad_suffix[i],
-            KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.round_constants[q],
-            KeccakColumn::ThetaStateA(y, x, q) =&gt; {
-                <span class="self">self</span>.curr(THETA_STATE_A_OFF, THETA_STATE_A_LEN, <span class="number">0</span>, y, x, q)
-            }
+            KeccakColumn::FlagsBytes(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.flags_bytes[idx],
+            KeccakColumn::PadSuffix(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pad_suffix[idx],
+            KeccakColumn::RoundConstants(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.round_constants[idx],
+            KeccakColumn::Input(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[idx],
             KeccakColumn::ThetaShiftsC(i, x, q) =&gt; {
                 <span class="self">self</span>.curr(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN, i, <span class="number">0</span>, x, q)
             }
@@ -648,12 +632,10 @@
             KeccakColumn::ChiShiftsSum(i, y, x, q) =&gt; {
                 <span class="self">self</span>.curr(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN, i, y, x, q)
             }
-            KeccakColumn::IotaStateG(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next[i],
-            KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_OLD_STATE_OFF + i],
-            KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_NEW_STATE_OFF + i],
-            KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_BYTES_OFF + i],
-            KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_SHIFTS_OFF + i],
-            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next[i],
+            KeccakColumn::SpongeNewState(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_NEW_STATE_OFF + idx],
+            KeccakColumn::SpongeBytes(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_BYTES_OFF + idx],
+            KeccakColumn::SpongeShifts(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[SPONGE_SHIFTS_OFF + idx],
+            KeccakColumn::Output(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next[idx],
         }
     }
 }
@@ -674,9 +656,7 @@
             KeccakColumn::FlagsBytes(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.flags_bytes[i],
             KeccakColumn::PadSuffix(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_suffix[i],
             KeccakColumn::RoundConstants(q) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.round_constants[q],
-            KeccakColumn::ThetaStateA(y, x, q) =&gt; {
-                <span class="self">self</span>.mut_curr(THETA_STATE_A_OFF, THETA_STATE_A_LEN, <span class="number">0</span>, y, x, q)
-            }
+            KeccakColumn::Input(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[idx],
             KeccakColumn::ThetaShiftsC(i, x, q) =&gt; {
                 <span class="self">self</span>.mut_curr(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN, i, <span class="number">0</span>, x, q)
             }
@@ -719,12 +699,10 @@
             KeccakColumn::ChiShiftsSum(i, y, x, q) =&gt; {
                 <span class="self">self</span>.mut_curr(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN, i, y, x, q)
             }
-            KeccakColumn::IotaStateG(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.next[i],
-            KeccakColumn::SpongeOldState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_OLD_STATE_OFF + i],
             KeccakColumn::SpongeNewState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_NEW_STATE_OFF + i],
             KeccakColumn::SpongeBytes(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_BYTES_OFF + i],
             KeccakColumn::SpongeShifts(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[SPONGE_SHIFTS_OFF + i],
-            KeccakColumn::SpongeXorState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.next[i],
+            KeccakColumn::Output(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.next[idx],
         }
     }
 }
