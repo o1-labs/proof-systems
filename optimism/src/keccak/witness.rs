@@ -1,3 +1,6 @@
+/// This file contains the implementation of the witness for the Keccak permutation.
+/// For a pseudo code implementation of Keccap-f, see
+/// https://keccak.team/keccak_specs_summary.html
 use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
