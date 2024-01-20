@@ -1,18 +1,16 @@
 use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
+    grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
     lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
-use kimchi::{
-    circuits::polynomials::keccak::{
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS},
-        witness::{Chi, Iota, PiRho, Theta},
-        Keccak,
-    },
-    grid,
+use kimchi::circuits::polynomials::keccak::{
+    constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS, THETA_STATE_A_LEN},
+    witness::{Chi, Iota, PiRho, Theta},
+    Keccak,
 };
 
 pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
@@ -115,14 +113,14 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let bytes = Keccak::bytestring(&dense);
 
         // Write squeeze-related columns
-        for (i, value) in state.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeOldState(i), *value);
+        for (idx, value) in state.iter().enumerate() {
+            self.write_column(KeccakColumn::Input(idx), *value);
         }
-        for (i, value) in bytes.iter().enumerate().take(HASH_BYTELENGTH) {
-            self.write_column(KeccakColumn::SpongeBytes(i), *value);
+        for (idx, value) in bytes.iter().enumerate().take(HASH_BYTELENGTH) {
+            self.write_column(KeccakColumn::SpongeBytes(idx), *value);
         }
-        for (i, value) in shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
-            self.write_column(KeccakColumn::SpongeShifts(i), *value);
+        for (idx, value) in shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
+            self.write_column(KeccakColumn::SpongeShifts(idx), *value);
         }
 
         // Rest is zero thanks to null_state
@@ -162,20 +160,20 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
 
         // Write absorb-related columns
-        for i in 0..QUARTERS * DIM * DIM {
-            self.write_column(KeccakColumn::SpongeOldState(i), old_state[i]);
-            self.write_column(KeccakColumn::SpongeNewState(i), new_state[i]);
-            self.write_column(KeccakColumn::SpongeXorState(i), xor_state[i]);
+        for idx in 0..QUARTERS * DIM * DIM {
+            self.write_column(KeccakColumn::Input(idx), old_state[idx]);
+            self.write_column(KeccakColumn::SpongeNewState(idx), new_state[idx]);
+            self.write_column(KeccakColumn::Output(idx), xor_state[idx]);
         }
-        for (i, value) in bytes.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeBytes(i), *value);
+        for (idx, value) in bytes.iter().enumerate() {
+            self.write_column(KeccakColumn::SpongeBytes(idx), *value);
         }
-        for (i, value) in shifts.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeShifts(i), *value);
+        for (idx, value) in shifts.iter().enumerate() {
+            self.write_column(KeccakColumn::SpongeShifts(idx), *value);
         }
         let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
-        for (i, value) in pad_blocks.iter().enumerate() {
-            self.write_column_field(KeccakColumn::PadSuffix(i), *value);
+        for (idx, value) in pad_blocks.iter().enumerate() {
+            self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
         }
         // Rest is zero thanks to null_state
 
@@ -215,8 +213,8 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
                     theta.expand_rot_c(x, q),
                 );
                 for y in 0..DIM {
-                    let state_a = grid!(100, state_a);
-                    self.write_column(KeccakColumn::ThetaStateA(y, x, q), state_a(y, x, q));
+                    let idx = grid_index(THETA_STATE_A_LEN, 0, y, x, q);
+                    self.write_column(KeccakColumn::Input(idx), state_a[idx]);
                 }
                 for i in 0..QUARTERS {
                     self.write_column(KeccakColumn::ThetaShiftsC(i, x, q), theta.shifts_c(i, x, q));
@@ -290,11 +288,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let state_g = iota.state_g();
 
         // Update columns
-        for (i, g) in state_g.iter().enumerate() {
-            self.write_column(KeccakColumn::IotaStateG(i), *g);
+        for (idx, g) in state_g.iter().enumerate() {
+            self.write_column(KeccakColumn::Output(idx), *g);
         }
-        for i in 0..QUARTERS {
-            self.write_column(KeccakColumn::RoundConstants(i), iota.round_constants(i));
+        for idx in 0..QUARTERS {
+            self.write_column(KeccakColumn::RoundConstants(idx), iota.round_constants(idx));
         }
 
         state_g

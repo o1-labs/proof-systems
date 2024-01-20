@@ -6,11 +6,10 @@ use kimchi::circuits::polynomials::keccak::constants::{
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
     PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES,
-    SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_OLD_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN,
-    THETA_DENSE_C_LEN, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF,
-    THETA_EXPAND_ROT_C_LEN, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF,
-    THETA_REMAINDER_C_LEN, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
-    THETA_STATE_A_LEN, THETA_STATE_A_OFF,
+    SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF, STATE_LEN, THETA_DENSE_C_LEN,
+    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN,
+    THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN,
+    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
 };
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
@@ -34,7 +33,7 @@ pub enum KeccakColumn {
     FlagsBytes(usize),                        // 136 boolean values
     PadSuffix(usize),                         // 5 values with padding suffix
     RoundConstants(usize),                    // Round constants
-    ThetaStateA(usize, usize, usize),         // Round Curr[0..100)
+    Input(usize),                             // Curr[0..100) either ThetaStateA or SpongeOldState
     ThetaShiftsC(usize, usize, usize),        // Round Curr[100..180)
     ThetaDenseC(usize, usize),                // Round Curr[180..200)
     ThetaQuotientC(usize),                    // Round Curr[200..205)
@@ -49,12 +48,10 @@ pub enum KeccakColumn {
     PiRhoExpandRotE(usize, usize, usize),     // Round Curr[1065..1165)
     ChiShiftsB(usize, usize, usize, usize),   // Round Curr[1165..1565)
     ChiShiftsSum(usize, usize, usize, usize), // Round Curr[1565..1965)
-    IotaStateG(usize),                        // Round Next[0..100)
-    SpongeOldState(usize),                    // Sponge Curr[0..100)
     SpongeNewState(usize),                    // Sponge Curr[100..200)
     SpongeBytes(usize),                       // Sponge Curr[200..400)
     SpongeShifts(usize),                      // Sponge Curr[400..800)
-    SpongeXorState(usize),                    // Absorb Next[0..100)
+    Output(usize),                            // Next[0..100) either IotaStateG or SpongeXorState
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -150,12 +147,10 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::FlagLength => &self.flag_length,
             KeccakColumn::TwoToPad => &self.two_to_pad,
             KeccakColumn::InverseRound => &self.inverse_round,
-            KeccakColumn::FlagsBytes(i) => &self.flags_bytes[i],
-            KeccakColumn::PadSuffix(i) => &self.pad_suffix[i],
-            KeccakColumn::RoundConstants(q) => &self.round_constants[q],
-            KeccakColumn::ThetaStateA(y, x, q) => {
-                self.curr(THETA_STATE_A_OFF, THETA_STATE_A_LEN, 0, y, x, q)
-            }
+            KeccakColumn::FlagsBytes(idx) => &self.flags_bytes[idx],
+            KeccakColumn::PadSuffix(idx) => &self.pad_suffix[idx],
+            KeccakColumn::RoundConstants(idx) => &self.round_constants[idx],
+            KeccakColumn::Input(idx) => &self.curr[idx],
             KeccakColumn::ThetaShiftsC(i, x, q) => {
                 self.curr(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN, i, 0, x, q)
             }
@@ -198,12 +193,10 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::ChiShiftsSum(i, y, x, q) => {
                 self.curr(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN, i, y, x, q)
             }
-            KeccakColumn::IotaStateG(i) => &self.next[i],
-            KeccakColumn::SpongeOldState(i) => &self.curr[SPONGE_OLD_STATE_OFF + i],
-            KeccakColumn::SpongeNewState(i) => &self.curr[SPONGE_NEW_STATE_OFF + i],
-            KeccakColumn::SpongeBytes(i) => &self.curr[SPONGE_BYTES_OFF + i],
-            KeccakColumn::SpongeShifts(i) => &self.curr[SPONGE_SHIFTS_OFF + i],
-            KeccakColumn::SpongeXorState(i) => &self.next[i],
+            KeccakColumn::SpongeNewState(idx) => &self.curr[SPONGE_NEW_STATE_OFF + idx],
+            KeccakColumn::SpongeBytes(idx) => &self.curr[SPONGE_BYTES_OFF + idx],
+            KeccakColumn::SpongeShifts(idx) => &self.curr[SPONGE_SHIFTS_OFF + idx],
+            KeccakColumn::Output(idx) => &self.next[idx],
         }
     }
 }
@@ -224,9 +217,7 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::FlagsBytes(i) => &mut self.flags_bytes[i],
             KeccakColumn::PadSuffix(i) => &mut self.pad_suffix[i],
             KeccakColumn::RoundConstants(q) => &mut self.round_constants[q],
-            KeccakColumn::ThetaStateA(y, x, q) => {
-                self.mut_curr(THETA_STATE_A_OFF, THETA_STATE_A_LEN, 0, y, x, q)
-            }
+            KeccakColumn::Input(idx) => &mut self.curr[idx],
             KeccakColumn::ThetaShiftsC(i, x, q) => {
                 self.mut_curr(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN, i, 0, x, q)
             }
@@ -269,12 +260,10 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::ChiShiftsSum(i, y, x, q) => {
                 self.mut_curr(CHI_SHIFTS_SUM_OFF, CHI_SHIFTS_SUM_LEN, i, y, x, q)
             }
-            KeccakColumn::IotaStateG(i) => &mut self.next[i],
-            KeccakColumn::SpongeOldState(i) => &mut self.curr[SPONGE_OLD_STATE_OFF + i],
             KeccakColumn::SpongeNewState(i) => &mut self.curr[SPONGE_NEW_STATE_OFF + i],
             KeccakColumn::SpongeBytes(i) => &mut self.curr[SPONGE_BYTES_OFF + i],
             KeccakColumn::SpongeShifts(i) => &mut self.curr[SPONGE_SHIFTS_OFF + i],
-            KeccakColumn::SpongeXorState(i) => &mut self.next[i],
+            KeccakColumn::Output(idx) => &mut self.next[idx],
         }
     }
 }

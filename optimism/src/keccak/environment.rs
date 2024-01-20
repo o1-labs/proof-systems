@@ -1,5 +1,6 @@
 use super::{
     column::{KeccakColumn, KeccakColumns},
+    grid_index,
     interpreter::{Absorb, KeccakStep, Sponge},
     ArithOps, BoolOps, DIM, E, QUARTERS,
 };
@@ -220,30 +221,30 @@ pub(crate) trait KeccakEnvironment {
 
     fn two_to_pad(&self) -> Self::Variable;
 
-    fn in_padding(&self, i: usize) -> Self::Variable;
+    fn in_padding(&self, idx: usize) -> Self::Variable;
 
-    fn pad_suffix(&self, i: usize) -> Self::Variable;
+    fn pad_suffix(&self, idx: usize) -> Self::Variable;
 
-    fn bytes_block(&self, i: usize) -> &[Self::Variable];
+    fn bytes_block(&self, idx: usize) -> &[Self::Variable];
 
-    fn flags_block(&self, i: usize) -> &[Self::Variable];
+    fn flags_block(&self, idx: usize) -> &[Self::Variable];
 
-    fn block_in_padding(&self, i: usize) -> Self::Variable;
+    fn block_in_padding(&self, idx: usize) -> Self::Variable;
 
     fn round_constants(&self) -> &[Self::Variable];
 
-    fn old_state(&self, i: usize) -> Self::Variable;
+    fn old_state(&self, idx: usize) -> Self::Variable;
 
-    fn new_state(&self, i: usize) -> Self::Variable;
+    fn new_state(&self, idx: usize) -> Self::Variable;
 
-    fn xor_state(&self, i: usize) -> Self::Variable;
+    fn xor_state(&self, idx: usize) -> Self::Variable;
 
     fn sponge_zeros(&self) -> &[Self::Variable];
 
     fn vec_sponge_shifts(&self) -> &[Self::Variable];
-    fn sponge_shifts(&self, i: usize) -> Self::Variable;
+    fn sponge_shifts(&self, idx: usize) -> Self::Variable;
 
-    fn sponge_bytes(&self, i: usize) -> Self::Variable;
+    fn sponge_bytes(&self, idx: usize) -> Self::Variable;
 
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
@@ -254,7 +255,7 @@ pub(crate) trait KeccakEnvironment {
     fn dense_c(&self, x: usize, q: usize) -> Self::Variable;
 
     fn vec_quotient_c(&self) -> &[Self::Variable];
-    fn quotient_c(&self, x: usize) -> Self::Variable;
+    fn quotient_c(&self, idx: usize) -> Self::Variable;
 
     fn vec_remainder_c(&self) -> &[Self::Variable];
     fn remainder_c(&self, x: usize, q: usize) -> Self::Variable;
@@ -289,7 +290,7 @@ pub(crate) trait KeccakEnvironment {
     fn vec_shifts_sum(&self) -> &[Self::Variable];
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable;
 
-    fn state_g(&self, q: usize) -> Self::Variable;
+    fn state_g(&self, idx: usize) -> Self::Variable;
 
     /// Returns the hash index
     fn hash_index(&self) -> Self::Variable;
@@ -398,34 +399,34 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::TwoToPad].clone()
     }
 
-    fn in_padding(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::FlagsBytes(i)].clone()
+    fn in_padding(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::FlagsBytes(idx)].clone()
     }
 
-    fn pad_suffix(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PadSuffix(i)].clone()
+    fn pad_suffix(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::PadSuffix(idx)].clone()
     }
 
-    fn bytes_block(&self, i: usize) -> &[Self::Variable] {
+    fn bytes_block(&self, idx: usize) -> &[Self::Variable] {
         let sponge_bytes = self.keccak_state.chunk(SPONGE_BYTES_OFF, SPONGE_BYTES_LEN);
-        match i {
+        match idx {
             0 => &sponge_bytes[0..12],
-            1..=4 => &sponge_bytes[12 + (i - 1) * 31..12 + i * 31],
+            1..=4 => &sponge_bytes[12 + (idx - 1) * 31..12 + idx * 31],
             _ => panic!("No more blocks of bytes can be part of padding"),
         }
     }
 
-    fn flags_block(&self, i: usize) -> &[Self::Variable] {
-        match i {
+    fn flags_block(&self, idx: usize) -> &[Self::Variable] {
+        match idx {
             0 => &self.keccak_state.flags_bytes()[0..12],
-            1..=4 => &self.keccak_state.flags_bytes()[12 + (i - 1) * 31..12 + i * 31],
+            1..=4 => &self.keccak_state.flags_bytes()[12 + (idx - 1) * 31..12 + idx * 31],
             _ => panic!("No more blocks of flags can be part of padding"),
         }
     }
 
-    fn block_in_padding(&self, i: usize) -> Self::Variable {
-        let bytes = self.bytes_block(i);
-        let flags = self.flags_block(i);
+    fn block_in_padding(&self, idx: usize) -> Self::Variable {
+        let bytes = self.bytes_block(idx);
+        let flags = self.flags_block(idx);
         assert_eq!(bytes.len(), flags.len());
         let pad = bytes
             .iter()
@@ -441,24 +442,24 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state.round_constants()
     }
 
-    fn old_state(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeOldState(i)].clone()
+    fn old_state(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::Input(idx)].clone()
     }
 
-    fn new_state(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeNewState(i)].clone()
+    fn new_state(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeNewState(idx)].clone()
     }
 
-    fn xor_state(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeXorState(i)].clone()
+    fn xor_state(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::Output(idx)].clone()
     }
 
     fn sponge_zeros(&self) -> &[Self::Variable] {
         self.keccak_state.chunk(SPONGE_ZEROS_OFF, SPONGE_ZEROS_LEN)
     }
 
-    fn sponge_bytes(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeBytes(i)].clone()
+    fn sponge_bytes(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeBytes(idx)].clone()
     }
 
     fn vec_sponge_shifts(&self) -> &[Self::Variable] {
@@ -466,12 +467,13 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .chunk(SPONGE_SHIFTS_OFF, SPONGE_SHIFTS_LEN)
     }
 
-    fn sponge_shifts(&self, i: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::SpongeShifts(i)].clone()
+    fn sponge_shifts(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::SpongeShifts(idx)].clone()
     }
 
-    fn state_a(&self, x: usize, y: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaStateA(y, x, q)].clone()
+    fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable {
+        let idx = grid_index(THETA_STATE_A_LEN, 0, y, x, q);
+        self.keccak_state[KeccakColumn::Input(idx)].clone()
     }
 
     fn vec_shifts_c(&self) -> &[Self::Variable] {
@@ -496,8 +498,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .chunk(THETA_QUOTIENT_C_OFF, THETA_QUOTIENT_C_LEN)
     }
 
-    fn quotient_c(&self, x: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaQuotientC(x)].clone()
+    fn quotient_c(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::ThetaQuotientC(idx)].clone()
     }
 
     fn vec_remainder_c(&self) -> &[Self::Variable] {
@@ -597,8 +599,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.keccak_state[KeccakColumn::ChiShiftsSum(i, y, x, q)].clone()
     }
 
-    fn state_g(&self, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::IotaStateG(q)].clone()
+    fn state_g(&self, idx: usize) -> Self::Variable {
+        self.keccak_state[KeccakColumn::Output(idx)].clone()
     }
 
     fn hash_index(&self) -> Self::Variable {
