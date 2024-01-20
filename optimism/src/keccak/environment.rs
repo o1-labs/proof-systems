@@ -481,7 +481,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .chunk(THETA_SHIFTS_C_OFF, THETA_SHIFTS_C_LEN)
     }
     fn shifts_c(&self, i: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaShiftsC(i, x, q)].clone()
+        let idx = grid_index(THETA_SHIFTS_C_LEN, i, 0, x, q);
+        self.keccak_state[KeccakColumn::ThetaShiftsC(idx)].clone()
     }
 
     fn vec_dense_c(&self) -> &[Self::Variable] {
@@ -490,7 +491,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn dense_c(&self, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaDenseC(x, q)].clone()
+        let idx = grid_index(THETA_DENSE_C_LEN, 0, 0, x, q);
+        self.keccak_state[KeccakColumn::ThetaDenseC(idx)].clone()
     }
 
     fn vec_quotient_c(&self) -> &[Self::Variable] {
@@ -508,7 +510,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn remainder_c(&self, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaRemainderC(x, q)].clone()
+        let idx = grid_index(THETA_REMAINDER_C_LEN, 0, 0, x, q);
+        self.keccak_state[KeccakColumn::ThetaRemainderC(idx)].clone()
     }
 
     fn vec_dense_rot_c(&self) -> &[Self::Variable] {
@@ -517,7 +520,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn dense_rot_c(&self, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaDenseRotC(x, q)].clone()
+        let idx = grid_index(THETA_DENSE_ROT_C_LEN, 0, 0, x, q);
+        self.keccak_state[KeccakColumn::ThetaDenseRotC(idx)].clone()
     }
 
     fn vec_expand_rot_c(&self) -> &[Self::Variable] {
@@ -525,7 +529,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .chunk(THETA_EXPAND_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN)
     }
     fn expand_rot_c(&self, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ThetaExpandRotC(x, q)].clone()
+        let idx = grid_index(THETA_EXPAND_ROT_C_LEN, 0, 0, x, q);
+        self.keccak_state[KeccakColumn::ThetaExpandRotC(idx)].clone()
     }
 
     fn vec_shifts_e(&self) -> &[Self::Variable] {
@@ -534,7 +539,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn shifts_e(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PiRhoShiftsE(i, y, x, q)].clone()
+        let idx = grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q);
+        self.keccak_state[KeccakColumn::PiRhoShiftsE(idx)].clone()
     }
 
     fn vec_dense_e(&self) -> &[Self::Variable] {
@@ -543,7 +549,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn dense_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PiRhoDenseE(y, x, q)].clone()
+        let idx = grid_index(PIRHO_DENSE_E_LEN, 0, y, x, q);
+        self.keccak_state[KeccakColumn::PiRhoDenseE(idx)].clone()
     }
 
     fn vec_quotient_e(&self) -> &[Self::Variable] {
@@ -552,7 +559,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn quotient_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PiRhoQuotientE(y, x, q)].clone()
+        let idx = grid_index(PIRHO_QUOTIENT_E_LEN, 0, y, x, q);
+        self.keccak_state[KeccakColumn::PiRhoQuotientE(idx)].clone()
     }
 
     fn vec_remainder_e(&self) -> &[Self::Variable] {
@@ -561,7 +569,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn remainder_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PiRhoRemainderE(y, x, q)].clone()
+        let idx = grid_index(PIRHO_REMAINDER_E_LEN, 0, y, x, q);
+        self.keccak_state[KeccakColumn::PiRhoRemainderE(idx)].clone()
     }
 
     fn vec_dense_rot_e(&self) -> &[Self::Variable] {
@@ -570,7 +579,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn dense_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PiRhoDenseRotE(y, x, q)].clone()
+        let idx = grid_index(PIRHO_DENSE_ROT_E_LEN, 0, y, x, q);
+        self.keccak_state[KeccakColumn::PiRhoDenseRotE(idx)].clone()
     }
 
     fn vec_expand_rot_e(&self) -> &[Self::Variable] {
@@ -579,7 +589,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn expand_rot_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::PiRhoExpandRotE(y, x, q)].clone()
+        let idx = grid_index(PIRHO_EXPAND_ROT_E_LEN, 0, y, x, q);
+        self.keccak_state[KeccakColumn::PiRhoExpandRotE(idx)].clone()
     }
 
     fn vec_shifts_b(&self) -> &[Self::Variable] {
@@ -587,7 +598,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn shifts_b(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ChiShiftsB(i, y, x, q)].clone()
+        let idx = grid_index(CHI_SHIFTS_B_LEN, i, y, x, q);
+        self.keccak_state[KeccakColumn::ChiShiftsB(idx)].clone()
     }
 
     fn vec_shifts_sum(&self) -> &[Self::Variable] {
@@ -596,7 +608,8 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn shifts_sum(&self, i: usize, y: usize, x: usize, q: usize) -> Self::Variable {
-        self.keccak_state[KeccakColumn::ChiShiftsSum(i, y, x, q)].clone()
+        let idx = grid_index(CHI_SHIFTS_SUM_LEN, i, y, x, q);
+        self.keccak_state[KeccakColumn::ChiShiftsSum(idx)].clone()
     }
 
     fn state_g(&self, idx: usize) -> Self::Variable {

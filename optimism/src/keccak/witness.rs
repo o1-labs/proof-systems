@@ -8,7 +8,10 @@ use super::{
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::{
-    constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS, THETA_STATE_A_LEN},
+    constants::{
+        CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
+        STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
+    },
     witness::{Chi, Iota, PiRho, Theta},
     Keccak,
 };
@@ -160,7 +163,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
 
         // Write absorb-related columns
-        for idx in 0..QUARTERS * DIM * DIM {
+        for idx in 0..STATE_LEN {
             self.write_column(KeccakColumn::Input(idx), old_state[idx]);
             self.write_column(KeccakColumn::SpongeNewState(idx), new_state[idx]);
             self.write_column(KeccakColumn::Output(idx), xor_state[idx]);
@@ -205,19 +208,18 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for x in 0..DIM {
             self.write_column(KeccakColumn::ThetaQuotientC(x), theta.quotient_c(x));
             for q in 0..QUARTERS {
-                self.write_column(KeccakColumn::ThetaDenseC(x, q), theta.dense_c(x, q));
-                self.write_column(KeccakColumn::ThetaRemainderC(x, q), theta.remainder_c(x, q));
-                self.write_column(KeccakColumn::ThetaDenseRotC(x, q), theta.dense_rot_c(x, q));
-                self.write_column(
-                    KeccakColumn::ThetaExpandRotC(x, q),
-                    theta.expand_rot_c(x, q),
-                );
+                let idx = grid_index(QUARTERS * DIM, 0, 0, x, q);
+                self.write_column(KeccakColumn::ThetaDenseC(idx), theta.dense_c(x, q));
+                self.write_column(KeccakColumn::ThetaRemainderC(idx), theta.remainder_c(x, q));
+                self.write_column(KeccakColumn::ThetaDenseRotC(idx), theta.dense_rot_c(x, q));
+                self.write_column(KeccakColumn::ThetaExpandRotC(idx), theta.expand_rot_c(x, q));
                 for y in 0..DIM {
                     let idx = grid_index(THETA_STATE_A_LEN, 0, y, x, q);
                     self.write_column(KeccakColumn::Input(idx), state_a[idx]);
                 }
                 for i in 0..QUARTERS {
-                    self.write_column(KeccakColumn::ThetaShiftsC(i, x, q), theta.shifts_c(i, x, q));
+                    let idx = grid_index(THETA_SHIFTS_C_LEN, i, 0, x, q);
+                    self.write_column(KeccakColumn::ThetaShiftsC(idx), theta.shifts_c(i, x, q));
                 }
             }
         }
@@ -231,26 +233,24 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for y in 0..DIM {
             for x in 0..DIM {
                 for q in 0..QUARTERS {
-                    self.write_column(KeccakColumn::PiRhoDenseE(y, x, q), pirho.dense_e(y, x, q));
+                    let idx = grid_index(STATE_LEN, 0, y, x, q);
+                    self.write_column(KeccakColumn::PiRhoDenseE(idx), pirho.dense_e(y, x, q));
+                    self.write_column(KeccakColumn::PiRhoQuotientE(idx), pirho.quotient_e(y, x, q));
                     self.write_column(
-                        KeccakColumn::PiRhoQuotientE(y, x, q),
-                        pirho.quotient_e(y, x, q),
-                    );
-                    self.write_column(
-                        KeccakColumn::PiRhoRemainderE(y, x, q),
+                        KeccakColumn::PiRhoRemainderE(idx),
                         pirho.remainder_e(y, x, q),
                     );
                     self.write_column(
-                        KeccakColumn::PiRhoDenseRotE(y, x, q),
+                        KeccakColumn::PiRhoDenseRotE(idx),
                         pirho.dense_rot_e(y, x, q),
                     );
                     self.write_column(
-                        KeccakColumn::PiRhoExpandRotE(y, x, q),
+                        KeccakColumn::PiRhoExpandRotE(idx),
                         pirho.expand_rot_e(y, x, q),
                     );
                     for i in 0..QUARTERS {
                         self.write_column(
-                            KeccakColumn::PiRhoShiftsE(i, y, x, q),
+                            KeccakColumn::PiRhoShiftsE(grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q)),
                             pirho.shifts_e(i, y, x, q),
                         );
                     }
@@ -268,12 +268,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             for y in 0..DIM {
                 for x in 0..DIM {
                     for q in 0..QUARTERS {
+                        let idx = grid_index(SHIFTS_LEN, i, y, x, q);
+                        self.write_column(KeccakColumn::ChiShiftsB(idx), chi.shifts_b(i, y, x, q));
                         self.write_column(
-                            KeccakColumn::ChiShiftsB(i, y, x, q),
-                            chi.shifts_b(i, y, x, q),
-                        );
-                        self.write_column(
-                            KeccakColumn::ChiShiftsSum(i, y, x, q),
+                            KeccakColumn::ChiShiftsSum(idx),
                             chi.shifts_sum(i, y, x, q),
                         );
                     }
