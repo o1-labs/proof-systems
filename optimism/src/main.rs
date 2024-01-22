@@ -6,7 +6,6 @@ use kimchi_optimism::{
     cannon_cli,
     keccak::{
         column::KeccakColumns,
-        environment::KeccakEnv,
         interpreter::KeccakInterpreter,
         proof::{self as keccak_proof, KeccakProofInputs},
     },
@@ -14,7 +13,6 @@ use kimchi_optimism::{
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::pairing_proof::PairingProof;
-use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator};
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 use kimchi_optimism::DOMAIN_SIZE;
@@ -158,13 +156,75 @@ pub fn main() -> ExitCode {
                 keccak_env.step();
             }
 
-            // TODO: update the witness with the Keccak step columns before resetting the environment
+            // Update the witness with the Keccak step columns before resetting the environment
+            keccak_current_pre_folding_witness
+                .hash_index
+                .push(keccak_env.keccak_witness.hash_index);
+            keccak_current_pre_folding_witness
+                .step_index
+                .push(keccak_env.keccak_witness.step_index);
+            keccak_current_pre_folding_witness
+                .flag_round
+                .push(keccak_env.keccak_witness.flag_round);
+            keccak_current_pre_folding_witness
+                .flag_absorb
+                .push(keccak_env.keccak_witness.flag_absorb);
+            keccak_current_pre_folding_witness
+                .flag_squeeze
+                .push(keccak_env.keccak_witness.flag_squeeze);
+            keccak_current_pre_folding_witness
+                .flag_root
+                .push(keccak_env.keccak_witness.flag_root);
+            keccak_current_pre_folding_witness
+                .flag_pad
+                .push(keccak_env.keccak_witness.flag_pad);
+            keccak_current_pre_folding_witness
+                .flag_length
+                .push(keccak_env.keccak_witness.flag_length);
+            keccak_current_pre_folding_witness
+                .two_to_pad
+                .push(keccak_env.keccak_witness.two_to_pad);
+            keccak_current_pre_folding_witness
+                .inverse_round
+                .push(keccak_env.keccak_witness.inverse_round);
             for (env_wit, pre_fold_wit) in keccak_env
                 .keccak_witness
-                .into_iter()
-                .zip(keccak_current_pre_folding_witness.par_iter_mut())
+                .flags_bytes
+                .iter()
+                .zip(keccak_current_pre_folding_witness.flags_bytes.iter_mut())
             {
-                pre_fold_wit.push(env_wit);
+                pre_fold_wit.push(*env_wit);
+            }
+            for (env_wit, pre_fold_wit) in keccak_env
+                .keccak_witness
+                .pad_suffix
+                .iter()
+                .zip(keccak_current_pre_folding_witness.pad_suffix.iter_mut())
+            {
+                pre_fold_wit.push(*env_wit);
+            }
+            for (env_wit, pre_fold_wit) in keccak_env.keccak_witness.round_constants.iter().zip(
+                keccak_current_pre_folding_witness
+                    .round_constants
+                    .iter_mut(),
+            ) {
+                pre_fold_wit.push(*env_wit);
+            }
+            for (env_wit, pre_fold_wit) in keccak_env
+                .keccak_witness
+                .curr
+                .iter()
+                .zip(keccak_current_pre_folding_witness.curr.iter_mut())
+            {
+                pre_fold_wit.push(*env_wit);
+            }
+            for (env_wit, pre_fold_wit) in keccak_env
+                .keccak_witness
+                .next
+                .iter()
+                .zip(keccak_current_pre_folding_witness.next.iter_mut())
+            {
+                pre_fold_wit.push(*env_wit);
             }
 
             if keccak_current_pre_folding_witness.step_index.len() == DOMAIN_SIZE {
