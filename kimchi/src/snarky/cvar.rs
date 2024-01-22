@@ -263,7 +263,7 @@ where
     /// This is because the exact same reduction that will eventually happen on each clone
     /// will end up creating the same set of constraints multiple times in the circuit.
     ///
-    /// It is useful to call [`seal`] on a variable that represents a long computation
+    /// It is useful to call on a variable that represents a long computation
     /// that hasn't been constrained yet (e.g. by an assert call, or a call to a custom gate),
     /// before using it further in the circuit.
     pub fn seal(&self, state: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<Self> {
