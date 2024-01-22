@@ -14,6 +14,8 @@ use kimchi::circuits::{
     },
 };
 
+use super::column::PAD_SUFFIX_LEN;
+
 pub trait Constraints {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
@@ -127,7 +129,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             });
             self.constrain(self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end));
             // Check that the padding value is correct
-            for i in 0..5 {
+            for i in 0..PAD_SUFFIX_LEN {
                 self.constrain(self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)));
             }
         }

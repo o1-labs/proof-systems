@@ -34,6 +34,7 @@ const PAD_TWO_OFF: usize = 803;
 const PAD_BYTES_OFF: usize = 804;
 pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 const PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES;
+pub(crate) const PAD_SUFFIX_LEN: usize = 5;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
