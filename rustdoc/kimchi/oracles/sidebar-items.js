@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["OraclesResult"]};
+window.SIDEBAR_ITEMS = {"mod":["caml"],"struct":["OraclesResult"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CircuitGateError","CurrOrNext","GateType"],"struct":["Circuit","CircuitGate"],"trait":["Connect"],"type":["CircuitGateResult"]};
+window.SIDEBAR_ITEMS = {"enum":["CircuitGateError","CurrOrNext","GateType"],"mod":["caml"],"struct":["Circuit","CircuitGate"],"trait":["Connect"],"type":["CircuitGateResult"]};

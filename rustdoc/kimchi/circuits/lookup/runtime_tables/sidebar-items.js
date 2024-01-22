@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["constraints"],"struct":["RuntimeTable","RuntimeTableCfg","RuntimeTableSpec"]};
+window.SIDEBAR_ITEMS = {"fn":["constraints"],"mod":["caml"],"struct":["RuntimeTable","RuntimeTableCfg","RuntimeTableSpec"]};

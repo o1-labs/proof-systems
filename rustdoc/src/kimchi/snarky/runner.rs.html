@@ -664,6 +664,7 @@
 <a href="#664" id="664">664</a>
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The circuit-generation and witness-generation logic.
 
 </span><span class="kw">use </span>std::borrow::Cow;
@@ -702,7 +703,7 @@
     }
 }
 
-<span class="doccomment">/// An enum that wraps either a [BasicSnarkyConstraint] or a [KimchiConstraintSystem].
+<span class="doccomment">/// An enum that wraps either a [`BasicSnarkyConstraint`] or a \[`KimchiConstraintSystem`\].
 </span><span class="comment">// TODO: we should get rid of this once basic constraint system is gone
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>Constraint&lt;F: PrimeField&gt; {
@@ -824,9 +825,10 @@
 <span class="kw">where
     </span>F: PrimeField,
 {
-    <span class="doccomment">/// Creates a new [Self] based on the size of the public input,
+    <span class="doccomment">/// Creates a new [`Self`] based on the size of the public input,
     /// and the size of the public output.
-    /// If [with_system] is set it will create a [SnarkyConstraintSystem] in order to compile a new circuit.
+    /// If `with_system` is set it will create a [SnarkyConstraintSystem] in
+    /// order to compile a new circuit.
     </span><span class="kw">pub fn </span>new&lt;Curve: KimchiCurve&lt;ScalarField = F&gt;&gt;(
         public_input_size: usize,
         public_output_size: usize,
@@ -1033,7 +1035,7 @@
         <span class="self">self</span>.add_constraint(Constraint::BasicSnarkyConstraint(constraint), label, loc)
     }
 
-    <span class="doccomment">/// Adds a list of [AnnotatedConstraint]s to the circuit.
+    <span class="doccomment">/// Adds a list of [`Constraint`] to the circuit.
     </span><span class="comment">// TODO: clean up all these add constraints functions
     // TODO: do I really need to pass a vec?
     </span><span class="kw">pub fn </span>add_constraint(

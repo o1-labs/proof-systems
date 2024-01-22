@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LookupCommitments","PointEvaluations","ProofEvaluations","ProverCommitments","ProverProof","RecursionChallenge"]};
+window.SIDEBAR_ITEMS = {"mod":["caml"],"struct":["LookupCommitments","PointEvaluations","ProofEvaluations","ProverCommitments","ProverProof","RecursionChallenge"]};

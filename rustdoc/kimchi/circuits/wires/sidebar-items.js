@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["COLUMNS","PERMUTS","WIRES"],"struct":["Wire"],"trait":["Wirable"],"type":["GateWires"]};
+window.SIDEBAR_ITEMS = {"constant":["COLUMNS","PERMUTS","WIRES"],"mod":["caml","wasm"],"struct":["Wire"],"trait":["Wirable"],"type":["GateWires"]};

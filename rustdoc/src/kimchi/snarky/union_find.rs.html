@@ -100,6 +100,7 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::hash::Hash;
 
@@ -162,8 +163,9 @@
     }
 
     <span class="doccomment">/// Union the subsets to which x and y belong.
-    /// If it returns Some&lt;u32&gt;, it is the tag for unified subset.
-    /// If it returns None, at least one of x and y is not in the disjoint-set.
+    /// If it returns `Some&lt;u32&gt;`, it is the tag for unified subset.
+    /// If it returns `None`, at least one of x and y is not in the
+    /// disjoint-set.
     </span><span class="kw">pub fn </span>union(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: T, y: T) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
         <span class="kw">let </span>(x_root, y_root) = <span class="kw">match </span>(<span class="self">self</span>.find(x), <span class="self">self</span>.find(y)) {
             (<span class="prelude-val">Some</span>(x), <span class="prelude-val">Some</span>(y)) =&gt; (x, y),

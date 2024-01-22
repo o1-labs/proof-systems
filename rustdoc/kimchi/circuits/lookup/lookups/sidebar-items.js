@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LookupPattern","LookupTableID"],"struct":["JointLookup","LocalPosition","LookupFeatures","LookupInfo","LookupPatternIter","LookupPatterns","SingleLookup"],"type":["JointLookupSpec","JointLookupValue"]};
+window.SIDEBAR_ITEMS = {"enum":["LookupPattern","LookupTableID"],"mod":["wasm"],"struct":["JointLookup","LocalPosition","LookupFeatures","LookupInfo","LookupPatternIter","LookupPatterns","SingleLookup"],"type":["JointLookupSpec","JointLookupValue"]};

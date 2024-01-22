@@ -748,7 +748,7 @@
     /// This is because the exact same reduction that will eventually happen on each clone
     /// will end up creating the same set of constraints multiple times in the circuit.
     ///
-    /// It is useful to call [`seal`] on a variable that represents a long computation
+    /// It is useful to call on a variable that represents a long computation
     /// that hasn&#39;t been constrained yet (e.g. by an assert call, or a call to a custom gate),
     /// before using it further in the circuit.
     </span><span class="kw">pub fn </span>seal(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>RunState&lt;F&gt;, loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;) -&gt; SnarkyResult&lt;<span class="self">Self</span>&gt; {
