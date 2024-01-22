@@ -18,7 +18,8 @@ ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
-ark-bn254 = { version = "0.3.0", optional = true }
+ark-bn254 = { version = "0.4.0", optional = true }
+ark-grumpkin = { version = "0.4.0", optional = true, git = "https://github.com/arkworks-rs/curves/" }
 blake2 = "0.10.0"
 num-bigint = { version = "0.4.3", features = ["rand", "serde"]}
 num-derive = "0.3"
@@ -82,6 +83,6 @@ harness = false
 default = []
 internal_tracing = [ "internal-tracing/enabled" ]
 ocaml_types = [ "ocaml", "ocaml-gen", "poly-commitment/ocaml_types", "mina-poseidon/ocaml_types", "internal-tracing/ocaml_types" ]
-bn254 = [ "ark-bn254" ]
+bn254 = [ "ark-bn254", "ark-grumpkin" ]
 wasm_types = [ "wasm-bindgen" ]
 check_feature_flags = []

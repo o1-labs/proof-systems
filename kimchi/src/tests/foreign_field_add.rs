@@ -13,7 +13,6 @@ use crate::circuits::{
 };
 use crate::curve::KimchiCurve;
 use crate::prover_index::ProverIndex;
-use ark_bn254::Fr as BN254PrimeField;
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, SquareRootField, Zero};
 use ark_poly::EvaluationDomain;
@@ -1564,10 +1563,10 @@ fn test_witness_invalid_foreign_field_modulus() {
 
 #[test]
 fn test_bn254_addition_with_vesta() {
-    type Fr = BN254PrimeField;
+    use ark_bn254::Fr;
+    use ark_bn254::Affine as G1;
+    use ark_grumpkin::Affine as G2;
     type Fq = VestaField;
-    type G1 = Vesta;
-    type G2 = Pallas;
     let modulus_base_field_vesta = Fq::modulus_biguint();
     println!("{:?}", modulus_base_field_vesta);
     let modulus_prime_field_bn254 = Fr::modulus_biguint();
@@ -1584,6 +1583,14 @@ fn test_bn254_addition_with_vesta() {
         .public(num_public_inputs)
         .build()
         .unwrap();
+    let operation = &[FFOps::Add];
+    CircuitGate::<Fr>::extend_chain_ffadd(
+        &mut gates,
+        0,
+        &mut curr_row,
+        operation,
+        &modulus_base_field_vesta
+    );
     let mut srs = SRS::<G1>::create(cs.domain.d1.size());
     srs.add_lagrange_basis(cs.domain.d1);
     let srs = Arc::new(srs);
