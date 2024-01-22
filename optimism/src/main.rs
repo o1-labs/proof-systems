@@ -111,15 +111,6 @@ pub fn main() -> ExitCode {
             keccak_columns.hash_index.clear();
             keccak_columns.step_index.clear();
             keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
-            keccak_columns
-                .pad_bytes_flags
-                .iter_mut()
-                .for_each(Vec::clear);
-            keccak_columns.pad_suffix.iter_mut().for_each(Vec::clear);
-            keccak_columns
-                .round_constants
-                .iter_mut()
-                .for_each(Vec::clear);
             keccak_columns.curr.iter_mut().for_each(Vec::clear);
             keccak_columns.next.iter_mut().for_each(Vec::clear);
         };
@@ -129,9 +120,6 @@ pub fn main() -> ExitCode {
             hash_index: Vec::with_capacity(domain_size),
             step_index: Vec::with_capacity(domain_size),
             mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            pad_bytes_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            pad_suffix: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            round_constants: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         };
@@ -159,28 +147,6 @@ pub fn main() -> ExitCode {
                 .iter()
                 .zip(keccak_current_pre_folding_witness.mode_flags.iter_mut())
             {
-                pre_fold_wit.push(*env_wit);
-            }
-            for (env_wit, pre_fold_wit) in keccak_env.keccak_witness.pad_bytes_flags.iter().zip(
-                keccak_current_pre_folding_witness
-                    .pad_bytes_flags
-                    .iter_mut(),
-            ) {
-                pre_fold_wit.push(*env_wit);
-            }
-            for (env_wit, pre_fold_wit) in keccak_env
-                .keccak_witness
-                .pad_suffix
-                .iter()
-                .zip(keccak_current_pre_folding_witness.pad_suffix.iter_mut())
-            {
-                pre_fold_wit.push(*env_wit);
-            }
-            for (env_wit, pre_fold_wit) in keccak_env.keccak_witness.round_constants.iter().zip(
-                keccak_current_pre_folding_witness
-                    .round_constants
-                    .iter_mut(),
-            ) {
                 pre_fold_wit.push(*env_wit);
             }
             for (env_wit, pre_fold_wit) in keccak_env

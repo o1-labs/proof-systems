@@ -1,7 +1,7 @@
 use std::array;
 
 use super::{
-    column::{KeccakColumn, KeccakColumns},
+    column::{KeccakColumn, KeccakColumns, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
     constraints::Constraints,
     grid_index,
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -220,7 +220,6 @@ pub(crate) trait KeccakEnvironment {
     fn round(&self) -> Self::Variable;
 
     fn pad_length(&self) -> Self::Variable;
-    fn inv_pad_length(&self) -> Self::Variable;
 
     fn two_to_pad(&self) -> Self::Variable;
 
@@ -230,12 +229,12 @@ pub(crate) trait KeccakEnvironment {
 
     fn bytes_block(&self, idx: usize) -> Vec<Self::Variable>;
 
-    fn pad_bytes_flags(&self) -> [Self::Variable; RATE_IN_BYTES];
+    fn pad_bytes_flags(&self) -> [Self::Variable; PAD_BYTES_LEN];
     fn flags_block(&self, idx: usize) -> Vec<Self::Variable>;
 
     fn block_in_padding(&self, idx: usize) -> Self::Variable;
 
-    fn round_constants(&self) -> [Self::Variable; QUARTERS];
+    fn round_constants(&self) -> [Self::Variable; ROUND_COEFFS_LEN];
 
     fn old_state(&self, idx: usize) -> Self::Variable;
 
@@ -385,7 +384,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_pad(&self) -> Self::Variable {
-        Self::is_nonzero(self.pad_length(), self.inv_pad_length())
+        Self::is_nonzero(self.pad_length(), self.variable(KeccakColumn::InvPadLength))
     }
 
     fn is_round(&self) -> Self::Variable {
@@ -398,9 +397,6 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn pad_length(&self) -> Self::Variable {
         self.variable(KeccakColumn::PadLength)
-    }
-    fn inv_pad_length(&self) -> Self::Variable {
-        self.variable(KeccakColumn::InvPadLength)
     }
 
     fn two_to_pad(&self) -> Self::Variable {
@@ -423,7 +419,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         }
     }
 
-    fn pad_bytes_flags(&self) -> [Self::Variable; RATE_IN_BYTES] {
+    fn pad_bytes_flags(&self) -> [Self::Variable; PAD_BYTES_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::PadBytesFlags(idx)))
     }
 
@@ -449,7 +445,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         pad
     }
 
-    fn round_constants(&self) -> [Self::Variable; QUARTERS] {
+    fn round_constants(&self) -> [Self::Variable; ROUND_COEFFS_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::RoundConstants(idx)))
     }
 
