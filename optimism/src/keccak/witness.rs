@@ -73,7 +73,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.write_column(KeccakColumn::FlagLength, self.pad_len);
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
-            self.write_column(KeccakColumn::FlagsBytes(i), 1);
+            self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
     }
 

@@ -1,6 +1,6 @@
 use super::column::KeccakColumns;
 use crate::DOMAIN_SIZE;
-use ark_ff::{One, Zero};
+use ark_ff::Zero;
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::{Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::groupmap::GroupMap;
@@ -31,14 +31,10 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
             evaluations: KeccakColumns {
                 hash_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 step_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_round: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_absorb: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_squeeze: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_root: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_pad: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_length: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                two_to_pad: (0..DOMAIN_SIZE).map(|_| G::ScalarField::one()).collect(),
-                flags_bytes: std::array::from_fn(|_| {
+                mode_flags: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                }),
+                pad_bytes_flags: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
                 pad_suffix: std::array::from_fn(|_| {
@@ -141,14 +137,10 @@ where
         KeccakColumns {
             hash_index: eval_col(evaluations.hash_index),
             step_index: eval_col(evaluations.step_index),
-            flag_round: eval_col(evaluations.flag_round),
-            flag_absorb: eval_col(evaluations.flag_absorb),
-            flag_squeeze: eval_col(evaluations.flag_squeeze),
-            flag_root: eval_col(evaluations.flag_root),
-            flag_pad: eval_col(evaluations.flag_pad),
-            flag_length: eval_col(evaluations.flag_length),
-            two_to_pad: eval_col(evaluations.two_to_pad),
-            flags_bytes: eval_array_col(&evaluations.flags_bytes).try_into().unwrap(),
+            mode_flags: eval_array_col(&evaluations.mode_flags).try_into().unwrap(),
+            pad_bytes_flags: eval_array_col(&evaluations.pad_bytes_flags)
+                .try_into()
+                .unwrap(),
             pad_suffix: eval_array_col(&evaluations.pad_suffix).try_into().unwrap(),
             round_constants: eval_array_col(&evaluations.round_constants)
                 .try_into()
@@ -165,14 +157,8 @@ where
         KeccakColumns {
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
-            flag_round: comm(&polys.flag_round),
-            flag_absorb: comm(&polys.flag_absorb),
-            flag_squeeze: comm(&polys.flag_squeeze),
-            flag_root: comm(&polys.flag_root),
-            flag_pad: comm(&polys.flag_pad),
-            flag_length: comm(&polys.flag_length),
-            two_to_pad: comm(&polys.two_to_pad),
-            flags_bytes: comm_array(&polys.flags_bytes).try_into().unwrap(),
+            mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
+            pad_bytes_flags: comm_array(&polys.pad_bytes_flags).try_into().unwrap(),
             pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
             round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
             curr: comm_array(&polys.curr).try_into().unwrap(),
@@ -199,14 +185,8 @@ where
         KeccakColumns {
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
-            flag_round: comm(&polys.flag_round),
-            flag_absorb: comm(&polys.flag_absorb),
-            flag_squeeze: comm(&polys.flag_squeeze),
-            flag_root: comm(&polys.flag_root),
-            flag_pad: comm(&polys.flag_pad),
-            flag_length: comm(&polys.flag_length),
-            two_to_pad: comm(&polys.two_to_pad),
-            flags_bytes: comm_array(&polys.flags_bytes).try_into().unwrap(),
+            mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
+            pad_bytes_flags: comm_array(&polys.pad_bytes_flags).try_into().unwrap(),
             pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
             round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
             curr: comm_array(&polys.curr).try_into().unwrap(),
@@ -378,14 +358,10 @@ fn test_keccak_prover() {
             evaluations: KeccakColumns {
                 hash_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 step_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_round: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_absorb: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_squeeze: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_root: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_length: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                two_to_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flags_bytes: std::array::from_fn(|_| {
+                mode_flags: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                pad_bytes_flags: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
                 pad_suffix: std::array::from_fn(|_| {

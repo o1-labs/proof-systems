@@ -229,7 +229,7 @@ pub(crate) trait KeccakEnvironment {
 
     fn bytes_block(&self, idx: usize) -> Vec<Self::Variable>;
 
-    fn flags_bytes(&self) -> [Self::Variable; RATE_IN_BYTES];
+    fn pad_bytes_flags(&self) -> [Self::Variable; RATE_IN_BYTES];
     fn flags_block(&self, idx: usize) -> Vec<Self::Variable>;
 
     fn block_in_padding(&self, idx: usize) -> Self::Variable;
@@ -404,7 +404,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn in_padding(&self, idx: usize) -> Self::Variable {
-        self.variable(KeccakColumn::FlagsBytes(idx))
+        self.variable(KeccakColumn::PadBytesFlags(idx))
     }
 
     fn pad_suffix(&self, idx: usize) -> Self::Variable {
@@ -419,14 +419,14 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         }
     }
 
-    fn flags_bytes(&self) -> [Self::Variable; RATE_IN_BYTES] {
-        array::from_fn(|idx| self.variable(KeccakColumn::FlagsBytes(idx)))
+    fn pad_bytes_flags(&self) -> [Self::Variable; RATE_IN_BYTES] {
+        array::from_fn(|idx| self.variable(KeccakColumn::PadBytesFlags(idx)))
     }
 
     fn flags_block(&self, idx: usize) -> Vec<Self::Variable> {
         match idx {
-            0 => self.flags_bytes()[0..12].to_vec(),
-            1..=4 => self.flags_bytes()[12 + (idx - 1) * 31..12 + idx * 31].to_vec(),
+            0 => self.pad_bytes_flags()[0..12].to_vec(),
+            1..=4 => self.pad_bytes_flags()[12 + (idx - 1) * 31..12 + idx * 31].to_vec(),
             _ => panic!("No more blocks of flags can be part of padding"),
         }
     }
