@@ -38,7 +38,7 @@ macro_rules! grid {
 /// | 2     | 62 |  6 | 43 | 15 | 61 |
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
-/// Note that the order of the indexing is [y][x] to match the encoding of the witness algorithm
+/// Note that the order of the indexing is `[y][x]` to match the encoding of the witness algorithm
 pub const OFF: [[u64; DIM]; DIM] = [
     [0, 1, 62, 28, 27],
     [36, 44, 6, 55, 20],

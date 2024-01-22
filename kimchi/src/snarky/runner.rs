@@ -36,7 +36,7 @@ where
     }
 }
 
-/// An enum that wraps either a [BasicSnarkyConstraint] or a [KimchiConstraintSystem].
+/// An enum that wraps either a [`BasicSnarkyConstraint`] or a \[`KimchiConstraintSystem`\].
 // TODO: we should get rid of this once basic constraint system is gone
 #[derive(Debug)]
 pub enum Constraint<F: PrimeField> {
@@ -158,9 +158,10 @@ impl<F> RunState<F>
 where
     F: PrimeField,
 {
-    /// Creates a new [Self] based on the size of the public input,
+    /// Creates a new [`Self`] based on the size of the public input,
     /// and the size of the public output.
-    /// If [with_system] is set it will create a [SnarkyConstraintSystem] in order to compile a new circuit.
+    /// If `with_system` is set it will create a [SnarkyConstraintSystem] in
+    /// order to compile a new circuit.
     pub fn new<Curve: KimchiCurve<ScalarField = F>>(
         public_input_size: usize,
         public_output_size: usize,
@@ -367,7 +368,7 @@ where
         self.add_constraint(Constraint::BasicSnarkyConstraint(constraint), label, loc)
     }
 
-    /// Adds a list of [AnnotatedConstraint]s to the circuit.
+    /// Adds a list of [`Constraint`] to the circuit.
     // TODO: clean up all these add constraints functions
     // TODO: do I really need to pass a vec?
     pub fn add_constraint(

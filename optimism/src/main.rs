@@ -160,7 +160,7 @@ pub fn main() -> ExitCode {
 
             // TODO: update the witness with the Keccak step columns before resetting the environment
             for (env_wit, pre_fold_wit) in keccak_env
-                .keccak_state
+                .keccak_witness
                 .into_iter()
                 .zip(keccak_current_pre_folding_witness.par_iter_mut())
             {

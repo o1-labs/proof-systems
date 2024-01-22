@@ -60,8 +60,9 @@ where
     }
 
     /// Union the subsets to which x and y belong.
-    /// If it returns Some<u32>, it is the tag for unified subset.
-    /// If it returns None, at least one of x and y is not in the disjoint-set.
+    /// If it returns `Some<u32>`, it is the tag for unified subset.
+    /// If it returns `None`, at least one of x and y is not in the
+    /// disjoint-set.
     pub fn union(&mut self, x: T, y: T) -> Option<usize> {
         let (x_root, y_root) = match (self.find(x), self.find(y)) {
             (Some(x), Some(y)) => (x, y),

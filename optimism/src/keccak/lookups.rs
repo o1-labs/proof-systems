@@ -94,7 +94,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
                 vec![
                     self.hash_index(),
                     Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
-                    self.sponge_bytes(i),
+                    self.sponge_byte(i),
                 ],
             ));
         }
@@ -102,7 +102,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
 
     fn lookup_syscall_hash(&mut self) {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
-            acc * Self::two_pow(8) + self.sponge_bytes(i)
+            acc * Self::two_pow(8) + self.sponge_byte(i)
         });
         self.add_lookup(Lookup::write_one(
             LookupTable::SyscallLookup,
@@ -179,7 +179,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // BYTES LOOKUPS
         for i in 0..200 {
             // Bytes are <2^8
-            self.lookup_byte(self.is_sponge(), self.sponge_bytes(i));
+            self.lookup_byte(self.is_sponge(), self.sponge_byte(i));
         }
         // SHIFTS LOOKUPS
         for i in 100..SHIFTS_LEN {
@@ -188,7 +188,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         }
         for i in 0..STATE_LEN {
             // Shifts0 together with Bits composition by pairs are in the Reset table
-            let dense = self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8);
+            let dense = self.sponge_byte(2 * i) + self.sponge_byte(2 * i + 1) * Self::two_pow(8);
             self.lookup_reset(self.is_sponge(), dense, self.sponge_shifts(i));
         }
     }

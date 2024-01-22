@@ -320,7 +320,7 @@ impl<F> From<ConstantTerm<F>> for ConstantExprInner<F> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Operations<T> {
     Atom(T),
     Pow(Box<Operations<T>>, u64),
@@ -589,7 +589,7 @@ pub enum Op2 {
 }
 
 /// The feature flags that can be used to enable or disable parts of constraints.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)

@@ -1,18 +1,22 @@
+/// This file contains the implementation of the witness for the Keccak permutation.
+/// For a pseudo code implementation of Keccap-f, see
+/// https://keccak.team/keccak_specs_summary.html
 use super::{
     column::KeccakColumn,
     environment::KeccakEnv,
+    grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
     lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
-use kimchi::{
-    circuits::polynomials::keccak::{
-        constants::{CAPACITY_IN_BYTES, RATE_IN_BYTES, ROUNDS, SHIFTS},
-        witness::{Chi, Iota, PiRho, Theta},
-        Keccak,
+use kimchi::circuits::polynomials::keccak::{
+    constants::{
+        CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
+        STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
     },
-    grid,
+    witness::{Chi, Iota, PiRho, Theta},
+    Keccak,
 };
 
 pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
@@ -115,14 +119,14 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let bytes = Keccak::bytestring(&dense);
 
         // Write squeeze-related columns
-        for (i, value) in state.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeOldState(i), *value);
+        for (idx, value) in state.iter().enumerate() {
+            self.write_column(KeccakColumn::Input(idx), *value);
         }
-        for (i, value) in bytes.iter().enumerate().take(HASH_BYTELENGTH) {
-            self.write_column(KeccakColumn::SpongeBytes(i), *value);
+        for (idx, value) in bytes.iter().enumerate().take(HASH_BYTELENGTH) {
+            self.write_column(KeccakColumn::SpongeBytes(idx), *value);
         }
-        for (i, value) in shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
-            self.write_column(KeccakColumn::SpongeShifts(i), *value);
+        for (idx, value) in shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
+            self.write_column(KeccakColumn::SpongeShifts(idx), *value);
         }
 
         // Rest is zero thanks to null_state
@@ -162,20 +166,20 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
 
         // Write absorb-related columns
-        for i in 0..QUARTERS * DIM * DIM {
-            self.write_column(KeccakColumn::SpongeOldState(i), old_state[i]);
-            self.write_column(KeccakColumn::SpongeNewState(i), new_state[i]);
-            self.write_column(KeccakColumn::SpongeXorState(i), xor_state[i]);
+        for idx in 0..STATE_LEN {
+            self.write_column(KeccakColumn::Input(idx), old_state[idx]);
+            self.write_column(KeccakColumn::SpongeNewState(idx), new_state[idx]);
+            self.write_column(KeccakColumn::Output(idx), xor_state[idx]);
         }
-        for (i, value) in bytes.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeBytes(i), *value);
+        for (idx, value) in bytes.iter().enumerate() {
+            self.write_column(KeccakColumn::SpongeBytes(idx), *value);
         }
-        for (i, value) in shifts.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeShifts(i), *value);
+        for (idx, value) in shifts.iter().enumerate() {
+            self.write_column(KeccakColumn::SpongeShifts(idx), *value);
         }
         let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
-        for (i, value) in pad_blocks.iter().enumerate() {
-            self.write_column_field(KeccakColumn::PadSuffix(i), *value);
+        for (idx, value) in pad_blocks.iter().enumerate() {
+            self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
         }
         // Rest is zero thanks to null_state
 
@@ -200,6 +204,17 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.prev_block = state_g;
     }
 
+    /// Computing
+    /// ```text
+    /// for x in 0…4
+    ///   C[x] = A[x,0] xor A[x,1] xor \
+    ///          A[x,2] xor A[x,3] xor \
+    ///          A[x,4]
+    /// for x in 0…4
+    ///   D[x] = C[x-1] xor rot(C[x+1],1)
+    /// for (x,y) in (0…4,0…4)
+    ///   A[x,y] = A[x,y] xor D[x]
+    /// ```
     fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
         let theta = Theta::create(state_a);
 
@@ -207,25 +222,29 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for x in 0..DIM {
             self.write_column(KeccakColumn::ThetaQuotientC(x), theta.quotient_c(x));
             for q in 0..QUARTERS {
-                self.write_column(KeccakColumn::ThetaDenseC(x, q), theta.dense_c(x, q));
-                self.write_column(KeccakColumn::ThetaRemainderC(x, q), theta.remainder_c(x, q));
-                self.write_column(KeccakColumn::ThetaDenseRotC(x, q), theta.dense_rot_c(x, q));
-                self.write_column(
-                    KeccakColumn::ThetaExpandRotC(x, q),
-                    theta.expand_rot_c(x, q),
-                );
+                let idx = grid_index(QUARTERS * DIM, 0, 0, x, q);
+                self.write_column(KeccakColumn::ThetaDenseC(idx), theta.dense_c(x, q));
+                self.write_column(KeccakColumn::ThetaRemainderC(idx), theta.remainder_c(x, q));
+                self.write_column(KeccakColumn::ThetaDenseRotC(idx), theta.dense_rot_c(x, q));
+                self.write_column(KeccakColumn::ThetaExpandRotC(idx), theta.expand_rot_c(x, q));
                 for y in 0..DIM {
-                    let state_a = grid!(100, state_a);
-                    self.write_column(KeccakColumn::ThetaStateA(y, x, q), state_a(y, x, q));
+                    let idx = grid_index(THETA_STATE_A_LEN, 0, y, x, q);
+                    self.write_column(KeccakColumn::Input(idx), state_a[idx]);
                 }
                 for i in 0..QUARTERS {
-                    self.write_column(KeccakColumn::ThetaShiftsC(i, x, q), theta.shifts_c(i, x, q));
+                    let idx = grid_index(THETA_SHIFTS_C_LEN, i, 0, x, q);
+                    self.write_column(KeccakColumn::ThetaShiftsC(idx), theta.shifts_c(i, x, q));
                 }
             }
         }
         theta.state_e()
     }
 
+    /// Computing
+    /// ```text
+    /// for (x,y) in (0…4,0…4)
+    ///   B[y,2*x+3*y] = rot(A[x,y], r[x,y])
+    /// ```
     fn run_pirho(&mut self, state_e: &[u64]) -> Vec<u64> {
         let pirho = PiRho::create(state_e);
 
@@ -233,26 +252,24 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for y in 0..DIM {
             for x in 0..DIM {
                 for q in 0..QUARTERS {
-                    self.write_column(KeccakColumn::PiRhoDenseE(y, x, q), pirho.dense_e(y, x, q));
+                    let idx = grid_index(STATE_LEN, 0, y, x, q);
+                    self.write_column(KeccakColumn::PiRhoDenseE(idx), pirho.dense_e(y, x, q));
+                    self.write_column(KeccakColumn::PiRhoQuotientE(idx), pirho.quotient_e(y, x, q));
                     self.write_column(
-                        KeccakColumn::PiRhoQuotientE(y, x, q),
-                        pirho.quotient_e(y, x, q),
-                    );
-                    self.write_column(
-                        KeccakColumn::PiRhoRemainderE(y, x, q),
+                        KeccakColumn::PiRhoRemainderE(idx),
                         pirho.remainder_e(y, x, q),
                     );
                     self.write_column(
-                        KeccakColumn::PiRhoDenseRotE(y, x, q),
+                        KeccakColumn::PiRhoDenseRotE(idx),
                         pirho.dense_rot_e(y, x, q),
                     );
                     self.write_column(
-                        KeccakColumn::PiRhoExpandRotE(y, x, q),
+                        KeccakColumn::PiRhoExpandRotE(idx),
                         pirho.expand_rot_e(y, x, q),
                     );
                     for i in 0..QUARTERS {
                         self.write_column(
-                            KeccakColumn::PiRhoShiftsE(i, y, x, q),
+                            KeccakColumn::PiRhoShiftsE(grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q)),
                             pirho.shifts_e(i, y, x, q),
                         );
                     }
@@ -262,6 +279,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         pirho.state_b()
     }
 
+    /// Computing
+    /// ```text
+    /// for (x,y) in (0…4,0…4)
+    ///   A[x, y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y])
+    /// ```
     fn run_chi(&mut self, state_b: &[u64]) -> Vec<u64> {
         let chi = Chi::create(state_b);
 
@@ -270,12 +292,10 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             for y in 0..DIM {
                 for x in 0..DIM {
                     for q in 0..QUARTERS {
+                        let idx = grid_index(SHIFTS_LEN, i, y, x, q);
+                        self.write_column(KeccakColumn::ChiShiftsB(idx), chi.shifts_b(i, y, x, q));
                         self.write_column(
-                            KeccakColumn::ChiShiftsB(i, y, x, q),
-                            chi.shifts_b(i, y, x, q),
-                        );
-                        self.write_column(
-                            KeccakColumn::ChiShiftsSum(i, y, x, q),
+                            KeccakColumn::ChiShiftsSum(idx),
                             chi.shifts_sum(i, y, x, q),
                         );
                     }
@@ -285,16 +305,20 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         chi.state_f()
     }
 
+    /// Computing
+    /// ```text
+    /// A[0,0] = A[0,0] xor RC
+    /// ```
     fn run_iota(&mut self, state_f: &[u64], round: usize) -> Vec<u64> {
         let iota = Iota::create(state_f, round);
         let state_g = iota.state_g();
 
         // Update columns
-        for (i, g) in state_g.iter().enumerate() {
-            self.write_column(KeccakColumn::IotaStateG(i), *g);
+        for (idx, g) in state_g.iter().enumerate() {
+            self.write_column(KeccakColumn::Output(idx), *g);
         }
-        for i in 0..QUARTERS {
-            self.write_column(KeccakColumn::RoundConstants(i), iota.rc(i));
+        for idx in 0..QUARTERS {
+            self.write_column(KeccakColumn::RoundConstants(idx), iota.round_constants(idx));
         }
 
         state_g
