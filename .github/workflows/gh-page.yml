@@ -9,7 +9,7 @@ env:
   OCAML_VERSION: "4.14.0"
   # This version has been chosen randomly. It seems that with 2023-11-16, it is
   # broken. The compiler crashes. Feel free to pick any newer working version.
-  RUST_TOOLCHAIN_VERSION: "nightly-2023-10-10"
+  RUST_TOOLCHAIN_VERSION: "nightly-2024-01-16"
 
 jobs:
   release:
@@ -45,7 +45,7 @@ jobs:
       - name: Build Rust Documentation
         run: |
           eval $(opam env)
-          RUSTDOCFLAGS="--enable-index-page -Zunstable-options -D warnings" cargo doc --workspace --all-features --no-deps
+          RUSTDOCFLAGS="--enable-index-page -Zunstable-options -D warnings" cargo +nightly doc --workspace --all-features --no-deps
 
       - name: Build the mdbook
         run: |
