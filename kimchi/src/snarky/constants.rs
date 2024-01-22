@@ -1,11 +1,10 @@
 //! Constants used for poseidon.
 
+use crate::curve::KimchiCurve;
 use ark_ff::Field;
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 
-use crate::curve::KimchiCurve;
-
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Constants<F: Field> {
     pub poseidon: ArithmeticSpongeParams<F>,
     pub endo: F,

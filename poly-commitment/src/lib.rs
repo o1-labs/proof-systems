@@ -22,7 +22,7 @@ use ark_poly::{
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
 
-pub trait SRS<G: CommitmentCurve> {
+pub trait SRS<G: CommitmentCurve>: Clone {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
 
@@ -83,6 +83,10 @@ pub trait SRS<G: CommitmentCurve> {
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
+    ///for now needed by snarky-rs
+    fn create(depth: usize) -> Self;
+    fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>);
+    fn size(&self) -> usize;
 }
 
 #[allow(type_alias_bounds)]
@@ -92,7 +96,7 @@ type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarF
     PolyComm<G::ScalarField>,
 )];
 
-pub trait OpenProof<G: CommitmentCurve>: Sized {
+pub trait OpenProof<G: CommitmentCurve>: Sized + Clone {
     type SRS: SRS<G>;
 
     #[allow(clippy::too_many_arguments)]
