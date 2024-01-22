@@ -13,6 +13,7 @@ use crate::circuits::{
 };
 use crate::curve::KimchiCurve;
 use crate::prover_index::ProverIndex;
+use ark_bn254::Fr as BN254PrimeField;
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, SquareRootField, Zero};
 use ark_poly::EvaluationDomain;
@@ -1559,4 +1560,34 @@ fn test_witness_invalid_foreign_field_modulus() {
         &[FFOps::Add],
         BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one(),
     );
+}
+
+#[test]
+fn test_bn254_addition_with_vesta() {
+    type Fr = BN254PrimeField;
+    type Fq = VestaField;
+    type G1 = Vesta;
+    type G2 = Pallas;
+    let modulus_base_field_vesta = Fq::modulus_biguint();
+    println!("{:?}", modulus_base_field_vesta);
+    let modulus_prime_field_bn254 = Fr::modulus_biguint();
+    println!("{:?}", modulus_prime_field_bn254);
+    let num_public_inputs = 1;
+    // Generate two random values of VestaField
+    let mut gates = vec![CircuitGate::<Fr>::create_generic_gadget(
+        Wire::for_row(0),
+        GenericGateSpec::Pub,
+        None,
+    )];
+    let mut curr_row = num_public_inputs;
+    let cs = ConstraintSystem::create(gates)
+        .public(num_public_inputs)
+        .build()
+        .unwrap();
+    let mut srs = SRS::<G1>::create(cs.domain.d1.size());
+    srs.add_lagrange_basis(cs.domain.d1);
+    let srs = Arc::new(srs);
+    let (endo_q, _endo_r) = endos::<G2>();
+    ProverIndex::<G1, OpeningProof<G1>>::create(cs, endo_q, srs);
+    assert!(1 == 0);
 }
