@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-01-22T13:11:47.683Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="bMseiLlral4eqUeIGrxE" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2024-01-22T14:12:30.006Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="3_eSw_ya_X9i6FlA-iKX" version="22.1.2" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
-    <mxGraphModel dx="1471" dy="913" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="3104" dy="1927" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -3544,9 +3544,6 @@
         </mxCell>
         <mxCell id="Rct82W0HXJ28LCBq3rn3-79" value="hash_messages_for_next_step_proof_opt" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=11;strokeWidth=2;strokeColor=#6c8ebf;fillColor=#dae8fc;" parent="Rct82W0HXJ28LCBq3rn3-94" vertex="1">
           <mxGeometry x="680" y="365" width="220" height="40" as="geometry" />
-        </mxCell>
-        <mxCell id="LG20NbsoZ6-E1O0Kml7B-185" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size: 22px; background-color: rgb(255, 0, 0);&quot;&gt;?????&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Helvetica;fontColor=default;" vertex="1" parent="Rct82W0HXJ28LCBq3rn3-94">
-          <mxGeometry x="140" y="820" width="60" height="30" as="geometry" />
         </mxCell>
         <mxCell id="Rct82W0HXJ28LCBq3rn3-221" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#0000FF;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;endArrow=classic;" parent="1" source="Rct82W0HXJ28LCBq3rn3-103" target="Rct82W0HXJ28LCBq3rn3-220" edge="1">
           <mxGeometry relative="1" as="geometry">
