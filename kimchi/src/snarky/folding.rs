@@ -21,45 +21,53 @@ const CHALLENGE_BITS: usize = 127;
 struct FoldingCircuit<C: KimchiCurve, P: OpenProof<C>, const N: usize> {
     _field: PhantomData<C>,
     _proof: PhantomData<P>,
-    ///commitment sets an their sizes
+    /// Commitment sets and their sizes
     commitments: Vec<usize>,
-    ///challenges sets an their sizes
+    /// Challenges sets and their sizes
     challenges: Vec<usize>,
 }
 
-///the value of the input an output of the function being folded
+/// The value of the input an output of the function being folded
 struct Argument<F, const N: usize>([F; N]);
+
 type Point<F> = [F; 2];
+
+/// Represents the result of a (Poseidon) hash, encoded in the circuit
 type Hash<F> = FieldVar<F>;
 
-///an element of the other curve's field, it could use 2 limbs
+/// Represents an element of the other curve's field. As the other field can
+/// have a higher order, it could require more than one limbs. We suppose the
+/// other field values can be encoded on two limbs.
 #[derive(Debug, Clone)]
 pub struct ForeignElement<F>([F; 2]);
-///a 127 bits challenge
+
+/// A challenge encoded on 127 bits
 #[derive(Debug, Clone)]
 struct SmallChallenge<F: PrimeField>(FieldVar<F>);
+
 #[derive(Debug, Clone)]
 pub struct FullChallenge<F>(ForeignElement<F>);
+
 pub struct Private<F, const N: usize> {
-    ///first input
+    /// First input
     z_0: Argument<F, N>,
-    ///input for this step and output of the previous one
+    /// Input for this step and output of the previous one
     z_i: Argument<F, N>,
-    ///all instances accumulated so far
+    /// All instances accumulated so far
     u_acc: RelaxedInstance<F>,
-    ///newest instance to be folded into the accumulated instance
+    /// Newest instance to be folded into the accumulated instance
     u_i: Instance<F>,
-    ///2 commitments to error terms to be used when folding the error column
+    /// 2 commitments to error terms to be used when folding the error column
     t: [Point<F>; 2],
     i: F,
 }
 
-/// this should run the inner circuit and provide its output, in our case it may be simpler
+/// This should run the inner circuit and provide its output, in our case it may be simpler
 /// to just run the circuit separatly and provide the variables pointing to the output
 fn apply<F: PrimeField, const N: usize>(
     _z_i: Argument<FieldVar<F>, N>,
 ) -> Argument<FieldVar<F>, N> {
-    ///TODO
+    // TODO
     todo!()
 }
 
@@ -70,7 +78,7 @@ fn challenge_linear_combination<F: PrimeField>(
     _small: SmallChallenge<F>,
     _combiner: &SmallChallenge<F>,
 ) -> FullChallenge<FieldVar<F>> {
-    ///TODO
+    // TODO
     todo!()
 }
 
@@ -79,21 +87,22 @@ fn commitment_linear_combination<F: PrimeField>(
     _b: Point<FieldVar<F>>,
     _combiner: &SmallChallenge<F>,
 ) -> Point<FieldVar<F>> {
-    ///TODO
+    // TODO
     todo!()
 }
 fn ec_add<F: PrimeField>(_a: Point<FieldVar<F>>, _b: Point<FieldVar<F>>) -> Point<FieldVar<F>> {
-    ///TODO
+    // TODO
     todo!()
 }
 fn ec_scale<F: PrimeField>(
     _point: Point<FieldVar<F>>,
     _scalar: &SmallChallenge<F>,
 ) -> Point<FieldVar<F>> {
-    ///TODO
+    // TODO
     todo!()
 }
-///trims to 127 bits
+
+/// Trims to 127 bits
 fn trim<F: PrimeField>(
     sys: &mut RunState<F>,
     v: &FieldVar<F>,
@@ -108,11 +117,13 @@ fn trim<F: PrimeField>(
         (F::from_repr(high).unwrap(), F::from_repr(low).unwrap())
     })?;
     let composition = high.mul(base, None, loc!(), sys)? + &low;
-    ///TODO: constraint low to 127 bits
+    // TODO: constraint low to 127 bits
     v.assert_equals(sys, loc!(), &composition)?;
     Ok(low)
 }
 
+/// Compute H(i, z_0, z_1, u) and keep the log2(base) bits of the result.
+/// [base] is supposed to be a power of 2
 fn hash<F: PrimeField, const N: usize>(
     sys: &mut RunState<F>,
     i: FieldVar<F>,
@@ -140,6 +151,8 @@ impl<C: KimchiCurve, P: OpenProof<C>, const N: usize> SnarkyCircuit for FoldingC
     type PublicInput = ();
     type PublicOutput = [Hash<F<C>>; 2];
 
+    /// Implement the IVC circuit, see https://eprint.iacr.org/2021/370.pdf, Fig
+    /// 4, page 18
     fn circuit(
         &self,
         sys: &mut RunState<C::ScalarField>,

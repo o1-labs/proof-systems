@@ -98,6 +98,9 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
             }
         }
     }
+
+    /// See https://eprint.iacr.org/2021/370.pdf, page 15
+    /// Fold the circuit described by `sys` with the other circuit `other`.
     pub fn fold(
         self,
         sys: &mut RunState<F>,
@@ -110,6 +113,7 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         let r = challenge_generator.squeeze_challenge(sys, base)?;
         let hash1 = challenge_linear_combination(self.hash1, SmallChallenge(other.hash1), &r);
         let hash2 = challenge_linear_combination(self.hash2, SmallChallenge(other.hash2), &r);
+        // Combining the witnesses commitments, see W <- W1 + r W2
         let witness_commitments = self
             .witness_commitments
             .into_iter()
