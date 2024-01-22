@@ -12,15 +12,22 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use super::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
-const ZKVM_KECCAK_COLS_LENGTH: usize =
-    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + QUARTERS + RATE_IN_BYTES + 14;
+const MODE_FLAGS_COLS_LENGTH: usize = 7;
+const SUFFIX_COLS_LENGTH: usize = 5;
+const ZKVM_KECCAK_COLS_LENGTH: usize = ZKVM_KECCAK_COLS_CURR
+    + ZKVM_KECCAK_COLS_NEXT
+    + QUARTERS
+    + RATE_IN_BYTES
+    + SUFFIX_COLS_LENGTH
+    + MODE_FLAGS_COLS_LENGTH
+    + 2;
 
 const FLAG_ROUND_OFFSET: usize = 0;
 const FLAG_ABSORB_OFFSET: usize = 1;
 const FLAG_SQUEEZE_OFFSET: usize = 2;
 const FLAG_ROOT_OFFSET: usize = 3;
-const FLAG_PAD_OFFSET: usize = 4;
-const FLAG_LENGTH_OFFSET: usize = 5;
+const FLAG_PAD_LENGTH_OFFSET: usize = 4;
+const FLAG_INV_PAD_LENGTH_OFFSET: usize = 5;
 const FLAG_TWO_TO_PAD_OFFSET: usize = 6;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,8 +38,8 @@ pub enum KeccakColumn {
     FlagAbsorb,             // Coeff Absorb = 0 | 1
     FlagSqueeze,            // Coeff Squeeze = 0 | 1
     FlagRoot,               // Coeff Root = 0 | 1
-    FlagPad,                // Coeff Pad = 0 | 1
-    FlagLength,             // Coeff Length 0 | 1 ..=136
+    PadLength,              // Coeff Length 0 | 1 ..=136
+    InvPadLength,           // Inverse of PadLength when PadLength != 0
     TwoToPad,               // 2^PadLength
     PadBytesFlags(usize),   // 136 boolean values
     PadSuffix(usize),       // 5 values with padding suffix
@@ -62,12 +69,12 @@ pub enum KeccakColumn {
 pub struct KeccakColumns<T> {
     pub hash_index: T,
     pub step_index: T,
-    pub mode_flags: [T; 7], // Round, Absorb, Squeeze, Root, Pad, Length, TwoToPad
-    pub pad_bytes_flags: [T; RATE_IN_BYTES], // 136 boolean values -> sponge
-    pub pad_suffix: [T; 5], // 5 values with padding suffix -> sponge
-    pub round_constants: [T; QUARTERS], // Round constants -> round
-    pub curr: [T; ZKVM_KECCAK_COLS_CURR], // Curr[0..1965)
-    pub next: [T; ZKVM_KECCAK_COLS_NEXT], // Next[0..100)
+    pub mode_flags: [T; MODE_FLAGS_COLS_LENGTH], // Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
+    pub pad_bytes_flags: [T; RATE_IN_BYTES],     // 136 boolean values -> sponge
+    pub pad_suffix: [T; SUFFIX_COLS_LENGTH],     // 5 values with padding suffix -> sponge
+    pub round_constants: [T; QUARTERS],          // Round constants -> round
+    pub curr: [T; ZKVM_KECCAK_COLS_CURR],        // Curr[0..1965)
+    pub next: [T; ZKVM_KECCAK_COLS_NEXT],        // Next[0..100)
 }
 
 impl<T: Clone> KeccakColumns<T> {
@@ -81,7 +88,7 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
         KeccakColumns {
             hash_index: T::zero(),
             step_index: T::zero(),
-            mode_flags: std::array::from_fn(|_| T::zero()), // TwoToPad default zero lookup won't be triggered
+            mode_flags: std::array::from_fn(|_| T::zero()), // Defaults are zero, but lookups will not be triggered
             pad_bytes_flags: std::array::from_fn(|_| T::zero()),
             pad_suffix: std::array::from_fn(|_| T::zero()),
             round_constants: std::array::from_fn(|_| T::zero()), // default zeros, but lookup only if is round
@@ -102,8 +109,8 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::FlagAbsorb => &self.mode_flags[FLAG_ABSORB_OFFSET],
             KeccakColumn::FlagSqueeze => &self.mode_flags[FLAG_SQUEEZE_OFFSET],
             KeccakColumn::FlagRoot => &self.mode_flags[FLAG_ROOT_OFFSET],
-            KeccakColumn::FlagPad => &self.mode_flags[FLAG_PAD_OFFSET],
-            KeccakColumn::FlagLength => &self.mode_flags[FLAG_LENGTH_OFFSET],
+            KeccakColumn::PadLength => &self.mode_flags[FLAG_PAD_LENGTH_OFFSET],
+            KeccakColumn::InvPadLength => &self.mode_flags[FLAG_INV_PAD_LENGTH_OFFSET],
             KeccakColumn::TwoToPad => &self.mode_flags[FLAG_TWO_TO_PAD_OFFSET],
             KeccakColumn::PadBytesFlags(idx) => &self.pad_bytes_flags[idx],
             KeccakColumn::PadSuffix(idx) => &self.pad_suffix[idx],
@@ -140,8 +147,8 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
             KeccakColumn::FlagAbsorb => &mut self.mode_flags[FLAG_ABSORB_OFFSET],
             KeccakColumn::FlagSqueeze => &mut self.mode_flags[FLAG_SQUEEZE_OFFSET],
             KeccakColumn::FlagRoot => &mut self.mode_flags[FLAG_ROOT_OFFSET],
-            KeccakColumn::FlagPad => &mut self.mode_flags[FLAG_PAD_OFFSET],
-            KeccakColumn::FlagLength => &mut self.mode_flags[FLAG_LENGTH_OFFSET],
+            KeccakColumn::PadLength => &mut self.mode_flags[FLAG_PAD_LENGTH_OFFSET],
+            KeccakColumn::InvPadLength => &mut self.mode_flags[FLAG_INV_PAD_LENGTH_OFFSET],
             KeccakColumn::TwoToPad => &mut self.mode_flags[FLAG_TWO_TO_PAD_OFFSET],
             KeccakColumn::PadBytesFlags(idx) => &mut self.pad_bytes_flags[idx],
             KeccakColumn::PadSuffix(idx) => &mut self.pad_suffix[idx],
@@ -230,7 +237,7 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
             .try_into()
             .unwrap();
         let pad_suffix = iter_contents
-            .drain(iter_contents.len() - 5..)
+            .drain(iter_contents.len() - SUFFIX_COLS_LENGTH..)
             .collect::<Vec<G>>()
             .try_into()
             .unwrap();
@@ -240,7 +247,7 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
             .try_into()
             .unwrap();
         let mode_flags = iter_contents
-            .drain(iter_contents.len() - 7..)
+            .drain(iter_contents.len() - MODE_FLAGS_COLS_LENGTH..)
             .collect::<Vec<G>>()
             .try_into()
             .unwrap();

@@ -219,7 +219,8 @@ pub(crate) trait KeccakEnvironment {
 
     fn round(&self) -> Self::Variable;
 
-    fn length(&self) -> Self::Variable;
+    fn pad_length(&self) -> Self::Variable;
+    fn inv_pad_length(&self) -> Self::Variable;
 
     fn two_to_pad(&self) -> Self::Variable;
 
@@ -384,7 +385,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_pad(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagPad)
+        Self::is_nonzero(self.pad_length(), self.inv_pad_length())
     }
 
     fn is_round(&self) -> Self::Variable {
@@ -395,8 +396,11 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         self.variable(KeccakColumn::FlagRound)
     }
 
-    fn length(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagLength)
+    fn pad_length(&self) -> Self::Variable {
+        self.variable(KeccakColumn::PadLength)
+    }
+    fn inv_pad_length(&self) -> Self::Variable {
+        self.variable(KeccakColumn::InvPadLength)
     }
 
     fn two_to_pad(&self) -> Self::Variable {
