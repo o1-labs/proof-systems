@@ -157,6 +157,7 @@ pub fn main() -> ExitCode {
             }
 
             // Update the witness with the Keccak step columns before resetting the environment
+            // TODO: simplify the contents of the KeccakColumns or create an iterator for it
             keccak_current_pre_folding_witness
                 .hash_index
                 .push(keccak_env.keccak_witness.hash_index);
@@ -287,15 +288,36 @@ pub fn main() -> ExitCode {
     }
 
     {
+        // MIPS
         let proof =
             proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, folded_witness);
         println!("Generated a proof:\n{:?}", proof);
         let verifies =
             proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
         if verifies {
-            println!("The proof verifies")
+            println!("The MIPS proof verifies")
         } else {
-            println!("The proof doesn't verify")
+            println!("The MIPS proof doesn't verify")
+        }
+    }
+
+    {
+        // KECCAK
+        let keccak_proof = keccak_proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
+            domain,
+            &srs,
+            keccak_folded_witness,
+        );
+        println!("Generated a proof:\n{:?}", keccak_proof);
+        let verifies = keccak_proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(
+            domain,
+            &srs,
+            &keccak_proof,
+        );
+        if verifies {
+            println!("The KECCAK proof verifies")
+        } else {
+            println!("The KECCAK proof doesn't verify")
         }
     }
 
