@@ -266,10 +266,6 @@
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -349,10 +345,6 @@
                 </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_root()));
                 <span class="comment">// Absorb and Squeeze cannot happen at the same time
                 </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_absorb(), <span class="self">self</span>.is_squeeze()));
-                <span class="comment">// Only one of Round and Sponge can be zero
-                // This means either Sponge is true or Round is nonzero -&gt; has an inverse
-                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_sponge() * <span class="self">self</span>.round());
-                <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * <span class="self">Self</span>::is_one(<span class="self">self</span>.round() * <span class="self">self</span>.inverse_round()));
                 <span class="comment">// Trivially, is_sponge and is_round are mutually exclusive
             </span>}
         }

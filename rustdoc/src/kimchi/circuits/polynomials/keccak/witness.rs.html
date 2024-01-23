@@ -494,7 +494,6 @@
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Keccak witness computation
 
 </span><span class="kw">use crate</span>::{
@@ -927,8 +926,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>ini_state = xor_state.clone();
 
-        <span class="comment">// Start by 1 to avoid dummy entry
-        </span><span class="kw">for </span>round <span class="kw">in </span><span class="number">1</span>..=ROUNDS {
+        <span class="kw">for </span>round <span class="kw">in </span><span class="number">0</span>..ROUNDS {
             <span class="comment">// Theta
             </span><span class="kw">let </span>theta = Theta::create(<span class="kw-2">&amp;</span>ini_state);
 

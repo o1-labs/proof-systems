@@ -647,12 +647,6 @@
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use super</span>::{
@@ -755,12 +749,12 @@
         <span class="kw">match </span><span class="self">self</span>.keccak_step {
             <span class="prelude-val">Some</span>(step) =&gt; <span class="kw">match </span>step {
                 KeccakStep::Sponge(sponge) =&gt; <span class="kw">match </span>sponge {
-                    Sponge::Absorb(<span class="kw">_</span>) =&gt; <span class="self">self</span>.keccak_step = <span class="prelude-val">Some</span>(KeccakStep::Round(<span class="number">1</span>)),
+                    Sponge::Absorb(<span class="kw">_</span>) =&gt; <span class="self">self</span>.keccak_step = <span class="prelude-val">Some</span>(KeccakStep::Round(<span class="number">0</span>)),
 
                     Sponge::Squeeze =&gt; <span class="self">self</span>.keccak_step = <span class="prelude-val">None</span>,
                 },
                 KeccakStep::Round(round) =&gt; {
-                    <span class="kw">if </span>round &lt; ROUNDS <span class="kw">as </span>u64 {
+                    <span class="kw">if </span>round &lt; ROUNDS <span class="kw">as </span>u64 - <span class="number">1 </span>{
                         <span class="self">self</span>.keccak_step = <span class="prelude-val">Some</span>(KeccakStep::Round(round + <span class="number">1</span>));
                     } <span class="kw">else </span>{
                         <span class="self">self</span>.blocks_left_to_absorb -= <span class="number">1</span>;
@@ -873,8 +867,6 @@
     <span class="kw">fn </span>is_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>inverse_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
@@ -1050,10 +1042,6 @@
 
     <span class="kw">fn </span>round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::FlagRound)
-    }
-
-    <span class="kw">fn </span>inverse_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.variable(KeccakColumn::InverseRound)
     }
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
