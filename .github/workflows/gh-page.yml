@@ -1,9 +1,12 @@
 name: Deploy Specifications & Docs to GitHub Pages
 
 on:
-  push:
-    branches:
-      - "*"
+  # Only trigger this job when PR is merged into master:
+  # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#running-your-pull_request_target-workflow-when-a-pull-request-merges
+  pull_request_target:
+    branches: [master]
+    types:
+      - closed
 
 env:
   OCAML_VERSION: "4.14.0"
@@ -14,6 +17,7 @@ env:
 jobs:
   release:
     name: GitHub Pages
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
