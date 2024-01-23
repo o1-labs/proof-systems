@@ -319,6 +319,7 @@ pub fn verify<
 #[test]
 fn test_keccak_prover() {
     use ark_ff::UniformRand;
+    use kimchi::o1_utils::FieldHelpers;
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -362,6 +363,20 @@ fn test_keccak_prover() {
         BaseSponge,
         ScalarSponge,
     >(domain, &srs, proof_inputs);
+    // Printing some stats about the proofs. That should be in a regression
+    // test. We should have a file where we dumped this data into, and that we
+    // can always have a look quickly to have some stats, in particular the
+    // product team. While testing, we continuously check if we
+    // increased/decreased the number of columns, proof size, etc.
+    // For instance, here I print the proof size:
+    let nb_columns = proof.commitments.clone().into_iter().len();
+    println!("Nb of columns: {:?}", nb_columns);
+    // type T = <ark_bn254::g1::Parameters as ModelParameters>::BaseField;
+    let com_size_in_bytes = ark_bn254::Fq::size_in_bytes();
+    let eval_size_in_bytes = ark_bn254::Fr::size_in_bytes();
+    let total_comm_size = nb_columns * com_size_in_bytes;
+    let eval_size = nb_columns * eval_size_in_bytes * 2;
+    println!("Proof size is {:?}B", total_comm_size + eval_size);
 
     assert!(verify::<
         _,
