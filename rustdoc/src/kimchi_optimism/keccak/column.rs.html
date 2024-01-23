@@ -279,6 +279,22 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
@@ -317,7 +333,12 @@
 <span class="kw">const </span>PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_SUFFIX_LEN: usize = <span class="number">5</span>;
 
-<span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+<span class="doccomment">/// Column aliases used by the Keccak circuit.
+/// The number of aliases is not necessarily equal to the actual number of
+/// columns.
+/// Each alias will be mapped to a column index depending on the step kind
+/// (Sponge or Round) that is currently being executed.
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>KeccakColumn {
     HashIndex,
     StepIndex,
@@ -352,7 +373,12 @@
     </span>Output(usize),          <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
 </span>}
 
-<span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
+<span class="doccomment">/// The columns used by the Keccak circuit.
+/// The Keccak circuit is split into two parts: Sponge and Round.
+/// The columns are shared between the Sponge and Round steps.
+/// The step index and hash index are shared between the Sponge and Round step
+/// type.
+</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
     <span class="kw">pub </span>hash_index: T,
     <span class="kw">pub </span>step_index: T,
@@ -382,7 +408,11 @@
 <span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;T&gt; {
     <span class="kw">type </span>Output = T;
 
-    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+    <span class="doccomment">/// Map the column alias to the actual column index.
+    /// Note that the column index depends on the step kind (Sponge or Round).
+    /// For instance, the column 800 represents PadLength in the Sponge step, while it
+    /// is used by intermediary values when executing the Round step.
+    </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             KeccakColumn::HashIndex =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.hash_index,
             KeccakColumn::StepIndex =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.step_index,
@@ -461,7 +491,8 @@
     <span class="kw">type </span>Item = F;
     <span class="kw">type </span>IntoIter = std::vec::IntoIter&lt;F&gt;;
 
-    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+    <span class="doccomment">/// Iterate over the columns in the Keccak circuit.
+    </span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
         iter_contents.push(<span class="self">self</span>.hash_index);
         iter_contents.push(<span class="self">self</span>.step_index);
@@ -479,7 +510,8 @@
     <span class="kw">type </span>Iter = &lt;Vec&lt;G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Iter;
     <span class="kw">type </span>Item = &lt;Vec&lt;G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Item;
 
-    <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
+    <span class="doccomment">/// Iterate over the columns in the Keccak circuit, in parallel.
+    </span><span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
         iter_contents.push(<span class="self">self</span>.hash_index);
         iter_contents.push(<span class="self">self</span>.step_index);
