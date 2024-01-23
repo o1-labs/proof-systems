@@ -448,14 +448,14 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 /// potential segments (if a polynomial was split in several parts).
 ///
 /// Elements in `evaluation_points` are several discrete points on which
-/// we evaluate polynomials, e.g. [zeta,zeta*w]. See `PointEvaluations`.
+/// we evaluate polynomials, e.g. `[zeta,zeta*w]`. See `PointEvaluations`.
 ///
 /// Note that if one of the polynomial comes specified with a degree
 /// bound, the evaluation for the last segment is potentially shifted
 /// to meet the proof.
 ///
 /// Returns
-///    res = \sum_{k=1}^{|polys|} \sum_{i=1}^{|segments[k]|} polyscale^{k*n+i} ( \sum_j polys[k][j][i] * evalscale^j )
+///    `res = \sum_{k=1}^{|polys|} \sum_{i=1}^{|segments[k]|} polyscale^{k*n+i} ( \sum_j polys[k][j][i] * evalscale^j )`
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<F: PrimeField>(
     evaluation_points: &[F],
