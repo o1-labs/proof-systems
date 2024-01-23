@@ -2837,8 +2837,8 @@ dependencies = [
 name = "turshi"
 version = "0.1.0"
 dependencies = [
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
  "hex",
  "mina-curves",
  "o1-utils",
