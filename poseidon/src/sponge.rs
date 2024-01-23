@@ -3,8 +3,8 @@ use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
-/// Abstracts a sponge operating on a base field [`Fq`] of the curve
-/// [`G`]. The parameter [`Fr`] is modelling the scalar field of the
+/// Abstracts a sponge operating on a base field `Fq` of the curve
+/// `G`. The parameter `Fr` is modelling the scalar field of the
 /// curve.
 pub trait FqSponge<Fq: Field, G, Fr> {
     /// Creates a new sponge.
@@ -14,10 +14,10 @@ pub trait FqSponge<Fq: Field, G, Fr> {
     /// straightforward and calls the underlying sponge directly.
     fn absorb_fq(&mut self, x: &[Fq]);
 
-    /// Absorbs a base field point, that is a pair of [`Fq`] elements.
+    /// Absorbs a base field point, that is a pair of `Fq` elements.
     fn absorb_g(&mut self, g: &[G]);
 
-    /// Absorbs an element of the scalar field [`Fr`] --- it is done
+    /// Absorbs an element of the scalar field `Fr` --- it is done
     /// by converting the element to the base field first.
     fn absorb_fr(&mut self, x: &[Fr]);
 
