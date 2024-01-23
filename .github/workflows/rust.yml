@@ -1,9 +1,7 @@
 name: CI
 
 on:
-  push:
   pull_request:
-    types: [opened, reopened]
 
 env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#release
