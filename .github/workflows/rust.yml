@@ -23,7 +23,7 @@ jobs:
         ocaml_version: ["4.14"]
 
     runs-on: ubuntu-latest
-    name: Run some basic checks and tests
+    name: Basic checks and tests
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4.1.1
@@ -75,6 +75,11 @@ jobs:
       - name: Check that up-to-date specification is checked in
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
+
+      - name: Build cargo docs
+        run: |
+          eval $(opam env)
+          RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
 
       #
       # Coding guidelines
