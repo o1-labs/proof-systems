@@ -13,7 +13,6 @@ use poly_commitment::{
     srs::endos,
 };
 
-
 /// Represents additional information that a curve needs in order to be used with Kimchi
 pub trait KimchiCurve: CommitmentCurve + EndoCurve {
     /// A human readable name.
