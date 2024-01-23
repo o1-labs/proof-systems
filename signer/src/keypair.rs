@@ -2,12 +2,10 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
-use crate::{pubkey::PubKeyError, PubKey, ScalarField, SecKey, seckey::SecKeyError};
-use ark_ec::{AffineRepr, CurveGroup};
-use core::fmt;
 use crate::CurvePoint;
+use crate::{pubkey::PubKeyError, seckey::SecKeyError, PubKey, ScalarField, SecKey};
+use core::fmt;
 use rand::{self, CryptoRng, RngCore};
-use std::ops::Mul;
 use thiserror::Error;
 
 /// Keypair error
@@ -48,9 +46,6 @@ impl Keypair {
     /// Create keypair from secret key
     pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
         let public = PubKey::from_secret_key(secret_key.clone())?;
-        let sec_key: SecKey = SecKey::rand(rng);
-        let scalar = sec_key.into_scalar();
-        let public: CurvePoint = CurvePoint::generator().mul(scalar).into_affine();
 
         // Safe now because PubKey::from_secret_key() checked point is on the curve
         Ok(Self::from_parts_unsafe(
@@ -62,7 +57,8 @@ impl Keypair {
     /// Generate random keypair
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Self {
         let sec_key: SecKey = SecKey::rand(rng);
-        Keypair::from_secret_key(sec_key)
+
+        Self::from_secret_key(sec_key).unwrap()
     }
 
     /// Deserialize keypair from secret key bytes
@@ -81,18 +77,8 @@ impl Keypair {
     ///
     /// Will give error if `hex` string does not match certain requirements.
     pub fn from_hex(secret_hex: &str) -> Result<Self> {
-        let mut bytes: Vec<u8> = hex::decode(secret_hex).map_err(|_| KeypairError::SecretKeyHex)?;
-        bytes.reverse(); // mina scalars hex format is in big-endian order
-
-        let secret = ScalarField::from_bytes(&bytes).map_err(|_| KeypairError::SecretKeyBytes)?;
-        let public: CurvePoint = CurvePoint::generator().mul(secret).into_affine();
-
-        if !public.is_on_curve() {
-            return Err(KeypairError::NonCurvePoint);
-        }
-
-        // Safe now because we checked point is on the curve
-        Ok(Keypair::from_parts_unsafe(secret, public))
+        let secret = SecKey::from_hex(secret_hex)?;
+        Keypair::from_secret_key(secret)
     }
 
     /// Obtain the Mina address corresponding to the keypair's public key

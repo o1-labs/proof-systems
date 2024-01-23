@@ -86,12 +86,17 @@ impl PubKey {
             .map_err(|_| PubKeyError::XCoordinateBytes)?;
         let y = BaseField::from_bytes(&bytes[BaseField::size_in_bytes()..])
             .map_err(|_| PubKeyError::YCoordinateBytes)?;
-        let pt = CurvePoint::get_point_from_x_unchecked(x, y.0.is_odd()).ok_or(PubKeyError::XCoordinate)?;
+        let pt = CurvePoint::get_point_from_x_unchecked(x, y.0.is_odd())
+            .ok_or(PubKeyError::XCoordinate)?;
         if pt.y != y {
             return Err(PubKeyError::NonCurvePoint);
         }
 
-        let public = CurvePoint {x, y, infinity: pt.infinity };
+        let public = CurvePoint {
+            x,
+            y,
+            infinity: pt.infinity,
+        };
         if !public.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
         }
@@ -272,7 +277,8 @@ impl CompressedPubKey {
         } else {
             return Err(PubKeyError::YCoordinateParity);
         };
-        let public = CurvePoint::get_point_from_x(x, is_odd).ok_or(PubKeyError::XCoordinate)?;
+        let public =
+            CurvePoint::get_point_from_x_unchecked(x, is_odd).ok_or(PubKeyError::XCoordinate)?;
         if !public.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
         }
