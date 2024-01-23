@@ -377,6 +377,7 @@ fn test_keccak_prover() {
     let total_comm_size = nb_columns * com_size_in_bytes;
     let eval_size = nb_columns * eval_size_in_bytes * 2;
     println!("Proof size is {:?}B", total_comm_size + eval_size);
+    assert!(1 == 0);
 
     assert!(verify::<
         _,
