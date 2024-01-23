@@ -22,7 +22,7 @@ jobs:
         ocaml_version: ["4.14"]
 
     runs-on: ubuntu-latest
-    name: Basic checks and tests for (rust = ${{ matrix.rust_toolchain_version }}; ocaml = ${{ matrix.ocaml_version }})
+    name: Run some basic checks and tests
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4.1.1
