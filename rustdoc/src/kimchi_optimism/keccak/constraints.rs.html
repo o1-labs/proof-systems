@@ -264,8 +264,6 @@
 <a href="#262" id="262">262</a>
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -326,8 +324,6 @@
                 </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_squeeze()));
                 <span class="comment">// Root is either true or false
                 </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_root()));
-                <span class="comment">// Pad is either true or false
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_pad()));
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
                     <span class="comment">// Bytes are either involved on padding or not
                     </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.in_padding(i)));

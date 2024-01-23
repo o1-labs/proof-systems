@@ -319,6 +319,9 @@
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// This file contains the implementation of the witness for the Keccak permutation.
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
@@ -390,11 +393,14 @@
     }
 
     <span class="kw">fn </span>set_flag_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.write_column(KeccakColumn::FlagPad, <span class="number">1</span>);
-        <span class="self">self</span>.write_column(KeccakColumn::FlagLength, <span class="self">self</span>.pad_len);
+        <span class="self">self</span>.write_column(KeccakColumn::PadLength, <span class="self">self</span>.pad_len);
+        <span class="self">self</span>.write_column_field(
+            KeccakColumn::InvPadLength,
+            Fp::inverse(<span class="kw-2">&amp;</span>Fp::from(<span class="self">self</span>.pad_len)).unwrap(),
+        );
         <span class="kw">let </span>pad_range = RATE_IN_BYTES - <span class="self">self</span>.pad_len <span class="kw">as </span>usize..RATE_IN_BYTES;
         <span class="kw">for </span>i <span class="kw">in </span>pad_range {
-            <span class="self">self</span>.write_column(KeccakColumn::FlagsBytes(i), <span class="number">1</span>);
+            <span class="self">self</span>.write_column(KeccakColumn::PadBytesFlags(i), <span class="number">1</span>);
         }
     }
 

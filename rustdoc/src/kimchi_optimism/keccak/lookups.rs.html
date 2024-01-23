@@ -262,7 +262,6 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -427,12 +426,11 @@
         <span class="comment">// PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
         // Pad suffixes correspond to 10*1 rule
-        // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
         </span><span class="self">self</span>.add_lookup(Lookup::read_if(
-            <span class="self">self</span>.is_sponge(),
+            <span class="self">self</span>.is_pad(),
             LookupTable::PadLookup,
             <span class="macro">vec!</span>[
-                <span class="self">self</span>.length(),
+                <span class="self">self</span>.pad_length(),
                 <span class="self">self</span>.two_to_pad(),
                 <span class="self">self</span>.pad_suffix(<span class="number">0</span>),
                 <span class="self">self</span>.pad_suffix(<span class="number">1</span>),

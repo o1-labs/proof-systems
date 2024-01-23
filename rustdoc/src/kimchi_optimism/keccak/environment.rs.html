@@ -647,6 +647,10 @@
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use super</span>::{
@@ -868,7 +872,8 @@
 
     <span class="kw">fn </span>round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>pad_length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>inv_pad_length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>two_to_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
@@ -878,7 +883,7 @@
 
     <span class="kw">fn </span>bytes_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
 
-    <span class="kw">fn </span>flags_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; RATE_IN_BYTES];
+    <span class="kw">fn </span>pad_bytes_flags(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; RATE_IN_BYTES];
     <span class="kw">fn </span>flags_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt;;
 
     <span class="kw">fn </span>block_in_padding(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable;
@@ -1033,7 +1038,7 @@
     }
 
     <span class="kw">fn </span>is_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.variable(KeccakColumn::FlagPad)
+        <span class="self">Self</span>::is_nonzero(<span class="self">self</span>.pad_length(), <span class="self">self</span>.inv_pad_length())
     }
 
     <span class="kw">fn </span>is_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -1044,8 +1049,11 @@
         <span class="self">self</span>.variable(KeccakColumn::FlagRound)
     }
 
-    <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.variable(KeccakColumn::FlagLength)
+    <span class="kw">fn </span>pad_length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.variable(KeccakColumn::PadLength)
+    }
+    <span class="kw">fn </span>inv_pad_length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.variable(KeccakColumn::InvPadLength)
     }
 
     <span class="kw">fn </span>two_to_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -1053,7 +1061,7 @@
     }
 
     <span class="kw">fn </span>in_padding(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.variable(KeccakColumn::FlagsBytes(idx))
+        <span class="self">self</span>.variable(KeccakColumn::PadBytesFlags(idx))
     }
 
     <span class="kw">fn </span>pad_suffix(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {
@@ -1068,14 +1076,14 @@
         }
     }
 
-    <span class="kw">fn </span>flags_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; RATE_IN_BYTES] {
-        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::FlagsBytes(idx)))
+    <span class="kw">fn </span>pad_bytes_flags(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; RATE_IN_BYTES] {
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PadBytesFlags(idx)))
     }
 
     <span class="kw">fn </span>flags_block(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; Vec&lt;<span class="self">Self</span>::Variable&gt; {
         <span class="kw">match </span>idx {
-            <span class="number">0 </span>=&gt; <span class="self">self</span>.flags_bytes()[<span class="number">0</span>..<span class="number">12</span>].to_vec(),
-            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="self">self</span>.flags_bytes()[<span class="number">12 </span>+ (idx - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ idx * <span class="number">31</span>].to_vec(),
+            <span class="number">0 </span>=&gt; <span class="self">self</span>.pad_bytes_flags()[<span class="number">0</span>..<span class="number">12</span>].to_vec(),
+            <span class="number">1</span>..=<span class="number">4 </span>=&gt; <span class="self">self</span>.pad_bytes_flags()[<span class="number">12 </span>+ (idx - <span class="number">1</span>) * <span class="number">31</span>..<span class="number">12 </span>+ idx * <span class="number">31</span>].to_vec(),
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"No more blocks of flags can be part of padding"</span>),
         }
     }
