@@ -404,21 +404,21 @@
 
 <span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) hash_index: T,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) step_index: T,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) flag_round: T,                    <span class="comment">// Coeff Round = 0 | 1 .. 24
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) flag_absorb: T,                   <span class="comment">// Coeff Absorb = 0 | 1
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) flag_squeeze: T,                  <span class="comment">// Coeff Squeeze = 0 | 1
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) flag_root: T,                     <span class="comment">// Coeff Root = 0 | 1
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) flag_pad: T,                      <span class="comment">// Coeff Pad = 0 | 1
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) flag_length: T,                   <span class="comment">// Coeff Length 0 | 1 .. 136
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) two_to_pad: T,                    <span class="comment">// 2^PadLength
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) inverse_round: T,                 <span class="comment">// Round^-1
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) flags_bytes: [T; RATE_IN_BYTES],  <span class="comment">// 136 boolean values
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) pad_suffix: [T; <span class="number">5</span>],               <span class="comment">// 5 values with padding suffix
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) round_constants: [T; QUARTERS],   <span class="comment">// Round constants
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) curr: [T; ZKVM_KECCAK_COLS_CURR], <span class="comment">// Curr[0..1965)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) next: [T; ZKVM_KECCAK_COLS_NEXT], <span class="comment">// Next[0..100)
+    <span class="kw">pub </span>hash_index: T,
+    <span class="kw">pub </span>step_index: T,
+    <span class="kw">pub </span>flag_round: T,                    <span class="comment">// Coeff Round = 0 | 1 .. 24
+    </span><span class="kw">pub </span>flag_absorb: T,                   <span class="comment">// Coeff Absorb = 0 | 1
+    </span><span class="kw">pub </span>flag_squeeze: T,                  <span class="comment">// Coeff Squeeze = 0 | 1
+    </span><span class="kw">pub </span>flag_root: T,                     <span class="comment">// Coeff Root = 0 | 1
+    </span><span class="kw">pub </span>flag_pad: T,                      <span class="comment">// Coeff Pad = 0 | 1
+    </span><span class="kw">pub </span>flag_length: T,                   <span class="comment">// Coeff Length 0 | 1 .. 136
+    </span><span class="kw">pub </span>two_to_pad: T,                    <span class="comment">// 2^PadLength
+    </span><span class="kw">pub </span>inverse_round: T,                 <span class="comment">// Round^-1
+    </span><span class="kw">pub </span>flags_bytes: [T; RATE_IN_BYTES],  <span class="comment">// 136 boolean values
+    </span><span class="kw">pub </span>pad_suffix: [T; <span class="number">5</span>],               <span class="comment">// 5 values with padding suffix
+    </span><span class="kw">pub </span>round_constants: [T; QUARTERS],   <span class="comment">// Round constants
+    </span><span class="kw">pub </span>curr: [T; ZKVM_KECCAK_COLS_CURR], <span class="comment">// Curr[0..1965)
+    </span><span class="kw">pub </span>next: [T; ZKVM_KECCAK_COLS_NEXT], <span class="comment">// Next[0..100)
 </span>}
 
 <span class="kw">impl</span>&lt;T: Clone&gt; KeccakColumns&lt;T&gt; {
