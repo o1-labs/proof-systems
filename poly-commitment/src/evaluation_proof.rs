@@ -263,6 +263,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut chals = vec![];
         let mut chal_invs = vec![];
 
+        // The main IPA folding loop that has log iterations.
         for _ in 0..rounds {
             let n = g.len() / 2;
             // Pedersen bases
@@ -311,7 +312,7 @@ impl<G: CommitmentCurve> SRS<G> {
             chals.push(u);
             chal_invs.push(u_inv);
 
-            // Folding polynomial coefficients
+            // IPA-folding polynomial coefficients
             a = a_hi
                 .par_iter()
                 .zip(a_lo)
@@ -324,7 +325,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
-            // Folding evaluation points
+            // IPA-folding evaluation points
             b = b_lo
                 .par_iter()
                 .zip(b_hi)
@@ -337,13 +338,13 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
-            // Folding bases
+            // IPA-folding bases
             g = G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, u_pre);
         }
 
         assert!(
             g.len() == 1 && a.len() == 1 && b.len() == 1,
-            "Commitment folding must produce single elements after log rounds"
+            "IPA commitment folding must produce single elements after log rounds"
         );
         let a0 = a[0];
         let b0 = b[0];
