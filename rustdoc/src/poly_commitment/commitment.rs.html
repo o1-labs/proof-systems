@@ -1300,6 +1300,33 @@
 <a href="#1298" id="1298">1298</a>
 <a href="#1299" id="1299">1299</a>
 <a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The following functionality is implemented
 //!
@@ -1742,11 +1769,22 @@
     G::of_coordinates(x, y)
 }
 
-<span class="doccomment">/// Computes the linearization of the evaluations of a (potentially split) polynomial.
-/// Each given `poly` is associated to a matrix where the rows represent the number of evaluated points,
-/// and the columns represent potential segments (if a polynomial was split in several parts).
-/// Note that if one of the polynomial comes specified with a degree bound,
-/// the evaluation for the last segment is potentially shifted to meet the proof.
+<span class="doccomment">/// Computes the linearization of the evaluations of a (potentially
+/// split) polynomial.
+///
+/// Each polynomial in `polys` is represented by a matrix where the
+/// rows correspond to evaluated points, and the columns represent
+/// potential segments (if a polynomial was split in several parts).
+///
+/// Elements in `evaluation_points` are several discrete points on which
+/// we evaluate polynomials, e.g. `[zeta,zeta*w]`. See `PointEvaluations`.
+///
+/// Note that if one of the polynomial comes specified with a degree
+/// bound, the evaluation for the last segment is potentially shifted
+/// to meet the proof.
+///
+/// Returns
+///    `res = \sum_{k=1}^{|polys|} \sum_{i=1}^{|segments[k]|} polyscale^{k*n+i} ( \sum_j polys[k][j][i] * evalscale^j )`
 </span><span class="attr">#[allow(clippy::type_complexity)]
 </span><span class="kw">pub fn </span>combined_inner_product&lt;F: PrimeField&gt;(
     evaluation_points: <span class="kw-2">&amp;</span>[F],
@@ -1756,37 +1794,52 @@
     </span>polys: <span class="kw-2">&amp;</span>[(Vec&lt;Vec&lt;F&gt;&gt;, <span class="prelude-ty">Option</span>&lt;usize&gt;)],
     srs_length: usize,
 ) -&gt; F {
-    <span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
-    <span class="kw">let </span><span class="kw-2">mut </span>xi_i = F::one();
+    <span class="comment">// final combined evaluation result
+    </span><span class="kw">let </span><span class="kw-2">mut </span>res = F::zero();
+    <span class="comment">// polyscale^i
+    </span><span class="kw">let </span><span class="kw-2">mut </span>xi_i = F::one();
 
     <span class="kw">for </span>(evals_tr, shifted) <span class="kw">in </span>polys.iter().filter(|(evals_tr, <span class="kw">_</span>)| !evals_tr[<span class="number">0</span>].is_empty()) {
-        <span class="comment">// transpose the evaluations
-        </span><span class="kw">let </span>evals = (<span class="number">0</span>..evals_tr[<span class="number">0</span>].len())
+        <span class="comment">// Transpose the evaluations.
+        // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in evals_tr,
+        // representing a segment.
+        </span><span class="kw">let </span>evals: Vec&lt;Vec&lt;F&gt;&gt; = (<span class="number">0</span>..evals_tr[<span class="number">0</span>].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;())
-            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+            .collect();
 
-        <span class="comment">// iterating over the polynomial segments
+        <span class="comment">// Iterating over the polynomial segments.
+        // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
+        // Given that xi_i = polyscale^i0 at this point, after this loop we have:
+        //    res += \sum_i polyscale^{i0+i} ( \sum_j evals_tr[j][i] * evalscale^j )
         </span><span class="kw">for </span>eval <span class="kw">in </span><span class="kw-2">&amp;</span>evals {
-            <span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
-
+            <span class="comment">// p_i(evalscale)
+            </span><span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(eval, <span class="kw-2">*</span>evalscale);
             res += <span class="kw-2">&amp;</span>(xi_i * term);
             xi_i <span class="kw-2">*</span>= polyscale;
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(m) = shifted {
-            <span class="comment">// polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
+        <span class="comment">// Unused, obsolete. Shifted should be removed.
+        // Given that xi_i = polyscale^i1 at this point,
+        // res += polyscale^i1 ( \sum_j elm_j^{N - m} f(elm_j) * evalscale^j )
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(m) = shifted {
+            <span class="comment">// Either (1) a zero vector or (2) a copy of last segment in evals.
             </span><span class="kw">let </span>last_evals = <span class="kw">if </span><span class="kw-2">*</span>m &gt;= evals.len() * srs_length {
                 <span class="macro">vec!</span>[F::zero(); evaluation_points.len()]
             } <span class="kw">else </span>{
-                evals[evals.len() - <span class="number">1</span>].clone()
+                <span class="comment">// FIXME @volhovm: How do we ensure this length is equal to
+                // evaluation_points.len()?
+                // Isn't this counted already in evals?
+                </span>evals[evals.len() - <span class="number">1</span>].clone()
             };
+            <span class="kw">let </span>n_minus_m = (srs_length - (<span class="kw-2">*</span>m) % srs_length) <span class="kw">as </span>u64;
             <span class="kw">let </span>shifted_evals: Vec&lt;<span class="kw">_</span>&gt; = evaluation_points
                 .iter()
                 .zip(<span class="kw-2">&amp;</span>last_evals)
-                .map(|(elm, f_elm)| elm.pow([(srs_length - (<span class="kw-2">*</span>m) % srs_length) <span class="kw">as </span>u64]) * f_elm)
+                .map(|(elm, f_elm)| elm.pow([n_minus_m]) * f_elm)
                 .collect();
 
-            res += <span class="kw-2">&amp;</span>(xi_i * DensePolynomial::&lt;F&gt;::eval_polynomial(<span class="kw-2">&amp;</span>shifted_evals, <span class="kw-2">*</span>evalscale));
+            <span class="kw">let </span>term = DensePolynomial::&lt;F&gt;::eval_polynomial(<span class="kw-2">&amp;</span>shifted_evals, <span class="kw-2">*</span>evalscale);
+            res += <span class="kw-2">&amp;</span>(xi_i * term);
             xi_i <span class="kw-2">*</span>= polyscale;
         }
     }
@@ -1835,7 +1888,8 @@
     polyscale: G::ScalarField,
     rand_base: G::ScalarField,
 ) {
-    <span class="kw">let </span><span class="kw-2">mut </span>xi_i = G::ScalarField::one();
+    <span class="comment">// polyscale^i
+    </span><span class="kw">let </span><span class="kw-2">mut </span>xi_i = G::ScalarField::one();
 
     <span class="kw">for </span>Evaluation {
         commitment,

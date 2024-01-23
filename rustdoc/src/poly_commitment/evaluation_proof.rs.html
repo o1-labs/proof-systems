@@ -513,6 +513,40 @@
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{commitment::<span class="kw-2">*</span>, srs::endos};
 <span class="kw">use crate</span>::{srs::SRS, PolynomialsToCombine, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
@@ -589,7 +623,7 @@
 <span class="doccomment">/// Combine the polynomials using `polyscale`, creating a single unified polynomial to open.
 </span><span class="kw">pub fn </span>combine_polys&lt;G: CommitmentCurve, D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
     plnms: PolynomialsToCombine&lt;G, D&gt;, <span class="comment">// vector of polynomial with optional degree bound and commitment randomness
-    </span>polyscale: G::ScalarField,         <span class="comment">// scaling factor for polynoms
+    </span>polyscale: G::ScalarField,         <span class="comment">// scaling factor for polynomials
     </span>srs_length: usize,
 ) -&gt; (DensePolynomial&lt;G::ScalarField&gt;, G::ScalarField) {
     <span class="kw">let </span><span class="kw-2">mut </span>plnm = ScaledChunkedPolynomial::&lt;G::ScalarField, <span class="kw-2">&amp;</span>[G::ScalarField]&gt;::default();
@@ -727,9 +761,17 @@
 
         <span class="kw">let </span>(p, blinding_factor) = combine_polys::&lt;G, D&gt;(plnms, polyscale, <span class="self">self</span>.g.len());
 
-        <span class="kw">let </span>rounds = math::ceil_log2(<span class="self">self</span>.g.len());
+        <span class="comment">// @volhovm: FIXME: this duplicates the definition of rounds
+        // above. Either it should be removed, or it's a bug and it
+        // should use the local g, and not self.g.
+        </span><span class="kw">let </span>rounds = math::ceil_log2(<span class="self">self</span>.g.len());
 
-        <span class="comment">// b_j = sum_i r^i elm_i^j
+        <span class="comment">// The initial evaluation vector for polynomial commitment b_init is not
+        // just the powers of a single point as in the original IPA, but rather
+        // a vector of linearly combined powers with `evalscale` as recombiner.
+        //
+        // b_init_j = sum_i r^i elm_i^j
+        //          = zeta^j + evalscale * zeta^j omega^j
         </span><span class="kw">let </span>b_init = {
             <span class="comment">// randomise/scale the eval powers
             </span><span class="kw">let </span><span class="kw-2">mut </span>scale = G::ScalarField::one();
@@ -744,7 +786,8 @@
             res
         };
 
-        <span class="kw">let </span>combined_inner_product = p
+        <span class="comment">// Combined polynomial p, evaluated at the combined point b_init.
+        </span><span class="kw">let </span>combined_inner_product = p
             .coeffs
             .iter()
             .zip(b_init.iter())
@@ -769,18 +812,24 @@
         <span class="kw">let </span><span class="kw-2">mut </span>chals = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>chal_invs = <span class="macro">vec!</span>[];
 
-        <span class="kw">for _ in </span><span class="number">0</span>..rounds {
+        <span class="comment">// The main IPA folding loop that has log iterations.
+        </span><span class="kw">for _ in </span><span class="number">0</span>..rounds {
             <span class="kw">let </span>n = g.len() / <span class="number">2</span>;
-            <span class="kw">let </span>(g_lo, g_hi) = (g[<span class="number">0</span>..n].to_vec(), g[n..].to_vec());
-            <span class="kw">let </span>(a_lo, a_hi) = (<span class="kw-2">&amp;</span>a[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>a[n..]);
-            <span class="kw">let </span>(b_lo, b_hi) = (<span class="kw-2">&amp;</span>b[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>b[n..]);
+            <span class="comment">// Pedersen bases
+            </span><span class="kw">let </span>(g_lo, g_hi) = (<span class="kw-2">&amp;</span>g[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>g[n..]);
+            <span class="comment">// Polynomial coefficients
+            </span><span class="kw">let </span>(a_lo, a_hi) = (<span class="kw-2">&amp;</span>a[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>a[n..]);
+            <span class="comment">// Evaluation points
+            </span><span class="kw">let </span>(b_lo, b_hi) = (<span class="kw-2">&amp;</span>b[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>b[n..]);
 
-            <span class="kw">let </span>rand_l = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
+            <span class="comment">// Blinders for L/R
+            </span><span class="kw">let </span>rand_l = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
             <span class="kw">let </span>rand_r = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
 
-            <span class="kw">let </span>l = VariableBaseMSM::multi_scalar_mul(
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>g[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>[<span class="self">self</span>.h, u]].concat(),
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>a[n..], <span class="kw-2">&amp;</span>[rand_l, inner_prod(a_hi, b_lo)]]
+            <span class="comment">// Pedersen commitment to a_lo,rand_l,&lt;a_hi,b_lo&gt;
+            </span><span class="kw">let </span>l = VariableBaseMSM::multi_scalar_mul(
+                <span class="kw-2">&amp;</span>[g_lo, <span class="kw-2">&amp;</span>[<span class="self">self</span>.h, u]].concat(),
+                <span class="kw-2">&amp;</span>[a_hi, <span class="kw-2">&amp;</span>[rand_l, inner_prod(a_hi, b_lo)]]
                     .concat()
                     .iter()
                     .map(|x| x.into_repr())
@@ -789,8 +838,8 @@
             .into_affine();
 
             <span class="kw">let </span>r = VariableBaseMSM::multi_scalar_mul(
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>g[n..], <span class="kw-2">&amp;</span>[<span class="self">self</span>.h, u]].concat(),
-                <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>a[<span class="number">0</span>..n], <span class="kw-2">&amp;</span>[rand_r, inner_prod(a_lo, b_hi)]]
+                <span class="kw-2">&amp;</span>[g_hi, <span class="kw-2">&amp;</span>[<span class="self">self</span>.h, u]].concat(),
+                <span class="kw-2">&amp;</span>[a_lo, <span class="kw-2">&amp;</span>[rand_r, inner_prod(a_lo, b_hi)]]
                     .concat()
                     .iter()
                     .map(|x| x.into_repr())
@@ -804,14 +853,16 @@
             sponge.absorb_g(<span class="kw-2">&amp;</span>[l]);
             sponge.absorb_g(<span class="kw-2">&amp;</span>[r]);
 
-            <span class="kw">let </span>u_pre = squeeze_prechallenge(<span class="kw-2">&amp;mut </span>sponge);
+            <span class="comment">// Round #i challenges
+            </span><span class="kw">let </span>u_pre = squeeze_prechallenge(<span class="kw-2">&amp;mut </span>sponge);
             <span class="kw">let </span>u = u_pre.to_field(<span class="kw-2">&amp;</span>endo_r);
             <span class="kw">let </span>u_inv = u.inverse().unwrap();
 
             chals.push(u);
             chal_invs.push(u_inv);
 
-            a = a_hi
+            <span class="comment">// IPA-folding polynomial coefficients
+            </span>a = a_hi
                 .par_iter()
                 .zip(a_lo)
                 .map(|(<span class="kw-2">&amp;</span>hi, <span class="kw-2">&amp;</span>lo)| {
@@ -823,7 +874,8 @@
                 })
                 .collect();
 
-            b = b_lo
+            <span class="comment">// IPA-folding evaluation points
+            </span>b = b_lo
                 .par_iter()
                 .zip(b_hi)
                 .map(|(<span class="kw-2">&amp;</span>lo, <span class="kw-2">&amp;</span>hi)| {
@@ -835,24 +887,34 @@
                 })
                 .collect();
 
-            g = G::combine_one_endo(endo_r, endo_q, <span class="kw-2">&amp;</span>g_lo, <span class="kw-2">&amp;</span>g_hi, u_pre);
+            <span class="comment">// IPA-folding bases
+            </span>g = G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, u_pre);
         }
 
-        <span class="macro">assert!</span>(g.len() == <span class="number">1</span>);
+        <span class="macro">assert!</span>(
+            g.len() == <span class="number">1 </span>&amp;&amp; a.len() == <span class="number">1 </span>&amp;&amp; b.len() == <span class="number">1</span>,
+            <span class="string">"IPA commitment folding must produce single elements after log rounds"
+        </span>);
         <span class="kw">let </span>a0 = a[<span class="number">0</span>];
         <span class="kw">let </span>b0 = b[<span class="number">0</span>];
         <span class="kw">let </span>g0 = g[<span class="number">0</span>];
 
-        <span class="kw">let </span>r_prime = blinders
+        <span class="comment">// Schnorr/Sigma-protocol part
+
+        // r_prime = blinding_factor + \sum_i (rand_l[i] * (u[i]^{-1}) + rand_r * u[i])
+        //   where u is a vector of folding challenges, and rand_l/rand_r are
+        //   intermediate L/R blinders
+        </span><span class="kw">let </span>r_prime = blinders
             .iter()
             .zip(chals.iter().zip(chal_invs.iter()))
-            .map(|((l, r), (u, u_inv))| ((<span class="kw-2">*</span>l) * u_inv) + (<span class="kw-2">*</span>r * u))
+            .map(|((rand_l, rand_r), (u, u_inv))| ((<span class="kw-2">*</span>rand_l) * u_inv) + (<span class="kw-2">*</span>rand_r * u))
             .fold(blinding_factor, |acc, x| acc + x);
 
         <span class="kw">let </span>d = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
         <span class="kw">let </span>r_delta = &lt;G::ScalarField <span class="kw">as </span>UniformRand&gt;::rand(rng);
 
-        <span class="kw">let </span>delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
+        <span class="comment">// delta = (g0 + u*b0)*d + h*r_delta
+        </span><span class="kw">let </span>delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
             + <span class="self">self</span>.h.mul(r_delta))
         .into_affine();
 
@@ -860,7 +922,7 @@
         <span class="kw">let </span>c = ScalarChallenge(sponge.challenge()).to_field(<span class="kw-2">&amp;</span>endo_r);
 
         <span class="kw">let </span>z1 = a0 * c + d;
-        <span class="kw">let </span>z2 = c * r_prime + r_delta;
+        <span class="kw">let </span>z2 = r_prime * c + r_delta;
 
         OpeningProof {
             delta,
@@ -925,7 +987,7 @@
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(bound = <span class="string">"G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize"</span>)]
 </span><span class="kw">pub struct </span>OpeningProof&lt;G: AffineCurve&gt; {
-    <span class="doccomment">/// vector of rounds of L &amp; R commitments
+    <span class="doccomment">/// Vector of rounds of L &amp; R commitments
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Vec&lt;(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)&gt;"</span>)]
     </span><span class="kw">pub </span>lr: Vec&lt;(G, G)&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"o1_utils::serialization::SerdeAs"</span>)]
@@ -934,7 +996,8 @@
     </span><span class="kw">pub </span>z1: G::ScalarField,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"o1_utils::serialization::SerdeAs"</span>)]
     </span><span class="kw">pub </span>z2: G::ScalarField,
-    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"o1_utils::serialization::SerdeAs"</span>)]
+    <span class="doccomment">/// A final folded commitment base
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"o1_utils::serialization::SerdeAs"</span>)]
     </span><span class="kw">pub </span>sg: G,
 }
 
@@ -981,13 +1044,16 @@
     }
 }
 
-<span class="kw">pub struct </span>Challenges&lt;F&gt; {
+<span class="doccomment">/// Commitment round challenges (endo mapped) and their inverses.
+</span><span class="kw">pub struct </span>Challenges&lt;F&gt; {
     <span class="kw">pub </span>chal: Vec&lt;F&gt;,
     <span class="kw">pub </span>chal_inv: Vec&lt;F&gt;,
 }
 
 <span class="kw">impl</span>&lt;G: AffineCurve&gt; OpeningProof&lt;G&gt; {
-    <span class="kw">pub fn </span>prechallenges&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
+    <span class="doccomment">/// Computes a log-sized vector of scalar challenges for
+    /// recombining elements inside the IPA.
+    </span><span class="kw">pub fn </span>prechallenges&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
     ) -&gt; Vec&lt;ScalarChallenge&lt;G::ScalarField&gt;&gt; {
@@ -1002,7 +1068,9 @@
             .collect()
     }
 
-    <span class="kw">pub fn </span>challenges&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
+    <span class="doccomment">/// Same as `prechallenges`, but maps scalar challenges using the
+    /// provided endomorphism, and computes their inverses.
+    </span><span class="kw">pub fn </span>challenges&lt;EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         endo_r: <span class="kw-2">&amp;</span>G::ScalarField,
         sponge: <span class="kw-2">&amp;mut </span>EFqSponge,

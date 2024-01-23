@@ -1241,6 +1241,12 @@
 <a href="#1239" id="1239">1239</a>
 <a href="#1240" id="1240">1240</a>
 <a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -1378,7 +1384,9 @@
 
         <span class="kw">let </span>zk_rows = index.zk_rows;
 
-        <span class="comment">//~ 1. Setup the Fq-Sponge.
+        <span class="comment">//~ 1. Setup the Fq-Sponge. This sponge mostly absorbs group
+        // elements (points as tuples over the base field), but it
+        // squeezes out elements of the group's scalar field.
         </span><span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         <span class="comment">//~ 1. Absorb the digest of the VerifierIndex.
@@ -1489,7 +1497,11 @@
         <span class="comment">//~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         </span><span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
 
-        <span class="comment">//~ 1. Setup the Fr-Sponge.
+        <span class="comment">//~ 1. Setup the Fr-Sponge. This sponge absorbs elements from
+        // the scalar field of the curve (equal to the base field of
+        // the previous recursion round), and squeezes scalar elements
+        // of the field. The squeeze result is the same as with the
+        // `fq_sponge`.
         </span><span class="kw">let </span>digest = fq_sponge.clone().digest();
         <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
 
@@ -1602,13 +1614,13 @@
         fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">1</span>]);
         fr_sponge.absorb_evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>.evals);
 
-        <span class="comment">//~ 1. Sample $v'$ with the Fr-Sponge.
+        <span class="comment">//~ 1. Sample the "polyscale" $v'$ with the Fr-Sponge.
         </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
 
         <span class="comment">//~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         </span><span class="kw">let </span>v = v_chal.to_field(endo_r);
 
-        <span class="comment">//~ 1. Sample $u'$ with the Fr-Sponge.
+        <span class="comment">//~ 1. Sample the "evalscale" $u'$ with the Fr-Sponge.
         </span><span class="kw">let </span>u_chal = fr_sponge.challenge();
 
         <span class="comment">//~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).

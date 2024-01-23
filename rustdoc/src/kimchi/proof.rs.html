@@ -986,6 +986,11 @@
 <a href="#984" id="984">984</a>
 <a href="#985" id="985">985</a>
 <a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
@@ -1608,6 +1613,13 @@
         CamlF: From&lt;F&gt;,
     {
         <span class="kw">fn </span>from(pe: ProofEvaluations&lt;PointEvaluations&lt;Vec&lt;F&gt;&gt;&gt;) -&gt; <span class="self">Self </span>{
+            <span class="kw">let </span>first = pe.public.map(|x: PointEvaluations&lt;Vec&lt;F&gt;&gt;| {
+                <span class="comment">// map both fields of each evaluation.
+                </span>x.map(<span class="kw-2">&amp;</span>|x: Vec&lt;F&gt;| {
+                    <span class="kw">let </span>y: Vec&lt;CamlF&gt; = x.into_iter().map(Into::into).collect();
+                    y
+                })
+            });
             <span class="kw">let </span>w = (
                 pe.w[<span class="number">0</span>]
                     .clone()
@@ -1723,85 +1735,83 @@
                     .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
             );
 
-            (
-                pe.public
+            <span class="kw">let </span>second = CamlProofEvaluations {
+                w,
+                coefficients,
+                z: pe.z.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
+                s,
+                generic_selector: pe
+                    .generic_selector
+                    .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
+                poseidon_selector: pe
+                    .poseidon_selector
+                    .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
+                complete_add_selector: pe
+                    .complete_add_selector
+                    .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
+                mul_selector: pe
+                    .mul_selector
+                    .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
+                emul_selector: pe
+                    .emul_selector
+                    .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
+                endomul_scalar_selector: pe
+                    .endomul_scalar_selector
+                    .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
+                range_check0_selector: pe
+                    .range_check0_selector
                     .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                CamlProofEvaluations {
-                    w,
-                    coefficients,
-                    z: pe.z.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
-                    s,
-                    generic_selector: pe
-                        .generic_selector
-                        .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
-                    poseidon_selector: pe
-                        .poseidon_selector
-                        .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
-                    complete_add_selector: pe
-                        .complete_add_selector
-                        .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
-                    mul_selector: pe
-                        .mul_selector
-                        .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
-                    emul_selector: pe
-                        .emul_selector
-                        .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
-                    endomul_scalar_selector: pe
-                        .endomul_scalar_selector
-                        .map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect()),
-                    range_check0_selector: pe
-                        .range_check0_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    range_check1_selector: pe
-                        .range_check1_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    foreign_field_add_selector: pe
-                        .foreign_field_add_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    foreign_field_mul_selector: pe
-                        .foreign_field_mul_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    xor_selector: pe
-                        .xor_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    rot_selector: pe
-                        .rot_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    lookup_aggregation: pe
-                        .lookup_aggregation
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    lookup_table: pe
-                        .lookup_table
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    lookup_sorted: pe
-                        .lookup_sorted
-                        .iter()
-                        .map(|x| {
-                            x.as_ref().map(|x| {
-                                x.map_ref(<span class="kw-2">&amp;</span>|x| x.clone().into_iter().map(Into::into).collect())
-                            })
+                range_check1_selector: pe
+                    .range_check1_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_add_selector: pe
+                    .foreign_field_add_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_selector: pe
+                    .foreign_field_mul_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                xor_selector: pe
+                    .xor_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                rot_selector: pe
+                    .rot_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                lookup_aggregation: pe
+                    .lookup_aggregation
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                lookup_table: pe
+                    .lookup_table
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                lookup_sorted: pe
+                    .lookup_sorted
+                    .iter()
+                    .map(|x| {
+                        x.as_ref().map(|x| {
+                            x.map_ref(<span class="kw-2">&amp;</span>|x| x.clone().into_iter().map(Into::into).collect())
                         })
-                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                    runtime_lookup_table: pe
-                        .runtime_lookup_table
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    runtime_lookup_table_selector: pe
-                        .runtime_lookup_table_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    xor_lookup_selector: pe
-                        .xor_lookup_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    lookup_gate_lookup_selector: pe
-                        .lookup_gate_lookup_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    range_check_lookup_selector: pe
-                        .range_check_lookup_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                    foreign_field_mul_lookup_selector: pe
-                        .foreign_field_mul_lookup_selector
-                        .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
-                },
-            )
+                    })
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                runtime_lookup_table: pe
+                    .runtime_lookup_table
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                runtime_lookup_table_selector: pe
+                    .runtime_lookup_table_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                xor_lookup_selector: pe
+                    .xor_lookup_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                lookup_gate_lookup_selector: pe
+                    .lookup_gate_lookup_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                range_check_lookup_selector: pe
+                    .range_check_lookup_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_lookup_selector: pe
+                    .foreign_field_mul_lookup_selector
+                    .map(|x| x.map(<span class="kw-2">&amp;</span>|x| x.into_iter().map(Into::into).collect())),
+            };
+
+            (first, second)
         }
     }
 

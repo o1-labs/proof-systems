@@ -2370,7 +2370,7 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 <p>We run the following algorithm:</p>
 <ol>
 <li>
-<p>Setup the Fq-Sponge.</p>
+<p>Setup the Fq-Sponge. This sponge mostly absorbs group</p>
 </li>
 <li>
 <p>Absorb the digest of the VerifierIndex.</p>
@@ -2426,7 +2426,7 @@ otherwise set the joint combiner challenge $j’$ to $0$.</li>
 <p>Derive $\zeta$ from $\zeta’$ using the endomorphism (TODO: specify).</p>
 </li>
 <li>
-<p>Setup the Fr-Sponge.</p>
+<p>Setup the Fr-Sponge. This sponge absorbs elements from</p>
 </li>
 <li>
 <p>Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</p>
@@ -2456,13 +2456,13 @@ otherwise set the joint combiner challenge $j’$ to $0$.</li>
 </ul>
 </li>
 <li>
-<p>Sample $v’$ with the Fr-Sponge.</p>
+<p>Sample the “polyscale” $v’$ with the Fr-Sponge.</p>
 </li>
 <li>
 <p>Derive $v$ from $v’$ using the endomorphism (TODO: specify).</p>
 </li>
 <li>
-<p>Sample $u’$ with the Fr-Sponge.</p>
+<p>Sample the “evalscale” $u’$ with the Fr-Sponge.</p>
 </li>
 <li>
 <p>Derive $u$ from $u’$ using the endomorphism (TODO: specify).</p>

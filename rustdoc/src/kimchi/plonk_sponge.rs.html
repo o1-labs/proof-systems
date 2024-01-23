@@ -160,6 +160,11 @@
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>mina_poseidon::sponge::{DefaultFrSponge, ScalarChallenge};
 <span class="kw">use </span>mina_poseidon::{
@@ -169,7 +174,12 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::proof::{PointEvaluations, ProofEvaluations};
 
-<span class="kw">pub trait </span>FrSponge&lt;Fr: Field&gt; {
+<span class="doccomment">/// Abstracts a sponge that operates on the scalar field of an
+/// elliptic curve. Unlike the [`FqSponge`](mina_poseidon::FqSponge)
+/// it cannot absorb or digest base field elements. However, the
+/// [`FqSponge`](mina_poseidon::FqSponge) can *also* operate on the
+/// scalar field by the means of a specific encoding technique.
+</span><span class="kw">pub trait </span>FrSponge&lt;Fr: Field&gt; {
     <span class="doccomment">/// Creates a new Fr-Sponge.
     </span><span class="kw">fn </span>new(p: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>ArithmeticSpongeParams&lt;Fr&gt;) -&gt; <span class="self">Self</span>;
 
