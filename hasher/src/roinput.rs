@@ -137,37 +137,37 @@ impl ROInput {
     pub fn to_fields(&self) -> Vec<Fp> {
         let mut fields: Vec<Fp> = self.fields.clone();
 
-        let bits_as_fields = self
-            .bits
-            .chunks(Fp::MODULUS_BIT_SIZE as usize - 1)
-            .into_iter()
-            .fold(vec![], |mut acc, chunk| {
-                // Workaround: chunk.clone() does not appear to respect
-                // the chunk's boundaries when it's not byte-aligned.
-                //
-                // That is,
-                //
-                //   let mut bv = chunk.clone().to_bitvec();
-                //   bv.resize(B::size_in_bits(), false);
-                //   fields.push(B::from_bytes(bv.into()));
-                //
-                // doesn't work.
-                //
-                // Instead we must do
+        let bits_as_fields =
+            self.bits
+                .chunks(Fp::MODULUS_BIT_SIZE as usize - 1)
+                .fold(vec![], |mut acc, chunk| {
+                    // Workaround: chunk.clone() does not appear to respect
+                    // the chunk's boundaries when it's not byte-aligned.
+                    //
+                    // That is,
+                    //
+                    //   let mut bv = chunk.clone().to_bitvec();
+                    //   bv.resize(B::size_in_bits(), false);
+                    //   fields.push(B::from_bytes(bv.into()));
+                    //
+                    // doesn't work.
+                    //
+                    // Instead we must do
 
-                let mut bv = BitVec::<u8>::new();
-                bv.resize(chunk.len(), false);
-                bv.clone_from_bitslice(chunk);
+                    let mut bv = BitVec::<u8>::new();
+                    bv.resize(chunk.len(), false);
+                    bv.clone_from_bitslice(chunk);
 
-                // extend to the size of a field;
-                bv.resize(Fp::MODULUS_BIT_SIZE as usize, false);
+                    // extend to the size of a field;
+                    bv.resize(Fp::MODULUS_BIT_SIZE as usize, false);
 
-                acc.push(
-                    Fp::from_bytes(&bv.into_vec()).expect("failed to create base field element"),
-                );
+                    acc.push(
+                        Fp::from_bytes(&bv.into_vec())
+                            .expect("failed to create base field element"),
+                    );
 
-                acc
-            });
+                    acc
+                });
 
         fields.extend(bits_as_fields);
 
