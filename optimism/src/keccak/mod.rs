@@ -16,7 +16,7 @@ pub mod witness;
 pub(crate) const HASH_BITLENGTH: usize = 256;
 pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
 pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
-pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
+pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
 pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 

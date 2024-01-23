@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use ark_ff::{One, Zero};
 use kimchi::circuits::polynomials::keccak::constants::{
-    CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
+    CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
     QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
     THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
@@ -12,23 +12,29 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use super::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
-const MODE_FLAGS_COLS_LENGTH: usize = 7;
-const SUFFIX_COLS_LENGTH: usize = 5;
-const ZKVM_KECCAK_COLS_LENGTH: usize = ZKVM_KECCAK_COLS_CURR
-    + ZKVM_KECCAK_COLS_NEXT
-    + QUARTERS
-    + RATE_IN_BYTES
-    + SUFFIX_COLS_LENGTH
-    + MODE_FLAGS_COLS_LENGTH
-    + 2;
+const ZKVM_KECCAK_COLS_LENGTH: usize =
+    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + 2;
 
-const FLAG_ROUND_OFFSET: usize = 0;
-const FLAG_ABSORB_OFFSET: usize = 1;
-const FLAG_SQUEEZE_OFFSET: usize = 2;
-const FLAG_ROOT_OFFSET: usize = 3;
-const FLAG_PAD_LENGTH_OFFSET: usize = 4;
-const FLAG_INV_PAD_LENGTH_OFFSET: usize = 5;
-const FLAG_TWO_TO_PAD_OFFSET: usize = 6;
+const MODE_FLAGS_COLS_LEN: usize = 3;
+
+const FLAG_ROUND_OFF: usize = 0;
+const FLAG_ABSORB_OFF: usize = 1;
+const FLAG_SQUEEZE_OFF: usize = 2;
+
+const ROUND_COEFFS_OFF: usize = KECCAK_COLS;
+pub(crate) const ROUND_COEFFS_LEN: usize = QUARTERS;
+
+// The following elements do not increase the total column count
+// because they only appear in sponge rows, which only have 800 curr columns used.
+const SPONGE_COEFFS_OFF: usize = 800;
+const FLAG_ROOT_OFF: usize = SPONGE_COEFFS_OFF;
+const PAD_LEN_OFF: usize = 801;
+const PAD_INV_OFF: usize = 802;
+const PAD_TWO_OFF: usize = 803;
+const PAD_BYTES_OFF: usize = 804;
+pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
+const PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES;
+pub(crate) const PAD_SUFFIX_LEN: usize = 5;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
@@ -69,12 +75,9 @@ pub enum KeccakColumn {
 pub struct KeccakColumns<T> {
     pub hash_index: T,
     pub step_index: T,
-    pub mode_flags: [T; MODE_FLAGS_COLS_LENGTH], // Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
-    pub pad_bytes_flags: [T; RATE_IN_BYTES],     // 136 boolean values -> sponge
-    pub pad_suffix: [T; SUFFIX_COLS_LENGTH],     // 5 values with padding suffix -> sponge
-    pub round_constants: [T; QUARTERS],          // Round constants -> round
-    pub curr: [T; ZKVM_KECCAK_COLS_CURR],        // Curr[0..1965)
-    pub next: [T; ZKVM_KECCAK_COLS_NEXT],        // Next[0..100)
+    pub mode_flags: [T; MODE_FLAGS_COLS_LEN], // Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
+    pub curr: [T; ZKVM_KECCAK_COLS_CURR],     // Curr[0..1965) + RC as quarters
+    pub next: [T; ZKVM_KECCAK_COLS_NEXT],     // Next[0..100)
 }
 
 impl<T: Clone> KeccakColumns<T> {
@@ -89,10 +92,7 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
             hash_index: T::zero(),
             step_index: T::zero(),
             mode_flags: std::array::from_fn(|_| T::zero()), // Defaults are zero, but lookups will not be triggered
-            pad_bytes_flags: std::array::from_fn(|_| T::zero()),
-            pad_suffix: std::array::from_fn(|_| T::zero()),
-            round_constants: std::array::from_fn(|_| T::zero()), // default zeros, but lookup only if is round
-            curr: std::array::from_fn(|_| T::zero()),
+            curr: std::array::from_fn(|_| T::zero()), // default zeros, but lookups will not be triggered always
             next: std::array::from_fn(|_| T::zero()),
         }
     }
@@ -105,16 +105,16 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
         match index {
             KeccakColumn::HashIndex => &self.hash_index,
             KeccakColumn::StepIndex => &self.step_index,
-            KeccakColumn::FlagRound => &self.mode_flags[FLAG_ROUND_OFFSET],
-            KeccakColumn::FlagAbsorb => &self.mode_flags[FLAG_ABSORB_OFFSET],
-            KeccakColumn::FlagSqueeze => &self.mode_flags[FLAG_SQUEEZE_OFFSET],
-            KeccakColumn::FlagRoot => &self.mode_flags[FLAG_ROOT_OFFSET],
-            KeccakColumn::PadLength => &self.mode_flags[FLAG_PAD_LENGTH_OFFSET],
-            KeccakColumn::InvPadLength => &self.mode_flags[FLAG_INV_PAD_LENGTH_OFFSET],
-            KeccakColumn::TwoToPad => &self.mode_flags[FLAG_TWO_TO_PAD_OFFSET],
-            KeccakColumn::PadBytesFlags(idx) => &self.pad_bytes_flags[idx],
-            KeccakColumn::PadSuffix(idx) => &self.pad_suffix[idx],
-            KeccakColumn::RoundConstants(idx) => &self.round_constants[idx],
+            KeccakColumn::FlagRound => &self.mode_flags[FLAG_ROUND_OFF],
+            KeccakColumn::FlagAbsorb => &self.mode_flags[FLAG_ABSORB_OFF],
+            KeccakColumn::FlagSqueeze => &self.mode_flags[FLAG_SQUEEZE_OFF],
+            KeccakColumn::FlagRoot => &self.curr[FLAG_ROOT_OFF],
+            KeccakColumn::PadLength => &self.curr[PAD_LEN_OFF],
+            KeccakColumn::InvPadLength => &self.curr[PAD_INV_OFF],
+            KeccakColumn::TwoToPad => &self.curr[PAD_TWO_OFF],
+            KeccakColumn::PadBytesFlags(idx) => &self.curr[PAD_BYTES_OFF + idx],
+            KeccakColumn::PadSuffix(idx) => &self.curr[PAD_SUFFIX_OFF + idx],
+            KeccakColumn::RoundConstants(idx) => &self.curr[ROUND_COEFFS_OFF + idx],
             KeccakColumn::Input(idx) => &self.curr[idx],
             KeccakColumn::ThetaShiftsC(idx) => &self.curr[THETA_SHIFTS_C_OFF + idx],
             KeccakColumn::ThetaDenseC(idx) => &self.curr[THETA_DENSE_C_OFF + idx],
@@ -143,16 +143,16 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
         match index {
             KeccakColumn::HashIndex => &mut self.hash_index,
             KeccakColumn::StepIndex => &mut self.step_index,
-            KeccakColumn::FlagRound => &mut self.mode_flags[FLAG_ROUND_OFFSET],
-            KeccakColumn::FlagAbsorb => &mut self.mode_flags[FLAG_ABSORB_OFFSET],
-            KeccakColumn::FlagSqueeze => &mut self.mode_flags[FLAG_SQUEEZE_OFFSET],
-            KeccakColumn::FlagRoot => &mut self.mode_flags[FLAG_ROOT_OFFSET],
-            KeccakColumn::PadLength => &mut self.mode_flags[FLAG_PAD_LENGTH_OFFSET],
-            KeccakColumn::InvPadLength => &mut self.mode_flags[FLAG_INV_PAD_LENGTH_OFFSET],
-            KeccakColumn::TwoToPad => &mut self.mode_flags[FLAG_TWO_TO_PAD_OFFSET],
-            KeccakColumn::PadBytesFlags(idx) => &mut self.pad_bytes_flags[idx],
-            KeccakColumn::PadSuffix(idx) => &mut self.pad_suffix[idx],
-            KeccakColumn::RoundConstants(idx) => &mut self.round_constants[idx],
+            KeccakColumn::FlagRound => &mut self.mode_flags[FLAG_ROUND_OFF],
+            KeccakColumn::FlagAbsorb => &mut self.mode_flags[FLAG_ABSORB_OFF],
+            KeccakColumn::FlagSqueeze => &mut self.mode_flags[FLAG_SQUEEZE_OFF],
+            KeccakColumn::FlagRoot => &mut self.curr[FLAG_ROOT_OFF],
+            KeccakColumn::PadLength => &mut self.curr[PAD_LEN_OFF],
+            KeccakColumn::InvPadLength => &mut self.curr[PAD_INV_OFF],
+            KeccakColumn::TwoToPad => &mut self.curr[PAD_TWO_OFF],
+            KeccakColumn::PadBytesFlags(idx) => &mut self.curr[PAD_BYTES_OFF + idx],
+            KeccakColumn::PadSuffix(idx) => &mut self.curr[PAD_SUFFIX_OFF + idx],
+            KeccakColumn::RoundConstants(idx) => &mut self.curr[ROUND_COEFFS_OFF + idx],
             KeccakColumn::Input(idx) => &mut self.curr[idx],
             KeccakColumn::ThetaShiftsC(idx) => &mut self.curr[THETA_SHIFTS_C_OFF + idx],
             KeccakColumn::ThetaDenseC(idx) => &mut self.curr[THETA_DENSE_C_OFF + idx],
@@ -185,9 +185,6 @@ impl<F> IntoIterator for KeccakColumns<F> {
         iter_contents.push(self.hash_index);
         iter_contents.push(self.step_index);
         iter_contents.extend(self.mode_flags);
-        iter_contents.extend(self.pad_bytes_flags);
-        iter_contents.extend(self.pad_suffix);
-        iter_contents.extend(self.round_constants);
         iter_contents.extend(self.curr);
         iter_contents.extend(self.next);
         iter_contents.into_iter()
@@ -206,9 +203,6 @@ where
         iter_contents.push(self.hash_index);
         iter_contents.push(self.step_index);
         iter_contents.extend(self.mode_flags);
-        iter_contents.extend(self.pad_bytes_flags);
-        iter_contents.extend(self.pad_suffix);
-        iter_contents.extend(self.round_constants);
         iter_contents.extend(self.curr);
         iter_contents.extend(self.next);
         iter_contents.into_par_iter()
@@ -231,23 +225,8 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
             .collect::<Vec<G>>()
             .try_into()
             .unwrap();
-        let round_constants = iter_contents
-            .drain(iter_contents.len() - QUARTERS..)
-            .collect::<Vec<G>>()
-            .try_into()
-            .unwrap();
-        let pad_suffix = iter_contents
-            .drain(iter_contents.len() - SUFFIX_COLS_LENGTH..)
-            .collect::<Vec<G>>()
-            .try_into()
-            .unwrap();
-        let pad_bytes_flags = iter_contents
-            .drain(iter_contents.len() - RATE_IN_BYTES..)
-            .collect::<Vec<G>>()
-            .try_into()
-            .unwrap();
         let mode_flags = iter_contents
-            .drain(iter_contents.len() - MODE_FLAGS_COLS_LENGTH..)
+            .drain(iter_contents.len() - MODE_FLAGS_COLS_LEN..)
             .collect::<Vec<G>>()
             .try_into()
             .unwrap();
@@ -257,9 +236,6 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
             hash_index,
             step_index,
             mode_flags,
-            pad_bytes_flags,
-            pad_suffix,
-            round_constants,
             curr,
             next,
         }
@@ -278,9 +254,6 @@ where
         iter_contents.push(&self.hash_index);
         iter_contents.push(&self.step_index);
         iter_contents.extend(&self.mode_flags);
-        iter_contents.extend(&self.pad_bytes_flags);
-        iter_contents.extend(&self.pad_suffix);
-        iter_contents.extend(&self.round_constants);
         iter_contents.extend(&self.curr);
         iter_contents.extend(&self.next);
         iter_contents.into_par_iter()
@@ -299,9 +272,6 @@ where
         iter_contents.push(&mut self.hash_index);
         iter_contents.push(&mut self.step_index);
         iter_contents.extend(&mut self.mode_flags);
-        iter_contents.extend(&mut self.pad_bytes_flags);
-        iter_contents.extend(&mut self.pad_suffix);
-        iter_contents.extend(&mut self.round_constants);
         iter_contents.extend(&mut self.curr);
         iter_contents.extend(&mut self.next);
         iter_contents.into_par_iter()

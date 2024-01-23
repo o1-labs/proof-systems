@@ -34,15 +34,6 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
                 mode_flags: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
-                pad_bytes_flags: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                pad_suffix: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                round_constants: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
                 curr: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
@@ -138,13 +129,6 @@ where
             hash_index: eval_col(evaluations.hash_index),
             step_index: eval_col(evaluations.step_index),
             mode_flags: eval_array_col(&evaluations.mode_flags).try_into().unwrap(),
-            pad_bytes_flags: eval_array_col(&evaluations.pad_bytes_flags)
-                .try_into()
-                .unwrap(),
-            pad_suffix: eval_array_col(&evaluations.pad_suffix).try_into().unwrap(),
-            round_constants: eval_array_col(&evaluations.round_constants)
-                .try_into()
-                .unwrap(),
             curr: eval_array_col(&evaluations.curr).try_into().unwrap(),
             next: eval_array_col(&evaluations.next).try_into().unwrap(),
         }
@@ -158,9 +142,6 @@ where
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
             mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
-            pad_bytes_flags: comm_array(&polys.pad_bytes_flags).try_into().unwrap(),
-            pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
-            round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
             curr: comm_array(&polys.curr).try_into().unwrap(),
             next: comm_array(&polys.next).try_into().unwrap(),
         }
@@ -186,9 +167,6 @@ where
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
             mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
-            pad_bytes_flags: comm_array(&polys.pad_bytes_flags).try_into().unwrap(),
-            pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
-            round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
             curr: comm_array(&polys.curr).try_into().unwrap(),
             next: comm_array(&polys.next).try_into().unwrap(),
         }
@@ -359,15 +337,6 @@ fn test_keccak_prover() {
                 hash_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 step_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 mode_flags: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                pad_bytes_flags: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                pad_suffix: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                round_constants: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
                 curr: std::array::from_fn(|_| {
