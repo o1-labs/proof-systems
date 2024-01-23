@@ -117,7 +117,6 @@ pub fn main() -> ExitCode {
             keccak_columns.flag_pad.clear();
             keccak_columns.flag_length.clear();
             keccak_columns.two_to_pad.clear();
-            keccak_columns.inverse_round.clear();
             keccak_columns.flags_bytes.iter_mut().for_each(Vec::clear);
             keccak_columns.pad_suffix.iter_mut().for_each(Vec::clear);
             keccak_columns
@@ -139,7 +138,6 @@ pub fn main() -> ExitCode {
             flag_pad: Vec::with_capacity(domain_size),
             flag_length: Vec::with_capacity(domain_size),
             two_to_pad: Vec::with_capacity(domain_size),
-            inverse_round: Vec::with_capacity(domain_size),
             flags_bytes: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             pad_suffix: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             round_constants: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
@@ -185,9 +183,6 @@ pub fn main() -> ExitCode {
             keccak_current_pre_folding_witness
                 .two_to_pad
                 .push(keccak_env.keccak_witness.two_to_pad);
-            keccak_current_pre_folding_witness
-                .inverse_round
-                .push(keccak_env.keccak_witness.inverse_round);
             for (env_wit, pre_fold_wit) in keccak_env
                 .keccak_witness
                 .flags_bytes

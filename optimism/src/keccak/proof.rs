@@ -38,7 +38,6 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
                 flag_pad: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 flag_length: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 two_to_pad: (0..DOMAIN_SIZE).map(|_| G::ScalarField::one()).collect(),
-                inverse_round: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 flags_bytes: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
@@ -149,7 +148,6 @@ where
             flag_pad: eval_col(evaluations.flag_pad),
             flag_length: eval_col(evaluations.flag_length),
             two_to_pad: eval_col(evaluations.two_to_pad),
-            inverse_round: eval_col(evaluations.inverse_round),
             flags_bytes: eval_array_col(&evaluations.flags_bytes).try_into().unwrap(),
             pad_suffix: eval_array_col(&evaluations.pad_suffix).try_into().unwrap(),
             round_constants: eval_array_col(&evaluations.round_constants)
@@ -174,7 +172,6 @@ where
             flag_pad: comm(&polys.flag_pad),
             flag_length: comm(&polys.flag_length),
             two_to_pad: comm(&polys.two_to_pad),
-            inverse_round: comm(&polys.inverse_round),
             flags_bytes: comm_array(&polys.flags_bytes).try_into().unwrap(),
             pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
             round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
@@ -209,7 +206,6 @@ where
             flag_pad: comm(&polys.flag_pad),
             flag_length: comm(&polys.flag_length),
             two_to_pad: comm(&polys.two_to_pad),
-            inverse_round: comm(&polys.inverse_round),
             flags_bytes: comm_array(&polys.flags_bytes).try_into().unwrap(),
             pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
             round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
@@ -389,7 +385,6 @@ fn test_keccak_prover() {
                 flag_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 flag_length: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 two_to_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                inverse_round: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 flags_bytes: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
