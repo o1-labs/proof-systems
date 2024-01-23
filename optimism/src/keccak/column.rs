@@ -36,6 +36,11 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 const PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES;
 pub(crate) const PAD_SUFFIX_LEN: usize = 5;
 
+/// Column aliases used by the Keccak circuit.
+/// The number of aliases is not necessarily equal to the actual number of
+/// columns.
+/// Each alias will be mapped to a column index depending on the step kind
+/// (Sponge or Round) that is currently being executed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
     HashIndex,
@@ -71,6 +76,11 @@ pub enum KeccakColumn {
     Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
 }
 
+/// The columns used by the Keccak circuit.
+/// The Keccak circuit is split into two parts: Sponge and Round.
+/// The columns are shared between the Sponge and Round steps.
+/// The step index and hash index are shared between the Sponge and Round step
+/// type.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KeccakColumns<T> {
     pub hash_index: T,
@@ -101,6 +111,10 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
 impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
     type Output = T;
 
+    /// Map the column alias to the actual column index.
+    /// Note that the column index depends on the step kind (Sponge or Round).
+    /// For instance, the column 800 represents PadLength in the Sponge step, while it
+    /// is used by intermediary values when executing the Round step.
     fn index(&self, index: KeccakColumn) -> &Self::Output {
         match index {
             KeccakColumn::HashIndex => &self.hash_index,
@@ -180,6 +194,7 @@ impl<F> IntoIterator for KeccakColumns<F> {
     type Item = F;
     type IntoIter = std::vec::IntoIter<F>;
 
+    /// Iterate over the columns in the Keccak circuit.
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
         iter_contents.push(self.hash_index);
@@ -198,6 +213,7 @@ where
     type Iter = <Vec<G> as IntoParallelIterator>::Iter;
     type Item = <Vec<G> as IntoParallelIterator>::Item;
 
+    /// Iterate over the columns in the Keccak circuit, in parallel.
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(ZKVM_KECCAK_COLS_LENGTH);
         iter_contents.push(self.hash_index);
