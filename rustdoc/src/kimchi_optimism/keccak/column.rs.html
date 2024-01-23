@@ -279,41 +279,11 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
-    CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
+    CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
     QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
     THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
@@ -323,23 +293,29 @@
 
 <span class="kw">use super</span>::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 
-<span class="kw">const </span>MODE_FLAGS_COLS_LENGTH: usize = <span class="number">7</span>;
-<span class="kw">const </span>SUFFIX_COLS_LENGTH: usize = <span class="number">5</span>;
-<span class="kw">const </span>ZKVM_KECCAK_COLS_LENGTH: usize = ZKVM_KECCAK_COLS_CURR
-    + ZKVM_KECCAK_COLS_NEXT
-    + QUARTERS
-    + RATE_IN_BYTES
-    + SUFFIX_COLS_LENGTH
-    + MODE_FLAGS_COLS_LENGTH
-    + <span class="number">2</span>;
+<span class="kw">const </span>ZKVM_KECCAK_COLS_LENGTH: usize =
+    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + <span class="number">2</span>;
 
-<span class="kw">const </span>FLAG_ROUND_OFFSET: usize = <span class="number">0</span>;
-<span class="kw">const </span>FLAG_ABSORB_OFFSET: usize = <span class="number">1</span>;
-<span class="kw">const </span>FLAG_SQUEEZE_OFFSET: usize = <span class="number">2</span>;
-<span class="kw">const </span>FLAG_ROOT_OFFSET: usize = <span class="number">3</span>;
-<span class="kw">const </span>FLAG_PAD_LENGTH_OFFSET: usize = <span class="number">4</span>;
-<span class="kw">const </span>FLAG_INV_PAD_LENGTH_OFFSET: usize = <span class="number">5</span>;
-<span class="kw">const </span>FLAG_TWO_TO_PAD_OFFSET: usize = <span class="number">6</span>;
+<span class="kw">const </span>MODE_FLAGS_COLS_LEN: usize = <span class="number">3</span>;
+
+<span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>;
+<span class="kw">const </span>FLAG_ABSORB_OFF: usize = <span class="number">1</span>;
+<span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = <span class="number">2</span>;
+
+<span class="kw">const </span>ROUND_COEFFS_OFF: usize = KECCAK_COLS;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ROUND_COEFFS_LEN: usize = QUARTERS;
+
+<span class="comment">// The following elements do not increase the total column count
+// because they only appear in sponge rows, which only have 800 curr columns used.
+</span><span class="kw">const </span>SPONGE_COEFFS_OFF: usize = <span class="number">800</span>;
+<span class="kw">const </span>FLAG_ROOT_OFF: usize = SPONGE_COEFFS_OFF;
+<span class="kw">const </span>PAD_LEN_OFF: usize = <span class="number">801</span>;
+<span class="kw">const </span>PAD_INV_OFF: usize = <span class="number">802</span>;
+<span class="kw">const </span>PAD_TWO_OFF: usize = <span class="number">803</span>;
+<span class="kw">const </span>PAD_BYTES_OFF: usize = <span class="number">804</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_BYTES_LEN: usize = RATE_IN_BYTES;
+<span class="kw">const </span>PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_SUFFIX_LEN: usize = <span class="number">5</span>;
 
 <span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>KeccakColumn {
@@ -380,12 +356,9 @@
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
     <span class="kw">pub </span>hash_index: T,
     <span class="kw">pub </span>step_index: T,
-    <span class="kw">pub </span>mode_flags: [T; MODE_FLAGS_COLS_LENGTH], <span class="comment">// Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
-    </span><span class="kw">pub </span>pad_bytes_flags: [T; RATE_IN_BYTES],     <span class="comment">// 136 boolean values -&gt; sponge
-    </span><span class="kw">pub </span>pad_suffix: [T; SUFFIX_COLS_LENGTH],     <span class="comment">// 5 values with padding suffix -&gt; sponge
-    </span><span class="kw">pub </span>round_constants: [T; QUARTERS],          <span class="comment">// Round constants -&gt; round
-    </span><span class="kw">pub </span>curr: [T; ZKVM_KECCAK_COLS_CURR],        <span class="comment">// Curr[0..1965)
-    </span><span class="kw">pub </span>next: [T; ZKVM_KECCAK_COLS_NEXT],        <span class="comment">// Next[0..100)
+    <span class="kw">pub </span>mode_flags: [T; MODE_FLAGS_COLS_LEN], <span class="comment">// Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
+    </span><span class="kw">pub </span>curr: [T; ZKVM_KECCAK_COLS_CURR],     <span class="comment">// Curr[0..1965) + RC as quarters
+    </span><span class="kw">pub </span>next: [T; ZKVM_KECCAK_COLS_NEXT],     <span class="comment">// Next[0..100)
 </span>}
 
 <span class="kw">impl</span>&lt;T: Clone&gt; KeccakColumns&lt;T&gt; {
@@ -400,11 +373,8 @@
             hash_index: T::zero(),
             step_index: T::zero(),
             mode_flags: std::array::from_fn(|<span class="kw">_</span>| T::zero()), <span class="comment">// Defaults are zero, but lookups will not be triggered
-            </span>pad_bytes_flags: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
-            pad_suffix: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
-            round_constants: std::array::from_fn(|<span class="kw">_</span>| T::zero()), <span class="comment">// default zeros, but lookup only if is round
-            </span>curr: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
-            next: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
+            </span>curr: std::array::from_fn(|<span class="kw">_</span>| T::zero()), <span class="comment">// default zeros, but lookups will not be triggered always
+            </span>next: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
         }
     }
 }
@@ -416,16 +386,16 @@
         <span class="kw">match </span>index {
             KeccakColumn::HashIndex =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.hash_index,
             KeccakColumn::StepIndex =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.step_index,
-            KeccakColumn::FlagRound =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_ROUND_OFFSET],
-            KeccakColumn::FlagAbsorb =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_ABSORB_OFFSET],
-            KeccakColumn::FlagSqueeze =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_SQUEEZE_OFFSET],
-            KeccakColumn::FlagRoot =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_ROOT_OFFSET],
-            KeccakColumn::PadLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_PAD_LENGTH_OFFSET],
-            KeccakColumn::InvPadLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_INV_PAD_LENGTH_OFFSET],
-            KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_TWO_TO_PAD_OFFSET],
-            KeccakColumn::PadBytesFlags(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pad_bytes_flags[idx],
-            KeccakColumn::PadSuffix(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.pad_suffix[idx],
-            KeccakColumn::RoundConstants(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.round_constants[idx],
+            KeccakColumn::FlagRound =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_ROUND_OFF],
+            KeccakColumn::FlagAbsorb =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_ABSORB_OFF],
+            KeccakColumn::FlagSqueeze =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags[FLAG_SQUEEZE_OFF],
+            KeccakColumn::FlagRoot =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[FLAG_ROOT_OFF],
+            KeccakColumn::PadLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[PAD_LEN_OFF],
+            KeccakColumn::InvPadLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[PAD_INV_OFF],
+            KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[PAD_TWO_OFF],
+            KeccakColumn::PadBytesFlags(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[PAD_BYTES_OFF + idx],
+            KeccakColumn::PadSuffix(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[PAD_SUFFIX_OFF + idx],
+            KeccakColumn::RoundConstants(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[ROUND_COEFFS_OFF + idx],
             KeccakColumn::Input(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[idx],
             KeccakColumn::ThetaShiftsC(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[THETA_SHIFTS_C_OFF + idx],
             KeccakColumn::ThetaDenseC(idx) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr[THETA_DENSE_C_OFF + idx],
@@ -454,16 +424,16 @@
         <span class="kw">match </span>index {
             KeccakColumn::HashIndex =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.hash_index,
             KeccakColumn::StepIndex =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.step_index,
-            KeccakColumn::FlagRound =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_ROUND_OFFSET],
-            KeccakColumn::FlagAbsorb =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_ABSORB_OFFSET],
-            KeccakColumn::FlagSqueeze =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_SQUEEZE_OFFSET],
-            KeccakColumn::FlagRoot =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_ROOT_OFFSET],
-            KeccakColumn::PadLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_PAD_LENGTH_OFFSET],
-            KeccakColumn::InvPadLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_INV_PAD_LENGTH_OFFSET],
-            KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_TWO_TO_PAD_OFFSET],
-            KeccakColumn::PadBytesFlags(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_bytes_flags[idx],
-            KeccakColumn::PadSuffix(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_suffix[idx],
-            KeccakColumn::RoundConstants(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.round_constants[idx],
+            KeccakColumn::FlagRound =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_ROUND_OFF],
+            KeccakColumn::FlagAbsorb =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_ABSORB_OFF],
+            KeccakColumn::FlagSqueeze =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags[FLAG_SQUEEZE_OFF],
+            KeccakColumn::FlagRoot =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[FLAG_ROOT_OFF],
+            KeccakColumn::PadLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[PAD_LEN_OFF],
+            KeccakColumn::InvPadLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[PAD_INV_OFF],
+            KeccakColumn::TwoToPad =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[PAD_TWO_OFF],
+            KeccakColumn::PadBytesFlags(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[PAD_BYTES_OFF + idx],
+            KeccakColumn::PadSuffix(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[PAD_SUFFIX_OFF + idx],
+            KeccakColumn::RoundConstants(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[ROUND_COEFFS_OFF + idx],
             KeccakColumn::Input(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[idx],
             KeccakColumn::ThetaShiftsC(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[THETA_SHIFTS_C_OFF + idx],
             KeccakColumn::ThetaDenseC(idx) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr[THETA_DENSE_C_OFF + idx],
@@ -496,9 +466,6 @@
         iter_contents.push(<span class="self">self</span>.hash_index);
         iter_contents.push(<span class="self">self</span>.step_index);
         iter_contents.extend(<span class="self">self</span>.mode_flags);
-        iter_contents.extend(<span class="self">self</span>.pad_bytes_flags);
-        iter_contents.extend(<span class="self">self</span>.pad_suffix);
-        iter_contents.extend(<span class="self">self</span>.round_constants);
         iter_contents.extend(<span class="self">self</span>.curr);
         iter_contents.extend(<span class="self">self</span>.next);
         iter_contents.into_iter()
@@ -517,9 +484,6 @@
         iter_contents.push(<span class="self">self</span>.hash_index);
         iter_contents.push(<span class="self">self</span>.step_index);
         iter_contents.extend(<span class="self">self</span>.mode_flags);
-        iter_contents.extend(<span class="self">self</span>.pad_bytes_flags);
-        iter_contents.extend(<span class="self">self</span>.pad_suffix);
-        iter_contents.extend(<span class="self">self</span>.round_constants);
         iter_contents.extend(<span class="self">self</span>.curr);
         iter_contents.extend(<span class="self">self</span>.next);
         iter_contents.into_par_iter()
@@ -542,23 +506,8 @@
             .collect::&lt;Vec&lt;G&gt;&gt;()
             .try_into()
             .unwrap();
-        <span class="kw">let </span>round_constants = iter_contents
-            .drain(iter_contents.len() - QUARTERS..)
-            .collect::&lt;Vec&lt;G&gt;&gt;()
-            .try_into()
-            .unwrap();
-        <span class="kw">let </span>pad_suffix = iter_contents
-            .drain(iter_contents.len() - SUFFIX_COLS_LENGTH..)
-            .collect::&lt;Vec&lt;G&gt;&gt;()
-            .try_into()
-            .unwrap();
-        <span class="kw">let </span>pad_bytes_flags = iter_contents
-            .drain(iter_contents.len() - RATE_IN_BYTES..)
-            .collect::&lt;Vec&lt;G&gt;&gt;()
-            .try_into()
-            .unwrap();
         <span class="kw">let </span>mode_flags = iter_contents
-            .drain(iter_contents.len() - MODE_FLAGS_COLS_LENGTH..)
+            .drain(iter_contents.len() - MODE_FLAGS_COLS_LEN..)
             .collect::&lt;Vec&lt;G&gt;&gt;()
             .try_into()
             .unwrap();
@@ -568,9 +517,6 @@
             hash_index,
             step_index,
             mode_flags,
-            pad_bytes_flags,
-            pad_suffix,
-            round_constants,
             curr,
             next,
         }
@@ -589,9 +535,6 @@
         iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.hash_index);
         iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.step_index);
         iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags);
-        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.pad_bytes_flags);
-        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.pad_suffix);
-        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.round_constants);
         iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.curr);
         iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.next);
         iter_contents.into_par_iter()
@@ -610,9 +553,6 @@
         iter_contents.push(<span class="kw-2">&amp;mut </span><span class="self">self</span>.hash_index);
         iter_contents.push(<span class="kw-2">&amp;mut </span><span class="self">self</span>.step_index);
         iter_contents.extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags);
-        iter_contents.extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_bytes_flags);
-        iter_contents.extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pad_suffix);
-        iter_contents.extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>.round_constants);
         iter_contents.extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>.curr);
         iter_contents.extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>.next);
         iter_contents.into_par_iter()

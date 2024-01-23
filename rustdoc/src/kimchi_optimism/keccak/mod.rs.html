@@ -93,7 +93,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BITLENGTH: usize = <span class="number">256</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BYTELENGTH: usize = HASH_BITLENGTH / <span class="number">8</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORD_LENGTH_IN_BITS: usize = <span class="number">64</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 

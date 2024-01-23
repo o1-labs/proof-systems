@@ -372,37 +372,6 @@
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::KeccakColumns;
 <span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
@@ -437,15 +406,6 @@
                 hash_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
                 step_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
                 mode_flags: std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
-                }),
-                pad_bytes_flags: std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
-                }),
-                pad_suffix: std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
-                }),
-                round_constants: std::array::from_fn(|<span class="kw">_</span>| {
                     (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
                 }),
                 curr: std::array::from_fn(|<span class="kw">_</span>| {
@@ -543,13 +503,6 @@
             hash_index: eval_col(evaluations.hash_index),
             step_index: eval_col(evaluations.step_index),
             mode_flags: eval_array_col(<span class="kw-2">&amp;</span>evaluations.mode_flags).try_into().unwrap(),
-            pad_bytes_flags: eval_array_col(<span class="kw-2">&amp;</span>evaluations.pad_bytes_flags)
-                .try_into()
-                .unwrap(),
-            pad_suffix: eval_array_col(<span class="kw-2">&amp;</span>evaluations.pad_suffix).try_into().unwrap(),
-            round_constants: eval_array_col(<span class="kw-2">&amp;</span>evaluations.round_constants)
-                .try_into()
-                .unwrap(),
             curr: eval_array_col(<span class="kw-2">&amp;</span>evaluations.curr).try_into().unwrap(),
             next: eval_array_col(<span class="kw-2">&amp;</span>evaluations.next).try_into().unwrap(),
         }
@@ -563,9 +516,6 @@
             hash_index: comm(<span class="kw-2">&amp;</span>polys.hash_index),
             step_index: comm(<span class="kw-2">&amp;</span>polys.step_index),
             mode_flags: comm_array(<span class="kw-2">&amp;</span>polys.mode_flags).try_into().unwrap(),
-            pad_bytes_flags: comm_array(<span class="kw-2">&amp;</span>polys.pad_bytes_flags).try_into().unwrap(),
-            pad_suffix: comm_array(<span class="kw-2">&amp;</span>polys.pad_suffix).try_into().unwrap(),
-            round_constants: comm_array(<span class="kw-2">&amp;</span>polys.round_constants).try_into().unwrap(),
             curr: comm_array(<span class="kw-2">&amp;</span>polys.curr).try_into().unwrap(),
             next: comm_array(<span class="kw-2">&amp;</span>polys.next).try_into().unwrap(),
         }
@@ -591,9 +541,6 @@
             hash_index: comm(<span class="kw-2">&amp;</span>polys.hash_index),
             step_index: comm(<span class="kw-2">&amp;</span>polys.step_index),
             mode_flags: comm_array(<span class="kw-2">&amp;</span>polys.mode_flags).try_into().unwrap(),
-            pad_bytes_flags: comm_array(<span class="kw-2">&amp;</span>polys.pad_bytes_flags).try_into().unwrap(),
-            pad_suffix: comm_array(<span class="kw-2">&amp;</span>polys.pad_suffix).try_into().unwrap(),
-            round_constants: comm_array(<span class="kw-2">&amp;</span>polys.round_constants).try_into().unwrap(),
             curr: comm_array(<span class="kw-2">&amp;</span>polys.curr).try_into().unwrap(),
             next: comm_array(<span class="kw-2">&amp;</span>polys.next).try_into().unwrap(),
         }
@@ -764,15 +711,6 @@
                 hash_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                 step_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                 mode_flags: std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                }),
-                pad_bytes_flags: std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                }),
-                pad_suffix: std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                }),
-                round_constants: std::array::from_fn(|<span class="kw">_</span>| {
                     (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                 }),
                 curr: std::array::from_fn(|<span class="kw">_</span>| {
