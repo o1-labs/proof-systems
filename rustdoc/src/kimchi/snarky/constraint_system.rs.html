@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/snarky/constraint_system.rs`."><title>constraint_system.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/snarky/constraint_system.rs`."><title>constraint_system.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1860,7 +1862,7 @@
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::all)]
 
 </span><span class="doccomment">//! The backend used by Snarky, gluing snarky to kimchi.
-//! This module holds the actual logic that constructs the circuit using kimchi&#39;s gates,
+//! This module holds the actual logic that constructs the circuit using kimchi's gates,
 //! as well as the logic that constructs the permutation,
 //! and the symbolic execution trace table (both for compilation and at runtime).
 
@@ -1922,8 +1924,8 @@ A position is a row and a column. */
 
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">struct </span>PendingGate&lt;F, V&gt; {
-    labels: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;,
-    loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+    labels: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+    loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
     vars: (<span class="prelude-ty">Option</span>&lt;V&gt;, <span class="prelude-ty">Option</span>&lt;V&gt;, <span class="prelude-ty">Option</span>&lt;V&gt;),
     coeffs: Vec&lt;F&gt;,
 }
@@ -1974,7 +1976,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
 <span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 </span><span class="kw">pub struct </span>ScaleRound&lt;A&gt; {
@@ -1988,7 +1990,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
 <span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 </span><span class="kw">pub struct </span>EndoscaleRound&lt;A&gt; {
@@ -2009,7 +2011,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
 <span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 </span><span class="kw">pub struct </span>EndoscaleScalarRound&lt;A&gt; {
@@ -2040,7 +2042,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
 <span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 </span><span class="kw">pub struct </span>BasicInput&lt;Var, Field&gt; {
@@ -2053,11 +2055,11 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
 <span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 </span><span class="kw">pub struct </span>PoseidonInput&lt;Var&gt; {
-    <span class="comment">// TODO: revert back to arrays once we don&#39;t need to expose this struct to OCaml
+    <span class="comment">// TODO: revert back to arrays once we don't need to expose this struct to OCaml
     // pub states: [[Var; SPONGE_WIDTH]; ROUNDS_PER_HASH],
     // pub last: [Var; SPONGE_WIDTH],
     </span><span class="kw">pub </span>states: Vec&lt;Vec&lt;Var&gt;&gt;,
@@ -2066,7 +2068,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
 <span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 </span><span class="kw">pub struct </span>EcAddCompleteInput&lt;Var&gt; {
@@ -2082,7 +2084,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
 <span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 </span><span class="kw">pub struct </span>EcEndoscaleInput&lt;Var&gt; {
@@ -2097,7 +2099,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
  * [`EcEndoscale`](KimchiConstraint::EcEndoscale), or [`EcEndoscalar`](KimchiConstraint::EcEndoscalar). */
 </span><span class="attr">#[derive(Debug)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 </span><span class="kw">pub enum </span>KimchiConstraint&lt;Var, Field&gt; {
@@ -2177,7 +2179,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     <span class="doccomment">/** Queue (of size 1) of generic gate. */
     </span>pending_generic_gate: <span class="prelude-ty">Option</span>&lt;PendingGate&lt;Field, V&gt;&gt;,
 
-    <span class="doccomment">/** V.t&#39;s corresponding to constant values. We reuse them so we don&#39;t need to
+    <span class="doccomment">/** V.t's corresponding to constant values. We reuse them so we don't need to
        use a fresh generic constraint each time to create a constant.
     */
     </span>cached_constants: HashMap&lt;Field, V&gt;,
@@ -2199,14 +2201,14 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     <span class="doccomment">/** Sets the number of public-input. It must and can only be called once. */
     </span><span class="kw">pub fn </span>set_primary_input_size(<span class="kw-2">&amp;mut </span><span class="self">self</span>, num_pub_inputs: usize) {
         <span class="kw">if </span><span class="self">self</span>.public_input_size.is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;set_primary_input_size can only be called once&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"set_primary_input_size can only be called once"</span>);
         }
         <span class="self">self</span>.public_input_size = <span class="prelude-val">Some</span>(num_pub_inputs);
     }
 
     <span class="kw">pub fn </span>set_prev_challenges(<span class="kw-2">&amp;mut </span><span class="self">self</span>, prev_challenges: usize) {
         <span class="kw">if </span><span class="self">self</span>.prev_challenges.is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;set_prev_challenges can only be called once&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"set_prev_challenges can only be called once"</span>);
         }
         <span class="self">self</span>.prev_challenges = <span class="prelude-val">Some</span>(prev_challenges);
     }
@@ -2243,7 +2245,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
         public_inputs: <span class="kw-2">&amp;</span>[Field],
         private_inputs: <span class="kw-2">&amp;</span>[Field],
     ) -&gt; [Vec&lt;Field&gt;; COLUMNS] {
-        <span class="comment">// make sure it&#39;s finalized
+        <span class="comment">// make sure it's finalized
         </span><span class="self">self</span>.finalize();
 
         <span class="comment">// ensure that we have the right number of public inputs
@@ -2274,7 +2276,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     <span class="kw">where
         </span>FUNC: Fn(usize) -&gt; Field,
     {
-        <span class="comment">// make sure it&#39;s finalized
+        <span class="comment">// make sure it's finalized
         </span><span class="self">self</span>.finalize();
 
         <span class="comment">// init execution trace table
@@ -2303,7 +2305,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                     </span><span class="prelude-val">Some</span>(V::Internal(var)) =&gt; {
                         <span class="kw">let </span>(lc, c) = {
                             <span class="kw">match </span><span class="self">self</span>.internal_vars.get(var) {
-                                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Could not find {:?}&quot;</span>, var),
+                                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Could not find {:?}"</span>, var),
                                 <span class="prelude-val">Some</span>(x) =&gt; x,
                             }
                         };
@@ -2312,7 +2314,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                                 <span class="kw">let </span>x = <span class="kw">match </span>x {
                                     V::External(x) =&gt; external_values(<span class="kw-2">*</span>x),
                                     V::Internal(x) =&gt; <span class="kw">match </span>internal_values.get(x) {
-                                        <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Could not find {:?}&quot;</span>, <span class="kw-2">*</span>x),
+                                        <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Could not find {:?}"</span>, <span class="kw-2">*</span>x),
                                         <span class="prelude-val">Some</span>(value) =&gt; <span class="kw-2">*</span>value,
                                     },
                                 };
@@ -2343,7 +2345,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
     <span class="kw">pub fn </span>create(constants: Constants&lt;Field&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            <span class="comment">// TODO: if we expect a `Field: KimchiParams` we can simply do `Field::constants()` here. But we might want to wait for Fabrizio&#39;s trait? Also we should keep this close to the OCaml stuff if we want to avoid pains when we plug this in
+            <span class="comment">// TODO: if we expect a `Field: KimchiParams` we can simply do `Field::constants()` here. But we might want to wait for Fabrizio's trait? Also we should keep this close to the OCaml stuff if we want to avoid pains when we plug this in
             </span>constants: constants,
             public_input_size: <span class="prelude-val">None</span>,
             prev_challenges: <span class="prelude-val">None</span>,
@@ -2366,7 +2368,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     ///
     /// Will panic if `public_input_size` is None.
     </span><span class="kw">pub fn </span>get_primary_input_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.public_input_size.expect(<span class="string">&quot;attempt to retrieve public input size before it was set (via `set_primary_input_size`)&quot;</span>)
+        <span class="self">self</span>.public_input_size.expect(<span class="string">"attempt to retrieve public input size before it was set (via `set_primary_input_size`)"</span>)
     }
 
     <span class="kw">pub fn </span>get_prev_challenges(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
@@ -2378,7 +2380,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
         <span class="self">self</span>.public_input_size = <span class="prelude-val">Some</span>(x);
     }
 
-    <span class="doccomment">/** Adds {row; col} to the system&#39;s wiring under a specific key.
+    <span class="doccomment">/** Adds {row; col} to the system's wiring under a specific key.
     A key is an external or internal variable.
     The row must be given relative to the start of the circuit
     (so at the start of the public-input rows). */
@@ -2390,7 +2392,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
             .push(Position { row, col });
     }
 
-    <span class="doccomment">/** Same as wire&#39;, except that the row must be given relatively to the end of the public-input rows. */
+    <span class="doccomment">/** Same as wire', except that the row must be given relatively to the end of the public-input rows. */
     </span><span class="kw">fn </span>wire(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: V, row: usize, col: usize) {
         <span class="self">self</span>.wire_(key, Row::AfterPublicInput(row), col);
     }
@@ -2398,19 +2400,19 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     <span class="doccomment">/** Adds a row/gate/constraint to a constraint system `sys`. */
     </span><span class="kw">fn </span>add_row(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;],
-        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">'static</span>, str&gt;],
+        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         vars: Vec&lt;<span class="prelude-ty">Option</span>&lt;V&gt;&gt;,
         kind: GateType,
         coeffs: Vec&lt;Field&gt;,
     ) {
         <span class="comment">// TODO: for now we can print the debug info at runtime, but in the future we should allow serialization of these things as well
         // TODO: this ignores the public gates!!
-        </span><span class="kw">if </span>std::env::var(<span class="string">&quot;SNARKY_LOG_CONSTRAINTS&quot;</span>).is_ok() {
-            <span class="macro">println!</span>(<span class="string">&quot;{}: {loc} - {}&quot;</span>, <span class="self">self</span>.next_row, labels.join(<span class="string">&quot;, &quot;</span>));
+        </span><span class="kw">if </span>std::env::var(<span class="string">"SNARKY_LOG_CONSTRAINTS"</span>).is_ok() {
+            <span class="macro">println!</span>(<span class="string">"{}: {loc} - {}"</span>, <span class="self">self</span>.next_row, labels.join(<span class="string">", "</span>));
         }
 
-        <span class="comment">/* As we&#39;re adding a row, we&#39;re adding new cells.
+        <span class="comment">/* As we're adding a row, we're adding new cells.
            If these cells (the first 7) contain variables,
            make sure that they are wired
         */
@@ -2422,7 +2424,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
             }
         }
         <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.gates {
-            Circuit::Compiled(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;add_row called on finalized constraint system&quot;</span>),
+            Circuit::Compiled(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"add_row called on finalized constraint system"</span>),
             Circuit::Unfinalized(gates) =&gt; {
                 gates.push(GateSpec {
                     kind,
@@ -2448,7 +2450,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     ///
     /// Will panic if `circuit` is completed.
     </span><span class="kw">pub fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// if it&#39;s already finalized, return early
+        <span class="comment">// if it's already finalized, return early
         </span><span class="kw">if </span><span class="macro">matches!</span>(<span class="self">self</span>.gates, Circuit::Compiled(..)) {
             <span class="comment">// TODO: return an error?
             </span><span class="kw">return</span>;
@@ -2475,7 +2477,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
         <span class="comment">// get gates without holding on an immutable reference
         </span><span class="kw">let </span>gates = <span class="kw">match </span>std::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.gates, Circuit::Unfinalized(<span class="macro">vec!</span>[])) {
             Circuit::Unfinalized(gates) =&gt; gates,
-            Circuit::Compiled(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;we expect the gates to be unfinalized&quot;</span>),
+            Circuit::Compiled(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"we expect the gates to be unfinalized"</span>),
         };
 
         <span class="comment">/* Create rows for public input. */
@@ -2563,7 +2565,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     ///
     /// Will panic if the constraint system has not previously been compiled (via [`Self::finalize`]).
     </span><span class="kw">pub fn </span>digest(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; [u8; <span class="number">32</span>] {
-        <span class="comment">// make sure it&#39;s finalized
+        <span class="comment">// make sure it's finalized
         </span><span class="self">self</span>.finalize();
 
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.gates {
@@ -2647,8 +2649,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     */
     </span><span class="kw">fn </span>add_generic_constraint(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;],
-        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">'static</span>, str&gt;],
+        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         l: <span class="prelude-ty">Option</span>&lt;V&gt;,
         r: <span class="prelude-ty">Option</span>&lt;V&gt;,
         o: <span class="prelude-ty">Option</span>&lt;V&gt;,
@@ -2677,10 +2679,10 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                     coeffs: coeffs2,
                 }) = std::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.pending_generic_gate, <span class="prelude-val">None</span>)
                 {
-                    <span class="kw">let </span>labels1 = labels.join(<span class="string">&quot;,&quot;</span>);
-                    <span class="kw">let </span>labels2 = labels2.join(<span class="string">&quot;,&quot;</span>);
-                    <span class="kw">let </span>labels = <span class="macro">vec!</span>[Cow::Owned(<span class="macro">format!</span>(<span class="string">&quot;gen1:[{}] gen2:[{}]&quot;</span>, labels1, labels2))];
-                    <span class="kw">let </span>loc = <span class="macro">format!</span>(<span class="string">&quot;gen1:[{}] gen2:[{}]&quot;</span>, loc, loc2).into();
+                    <span class="kw">let </span>labels1 = labels.join(<span class="string">","</span>);
+                    <span class="kw">let </span>labels2 = labels2.join(<span class="string">","</span>);
+                    <span class="kw">let </span>labels = <span class="macro">vec!</span>[Cow::Owned(<span class="macro">format!</span>(<span class="string">"gen1:[{}] gen2:[{}]"</span>, labels1, labels2))];
+                    <span class="kw">let </span>loc = <span class="macro">format!</span>(<span class="string">"gen1:[{}] gen2:[{}]"</span>, loc, loc2).into();
 
                     coeffs.extend(coeffs2);
                     <span class="self">self</span>.add_row(
@@ -2712,8 +2714,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     It assumes that the list of terms is not empty. */
     </span><span class="kw">fn </span>completely_reduce&lt;Terms&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;],
-        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">'static</span>, str&gt;],
+        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         terms: Terms,
     ) -&gt; (Field, V)
     <span class="kw">where
@@ -2743,7 +2745,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                 }
             }
         }
-        res.expect(<span class="string">&quot;At least one term&quot;</span>)
+        res.expect(<span class="string">"At least one term"</span>)
     }
 
     <span class="doccomment">/** Converts a linear combination of variables into a set of constraints.
@@ -2752,8 +2754,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     */
     </span><span class="kw">fn </span>reduce_lincom&lt;Cvar&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;],
-        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">'static</span>, str&gt;],
+        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         x: Cvar,
     ) -&gt; (Field, ConstantOrVar)
     <span class="kw">where
@@ -2813,8 +2815,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     <span class="doccomment">/// reduce any [Cvar] to a single internal variable [V]
     </span><span class="kw">fn </span>reduce_to_var&lt;Cvar&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;],
-        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">'static</span>, str&gt;],
+        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         x: Cvar,
     ) -&gt; V
     <span class="kw">where
@@ -2877,8 +2879,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     /// Will panic if `constant selector` constraints are not matching.
     </span><span class="kw">pub fn </span>add_basic_snarky_constraint&lt;Cvar&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;],
-        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">'static</span>, str&gt;],
+        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         constraint: BasicSnarkyConstraint&lt;Cvar&gt;,
     ) <span class="kw">where
         </span>Cvar: SnarkyCvar&lt;Field = Field&gt;,
@@ -2904,7 +2906,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                         );
                     }
                     ((sl, ConstantOrVar::Var(xl)), (so, ConstantOrVar::Constant)) =&gt;
-                    <span class="comment">/* TODO: it&#39;s hard to read the array of selector values, name them! */
+                    <span class="comment">/* TODO: it's hard to read the array of selector values, name them! */
                     </span>{
                         <span class="self">self</span>.add_generic_constraint(
                             labels,
@@ -3160,8 +3162,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     /// Will panic if `witness` fields are empty.
     </span><span class="kw">pub fn </span>add_constraint&lt;Cvar&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;],
-        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        labels: <span class="kw-2">&amp;</span>[Cow&lt;<span class="lifetime">'static</span>, str&gt;],
+        loc: <span class="kw-2">&amp;</span>Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         constraint: KimchiConstraint&lt;Cvar, Field&gt;,
     ) <span class="kw">where
         </span>Cvar: SnarkyCvar&lt;Field = Field&gt;,
@@ -3175,16 +3177,16 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                    + m * (l.x * r.x)
                    + c
                    =
-                     l.s * l.s&#39; * l.x&#39;
-                   + r.s * r.s&#39; * r.x&#39;
-                   + o.s * o.s&#39; * o.x&#39;
-                   + m * (l.s&#39; * l.x&#39; * r.s&#39; * r.x&#39;)
+                     l.s * l.s' * l.x'
+                   + r.s * r.s' * r.x'
+                   + o.s * o.s' * o.x'
+                   + m * (l.s' * l.x' * r.s' * r.x')
                    + c
                    =
-                     (l.s * l.s&#39;) * l.x&#39;
-                   + (r.s * r.s&#39;) * r.x&#39;
-                   + (o.s * o.s&#39;) * o.x&#39;
-                   + (m * l.s&#39; * r.s&#39;) * l.x&#39; r.x&#39;
+                     (l.s * l.s') * l.x'
+                   + (r.s * r.s') * r.x'
+                   + (o.s * o.s') * o.x'
+                   + (m * l.s' * r.s') * l.x' r.x'
                    + c
                 */
                 </span><span class="kw">let </span><span class="kw-2">mut </span>c = c;
@@ -3201,7 +3203,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                    + m * (l.x * r.x)
                    + c
                    =
-                     l.s * l.s&#39; * l.x&#39;
+                     l.s * l.s' * l.x'
                    + r.s * r.x
                    + o.s * o.x
                    + m * (l.x * r.x)
@@ -3216,7 +3218,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                 <span class="kw">let </span>m = <span class="kw">match </span>(l, r) {
                     (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; l_s * r_s * m,
                     <span class="kw">_ </span>=&gt; {
-                        <span class="macro">panic!</span>(<span class="string">&quot;Must use non-constant car in plonk constraints&quot;</span>)
+                        <span class="macro">panic!</span>(<span class="string">"Must use non-constant car in plonk constraints"</span>)
                     }
                 };
                 <span class="self">self</span>.add_generic_constraint(
@@ -3407,7 +3409,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                 } <span class="kw">in </span>state
                 {
                     <span class="comment">// 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14
-                    // xT  yT  x0  y0  n   n&#39;      x1  y1  x2  y2  x3  y3  x4  y4
+                    // xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
                     // x5  y5  b0  b1  b2  b3  b4  s0  s1  s2  s3  s4
                     </span><span class="kw">let </span>curr_row = <span class="macro">vec!</span>[
                         <span class="prelude-val">Some</span>(<span class="self">self</span>.reduce_to_var(labels, loc, base.<span class="number">0</span>)),
@@ -3661,7 +3663,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
         <span class="kw">let </span>z = FieldVar::Var(<span class="number">2</span>);
 
         <span class="kw">let </span>labels = <span class="kw-2">&amp;</span><span class="macro">vec!</span>[];
-        <span class="kw">let </span>loc = <span class="kw-2">&amp;</span>Cow::Borrowed(<span class="string">&quot;&quot;</span>);
+        <span class="kw">let </span>loc = <span class="kw-2">&amp;</span>Cow::Borrowed(<span class="string">""</span>);
 
         <span class="comment">// x * y = z
         </span>state.add_basic_snarky_constraint(
@@ -3693,7 +3695,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
         <span class="kw">let </span>y = FieldVar::Var(<span class="number">2</span>);
 
         <span class="kw">let </span>labels = <span class="kw-2">&amp;</span><span class="macro">vec!</span>[];
-        <span class="kw">let </span>loc = <span class="kw-2">&amp;</span>Cow::Borrowed(<span class="string">&quot;&quot;</span>);
+        <span class="kw">let </span>loc = <span class="kw-2">&amp;</span>Cow::Borrowed(<span class="string">""</span>);
 
         <span class="comment">// x * y = z
         </span>state.add_basic_snarky_constraint(

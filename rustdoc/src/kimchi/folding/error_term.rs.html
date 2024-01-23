@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/folding/error_term.rs`."><title>error_term.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/folding/error_term.rs`."><title>error_term.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -368,11 +370,11 @@
 <span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
 
 <span class="doccomment">/// Evaluates the expression in the provided side
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_sided&lt;<span class="lifetime">&#39;a</span>, C: FoldingConfig&gt;(
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_sided&lt;<span class="lifetime">'a</span>, C: FoldingConfig&gt;(
     exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;,
-    env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ExtendedEnv&lt;C&gt;,
+    env: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ExtendedEnv&lt;C&gt;,
     side: Side,
-) -&gt; EvalLeaf&lt;<span class="lifetime">&#39;a</span>, ScalarField&lt;C&gt;&gt; {
+) -&gt; EvalLeaf&lt;<span class="lifetime">'a</span>, ScalarField&lt;C&gt;&gt; {
     <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
 
     <span class="kw">match </span>exp {
@@ -409,11 +411,11 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_exp_error&lt;<span class="lifetime">&#39;a</span>, C: FoldingConfig&gt;(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_exp_error&lt;<span class="lifetime">'a</span>, C: FoldingConfig&gt;(
     exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;,
-    env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ExtendedEnv&lt;C&gt;,
+    env: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ExtendedEnv&lt;C&gt;,
     side: Side,
-) -&gt; EvalLeaf&lt;<span class="lifetime">&#39;a</span>, ScalarField&lt;C&gt;&gt; {
+) -&gt; EvalLeaf&lt;<span class="lifetime">'a</span>, ScalarField&lt;C&gt;&gt; {
     <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
 
     <span class="kw">match </span>exp {
@@ -471,7 +473,7 @@
                 }
                 acc
             }
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;degree over 2&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"degree over 2"</span>),
         },
         Cache(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         IfFeature(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
@@ -490,7 +492,7 @@
     <span class="kw">let </span>t_0 = {
         <span class="kw">let </span>t_0 = (zero(), zero());
         <span class="kw">let </span>(l, r) = exp.degree_0.iter().fold(t_0, |(l, r), (exp, sign, alpha)| {
-            <span class="comment">//could be left or right, doesn&#39;t matter for constant terms
+            <span class="comment">//could be left or right, doesn't matter for constant terms
             </span><span class="kw">let </span>exp = eval_exp_error(exp, env, Side::Left);
             <span class="kw">let </span>alpha_l = env.inner().alpha(<span class="kw-2">*</span>alpha, Side::Left);
             <span class="kw">let </span>alpha_r = env.inner().alpha(<span class="kw-2">*</span>alpha, Side::Right);
@@ -615,9 +617,9 @@
                 .inner()
                 .extended
                 .get(i)
-                .expect(<span class="string">&quot;extended column not present&quot;</span>)
+                .expect(<span class="string">"extended column not present"</span>)
                 .evals),
-            Error =&gt; <span class="macro">panic!</span>(<span class="string">&quot;shouldn&#39;t happen&quot;</span>),
+            Error =&gt; <span class="macro">panic!</span>(<span class="string">"shouldn't happen"</span>),
             UnnormalizedLagrangeBasis(i) =&gt; Col(<span class="self">self</span>.inner().lagrange_basis(<span class="kw-2">*</span>i)),
             Constant(c) =&gt; EvalLeaf::Const(<span class="kw-2">*</span>c),
             Challenge(chall) =&gt; EvalLeaf::Const(<span class="self">self</span>.inner().challenge(<span class="kw-2">*</span>chall, side)),
@@ -633,7 +635,7 @@
         };
         <span class="kw">match </span>col {
             WitnessExtended(i) =&gt; witness.inner().extended.get(i).is_some(),
-            Error =&gt; <span class="macro">panic!</span>(<span class="string">&quot;shouldn&#39;t happen&quot;</span>),
+            Error =&gt; <span class="macro">panic!</span>(<span class="string">"shouldn't happen"</span>),
             Inner(<span class="kw">_</span>) | UnnormalizedLagrangeBasis(<span class="kw">_</span>) | Constant(<span class="kw">_</span>) | Challenge(<span class="kw">_</span>) | Alpha(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
         }
     }

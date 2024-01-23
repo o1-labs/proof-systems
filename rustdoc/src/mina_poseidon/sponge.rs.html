@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poseidon/src/sponge.rs`."><title>sponge.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_poseidon" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../mina_poseidon/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poseidon/src/sponge.rs`."><title>sponge.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_poseidon" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../mina_poseidon/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -347,7 +349,7 @@
             <span class="kw">let </span>(limbs, remaining) = last_squeezed.split_at(num_limbs);
             <span class="self">self</span>.last_squeezed = remaining.to_vec();
             Fr::from_repr(pack::&lt;Fr::BigInt&gt;(limbs))
-                .expect(<span class="string">&quot;internal representation was not a valid field element&quot;</span>)
+                .expect(<span class="string">"internal representation was not a valid field element"</span>)
         } <span class="kw">else </span>{
             <span class="kw">let </span>x = <span class="self">self</span>.sponge.squeeze().into_repr();
             <span class="self">self</span>.last_squeezed
@@ -383,7 +385,7 @@
 
     <span class="kw">pub fn </span>squeeze(<span class="kw-2">&amp;mut </span><span class="self">self</span>, num_limbs: usize) -&gt; P::ScalarField {
         P::ScalarField::from_repr(pack(<span class="kw-2">&amp;</span><span class="self">self</span>.squeeze_limbs(num_limbs)))
-            .expect(<span class="string">&quot;internal representation was not a valid field element&quot;</span>)
+            .expect(<span class="string">"internal representation was not a valid field element"</span>)
     }
 }
 
@@ -393,7 +395,7 @@
     </span>P::BaseField: PrimeField,
     &lt;P::BaseField <span class="kw">as </span>PrimeField&gt;::BigInt: Into&lt;&lt;P::ScalarField <span class="kw">as </span>PrimeField&gt;::BigInt&gt;,
 {
-    <span class="kw">fn </span>new(params: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;P::BaseField&gt;) -&gt; DefaultFqSponge&lt;P, SC&gt; {
+    <span class="kw">fn </span>new(params: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>ArithmeticSpongeParams&lt;P::BaseField&gt;) -&gt; DefaultFqSponge&lt;P, SC&gt; {
         <span class="kw">let </span>sponge = ArithmeticSponge::new(params);
         DefaultFqSponge {
             sponge,
@@ -437,7 +439,7 @@
                 <span class="kw">let </span>fe = P::BaseField::from_repr(
                     &lt;P::BaseField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_le(<span class="kw-2">&amp;</span>bits),
                 )
-                .expect(<span class="string">&quot;padding code has a bug&quot;</span>);
+                .expect(<span class="string">"padding code has a bug"</span>);
                 <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>[fe]);
             } <span class="kw">else </span>{
                 <span class="kw">let </span>low_bit = <span class="kw">if </span>bits[<span class="number">0</span>] {
@@ -449,7 +451,7 @@
                 <span class="kw">let </span>high_bits = P::BaseField::from_repr(
                     &lt;P::BaseField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_le(<span class="kw-2">&amp;</span>bits[<span class="number">1</span>..bits.len()]),
                 )
-                .expect(<span class="string">&quot;padding code has a bug&quot;</span>);
+                .expect(<span class="string">"padding code has a bug"</span>);
 
                 <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>[high_bits]);
                 <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>[low_bit]);
@@ -463,7 +465,7 @@
         // This means that there is a bias for the value zero (in one of the curve).
         // An attacker could try to target that seed, in order to predict the challenges u and v produced by the Fr-Sponge.
         // This would allow the attacker to mess with the result of the aggregated evaluation proof.
-        // Previously the attacker&#39;s odds were 1/q, now it&#39;s (q-p)/q.
+        // Previously the attacker's odds were 1/q, now it's (q-p)/q.
         // Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.
         </span>P::ScalarField::from_repr(x.into()).unwrap_or_else(P::ScalarField::zero)
     }
@@ -485,7 +487,7 @@
 // OCaml types
 //
 
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 

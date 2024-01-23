@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs`."><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs`."><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../../src-files.js"></script><script defer src="../../../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -393,7 +395,7 @@
 //~
 //~    product1_lo =&gt; p10      product1_hi_0 =&gt; p110     product1_hi_1 =&gt; p111
 //~    carry0 =&gt; v0            carry1_lo =&gt; v10          carry1_hi =&gt; v11
-//~    quotient_hi_bound =&gt; q&#39;2
+//~    quotient_hi_bound =&gt; q'2
 //~
 //~ ````
 //~
@@ -402,22 +404,22 @@
 //~ The variable names in this code uses descriptive suffixes to convey information about the
 //~ positions of the bits referred to.  When a word is split into up to `n` parts
 //~ we use: `0`, `1` ... `n` (where `n` is the most significant).  For example, if we split
-//~ word `x` into three limbs, we&#39;d name them `x0`, `x1` and `x2` or `x[0]`, `x[1]` and `x[2]`.
+//~ word `x` into three limbs, we'd name them `x0`, `x1` and `x2` or `x[0]`, `x[1]` and `x[2]`.
 //~
 //~ Continuing in this fashion, when one of those words is subsequently split in half, then we
 //~ add the suffixes `_lo` and `_hi`, where `hi` corresponds to the most significant bits.
 //~ For our running example, `x1` would become `x1_lo` and `x1_hi`.  If we are splitting into
 //~ more than two things, then we pick meaningful names for each.
 //~
-//~ So far we&#39;ve explained our conventions for a splitting depth of up to 2.  For splitting
+//~ So far we've explained our conventions for a splitting depth of up to 2.  For splitting
 //~ deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
 //~ would be split into `x1_lo_0` and `x1_lo_1`.
 //~
 //~ ##### Parameters
 //~
 //~ * `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
-//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f&#39;$ (stored in gate coefficients 1-3)
-//~ * `n` := the native field modulus is obtainable from `F`, the native field&#39;s trait bound
+//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
+//~ * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 //~
 //~ ##### Witness
 //~
@@ -429,13 +431,13 @@
 //~ * `carry1_lo` := low 88 bits of `carry1`
 //~ * `carry1_hi` := high 3 bits of `carry1`
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
-//~ * `product1_hi_0` := lowest 88 bits of middle intermediate product&#39;s highest 88 + 2 bits
+//~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
 //~ * `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 //~
 //~ ##### Layout
 //~
-//~ The foreign field multiplication gate&#39;s rows are laid out like this
+//~ The foreign field multiplication gate's rows are laid out like this
 //~
 //~ | col | `ForeignFieldMul`       | `Zero`                     |
 //~ | --- | ----------------------- | -------------------------- |
@@ -469,7 +471,7 @@
 
 <span class="doccomment">/// Compute non-zero intermediate products
 ///
-/// For more details see the &quot;Intermediate products&quot; Section of
+/// For more details see the "Intermediate products" Section of
 /// the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 ///
 </span><span class="kw">pub fn </span>compute_intermediate_products&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(
@@ -484,14 +486,14 @@
     <span class="macro">auto_clone_array!</span>(neg_foreign_field_modulus);
 
     [
-        <span class="comment">// p0 = a0 * b0 + q0 * f&#39;0
+        <span class="comment">// p0 = a0 * b0 + q0 * f'0
         </span>left_input(<span class="number">0</span>) * right_input(<span class="number">0</span>) + quotient(<span class="number">0</span>) * neg_foreign_field_modulus(<span class="number">0</span>),
-        <span class="comment">// p1 = a0 * b1 + a1 * b0 + q0 * f&#39;1 + q1 * f&#39;0
+        <span class="comment">// p1 = a0 * b1 + a1 * b0 + q0 * f'1 + q1 * f'0
         </span>left_input(<span class="number">0</span>) * right_input(<span class="number">1</span>)
             + left_input(<span class="number">1</span>) * right_input(<span class="number">0</span>)
             + quotient(<span class="number">0</span>) * neg_foreign_field_modulus(<span class="number">1</span>)
             + quotient(<span class="number">1</span>) * neg_foreign_field_modulus(<span class="number">0</span>),
-        <span class="comment">// p2 = a0 * b2 + a2 * b0 + a1 * b1 + q0 * f&#39;2 + q2 * f&#39;0 + q1 * f&#39;1
+        <span class="comment">// p2 = a0 * b2 + a2 * b0 + a1 * b1 + q0 * f'2 + q2 * f'0 + q1 * f'1
         </span>left_input(<span class="number">0</span>) * right_input(<span class="number">2</span>)
             + left_input(<span class="number">2</span>) * right_input(<span class="number">0</span>)
             + left_input(<span class="number">1</span>) * right_input(<span class="number">1</span>)
@@ -524,7 +526,7 @@
         </span>T::two_to_2limb() * quotient(<span class="number">2</span>) + T::two_to_limb() * quotient(<span class="number">1</span>) + quotient(<span class="number">0</span>),
         <span class="comment">// rn = 2^2L * r2 + 2^L * r1 + r0 = 2^2L * r2 + r01
         </span>T::two_to_2limb() * remainder(<span class="number">1</span>) + remainder(<span class="number">0</span>),
-        <span class="comment">// f&#39;n = 2^2L * f&#39;2 + 2^L * f&#39;1 + f&#39;0
+        <span class="comment">// f'n = 2^2L * f'2 + 2^L * f'1 + f'0
         </span>T::two_to_2limb() * neg_foreign_field_modulus(<span class="number">2</span>)
             + T::two_to_limb() * neg_foreign_field_modulus(<span class="number">1</span>)
             + neg_foreign_field_modulus(<span class="number">0</span>),
@@ -667,7 +669,7 @@
         //   numbered below are described in full detail.
 
         // External checks
-        // multi-range-check: q&#39;2, p10, p110
+        // multi-range-check: q'2, p10, p110
         // That is, check bound, product1_lo, product1_hi_0 each in [0, 2^L)
         // Must be done externally with a multi-range-check gadget
 
@@ -695,7 +697,7 @@
                 - (products(<span class="number">0</span>) + T::two_to_limb() * product1_lo - remainder[<span class="number">0</span>].clone()),
         );
 
-        <span class="comment">// C5: Native modulus constraint a_n * b_n + q_n * f&#39;_n - q_n * 2^264 = r_n
+        <span class="comment">// C5: Native modulus constraint a_n * b_n + q_n * f'_n - q_n * 2^264 = r_n
         // RFC: Corresponds to C1
         </span>constraints.push(
             left_input_n * right_input_n + quotient_n.clone() * neg_foreign_field_modulus_n
@@ -725,7 +727,7 @@
             T::two_to_limb() * carry1 - (products(<span class="number">2</span>) + product1_hi + carry0 - remainder[<span class="number">1</span>].clone()),
         );
 
-        <span class="comment">// C11: Constrain that q&#39;2 is correct
+        <span class="comment">// C11: Constrain that q'2 is correct
         // RFC: Corresponds to C11
         </span>constraints.push(quotient_hi_bound - bound);
 

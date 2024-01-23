@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1785,7 +1787,7 @@
 <a href="#1785" id="1785">1785</a>
 <a href="#1786" id="1786">1786</a>
 <a href="#1787" id="1787">1787</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover's zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
     circuits::{
@@ -1854,7 +1856,7 @@
                 .divide_by_vanishing_poly(<span class="macro-nonterminal">$index</span>.cs.domain.d1)
                 .unwrap();
             <span class="kw">if </span>!res.is_zero() {
-                <span class="macro">panic!</span>(<span class="string">&quot;couldn&#39;t divide by vanishing polynomial: {}&quot;</span>, <span class="macro-nonterminal">$label</span>);
+                <span class="macro">panic!</span>(<span class="string">"couldn't divide by vanishing polynomial: {}"</span>, <span class="macro-nonterminal">$label</span>);
             }
         }
     }};
@@ -1913,7 +1915,7 @@
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
-    <span class="doccomment">/// This function constructs prover&#39;s zk-proof from the witness &amp; the `ProverIndex` against SRS instance
+    <span class="doccomment">/// This function constructs prover's zk-proof from the witness &amp; the `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
@@ -1940,7 +1942,7 @@
         )
     }
 
-    <span class="doccomment">/// This function constructs prover&#39;s recursive zk-proof from the witness &amp; the `ProverIndex` against SRS instance
+    <span class="doccomment">/// This function constructs prover's recursive zk-proof from the witness &amp; the `ProverIndex` against SRS instance
     ///
     /// # Errors
     ///
@@ -1981,7 +1983,7 @@
         // Catch mistakes before proof generation.
         </span><span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) &amp;&amp; !index.cs.disable_gates_checks {
             <span class="kw">let </span>public = witness[<span class="number">0</span>][<span class="number">0</span>..index.cs.public].to_vec();
-            index.verify(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>public).expect(<span class="string">&quot;incorrect witness&quot;</span>);
+            index.verify(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>public).expect(<span class="string">"incorrect witness"</span>);
         }
 
         <span class="comment">//~ 1. Ensure we have room in the witness for the zero-knowledge rows.
@@ -2103,7 +2105,7 @@
 
         <span class="kw">let </span>w_comm: [BlindedCommitment&lt;G&gt;; COLUMNS] = w_comm
             .try_into()
-            .expect(<span class="string">&quot;previous loop is of the correct length&quot;</span>);
+            .expect(<span class="string">"previous loop is of the correct length"</span>);
 
         <span class="comment">//~ 1. Absorb the witness commitments with the Fq-Sponge.
         </span>w_comm
@@ -2127,8 +2129,8 @@
         <span class="comment">//~ 1. If using lookup:
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = <span class="kw-2">&amp;</span>index.cs.lookup_constraint_system {
             <span class="macro">internal_tracing::checkpoint!</span>(internal_traces; use_lookup, {
-                <span class="string">&quot;uses_lookup&quot;</span>: <span class="bool-val">true</span>,
-                <span class="string">&quot;uses_runtime_tables&quot;</span>: lcs.runtime_tables.is_some(),
+                <span class="string">"uses_lookup"</span>: <span class="bool-val">true</span>,
+                <span class="string">"uses_runtime_tables"</span>: lcs.runtime_tables.is_some(),
             });
             <span class="comment">//~~ * if using runtime table:
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cfg_runtime_tables) = <span class="kw-2">&amp;</span>lcs.runtime_tables {
@@ -2151,7 +2153,7 @@
                 </span><span class="kw">let </span>(runtime_table_contribution, runtime_table_contribution_d8) = {
                     <span class="kw">let </span><span class="kw-2">mut </span>offset = lcs
                         .runtime_table_offset
-                        .expect(<span class="string">&quot;runtime configuration missing offset&quot;</span>);
+                        .expect(<span class="string">"runtime configuration missing offset"</span>);
 
                     <span class="kw">let </span><span class="kw-2">mut </span>evals = <span class="macro">vec!</span>[G::ScalarField::zero(); d1_size];
                     <span class="kw">for </span>rt <span class="kw">in </span>runtime_tables {
@@ -2202,15 +2204,15 @@
             }
 
             <span class="comment">//~~ * If queries involve a lookup table with multiple columns
-            //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,
-            //~~   otherwise set the joint combiner challenge $j&#39;$ to $0$.
+            //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+            //~~   otherwise set the joint combiner challenge $j'$ to $0$.
             </span><span class="kw">let </span>joint_combiner = <span class="kw">if </span>lcs.configuration.lookup_info.features.joint_lookup_used {
                 fq_sponge.challenge()
             } <span class="kw">else </span>{
                 G::ScalarField::zero()
             };
 
-            <span class="comment">//~~ * Derive the scalar joint combiner $j$ from $j&#39;$ using the endomorphism (TODO: specify)
+            <span class="comment">//~~ * Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
             </span><span class="kw">let </span>joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
 
             <span class="comment">//~~ * If multiple lookup tables are involved,
@@ -2380,7 +2382,7 @@
 
             <span class="comment">// precompute different forms of the aggregation polynomial for later
             </span><span class="kw">let </span>aggreg_coeffs = aggreg.interpolate();
-            <span class="comment">// TODO: There&#39;s probably a clever way to expand the domain without
+            <span class="comment">// TODO: There's probably a clever way to expand the domain without
             // interpolating
             </span><span class="kw">let </span>aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
 
@@ -2399,10 +2401,10 @@
         <span class="comment">//~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>z_comm.commitment);
 
-        <span class="comment">//~ 1. Sample $\alpha&#39;$ with the Fq-Sponge.
+        <span class="comment">//~ 1. Sample $\alpha'$ with the Fq-Sponge.
         </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
-        <span class="comment">//~ 1. Derive $\alpha$ from $\alpha&#39;$ using the endomorphism (TODO: details)
+        <span class="comment">//~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
         </span><span class="kw">let </span>alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
         <span class="comment">//~ 1. TODO: instantiate alpha?
@@ -2598,9 +2600,9 @@
                     } <span class="kw">else if </span>eval.domain().size == t8.domain().size {
                         t8 += <span class="kw-2">&amp;</span>eval;
                     } <span class="kw">else </span>{
-                        <span class="macro">panic!</span>(<span class="string">&quot;Bad evaluation&quot;</span>)
+                        <span class="macro">panic!</span>(<span class="string">"Bad evaluation"</span>)
                     }
-                    <span class="macro">check_constraint!</span>(index, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, gate.argument_type()), eval);
+                    <span class="macro">check_constraint!</span>(index, <span class="macro">format!</span>(<span class="string">"{:?}"</span>, gate.argument_type()), eval);
                 }
             };
 
@@ -2609,7 +2611,7 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = index.cs.lookup_constraint_system.as_ref() {
                     <span class="kw">let </span>constraints = lookup::constraints::constraints(<span class="kw-2">&amp;</span>lcs.configuration, <span class="bool-val">false</span>);
                     <span class="kw">let </span>constraints_len = u32::try_from(constraints.len())
-                        .expect(<span class="string">&quot;not expecting a large amount of constraints&quot;</span>);
+                        .expect(<span class="string">"not expecting a large amount of constraints"</span>);
                     <span class="kw">let </span>lookup_alphas =
                         all_alphas.get_alphas(ArgumentType::Lookup, constraints_len);
 
@@ -2628,10 +2630,10 @@
                         } <span class="kw">else if </span>eval.evals.iter().all(|x| x.is_zero()) {
                             <span class="comment">// Skip any 0-valued evaluations
                         </span>} <span class="kw">else </span>{
-                            <span class="macro">panic!</span>(<span class="string">&quot;Bad evaluation&quot;</span>)
+                            <span class="macro">panic!</span>(<span class="string">"Bad evaluation"</span>)
                         }
 
-                        <span class="macro">check_constraint!</span>(index, <span class="macro">format!</span>(<span class="string">&quot;lookup constraint #{ii}&quot;</span>), eval);
+                        <span class="macro">check_constraint!</span>(index, <span class="macro">format!</span>(<span class="string">"lookup constraint #{ii}"</span>), eval);
                     }
                 }
             }
@@ -2643,10 +2645,10 @@
             <span class="comment">// divide contributions with vanishing polynomial
             </span><span class="kw">let </span>(<span class="kw-2">mut </span>quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProverError::Prover(<span class="string">&quot;division by vanishing polynomial&quot;</span>))<span class="question-mark">?</span>;
+                .ok_or(ProverError::Prover(<span class="string">"division by vanishing polynomial"</span>))<span class="question-mark">?</span>;
             <span class="kw">if </span>!res.is_zero() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Prover(
-                    <span class="string">&quot;rest of division by vanishing polynomial&quot;</span>,
+                    <span class="string">"rest of division by vanishing polynomial"</span>,
                 ));
             }
 
@@ -2660,10 +2662,10 @@
         <span class="comment">//~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>t_comm.commitment);
 
-        <span class="comment">//~ 1. Sample $\zeta&#39;$ with the Fq-Sponge.
+        <span class="comment">//~ 1. Sample $\zeta'$ with the Fq-Sponge.
         </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
-        <span class="comment">//~ 1. Derive $\zeta$ from $\zeta&#39;$ using the endomorphism (TODO: specify)
+        <span class="comment">//~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         </span><span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
 
         <span class="kw">let </span>omega = index.cs.domain.d1.group_gen;
@@ -2729,8 +2731,8 @@
         //~~ * generic selector
         //~~ * poseidon selector
         //~
-        //~    By &quot;chunk evaluate&quot; we mean that the evaluation of each polynomial can potentially be a vector of values.
-        //~    This is because the index&#39;s `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
+        //~    By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
+        //~    This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
         //~    If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
         //~    $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
         //~
@@ -2897,7 +2899,7 @@
         };
 
         <span class="comment">//~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
+        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/kimchi/maller_15.html).
         </span><span class="macro">internal_tracing::checkpoint!</span>(internal_traces; compute_ft_poly);
         <span class="kw">let </span>ft: DensePolynomial&lt;G::ScalarField&gt; = {
             <span class="kw">let </span>f_chunked = {
@@ -2961,7 +2963,7 @@
         <span class="comment">//~ 1. Absorb the previous recursion challenges.
         </span><span class="kw">let </span>prev_challenge_digest = {
             <span class="comment">// Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive &#39;optional sponge&#39;.
+            // more-expensive 'optional sponge'.
             </span><span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
             <span class="kw">for </span>RecursionChallenge { chals, .. } <span class="kw">in </span><span class="kw-2">&amp;</span>prev_challenges {
                 fr_sponge.absorb_multiple(chals);
@@ -2996,16 +2998,16 @@
         fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>chunked_evals.public.as_ref().unwrap().zeta_omega);
         fr_sponge.absorb_evaluations(<span class="kw-2">&amp;</span>chunked_evals);
 
-        <span class="comment">//~ 1. Sample $v&#39;$ with the Fr-Sponge
+        <span class="comment">//~ 1. Sample $v'$ with the Fr-Sponge
         </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
 
-        <span class="comment">//~ 1. Derive $v$ from $v&#39;$ using the endomorphism (TODO: specify)
+        <span class="comment">//~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
         </span><span class="kw">let </span>v = v_chal.to_field(endo_r);
 
-        <span class="comment">//~ 1. Sample $u&#39;$ with the Fr-Sponge
+        <span class="comment">//~ 1. Sample $u'$ with the Fr-Sponge
         </span><span class="kw">let </span>u_chal = fr_sponge.challenge();
 
-        <span class="comment">//~ 1. Derive $u$ from $u&#39;$ using the endomorphism (TODO: specify)
+        <span class="comment">//~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
         </span><span class="kw">let </span>u = u_chal.to_field(endo_r);
 
         <span class="comment">//~ 1. Create a list of all polynomials that will require evaluations
@@ -3300,7 +3302,7 @@
     create_aggregated_evaluation_proof,
     create_recursive_done);
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
@@ -3310,7 +3312,7 @@
         evaluation_proof::OpeningProof,
     };
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;internal_tracing&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"internal_tracing"</span>)]
     </span><span class="kw">pub use </span>internal_traces::caml::CamlTraces <span class="kw">as </span>CamlProverTraces;
 
     <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
@@ -3327,7 +3329,7 @@
     </span><span class="kw">pub struct </span>CamlProverProof&lt;CamlG, CamlF&gt; {
         <span class="kw">pub </span>commitments: CamlProverCommitments&lt;CamlG&gt;,
         <span class="kw">pub </span>proof: CamlOpeningProof&lt;CamlG, CamlF&gt;,
-        <span class="comment">// OCaml doesn&#39;t have sized arrays, so we have to convert to a tuple..
+        <span class="comment">// OCaml doesn't have sized arrays, so we have to convert to a tuple..
         </span><span class="kw">pub </span>evals: CamlProofEvaluations&lt;CamlF&gt;,
         <span class="kw">pub </span>ft_eval1: CamlF,
         <span class="kw">pub </span>public: Vec&lt;CamlF&gt;,
@@ -3378,11 +3380,11 @@
     // InternalType &lt;-&gt; CamlInternalType &lt;-&gt; Ocaml::Value
     //
     // Note that some conversions are not always possible to shorten,
-    // because we don&#39;t always know how to convert the types.
+    // because we don't always know how to convert the types.
     // For example, to implement the conversion
     // ProverCommitments&lt;G&gt; -&gt; CamlProverCommitments&lt;CamlG&gt;
     // we need to know how to convert G to CamlG.
-    // we don&#39;t know that information, unless we implemented some trait (e.g. ToCaml)
+    // we don't know that information, unless we implemented some trait (e.g. ToCaml)
     // we can do that, but instead we implemented the From trait for the reverse operations (From&lt;G&gt; for CamlG).
     // it reduces the complexity, but forces us to do the conversion in two phases instead of one.
 

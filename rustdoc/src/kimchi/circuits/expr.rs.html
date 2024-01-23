@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -3521,22 +3523,22 @@
 
 <span class="attr">#[derive(Debug, Error)]
 </span><span class="kw">pub enum </span>ExprError&lt;Column&gt; {
-    <span class="attr">#[error(<span class="string">&quot;Empty stack&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Empty stack"</span>)]
     </span>EmptyStack,
 
-    <span class="attr">#[error(<span class="string">&quot;Lookup should not have been used&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Lookup should not have been used"</span>)]
     </span>LookupShouldNotBeUsed,
 
-    <span class="attr">#[error(<span class="string">&quot;Linearization failed (needed {0:?} evaluated at the {1:?} row&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Linearization failed (needed {0:?} evaluated at the {1:?} row"</span>)]
     </span>MissingEvaluation(Column, CurrOrNext),
 
-    <span class="attr">#[error(<span class="string">&quot;Cannot get index evaluation {0:?} (should have been linearized away)&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Cannot get index evaluation {0:?} (should have been linearized away)"</span>)]
     </span>MissingIndexEvaluation(Column),
 
-    <span class="attr">#[error(<span class="string">&quot;Linearization failed (too many unevaluated columns: {0:?}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Linearization failed (too many unevaluated columns: {0:?}"</span>)]
     </span>FailedLinearization(Vec&lt;Variable&lt;Column&gt;&gt;),
 
-    <span class="attr">#[error(<span class="string">&quot;runtime table not available&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"runtime table not available"</span>)]
     </span>MissingRuntime,
 }
 
@@ -3552,11 +3554,11 @@
 }
 
 <span class="doccomment">/// The collection of constants required to evaluate an `Expr`.
-</span><span class="kw">pub struct </span>Constants&lt;F: <span class="lifetime">&#39;static</span>&gt; {
+</span><span class="kw">pub struct </span>Constants&lt;F: <span class="lifetime">'static</span>&gt; {
     <span class="doccomment">/// The endomorphism coefficient
     </span><span class="kw">pub </span>endo_coefficient: F,
     <span class="doccomment">/// The MDS matrix
-    </span><span class="kw">pub </span>mds: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>Vec&lt;Vec&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>mds: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>Vec&lt;Vec&lt;F&gt;&gt;,
     <span class="doccomment">/// The number of zero-knowledge rows
     </span><span class="kw">pub </span>zk_rows: u64,
 }
@@ -3564,36 +3566,36 @@
 <span class="doccomment">/// The polynomials specific to the lookup argument.
 ///
 /// All are evaluations over the D8 domain
-</span><span class="kw">pub struct </span>LookupEnvironment&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; {
+</span><span class="kw">pub struct </span>LookupEnvironment&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
     <span class="doccomment">/// The sorted lookup table polynomials.
-    </span><span class="kw">pub </span>sorted: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>sorted: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The lookup aggregation polynomials.
-    </span><span class="kw">pub </span>aggreg: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>aggreg: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// The lookup-type selector polynomials.
-    </span><span class="kw">pub </span>selectors: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LookupSelectors&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>selectors: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>LookupSelectors&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The evaluations of the combined lookup table polynomial.
-    </span><span class="kw">pub </span>table: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>table: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// The evaluations of the optional runtime selector polynomial.
-    </span><span class="kw">pub </span>runtime_selector: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>runtime_selector: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The evaluations of the optional runtime table.
-    </span><span class="kw">pub </span>runtime_table: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>runtime_table: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
 }
 
 <span class="doccomment">/// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-</span><span class="kw">pub struct </span>Environment&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; {
+</span><span class="kw">pub struct </span>Environment&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
     <span class="doccomment">/// The witness column polynomials
-    </span><span class="kw">pub </span>witness: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
+    </span><span class="kw">pub </span>witness: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
     <span class="doccomment">/// The coefficient column polynomials
-    </span><span class="kw">pub </span>coefficient: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
+    </span><span class="kw">pub </span>coefficient: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
     <span class="doccomment">/// The polynomial that vanishes on the zero-knowledge rows and the row before.
-    </span><span class="kw">pub </span>vanishes_on_zero_knowledge_and_previous_rows: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>vanishes_on_zero_knowledge_and_previous_rows: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// The permutation aggregation polynomial.
-    </span><span class="kw">pub </span>z: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>z: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// The index selector polynomials.
-    </span><span class="kw">pub </span>index: HashMap&lt;GateType, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>index: HashMap&lt;GateType, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     </span><span class="kw">pub </span>l0_1: F,
@@ -3604,23 +3606,23 @@
     <span class="doccomment">/// The domains used in the PLONK argument.
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
     <span class="doccomment">/// Lookup specific polynomials
-    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;LookupEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt;&gt;,
+    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;LookupEnvironment&lt;<span class="lifetime">'a</span>, F&gt;&gt;,
 }
 
-<span class="kw">pub trait </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; {
+<span class="kw">pub trait </span>ColumnEnvironment&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
     <span class="kw">type </span>Column;
-    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;;
+    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;;
     <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; D&lt;F&gt;;
     <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt;;
     <span class="kw">fn </span>get_challenges(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Challenges&lt;F&gt;;
-    <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;;
+    <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;;
     <span class="kw">fn </span>l0_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt; <span class="kw">for </span>Environment&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: FftField&gt; ColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt; <span class="kw">for </span>Environment&lt;<span class="lifetime">'a</span>, F&gt; {
     <span class="kw">type </span>Column = berkeley_columns::Column;
 
-    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt; {
+    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt; {
         <span class="kw">use </span>berkeley_columns::Column::<span class="kw-2">*</span>;
         <span class="kw">let </span>lookup = <span class="self">self</span>.lookup.as_ref();
         <span class="kw">match </span>col {
@@ -3658,7 +3660,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.challenges
     }
 
-    <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt; {
+    <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt; {
         <span class="self">self</span>.vanishes_on_zero_knowledge_and_previous_rows
     }
 
@@ -3678,7 +3680,7 @@
 //         L_i(x) = l_i(x) / l_i(omega^i)
 
 </span><span class="doccomment">/// Computes `prod_{j != n} (1 - omega^j)`
-///     Assure we don&#39;t multiply by (1 - omega^n) = (1 - omega^0) = (1 - 1) = 0
+///     Assure we don't multiply by (1 - omega^n) = (1 - omega^0) = (1 - 1) = 0
 </span><span class="kw">pub fn </span>l0_1&lt;F: FftField&gt;(d: D&lt;F&gt;) -&gt; F {
     d.elements()
         .skip(<span class="number">1</span>)
@@ -3920,7 +3922,7 @@
                         res.push(PolishToken::Load(<span class="kw-2">*</span>pos))
                     }
                     <span class="prelude-val">None </span>=&gt; {
-                        <span class="comment">// Haven&#39;t computed this yet. Compute it, then store it.
+                        <span class="comment">// Haven't computed this yet. Compute it, then store it.
                         </span>x.to_polish(cache, res);
                         res.push(PolishToken::Store);
                         cache.insert(<span class="kw-2">*</span>id, cache.len());
@@ -3933,7 +3935,7 @@
                     </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
                     res.push(tok);
                     <span class="kw">let </span>len_before = res.len();
-                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    <span class="comment">/* Clone the cache, to make sure we don't try to access cached statements later
                     when the feature flag is off. */
                     </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
                     if_true.to_polish(<span class="kw-2">&amp;mut </span>cache, res);
@@ -3946,7 +3948,7 @@
                     </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
                     res.push(tok);
                     <span class="kw">let </span>len_before = res.len();
-                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    <span class="comment">/* Clone the cache, to make sure we don't try to access cached statements later
                     when the feature flag is on. */
                     </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
                     if_false.to_polish(<span class="kw-2">&amp;mut </span>cache, res);
@@ -3984,7 +3986,7 @@
             Atom(Challenge(ChallengeTerm::Beta)) =&gt; chals.beta,
             Atom(Challenge(ChallengeTerm::Gamma)) =&gt; chals.gamma,
             Atom(Challenge(ChallengeTerm::JointCombiner)) =&gt; {
-                chals.joint_combiner.expect(<span class="string">&quot;joint lookup was not expected&quot;</span>)
+                chals.joint_combiner.expect(<span class="string">"joint lookup was not expected"</span>)
             }
             Atom(Constant(ConstantTerm::EndoCoefficient)) =&gt; c.endo_coefficient,
             Atom(Constant(ConstantTerm::Mds { row, col })) =&gt; c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col],
@@ -4015,10 +4017,10 @@
 }
 
 <span class="kw">impl </span>CacheId {
-    <span class="kw">fn </span>get_from&lt;<span class="lifetime">&#39;b</span>, F: FftField&gt;(
+    <span class="kw">fn </span>get_from&lt;<span class="lifetime">'b</span>, F: FftField&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cache: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>HashMap&lt;CacheId, EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;EvalResult&lt;<span class="lifetime">&#39;b</span>, F&gt;&gt; {
+        cache: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>HashMap&lt;CacheId, EvalResult&lt;<span class="lifetime">'_</span>, F&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;EvalResult&lt;<span class="lifetime">'b</span>, F&gt;&gt; {
         cache.get(<span class="self">self</span>).map(|e| <span class="kw">match </span>e {
             EvalResult::Constant(x) =&gt; EvalResult::Constant(<span class="kw-2">*</span>x),
             EvalResult::SubEvals {
@@ -4039,15 +4041,15 @@
     }
 
     <span class="kw">fn </span>var_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;x_{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
+        <span class="macro">format!</span>(<span class="string">"x_{}"</span>, <span class="self">self</span>.<span class="number">0</span>)
     }
 
     <span class="kw">fn </span>latex_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;x_{{{}}}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
+        <span class="macro">format!</span>(<span class="string">"x_{{{}}}"</span>, <span class="self">self</span>.<span class="number">0</span>)
     }
 
     <span class="kw">fn </span>text_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;x[{}]&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
+        <span class="macro">format!</span>(<span class="string">"x[{}]"</span>, <span class="self">self</span>.<span class="number">0</span>)
     }
 }
 
@@ -4074,7 +4076,7 @@
 <span class="doccomment">/// The feature flags that can be used to enable or disable parts of constraints.
 </span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[cfg_attr(
-    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    feature = <span class="string">"ocaml_types"</span>,
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 </span><span class="kw">pub enum </span>FeatureFlag {
@@ -4088,14 +4090,14 @@
     RuntimeLookupTables,
     LookupPattern(LookupPattern),
     <span class="doccomment">/// Enabled if the table width is at least the given number
-    </span>TableWidth(isize), <span class="comment">// NB: isize so that we don&#39;t need to convert for OCaml :(
+    </span>TableWidth(isize), <span class="comment">// NB: isize so that we don't need to convert for OCaml :(
     </span><span class="doccomment">/// Enabled if the number of lookups per row is at least the given number
-    </span>LookupsPerRow(isize), <span class="comment">// NB: isize so that we don&#39;t need to convert for OCaml :(
+    </span>LookupsPerRow(isize), <span class="comment">// NB: isize so that we don't need to convert for OCaml :(
 </span>}
 
 <span class="kw">impl </span>FeatureFlag {
     <span class="kw">fn </span>is_enabled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="macro">todo!</span>(<span class="string">&quot;Handle features&quot;</span>)
+        <span class="macro">todo!</span>(<span class="string">"Handle features"</span>)
     }
 }
 
@@ -4122,7 +4124,7 @@
 /// - VanishesOnZeroKnowledgeAndPreviousRows
 /// - UnnormalizedLagrangeBasis(i) for `i : i32`
 ///
-/// This represents a PLONK &quot;custom constraint&quot;, which enforces that
+/// This represents a PLONK "custom constraint", which enforces that
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
 </span><span class="kw">pub type </span>Expr&lt;C, Column&gt; = Operations&lt;ExprInner&lt;C, Column&gt;&gt;;
@@ -4368,7 +4370,7 @@
                 Challenge(Beta) =&gt; stack.push(chals.beta),
                 Challenge(Gamma) =&gt; stack.push(chals.gamma),
                 Challenge(JointCombiner) =&gt; {
-                    stack.push(chals.joint_combiner.expect(<span class="string">&quot;no joint lookup was expected&quot;</span>))
+                    stack.push(chals.joint_combiner.expect(<span class="string">"no joint lookup was expected"</span>))
                 }
                 Constant(EndoCoefficient) =&gt; stack.push(c.endo_coefficient),
                 Constant(Mds { row, col }) =&gt; stack.push(c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col]),
@@ -4480,7 +4482,7 @@
     </span>F: PrimeField,
 {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.text_str())
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.text_str())
     }
 }
 
@@ -4493,7 +4495,7 @@
 }
 
 <span class="attr">#[derive(Clone)]
-</span><span class="kw">enum </span>EvalResult&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; {
+</span><span class="kw">enum </span>EvalResult&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
     Constant(F),
     Evals {
         domain: Domain,
@@ -4506,7 +4508,7 @@
     </span>SubEvals {
         domain: Domain,
         shift: usize,
-        evals: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
+        evals: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
     },
 }
 
@@ -4558,7 +4560,7 @@
 /// = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-</span><span class="kw">fn </span>unnormalized_lagrange_evals&lt;<span class="lifetime">&#39;a</span>, F: FftField, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt;&gt;(
+</span><span class="kw">fn </span>unnormalized_lagrange_evals&lt;<span class="lifetime">'a</span>, F: FftField, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt;&gt;(
     l0_1: F,
     i: i32,
     res_domain: Domain,
@@ -4626,7 +4628,7 @@
     Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(evals, res_domain)
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: FftField&gt; EvalResult&lt;<span class="lifetime">'a</span>, F&gt; {
     <span class="kw">fn </span>init_&lt;G: Sync + Send + Fn(usize) -&gt; F&gt;(
         res_domain: (Domain, D&lt;F&gt;),
         g: G,
@@ -4645,7 +4647,7 @@
         }
     }
 
-    <span class="kw">fn </span>add&lt;<span class="lifetime">&#39;c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
+    <span class="kw">fn </span>add&lt;<span class="lifetime">'c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">'_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">'c</span>, F&gt; {
         <span class="kw">use </span>EvalResult::<span class="kw-2">*</span>;
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (Constant(x), Constant(y)) =&gt; Constant(x + y),
@@ -4764,7 +4766,7 @@
         }
     }
 
-    <span class="kw">fn </span>sub&lt;<span class="lifetime">&#39;c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
+    <span class="kw">fn </span>sub&lt;<span class="lifetime">'c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">'_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">'c</span>, F&gt; {
         <span class="kw">use </span>EvalResult::<span class="kw-2">*</span>;
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (Constant(x), Constant(y)) =&gt; Constant(x - y),
@@ -4882,7 +4884,7 @@
         }
     }
 
-    <span class="kw">fn </span>pow&lt;<span class="lifetime">&#39;b</span>&gt;(<span class="self">self</span>, d: u64, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;b</span>, F&gt; {
+    <span class="kw">fn </span>pow&lt;<span class="lifetime">'b</span>&gt;(<span class="self">self</span>, d: u64, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">'b</span>, F&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>acc = EvalResult::Constant(F::one());
         <span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..u64::BITS).rev() {
             acc = acc.square(res_domain);
@@ -4895,7 +4897,7 @@
         acc
     }
 
-    <span class="kw">fn </span>square&lt;<span class="lifetime">&#39;b</span>&gt;(<span class="self">self</span>, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;b</span>, F&gt; {
+    <span class="kw">fn </span>square&lt;<span class="lifetime">'b</span>&gt;(<span class="self">self</span>, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">'b</span>, F&gt; {
         <span class="kw">use </span>EvalResult::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Constant(x) =&gt; Constant(x.square()),
@@ -4919,7 +4921,7 @@
         }
     }
 
-    <span class="kw">fn </span>mul&lt;<span class="lifetime">&#39;c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
+    <span class="kw">fn </span>mul&lt;<span class="lifetime">'c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">'_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">'c</span>, F&gt; {
         <span class="kw">use </span>EvalResult::<span class="kw-2">*</span>;
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (Constant(x), Constant(y)) =&gt; Constant(x * y),
@@ -5102,7 +5104,7 @@
                         res.push(PolishToken::Load(<span class="kw-2">*</span>pos))
                     }
                     <span class="prelude-val">None </span>=&gt; {
-                        <span class="comment">// Haven&#39;t computed this yet. Compute it, then store it.
+                        <span class="comment">// Haven't computed this yet. Compute it, then store it.
                         </span>e.to_polish_(cache, res);
                         res.push(PolishToken::Store);
                         cache.insert(<span class="kw-2">*</span>id, cache.len());
@@ -5115,7 +5117,7 @@
                     </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
                     res.push(tok);
                     <span class="kw">let </span>len_before = res.len();
-                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    <span class="comment">/* Clone the cache, to make sure we don't try to access cached statements later
                     when the feature flag is off. */
                     </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
                     e1.to_polish_(<span class="kw-2">&amp;mut </span>cache, res);
@@ -5128,7 +5130,7 @@
                     </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
                     res.push(tok);
                     <span class="kw">let </span>len_before = res.len();
-                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    <span class="comment">/* Clone the cache, to make sure we don't try to access cached statements later
                     when the feature flag is on. */
                     </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
                     e2.to_polish_(<span class="kw-2">&amp;mut </span>cache, res);
@@ -5174,9 +5176,9 @@
 
     <span class="doccomment">/// Evaluate an expression as a field element against an environment.
     </span><span class="kw">pub fn </span>evaluate&lt;
-        <span class="lifetime">&#39;a</span>,
+        <span class="lifetime">'a</span>,
         Evaluations: ColumnEvaluations&lt;F, Column = Column&gt;,
-        Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;,
+        Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;,
     &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         d: D&lt;F&gt;,
@@ -5242,7 +5244,7 @@
     }
 
     <span class="doccomment">/// Evaluate the constant expressions in this expression down into field elements.
-    </span><span class="kw">pub fn </span>evaluate_constants&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+    </span><span class="kw">pub fn </span>evaluate_constants&lt;<span class="lifetime">'a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
     ) -&gt; Expr&lt;F, Column&gt; {
@@ -5250,7 +5252,7 @@
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
-    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">'a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
     ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
@@ -5318,7 +5320,7 @@
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
-    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">'a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
     ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
@@ -5331,7 +5333,7 @@
         } <span class="kw">else if </span>deg &lt;= <span class="number">8 </span>* d1_size {
             Domain::D8
         } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;constraint had degree {deg} &gt; d8 ({})&quot;</span>, <span class="number">8 </span>* d1_size);
+            <span class="macro">panic!</span>(<span class="string">"constraint had degree {deg} &gt; d8 ({})"</span>, <span class="number">8 </span>* d1_size);
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>cache = HashMap::new();
@@ -5362,18 +5364,18 @@
         }
     }
 
-    <span class="kw">fn </span>evaluations_helper&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+    <span class="kw">fn </span>evaluations_helper&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cache: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="kw-2">mut </span>HashMap&lt;CacheId, EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt;&gt;,
+        cache: <span class="kw-2">&amp;</span><span class="lifetime">'b </span><span class="kw-2">mut </span>HashMap&lt;CacheId, EvalResult&lt;<span class="lifetime">'a</span>, F&gt;&gt;,
         d: Domain,
         env: <span class="kw-2">&amp;</span>Environment,
-    ) -&gt; Either&lt;EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt;, CacheId&gt;
+    ) -&gt; Either&lt;EvalResult&lt;<span class="lifetime">'a</span>, F&gt;, CacheId&gt;
     <span class="kw">where
-        </span><span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span>,
+        </span><span class="lifetime">'a</span>: <span class="lifetime">'b</span>,
     {
         <span class="kw">let </span>dom = (d, env.get_domain(d));
 
-        <span class="kw">let </span>res: EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt; = <span class="kw">match </span><span class="self">self </span>{
+        <span class="kw">let </span>res: EvalResult&lt;<span class="lifetime">'a</span>, F&gt; = <span class="kw">match </span><span class="self">self </span>{
             Expr::Square(x) =&gt; <span class="kw">match </span>x.evaluations_helper(cache, d, env) {
                 Either::Left(x) =&gt; x.square(dom),
                 Either::Right(id) =&gt; id.get_from(cache).unwrap().square(dom),
@@ -5457,7 +5459,7 @@
                 }
             }
             Expr::Atom(ExprInner::Cell(Variable { col, row })) =&gt; {
-                <span class="kw">let </span>evals: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt; = {
+                <span class="kw">let </span>evals: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt; = {
                     <span class="kw">match </span>env.get_column(col) {
                         <span class="prelude-val">None </span>=&gt; <span class="kw">return </span>Either::Left(EvalResult::Constant(F::zero())),
                         <span class="prelude-val">Some</span>(e) =&gt; e,
@@ -5515,7 +5517,7 @@
                 }
             }
             Expr::IfFeature(feature, e1, e2) =&gt; {
-                <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                <span class="comment">/* Clone the cache, to make sure we don't try to access cached statements later
                 when the feature flag is off. */
                 </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
                 <span class="kw">if </span>feature.is_enabled() {
@@ -5530,7 +5532,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
-</span><span class="doccomment">/// A &quot;linearization&quot;, which is linear combination with `E` coefficients of
+</span><span class="doccomment">/// A "linearization", which is linear combination with `E` coefficients of
 /// columns.
 </span><span class="kw">pub struct </span>Linearization&lt;E, Column&gt; {
     <span class="kw">pub </span>constant_term: E,
@@ -5561,7 +5563,7 @@
 {
     <span class="doccomment">/// Evaluate the constants in a linearization with `ConstantExpr&lt;F&gt;` coefficients down
     /// to literal field elements.
-    </span><span class="kw">pub fn </span>evaluate_constants&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+    </span><span class="kw">pub fn </span>evaluate_constants&lt;<span class="lifetime">'a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
     ) -&gt; Linearization&lt;Expr&lt;F, Column&gt;, Column&gt; {
@@ -5573,9 +5575,9 @@
     <span class="doccomment">/// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     </span><span class="kw">pub fn </span>to_polynomial&lt;
-        <span class="lifetime">&#39;a</span>,
+        <span class="lifetime">'a</span>,
         ColEvaluations: ColumnEvaluations&lt;F, Column = Column&gt;,
-        Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;,
+        Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;,
     &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
@@ -5591,7 +5593,7 @@
             <span class="kw">let </span>c = PolishToken::evaluate(c, d1, pt, evals, cs, chals).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
-                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
+                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"Index polynomial {idx:?} not found"</span>));
             <span class="kw">let </span>scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -5611,9 +5613,9 @@
     <span class="doccomment">/// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     </span><span class="kw">pub fn </span>to_polynomial&lt;
-        <span class="lifetime">&#39;a</span>,
+        <span class="lifetime">'a</span>,
         ColEvaluations: ColumnEvaluations&lt;F, Column = Column&gt;,
-        Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;,
+        Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;,
     &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
@@ -5629,7 +5631,7 @@
             <span class="kw">let </span>c = c.evaluate_(d1, pt, evals, cs, chals).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
-                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
+                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"Index polynomial {idx:?} not found"</span>));
             <span class="kw">let </span>scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -5680,7 +5682,7 @@
 {
     <span class="comment">// TODO: This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
-    // that function. It&#39;s ok for now as we only call that function once on
+    // that function. It's ok for now as we only call that function once on
     // a small input when producing the verification key.
     </span><span class="kw">fn </span>is_constant(<span class="kw-2">&amp;</span><span class="self">self</span>, evaluated: <span class="kw-2">&amp;</span>HashSet&lt;Column&gt;) -&gt; bool {
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
@@ -5798,12 +5800,12 @@
         }
     }
 
-    <span class="doccomment">/// There is an optimization in PLONK called &quot;linearization&quot; in which a certain
+    <span class="doccomment">/// There is an optimization in PLONK called "linearization" in which a certain
     /// polynomial is expressed as a linear combination of other polynomials in order
     /// to reduce the number of evaluations needed in the IOP (by relying on the homomorphic
     /// property of the polynomial commitments used.)
     ///
-    /// The function performs this &quot;linearization&quot;, which we now describe in some detail.
+    /// The function performs this "linearization", which we now describe in some detail.
     ///
     /// In mathematical language, an expression `e: Expr&lt;F&gt;`
     /// is an element of the polynomial ring `F[V]`, where `V` is a set of variables.
@@ -5861,7 +5863,7 @@
                         // with the above that moves v out of the map with .remove and
                         // into v + c.
                         //
-                        // I&#39;m not sure if there&#39;s a way to do it with the HashMap API
+                        // I'm not sure if there's a way to do it with the HashMap API
                         // without calling remove.
                     </span>}
                 }
@@ -6075,30 +6077,30 @@
     <span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">use </span>ChallengeTerm::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Alpha =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
-            Beta =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
-            Gamma =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
-            JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
+            Alpha =&gt; <span class="string">"alpha"</span>.to_string(),
+            Beta =&gt; <span class="string">"beta"</span>.to_string(),
+            Gamma =&gt; <span class="string">"gamma"</span>.to_string(),
+            JointCombiner =&gt; <span class="string">"joint_combiner"</span>.to_string(),
         }
     }
 
     <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">use </span>ChallengeTerm::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Alpha =&gt; <span class="string">&quot;\\alpha&quot;</span>.to_string(),
-            Beta =&gt; <span class="string">&quot;\\beta&quot;</span>.to_string(),
-            Gamma =&gt; <span class="string">&quot;\\gamma&quot;</span>.to_string(),
-            JointCombiner =&gt; <span class="string">&quot;joint\\_combiner&quot;</span>.to_string(),
+            Alpha =&gt; <span class="string">"\\alpha"</span>.to_string(),
+            Beta =&gt; <span class="string">"\\beta"</span>.to_string(),
+            Gamma =&gt; <span class="string">"\\gamma"</span>.to_string(),
+            JointCombiner =&gt; <span class="string">"joint\\_combiner"</span>.to_string(),
         }
     }
 
     <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">use </span>ChallengeTerm::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Alpha =&gt; <span class="string">&quot;alpha&quot;</span>.to_string(),
-            Beta =&gt; <span class="string">&quot;beta&quot;</span>.to_string(),
-            Gamma =&gt; <span class="string">&quot;gamma&quot;</span>.to_string(),
-            JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
+            Alpha =&gt; <span class="string">"alpha"</span>.to_string(),
+            Beta =&gt; <span class="string">"beta"</span>.to_string(),
+            Gamma =&gt; <span class="string">"gamma"</span>.to_string(),
+            JointCombiner =&gt; <span class="string">"joint_combiner"</span>.to_string(),
         }
     }
 }
@@ -6110,27 +6112,27 @@
     <span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">use </span>ConstantTerm::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
-            Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
+            EndoCoefficient =&gt; <span class="string">"endo_coefficient"</span>.to_string(),
+            Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">"mds({row}, {col})"</span>),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">"field(\"0x{}\")"</span>, x.into_repr()),
         }
     }
 
     <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">use </span>ConstantTerm::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            EndoCoefficient =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.to_string(),
-            Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.into_repr().into()),
+            EndoCoefficient =&gt; <span class="string">"endo\\_coefficient"</span>.to_string(),
+            Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">"mds({row}, {col})"</span>),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">"\\mathbb{{F}}({})"</span>, x.into_repr().into()),
         }
     }
 
     <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">use </span>ConstantTerm::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
-            Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, x.to_hex()),
+            EndoCoefficient =&gt; <span class="string">"endo_coefficient"</span>.to_string(),
+            Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">"mds({row}, {col})"</span>),
+            Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">"0x{}"</span>, x.to_hex()),
         }
     }
 }
@@ -6228,23 +6230,23 @@
             }
             Pow(x, n) =&gt; {
                 <span class="kw">if </span>x.is_alpha() {
-                    <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>)
+                    <span class="macro">format!</span>(<span class="string">"alpha_pow({n})"</span>)
                 } <span class="kw">else </span>{
-                    <span class="macro">format!</span>(<span class="string">&quot;pow({}, {n})&quot;</span>, x.ocaml(cache))
+                    <span class="macro">format!</span>(<span class="string">"pow({}, {n})"</span>, x.ocaml(cache))
                 }
             }
-            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.ocaml(cache)),
-            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.ocaml(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} + {})"</span>, x.ocaml(cache), y.ocaml(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} * {})"</span>, x.ocaml(cache), y.ocaml(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} - {})"</span>, x.ocaml(cache), y.ocaml(cache)),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">"double({})"</span>, x.ocaml(cache)),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">"square({})"</span>, x.ocaml(cache)),
             Cache(id, e) =&gt; {
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
             IfFeature(feature, e1, e2) =&gt; {
                 <span class="macro">format!</span>(
-                    <span class="string">&quot;if_feature({:?}, (fun () -&gt; {}), (fun () -&gt; {}))&quot;</span>,
+                    <span class="string">"if_feature({:?}, (fun () -&gt; {}), (fun () -&gt; {}))"</span>,
                     feature,
                     e1.ocaml(cache),
                     e2.ocaml(cache)
@@ -6264,17 +6266,17 @@
                 });
                 res
             }
-            Pow(x, n) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{{{n}}}&quot;</span>, x.latex(cache)),
-            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} \\cdot {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;2 ({})&quot;</span>, x.latex(cache)),
-            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({})^2&quot;</span>, x.latex(cache)),
+            Pow(x, n) =&gt; <span class="macro">format!</span>(<span class="string">"{}^{{{n}}}"</span>, x.latex(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} + {})"</span>, x.latex(cache), y.latex(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} \\cdot {})"</span>, x.latex(cache), y.latex(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} - {})"</span>, x.latex(cache), y.latex(cache)),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">"2 ({})"</span>, x.latex(cache)),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">"({})^2"</span>, x.latex(cache)),
             Cache(id, e) =&gt; {
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
-            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">"{feature:?}"</span>),
         }
     }
 
@@ -6289,17 +6291,17 @@
                 });
                 res
             }
-            Pow(x, n) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, x.text(cache)),
-            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(cache), y.text(cache)),
-            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.text(cache), y.text(cache)),
-            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.text(cache), y.text(cache)),
-            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.text(cache)),
-            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.text(cache)),
+            Pow(x, n) =&gt; <span class="macro">format!</span>(<span class="string">"{}^{n}"</span>, x.text(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} + {})"</span>, x.text(cache), y.text(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} * {})"</span>, x.text(cache), y.text(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} - {})"</span>, x.text(cache), y.text(cache)),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">"double({})"</span>, x.text(cache)),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">"square({})"</span>, x.text(cache)),
             Cache(id, e) =&gt; {
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
-            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">"{feature:?}"</span>),
         }
     }
 }
@@ -6321,7 +6323,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>res = String::new();
         <span class="kw">for </span>(k, v) <span class="kw">in </span>env {
             <span class="kw">let </span>rhs = v.ocaml_str();
-            <span class="kw">let </span>cached = <span class="macro">format!</span>(<span class="string">&quot;let {} = {rhs} in &quot;</span>, k.var_name());
+            <span class="kw">let </span>cached = <span class="macro">format!</span>(<span class="string">"let {} = {rhs} in "</span>, k.var_name());
             res.push_str(<span class="kw-2">&amp;</span>cached);
         }
 
@@ -6338,7 +6340,7 @@
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.ocaml(cache)),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">"double({})"</span>, x.ocaml(cache)),
             Atom(Constant(x)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_cache = HashMap::new();
                 <span class="kw">let </span>res = x.ocaml(<span class="kw-2">&amp;mut </span>inner_cache);
@@ -6347,25 +6349,25 @@
                 });
                 res
             }
-            Atom(Cell(v)) =&gt; <span class="macro">format!</span>(<span class="string">&quot;cell({})&quot;</span>, v.ocaml()),
+            Atom(Cell(v)) =&gt; <span class="macro">format!</span>(<span class="string">"cell({})"</span>, v.ocaml()),
             Atom(UnnormalizedLagrangeBasis(i)) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis({}, {})&quot;</span>, i.zk_rows, i.offset)
+                <span class="macro">format!</span>(<span class="string">"unnormalized_lagrange_basis({}, {})"</span>, i.zk_rows, i.offset)
             }
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
-                <span class="string">&quot;vanishes_on_zero_knowledge_and_previous_rows&quot;</span>.to_string()
+                <span class="string">"vanishes_on_zero_knowledge_and_previous_rows"</span>.to_string()
             }
-            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.ocaml(cache), y.ocaml(cache)),
-            Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {d})&quot;</span>, x.ocaml(cache)),
-            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.ocaml(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} + {})"</span>, x.ocaml(cache), y.ocaml(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} * {})"</span>, x.ocaml(cache), y.ocaml(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} - {})"</span>, x.ocaml(cache), y.ocaml(cache)),
+            Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">"pow({}, {d})"</span>, x.ocaml(cache)),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">"square({})"</span>, x.ocaml(cache)),
             Cache(id, e) =&gt; {
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
             IfFeature(feature, e1, e2) =&gt; {
                 <span class="macro">format!</span>(
-                    <span class="string">&quot;if_feature({:?}, (fun () -&gt; {}), (fun () -&gt; {}))&quot;</span>,
+                    <span class="string">"if_feature({:?}, (fun () -&gt; {}), (fun () -&gt; {}))"</span>,
                     feature,
                     e1.ocaml(cache),
                     e2.ocaml(cache)
@@ -6387,8 +6389,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(k, v) <span class="kw">in </span>env {
             <span class="kw">let </span><span class="kw-2">mut </span>rhs = v.latex_str();
-            <span class="kw">let </span>last = rhs.pop().expect(<span class="string">&quot;returned an empty expression&quot;</span>);
-            res.push(<span class="macro">format!</span>(<span class="string">&quot;{} = {last}&quot;</span>, k.latex_name()));
+            <span class="kw">let </span>last = rhs.pop().expect(<span class="string">"returned an empty expression"</span>);
+            res.push(<span class="macro">format!</span>(<span class="string">"{} = {last}"</span>, k.latex_name()));
             res.extend(rhs);
         }
         res.push(e);
@@ -6402,7 +6404,7 @@
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;2 ({})&quot;</span>, x.latex(cache)),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">"2 ({})"</span>, x.latex(cache)),
             Atom(Constant(x)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_cache = HashMap::new();
                 <span class="kw">let </span>res = x.latex(<span class="kw-2">&amp;mut </span>inner_cache);
@@ -6416,27 +6418,27 @@
                 zk_rows: <span class="bool-val">true</span>,
                 offset: i,
             })) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;unnormalized\\_lagrange\\_basis(zk\\_rows + {})&quot;</span>, <span class="kw-2">*</span>i)
+                <span class="macro">format!</span>(<span class="string">"unnormalized\\_lagrange\\_basis(zk\\_rows + {})"</span>, <span class="kw-2">*</span>i)
             }
             Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">false</span>,
                 offset: i,
             })) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;unnormalized\\_lagrange\\_basis({})&quot;</span>, <span class="kw-2">*</span>i)
+                <span class="macro">format!</span>(<span class="string">"unnormalized\\_lagrange\\_basis({})"</span>, <span class="kw-2">*</span>i)
             }
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
-                <span class="string">&quot;vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row&quot;</span>.to_string()
+                <span class="string">"vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row"</span>.to_string()
             }
-            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} \\cdot {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.latex(cache), y.latex(cache)),
-            Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{{{d}}}&quot;</span>, x.latex(cache)),
-            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({})^2&quot;</span>, x.latex(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} + {})"</span>, x.latex(cache), y.latex(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} \\cdot {})"</span>, x.latex(cache), y.latex(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} - {})"</span>, x.latex(cache), y.latex(cache)),
+            Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">"{}^{{{d}}}"</span>, x.latex(cache)),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">"({})^2"</span>, x.latex(cache)),
             Cache(id, e) =&gt; {
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.latex_name()
             }
-            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">"{feature:?}"</span>),
         }
     }
 
@@ -6449,7 +6451,7 @@
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.text(cache)),
+            Double(x) =&gt; <span class="macro">format!</span>(<span class="string">"double({})"</span>, x.text(cache)),
             Atom(Constant(x)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>inner_cache = HashMap::new();
                 <span class="kw">let </span>res = x.text(<span class="kw-2">&amp;mut </span>inner_cache);
@@ -6463,29 +6465,29 @@
                 zk_rows: <span class="bool-val">true</span>,
                 offset: i,
             })) =&gt; <span class="kw">match </span>i.cmp(<span class="kw-2">&amp;</span><span class="number">0</span>) {
-                Ordering::Greater =&gt; <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis(zk_rows + {})&quot;</span>, <span class="kw-2">*</span>i),
-                Ordering::Equal =&gt; <span class="string">&quot;unnormalized_lagrange_basis(zk_rows)&quot;</span>.to_string(),
-                Ordering::Less =&gt; <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis(zk_rows - {})&quot;</span>, (-<span class="kw-2">*</span>i)),
+                Ordering::Greater =&gt; <span class="macro">format!</span>(<span class="string">"unnormalized_lagrange_basis(zk_rows + {})"</span>, <span class="kw-2">*</span>i),
+                Ordering::Equal =&gt; <span class="string">"unnormalized_lagrange_basis(zk_rows)"</span>.to_string(),
+                Ordering::Less =&gt; <span class="macro">format!</span>(<span class="string">"unnormalized_lagrange_basis(zk_rows - {})"</span>, (-<span class="kw-2">*</span>i)),
             },
             Atom(UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: <span class="bool-val">false</span>,
                 offset: i,
             })) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis({})&quot;</span>, <span class="kw-2">*</span>i)
+                <span class="macro">format!</span>(<span class="string">"unnormalized_lagrange_basis({})"</span>, <span class="kw-2">*</span>i)
             }
             Atom(VanishesOnZeroKnowledgeAndPreviousRows) =&gt; {
-                <span class="string">&quot;vanishes_on_zero_knowledge_and_previous_rows&quot;</span>.to_string()
+                <span class="string">"vanishes_on_zero_knowledge_and_previous_rows"</span>.to_string()
             }
-            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(cache), y.text(cache)),
-            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, x.text(cache), y.text(cache)),
-            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, x.text(cache), y.text(cache)),
-            Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {d})&quot;</span>, x.text(cache)),
-            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, x.text(cache)),
+            Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} + {})"</span>, x.text(cache), y.text(cache)),
+            Mul(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} * {})"</span>, x.text(cache), y.text(cache)),
+            Sub(x, y) =&gt; <span class="macro">format!</span>(<span class="string">"({} - {})"</span>, x.text(cache), y.text(cache)),
+            Pow(x, d) =&gt; <span class="macro">format!</span>(<span class="string">"pow({}, {d})"</span>, x.text(cache)),
+            Square(x) =&gt; <span class="macro">format!</span>(<span class="string">"square({})"</span>, x.text(cache)),
             Cache(id, e) =&gt; {
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
-            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">"{feature:?}"</span>),
         }
     }
 
@@ -6501,7 +6503,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>res = String::new();
         <span class="kw">for </span>(k, v) <span class="kw">in </span>env {
-            <span class="kw">let </span>str = <span class="macro">format!</span>(<span class="string">&quot;{} = {}&quot;</span>, k.text_name(), v.text_str());
+            <span class="kw">let </span>str = <span class="macro">format!</span>(<span class="string">"{} = {}"</span>, k.text_name(), v.text_str());
             res.push_str(<span class="kw-2">&amp;</span>str);
         }
 
@@ -6701,21 +6703,21 @@
         <span class="kw">fn </span>witness(row: CurrOrNext, col: usize, env: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ArgumentData&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
             <span class="kw">match </span>env {
                 <span class="prelude-val">Some</span>(data) =&gt; data.witness[(row, col)],
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Missing witness&quot;</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Missing witness"</span>),
             }
         }
 
         <span class="kw">fn </span>coeff(col: usize, env: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ArgumentData&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
             <span class="kw">match </span>env {
                 <span class="prelude-val">Some</span>(data) =&gt; data.coeffs[col],
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Missing coefficients&quot;</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Missing coefficients"</span>),
             }
         }
 
         <span class="kw">fn </span>constant(expr: ConstantExpr&lt;F&gt;, env: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ArgumentData&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
             <span class="kw">match </span>env {
                 <span class="prelude-val">Some</span>(data) =&gt; expr.value(<span class="kw-2">&amp;</span>data.constants, <span class="kw-2">&amp;</span>data.challenges),
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Missing constants&quot;</span>),
+                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Missing constants"</span>),
             }
         }
 
@@ -6909,7 +6911,7 @@
             lookup: <span class="prelude-val">None</span>,
         };
 
-        <span class="comment">// this should panic as we don&#39;t have a domain large enough
+        <span class="comment">// this should panic as we don't have a domain large enough
         </span>expr.evaluations(<span class="kw-2">&amp;</span>env);
     }
 
@@ -6917,11 +6919,11 @@
     </span><span class="kw">fn </span>test_unnormalized_lagrange_basis() {
         <span class="kw">let </span>zk_rows = <span class="number">3</span>;
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(<span class="number">2usize</span>.pow(<span class="number">10</span>) + zk_rows)
-            .expect(<span class="string">&quot;failed to create evaluation domain&quot;</span>);
+            .expect(<span class="string">"failed to create evaluation domain"</span>);
         <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed([<span class="number">17u8</span>; <span class="number">32</span>]);
 
         <span class="comment">// Check that both ways of computing lagrange basis give the same result
-        </span><span class="kw">let </span>d1_size: i32 = domain.d1.size().try_into().expect(<span class="string">&quot;domain size too big&quot;</span>);
+        </span><span class="kw">let </span>d1_size: i32 = domain.d1.size().try_into().expect(<span class="string">"domain size too big"</span>);
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..d1_size {
             <span class="kw">let </span>pt = Fp::rand(rng);
             <span class="macro">assert_eq!</span>(

@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier_index.rs`."><title>verifier_index.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier_index.rs`."><title>verifier_index.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -560,21 +562,21 @@
 #[derive(Serialize, Deserialize, Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
     <span class="kw">pub </span>joint_lookup_used: bool,
-    <span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    <span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>lookup_table: Vec&lt;PolyComm&lt;G&gt;&gt;,
-    <span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    <span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>lookup_selectors: LookupSelectors&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>table_ids: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Information about the specific lookups used
     </span><span class="kw">pub </span>lookup_info: LookupInfo,
 
     <span class="doccomment">/// An optional selector polynomial for runtime tables
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>runtime_tables_selector: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 }
 
@@ -582,7 +584,7 @@
 #[derive(Serialize, Deserialize, Debug, Clone)]
 </span><span class="kw">pub struct </span>VerifierIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
     <span class="doccomment">/// evaluation domain
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"o1_utils::serialization::SerdeAs"</span>)]
     </span><span class="kw">pub </span>domain: D&lt;G::ScalarField&gt;,
     <span class="doccomment">/// maximal size of polynomial section
     </span><span class="kw">pub </span>max_poly_size: usize,
@@ -590,7 +592,7 @@
     </span><span class="kw">pub </span>zk_rows: u64,
     <span class="doccomment">/// polynomial commitment keys
     </span><span class="attr">#[serde(skip)]
-    #[serde(bound(deserialize = <span class="string">&quot;OpeningProof::SRS: Default&quot;</span>))]
+    #[serde(bound(deserialize = <span class="string">"OpeningProof::SRS: Default"</span>))]
     </span><span class="kw">pub </span>srs: Arc&lt;OpeningProof::SRS&gt;,
     <span class="doccomment">/// number of public inputs
     </span><span class="kw">pub </span>public: usize,
@@ -599,65 +601,65 @@
 
     <span class="comment">// index polynomial commitments
     </span><span class="doccomment">/// permutation commitment array
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>sigma_comm: [PolyComm&lt;G&gt;; PERMUTS],
     <span class="doccomment">/// coefficient commitment array
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>coefficients_comm: [PolyComm&lt;G&gt;; COLUMNS],
     <span class="doccomment">/// coefficient commitment array
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>generic_comm: PolyComm&lt;G&gt;,
 
     <span class="comment">// poseidon polynomial commitments
     </span><span class="doccomment">/// poseidon constraint selector polynomial commitment
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>psm_comm: PolyComm&lt;G&gt;,
 
     <span class="comment">// ECC arithmetic polynomial commitments
     </span><span class="doccomment">/// EC addition selector polynomial commitment
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>complete_add_comm: PolyComm&lt;G&gt;,
     <span class="doccomment">/// EC variable base scalar multiplication selector polynomial commitment
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>mul_comm: PolyComm&lt;G&gt;,
     <span class="doccomment">/// endoscalar multiplication selector polynomial commitment
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>emul_comm: PolyComm&lt;G&gt;,
     <span class="doccomment">/// endoscalar multiplication scalar computation selector polynomial commitment
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>endomul_scalar_comm: PolyComm&lt;G&gt;,
 
     <span class="doccomment">/// RangeCheck0 polynomial commitments
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>range_check0_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// RangeCheck1 polynomial commitments
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>range_check1_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Foreign field addition gates polynomial commitments
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>foreign_field_add_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Foreign field multiplication gates polynomial commitments
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>foreign_field_mul_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Xor commitments
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>xor_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Rot commitments
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">"Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>rot_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// wire coordinate shifts
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"[o1_utils::serialization::SerdeAs; PERMUTS]"</span>)]
     </span><span class="kw">pub </span>shift: [G::ScalarField; PERMUTS],
     <span class="doccomment">/// zero-knowledge polynomial
     </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>permutation_vanishing_polynomial_m: OnceCell&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
-    <span class="comment">// TODO(mimoo): isn&#39;t this redundant with domain.d1.group_gen ?
+    <span class="comment">// TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     </span><span class="doccomment">/// domain offset for zero-knowledge
     </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>w: OnceCell&lt;G::ScalarField&gt;,
@@ -665,7 +667,7 @@
     </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>endo: G::ScalarField,
 
-    <span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    <span class="attr">#[serde(bound = <span class="string">"PolyComm&lt;G&gt;: Serialize + DeserializeOwned"</span>)]
     </span><span class="kw">pub </span>lookup_index: <span class="prelude-ty">Option</span>&lt;LookupVerifierIndex&lt;G&gt;&gt;,
 
     <span class="attr">#[serde(skip)]
@@ -680,7 +682,7 @@
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
-    <span class="doccomment">/// Produces the [`VerifierIndex`] from the prover&#39;s [`ProverIndex`].
+    <span class="doccomment">/// Produces the [`VerifierIndex`] from the prover's [`ProverIndex`].
     ///
     /// # Panics
     ///
@@ -868,7 +870,7 @@
         srs: Arc&lt;OpeningProof::SRS&gt;,
         path: <span class="kw-2">&amp;</span>Path,
         offset: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-        <span class="comment">// TODO: we shouldn&#39;t have to pass these
+        <span class="comment">// TODO: we shouldn't have to pass these
         </span>endo: G::ScalarField,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, String&gt;
     <span class="kw">where
@@ -922,7 +924,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; G::BaseField {
         <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-        <span class="comment">// We fully expand this to make the compiler check that we aren&#39;t missing any commitments
+        <span class="comment">// We fully expand this to make the compiler check that we aren't missing any commitments
         </span><span class="kw">let </span>VerifierIndex {
             domain: <span class="kw">_</span>,
             max_poly_size: <span class="kw">_</span>,

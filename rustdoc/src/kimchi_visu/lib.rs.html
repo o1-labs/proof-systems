@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `tools/kimchi-visu/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_visu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi_visu/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `tools/kimchi-visu/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_visu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi_visu/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -189,16 +191,16 @@
 }
 
 <span class="doccomment">///
-</span><span class="kw">pub fn </span>latex_constraints&lt;G&gt;() -&gt; HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str, Vec&lt;Vec&lt;String&gt;&gt;&gt;
+</span><span class="kw">pub fn </span>latex_constraints&lt;G&gt;() -&gt; HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, Vec&lt;Vec&lt;String&gt;&gt;&gt;
 <span class="kw">where
     </span>G: CommitmentCurve,
 {
     <span class="kw">let </span><span class="kw-2">mut </span>map = HashMap::new();
-    map.insert(<span class="string">&quot;Poseidon&quot;</span>, Poseidon::&lt;G::ScalarField&gt;::latex());
-    map.insert(<span class="string">&quot;CompleteAdd&quot;</span>, CompleteAdd::&lt;G::ScalarField&gt;::latex());
-    map.insert(<span class="string">&quot;VarBaseMul&quot;</span>, VarbaseMul::&lt;G::ScalarField&gt;::latex());
-    map.insert(<span class="string">&quot;EndoMul&quot;</span>, EndosclMul::&lt;G::ScalarField&gt;::latex());
-    map.insert(<span class="string">&quot;EndoMulScalar&quot;</span>, EndomulScalar::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">"Poseidon"</span>, Poseidon::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">"CompleteAdd"</span>, CompleteAdd::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">"VarBaseMul"</span>, VarbaseMul::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">"EndoMul"</span>, EndosclMul::&lt;G::ScalarField&gt;::latex());
+    map.insert(<span class="string">"EndoMulScalar"</span>, EndomulScalar::&lt;G::ScalarField&gt;::latex());
     map
 }
 
@@ -214,52 +216,52 @@
     </span>G::BaseField: PrimeField,
 {
     <span class="comment">// serialize index
-    </span><span class="kw">let </span>index = serde_json::to_string(index).expect(<span class="string">&quot;couldn&#39;t serialize index&quot;</span>);
-    <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">format!</span>(<span class="string">&quot;const index = {index};&quot;</span>);
+    </span><span class="kw">let </span>index = serde_json::to_string(index).expect(<span class="string">"couldn't serialize index"</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">format!</span>(<span class="string">"const index = {index};"</span>);
 
     <span class="comment">// serialize witness
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(witness) = witness {
-        <span class="kw">let </span>witness = serde_json::to_string(<span class="kw-2">&amp;</span>witness).expect(<span class="string">&quot;couldn&#39;t serialize witness&quot;</span>);
-        data = <span class="macro">format!</span>(<span class="string">&quot;{data}const witness = {witness};&quot;</span>);
+        <span class="kw">let </span>witness = serde_json::to_string(<span class="kw-2">&amp;</span>witness).expect(<span class="string">"couldn't serialize witness"</span>);
+        data = <span class="macro">format!</span>(<span class="string">"{data}const witness = {witness};"</span>);
     } <span class="kw">else </span>{
-        data.push_str(<span class="string">&quot;const witness = null;&quot;</span>);
+        data.push_str(<span class="string">"const witness = null;"</span>);
     }
 
     <span class="comment">// serialize constraints
     </span><span class="kw">let </span>constraints = latex_constraints::&lt;G&gt;();
-    <span class="kw">let </span>constraints = serde_json::to_string(<span class="kw-2">&amp;</span>constraints).expect(<span class="string">&quot;couldn&#39;t serialize constraints&quot;</span>);
-    data = <span class="macro">format!</span>(<span class="string">&quot;{data}const constraints = {constraints};&quot;</span>);
+    <span class="kw">let </span>constraints = serde_json::to_string(<span class="kw-2">&amp;</span>constraints).expect(<span class="string">"couldn't serialize constraints"</span>);
+    data = <span class="macro">format!</span>(<span class="string">"{data}const constraints = {constraints};"</span>);
 
     <span class="comment">// create template
-    </span><span class="kw">let </span>template_path = Path::new(<span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>)).join(<span class="string">&quot;src/assets/template.html&quot;</span>);
+    </span><span class="kw">let </span>template_path = Path::new(<span class="macro">env!</span>(<span class="string">"CARGO_MANIFEST_DIR"</span>)).join(<span class="string">"src/assets/template.html"</span>);
     <span class="kw">let </span>template = fs::read_to_string(<span class="kw-2">&amp;</span>template_path).unwrap_or_else(|e| {
         <span class="macro">format!</span>(
-            <span class="string">&quot;could not read template file {}: {e}&quot;</span>,
+            <span class="string">"could not read template file {}: {e}"</span>,
             template_path.display()
         )
     });
 
     <span class="kw">let </span><span class="kw-2">mut </span>tt = TinyTemplate::new();
     tt.set_default_formatter(<span class="kw-2">&amp;</span>tinytemplate::format_unescaped);
-    tt.add_template(<span class="string">&quot;circuit&quot;</span>, <span class="kw-2">&amp;</span>template)
-        .expect(<span class="string">&quot;could not create template&quot;</span>);
+    tt.add_template(<span class="string">"circuit"</span>, <span class="kw-2">&amp;</span>template)
+        .expect(<span class="string">"could not create template"</span>);
 
     <span class="comment">// render
     </span><span class="kw">let </span>html_output = std::env::current_dir()
-        .expect(<span class="string">&quot;no current directory?&quot;</span>)
-        .join(<span class="string">&quot;circuit.html&quot;</span>);
+        .expect(<span class="string">"no current directory?"</span>)
+        .join(<span class="string">"circuit.html"</span>);
 
-    <span class="kw">let </span>js_path = Path::new(<span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>)).join(<span class="string">&quot;src/assets/script.js&quot;</span>);
+    <span class="kw">let </span>js_path = Path::new(<span class="macro">env!</span>(<span class="string">"CARGO_MANIFEST_DIR"</span>)).join(<span class="string">"src/assets/script.js"</span>);
     <span class="kw">let </span>js = fs::read_to_string(<span class="kw-2">&amp;</span>js_path)
-        .unwrap_or_else(|e| <span class="macro">format!</span>(<span class="string">&quot;could not read js file {}: {e}&quot;</span>, js_path.display()));
+        .unwrap_or_else(|e| <span class="macro">format!</span>(<span class="string">"could not read js file {}: {e}"</span>, js_path.display()));
 
     <span class="kw">let </span>context = Context { js, data };
 
     <span class="kw">let </span>rendered = tt
-        .render(<span class="string">&quot;circuit&quot;</span>, <span class="kw-2">&amp;</span>context)
-        .unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">&quot;template file can&#39;t be rendered: {e}&quot;</span>));
+        .render(<span class="string">"circuit"</span>, <span class="kw-2">&amp;</span>context)
+        .unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">"template file can't be rendered: {e}"</span>));
 
-    <span class="kw">let </span><span class="kw-2">mut </span>file = File::create(html_output).unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">&quot;{e}&quot;</span>));
-    <span class="macro">write!</span>(<span class="kw-2">&amp;mut </span>file, <span class="string">&quot;{rendered}&quot;</span>).expect(<span class="string">&quot;couldn&#39;t write the file on disk&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>file = File::create(html_output).unwrap_or_else(|e| <span class="macro">panic!</span>(<span class="string">"{e}"</span>));
+    <span class="macro">write!</span>(<span class="kw-2">&amp;mut </span>file, <span class="string">"{rendered}"</span>).expect(<span class="string">"couldn't write the file on disk"</span>);
 }
 </code></pre></div></section></main></body></html>

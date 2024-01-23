@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier.rs`."><title>verifier.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier.rs`."><title>verifier.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1276,19 +1278,19 @@
 <span class="doccomment">/// The result of a proof verification.
 </span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, VerifyError&gt;;
 
-<span class="kw">pub struct </span>Context&lt;<span class="lifetime">&#39;a</span>, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
+<span class="kw">pub struct </span>Context&lt;<span class="lifetime">'a</span>, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
     <span class="doccomment">/// The [VerifierIndex] associated to the proof
-    </span><span class="kw">pub </span>verifier_index: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>VerifierIndex&lt;G, OpeningProof&gt;,
+    </span><span class="kw">pub </span>verifier_index: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>VerifierIndex&lt;G, OpeningProof&gt;,
 
     <span class="doccomment">/// The proof to verify
-    </span><span class="kw">pub </span>proof: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProverProof&lt;G, OpeningProof&gt;,
+    </span><span class="kw">pub </span>proof: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProverProof&lt;G, OpeningProof&gt;,
 
     <span class="doccomment">/// The public input used in the creation of the proof
-    </span><span class="kw">pub </span>public_input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[G::ScalarField],
+    </span><span class="kw">pub </span>public_input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[G::ScalarField],
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; Context&lt;<span class="lifetime">&#39;a</span>, G, OpeningProof&gt; {
-    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;G&gt;&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; Context&lt;<span class="lifetime">'a</span>, G, OpeningProof&gt; {
+    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;&gt; {
         <span class="kw">use </span>Column::<span class="kw-2">*</span>;
         <span class="kw">match </span>col {
             Witness(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.proof.commitments.w_comm[i]),
@@ -1417,15 +1419,15 @@
 
         <span class="kw">let </span>joint_combiner = <span class="kw">if let </span><span class="prelude-val">Some</span>(l) = <span class="kw-2">&amp;</span>index.lookup_index {
             <span class="comment">//~~ * If it involves queries to a multiple-column lookup table,
-            //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,
-            //~~   otherwise set the joint combiner challenge $j&#39;$ to $0$.
+            //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
+            //~~   otherwise set the joint combiner challenge $j'$ to $0$.
             </span><span class="kw">let </span>joint_combiner = <span class="kw">if </span>l.joint_lookup_used {
                 fq_sponge.challenge()
             } <span class="kw">else </span>{
                 G::ScalarField::zero()
             };
 
-            <span class="comment">//~~ * Derive the scalar joint combiner challenge $j$ from $j&#39;$ using the endomorphism.
+            <span class="comment">//~~ * Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             </span><span class="kw">let </span>joint_combiner = ScalarChallenge(joint_combiner);
             <span class="kw">let </span>joint_combiner_field = joint_combiner.to_field(endo_r);
@@ -1463,16 +1465,16 @@
         <span class="comment">//~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
         </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span><span class="self">self</span>.commitments.z_comm);
 
-        <span class="comment">//~ 1. Sample $\alpha&#39;$ with the Fq-Sponge.
+        <span class="comment">//~ 1. Sample $\alpha'$ with the Fq-Sponge.
         </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
-        <span class="comment">//~ 1. Derive $\alpha$ from $\alpha&#39;$ using the endomorphism (TODO: details).
+        <span class="comment">//~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         </span><span class="kw">let </span>alpha = alpha_chal.to_field(endo_r);
 
         <span class="comment">//~ 1. Enforce that the length of the $t$ commitment is of size 7.
         </span><span class="kw">if </span><span class="self">self</span>.commitments.t_comm.unshifted.len() &gt; chunk_size * <span class="number">7 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectCommitmentLength(
-                <span class="string">&quot;t&quot;</span>,
+                <span class="string">"t"</span>,
                 chunk_size * <span class="number">7</span>,
                 <span class="self">self</span>.commitments.t_comm.unshifted.len(),
             ));
@@ -1481,10 +1483,10 @@
         <span class="comment">//~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
         </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span><span class="self">self</span>.commitments.t_comm);
 
-        <span class="comment">//~ 1. Sample $\zeta&#39;$ with the Fq-Sponge.
+        <span class="comment">//~ 1. Sample $\zeta'$ with the Fq-Sponge.
         </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
-        <span class="comment">//~ 1. Derive $\zeta$ from $\zeta&#39;$ using the endomorphism (TODO: specify).
+        <span class="comment">//~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         </span><span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
 
         <span class="comment">//~ 1. Setup the Fr-Sponge.
@@ -1497,7 +1499,7 @@
         <span class="comment">//~ 1. Absorb the previous recursion challenges.
         </span><span class="kw">let </span>prev_challenge_digest = {
             <span class="comment">// Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive &#39;optional sponge&#39;.
+            // more-expensive 'optional sponge'.
             </span><span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
             <span class="kw">for </span>RecursionChallenge { chals, .. } <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.prev_challenges {
                 fr_sponge.absorb_multiple(chals);
@@ -1600,16 +1602,16 @@
         fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">1</span>]);
         fr_sponge.absorb_evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>.evals);
 
-        <span class="comment">//~ 1. Sample $v&#39;$ with the Fr-Sponge.
+        <span class="comment">//~ 1. Sample $v'$ with the Fr-Sponge.
         </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
 
-        <span class="comment">//~ 1. Derive $v$ from $v&#39;$ using the endomorphism (TODO: specify).
+        <span class="comment">//~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         </span><span class="kw">let </span>v = v_chal.to_field(endo_r);
 
-        <span class="comment">//~ 1. Sample $u&#39;$ with the Fr-Sponge.
+        <span class="comment">//~ 1. Sample $u'$ with the Fr-Sponge.
         </span><span class="kw">let </span>u_chal = fr_sponge.challenge();
 
-        <span class="comment">//~ 1. Derive $u$ from $u&#39;$ using the endomorphism (TODO: specify).
+        <span class="comment">//~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
         </span><span class="kw">let </span>u = u_chal.to_field(endo_r);
 
         <span class="comment">//~ 1. Create a list of all polynomials that have an evaluation proof.
@@ -1626,13 +1628,13 @@
                 all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
             <span class="kw">let </span>alpha0 = alpha_powers
                 .next()
-                .expect(<span class="string">&quot;missing power of alpha for permutation&quot;</span>);
+                .expect(<span class="string">"missing power of alpha for permutation"</span>);
             <span class="kw">let </span>alpha1 = alpha_powers
                 .next()
-                .expect(<span class="string">&quot;missing power of alpha for permutation&quot;</span>);
+                .expect(<span class="string">"missing power of alpha for permutation"</span>);
             <span class="kw">let </span>alpha2 = alpha_powers
                 .next()
-                .expect(<span class="string">&quot;missing power of alpha for permutation&quot;</span>);
+                .expect(<span class="string">"missing power of alpha for permutation"</span>);
 
             <span class="kw">let </span>init = (evals.w[PERMUTS - <span class="number">1</span>].zeta + gamma)
                 * evals.z.zeta_omega
@@ -1665,7 +1667,7 @@
                 * (G::ScalarField::one() - evals.z.zeta);
 
             <span class="kw">let </span>denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
-            <span class="kw">let </span>denominator = denominator.inverse().expect(<span class="string">&quot;negligible probability&quot;</span>);
+            <span class="kw">let </span>denominator = denominator.inverse().expect(<span class="string">"negligible probability"</span>);
 
             ft_eval0 += numerator * denominator;
 
@@ -1882,7 +1884,7 @@
         foreign_field_mul_lookup_selector,
     } = <span class="kw-2">&amp;</span>proof.evals;
 
-    <span class="kw">let </span>check_eval_len = |eval: <span class="kw-2">&amp;</span>PointEvaluations&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;, str: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str| -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span>check_eval_len = |eval: <span class="kw-2">&amp;</span>PointEvaluations&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;, str: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str| -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span>eval.zeta.len() != expected_size {
             <span class="prelude-val">Err</span>(VerifyError::IncorrectEvaluationsLength(
                 expected_size,
@@ -1901,61 +1903,61 @@
     };
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(public) = public {
-        check_eval_len(public, <span class="string">&quot;public input&quot;</span>)<span class="question-mark">?</span>;
+        check_eval_len(public, <span class="string">"public input"</span>)<span class="question-mark">?</span>;
     }
 
     <span class="kw">for </span>w_i <span class="kw">in </span>w {
-        check_eval_len(w_i, <span class="string">&quot;witness&quot;</span>)<span class="question-mark">?</span>;
+        check_eval_len(w_i, <span class="string">"witness"</span>)<span class="question-mark">?</span>;
     }
-    check_eval_len(z, <span class="string">&quot;permutation accumulator&quot;</span>)<span class="question-mark">?</span>;
+    check_eval_len(z, <span class="string">"permutation accumulator"</span>)<span class="question-mark">?</span>;
     <span class="kw">for </span>s_i <span class="kw">in </span>s {
-        check_eval_len(s_i, <span class="string">&quot;permutation shifts&quot;</span>)<span class="question-mark">?</span>;
+        check_eval_len(s_i, <span class="string">"permutation shifts"</span>)<span class="question-mark">?</span>;
     }
     <span class="kw">for </span>coeff <span class="kw">in </span>coefficients {
-        check_eval_len(coeff, <span class="string">&quot;coefficients&quot;</span>)<span class="question-mark">?</span>;
+        check_eval_len(coeff, <span class="string">"coefficients"</span>)<span class="question-mark">?</span>;
     }
 
     <span class="comment">// Lookup evaluations
     </span><span class="kw">for </span>sorted <span class="kw">in </span>lookup_sorted.iter().flatten() {
-        check_eval_len(sorted, <span class="string">&quot;lookup sorted&quot;</span>)<span class="question-mark">?
+        check_eval_len(sorted, <span class="string">"lookup sorted"</span>)<span class="question-mark">?
     </span>}
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(lookup_aggregation) = lookup_aggregation {
-        check_eval_len(lookup_aggregation, <span class="string">&quot;lookup aggregation&quot;</span>)<span class="question-mark">?</span>;
+        check_eval_len(lookup_aggregation, <span class="string">"lookup aggregation"</span>)<span class="question-mark">?</span>;
     }
     <span class="kw">if let </span><span class="prelude-val">Some</span>(lookup_table) = lookup_table {
-        check_eval_len(lookup_table, <span class="string">&quot;lookup table&quot;</span>)<span class="question-mark">?</span>;
+        check_eval_len(lookup_table, <span class="string">"lookup table"</span>)<span class="question-mark">?</span>;
     }
     <span class="kw">if let </span><span class="prelude-val">Some</span>(runtime_lookup_table) = runtime_lookup_table {
-        check_eval_len(runtime_lookup_table, <span class="string">&quot;runtime lookup table&quot;</span>)<span class="question-mark">?</span>;
+        check_eval_len(runtime_lookup_table, <span class="string">"runtime lookup table"</span>)<span class="question-mark">?</span>;
     }
 
-    check_eval_len(generic_selector, <span class="string">&quot;generic selector&quot;</span>)<span class="question-mark">?</span>;
-    check_eval_len(poseidon_selector, <span class="string">&quot;poseidon selector&quot;</span>)<span class="question-mark">?</span>;
-    check_eval_len(complete_add_selector, <span class="string">&quot;complete add selector&quot;</span>)<span class="question-mark">?</span>;
-    check_eval_len(mul_selector, <span class="string">&quot;mul selector&quot;</span>)<span class="question-mark">?</span>;
-    check_eval_len(emul_selector, <span class="string">&quot;endomul selector&quot;</span>)<span class="question-mark">?</span>;
-    check_eval_len(endomul_scalar_selector, <span class="string">&quot;endomul scalar selector&quot;</span>)<span class="question-mark">?</span>;
+    check_eval_len(generic_selector, <span class="string">"generic selector"</span>)<span class="question-mark">?</span>;
+    check_eval_len(poseidon_selector, <span class="string">"poseidon selector"</span>)<span class="question-mark">?</span>;
+    check_eval_len(complete_add_selector, <span class="string">"complete add selector"</span>)<span class="question-mark">?</span>;
+    check_eval_len(mul_selector, <span class="string">"mul selector"</span>)<span class="question-mark">?</span>;
+    check_eval_len(emul_selector, <span class="string">"endomul selector"</span>)<span class="question-mark">?</span>;
+    check_eval_len(endomul_scalar_selector, <span class="string">"endomul scalar selector"</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// Optional gates
 
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(range_check0_selector) = range_check0_selector {
-        check_eval_len(range_check0_selector, <span class="string">&quot;range check 0 selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(range_check0_selector, <span class="string">"range check 0 selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(range_check1_selector) = range_check1_selector {
-        check_eval_len(range_check1_selector, <span class="string">&quot;range check 1 selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(range_check1_selector, <span class="string">"range check 1 selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(foreign_field_add_selector) = foreign_field_add_selector {
-        check_eval_len(foreign_field_add_selector, <span class="string">&quot;foreign field add selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(foreign_field_add_selector, <span class="string">"foreign field add selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(foreign_field_mul_selector) = foreign_field_mul_selector {
-        check_eval_len(foreign_field_mul_selector, <span class="string">&quot;foreign field mul selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(foreign_field_mul_selector, <span class="string">"foreign field mul selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(xor_selector) = xor_selector {
-        check_eval_len(xor_selector, <span class="string">&quot;xor selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(xor_selector, <span class="string">"xor selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(rot_selector) = rot_selector {
-        check_eval_len(rot_selector, <span class="string">&quot;rot selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(rot_selector, <span class="string">"rot selector"</span>)<span class="question-mark">?
     </span>}
 
     <span class="comment">// Lookup selectors
@@ -1963,33 +1965,33 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(runtime_lookup_table_selector) = runtime_lookup_table_selector {
         check_eval_len(
             runtime_lookup_table_selector,
-            <span class="string">&quot;runtime lookup table selector&quot;</span>,
+            <span class="string">"runtime lookup table selector"</span>,
         )<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(xor_lookup_selector) = xor_lookup_selector {
-        check_eval_len(xor_lookup_selector, <span class="string">&quot;xor lookup selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(xor_lookup_selector, <span class="string">"xor lookup selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(lookup_gate_lookup_selector) = lookup_gate_lookup_selector {
-        check_eval_len(lookup_gate_lookup_selector, <span class="string">&quot;lookup gate lookup selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(lookup_gate_lookup_selector, <span class="string">"lookup gate lookup selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(range_check_lookup_selector) = range_check_lookup_selector {
-        check_eval_len(range_check_lookup_selector, <span class="string">&quot;range check lookup selector&quot;</span>)<span class="question-mark">?
+        check_eval_len(range_check_lookup_selector, <span class="string">"range check lookup selector"</span>)<span class="question-mark">?
     </span>}
     <span class="kw">if let </span><span class="prelude-val">Some</span>(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector {
         check_eval_len(
             foreign_field_mul_lookup_selector,
-            <span class="string">&quot;foreign field mul lookup selector&quot;</span>,
+            <span class="string">"foreign field mul lookup selector"</span>,
         )<span class="question-mark">?
     </span>}
 
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn </span>to_batch&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, EFrSponge, OpeningProof: OpenProof&lt;G&gt;&gt;(
+<span class="kw">fn </span>to_batch&lt;<span class="lifetime">'a</span>, G, EFqSponge, EFrSponge, OpeningProof: OpenProof&lt;G&gt;&gt;(
     verifier_index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G, OpeningProof&gt;,
-    proof: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProverProof&lt;G, OpeningProof&gt;,
-    public_input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField],
-) -&gt; <span class="prelude-ty">Result</span>&lt;BatchEvaluationProof&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, OpeningProof&gt;&gt;
+    proof: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ProverProof&lt;G, OpeningProof&gt;,
+    public_input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField],
+) -&gt; <span class="prelude-ty">Result</span>&lt;BatchEvaluationProof&lt;<span class="lifetime">'a</span>, G, EFqSponge, OpeningProof&gt;&gt;
 <span class="kw">where
     </span>G: KimchiCurve,
     G::BaseField: PrimeField,
@@ -2039,7 +2041,7 @@
         <span class="kw">let </span>lgr_comm = verifier_index
             .srs()
             .get_lagrange_basis(verifier_index.domain.size())
-            .expect(<span class="string">&quot;pre-computed committed lagrange bases not found&quot;</span>);
+            .expect(<span class="string">"pre-computed committed lagrange bases not found"</span>);
         <span class="kw">let </span>com: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().take(verifier_index.public).collect();
         <span class="kw">if </span>public_input.is_empty() {
             PolyComm::new(
@@ -2074,7 +2076,7 @@
         ..
     } = proof.oracles::&lt;EFqSponge, EFrSponge&gt;(verifier_index, <span class="kw-2">&amp;</span>public_comm, <span class="prelude-val">Some</span>(public_input))<span class="question-mark">?</span>;
 
-    <span class="comment">//~ 1. Combine the chunked polynomials&#39; evaluations
+    <span class="comment">//~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
     </span><span class="kw">let </span>evals = proof.evals.combine(<span class="kw-2">&amp;</span>powers_of_eval_points_for_chunks);
@@ -2134,7 +2136,7 @@
                     <span class="kw-2">&amp;</span>constants,
                     <span class="kw-2">&amp;</span>challenges,
                 )
-                .expect(<span class="string">&quot;should evaluate&quot;</span>);
+                .expect(<span class="string">"should evaluate"</span>);
 
                 <span class="kw">let </span>col = <span class="kw-2">*</span>col;
                 scalars.push(scalar);
@@ -2151,7 +2153,7 @@
     };
 
     <span class="comment">//~ 1. Compute the (chuncked) commitment of $ft$
-    //~    (see [Maller&#39;s optimization](../kimchi/maller_15.md)).
+    //~    (see [Maller's optimization](../kimchi/maller_15.md)).
     </span><span class="kw">let </span>ft_comm = {
         <span class="kw">let </span>zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size <span class="kw">as </span>u64]);
         <span class="kw">let </span>chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
@@ -2287,7 +2289,7 @@
         </span><span class="kw">let </span>table_comm = {
             <span class="kw">let </span>joint_combiner = oracles
                 .joint_combiner
-                .expect(<span class="string">&quot;joint_combiner should be present if lookups are used&quot;</span>);
+                .expect(<span class="string">"joint_combiner should be present if lookups are used"</span>);
             <span class="comment">// The table ID is added as the last column of the vector.
             // Therefore, the exponent for the combiner for the table ID is the
             // width of the concatenated table, i.e. max_joint_size.
@@ -2444,12 +2446,12 @@
     //~ You can, of course, use it to verify a single proof.
     //~
 
-    //~ 1. If there&#39;s no proof to verify, the proof validates trivially.
+    //~ 1. If there's no proof to verify, the proof validates trivially.
     </span><span class="kw">if </span>proofs.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
     }
 
-    <span class="comment">//~ 1. Ensure that all the proof&#39;s verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
+    <span class="comment">//~ 1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
     </span><span class="kw">let </span>srs = proofs[<span class="number">0</span>].verifier_index.srs();
     <span class="kw">for </span><span class="kw-2">&amp;</span>Context { verifier_index, .. } <span class="kw">in </span>proofs {

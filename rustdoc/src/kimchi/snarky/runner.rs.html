@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/snarky/runner.rs`."><title>runner.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/snarky/runner.rs`."><title>runner.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -742,22 +744,22 @@
     </span><span class="comment">// TODO: maybe remove the public output part here? This will affect OCaml-side though.
     </span><span class="kw">pub </span>num_public_inputs: usize,
 
-    <span class="doccomment">/// A counter used to track variables (this includes public inputs) as they&#39;re being created.
+    <span class="doccomment">/// A counter used to track variables (this includes public inputs) as they're being created.
     </span><span class="kw">pub </span>next_var: usize,
 
-    <span class="doccomment">/// Indication that we&#39;re running the witness generation.
+    <span class="doccomment">/// Indication that we're running the witness generation.
     /// This does not necessarily mean that constraints are not created,
     /// as we can do both at the same time.
     </span><span class="comment">// TODO: perhaps we should try to make the distinction between witness/constraint generation clearer
     </span><span class="kw">pub </span>has_witness: bool,
 
-    <span class="doccomment">/// Indication that we&#39;re running in prover mode.
+    <span class="doccomment">/// Indication that we're running in prover mode.
     /// In this mode, we do not want to create constraints.
-    </span><span class="comment">// TODO: I think we should be able to safely remove this as we don&#39;t use this in Rust. Check with snarkyJS if they need this here though.
+    </span><span class="comment">// TODO: I think we should be able to safely remove this as we don't use this in Rust. Check with snarkyJS if they need this here though.
     </span><span class="kw">pub </span>as_prover: bool,
 
     <span class="doccomment">/// A stack of labels, to get better errors.
-    </span>labels_stack: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;,
+    </span>labels_stack: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
 
     <span class="doccomment">/// This does not count exactly the number of constraints,
     /// but rather the number of times we call [RunState::add_constraint].
@@ -765,7 +767,7 @@
 
     <span class="doccomment">/// A map from a constraint index to a source location
     /// (usually a file name and line number).
-    </span>constraints_locations: Vec&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;,
+    </span>constraints_locations: Vec&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
 }
 
 <span class="comment">//
@@ -923,7 +925,7 @@
     /// and a closure that can compute it when in witness generation mode.
     </span><span class="kw">pub fn </span>compute&lt;T, FUNC&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         to_compute_value: FUNC,
     ) -&gt; SnarkyResult&lt;T&gt;
     <span class="kw">where
@@ -937,7 +939,7 @@
     /// This is to be used internally only, when we know that the value cannot be malformed.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>compute_unsafe&lt;T, FUNC&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         to_compute_value: FUNC,
     ) -&gt; SnarkyResult&lt;T&gt;
     <span class="kw">where
@@ -951,14 +953,14 @@
     </span><span class="kw">fn </span>compute_inner&lt;T, FUNC&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         checked: bool,
-        loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         to_compute_value: FUNC,
     ) -&gt; SnarkyResult&lt;T&gt;
     <span class="kw">where
         </span>T: SnarkyType&lt;F&gt;,
         FUNC: FnOnce(<span class="kw-2">&amp;</span><span class="kw">dyn </span>WitnessGeneration&lt;F&gt;) -&gt; T::OutOfCircuit,
     {
-        <span class="comment">// we&#39;re in witness generation mode
+        <span class="comment">// we're in witness generation mode
         </span><span class="kw">if </span><span class="self">self</span>.has_witness {
             <span class="comment">// compute the value by running the closure
             </span><span class="kw">let </span>value: T::OutOfCircuit = to_compute_value(<span class="self">self</span>);
@@ -984,7 +986,7 @@
             <span class="comment">// return the snarky type
             </span><span class="prelude-val">Ok</span>(snarky_type)
         }
-        <span class="comment">/* we&#39;re in constraint generation mode */
+        <span class="comment">/* we're in constraint generation mode */
         </span><span class="kw">else </span>{
             <span class="comment">// create enough variables to store the given type
             </span><span class="kw">let </span><span class="kw-2">mut </span>cvars = <span class="macro">vec!</span>[];
@@ -1012,8 +1014,8 @@
     </span><span class="doccomment">/// Creates a constraint for `assert_eq!(a * b, c)`.
     </span><span class="kw">pub fn </span>assert_r1cs(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;,
-        loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+        loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         a: FieldVar&lt;F&gt;,
         b: FieldVar&lt;F&gt;,
         c: FieldVar&lt;F&gt;,
@@ -1026,8 +1028,8 @@
     </span><span class="doccomment">/// Creates a constraint for `assert_eq!(x, y)`;
     </span><span class="kw">pub fn </span>assert_eq(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;,
-        loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+        loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         x: FieldVar&lt;F&gt;,
         y: FieldVar&lt;F&gt;,
     ) -&gt; SnarkyResult&lt;()&gt; {
@@ -1041,9 +1043,9 @@
     </span><span class="kw">pub fn </span>add_constraint(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         constraint: Constraint&lt;F&gt;,
-        label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;,
-        <span class="comment">// TODO: we don&#39;t need to pass that through all the calls down the stack, we can just save it at this point (and the latest loc in the state is the one that threw)
-        </span>loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+        <span class="comment">// TODO: we don't need to pass that through all the calls down the stack, we can just save it at this point (and the latest loc in the state is the one that threw)
+        </span>loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
     ) -&gt; SnarkyResult&lt;()&gt; {
         <span class="self">self</span>.with_label(label, |env| {
             <span class="comment">// increment the constraint counter
@@ -1052,9 +1054,9 @@
             <span class="comment">// TODO:
             // [START_TODO]
             // my understanding is that this should work with the OCaml side,
-            // as `generate_witness_conv` on the OCaml side will have an empty constraint_system at this point which means constraints can&#39;t be created (see next line)
-            // instead, I just ensure that when we&#39;re in witness generation we don&#39;t create constraints
-            // I don&#39;t think we ever do both at the same time on the OCaml side side anyway.
+            // as `generate_witness_conv` on the OCaml side will have an empty constraint_system at this point which means constraints can't be created (see next line)
+            // instead, I just ensure that when we're in witness generation we don't create constraints
+            // I don't think we ever do both at the same time on the OCaml side side anyway.
             // Note: if we want to address the TODO below, I think we should instead do this:
             // have an enum: 1) compile 2) witness generation 3) both
             // and have the both enum variant be used from an API that does both
@@ -1070,7 +1072,7 @@
             }
 
             <span class="kw">if </span>!env.has_witness {
-                <span class="comment">// TODO: we should have a mode &quot;don&#39;t create constraints&quot; instead of having an option here
+                <span class="comment">// TODO: we should have a mode "don't create constraints" instead of having an option here
                 </span><span class="kw">let </span>cs = <span class="kw">match </span><span class="kw-2">&amp;mut </span>env.system {
                     <span class="prelude-val">Some</span>(cs) =&gt; cs,
                     <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
@@ -1095,7 +1097,7 @@
     </span><span class="comment">// TODO: move this out
     </span><span class="kw">pub fn </span>if_(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         b: Boolean&lt;F&gt;,
         then_: FieldVar&lt;F&gt;,
         else_: FieldVar&lt;F&gt;,
@@ -1135,7 +1137,7 @@
                 <span class="kw">let </span>then_ = <span class="kw-2">&amp;</span>then_ - <span class="kw-2">&amp;</span>else_;
                 <span class="kw">let </span>else_ = <span class="kw-2">&amp;</span>res - <span class="kw-2">&amp;</span>else_;
                 <span class="comment">// TODO: annotation?
-                </span><span class="self">self</span>.assert_r1cs(<span class="prelude-val">Some</span>(<span class="string">&quot;if_&quot;</span>.into()), loc, b.clone(), then_, else_)<span class="question-mark">?</span>;
+                </span><span class="self">self</span>.assert_r1cs(<span class="prelude-val">Some</span>(<span class="string">"if_"</span>.into()), loc, b.clone(), then_, else_)<span class="question-mark">?</span>;
 
                 <span class="prelude-val">Ok</span>(res)
             }
@@ -1166,8 +1168,8 @@
             .zip(public_output_cvars.into_iter())
         {
             <span class="self">self</span>.assert_eq(
-                <span class="prelude-val">Some</span>(<span class="string">&quot;wiring public output&quot;</span>.into()),
-                <span class="string">&quot;this should never error&quot;</span>.into(),
+                <span class="prelude-val">Some</span>(<span class="string">"wiring public output"</span>.into()),
+                <span class="string">"this should never error"</span>.into(),
                 a,
                 b,
             )<span class="question-mark">?</span>;
@@ -1189,12 +1191,12 @@
             <span class="prelude-val">Ok</span>(cs.finalize_and_get_gates())
         } <span class="kw">else </span>{
             <span class="comment">// TODO: do we really want to panic here?
-            </span><span class="macro">panic!</span>(<span class="string">&quot;woot&quot;</span>);
+            </span><span class="macro">panic!</span>(<span class="string">"woot"</span>);
         }
     }
 
     <span class="doccomment">/// Getter for the OCaml side.
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
     </span><span class="kw">pub fn </span>get_private_inputs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;F&gt; {
         <span class="self">self</span>.private_input.clone()
     }
@@ -1202,7 +1204,7 @@
     <span class="doccomment">/// This adds a label in the stack of labels.
     /// Every error from now one will contain this label,
     /// until the label is popped (via [Self::pop_label]).
-    </span><span class="kw">pub fn </span>add_label(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;) {
+    </span><span class="kw">pub fn </span>add_label(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label: Cow&lt;<span class="lifetime">'static</span>, str&gt;) {
         <span class="self">self</span>.labels_stack.push(label);
     }
 
@@ -1214,7 +1216,7 @@
 
     <span class="doccomment">/// A wrapper around code that needs to be labeled
     /// (for better errors).
-    </span><span class="kw">pub fn </span>with_label&lt;FUNC, T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;, closure: FUNC) -&gt; T
+    </span><span class="kw">pub fn </span>with_label&lt;FUNC, T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label: <span class="prelude-ty">Option</span>&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;, closure: FUNC) -&gt; T
     <span class="kw">where
         </span>FUNC: FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>) -&gt; T,
     {
@@ -1236,7 +1238,7 @@
     <span class="doccomment">/// Creates an [RealSnarkyError] using the current context.
     </span><span class="kw">pub fn </span>error(<span class="kw-2">&amp;</span><span class="self">self</span>, error: SnarkyError) -&gt; RealSnarkyError {
         <span class="kw">let </span>loc = <span class="kw">if </span><span class="self">self</span>.constraints_counter == <span class="number">0 </span>{
-            <span class="string">&quot;error during initialization&quot;</span>.into()
+            <span class="string">"error during initialization"</span>.into()
         } <span class="kw">else </span>{
             <span class="self">self</span>.constraints_locations[<span class="self">self</span>.constraints_counter - <span class="number">1</span>].clone()
         };
@@ -1270,7 +1272,7 @@
         <span class="comment">// re-initialize `next_var` (which will grow every time we compile or generate a witness)
         </span><span class="self">self</span>.next_var = <span class="self">self</span>.num_public_inputs;
 
-        <span class="comment">// set the mode to &quot;witness generation&quot;
+        <span class="comment">// set the mode to "witness generation"
         </span><span class="self">self</span>.has_witness = <span class="bool-val">true</span>;
 
         <span class="comment">// set the public inputs
@@ -1282,7 +1284,7 @@
         <span class="comment">// reset the constraint counter for better debugging
         </span><span class="self">self</span>.constraints_counter = <span class="number">0</span>;
 
-        <span class="comment">// reset the constraints&#39; locations
+        <span class="comment">// reset the constraints' locations
         // we have to do this to imitate what the OCaml side does
         // (the OCaml side always starts with a fresh state)
         </span><span class="self">self</span>.constraints_locations = Vec::with_capacity(<span class="self">self</span>.constraints_locations.len());
@@ -1293,7 +1295,7 @@
     <span class="doccomment">/// Returns the public output generated after running the circuit,
     /// and the witness of the execution trace.
     </span><span class="kw">pub fn </span>generate_witness(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Witness&lt;F&gt; {
-        <span class="comment">// TODO: asserting this is dumb.. what if there&#39;s no private input : D
+        <span class="comment">// TODO: asserting this is dumb.. what if there's no private input : D
         </span><span class="macro">assert!</span>(!<span class="self">self</span>.private_input.is_empty());
 
         <span class="comment">// TODO: do we really want to panic here?
@@ -1326,7 +1328,7 @@
 
     <span class="kw">pub fn </span>poseidon(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        loc: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
+        loc: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
         preimage: (FieldVar&lt;F&gt;, FieldVar&lt;F&gt;),
     ) -&gt; (FieldVar&lt;F&gt;, FieldVar&lt;F&gt;) {
         poseidon(<span class="self">self</span>, loc, preimage)

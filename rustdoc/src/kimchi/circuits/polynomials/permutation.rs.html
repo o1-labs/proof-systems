@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/permutation.rs`."><title>permutation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/permutation.rs`."><title>permutation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -539,7 +541,7 @@
 //~
 //~ $$(z(x) - 1) L_1(x) \alpha^{PERM1}$$
 //~
-//~ and the accumulator&#39;s final value:
+//~ and the accumulator's final value:
 //~
 //~ $$(z(x) - 1) L_{n-k}(x) \alpha^{PERM2}$$
 //~
@@ -683,14 +685,14 @@
         h.update(input.to_be_bytes());
 
         <span class="kw">let </span><span class="kw-2">mut </span>shift = F::from_random_bytes(<span class="kw-2">&amp;</span>h.finalize()[..<span class="number">31</span>])
-            .expect(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
+            .expect(<span class="string">"our field elements fit in more than 31 bytes"</span>);
 
         <span class="kw">while </span>!shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
             <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
             <span class="kw-2">*</span>input += <span class="number">1</span>;
             h.update(input.to_be_bytes());
             shift = F::from_random_bytes(<span class="kw-2">&amp;</span>h.finalize()[..<span class="number">31</span>])
-                .expect(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
+                .expect(<span class="string">"our field elements fit in more than 31 bytes"</span>);
         }
         shift
     }
@@ -722,9 +724,9 @@
         z: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
         <span class="kw-2">mut </span>alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Evaluations&lt;F, D&lt;F&gt;&gt;, DensePolynomial&lt;F&gt;), ProverError&gt; {
-        <span class="kw">let </span>alpha0 = alphas.next().expect(<span class="string">&quot;missing power of alpha&quot;</span>);
-        <span class="kw">let </span>alpha1 = alphas.next().expect(<span class="string">&quot;missing power of alpha&quot;</span>);
-        <span class="kw">let </span>alpha2 = alphas.next().expect(<span class="string">&quot;missing power of alpha&quot;</span>);
+        <span class="kw">let </span>alpha0 = alphas.next().expect(<span class="string">"missing power of alpha"</span>);
+        <span class="kw">let </span>alpha1 = alphas.next().expect(<span class="string">"missing power of alpha"</span>);
+        <span class="kw">let </span>alpha2 = alphas.next().expect(<span class="string">"missing power of alpha"</span>);
 
         <span class="kw">let </span>zk_rows = <span class="self">self</span>.cs.zk_rows <span class="kw">as </span>usize;
 
@@ -811,9 +813,9 @@
                 <span class="kw-2">&amp;</span>z_minus_1.clone().into(),
                 <span class="kw-2">&amp;</span>x_minus_1.into(),
             )
-            .ok_or(ProverError::Permutation(<span class="string">&quot;first division&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or(ProverError::Permutation(<span class="string">"first division"</span>))<span class="question-mark">?</span>;
             <span class="kw">if </span>!res.is_zero() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;first division rest&quot;</span>));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">"first division rest"</span>));
             }
 
             <span class="comment">// accumulator end := (z(x) - 1) / (x - sid[n-zk_rows])
@@ -825,9 +827,9 @@
                 <span class="kw-2">&amp;</span>z_minus_1.into(),
                 <span class="kw-2">&amp;</span>denominator.into(),
             )
-            .ok_or(ProverError::Permutation(<span class="string">&quot;second division&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or(ProverError::Permutation(<span class="string">"second division"</span>))<span class="question-mark">?</span>;
             <span class="kw">if </span>!res.is_zero() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;second division rest&quot;</span>));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">"second division rest"</span>));
             }
 
             <span class="kw-2">&amp;</span>bnd1.scale(alpha1) + <span class="kw-2">&amp;</span>bnd2.scale(alpha2)
@@ -877,13 +879,13 @@
     ) -&gt; F {
         <span class="kw">let </span>alpha0 = alphas
             .next()
-            .expect(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
+            .expect(<span class="string">"not enough powers of alpha for permutation"</span>);
         <span class="kw">let </span>_alpha1 = alphas
             .next()
-            .expect(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
+            .expect(<span class="string">"not enough powers of alpha for permutation"</span>);
         <span class="kw">let </span>_alpha2 = alphas
             .next()
-            .expect(<span class="string">&quot;not enough powers of alpha for permutation&quot;</span>);
+            .expect(<span class="string">"not enough powers of alpha for permutation"</span>);
 
         <span class="comment">//~ where $\text{scalar}$ is computed as:
         //~
@@ -1005,7 +1007,7 @@
         <span class="comment">//~ For a valid witness, we then have have $z(g^{n-zk_rows}) = 1$.
         //~
         </span><span class="kw">if </span>z[n - zk_rows] != F::one() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">&quot;final value&quot;</span>));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::Permutation(<span class="string">"final value"</span>));
         };
 
         <span class="kw">let </span>res = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(z, <span class="self">self</span>.cs.domain.d1).interpolate();

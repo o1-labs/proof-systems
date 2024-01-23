@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/srs.rs`."><title>srs.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="poly_commitment" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../poly_commitment/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/srs.rs`."><title>srs.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="poly_commitment" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../poly_commitment/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -304,13 +306,13 @@
 
 <span class="attr">#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
-#[serde(bound = <span class="string">&quot;G: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
+#[serde(bound = <span class="string">"G: CanonicalDeserialize + CanonicalSerialize"</span>)]
 </span><span class="kw">pub struct </span>SRS&lt;G&gt; {
     <span class="doccomment">/// The vector of group elements for committing to polynomials in coefficient form
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Vec&lt;o1_utils::serialization::SerdeAs&gt;"</span>)]
     </span><span class="kw">pub </span>g: Vec&lt;G&gt;,
     <span class="doccomment">/// A group element used for blinding commitments
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"o1_utils::serialization::SerdeAs"</span>)]
     </span><span class="kw">pub </span>h: G,
 
     <span class="comment">// TODO: the following field should be separated, as they are optimization values
@@ -369,7 +371,7 @@
         <span class="kw">let </span>n =
             &lt;&lt;G::BaseField <span class="kw">as </span>Field&gt;::BasePrimeField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_be(<span class="kw-2">&amp;</span>bits);
         <span class="kw">let </span>t = &lt;&lt;G::BaseField <span class="kw">as </span>Field&gt;::BasePrimeField <span class="kw">as </span>PrimeField&gt;::from_repr(n)
-            .expect(<span class="string">&quot;packing code has a bug&quot;</span>);
+            .expect(<span class="string">"packing code has a bug"</span>);
         base_fields.push(t)
     }
     <span class="kw">let </span>t = G::BaseField::from_base_prime_field_elems(<span class="kw-2">&amp;</span>base_fields).unwrap();
@@ -412,7 +414,7 @@
         //
         // v = M(w)^{-1} * u
         //
-        // Let&#39;s see how we can use this algorithm to compute the lagrange basis
+        // Let's see how we can use this algorithm to compute the lagrange basis
         // commitments.
         //
         // Let V be the vector space F[x] of polynomials in x over F.
@@ -427,13 +429,13 @@
         //   | ...                                       |   | ...     |
         //   | 1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1} |   | L_{n-1} |
         //
-        // The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it&#39;s the polynomial
+        // The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it's the polynomial
         // that has the value 1 on every element of the domain.
-        // In other words, it&#39;s the polynomial 1.
+        // In other words, it's the polynomial 1.
         //
-        // The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it&#39;s the
+        // The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it's the
         // polynomial which has value w^i on w^i.
-        // In other words, it&#39;s the polynomial x.
+        // In other words, it's the polynomial x.
         //
         // In general, you can see that row i is in fact the polynomial x^i.
         //
@@ -448,18 +450,18 @@
         // vector self.g[0..n].
         //
         //
-        // Further still, we can do the same trick for &#39;chunked&#39; polynomials.
+        // Further still, we can do the same trick for 'chunked' polynomials.
         //
         // Recall that a chunked polynomial is some f of degree k*n - 1 with
         // f(x) = f_0(x) + x^n f_1(x) + ... + x^{(k-1) n} f_{k-1}(x)
         // where each f_i has degree n-1.
         //
         // In the above, if we set u = [ 1, x^2, ... x^{n-1}, 0, 0, .., 0 ]
-        // then we effectively &#39;zero out&#39; any polynomial terms higher than x^{n-1}, leaving
-        // us with the &#39;partial Lagrange polynomials&#39; that contribute to f_0.
+        // then we effectively 'zero out' any polynomial terms higher than x^{n-1}, leaving
+        // us with the 'partial Lagrange polynomials' that contribute to f_0.
         //
         // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0] with n leading
-        // zeros &#39;zeroes out&#39; all terms except the &#39;partial Lagrange polynomials&#39; that
+        // zeros 'zeroes out' all terms except the 'partial Lagrange polynomials' that
         // contribute to f_1, and likewise for each f_i.
         //
         // By computing each of these, and recollecting the terms as a vector of polynomial
@@ -482,7 +484,7 @@
             <span class="comment">// Apply the IFFT
             </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
             &lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::batch_normalization(lg.as_mut_slice());
-            <span class="comment">// Append the &#39;partial Langrange polynomials&#39; to the vector of unshifted chunks
+            <span class="comment">// Append the 'partial Langrange polynomials' to the vector of unshifted chunks
             </span>unshifted.push(lg)
         }
 
@@ -533,7 +535,7 @@
         <span class="kw">const </span>MISC: usize = <span class="number">1</span>;
         <span class="kw">let </span>[h]: [G; MISC] = array::from_fn(|i| {
             <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
-            h.update(<span class="string">&quot;srs_misc&quot;</span>.as_bytes());
+            h.update(<span class="string">"srs_misc"</span>.as_bytes());
             h.update((i <span class="kw">as </span>u32).to_be_bytes());
             point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
         });
@@ -562,7 +564,7 @@
         <span class="kw">const </span>MISC: usize = <span class="number">1</span>;
         <span class="kw">let </span>[h]: [G; MISC] = array::from_fn(|i| {
             <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
-            h.update(<span class="string">&quot;srs_misc&quot;</span>.as_bytes());
+            h.update(<span class="string">"srs_misc"</span>.as_bytes());
             h.update((i <span class="kw">as </span>u32).to_be_bytes());
             point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
         });

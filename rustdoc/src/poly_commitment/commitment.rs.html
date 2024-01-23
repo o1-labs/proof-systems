@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/commitment.rs`."><title>commitment.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="poly_commitment" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../poly_commitment/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/commitment.rs`."><title>commitment.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="poly_commitment" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../poly_commitment/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1336,11 +1338,11 @@
 <span class="doccomment">/// A polynomial commitment.
 </span><span class="attr">#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(bound = <span class="string">&quot;C: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
+#[serde(bound = <span class="string">"C: CanonicalDeserialize + CanonicalSerialize"</span>)]
 </span><span class="kw">pub struct </span>PolyComm&lt;C&gt; {
-    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Vec&lt;o1_utils::serialization::SerdeAs&gt;"</span>)]
     </span><span class="kw">pub </span>unshifted: Vec&lt;C&gt;,
-    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Option&lt;o1_utils::serialization::SerdeAs&gt;"</span>)]
     </span><span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;C&gt;,
 }
 
@@ -1455,10 +1457,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, C: AffineCurve&gt; Add&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>PolyComm&lt;C&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, C: AffineCurve&gt; Add&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'b </span>PolyComm&lt;C&gt; {
     <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 
-    <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
+    <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>unshifted = <span class="macro">vec!</span>[];
         <span class="kw">let </span>n1 = <span class="self">self</span>.unshifted.len();
         <span class="kw">let </span>n2 = other.unshifted.len();
@@ -1481,10 +1483,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, C: AffineCurve&gt; Sub&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>PolyComm&lt;C&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="lifetime">'b</span>, C: AffineCurve&gt; Sub&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;&gt; <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'b </span>PolyComm&lt;C&gt; {
     <span class="kw">type </span>Output = PolyComm&lt;C&gt;;
 
-    <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
+    <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;C&gt;) -&gt; PolyComm&lt;C&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>unshifted = <span class="macro">vec!</span>[];
         <span class="kw">let </span>n1 = <span class="self">self</span>.unshifted.len();
         <span class="kw">let </span>n2 = other.unshifted.len();
@@ -1541,7 +1543,7 @@
             <span class="kw">let </span>(points, scalars): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = com
                 .iter()
                 .zip(<span class="kw-2">&amp;</span>all_scalars)
-                <span class="comment">// get rid of scalars that don&#39;t have an associated chunk
+                <span class="comment">// get rid of scalars that don't have an associated chunk
                 </span>.filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
@@ -1577,7 +1579,7 @@
 }
 
 <span class="doccomment">/// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...
-/// It&#39;s &quot;step 8: Define the univariate polynomial&quot; of
+/// It's "step 8: Define the univariate polynomial" of
 /// appendix A.2 of &lt;https://eprint.iacr.org/2020/499&gt;
 </span><span class="kw">pub fn </span>b_poly&lt;F: Field&gt;(chals: <span class="kw-2">&amp;</span>[F], x: F) -&gt; F {
     <span class="kw">let </span>k = chals.len();
@@ -1650,7 +1652,7 @@
 }
 
 <span class="doccomment">/// A useful trait extending AffineCurve for commitments.
-/// Unfortunately, we can&#39;t specify that `AffineCurve&lt;BaseField : PrimeField&gt;`,
+/// Unfortunately, we can't specify that `AffineCurve&lt;BaseField : PrimeField&gt;`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 </span><span class="kw">pub trait </span>CommitmentCurve: AffineCurve {
     <span class="kw">type </span>Params: SWModelParameters;
@@ -1661,7 +1663,7 @@
 }
 
 <span class="doccomment">/// A trait extending CommitmentCurve for endomorphisms.
-/// Unfortunately, we can&#39;t specify that `AffineCurve&lt;BaseField : PrimeField&gt;`,
+/// Unfortunately, we can't specify that `AffineCurve&lt;BaseField : PrimeField&gt;`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
 </span><span class="kw">pub trait </span>EndoCurve: CommitmentCurve {
     <span class="doccomment">/// Combine where x1 = one
@@ -1808,7 +1810,7 @@
 
 <span class="doccomment">/// Contains the batch evaluation
 </span><span class="comment">// TODO: I think we should really change this name to something more correct
-</span><span class="kw">pub struct </span>BatchEvaluationProof&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, OpeningProof&gt;
+</span><span class="kw">pub struct </span>BatchEvaluationProof&lt;<span class="lifetime">'a</span>, G, EFqSponge, OpeningProof&gt;
 <span class="kw">where
     </span>G: AffineCurve,
     EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
@@ -1822,7 +1824,7 @@
     <span class="doccomment">/// scaling factor for polynomials
     </span><span class="kw">pub </span>evalscale: G::ScalarField,
     <span class="doccomment">/// batched opening proof
-    </span><span class="kw">pub </span>opening: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>OpeningProof,
+    </span><span class="kw">pub </span>opening: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>OpeningProof,
     <span class="kw">pub </span>combined_inner_product: G::ScalarField,
 }
 
@@ -1896,7 +1898,7 @@
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(_m) = degree_bound {
-            <span class="macro">todo!</span>(<span class="string">&quot;Misaligned chunked commitments are not supported&quot;</span>)
+            <span class="macro">todo!</span>(<span class="string">"Misaligned chunked commitments are not supported"</span>)
         }
     }
 
@@ -1961,13 +1963,13 @@
         })
     }
 
-    <span class="doccomment">/// This function commits a polynomial using the SRS&#39; basis of size `n`.
+    <span class="doccomment">/// This function commits a polynomial using the SRS' basis of size `n`.
     /// - `plnm`: polynomial to commit to with max size of sections
     /// - `num_chunks`: the number of unshifted commitments to be included in the output polynomial commitment
     /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
     /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
     /// as well as an optional bounded commitment (if `max` is set).
-    /// Note that a maximum degree cannot (and doesn&#39;t need to) be enforced via a shift if `max` is a multiple of `n`.
+    /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
     </span><span class="kw">fn </span>commit_non_hiding(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
@@ -2029,7 +2031,7 @@
         <span class="kw">let </span>basis = <span class="self">self
             </span>.lagrange_bases
             .get(<span class="kw-2">&amp;</span>domain.size())
-            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;lagrange bases for size {} not found&quot;</span>, domain.size()));
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"lagrange bases for size {} not found"</span>, domain.size()));
         <span class="kw">let </span>commit_evaluations = |evals: <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt;, basis: <span class="kw-2">&amp;</span>Vec&lt;PolyComm&lt;G&gt;&gt;| {
             PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>basis.iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()[..], <span class="kw-2">&amp;</span>evals[..])
         };
@@ -2041,7 +2043,7 @@
             }
             std::cmp::Ordering::Equal =&gt; commit_evaluations(<span class="kw-2">&amp;</span>plnm.evals, basis),
             std::cmp::Ordering::Greater =&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;desired commitment domain size greater than evaluations&#39; domain size&quot;</span>)
+                <span class="macro">panic!</span>(<span class="string">"desired commitment domain size greater than evaluations' domain size"</span>)
             }
         }
     }
@@ -2108,7 +2110,7 @@
         // - (evalscale^i z1_i b_i) U_i
 
         // We also check that the sg component of the proof is equal to the polynomial commitment
-        // to the &quot;s&quot; array
+        // to the "s" array
 
         </span><span class="kw">let </span>nonzero_length = <span class="self">self</span>.g.len();
 
@@ -2480,7 +2482,7 @@
 // OCaml types
 //
 
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">"ocaml_types"</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -2507,12 +2509,12 @@
         }
     }
 
-    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
+    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;&gt; <span class="kw">for </span>CamlPolyComm&lt;CamlG&gt;
     <span class="kw">where
         </span>G: AffineCurve,
-        CamlG: From&lt;G&gt; + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>G&gt;,
+        CamlG: From&lt;G&gt; + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>G&gt;,
     {
-        <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">fn </span>from(polycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>PolyComm&lt;G&gt;) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
                 unshifted: polycomm.unshifted.iter().map(Into::into).collect(),
                 shifted: polycomm.shifted.as_ref().map(Into::into),
@@ -2532,11 +2534,11 @@
         }
     }
 
-    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
+    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, G, CamlG&gt; From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;&gt; <span class="kw">for </span>PolyComm&lt;G&gt;
     <span class="kw">where
-        </span>G: AffineCurve + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CamlG&gt; + From&lt;CamlG&gt;,
+        </span>G: AffineCurve + From&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlG&gt; + From&lt;CamlG&gt;,
     {
-        <span class="kw">fn </span>from(camlpolycomm: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
+        <span class="kw">fn </span>from(camlpolycomm: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CamlPolyComm&lt;CamlG&gt;) -&gt; PolyComm&lt;G&gt; {
             PolyComm {
                 unshifted: camlpolycomm.unshifted.iter().map(Into::into).collect(),
                 shifted: camlpolycomm.shifted.as_ref().map(Into::into),

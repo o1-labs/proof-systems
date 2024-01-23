@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `turshi/src/runner.rs`."><title>runner.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="turshi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../turshi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `turshi/src/runner.rs`."><title>runner.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="turshi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../turshi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -814,22 +816,22 @@
 
     <span class="doccomment">/// Returns the result of the instruction
     </span><span class="kw">pub fn </span>res(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
-        <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res&quot;</span>)
+        <span class="self">self</span>.vars.res.expect(<span class="string">"None res"</span>)
     }
 
     <span class="doccomment">/// Returns the destination of the instruction
     </span><span class="kw">pub fn </span>dst(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
-        <span class="self">self</span>.vars.dst.expect(<span class="string">&quot;None dst&quot;</span>)
+        <span class="self">self</span>.vars.dst.expect(<span class="string">"None dst"</span>)
     }
 
     <span class="doccomment">/// Returns the first operand of the instruction
     </span><span class="kw">pub fn </span>op0(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
-        <span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0&quot;</span>)
+        <span class="self">self</span>.vars.op0.expect(<span class="string">"None op0"</span>)
     }
 
     <span class="doccomment">/// Returns the second operand of the instruction
     </span><span class="kw">pub fn </span>op1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
-        <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1&quot;</span>)
+        <span class="self">self</span>.vars.op1.expect(<span class="string">"None op1"</span>)
     }
 
     <span class="doccomment">/// Returns the destination address of the instruction
@@ -943,9 +945,9 @@
 }
 
 <span class="doccomment">/// A data structure to store a current step of Cairo computation
-</span><span class="kw">pub struct </span>CairoStep&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+</span><span class="kw">pub struct </span>CairoStep&lt;<span class="lifetime">'a</span>, F&gt; {
     <span class="doccomment">/// state of the computation
-    </span>mem: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>CairoMemory&lt;F&gt;,
+    </span>mem: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>CairoMemory&lt;F&gt;,
     <span class="comment">// comment instr for efficiency
     </span><span class="doccomment">/// current pointers
     </span>curr: CairoState&lt;F&gt;,
@@ -955,7 +957,7 @@
     </span>vars: CairoContext&lt;F&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: Field&gt; CairoStep&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: Field&gt; CairoStep&lt;<span class="lifetime">'a</span>, F&gt; {
     <span class="doccomment">/// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers
     </span><span class="kw">pub fn </span>new(mem: <span class="kw-2">&amp;mut </span>CairoMemory&lt;F&gt;, ptrs: CairoState&lt;F&gt;) -&gt; CairoStep&lt;F&gt; {
         CairoStep {
@@ -977,16 +979,16 @@
         </span><span class="kw">let </span>next_pc = <span class="self">self</span>.next_pc();
         <span class="kw">let </span>(next_ap, next_fp) = <span class="self">self</span>.next_apfp();
         <span class="self">self</span>.next = <span class="prelude-val">Some</span>(CairoState::new(
-            next_pc.expect(<span class="string">&quot;Empty next program counter&quot;</span>),
-            next_ap.expect(<span class="string">&quot;Empty next allocation pointer&quot;</span>),
-            next_fp.expect(<span class="string">&quot;Empty next frame pointer&quot;</span>),
+            next_pc.expect(<span class="string">"Empty next program counter"</span>),
+            next_ap.expect(<span class="string">"Empty next allocation pointer"</span>),
+            next_fp.expect(<span class="string">"Empty next frame pointer"</span>),
         ));
         CairoInstruction::new(<span class="self">self</span>.instr(), <span class="self">self</span>.curr, <span class="self">self</span>.vars)
     }
 
     <span class="doccomment">/// This function returns the current word instruction being executed
     </span><span class="kw">pub fn </span>instr(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; CairoWord&lt;F&gt; {
-        CairoWord::new(<span class="self">self</span>.mem.read(<span class="self">self</span>.curr.pc).expect(<span class="string">&quot;pc points to None cell&quot;</span>))
+        CairoWord::new(<span class="self">self</span>.mem.read(<span class="self">self</span>.curr.pc).expect(<span class="string">"pc points to None cell"</span>))
     }
 
     <span class="doccomment">/// This function computes the first operand address
@@ -1004,12 +1006,12 @@
     </span><span class="kw">pub fn </span>set_op1(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>(reg, size) = <span class="kw">match </span><span class="self">self</span>.instr().op1_src() {
             <span class="comment">/*0*/
-            </span>OP1_DBL =&gt; (<span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0 for OP1_DBL&quot;</span>), F::one()), <span class="comment">// double indexing, op0 should be positive for address
+            </span>OP1_DBL =&gt; (<span class="self">self</span>.vars.op0.expect(<span class="string">"None op0 for OP1_DBL"</span>), F::one()), <span class="comment">// double indexing, op0 should be positive for address
             /*1*/
             </span>OP1_VAL =&gt; (<span class="self">self</span>.curr.pc, F::from(<span class="number">2u32</span>)), <span class="comment">// off_op1 will be 1 and then op1 contains an immediate value
             /*2*/ </span>OP1_FP =&gt; (<span class="self">self</span>.curr.fp, F::one()),
             <span class="comment">/*4*/ </span>OP1_AP =&gt; (<span class="self">self</span>.curr.ap, F::one()),
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid op1_src flagset&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Invalid op1_src flagset"</span>),
         };
         <span class="self">self</span>.vars.size = size;
         <span class="self">self</span>.vars.adr_op1 = reg + <span class="self">self</span>.instr().off_op1(); <span class="comment">// apply second offset to corresponding register
@@ -1028,9 +1030,9 @@
                 </span>&amp;&amp; <span class="self">self</span>.instr().ap_up() != AP_ADD
             <span class="comment">/* not 1*/
             </span>{
-                <span class="self">self</span>.vars.res = <span class="prelude-val">Some</span>(F::zero()); <span class="comment">// &quot;unused&quot;
+                <span class="self">self</span>.vars.res = <span class="prelude-val">Some</span>(F::zero()); <span class="comment">// "unused"
             </span>} <span class="kw">else </span>{
-                <span class="macro">panic!</span>(<span class="string">&quot;Invalid JNZ instruction&quot;</span>);
+                <span class="macro">panic!</span>(<span class="string">"Invalid JNZ instruction"</span>);
             }
         } <span class="kw">else if </span><span class="self">self</span>.instr().pc_up() == PC_SIZ <span class="comment">/*0*/
             </span>|| <span class="self">self</span>.instr().pc_up() == PC_ABS <span class="comment">/*1*/
@@ -1045,22 +1047,22 @@
                 /*1*/
                 </span>RES_ADD =&gt; {
                     <span class="self">self</span>.vars.res = <span class="prelude-val">Some</span>(
-                        <span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0 after RES_ADD&quot;</span>)
-                            + <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1 after RES_ADD&quot;</span>),
+                        <span class="self">self</span>.vars.op0.expect(<span class="string">"None op0 after RES_ADD"</span>)
+                            + <span class="self">self</span>.vars.op1.expect(<span class="string">"None op1 after RES_ADD"</span>),
                     )
                 } <span class="comment">// right part is addition
                 /*2*/
                 </span>RES_MUL =&gt; {
                     <span class="self">self</span>.vars.res = <span class="prelude-val">Some</span>(
-                        <span class="self">self</span>.vars.op0.expect(<span class="string">&quot;None op0 after RES_MUL&quot;</span>)
-                            * <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1 after RES_MUL&quot;</span>),
+                        <span class="self">self</span>.vars.op0.expect(<span class="string">"None op0 after RES_MUL"</span>)
+                            * <span class="self">self</span>.vars.op1.expect(<span class="string">"None op1 after RES_MUL"</span>),
                     )
                 } <span class="comment">// right part is multiplication
-                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid res_log flagset&quot;</span>),
+                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Invalid res_log flagset"</span>),
             }
         } <span class="kw">else </span>{
             <span class="comment">// multiple bits take value 1
-            </span><span class="macro">panic!</span>(<span class="string">&quot;Invalid pc_up flagset&quot;</span>);
+            </span><span class="macro">panic!</span>(<span class="string">"Invalid pc_up flagset"</span>);
         }
     }
 
@@ -1081,9 +1083,9 @@
             <span class="comment">/*0*/
             </span>PC_SIZ =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.size), <span class="comment">// common case, next instruction is right after the current one
             /*1*/
-            </span>PC_ABS =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after PC_ABS&quot;</span>)), <span class="comment">// absolute jump, next instruction is in res,
+            </span>PC_ABS =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.vars.res.expect(<span class="string">"None res after PC_ABS"</span>)), <span class="comment">// absolute jump, next instruction is in res,
             /*2*/
-            </span>PC_REL =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after PC_REL&quot;</span>)), <span class="comment">// relative jump, go to some address relative to pc
+            </span>PC_REL =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.res.expect(<span class="string">"None res after PC_REL"</span>)), <span class="comment">// relative jump, go to some address relative to pc
             /*4*/
             </span>PC_JNZ =&gt; {
                 <span class="comment">// conditional relative jump (jnz)
@@ -1091,10 +1093,10 @@
                     <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.size) <span class="comment">// if condition false, common case
                 </span>} <span class="kw">else </span>{
                     <span class="comment">// if condition true, relative jump with second operand
-                    </span><span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.op1.expect(<span class="string">&quot;None op1 after PC_JNZ&quot;</span>))
+                    </span><span class="prelude-val">Some</span>(<span class="self">self</span>.curr.pc + <span class="self">self</span>.vars.op1.expect(<span class="string">"None op1 after PC_JNZ"</span>))
                 }
             }
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid pc_up flagset&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Invalid pc_up flagset"</span>),
         }
     }
 
@@ -1104,10 +1106,10 @@
     ///     or if the flagset `OPCODE` has more than 1 nonzero bit
     </span><span class="kw">fn </span>next_apfp(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; (<span class="prelude-ty">Option</span>&lt;F&gt;, <span class="prelude-ty">Option</span>&lt;F&gt;) {
         <span class="kw">let </span>(next_ap, next_fp);
-        <span class="comment">// The following branches don&#39;t include the assertions. That is done in the verification.
+        <span class="comment">// The following branches don't include the assertions. That is done in the verification.
         </span><span class="kw">if </span><span class="self">self</span>.instr().opcode() == OPC_CALL {
             <span class="comment">/*1*/
-            // &quot;call&quot; instruction
+            // "call" instruction
             </span><span class="self">self</span>.mem.write(<span class="self">self</span>.curr.ap, <span class="self">self</span>.curr.fp); <span class="comment">// Save current fp
             </span><span class="self">self</span>.vars.dst = <span class="self">self</span>.mem.read(<span class="self">self</span>.curr.ap); <span class="comment">// update dst content
             </span><span class="self">self</span>.mem
@@ -1120,7 +1122,7 @@
             </span><span class="kw">match </span><span class="self">self</span>.instr().ap_up() {
                 <span class="comment">/*0*/
                 </span>AP_Z2 =&gt; next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + F::from(<span class="number">2u32</span>)), <span class="comment">// two words were written so advance 2 positions
-                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;ap increment in call instruction&quot;</span>), <span class="comment">// ap increments not allowed in call instructions
+                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"ap increment in call instruction"</span>), <span class="comment">// ap increments not allowed in call instructions
             </span>};
         } <span class="kw">else if </span><span class="self">self</span>.instr().opcode() == OPC_JMP_INC <span class="comment">/*0*/
             </span>|| <span class="self">self</span>.instr().opcode() == OPC_RET <span class="comment">/*2*/
@@ -1134,17 +1136,17 @@
                 /*1*/
                 </span>AP_ADD =&gt; {
                     <span class="comment">// ap += &lt;op&gt; should be larger than current ap
-                    </span>next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after AP_ADD&quot;</span>))
+                    </span>next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + <span class="self">self</span>.vars.res.expect(<span class="string">"None res after AP_ADD"</span>))
                 }
                 <span class="comment">/*2*/ </span>AP_ONE =&gt; next_ap = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.ap + F::one()), <span class="comment">// ap++
-                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid ap_up flagset&quot;</span>),
+                </span><span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Invalid ap_up flagset"</span>),
             }
 
             <span class="kw">match </span><span class="self">self</span>.instr().opcode() {
                 <span class="comment">/*0*/
                 </span>OPC_JMP_INC =&gt; next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.fp), <span class="comment">// no modification on fp
                 /*2*/
-                </span>OPC_RET =&gt; next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.vars.dst.expect(<span class="string">&quot;None dst after OPC_RET&quot;</span>)), <span class="comment">// ret sets fp to previous fp that was in [ap-2]
+                </span>OPC_RET =&gt; next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.vars.dst.expect(<span class="string">"None dst after OPC_RET"</span>)), <span class="comment">// ret sets fp to previous fp that was in [ap-2]
                 /*4*/
                 </span>OPC_AEQ =&gt; {
                     <span class="comment">// The following conditional is a fix that is not explained in the whitepaper
@@ -1156,7 +1158,7 @@
                         <span class="comment">// res = dst
                         </span><span class="self">self</span>.mem.write(
                             <span class="self">self</span>.vars.adr_op1,
-                            <span class="self">self</span>.vars.dst.expect(<span class="string">&quot;None dst after OPC_AEQ&quot;</span>),
+                            <span class="self">self</span>.vars.dst.expect(<span class="string">"None dst after OPC_AEQ"</span>),
                         );
                         <span class="comment">// update the value of the variable as well
                         </span><span class="self">self</span>.vars.op1 = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_op1);
@@ -1165,7 +1167,7 @@
                         <span class="comment">// dst = res
                         </span><span class="self">self</span>.mem.write(
                             <span class="self">self</span>.vars.adr_dst,
-                            <span class="self">self</span>.vars.res.expect(<span class="string">&quot;None res after OPC_AEQ&quot;</span>),
+                            <span class="self">self</span>.vars.res.expect(<span class="string">"None res after OPC_AEQ"</span>),
                         );
                         <span class="comment">// update the value of the variable as well
                         </span><span class="self">self</span>.vars.dst = <span class="self">self</span>.mem.read(<span class="self">self</span>.vars.adr_dst);
@@ -1173,22 +1175,22 @@
                     next_fp = <span class="prelude-val">Some</span>(<span class="self">self</span>.curr.fp); <span class="comment">// no modification on fp
                 </span>}
                 <span class="kw">_ </span>=&gt; {
-                    <span class="macro">panic!</span>(<span class="string">&quot;This case must never happen&quot;</span>)
+                    <span class="macro">panic!</span>(<span class="string">"This case must never happen"</span>)
                 }
             }
         } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;Invalid opcode flagset&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"Invalid opcode flagset"</span>);
         }
         (next_ap, next_fp)
     }
 }
 
 <span class="doccomment">/// This struct stores the needed information to run a program
-</span><span class="kw">pub struct </span>CairoProgram&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+</span><span class="kw">pub struct </span>CairoProgram&lt;<span class="lifetime">'a</span>, F&gt; {
     <span class="doccomment">/// total number of steps
     </span>steps: F,
     <span class="doccomment">/// full execution memory
-    </span>mem: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>CairoMemory&lt;F&gt;,
+    </span>mem: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>CairoMemory&lt;F&gt;,
     <span class="doccomment">/// initial computation registers
     </span>ini: CairoState&lt;F&gt;,
     <span class="doccomment">/// final computation pointers
@@ -1197,7 +1199,7 @@
     </span>trace: Vec&lt;CairoInstruction&lt;F&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: Field&gt; CairoProgram&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: Field&gt; CairoProgram&lt;<span class="lifetime">'a</span>, F&gt; {
     <span class="doccomment">/// Creates a Cairo execution from the public information (memory and initial pointers)
     </span><span class="kw">pub fn </span>new(mem: <span class="kw-2">&amp;mut </span>CairoMemory&lt;F&gt;, pc: u64) -&gt; CairoProgram&lt;F&gt; {
         <span class="kw">let </span>ap = mem.len();
@@ -1258,7 +1260,7 @@
                     <span class="comment">// if there are next pointers
                     </span>end = <span class="bool-val">false</span>;
                     <span class="comment">// update next value of pointers
-                    </span>next = step.next.expect(<span class="string">&quot;Empty next pointers&quot;</span>);
+                    </span>next = step.next.expect(<span class="string">"Empty next pointers"</span>);
                     <span class="kw">if </span>curr.ap &lt;= next.pc {
                         <span class="comment">// if reading from unallocated memory, end
                         </span>end = <span class="bool-val">true</span>;
@@ -1297,7 +1299,7 @@
         <span class="macro">assert_eq!</span>(step.next.unwrap().ap, F::from(<span class="number">7u32</span>));
         <span class="macro">assert_eq!</span>(step.next.unwrap().fp, F::from(<span class="number">6u32</span>));
 
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, step.mem);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, step.mem);
     }
 
     <span class="attr">#[test]
@@ -1312,7 +1314,7 @@
         </span>mem.write(F::from(<span class="number">4u32</span>), F::from(<span class="number">7u32</span>)); <span class="comment">//beginning of output
         </span>mem.write(F::from(<span class="number">5u32</span>), F::from(<span class="number">7u32</span>)); <span class="comment">//end of output
         </span><span class="kw">let </span>prog = CairoProgram::new(<span class="kw-2">&amp;mut </span>mem, <span class="number">1</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, prog.mem);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, prog.mem);
     }
 
     <span class="attr">#[test]
@@ -1371,7 +1373,7 @@
         <span class="macro">assert_eq!</span>(prog.fin().pc, F::from(<span class="number">20u32</span>));
         <span class="macro">assert_eq!</span>(prog.fin().ap, F::from(<span class="number">41u32</span>));
         <span class="macro">assert_eq!</span>(prog.fin().fp, F::from(<span class="number">24u32</span>));
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, prog.mem);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, prog.mem);
         <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">24u32</span>)).unwrap(), F::from(<span class="number">10u32</span>));
         <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">25u32</span>)).unwrap(), F::from(<span class="number">20u32</span>));
         <span class="macro">assert_eq!</span>(prog.mem.read(F::from(<span class="number">26u32</span>)).unwrap(), F::from(<span class="number">400u32</span>));

@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/pubkey.rs`."><title>pubkey.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../mina_signer/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/pubkey.rs`."><title>pubkey.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../mina_signer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -582,43 +584,43 @@
 </span><span class="attr">#[derive(Error, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>PubKeyError {
     <span class="doccomment">/// Invalid address length
-    </span><span class="attr">#[error(<span class="string">&quot;invalid address length&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid address length"</span>)]
     </span>AddressLength,
     <span class="doccomment">/// Invalid address base58
-    </span><span class="attr">#[error(<span class="string">&quot;invalid address base58&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid address base58"</span>)]
     </span>AddressBase58,
     <span class="doccomment">/// Invalid raw address bytes length
-    </span><span class="attr">#[error(<span class="string">&quot;invalid raw address bytes length&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid raw address bytes length"</span>)]
     </span>AddressRawByteLength,
     <span class="doccomment">/// Invalid address checksum
-    </span><span class="attr">#[error(<span class="string">&quot;invalid address checksum&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid address checksum"</span>)]
     </span>AddressChecksum,
     <span class="doccomment">/// Invalid address version
-    </span><span class="attr">#[error(<span class="string">&quot;invalid address version&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid address version"</span>)]
     </span>AddressVersion,
     <span class="doccomment">/// Invalid x-coordinate bytes
-    </span><span class="attr">#[error(<span class="string">&quot;invalid x-coordinate bytes&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid x-coordinate bytes"</span>)]
     </span>XCoordinateBytes,
     <span class="doccomment">/// Invalid x-coordinate
-    </span><span class="attr">#[error(<span class="string">&quot;invalid x-coordinate&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid x-coordinate"</span>)]
     </span>XCoordinate,
     <span class="doccomment">/// Point not on curve
-    </span><span class="attr">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"point not on curve"</span>)]
     </span>YCoordinateBytes,
     <span class="doccomment">/// Invalid y-coordinate
-    </span><span class="attr">#[error(<span class="string">&quot;invalid y-coordinate bytes&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid y-coordinate bytes"</span>)]
     </span>YCoordinateParityBytes,
     <span class="doccomment">/// Invalid y-coordinate parity
-    </span><span class="attr">#[error(<span class="string">&quot;invalid y-coordinate parity bytes&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid y-coordinate parity bytes"</span>)]
     </span>YCoordinateParity,
     <span class="doccomment">/// Invalid y-coordinate parity
-    </span><span class="attr">#[error(<span class="string">&quot;invalid y-coordinate parity&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid y-coordinate parity"</span>)]
     </span>NonCurvePoint,
     <span class="doccomment">/// Invalid hex
-    </span><span class="attr">#[error(<span class="string">&quot;invalid public key hex&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid public key hex"</span>)]
     </span>Hex,
     <span class="doccomment">/// Invalid secret key
-    </span><span class="attr">#[error(<span class="string">&quot;invalid secret key&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"invalid secret key"</span>)]
     </span>SecKey,
 }
 <span class="doccomment">/// Public key Result
@@ -776,8 +778,8 @@
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>PubKey {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_hex())
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.to_hex())
     }
 }
 
@@ -857,7 +859,7 @@
 
     <span class="doccomment">/// Create compressed public key from a secret key
     </span><span class="kw">pub fn </span>from_secret_key(sec_key: SecKey) -&gt; <span class="self">Self </span>{
-        <span class="comment">// We do not need to check point is on the curve, since it&#39;s derived directly from the generator point
+        <span class="comment">// We do not need to check point is on the curve, since it's derived directly from the generator point
         </span><span class="kw">let </span>public = PubKey::from_point_unsafe(
             CurvePoint::prime_subgroup_generator()
                 .mul(sec_key.into_scalar())
@@ -906,40 +908,40 @@
         <span class="macro">assert_eq!</span>(
             PubKey::to_hex(
                 <span class="kw-2">&amp;</span>PubKey::from_hex(
-                    <span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c&quot;
+                    <span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"
                 </span>)
-                .expect(<span class="string">&quot;failed to decode pub key&quot;</span>),
+                .expect(<span class="string">"failed to decode pub key"</span>),
             ),
-            <span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c&quot;
+            <span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"
         </span>);
 
         <span class="macro">assert_eq!</span>(
             PubKey::to_hex(
                 <span class="kw-2">&amp;</span>PubKey::from_hex(
-                    <span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928&quot;
+                    <span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928"
                 </span>)
-                .expect(<span class="string">&quot;failed to decode pub key&quot;</span>),
+                .expect(<span class="string">"failed to decode pub key"</span>),
             ),
-            <span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928&quot;
+            <span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928"
         </span>);
 
         <span class="macro">assert_eq!</span>(
-            PubKey::from_hex(<span class="string">&quot;44100485d466a4c9f281d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c&quot;</span>),
+            PubKey::from_hex(<span class="string">"44100485d466a4c9f281d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"</span>),
             <span class="prelude-val">Err</span>(PubKeyError::XCoordinate)
         );
 
         <span class="macro">assert_eq!</span>(
-            PubKey::from_hex(<span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168715883c&quot;</span>),
+            PubKey::from_hex(<span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168715883c"</span>),
             <span class="prelude-val">Err</span>(PubKeyError::NonCurvePoint)
         );
 
         <span class="macro">assert_eq!</span>(
-            PubKey::from_hex(<span class="string">&quot;z8f71009a6502f89a469a037f14e97386034ea3855877159f29f4a532a2e5f28&quot;</span>),
+            PubKey::from_hex(<span class="string">"z8f71009a6502f89a469a037f14e97386034ea3855877159f29f4a532a2e5f28"</span>),
             <span class="prelude-val">Err</span>(PubKeyError::Hex)
         );
 
         <span class="macro">assert_eq!</span>(
-            PubKey::from_hex(<span class="string">&quot;44100485d466a4c9f481d43be9a6d4aa5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c&quot;</span>),
+            PubKey::from_hex(<span class="string">"44100485d466a4c9f481d43be9a6d4aa5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"</span>),
             <span class="prelude-val">Err</span>(PubKeyError::Hex)
         );
     }
@@ -947,21 +949,21 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>from_secret_key() {
         <span class="macro">assert_eq!</span>(PubKey::from_secret_key(
-                SecKey::from_hex(<span class="string">&quot;090dd91a2505081a158782c5a24fef63f326749b383423c29827e465f7ca262b&quot;</span>).expect(<span class="string">&quot;failed to decode sec key&quot;</span>)
-            ).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).to_hex(),
-            <span class="string">&quot;3f8c32817851b7c1ad99495463ef5e99c3b3240524f0df3ff7fc41181d849e0086fa821d54de15c523a840c5f62df90aeabb1097b85c6a88e163e9d74e505803&quot;
+                SecKey::from_hex(<span class="string">"090dd91a2505081a158782c5a24fef63f326749b383423c29827e465f7ca262b"</span>).expect(<span class="string">"failed to decode sec key"</span>)
+            ).expect(<span class="string">"failed to decode pub key"</span>).to_hex(),
+            <span class="string">"3f8c32817851b7c1ad99495463ef5e99c3b3240524f0df3ff7fc41181d849e0086fa821d54de15c523a840c5f62df90aeabb1097b85c6a88e163e9d74e505803"
         </span>);
 
         <span class="macro">assert_eq!</span>(PubKey::from_secret_key(
-                SecKey::from_hex(<span class="string">&quot;086d78e0e5deb62daeef8e3a5574d52a3d3bff5281b4dd49140564c7d80468c9&quot;</span>).expect(<span class="string">&quot;failed to decode sec key&quot;</span>)
-            ).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).to_hex(),
-            <span class="string">&quot;666c450f5e888d3b2341d77b32cb6d0cd4912829ea9c41030d1fd2baff6b9a30c267208638544299e8d369e80b25a24bdd07383b6ea908028d9a406b528d4a01&quot;
+                SecKey::from_hex(<span class="string">"086d78e0e5deb62daeef8e3a5574d52a3d3bff5281b4dd49140564c7d80468c9"</span>).expect(<span class="string">"failed to decode sec key"</span>)
+            ).expect(<span class="string">"failed to decode pub key"</span>).to_hex(),
+            <span class="string">"666c450f5e888d3b2341d77b32cb6d0cd4912829ea9c41030d1fd2baff6b9a30c267208638544299e8d369e80b25a24bdd07383b6ea908028d9a406b528d4a01"
         </span>);
 
         <span class="macro">assert_eq!</span>(PubKey::from_secret_key(
-                SecKey::from_hex(<span class="string">&quot;0859771e9394e96dd6d01d57ef074dc25313e63bd331fa5478a9fed9e24855a0&quot;</span>).expect(<span class="string">&quot;failed to decode sec key&quot;</span>)
-            ).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).to_hex(),
-            <span class="string">&quot;6ed0776ab11e3dd3b637cce03a90529e518220132f1a61dd9c0d50aa998abf1d2f43c0f1eb73888ef6f7dac4d7094d3c92cd67abab39b828c5f10aff0b6a0002&quot;
+                SecKey::from_hex(<span class="string">"0859771e9394e96dd6d01d57ef074dc25313e63bd331fa5478a9fed9e24855a0"</span>).expect(<span class="string">"failed to decode sec key"</span>)
+            ).expect(<span class="string">"failed to decode pub key"</span>).to_hex(),
+            <span class="string">"6ed0776ab11e3dd3b637cce03a90529e518220132f1a61dd9c0d50aa998abf1d2f43c0f1eb73888ef6f7dac4d7094d3c92cd67abab39b828c5f10aff0b6a0002"
         </span>);
     }
 
@@ -969,17 +971,17 @@
     </span><span class="kw">fn </span>from_address() {
         <span class="macro">macro_rules! </span>assert_from_address_check {
             (<span class="macro-nonterminal">$address</span>:expr) =&gt; {
-                <span class="kw">let </span>pk = PubKey::from_address(<span class="macro-nonterminal">$address</span>).expect(<span class="string">&quot;failed to create pubkey&quot;</span>);
+                <span class="kw">let </span>pk = PubKey::from_address(<span class="macro-nonterminal">$address</span>).expect(<span class="string">"failed to create pubkey"</span>);
                 <span class="macro">assert_eq!</span>(pk.into_address(), <span class="macro-nonterminal">$address</span>);
             };
         }
 
-        <span class="macro">assert_from_address_check!</span>(<span class="string">&quot;B62qnzbXmRNo9q32n4SNu2mpB8e7FYYLH8NmaX6oFCBYjjQ8SbD7uzV&quot;</span>);
-        <span class="macro">assert_from_address_check!</span>(<span class="string">&quot;B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt&quot;</span>);
-        <span class="macro">assert_from_address_check!</span>(<span class="string">&quot;B62qoG5Yk4iVxpyczUrBNpwtx2xunhL48dydN53A2VjoRwF8NUTbVr4&quot;</span>);
-        <span class="macro">assert_from_address_check!</span>(<span class="string">&quot;B62qrKG4Z8hnzZqp1AL8WsQhQYah3quN1qUj3SyfJA8Lw135qWWg1mi&quot;</span>);
-        <span class="macro">assert_from_address_check!</span>(<span class="string">&quot;B62qoqiAgERjCjXhofXiD7cMLJSKD8hE8ZtMh4jX5MPNgKB4CFxxm1N&quot;</span>);
-        <span class="macro">assert_from_address_check!</span>(<span class="string">&quot;B62qkiT4kgCawkSEF84ga5kP9QnhmTJEYzcfgGuk6okAJtSBfVcjm1M&quot;</span>);
+        <span class="macro">assert_from_address_check!</span>(<span class="string">"B62qnzbXmRNo9q32n4SNu2mpB8e7FYYLH8NmaX6oFCBYjjQ8SbD7uzV"</span>);
+        <span class="macro">assert_from_address_check!</span>(<span class="string">"B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt"</span>);
+        <span class="macro">assert_from_address_check!</span>(<span class="string">"B62qoG5Yk4iVxpyczUrBNpwtx2xunhL48dydN53A2VjoRwF8NUTbVr4"</span>);
+        <span class="macro">assert_from_address_check!</span>(<span class="string">"B62qrKG4Z8hnzZqp1AL8WsQhQYah3quN1qUj3SyfJA8Lw135qWWg1mi"</span>);
+        <span class="macro">assert_from_address_check!</span>(<span class="string">"B62qoqiAgERjCjXhofXiD7cMLJSKD8hE8ZtMh4jX5MPNgKB4CFxxm1N"</span>);
+        <span class="macro">assert_from_address_check!</span>(<span class="string">"B62qkiT4kgCawkSEF84ga5kP9QnhmTJEYzcfgGuk6okAJtSBfVcjm1M"</span>);
     }
 
     <span class="attr">#[test]
@@ -992,7 +994,7 @@
         ];
         <span class="macro">assert_eq!</span>(
             PubKey::from_bytes(<span class="kw-2">&amp;</span>bytes)
-                .expect(<span class="string">&quot;failed to decode pub key&quot;</span>)
+                .expect(<span class="string">"failed to decode pub key"</span>)
                 .to_bytes(),
             bytes
         );
@@ -1018,41 +1020,41 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>compressed_from_hex() {
         <span class="macro">assert_eq!</span>(PubKey::from_hex(
-                <span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c&quot;
-            </span>).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).into_address(),
+                <span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"
+            </span>).expect(<span class="string">"failed to decode pub key"</span>).into_address(),
             CompressedPubKey::from_hex(
-                <span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee390901&quot;
-            </span>).expect(<span class="string">&quot;failed to decode compressed pub key&quot;</span>).into_address()
+                <span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee390901"
+            </span>).expect(<span class="string">"failed to decode compressed pub key"</span>).into_address()
         );
 
         <span class="macro">assert_eq!</span>(PubKey::from_hex(
-                <span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c&quot;
-            </span>).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).into_compressed(),
+                <span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"
+            </span>).expect(<span class="string">"failed to decode pub key"</span>).into_compressed(),
             CompressedPubKey::from_hex(
-                <span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee390901&quot;
-            </span>).expect(<span class="string">&quot;failed to decode compressed pub key&quot;</span>)
+                <span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee390901"
+            </span>).expect(<span class="string">"failed to decode compressed pub key"</span>)
         );
 
         <span class="macro">assert_ne!</span>(PubKey::from_hex(
-                <span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c&quot;
-            </span>).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).into_compressed(),
+                <span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee39093179f4f12897797cfe78bf2fd6321f36b00bd0592defbf39a199b4168735883c"
+            </span>).expect(<span class="string">"failed to decode pub key"</span>).into_compressed(),
             CompressedPubKey::from_hex( <span class="comment">// Invalid parity bit
-                </span><span class="string">&quot;44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee390900&quot;
-            </span>).expect(<span class="string">&quot;failed to decode compressed pub key&quot;</span>)
+                </span><span class="string">"44100485d466a4c9f481d43be9a6d4a9a5e97adac19777b14b6b7a81edee390900"
+            </span>).expect(<span class="string">"failed to decode compressed pub key"</span>)
         );
 
         <span class="macro">assert_eq!</span>(PubKey::from_hex(
-                <span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928&quot;
-            </span>).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).into_compressed(),
+                <span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928"
+            </span>).expect(<span class="string">"failed to decode pub key"</span>).into_compressed(),
             CompressedPubKey::from_hex(
-                <span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2900&quot;
-            </span>).expect(<span class="string">&quot;failed to decode compressed pub key&quot;</span>)
+                <span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2900"
+            </span>).expect(<span class="string">"failed to decode compressed pub key"</span>)
         );
 
         <span class="macro">assert_eq!</span>(
             CompressedPubKey::from_hex(
                 <span class="comment">// Missing parity bit
-                </span><span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29&quot;
+                </span><span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29"
             </span>),
             <span class="prelude-val">Err</span>(PubKeyError::YCoordinateParityBytes)
         );
@@ -1060,7 +1062,7 @@
         <span class="macro">assert_eq!</span>(
             CompressedPubKey::from_hex(
                 <span class="comment">// Wrong parity bytes
-                </span><span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a290101&quot;
+                </span><span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a290101"
             </span>),
             <span class="prelude-val">Err</span>(PubKeyError::YCoordinateParityBytes)
         );
@@ -1068,29 +1070,29 @@
         <span class="macro">assert_eq!</span>(
             CompressedPubKey::from_hex(
                 <span class="comment">// Invalid parity byte
-                </span><span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2902&quot;
+                </span><span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2902"
             </span>),
             <span class="prelude-val">Err</span>(PubKeyError::YCoordinateParity)
         );
 
         <span class="macro">assert!</span>(CompressedPubKey::from_hex(
             <span class="comment">// OK parity byte (odd)
-            </span><span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2900&quot;
+            </span><span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2900"
         </span>)
         .is_ok());
 
         <span class="macro">assert!</span>(CompressedPubKey::from_hex(
             <span class="comment">// OK parity byte (odd)
-            </span><span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2901&quot;
+            </span><span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2901"
         </span>)
         .is_ok());
 
         <span class="macro">assert_ne!</span>(PubKey::from_hex(
-                <span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928&quot;
-            </span>).expect(<span class="string">&quot;failed to decode pub key&quot;</span>).into_compressed(),
+                <span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a29125030f6cd465cccf2ebbaabc397a6823932bc55dc1ddf9954c9e78da07c0928"
+            </span>).expect(<span class="string">"failed to decode pub key"</span>).into_compressed(),
             CompressedPubKey::from_hex(
-                <span class="string">&quot;0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2901&quot;
-            </span>).expect(<span class="string">&quot;failed to decode compressed pub key&quot;</span>)
+                <span class="string">"0c18d735252f4401eb845d08a87d780e9dc6ed053d0e071395277f0a34d45a2901"
+            </span>).expect(<span class="string">"failed to decode compressed pub key"</span>)
         );
     }
 
@@ -1102,7 +1104,7 @@
         ];
         <span class="macro">assert_eq!</span>(
             CompressedPubKey::from_bytes(<span class="kw-2">&amp;</span>bytes)
-                .expect(<span class="string">&quot;failed to decode pub key&quot;</span>)
+                .expect(<span class="string">"failed to decode pub key"</span>)
                 .to_bytes(),
             bytes
         );

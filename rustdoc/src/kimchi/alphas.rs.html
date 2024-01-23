@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/alphas.rs`."><title>alphas.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/alphas.rs`."><title>alphas.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -390,7 +392,7 @@
     <span class="doccomment">/// The mapping between constraint types and powers of alpha
     </span>mapping: HashMap&lt;ArgumentType, (u32, u32)&gt;,
     <span class="doccomment">/// The powers of alpha: 1, alpha, alpha^2, etc.
-    /// If set to [Some], you can&#39;t register new constraints.
+    /// If set to [Some], you can't register new constraints.
     </span>alphas: <span class="prelude-ty">Option</span>&lt;Vec&lt;F&gt;&gt;,
 }
 
@@ -400,11 +402,11 @@
     /// This function will panic if you register the same type twice.
     </span><span class="kw">pub fn </span>register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: ArgumentType, powers: u32) {
         <span class="kw">if </span><span class="self">self</span>.alphas.is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;you cannot register new constraints once initialized with a field element&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"you cannot register new constraints once initialized with a field element"</span>);
         }
 
         <span class="comment">// gates are a special case, as we reuse the same power of alpha
-        // across all of them (they&#39;re mutually exclusive)
+        // across all of them (they're mutually exclusive)
         </span><span class="kw">let </span>ty = <span class="kw">if </span><span class="macro">matches!</span>(ty, ArgumentType::Gate(<span class="kw">_</span>)) {
             <span class="comment">// the zero gate is not used, so we default to it
             </span>ArgumentType::Gate(GateType::Zero)
@@ -413,13 +415,13 @@
         };
 
         <span class="kw">if </span><span class="self">self</span>.mapping.insert(ty, (<span class="self">self</span>.next_power, powers)).is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;cannot re-register {ty:?}&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"cannot re-register {ty:?}"</span>);
         }
 
         <span class="self">self</span>.next_power = <span class="self">self
             </span>.next_power
             .checked_add(powers)
-            .expect(<span class="string">&quot;too many powers of alphas were registered&quot;</span>);
+            .expect(<span class="string">"too many powers of alphas were registered"</span>);
     }
 
     <span class="doccomment">/// Returns a range of exponents, for a given [ArgumentType], upperbounded by `num`.
@@ -438,11 +440,11 @@
         <span class="kw">let </span>range = <span class="self">self
             </span>.mapping
             .get(<span class="kw-2">&amp;</span>ty)
-            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;constraint {ty:?} was not registered&quot;</span>));
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"constraint {ty:?} was not registered"</span>));
 
         <span class="kw">if </span>num &gt; range.<span class="number">1 </span>{
             <span class="macro">panic!</span>(
-                <span class="string">&quot;you asked for {num} exponents, but only registered {} for {:?}&quot;</span>,
+                <span class="string">"you asked for {num} exponents, but only registered {} for {:?}"</span>,
                 range.<span class="number">1</span>, ty
             );
         }
@@ -484,17 +486,17 @@
         <span class="kw">let </span>range = <span class="self">self
             </span>.mapping
             .get(<span class="kw-2">&amp;</span>ty)
-            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;constraint {ty:?} was not registered&quot;</span>));
+            .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"constraint {ty:?} was not registered"</span>));
 
         <span class="kw">if </span>num &gt; range.<span class="number">1 </span>{
             <span class="macro">panic!</span>(
-                <span class="string">&quot;you asked for {num} alphas, but only {} are available for {:?}&quot;</span>,
+                <span class="string">"you asked for {num} alphas, but only {} are available for {:?}"</span>,
                 range.<span class="number">1</span>, ty
             );
         }
 
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.alphas {
-            <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;you must call instantiate with an actual field element first&quot;</span>),
+            <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"you must call instantiate with an actual field element first"</span>),
             <span class="prelude-val">Some</span>(alphas) =&gt; {
                 <span class="kw">let </span>alphas_range = alphas
                     .iter()
@@ -511,24 +513,24 @@
 }
 
 <span class="kw">impl</span>&lt;T&gt; Display <span class="kw">for </span>Alphas&lt;T&gt; {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">for </span>arg <span class="kw">in </span>[
             ArgumentType::Gate(GateType::Zero),
             ArgumentType::Permutation,
             <span class="comment">//            ArgumentType::Lookup,
         </span>] {
             <span class="kw">let </span>name = <span class="kw">if </span><span class="macro">matches!</span>(arg, ArgumentType::Gate(<span class="kw">_</span>)) {
-                <span class="string">&quot;gates&quot;</span>.to_string()
+                <span class="string">"gates"</span>.to_string()
             } <span class="kw">else </span>{
-                <span class="macro">format!</span>(<span class="string">&quot;{arg:?}&quot;</span>)
+                <span class="macro">format!</span>(<span class="string">"{arg:?}"</span>)
             };
             <span class="kw">let </span>range = <span class="self">self
                 </span>.mapping
                 .get(<span class="kw-2">&amp;</span>arg)
-                .expect(<span class="string">&quot;you need to register all arguments before calling display&quot;</span>);
+                .expect(<span class="string">"you need to register all arguments before calling display"</span>);
             <span class="macro">writeln!</span>(
                 f,
-                <span class="string">&quot;* **{}**. Offset starts at {} and {} powers of $\\alpha$ are used&quot;</span>,
+                <span class="string">"* **{}**. Offset starts at {} and {} powers of $\\alpha$ are used"</span>,
                 name, range.<span class="number">0</span>, range.<span class="number">1
             </span>)<span class="question-mark">?</span>;
         }
@@ -569,10 +571,10 @@
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self</span>.inner.next() {
             <span class="kw">if </span>thread::panicking() {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;the registered number of powers of alpha for {:?} is too large, you haven&#39;t used alpha^{} (absolute power of alpha)&quot;</span>, <span class="self">self</span>.debug_info,
+                <span class="macro">eprintln!</span>(<span class="string">"the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)"</span>, <span class="self">self</span>.debug_info,
                 v);
             } <span class="kw">else </span>{
-                <span class="macro">panic!</span>(<span class="string">&quot;the registered number of powers of alpha for {:?} is too large, you haven&#39;t used alpha^{} (absolute power of alpha)&quot;</span>, <span class="self">self</span>.debug_info,
+                <span class="macro">panic!</span>(<span class="string">"the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)"</span>, <span class="self">self</span>.debug_info,
                 v);
             }
         }
@@ -670,18 +672,18 @@
         <span class="kw">let </span>(_linearization, powers_of_alpha) =
             expr_linearization::&lt;Fp&gt;(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>index.cs.feature_flags), <span class="bool-val">true</span>);
         <span class="comment">// make sure this is present in the specification
-        </span><span class="kw">let </span>manifest_dir = std::env::var(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>).unwrap();
+        </span><span class="kw">let </span>manifest_dir = std::env::var(<span class="string">"CARGO_MANIFEST_DIR"</span>).unwrap();
         <span class="kw">let </span>spec_path = Path::new(<span class="kw-2">&amp;</span>manifest_dir)
-            .join(<span class="string">&quot;..&quot;</span>)
-            .join(<span class="string">&quot;book&quot;</span>)
-            .join(<span class="string">&quot;specifications&quot;</span>)
-            .join(<span class="string">&quot;kimchi&quot;</span>)
-            .join(<span class="string">&quot;template.md&quot;</span>);
+            .join(<span class="string">".."</span>)
+            .join(<span class="string">"book"</span>)
+            .join(<span class="string">"specifications"</span>)
+            .join(<span class="string">"kimchi"</span>)
+            .join(<span class="string">"template.md"</span>);
 
         <span class="kw">let </span>spec = fs::read_to_string(spec_path).unwrap();
         <span class="kw">if </span>!spec.contains(<span class="kw-2">&amp;</span>powers_of_alpha.to_string()) {
             <span class="macro">panic!</span>(
-                <span class="string">&quot;the specification of kimchi must contain the following paragraph:\n\n{powers_of_alpha}\n\n&quot;
+                <span class="string">"the specification of kimchi must contain the following paragraph:\n\n{powers_of_alpha}\n\n"
             </span>);
         }
     }

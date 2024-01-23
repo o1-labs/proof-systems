@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `optimism/src/mips/interpreter.rs`."><title>interpreter.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_optimism" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi_optimism/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `optimism/src/mips/interpreter.rs`."><title>interpreter.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_optimism" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../kimchi_optimism/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2877,7 +2879,7 @@
         <span class="self">self</span>.push_register_if(idx, value, <span class="kw-2">&amp;</span><span class="self">Self</span>::constant(<span class="number">1</span>))
     }
 
-    <span class="doccomment">/// Fetch the last &#39;access index&#39; for the general purpose register with index `idx`, and store
+    <span class="doccomment">/// Fetch the last 'access index' for the general purpose register with index `idx`, and store
     /// it in local position `output`.
     ///
     /// # Safety
@@ -2890,7 +2892,7 @@
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Set the last &#39;access index&#39; for the general purpose register with index `idx` to `value` if
+    <span class="doccomment">/// Set the last 'access index' for the general purpose register with index `idx` to `value` if
     /// `if_is_true` is true.
     ///
     /// # Safety
@@ -2904,7 +2906,7 @@
         if_is_true: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
     );
 
-    <span class="doccomment">/// Set the last &#39;access index&#39; for the general purpose register with index `idx` to `value`.
+    <span class="doccomment">/// Set the last 'access index' for the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
@@ -2937,8 +2939,8 @@
         <span class="kw">let </span>elapsed_time = instruction_counter.clone() - last_accessed.clone();
         <span class="kw">let </span>new_accessed = {
             <span class="comment">// Here, we write as if the register had been written *at the start of the next
-            // instruction*. This ensures that we can&#39;t &#39;time travel&#39; within this
-            // instruction, and claim to read the value that we&#39;re about to write!
+            // instruction*. This ensures that we can't 'time travel' within this
+            // instruction, and claim to read the value that we're about to write!
 
             // FIXME: A register should allow multiple accesses within the same instruction.
 
@@ -3033,7 +3035,7 @@
     /// manually add the lookups for this memory operation.
     </span><span class="kw">unsafe fn </span>push_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
 
-    <span class="doccomment">/// Fetch the last &#39;access index&#39; that the memory at address `addr` was written at, and store
+    <span class="doccomment">/// Fetch the last 'access index' that the memory at address `addr` was written at, and store
     /// it in local position `output`.
     ///
     /// # Safety
@@ -3046,7 +3048,7 @@
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Set the last &#39;access index&#39; for the memory at address `addr` to `value`.
+    <span class="doccomment">/// Set the last 'access index' for the memory at address `addr` to `value`.
     ///
     /// # Safety
     ///
@@ -3075,8 +3077,8 @@
         <span class="kw">let </span>elapsed_time = instruction_counter.clone() - last_accessed.clone();
         <span class="kw">let </span>new_accessed = {
             <span class="comment">// Here, we write as if the memory had been written *at the start of the next
-            // instruction*. This ensures that we can&#39;t &#39;time travel&#39; within this
-            // instruction, and claim to read the value that we&#39;re about to write!
+            // instruction*. This ensures that we can't 'time travel' within this
+            // instruction, and claim to read the value that we're about to write!
             </span>instruction_counter + <span class="self">Self</span>::constant(<span class="number">1</span>)
         };
         <span class="kw">unsafe </span>{ <span class="self">self</span>.push_memory_access(addr, new_accessed.clone()) };
@@ -3699,7 +3701,7 @@
             <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallReadHint =&gt; {
-            <span class="comment">// We don&#39;t really write here, since the value is unused, per the cannon
+            <span class="comment">// We don't really write here, since the value is unused, per the cannon
             // implementation. Just claim that we wrote the correct length.
             </span><span class="kw">let </span>length = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">6</span>));
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), length);
@@ -3740,7 +3742,7 @@
             <span class="comment">// FIXME: Should assert that `is_preimage_read` and `is_hint_read` cannot be true here.
             </span><span class="kw">let </span>other_fd = Env::constant(<span class="number">1</span>) - is_stdin - is_preimage_read - is_hint_read;
 
-            <span class="comment">// We&#39;re either reading stdin, in which case we get `(0, 0)` as desired, or we&#39;ve hit a
+            <span class="comment">// We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
             // bad FD that we reject with EBADF.
             </span><span class="kw">let </span>v0 = other_fd.clone() * Env::constant(<span class="number">0xFFFFFFFF</span>);
             <span class="kw">let </span>v1 = other_fd * Env::constant(<span class="number">0x9</span>); <span class="comment">// EBADF
@@ -3780,7 +3782,7 @@
                     <span class="comment">// FIXME: Requires a range check
                     </span><span class="kw">let </span>pos = env.alloc_scratch();
                     <span class="comment">// The virtual register is 32 bits wide, so we can just read 6 bytes. If the
-                    // register has an incorrect value, it will be unprovable and we&#39;ll fault.
+                    // register has an incorrect value, it will be unprovable and we'll fault.
                     </span><span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>write_length, <span class="number">6</span>, <span class="number">2</span>, pos) }
                 };
                 Env::constant(REGISTER_PREIMAGE_KEY_END <span class="kw">as </span>u32) - registers_left_to_write_after_this
@@ -3846,7 +3848,7 @@
                     addr.clone() + Env::constant(<span class="number">4</span>) - byte_subaddr
                 };
                 <span class="kw">let </span>overwrite_0 = {
-                    <span class="comment">// We always write the first byte if we&#39;re not preserving it, since it will
+                    <span class="comment">// We always write the first byte if we're not preserving it, since it will
                     // have been read from `addr`.
                     </span>env.equal(<span class="kw-2">&amp;</span>bytes_to_preserve_in_register, <span class="kw-2">&amp;</span>Env::constant(<span class="number">0</span>))
                 };
@@ -3854,7 +3856,7 @@
                     <span class="comment">// We write the second byte if:
                     //   we wrote the first byte
                     </span>overwrite_0.clone()
-                    <span class="comment">//   and this isn&#39;t the start of the next word (which implies `overwrite_0`),
+                    <span class="comment">//   and this isn't the start of the next word (which implies `overwrite_0`),
                     </span>- env.equal(<span class="kw-2">&amp;</span>(read_address.clone() + Env::constant(<span class="number">1</span>)), <span class="kw-2">&amp;</span>next_word_addr)
                     <span class="comment">//   or this byte was read from `addr`
                     </span>+ env.equal(<span class="kw-2">&amp;</span>bytes_to_preserve_in_register, <span class="kw-2">&amp;</span>Env::constant(<span class="number">1</span>))
@@ -3863,7 +3865,7 @@
                     <span class="comment">// We write the third byte if:
                     //   we wrote the second byte
                     </span>overwrite_1.clone()
-                    <span class="comment">//   and this isn&#39;t the start of the next word (which implies `overwrite_1`),
+                    <span class="comment">//   and this isn't the start of the next word (which implies `overwrite_1`),
                     </span>- env.equal(<span class="kw-2">&amp;</span>(read_address.clone() + Env::constant(<span class="number">2</span>)), <span class="kw-2">&amp;</span>next_word_addr)
                     <span class="comment">//   or this byte was read from `addr`
                     </span>+ env.equal(<span class="kw-2">&amp;</span>bytes_to_preserve_in_register, <span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>))
@@ -3872,7 +3874,7 @@
                     <span class="comment">// We write the fourth byte if:
                     //   we wrote the third byte
                     </span>overwrite_2.clone()
-                    <span class="comment">//   and this isn&#39;t the start of the next word (which implies `overwrite_2`),
+                    <span class="comment">//   and this isn't the start of the next word (which implies `overwrite_2`),
                     </span>- env.equal(<span class="kw-2">&amp;</span>(read_address.clone() + Env::constant(<span class="number">3</span>)), <span class="kw-2">&amp;</span>next_word_addr)
                     <span class="comment">//   or this byte was read from `addr`
                     </span>+ env.equal(<span class="kw-2">&amp;</span>bytes_to_preserve_in_register, <span class="kw-2">&amp;</span>Env::constant(<span class="number">3</span>))
@@ -3931,7 +3933,7 @@
             </span><span class="kw">let </span>known_fd = is_stdout + is_stderr + is_preimage_write + is_hint_write;
             <span class="kw">let </span>other_fd = Env::constant(<span class="number">1</span>) - known_fd.clone();
 
-            <span class="comment">// We&#39;re either reading stdin, in which case we get `(0, 0)` as desired, or we&#39;ve hit a
+            <span class="comment">// We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
             // bad FD that we reject with EBADF.
             </span><span class="kw">let </span>v0 = known_fd * write_length + other_fd.clone() * Env::constant(<span class="number">0xFFFFFFFF</span>);
             <span class="kw">let </span>v1 = other_fd * Env::constant(<span class="number">0x9</span>); <span class="comment">// EBADF
@@ -4259,7 +4261,7 @@
             <span class="kw">return</span>;
         }
     };
-    <span class="comment">// TODO: Don&#39;t halt.
+    <span class="comment">// TODO: Don't halt.
     </span>env.set_halted(Env::constant(<span class="number">1</span>));
 }
 
@@ -4783,7 +4785,7 @@
 
             <span class="comment">// The `-3` here feels odd, but simulates the `&lt;&lt; 24` in cannon, and matches the
             // behavior defined in the spec.
-            // See e.g. &#39;MIPS IV Instruction Set&#39; Rev 3.2, Table A-31 for reference.
+            // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.
             </span><span class="kw">let </span>m0 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">3</span>)));
             <span class="kw">let </span>m1 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">2</span>)));
             <span class="kw">let </span>m2 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">1</span>)));
@@ -5085,7 +5087,7 @@
 
             <span class="comment">// The `-3` here feels odd, but simulates the `&lt;&lt; 24` in cannon, and matches the
             // behavior defined in the spec.
-            // See e.g. &#39;MIPS IV Instruction Set&#39; Rev 3.2, Table A-31 for reference.
+            // See e.g. 'MIPS IV Instruction Set' Rev 3.2, Table A-31 for reference.
             </span><span class="kw">let </span>m0 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">3</span>)));
             <span class="kw">let </span>m1 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">2</span>)));
             <span class="kw">let </span>m2 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() - Env::constant(<span class="number">1</span>)));

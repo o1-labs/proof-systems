@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/snarky-deriver/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="snarky_deriver" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../snarky_deriver/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/snarky-deriver/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="snarky_deriver" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../snarky_deriver/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -591,7 +593,7 @@
 
 <span class="doccomment">/// The [SnarkyType] derive macro.
 /// It generates implementations of \[`kimchi::snarky::SnarkyType`\],
-/// as long as your structure&#39;s fields implement that type as well.
+/// as long as your structure's fields implement that type as well.
 /// It works very similarly to \[`serde`\].
 ///
 /// For example:
@@ -609,7 +611,7 @@
 ///
 /// ```text
 /// #[derive(kimchi::SnarkyType)]
-/// #[snarky(field = &quot;G::ScalarField&quot;)]
+/// #[snarky(field = "G::ScalarField")]
 /// struct MyType&lt;G&gt; where G: KimchiCurve {
 /// ```
 ///
@@ -627,9 +629,9 @@
 ///
 /// ```text
 /// #[derive(kimchi::SnarkyType)]
-/// #[snarky(check_fn = &quot;my_check_fn&quot;)]
-/// #[snarky(auxiliary_fn = &quot;my_auxiliary_fn&quot;)]
-/// #[snarky(auxiliary_type = &quot;MyAuxiliaryType&quot;)]
+/// #[snarky(check_fn = "my_check_fn")]
+/// #[snarky(auxiliary_fn = "my_auxiliary_fn")]
+/// #[snarky(auxiliary_type = "MyAuxiliaryType")]
 /// struct MyType&lt;F&gt; where F: PrimeField {
 /// ```
 ///
@@ -638,7 +640,7 @@
 ///
 /// ```text
 /// #[derive(kimchi::SnarkyType)]
-/// #[snarky(value = &quot;MyOutOfCircuitType&quot;)]
+/// #[snarky(value = "MyOutOfCircuitType")]
 /// struct MyType&lt;F&gt; where F: PrimeField {
 /// ```
 ///
@@ -653,7 +655,7 @@
 
     // parse struct
     </span><span class="kw">let </span>item_struct: syn::ItemStruct =
-        syn::parse(item).expect(<span class="string">&quot;only structs are supported with `SnarkyType` at the moment&quot;</span>);
+        syn::parse(item).expect(<span class="string">"only structs are supported with `SnarkyType` at the moment"</span>);
 
     <span class="comment">// parse macro attributes into our cfg struct
     // warning: parsing macro attributes is hairy
@@ -668,11 +670,11 @@
     <span class="kw">let </span><span class="kw-2">mut </span>helper_attributes = HelperAttributes::default();
 
     <span class="kw">let </span>malformed_snarky_helper =
-        <span class="string">&quot;snarky helper malformed. It should look like `#[snarky(key = value)]`&quot;</span>;
+        <span class="string">"snarky helper malformed. It should look like `#[snarky(key = value)]`"</span>;
     <span class="kw">for </span>attr <span class="kw">in </span><span class="kw-2">&amp;</span>item_struct.attrs {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(syn::Meta::List(meta)) = attr.parse_meta() {
             <span class="comment">// we only care about `#[snarky(...)]`
-            </span><span class="kw">if </span>!meta.path.is_ident(<span class="string">&quot;snarky&quot;</span>) {
+            </span><span class="kw">if </span>!meta.path.is_ident(<span class="string">"snarky"</span>) {
                 <span class="kw">continue</span>;
             }
 
@@ -685,26 +687,26 @@
                     })) =&gt; {
                         <span class="kw">let </span>value = <span class="kw">match </span>lit {
                             Lit::Str(lit) =&gt; lit.value(),
-                            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;{malformed_snarky_helper}&quot;</span>),
+                            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"{malformed_snarky_helper}"</span>),
                         };
-                        <span class="kw">if </span>path.is_ident(<span class="string">&quot;field&quot;</span>) {
+                        <span class="kw">if </span>path.is_ident(<span class="string">"field"</span>) {
                             helper_attributes.field = <span class="prelude-val">Some</span>(value);
-                        } <span class="kw">else if </span>path.is_ident(<span class="string">&quot;check_fn&quot;</span>) {
+                        } <span class="kw">else if </span>path.is_ident(<span class="string">"check_fn"</span>) {
                             helper_attributes.check_fn = <span class="prelude-val">Some</span>(value);
-                            <span class="macro">panic!</span>(<span class="string">&quot;`check_fn` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)&quot;</span>);
-                        } <span class="kw">else if </span>path.is_ident(<span class="string">&quot;auxiliary_fn&quot;</span>) {
+                            <span class="macro">panic!</span>(<span class="string">"`check_fn` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)"</span>);
+                        } <span class="kw">else if </span>path.is_ident(<span class="string">"auxiliary_fn"</span>) {
                             helper_attributes.auxiliary_fn = <span class="prelude-val">Some</span>(value);
-                            <span class="macro">panic!</span>(<span class="string">&quot;`auxiliary_fn` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)&quot;</span>);
-                        } <span class="kw">else if </span>path.is_ident(<span class="string">&quot;auxiliary_type&quot;</span>) {
+                            <span class="macro">panic!</span>(<span class="string">"`auxiliary_fn` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)"</span>);
+                        } <span class="kw">else if </span>path.is_ident(<span class="string">"auxiliary_type"</span>) {
                             helper_attributes.auxiliary_type = <span class="prelude-val">Some</span>(value);
-                            <span class="macro">panic!</span>(<span class="string">&quot;`auxiliary_type` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)&quot;</span>);
-                        } <span class="kw">else if </span>path.is_ident(<span class="string">&quot;value&quot;</span>) {
+                            <span class="macro">panic!</span>(<span class="string">"`auxiliary_type` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)"</span>);
+                        } <span class="kw">else if </span>path.is_ident(<span class="string">"value"</span>) {
                             helper_attributes.value = <span class="prelude-val">Some</span>(value);
                         } <span class="kw">else </span>{
-                            <span class="macro">panic!</span>(<span class="string">&quot;{malformed_snarky_helper}&quot;</span>);
+                            <span class="macro">panic!</span>(<span class="string">"{malformed_snarky_helper}"</span>);
                         }
                     }
-                    x =&gt; <span class="macro">panic!</span>(<span class="string">&quot;{x:?} {malformed_snarky_helper}&quot;</span>),
+                    x =&gt; <span class="macro">panic!</span>(<span class="string">"{x:?} {malformed_snarky_helper}"</span>),
                 };
             }
         }
@@ -716,7 +718,7 @@
         helper_attributes.auxiliary_fn.is_some(),
     ) {
         (<span class="bool-val">true</span>, <span class="bool-val">false</span>) | (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; {
-            <span class="macro">panic!</span>(<span class="string">&quot;`auxiliary_type` and `auxiliary_fn` have to be specified together&quot;</span>)
+            <span class="macro">panic!</span>(<span class="string">"`auxiliary_type` and `auxiliary_fn` have to be specified together"</span>)
         }
         <span class="kw">_ </span>=&gt; (),
     };
@@ -725,18 +727,18 @@
     // this is needed as we use the same type parameter in the implementation of SnarkyType
     // (i.e. `impl&lt;F&gt; SnarkyType&lt;F&gt; for MyType&lt;F, _&gt;`)
     //
-    // Note: if you use `#[snarky(field = &quot;MyField&quot;)]`, then we don&#39;t enforce this
+    // Note: if you use `#[snarky(field = "MyField")]`, then we don't enforce this
 
     </span><span class="kw">let </span>has_f_primefield = |generic: <span class="kw-2">&amp;</span>WherePredicate| {
         <span class="kw">if let </span>WherePredicate::Type(t) = generic {
             <span class="comment">// check that the type parameter is `F`
-            </span><span class="kw">if </span>!<span class="macro">matches!</span>(<span class="kw-2">&amp;</span>t.bounded_ty, Type::Path(p) <span class="kw">if </span>p.path.is_ident(<span class="string">&quot;F&quot;</span>)) {
+            </span><span class="kw">if </span>!<span class="macro">matches!</span>(<span class="kw-2">&amp;</span>t.bounded_ty, Type::Path(p) <span class="kw">if </span>p.path.is_ident(<span class="string">"F"</span>)) {
                 <span class="kw">return </span><span class="bool-val">false</span>;
             }
             <span class="comment">// check that it is bound by `PrimeField`
             </span>t.bounds.iter().any(|bound| {
                 <span class="kw">if let </span>TypeParamBound::Trait(trait_bound) = bound {
-                    trait_bound.path.segments.last().unwrap().ident == <span class="string">&quot;PrimeField&quot;
+                    trait_bound.path.segments.last().unwrap().ident == <span class="string">"PrimeField"
                 </span>} <span class="kw">else </span>{
                     <span class="bool-val">false
                 </span>}
@@ -747,7 +749,7 @@
     };
 
     <span class="kw">let </span>missing_field_err =
-        <span class="string">&quot;SnarkyType requires the type to have a type parameter `F: PrimeField, or to specify the field used via `#[snarky(field = \&quot;...\&quot;)]`&quot;</span>;
+        <span class="string">"SnarkyType requires the type to have a type parameter `F: PrimeField, or to specify the field used via `#[snarky(field = \"...\")]`"</span>;
 
     <span class="kw">let </span>has_f_primefield = item_struct
         .generics
@@ -757,10 +759,10 @@
         .unwrap_or(<span class="bool-val">false</span>);
 
     <span class="kw">let </span>impl_field = <span class="kw">match </span>(has_f_primefield, helper_attributes.field.as_ref()) {
-        (<span class="bool-val">true</span>, <span class="prelude-val">None</span>) =&gt; <span class="string">&quot;F&quot;</span>,
+        (<span class="bool-val">true</span>, <span class="prelude-val">None</span>) =&gt; <span class="string">"F"</span>,
         (<span class="bool-val">false</span>, <span class="prelude-val">Some</span>(field)) =&gt; field,
-        (<span class="bool-val">false</span>, <span class="prelude-val">None</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;{missing_field_err}&quot;</span>),
-        (<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;you cannot specify a field via `#[snarky(field = \&quot;...\&quot;)] if the type already has a `F: PrimeField`&quot;</span>),  
+        (<span class="bool-val">false</span>, <span class="prelude-val">None</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"{missing_field_err}"</span>),
+        (<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="macro">panic!</span>(<span class="string">"you cannot specify a field via `#[snarky(field = \"...\")] if the type already has a `F: PrimeField`"</span>),  
     };
     <span class="kw">let </span>impl_field_path: syn::Path = syn::parse_str(impl_field).unwrap();
 
@@ -772,23 +774,23 @@
             .iter()
             .map(|f| (f.ident.as_ref().unwrap(), <span class="kw-2">&amp;</span>f.ty))
             .unzip(),
-        Fields::Unnamed(_fields) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;tuple structs are not supported yet&quot;</span>),
+        Fields::Unnamed(_fields) =&gt; <span class="macro">panic!</span>(<span class="string">"tuple structs are not supported yet"</span>),
         Fields::Unit =&gt; (<span class="macro">vec!</span>[], <span class="macro">vec!</span>[]),
     };
 
     <span class="comment">// enforce that we have at least 1 field
     </span><span class="kw">if </span>field_names.is_empty() {
-        <span class="macro">panic!</span>(<span class="string">&quot;to use `#[derive(SnarkyType)]` your struct must at least have one field&quot;</span>);
+        <span class="macro">panic!</span>(<span class="string">"to use `#[derive(SnarkyType)]` your struct must at least have one field"</span>);
     }
 
     <span class="comment">// this deriver is used by both external users, and the kimchi crate itself,
     // so we need to change the path to kimchi depending on the context
-    </span><span class="kw">let </span>lib_path = <span class="kw">if </span>std::env::var(<span class="string">&quot;CARGO_PKG_NAME&quot;</span>).unwrap() == <span class="string">&quot;kimchi&quot; </span>{
-        <span class="string">&quot;crate&quot;
+    </span><span class="kw">let </span>lib_path = <span class="kw">if </span>std::env::var(<span class="string">"CARGO_PKG_NAME"</span>).unwrap() == <span class="string">"kimchi" </span>{
+        <span class="string">"crate"
     </span>} <span class="kw">else </span>{
-        <span class="string">&quot;::kimchi&quot;
+        <span class="string">"::kimchi"
     </span>};
-    <span class="kw">let </span>snarky_type_path_str = <span class="macro">format!</span>(<span class="string">&quot;{lib_path}::SnarkyType&lt;{impl_field}&gt;&quot;</span>);
+    <span class="kw">let </span>snarky_type_path_str = <span class="macro">format!</span>(<span class="string">"{lib_path}::SnarkyType&lt;{impl_field}&gt;"</span>);
     <span class="kw">let </span>snarky_type_path: syn::Path = syn::parse_str(<span class="kw-2">&amp;</span>snarky_type_path_str).unwrap();
 
     <span class="comment">//
@@ -810,7 +812,7 @@
     };
 
     <span class="kw">let </span>out_of_circuit = <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <span class="kw-2">&amp;</span>helper_attributes.value {
-        <span class="kw">let </span>typ: syn::Path = syn::parse_str(value).expect(<span class="string">&quot;could not parse your value&quot;</span>);
+        <span class="kw">let </span>typ: syn::Path = syn::parse_str(value).expect(<span class="string">"could not parse your value"</span>);
         <span class="macro">quote! </span>{
             <span class="kw">type </span>OutOfCircuit = #typ;
         }
@@ -837,8 +839,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>to_cvars_calls = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(idx, field) <span class="kw">in </span>field_names.iter().enumerate() {
             <span class="kw">let </span>idx = syn::Index::from(idx);
-            <span class="kw">let </span>cvar_i = <span class="macro">format_ident!</span>(<span class="string">&quot;cvars_{}&quot;</span>, idx);
-            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, idx);
+            <span class="kw">let </span>cvar_i = <span class="macro">format_ident!</span>(<span class="string">"cvars_{}"</span>, idx);
+            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, idx);
             to_cvars_calls.push(<span class="macro">quote! </span>{
                 <span class="kw">let </span>(#cvar_i, #aux_i) = <span class="self">self</span>.#field.to_cvars();
             });
@@ -846,7 +848,7 @@
 
         <span class="comment">// `aux_i, ...`
         </span><span class="kw">let </span>aux = (<span class="number">0</span>..field_names.len())
-            .map(|idx| <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, syn::Index::from(idx)))
+            .map(|idx| <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, syn::Index::from(idx)))
             .collect_vec();
 
         <span class="macro">quote! </span>{
@@ -880,8 +882,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>cvars_and_aux = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(idx, field_ty) <span class="kw">in </span>field_types.iter().enumerate() {
             <span class="kw">let </span>idx = syn::Index::from(idx);
-            <span class="kw">let </span>cvar_i = <span class="macro">format_ident!</span>(<span class="string">&quot;cvars_{}&quot;</span>, idx);
-            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, idx);
+            <span class="kw">let </span>cvar_i = <span class="macro">format_ident!</span>(<span class="string">"cvars_{}"</span>, idx);
+            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, idx);
 
             cvars_and_aux.push(<span class="macro">quote! </span>{
                 <span class="kw">let </span>end = offset + &lt;#field_ty <span class="kw">as </span>#snarky_type_path&gt;::SIZE_IN_FIELD_ELEMENTS;
@@ -895,8 +897,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>from_cvars_unsafe = Vec::with_capacity(field_types.len());
         <span class="kw">for </span>(idx, field_ty) <span class="kw">in </span>field_types.iter().enumerate() {
             <span class="kw">let </span>idx = syn::Index::from(idx);
-            <span class="kw">let </span>cvar_i = <span class="macro">format_ident!</span>(<span class="string">&quot;cvars_{}&quot;</span>, idx);
-            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, idx);
+            <span class="kw">let </span>cvar_i = <span class="macro">format_ident!</span>(<span class="string">"cvars_{}"</span>, idx);
+            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, idx);
 
             from_cvars_unsafe.push(<span class="macro">quote! </span>{
                 &lt;#field_ty <span class="kw">as </span>#snarky_type_path&gt;::from_cvars_unsafe(#cvar_i.to_vec(), #aux_i)
@@ -957,7 +959,7 @@
 
     <span class="comment">// value_to_field_elements
     </span><span class="kw">let </span>value_to_field_elements = <span class="kw">if </span>helper_attributes.value.is_some() {
-        <span class="kw">let </span>value_trait = <span class="macro">format!</span>(<span class="string">&quot;{lib_path}::CircuitAndValue&lt;{impl_field}&gt;&quot;</span>);
+        <span class="kw">let </span>value_trait = <span class="macro">format!</span>(<span class="string">"{lib_path}::CircuitAndValue&lt;{impl_field}&gt;"</span>);
         <span class="kw">let </span>value_trait: syn::Path = syn::parse_str(<span class="kw-2">&amp;</span>value_trait).unwrap();
         <span class="macro">quote! </span>{
             <span class="kw">fn </span>value_to_field_elements(value: <span class="kw-2">&amp;</span><span class="self">Self</span>::OutOfCircuit) -&gt; (Vec&lt;#impl_field_path&gt;, <span class="self">Self</span>::Auxiliary) {
@@ -969,8 +971,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>value_to_field_elements_calls = Vec::with_capacity(field_types.len());
         <span class="kw">for </span>(idx, field_ty) <span class="kw">in </span>field_types.iter().enumerate() {
             <span class="kw">let </span>idx = syn::Index::from(idx);
-            <span class="kw">let </span>fields_name = <span class="macro">format_ident!</span>(<span class="string">&quot;fields_{}&quot;</span>, idx);
-            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, idx);
+            <span class="kw">let </span>fields_name = <span class="macro">format_ident!</span>(<span class="string">"fields_{}"</span>, idx);
+            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, idx);
 
             value_to_field_elements_calls.push(<span class="macro">quote! </span>{
                 <span class="kw">let </span>(#fields_name, #aux_i) = &lt;#field_ty <span class="kw">as </span>#snarky_type_path&gt;::value_to_field_elements(<span class="kw-2">&amp;</span>value.#idx);
@@ -979,12 +981,12 @@
 
         <span class="comment">// `[fields_i, ...].concat()`
         </span><span class="kw">let </span>fields_i = (<span class="number">0</span>..field_types.len())
-            .map(|idx| <span class="macro">format_ident!</span>(<span class="string">&quot;fields_{}&quot;</span>, syn::Index::from(idx)))
+            .map(|idx| <span class="macro">format_ident!</span>(<span class="string">"fields_{}"</span>, syn::Index::from(idx)))
             .collect_vec();
 
         <span class="comment">// `aux_i, ...`
         </span><span class="kw">let </span>aux_i = (<span class="number">0</span>..field_types.len())
-            .map(|idx| <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, syn::Index::from(idx)))
+            .map(|idx| <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, syn::Index::from(idx)))
             .collect_vec();
 
         <span class="macro">quote! </span>{
@@ -1011,7 +1013,7 @@
 
     <span class="comment">// value_of_field_elements
     </span><span class="kw">let </span>value_of_field_elements = <span class="kw">if </span>helper_attributes.value.is_some() {
-        <span class="kw">let </span>value_trait = <span class="macro">format!</span>(<span class="string">&quot;{lib_path}::CircuitAndValue&lt;{impl_field}&gt;&quot;</span>);
+        <span class="kw">let </span>value_trait = <span class="macro">format!</span>(<span class="string">"{lib_path}::CircuitAndValue&lt;{impl_field}&gt;"</span>);
         <span class="kw">let </span>value_trait: syn::Path = syn::parse_str(<span class="kw-2">&amp;</span>value_trait).unwrap();
 
         <span class="macro">quote! </span>{
@@ -1030,8 +1032,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>fields_and_aux = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(idx, field_ty) <span class="kw">in </span>field_types.iter().enumerate() {
             <span class="kw">let </span>idx = syn::Index::from(idx);
-            <span class="kw">let </span>fields_i = <span class="macro">format_ident!</span>(<span class="string">&quot;fields_{}&quot;</span>, idx);
-            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, idx);
+            <span class="kw">let </span>fields_i = <span class="macro">format_ident!</span>(<span class="string">"fields_{}"</span>, idx);
+            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, idx);
 
             fields_and_aux.push(<span class="macro">quote! </span>{
                 <span class="kw">let </span>end = offset + &lt;#field_ty <span class="kw">as </span>#snarky_type_path&gt;::SIZE_IN_FIELD_ELEMENTS;
@@ -1045,8 +1047,8 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>value_of_field_elements = Vec::with_capacity(field_types.len());
         <span class="kw">for </span>(idx, field_ty) <span class="kw">in </span>field_types.iter().enumerate() {
             <span class="kw">let </span>idx = syn::Index::from(idx);
-            <span class="kw">let </span>fields_i = <span class="macro">format_ident!</span>(<span class="string">&quot;fields_{}&quot;</span>, idx);
-            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">&quot;aux_{}&quot;</span>, idx);
+            <span class="kw">let </span>fields_i = <span class="macro">format_ident!</span>(<span class="string">"fields_{}"</span>, idx);
+            <span class="kw">let </span>aux_i = <span class="macro">format_ident!</span>(<span class="string">"aux_{}"</span>, idx);
 
             value_of_field_elements.push(<span class="macro">quote! </span>{
                 &lt;#field_ty <span class="kw">as </span>#snarky_type_path&gt;::value_of_field_elements(#fields_i.to_vec(), #aux_i)
@@ -1087,7 +1089,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>extended_where_clause = extended_generics.where_clause.unwrap();
 
     <span class="kw">let </span>path: syn::Path =
-        syn::parse_str(<span class="kw-2">&amp;</span>snarky_type_path_str).expect(<span class="string">&quot;snarky_type_path_str is not a valid?&quot;</span>);
+        syn::parse_str(<span class="kw-2">&amp;</span>snarky_type_path_str).expect(<span class="string">"snarky_type_path_str is not a valid?"</span>);
     <span class="kw">let </span>impl_snarky_type = TraitBound {
         paren_token: <span class="prelude-val">None</span>,
         modifier: TraitBoundModifier::None,
@@ -1100,7 +1102,7 @@
         <span class="kw">match </span>field_type {
             Type::Path(_path) =&gt; types_to_bind.insert(field_type.clone()),
             Type::Array(array) =&gt; types_to_bind.insert(<span class="kw-2">*</span>array.elem.clone()),
-            x =&gt; <span class="macro">panic!</span>(<span class="string">&quot;non-path as bound types are not supported yet. To request this feature, please copy the entire error to a Github issue (https://github.com/o1-labs/proof-systems): {x:?}&quot;</span>),
+            x =&gt; <span class="macro">panic!</span>(<span class="string">"non-path as bound types are not supported yet. To request this feature, please copy the entire error to a Github issue (https://github.com/o1-labs/proof-systems): {x:?}"</span>),
         };
     }
 

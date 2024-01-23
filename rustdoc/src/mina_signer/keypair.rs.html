@@ -1,4 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/keypair.rs`."><title>keypair.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (59edd6705 2023-10-09)" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../mina_signer/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/keypair.rs`."><title>keypair.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
+    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../mina_signer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -226,7 +228,7 @@
     </span><span class="attr">#[error(transparent)]
     </span>PublicKey(<span class="attr">#[from] </span>PubKeyError),
     <span class="doccomment">/// point not on curve
-    </span><span class="attr">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"point not on curve"</span>)]
     </span>NonCurvePoint,
 }
 <span class="doccomment">/// Keypair result
@@ -288,7 +290,7 @@
         Keypair::from_secret_key(secret)
     }
 
-    <span class="doccomment">/// Obtain the Mina address corresponding to the keypair&#39;s public key
+    <span class="doccomment">/// Obtain the Mina address corresponding to the keypair's public key
     </span><span class="kw">pub fn </span>get_address(<span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.public.into_address()
     }
@@ -305,16 +307,16 @@
 }
 
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Keypair {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
         <span class="comment">// Omit the secret key for security
-        </span><span class="macro">write!</span>(f, <span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>.public)
+        </span><span class="macro">write!</span>(f, <span class="string">"{:?}"</span>, <span class="self">self</span>.public)
     }
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Keypair {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
         <span class="comment">// Omit the secret key for security
-        </span><span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.public)
+        </span><span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.public)
     }
 }
 
@@ -325,62 +327,62 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>from_hex() {
         <span class="macro">assert_eq!</span>(
-            Keypair::from_hex(<span class="string">&quot;&quot;</span>),
+            Keypair::from_hex(<span class="string">""</span>),
             <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyBytes))
         );
         <span class="macro">assert_eq!</span>(
-            Keypair::from_hex(<span class="string">&quot;1428fadcf0c02396e620f14f176fddb5d769b7de2027469d027a80142ef8f07&quot;</span>),
+            Keypair::from_hex(<span class="string">"1428fadcf0c02396e620f14f176fddb5d769b7de2027469d027a80142ef8f07"</span>),
             <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyHex))
         );
         <span class="macro">assert_eq!</span>(
-            Keypair::from_hex(<span class="string">&quot;0f5314f176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;</span>),
+            Keypair::from_hex(<span class="string">"0f5314f176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8"</span>),
             <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyHex))
         );
         <span class="macro">assert_eq!</span>(
-            Keypair::from_hex(<span class="string">&quot;g64244176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;</span>),
+            Keypair::from_hex(<span class="string">"g64244176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8"</span>),
             <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyHex))
         );
         <span class="macro">assert_eq!</span>(
-            Keypair::from_hex(<span class="string">&quot;4244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718&quot;</span>),
+            Keypair::from_hex(<span class="string">"4244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718"</span>),
             <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyBytes))
         );
 
-        Keypair::from_hex(<span class="string">&quot;164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718&quot;</span>)
-            .expect(<span class="string">&quot;failed to decode keypair secret key&quot;</span>);
+        Keypair::from_hex(<span class="string">"164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718"</span>)
+            .expect(<span class="string">"failed to decode keypair secret key"</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>get_address() {
         <span class="macro">macro_rules! </span>assert_get_address_eq {
             (<span class="macro-nonterminal">$sec_key_hex</span>:expr, <span class="macro-nonterminal">$target_address</span>:expr) =&gt; {
-                <span class="kw">let </span>kp = Keypair::from_hex(<span class="macro-nonterminal">$sec_key_hex</span>).expect(<span class="string">&quot;failed to create keypair&quot;</span>);
+                <span class="kw">let </span>kp = Keypair::from_hex(<span class="macro-nonterminal">$sec_key_hex</span>).expect(<span class="string">"failed to create keypair"</span>);
                 <span class="macro">assert_eq!</span>(kp.get_address(), <span class="macro-nonterminal">$target_address</span>);
             };
         }
 
         <span class="macro">assert_get_address_eq!</span>(
-            <span class="string">&quot;164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718&quot;</span>,
-            <span class="string">&quot;B62qnzbXmRNo9q32n4SNu2mpB8e7FYYLH8NmaX6oFCBYjjQ8SbD7uzV&quot;
+            <span class="string">"164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718"</span>,
+            <span class="string">"B62qnzbXmRNo9q32n4SNu2mpB8e7FYYLH8NmaX6oFCBYjjQ8SbD7uzV"
         </span>);
         <span class="macro">assert_get_address_eq!</span>(
-            <span class="string">&quot;3ca187a58f09da346844964310c7e0dd948a9105702b716f4d732e042e0c172e&quot;</span>,
-            <span class="string">&quot;B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt&quot;
+            <span class="string">"3ca187a58f09da346844964310c7e0dd948a9105702b716f4d732e042e0c172e"</span>,
+            <span class="string">"B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt"
         </span>);
         <span class="macro">assert_get_address_eq!</span>(
-            <span class="string">&quot;336eb4a19b3d8905824b0f2254fb495573be302c17582748bf7e101965aa4774&quot;</span>,
-            <span class="string">&quot;B62qrKG4Z8hnzZqp1AL8WsQhQYah3quN1qUj3SyfJA8Lw135qWWg1mi&quot;
+            <span class="string">"336eb4a19b3d8905824b0f2254fb495573be302c17582748bf7e101965aa4774"</span>,
+            <span class="string">"B62qrKG4Z8hnzZqp1AL8WsQhQYah3quN1qUj3SyfJA8Lw135qWWg1mi"
         </span>);
         <span class="macro">assert_get_address_eq!</span>(
-            <span class="string">&quot;1dee867358d4000f1dafa5978341fb515f89eeddbe450bd57df091f1e63d4444&quot;</span>,
-            <span class="string">&quot;B62qoqiAgERjCjXhofXiD7cMLJSKD8hE8ZtMh4jX5MPNgKB4CFxxm1N&quot;
+            <span class="string">"1dee867358d4000f1dafa5978341fb515f89eeddbe450bd57df091f1e63d4444"</span>,
+            <span class="string">"B62qoqiAgERjCjXhofXiD7cMLJSKD8hE8ZtMh4jX5MPNgKB4CFxxm1N"
         </span>);
         <span class="macro">assert_get_address_eq!</span>(
-            <span class="string">&quot;20f84123a26e58dd32b0ea3c80381f35cd01bc22a20346cc65b0a67ae48532ba&quot;</span>,
-            <span class="string">&quot;B62qkiT4kgCawkSEF84ga5kP9QnhmTJEYzcfgGuk6okAJtSBfVcjm1M&quot;
+            <span class="string">"20f84123a26e58dd32b0ea3c80381f35cd01bc22a20346cc65b0a67ae48532ba"</span>,
+            <span class="string">"B62qkiT4kgCawkSEF84ga5kP9QnhmTJEYzcfgGuk6okAJtSBfVcjm1M"
         </span>);
         <span class="macro">assert_get_address_eq!</span>(
-            <span class="string">&quot;3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779&quot;</span>,
-            <span class="string">&quot;B62qoG5Yk4iVxpyczUrBNpwtx2xunhL48dydN53A2VjoRwF8NUTbVr4&quot;
+            <span class="string">"3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779"</span>,
+            <span class="string">"B62qoG5Yk4iVxpyczUrBNpwtx2xunhL48dydN53A2VjoRwF8NUTbVr4"
         </span>);
     }
 
@@ -392,7 +394,7 @@
         ];
         <span class="macro">assert_eq!</span>(
             Keypair::from_bytes(<span class="kw-2">&amp;</span>bytes)
-                .expect(<span class="string">&quot;failed to decode keypair&quot;</span>)
+                .expect(<span class="string">"failed to decode keypair"</span>)
                 .to_bytes(),
             bytes
         );
