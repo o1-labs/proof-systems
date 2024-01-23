@@ -3,7 +3,39 @@ use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
-pub use crate::FqSponge;
+/// Abstracts a sponge operating on a base field [`Fq`] of the curve
+/// [`G`]. The parameter [`Fr`] is modelling the scalar field of the
+/// curve.
+pub trait FqSponge<Fq: Field, G, Fr> {
+    /// Creates a new sponge.
+    fn new(p: &'static ArithmeticSpongeParams<Fq>) -> Self;
+
+    /// Absorbs a base field element. This operation is the most
+    /// straightforward and calls the underlying sponge directly.
+    fn absorb_fq(&mut self, x: &[Fq]);
+
+    /// Absorbs a base field point, that is a pair of [`Fq`] elements.
+    fn absorb_g(&mut self, g: &[G]);
+
+    /// Absorbs an element of the scalar field [`Fr`] --- it is done
+    /// by converting the element to the base field first.
+    fn absorb_fr(&mut self, x: &[Fr]);
+
+    /// Squeeze out a base field challenge. This operation is the most
+    /// direct and calls the underlying sponge.
+    fn challenge_fq(&mut self) -> Fq;
+
+    /// Squeeze out a challenge in the scalar field. Implemented by
+    /// squeezing out base points and then converting them to a scalar
+    /// field element using binary representation.
+    fn challenge(&mut self) -> Fr;
+
+    /// Returns a base field digest by squeezing the underlying sponge directly.
+    fn digest_fq(self) -> Fq;
+
+    /// Returns a scalar field digest using the binary representation technique.
+    fn digest(self) -> Fr;
+}
 
 pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
