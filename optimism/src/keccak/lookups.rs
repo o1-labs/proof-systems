@@ -162,12 +162,11 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
         // Pad suffixes correspond to 10*1 rule
-        // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
         self.add_lookup(Lookup::read_if(
-            self.is_sponge(),
+            self.is_pad(),
             LookupTable::PadLookup,
             vec![
-                self.length(),
+                self.pad_length(),
                 self.two_to_pad(),
                 self.pad_suffix(0),
                 self.pad_suffix(1),

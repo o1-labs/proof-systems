@@ -58,8 +58,6 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 self.constrain(Self::is_boolean(self.is_squeeze()));
                 // Root is either true or false
                 self.constrain(Self::is_boolean(self.is_root()));
-                // Pad is either true or false
-                self.constrain(Self::is_boolean(self.is_pad()));
                 for i in 0..RATE_IN_BYTES {
                     // Bytes are either involved on padding or not
                     self.constrain(Self::is_boolean(self.in_padding(i)));

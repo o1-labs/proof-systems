@@ -110,14 +110,11 @@ pub fn main() -> ExitCode {
             // Resize without deallocating
             keccak_columns.hash_index.clear();
             keccak_columns.step_index.clear();
-            keccak_columns.flag_round.clear();
-            keccak_columns.flag_absorb.clear();
-            keccak_columns.flag_squeeze.clear();
-            keccak_columns.flag_root.clear();
-            keccak_columns.flag_pad.clear();
-            keccak_columns.flag_length.clear();
-            keccak_columns.two_to_pad.clear();
-            keccak_columns.flags_bytes.iter_mut().for_each(Vec::clear);
+            keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
+            keccak_columns
+                .pad_bytes_flags
+                .iter_mut()
+                .for_each(Vec::clear);
             keccak_columns.pad_suffix.iter_mut().for_each(Vec::clear);
             keccak_columns
                 .round_constants
@@ -131,14 +128,8 @@ pub fn main() -> ExitCode {
         KeccakColumns {
             hash_index: Vec::with_capacity(domain_size),
             step_index: Vec::with_capacity(domain_size),
-            flag_round: Vec::with_capacity(domain_size),
-            flag_absorb: Vec::with_capacity(domain_size),
-            flag_squeeze: Vec::with_capacity(domain_size),
-            flag_root: Vec::with_capacity(domain_size),
-            flag_pad: Vec::with_capacity(domain_size),
-            flag_length: Vec::with_capacity(domain_size),
-            two_to_pad: Vec::with_capacity(domain_size),
-            flags_bytes: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            pad_bytes_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             pad_suffix: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             round_constants: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
@@ -162,33 +153,19 @@ pub fn main() -> ExitCode {
             keccak_current_pre_folding_witness
                 .step_index
                 .push(keccak_env.keccak_witness.step_index);
-            keccak_current_pre_folding_witness
-                .flag_round
-                .push(keccak_env.keccak_witness.flag_round);
-            keccak_current_pre_folding_witness
-                .flag_absorb
-                .push(keccak_env.keccak_witness.flag_absorb);
-            keccak_current_pre_folding_witness
-                .flag_squeeze
-                .push(keccak_env.keccak_witness.flag_squeeze);
-            keccak_current_pre_folding_witness
-                .flag_root
-                .push(keccak_env.keccak_witness.flag_root);
-            keccak_current_pre_folding_witness
-                .flag_pad
-                .push(keccak_env.keccak_witness.flag_pad);
-            keccak_current_pre_folding_witness
-                .flag_length
-                .push(keccak_env.keccak_witness.flag_length);
-            keccak_current_pre_folding_witness
-                .two_to_pad
-                .push(keccak_env.keccak_witness.two_to_pad);
             for (env_wit, pre_fold_wit) in keccak_env
                 .keccak_witness
-                .flags_bytes
+                .mode_flags
                 .iter()
-                .zip(keccak_current_pre_folding_witness.flags_bytes.iter_mut())
+                .zip(keccak_current_pre_folding_witness.mode_flags.iter_mut())
             {
+                pre_fold_wit.push(*env_wit);
+            }
+            for (env_wit, pre_fold_wit) in keccak_env.keccak_witness.pad_bytes_flags.iter().zip(
+                keccak_current_pre_folding_witness
+                    .pad_bytes_flags
+                    .iter_mut(),
+            ) {
                 pre_fold_wit.push(*env_wit);
             }
             for (env_wit, pre_fold_wit) in keccak_env

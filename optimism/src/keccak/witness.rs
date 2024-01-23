@@ -69,11 +69,14 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     fn set_flag_pad(&mut self) {
-        self.write_column(KeccakColumn::FlagPad, 1);
-        self.write_column(KeccakColumn::FlagLength, self.pad_len);
+        self.write_column(KeccakColumn::PadLength, self.pad_len);
+        self.write_column_field(
+            KeccakColumn::InvPadLength,
+            Fp::inverse(&Fp::from(self.pad_len)).unwrap(),
+        );
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
-            self.write_column(KeccakColumn::FlagsBytes(i), 1);
+            self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
     }
 
