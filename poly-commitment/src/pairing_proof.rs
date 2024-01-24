@@ -266,18 +266,20 @@ fn divisor_polynomial<F: PrimeField>(elm: &[F]) -> DensePolynomial<F> {
         .unwrap()
 }
 
+use ark_ec::ScalarMul;
+
 impl<
         F: PrimeField,
-        G: CommitmentCurve<ScalarField = F>,
+        G: CommitmentCurve<ScalarField = F> + ScalarMul,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > PairingProof<Pair>
 {
-    pub fn create<D: EvaluationDomain<G::ScalarField>>(
+    pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,
         plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[G::ScalarField],            // vector of evaluation points
-        polyscale: G::ScalarField,         // scaling factor for polynoms
+        elm: &[F],            // vector of evaluation points
+        polyscale: F,         // scaling factor for polynoms
     ) -> Option<Self> {
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, srs.full_srs.g.len());
         let evals: Vec<_> = elm.iter().map(|pt| p.evaluate(pt)).collect();
@@ -310,12 +312,12 @@ impl<
         &self,
         srs: &PairingSRS<Pair>,           // SRS
         evaluations: &Vec<Evaluation<G>>, // commitments to the polynomials
-        polyscale: G::ScalarField,        // scaling factor for polynoms
-        elm: &[G::ScalarField],           // vector of evaluation points
+        polyscale: F,        // scaling factor for polynoms
+        elm: &[F],           // vector of evaluation points
     ) -> bool {
         let poly_commitment = {
             let mut scalars: Vec<F> = Vec::new();
-            let mut points = Vec::new();
+            let mut points: Vec<G> = Vec::new();
             combine_commitments(
                 evaluations,
                 &mut scalars,
@@ -323,9 +325,9 @@ impl<
                 polyscale,
                 F::one(), /* TODO: This is inefficient */
             );
-            let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
+            let scalars: Vec<_> = scalars.iter().map(|x| x.into_bigint()).collect();
 
-            VariableBaseMSM::msm_unchecked(&points, &scalars)
+            <G as VariableBaseMSM>::msm_bigint(&points, &scalars)
         };
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
@@ -355,13 +357,12 @@ mod tests {
     use crate::evaluation_proof::DensePolynomialOrEvaluations;
     use crate::srs::SRS;
     use crate::SRS as _;
-    use ark_bn254::Fr as ScalarField;
-    use ark_bn254::{G1Affine as G1, G2Affine as G2, Parameters};
-    use ark_ec::bn::Bn;
+    use ark_bn254::{Fr as ScalarField, Bn254};
+    use ark_bn254::{G1Affine as G1, G2Affine as G2};
     use ark_ff::UniformRand;
     use ark_poly::{
         univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain as D,
-        UVPolynomial,
+        DenseUVPolynomial,
     };
 
     use rand::{rngs::StdRng, SeedableRng};
@@ -429,7 +430,7 @@ mod tests {
 
         let polyscale = ScalarField::rand(rng);
 
-        let pairing_proof = PairingProof::<Bn<Parameters>>::create(
+        let pairing_proof = PairingProof::<Bn254>::create(
             &srs,
             polynomials_and_blinders.as_slice(),
             &evaluation_points,

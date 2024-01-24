@@ -505,18 +505,21 @@ where
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
 {
     pub sponge: EFqSponge,
+
     pub evaluations: Vec<Evaluation<G>>,
-    /// vector of evaluation points
+    /// Vector of evaluation points
     pub evaluation_points: Vec<G::ScalarField>,
-    /// scaling factor for evaluation point powers
+    /// Scaling factor for evaluation point powers
     pub polyscale: G::ScalarField,
-    /// scaling factor for polynomials
+    /// Scaling factor for polynomials
     pub evalscale: G::ScalarField,
-    /// batched opening proof
+    /// Batched opening proof
     pub opening: &'a OpeningProof,
+    /// TODO: add documentation with formula
     pub combined_inner_product: G::ScalarField,
 }
 
+/// TODO: add documentation
 pub fn combine_commitments<G: CommitmentCurve>(
     evaluations: &[Evaluation<G>],
     scalars: &mut Vec<G::ScalarField>,
@@ -556,6 +559,7 @@ pub fn combine_commitments<G: CommitmentCurve>(
     }
 }
 
+/// TODO: add documentation
 pub fn combine_evaluations<G: CommitmentCurve>(
     evaluations: &Vec<Evaluation<G>>,
     polyscale: G::ScalarField,

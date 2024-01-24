@@ -144,6 +144,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-bn254"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a22f4561524cd949590d78d7d4c5df8f592430d221f7f3c9497bbafd8972120f"
+dependencies = [
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-std 0.4.0",
+]
+
+[[package]]
 name = "ark-ec"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1326,7 +1337,7 @@ dependencies = [
 name = "kimchi"
 version = "0.1.0"
 dependencies = [
- "ark-bn254",
+ "ark-bn254 0.3.0",
  "ark-ec 0.3.0",
  "ark-ff 0.3.0",
  "ark-poly 0.3.0",
@@ -1389,7 +1400,7 @@ dependencies = [
 name = "kimchi_optimism"
 version = "0.1.0"
 dependencies = [
- "ark-bn254",
+ "ark-bn254 0.3.0",
  "ark-ec 0.3.0",
  "ark-ff 0.3.0",
  "ark-poly 0.3.0",
@@ -2048,7 +2059,7 @@ dependencies = [
 name = "poly-commitment"
 version = "0.1.0"
 dependencies = [
- "ark-bn254",
+ "ark-bn254 0.4.0",
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
  "ark-poly 0.4.2",

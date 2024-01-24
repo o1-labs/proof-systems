@@ -3,7 +3,7 @@
 use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{Field, PrimeField, Zero, One};
+use ark_ff::{PrimeField, Zero, One, BigInteger};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
@@ -61,15 +61,18 @@ where
 
 fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
 where
-    G::BaseField: Field,
+    G::BaseField: PrimeField,
 {
     // packing in bit-representation
     const N: usize = 31;
-    let extension_degree = G::BaseField::extension_degree() as usize;
+    let mut bits = [false; 8 * N];
+    for i in 0..N {
+        for j in 0..8 {
+            bits[8 * i + j] = (random_bytes[i] >> j) & 1 == 1;
+        }
+    }
 
-    let mut base_fields = Vec::with_capacity(N * extension_degree);
-
-    let n = <G::BaseField as PrimeField>::BigInt::from_bytes_be(&random_bytes);
+    let n = <G::BaseField as PrimeField>::BigInt::from_bits_be(&bits);
     let t = G::BaseField::from_bigint(n).expect("packing code has a bug");
     let (x, y) = map.to_group(t);
     G::of_coordinates(x, y)
