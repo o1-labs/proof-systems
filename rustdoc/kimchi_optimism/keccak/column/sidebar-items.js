@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["KeccakColumn"],"struct":["KeccakColumns"]};
+window.SIDEBAR_ITEMS = {"enum":["KeccakColumn"],"struct":["KeccakWitness"]};

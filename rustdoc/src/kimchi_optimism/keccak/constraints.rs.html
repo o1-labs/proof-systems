@@ -266,8 +266,23 @@
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::keccak::{
-    column::KeccakColumn,
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+</pre></div><pre class="rust"><code><span class="doccomment">/// This module contains the constraints for one Keccak step.
+</span><span class="kw">use </span><span class="kw">crate</span>::keccak::{
+    column::{KeccakColumn, PAD_SUFFIX_LEN},
     environment::{KeccakEnv, KeccakEnvironment},
     lookups::Lookups,
     {ArithOps, BoolOps, E, WORDS_IN_HASH},
@@ -282,9 +297,8 @@
     },
 };
 
-<span class="kw">use </span><span class="kw">super</span>::column::PAD_SUFFIX_LEN;
-
-<span class="kw">pub trait </span>Constraints {
+<span class="doccomment">/// This trait contains the constraints for one Keccak step.
+</span><span class="kw">pub trait </span>Constraints {
     <span class="kw">type </span>Column;
     <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
@@ -292,11 +306,17 @@
         + Clone;
     <span class="kw">type </span>Fp: std::ops::Neg&lt;Output = <span class="self">Self</span>::Fp&gt;;
 
-    <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Column) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns the variable corresponding to a given column alias.
+    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Column) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable);
+    <span class="doccomment">/// Adds one constraint to the environment.
+    </span><span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable);
 
-    <span class="kw">fn </span>constraints(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    <span class="doccomment">/// Adds all 887 constraints to the environment and triggers read lookups:
+    /// - 143 constraints of degree 1
+    /// - 739 constraints of degree 2
+    /// - 5 constraints of degree 5
+    </span><span class="kw">fn </span>constraints(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; Constraints <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
@@ -305,7 +325,9 @@
     <span class="kw">type </span>Fp = Fp;
 
     <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Column) -&gt; <span class="self">Self</span>::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
+        <span class="comment">// Despite `KeccakWitness` containing both `curr` and `next` fields,
+        // the Keccak step spans across one row only.
+        </span>Expr::Atom(ExprInner::Cell(Variable {
             col: column,
             row: CurrOrNext::Curr,
         }))
@@ -316,11 +338,11 @@
     }
 
     <span class="kw">fn </span>constraints(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// CORRECTNESS OF FLAGS
+        <span class="comment">// CORRECTNESS OF FLAGS: 144 CONSTRAINTS
+        // - 143 constraints of degree 1
+        // - 1 constraint of degree 2
         </span>{
-            <span class="comment">// TODO: remove redundancy if any
-
-            // Booleanity of sponge flags
+            <span class="comment">// Booleanity of sponge flags: 139 constraints of degree 1
             </span>{
                 <span class="comment">// Absorb is either true or false
                 </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_absorb()));
@@ -333,7 +355,9 @@
                     </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.in_padding(i)));
                 }
             }
-            <span class="comment">// Mutually exclusiveness of flags
+            <span class="comment">// Mutual exclusivity of flags: 5 constraints:
+            // - 4 of degree 1
+            // - 1 of degree 2
             </span>{
                 <span class="comment">// Squeeze and Root are not both true
                 </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_root()));
@@ -349,7 +373,7 @@
             </span>}
         }
 
-        <span class="comment">// SPONGE CONSTRAINTS
+        <span class="comment">// SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         </span>{
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SPONGE_ZEROS_LEN {
                 <span class="comment">// Absorb phase pads with zeros the new state
@@ -402,7 +426,9 @@
             }
         }
 
-        <span class="comment">// ROUND CONSTRAINTS
+        <span class="comment">// ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
+        // - 384 constraints of degree 2
+        // - 5 constraints of degree 3
         </span>{
             <span class="comment">// Define vectors storing expressions which are not in the witness layout for efficiency
             </span><span class="kw">let </span><span class="kw-2">mut </span>state_c = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM];
@@ -412,6 +438,8 @@
             <span class="kw">let </span><span class="kw-2">mut </span>state_f = <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="self">Self</span>::zero(); QUARTERS]; DIM]; DIM];
 
             <span class="comment">// STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
+            // - 30 constraints of degree 2
+            // - 5 constraints of degree 3
             </span><span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
                 <span class="kw">let </span>word_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_c(), <span class="prelude-val">None</span>, x);
                 <span class="kw">let </span>rem_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_remainder_c(), <span class="prelude-val">None</span>, x);
@@ -452,7 +480,7 @@
                 }
             } <span class="comment">// END theta
 
-            // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
+            // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
             </span><span class="kw">for </span>(y, col) <span class="kw">in </span>OFF.iter().enumerate() {
                 <span class="kw">for </span>(x, off) <span class="kw">in </span>col.iter().enumerate() {
                     <span class="kw">let </span>word_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_e(), <span class="prelude-val">Some</span>(y), x);
@@ -483,7 +511,7 @@
                 }
             } <span class="comment">// END pirho
 
-            // STEP chi: 4 * 5 * 5 * 2 = 200 constraints
+            // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
             </span><span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                 <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
                     <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
@@ -519,7 +547,7 @@
                 }
             } <span class="comment">// END chi
 
-            // STEP iota: 4 constraints
+            // STEP iota: 4 constraints of degree 2
             </span><span class="kw">for </span>(q, c) <span class="kw">in </span><span class="self">self</span>.round_constants().to_vec().iter().enumerate() {
                 <span class="self">self</span>.constrain(
                     <span class="self">self</span>.is_round()

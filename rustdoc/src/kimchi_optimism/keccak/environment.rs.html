@@ -650,7 +650,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use super</span>::{
-    column::{KeccakColumn, KeccakColumns, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+    column::{KeccakColumn, KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
     constraints::Constraints,
     grid_index,
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -672,7 +672,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
 
     <span class="doccomment">/// The full state of the Keccak gate (witness)
-    </span><span class="kw">pub </span>keccak_witness: KeccakColumns&lt;Fp&gt;,
+    </span><span class="kw">pub </span>keccak_witness: KeccakWitness&lt;Fp&gt;,
     <span class="doccomment">/// What step of the hash is being executed (or None, if just ended)
     </span><span class="kw">pub </span>keccak_step: <span class="prelude-ty">Option</span>&lt;KeccakStep&gt;,
 
@@ -698,7 +698,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>env = <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],
             lookups: <span class="macro">vec!</span>[],
-            keccak_witness: KeccakColumns::default(),
+            keccak_witness: KeccakWitness::default(),
             keccak_step: <span class="prelude-val">None</span>,
             hash_idx,
             step_idx: <span class="number">0</span>,
@@ -742,7 +742,7 @@
     }
 
     <span class="kw">pub fn </span>null_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.keccak_witness = KeccakColumns::default();
+        <span class="self">self</span>.keccak_witness = KeccakWitness::default();
     }
 
     <span class="kw">pub fn </span>update_step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {

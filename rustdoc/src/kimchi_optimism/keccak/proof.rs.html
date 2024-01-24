@@ -372,7 +372,7 @@
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::KeccakColumns;
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::KeccakWitness;
 <span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
@@ -396,13 +396,13 @@
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>KeccakProofInputs&lt;G: KimchiCurve&gt; {
-    evaluations: KeccakColumns&lt;Vec&lt;G::ScalarField&gt;&gt;,
+    evaluations: KeccakWitness&lt;Vec&lt;G::ScalarField&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;G: KimchiCurve&gt; Default <span class="kw">for </span>KeccakProofInputs&lt;G&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         KeccakProofInputs {
-            evaluations: KeccakColumns {
+            evaluations: KeccakWitness {
                 hash_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
                 step_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect(),
                 mode_flags: std::array::from_fn(|<span class="kw">_</span>| {
@@ -421,9 +421,9 @@
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>KeccakProof&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
-    commitments: KeccakColumns&lt;PolyComm&lt;G&gt;&gt;,
-    zeta_evaluations: KeccakColumns&lt;G::ScalarField&gt;,
-    zeta_omega_evaluations: KeccakColumns&lt;G::ScalarField&gt;,
+    commitments: KeccakWitness&lt;PolyComm&lt;G&gt;&gt;,
+    zeta_evaluations: KeccakWitness&lt;G::ScalarField&gt;,
+    zeta_omega_evaluations: KeccakWitness&lt;G::ScalarField&gt;,
     opening_proof: OpeningProof,
 }
 
@@ -436,7 +436,7 @@
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
     accumulator: <span class="kw-2">&amp;mut </span>KeccakProofInputs&lt;G&gt;,
-    inputs: <span class="kw-2">&amp;</span>KeccakColumns&lt;Vec&lt;G::ScalarField&gt;&gt;,
+    inputs: <span class="kw-2">&amp;</span>KeccakWitness&lt;Vec&lt;G::ScalarField&gt;&gt;,
 ) <span class="kw">where
     </span>&lt;OpeningProof <span class="kw">as </span>poly_commitment::OpenProof&lt;G&gt;&gt;::SRS: std::marker::Sync,
 {
@@ -450,7 +450,7 @@
                 );
                 srs.commit_evaluations_non_hiding(domain.d1, <span class="kw-2">&amp;</span>evals)
             })
-            .collect::&lt;KeccakColumns&lt;<span class="kw">_</span>&gt;&gt;()
+            .collect::&lt;KeccakWitness&lt;<span class="kw">_</span>&gt;&gt;()
     };
     <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
@@ -499,7 +499,7 @@
                 .map(|e| eval_col(e.to_vec()))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: eval_col(evaluations.hash_index),
             step_index: eval_col(evaluations.step_index),
             mode_flags: eval_array_col(<span class="kw-2">&amp;</span>evaluations.mode_flags).try_into().unwrap(),
@@ -512,7 +512,7 @@
         <span class="kw">let </span>comm_array = |polys: <span class="kw-2">&amp;</span>[DensePolynomial&lt;G::ScalarField&gt;]| {
             polys.into_par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: comm(<span class="kw-2">&amp;</span>polys.hash_index),
             step_index: comm(<span class="kw-2">&amp;</span>polys.step_index),
             mode_flags: comm_array(<span class="kw-2">&amp;</span>polys.mode_flags).try_into().unwrap(),
@@ -537,7 +537,7 @@
         <span class="kw">let </span>comm_array = |polys: <span class="kw-2">&amp;</span>[DensePolynomial&lt;G::ScalarField&gt;]| {
             polys.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: comm(<span class="kw-2">&amp;</span>polys.hash_index),
             step_index: comm(<span class="kw-2">&amp;</span>polys.step_index),
             mode_flags: comm_array(<span class="kw-2">&amp;</span>polys.mode_flags).try_into().unwrap(),
@@ -707,7 +707,7 @@
 
     <span class="kw">let </span>proof_inputs = {
         KeccakProofInputs {
-            evaluations: KeccakColumns {
+            evaluations: KeccakWitness {
                 hash_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                 step_index: (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                 mode_flags: std::array::from_fn(|<span class="kw">_</span>| {

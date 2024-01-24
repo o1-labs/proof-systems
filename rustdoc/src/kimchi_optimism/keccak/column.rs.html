@@ -295,8 +295,13 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
-
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+</pre></div><pre class="rust"><code><span class="doccomment">/// This module defines the custom columns used in the Keccak witness, which
+/// are aliases for the actual Keccak witness columns also defined here.
+</span><span class="kw">use super</span>::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
@@ -306,43 +311,46 @@
     THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
 };
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+<span class="kw">use </span>std::ops::{Index, IndexMut};
 
-<span class="kw">use super</span>::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
-
-<span class="kw">const </span>ZKVM_KECCAK_COLS_LENGTH: usize =
+<span class="comment">// The total number of witness columns used by the Keccak circuit.
+</span><span class="kw">const </span>ZKVM_KECCAK_COLS_LENGTH: usize =
     ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + <span class="number">2</span>;
 
-<span class="kw">const </span>MODE_FLAGS_COLS_LEN: usize = <span class="number">3</span>;
+<span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
+</span><span class="kw">const </span>MODE_FLAGS_COLS_LEN: usize = <span class="number">3</span>;
 
-<span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>;
-<span class="kw">const </span>FLAG_ABSORB_OFF: usize = <span class="number">1</span>;
-<span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = <span class="number">2</span>;
+<span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>; <span class="comment">// Offset of the FlagRound column inside the mode flags
+</span><span class="kw">const </span>FLAG_ABSORB_OFF: usize = <span class="number">1</span>; <span class="comment">// Offset of the FlagAbsorb column inside the mode flags
+</span><span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = <span class="number">2</span>; <span class="comment">// Offset of the FlagSqueeze column inside the mode flags
 
-<span class="kw">const </span>ROUND_COEFFS_OFF: usize = KECCAK_COLS;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ROUND_COEFFS_LEN: usize = QUARTERS;
+// The round constants are located after the witness columns used by the Keccak round.
+</span><span class="kw">const </span>ROUND_COEFFS_OFF: usize = KECCAK_COLS;
+<span class="comment">// The round constant of each round is stored in expanded form as quarters
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ROUND_COEFFS_LEN: usize = QUARTERS;
 
 <span class="comment">// The following elements do not increase the total column count
 // because they only appear in sponge rows, which only have 800 curr columns used.
-</span><span class="kw">const </span>SPONGE_COEFFS_OFF: usize = <span class="number">800</span>;
-<span class="kw">const </span>FLAG_ROOT_OFF: usize = SPONGE_COEFFS_OFF;
-<span class="kw">const </span>PAD_LEN_OFF: usize = <span class="number">801</span>;
-<span class="kw">const </span>PAD_INV_OFF: usize = <span class="number">802</span>;
-<span class="kw">const </span>PAD_TWO_OFF: usize = <span class="number">803</span>;
-<span class="kw">const </span>PAD_BYTES_OFF: usize = <span class="number">804</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_BYTES_LEN: usize = RATE_IN_BYTES;
-<span class="kw">const </span>PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_SUFFIX_LEN: usize = <span class="number">5</span>;
+</span><span class="kw">const </span>SPONGE_COEFFS_OFF: usize = <span class="number">800</span>; <span class="comment">// The sponge coefficients start after the sponge columns
+</span><span class="kw">const </span>FLAG_ROOT_OFF: usize = SPONGE_COEFFS_OFF; <span class="comment">// Offset of the FlagRoot column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_LEN_OFF: usize = <span class="number">801</span>; <span class="comment">// Offset of the PadLength column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_INV_OFF: usize = <span class="number">802</span>; <span class="comment">// Offset of the InvPadLength column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_TWO_OFF: usize = <span class="number">803</span>; <span class="comment">// Offset of the TwoToPad column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_BYTES_OFF: usize = <span class="number">804</span>; <span class="comment">// Offset of the PadBytesFlags inside the sponge coefficients
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_BYTES_LEN: usize = RATE_IN_BYTES; <span class="comment">// The maximum number of padding bytes involved
+</span><span class="kw">const </span>PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES; <span class="comment">// Offset of the PadSuffix column inside the sponge coefficients
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_SUFFIX_LEN: usize = <span class="number">5</span>; <span class="comment">// The padding suffix of 1088 bits is stored as 5 field elements: 1x12 + 4x31 bytes
 
-<span class="doccomment">/// Column aliases used by the Keccak circuit.
+</span><span class="doccomment">/// Column aliases used by the Keccak circuit.
 /// The number of aliases is not necessarily equal to the actual number of
 /// columns.
 /// Each alias will be mapped to a column index depending on the step kind
 /// (Sponge or Round) that is currently being executed.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>KeccakColumn {
-    HashIndex,
-    StepIndex,
-    FlagRound,              <span class="comment">// Coeff Round = [0..24)
+    HashIndex,              <span class="comment">// Which hash this is inside the circuit
+    </span>StepIndex,              <span class="comment">// Which step this is inside the hash
+    </span>FlagRound,              <span class="comment">// Coeff Round = [0..24)
     </span>FlagAbsorb,             <span class="comment">// Coeff Absorb = 0 | 1
     </span>FlagSqueeze,            <span class="comment">// Coeff Squeeze = 0 | 1
     </span>FlagRoot,               <span class="comment">// Coeff Root = 0 | 1
@@ -373,29 +381,29 @@
     </span>Output(usize),          <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
 </span>}
 
-<span class="doccomment">/// The columns used by the Keccak circuit.
-/// The Keccak circuit is split into two parts: Sponge and Round.
+<span class="doccomment">/// The witness columns used by the Keccak circuit.
+/// The Keccak circuit is split into two main modes: Sponge and Round.
 /// The columns are shared between the Sponge and Round steps.
-/// The step index and hash index are shared between the Sponge and Round step
-/// type.
+/// The hash and step indices are shared between both modes.
 </span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
-</span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
-    <span class="kw">pub </span>hash_index: T,
-    <span class="kw">pub </span>step_index: T,
-    <span class="kw">pub </span>mode_flags: [T; MODE_FLAGS_COLS_LEN], <span class="comment">// Round, Absorb, Squeeze
-    </span><span class="kw">pub </span>curr: [T; ZKVM_KECCAK_COLS_CURR],     <span class="comment">// Curr[0..1965) + RC as quarters
-    </span><span class="kw">pub </span>next: [T; ZKVM_KECCAK_COLS_NEXT],     <span class="comment">// Next[0..100)
+</span><span class="kw">pub struct </span>KeccakWitness&lt;T&gt; {
+    <span class="kw">pub </span>hash_index: T,                        <span class="comment">// Which hash this is inside the circuit
+    </span><span class="kw">pub </span>step_index: T,                        <span class="comment">// Which step this is inside the hash
+    </span><span class="kw">pub </span>mode_flags: [T; MODE_FLAGS_COLS_LEN], <span class="comment">// Round, Absorb, Squeeze
+    </span><span class="kw">pub </span>curr: [T; ZKVM_KECCAK_COLS_CURR], <span class="comment">// Contains 1969 witnesses used in the current step including Input and RoundConstants
+    </span><span class="kw">pub </span>next: [T; ZKVM_KECCAK_COLS_NEXT], <span class="comment">// Contains the Output
 </span>}
 
-<span class="kw">impl</span>&lt;T: Clone&gt; KeccakColumns&lt;T&gt; {
-    <span class="kw">pub fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; <span class="kw-2">&amp;</span>[T] {
+<span class="kw">impl</span>&lt;T: Clone&gt; KeccakWitness&lt;T&gt; {
+    <span class="doccomment">/// Returns a chunk of the `curr` witness columns
+    </span><span class="kw">pub fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; <span class="kw-2">&amp;</span>[T] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.curr[offset..offset + length]
     }
 }
 
-<span class="kw">impl</span>&lt;T: Zero + One + Clone&gt; Default <span class="kw">for </span>KeccakColumns&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Zero + One + Clone&gt; Default <span class="kw">for </span>KeccakWitness&lt;T&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        KeccakColumns {
+        KeccakWitness {
             hash_index: T::zero(),
             step_index: T::zero(),
             mode_flags: std::array::from_fn(|<span class="kw">_</span>| T::zero()), <span class="comment">// Defaults are zero, but lookups will not be triggered
@@ -405,7 +413,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakWitness&lt;T&gt; {
     <span class="kw">type </span>Output = T;
 
     <span class="doccomment">/// Map the column alias to the actual column index.
@@ -449,7 +457,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakColumns&lt;T&gt; {
+<span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakWitness&lt;T&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: KeccakColumn) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             KeccakColumn::HashIndex =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.hash_index,
@@ -487,7 +495,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F&gt; IntoIterator <span class="kw">for </span>KeccakColumns&lt;F&gt; {
+<span class="kw">impl</span>&lt;F&gt; IntoIterator <span class="kw">for </span>KeccakWitness&lt;F&gt; {
     <span class="kw">type </span>Item = F;
     <span class="kw">type </span>IntoIter = std::vec::IntoIter&lt;F&gt;;
 
@@ -503,7 +511,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;G&gt; IntoParallelIterator <span class="kw">for </span>KeccakColumns&lt;G&gt;
+<span class="kw">impl</span>&lt;G&gt; IntoParallelIterator <span class="kw">for </span>KeccakWitness&lt;G&gt;
 <span class="kw">where
     </span>Vec&lt;G&gt;: IntoParallelIterator,
 {
@@ -522,7 +530,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;G: Send + std::fmt::Debug&gt; FromParallelIterator&lt;G&gt; <span class="kw">for </span>KeccakColumns&lt;G&gt; {
+<span class="kw">impl</span>&lt;G: Send + std::fmt::Debug&gt; FromParallelIterator&lt;G&gt; <span class="kw">for </span>KeccakWitness&lt;G&gt; {
     <span class="kw">fn </span>from_par_iter&lt;I&gt;(par_iter: I) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>I: IntoParallelIterator&lt;Item = G&gt;,
@@ -545,7 +553,7 @@
             .unwrap();
         <span class="kw">let </span>step_index = iter_contents.pop().unwrap();
         <span class="kw">let </span>hash_index = iter_contents.pop().unwrap();
-        KeccakColumns {
+        KeccakWitness {
             hash_index,
             step_index,
             mode_flags,
@@ -555,7 +563,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'data </span>KeccakColumns&lt;G&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">'data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'data </span>KeccakWitness&lt;G&gt;
 <span class="kw">where
     </span>Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span>G&gt;: IntoParallelIterator,
 {
@@ -573,7 +581,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'data </span><span class="kw-2">mut </span>KeccakColumns&lt;G&gt;
+<span class="kw">impl</span>&lt;<span class="lifetime">'data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'data </span><span class="kw-2">mut </span>KeccakWitness&lt;G&gt;
 <span class="kw">where
     </span>Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span><span class="kw-2">mut </span>G&gt;: IntoParallelIterator,
 {
