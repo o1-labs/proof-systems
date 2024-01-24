@@ -1,6 +1,5 @@
-use ark_bn254::FrParameters;
 use ark_ec::bn::Bn;
-use ark_ff::{Fp256, UniformRand, Zero};
+use ark_ff::{UniformRand, Zero};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
@@ -12,7 +11,7 @@ use kimchi_optimism::{
     mips::{proof, witness as mips_witness},
     preimage_oracle::PreImageOracle,
 };
-use poly_commitment::pairing_proof::PairingProof;
+use poly_commitment::pairing_proof::{PairingProof, PairingSRS};
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 use kimchi_optimism::DOMAIN_SIZE;
@@ -23,9 +22,10 @@ use mina_poseidon::{
 
 type Fp = ark_bn254::Fr;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+type BN254Config = Bn<ark_bn254::Config>;
+type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
+type OpeningProof = PairingProof<BN254Config>;
 
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();
@@ -63,23 +63,20 @@ pub fn main() -> ExitCode {
 
     let domain_size = DOMAIN_SIZE;
 
-    let domain =
-        kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(domain_size).unwrap();
+    let domain = kimchi::circuits::domains::EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
     let srs = {
         // Trusted setup toxic waste
         let x = ark_bn254::Fr::rand(&mut rand::rngs::OsRng);
 
-        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, domain_size);
+        let mut srs = PairingSRS::create(x, domain_size);
         srs.full_srs.add_lagrange_basis(domain.d1);
         srs
     };
 
     let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    let mut folded_witness = proof::ProofInputs::<
-        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
-    >::default();
+    let mut folded_witness = proof::ProofInputs::default();
 
     let reset_pre_folding_witness = |witness_columns: &mut proof::WitnessColumns<Vec<_>>| {
         let proof::WitnessColumns {
@@ -101,28 +98,24 @@ pub fn main() -> ExitCode {
 
     // The keccak environment is extracted inside the loop
 
-    let mut keccak_folded_witness = KeccakProofInputs::<
-        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
-    >::default();
+    let mut keccak_folded_witness = KeccakProofInputs::default();
 
-    let keccak_reset_pre_folding_witness =
-        |keccak_columns: &mut KeccakColumns<Vec<Fp256<FrParameters>>>| {
-            // Resize without deallocating
-            keccak_columns.hash_index.clear();
-            keccak_columns.step_index.clear();
-            keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
-            keccak_columns.curr.iter_mut().for_each(Vec::clear);
-            keccak_columns.next.iter_mut().for_each(Vec::clear);
-        };
+    let keccak_reset_pre_folding_witness = |keccak_columns: &mut KeccakColumns<Vec<Fp>>| {
+        // Resize without deallocating
+        keccak_columns.hash_index.clear();
+        keccak_columns.step_index.clear();
+        keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
+        keccak_columns.curr.iter_mut().for_each(Vec::clear);
+        keccak_columns.next.iter_mut().for_each(Vec::clear);
+    };
 
-    let mut keccak_current_pre_folding_witness: KeccakColumns<Vec<Fp256<FrParameters>>> =
-        KeccakColumns {
-            hash_index: Vec::with_capacity(domain_size),
-            step_index: Vec::with_capacity(domain_size),
-            mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-        };
+    let mut keccak_current_pre_folding_witness: KeccakColumns<Vec<Fp>> = KeccakColumns {
+        hash_index: Vec::with_capacity(domain_size),
+        step_index: Vec::with_capacity(domain_size),
+        mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+    };
 
     while !env.halt {
         env.step(&configuration, &meta, &start);

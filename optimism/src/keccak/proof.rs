@@ -323,11 +323,14 @@ fn test_keccak_prover() {
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+    use poly_commitment::pairing_proof::PairingProof;
 
     type Fp = ark_bn254::Fr;
     type SpongeParams = PlonkSpongeConstantsKimchi;
-    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+    type BN254Config = ark_ec::bn::Bn<ark_bn254::Config>;
+    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Config, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+    type OpeningProof = PairingProof<BN254Config>;
 
     let rng = &mut rand::rngs::OsRng;
 
@@ -356,17 +359,9 @@ fn test_keccak_prover() {
     let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, DOMAIN_SIZE);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
-    let proof = prove::<
-        _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-        BaseSponge,
-        ScalarSponge,
-    >(domain, &srs, proof_inputs);
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, proof_inputs);
 
-    assert!(verify::<
-        _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-        BaseSponge,
-        ScalarSponge,
-    >(domain, &srs, &proof));
+    assert!(verify::<_, OpeningProof, BaseSponge, ScalarSponge>(
+        domain, &srs, &proof
+    ));
 }
