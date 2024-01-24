@@ -19,7 +19,7 @@ pub(crate) trait Lookups {
     /// Adds a given Lookup to the environment
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
-    /// Adds all lookups of Self
+    /// Adds all 2342 lookups of Self
     fn lookups(&mut self);
 
     /// Reads Lookups containing the 136 bytes of the block of the preimage
@@ -44,19 +44,19 @@ pub(crate) trait Lookups {
     /// Adds a lookup to the Byte table
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable);
 
-    /// Adds the lookups required for the sponge
+    /// Adds the 601 lookups required for the sponge
     fn lookups_sponge(&mut self);
 
-    /// Adds the lookups required for Theta in the round
+    /// Adds the 140 lookups required for Theta in the round
     fn lookups_round_theta(&mut self);
 
-    /// Adds the lookups required for PiRho in the round
+    /// Adds the 800 lookups required for PiRho in the round
     fn lookups_round_pirho(&mut self);
 
-    /// Adds the lookups required for Chi in the round
+    /// Adds the 800 lookups required for Chi in the round
     fn lookups_round_chi(&mut self);
 
-    /// Adds the lookups required for Iota in the round
+    /// Adds the 1 lookup required for Iota in the round
     fn lookups_round_iota(&mut self);
 }
 
@@ -250,13 +250,17 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     }
 
     fn lookups_round_iota(&mut self) {
-        for i in 0..QUARTERS {
-            // Check round constants correspond with the current round
-            self.add_lookup(Lookup::read_if(
-                self.is_round(),
-                LookupTable::RoundConstantsLookup,
-                vec![self.round(), self.round_constants()[i].clone()],
-            ));
-        }
+        // Check round constants correspond with the current round
+        self.add_lookup(Lookup::read_if(
+            self.is_round(),
+            LookupTable::RoundConstantsLookup,
+            vec![
+                self.round(),
+                self.round_constants()[0].clone(),
+                self.round_constants()[1].clone(),
+                self.round_constants()[2].clone(),
+                self.round_constants()[3].clone(),
+            ],
+        ));
     }
 }
