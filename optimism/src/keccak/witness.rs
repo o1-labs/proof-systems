@@ -1,4 +1,9 @@
-/// This file contains the implementation of the witness for the Keccak permutation.
+/// This file contains the witness for the Keccak hash function for the zkVM project.
+/// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
+///
+/// The actual witness generation code makes use of the code which is already present in Kimchi,
+/// to avoid code duplication and reduce error-proneness.
+///
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
 use super::{
@@ -19,6 +24,8 @@ use kimchi::circuits::polynomials::keccak::{
     Keccak,
 };
 
+/// This function returns a vector of field elements that represent the 5 padding suffixes.
+/// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
 pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
     // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
     let mut blocks = vec![Fp::zero(); 5];
@@ -46,7 +53,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
     type Variable = Fp;
 
-    // FIXME: read preimage from memory and pad and expand
     fn step(&mut self) {
         // Reset columns to zeros to avoid conflicts between steps
         self.null_state();
