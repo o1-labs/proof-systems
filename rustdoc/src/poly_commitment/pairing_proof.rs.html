@@ -441,7 +441,6 @@
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::commitment::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
 <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
@@ -535,23 +534,22 @@
 {
     <span class="kw">type </span>SRS = PairingSRS&lt;Pair&gt;;
 
-    <span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;&gt;(
+    <span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;F&gt;&gt;(
         srs: <span class="kw-2">&amp;</span><span class="self">Self</span>::SRS,
         _group_map: <span class="kw-2">&amp;</span>&lt;G <span class="kw">as </span>CommitmentCurve&gt;::Map,
         plnms: <span class="kw-2">&amp;</span>[(
-            DensePolynomialOrEvaluations&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, D&gt;,
+            DensePolynomialOrEvaluations&lt;F, D&gt;,
             <span class="prelude-ty">Option</span>&lt;usize&gt;,
-            PolyComm&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;,
+            PolyComm&lt;F&gt;,
         )], <span class="comment">// vector of polynomial with optional degree bound and commitment randomness
-        </span>elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField], <span class="comment">// vector of evaluation points
-        </span>polyscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for polynoms
-        </span>_evalscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for evaluation point powers
-        </span>_sponge: EFqSponge,                      <span class="comment">// sponge
+        </span>elm: <span class="kw-2">&amp;</span>[F],          <span class="comment">// vector of evaluation points
+        </span>polyscale: F,       <span class="comment">// scaling factor for polynoms
+        </span>_evalscale: F,      <span class="comment">// scaling factor for evaluation point powers
+        </span>_sponge: EFqSponge, <span class="comment">// sponge
         </span>_rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; <span class="self">Self
     </span><span class="kw">where
-        </span>EFqSponge:
-            Clone + FqSponge&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::BaseField, G, &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;,
+        </span>EFqSponge: Clone + FqSponge&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::BaseField, G, F&gt;,
         RNG: RngCore + CryptoRng,
     {
         PairingProof::create(srs, plnms, elm, polyscale).unwrap()
@@ -564,7 +562,7 @@
         _rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; bool
     <span class="kw">where
-        </span>EFqSponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
+        </span>EFqSponge: FqSponge&lt;G::BaseField, G, F&gt;,
         RNG: RngCore + CryptoRng,
     {
         <span class="kw">for </span>BatchEvaluationProof {
@@ -606,7 +604,7 @@
 
     <span class="kw">fn </span>commit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
+        plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
         num_chunks: usize,
         max: <span class="prelude-ty">Option</span>&lt;usize&gt;,
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
@@ -715,11 +713,11 @@
         Pair: PairingEngine&lt;G1Affine = G, G2Affine = G2&gt;,
     &gt; PairingProof&lt;Pair&gt;
 {
-    <span class="kw">pub fn </span>create&lt;D: EvaluationDomain&lt;G::ScalarField&gt;&gt;(
+    <span class="kw">pub fn </span>create&lt;D: EvaluationDomain&lt;F&gt;&gt;(
         srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pair&gt;,
         plnms: PolynomialsToCombine&lt;G, D&gt;, <span class="comment">// vector of polynomial with optional degree bound and commitment randomness
-        </span>elm: <span class="kw-2">&amp;</span>[G::ScalarField],            <span class="comment">// vector of evaluation points
-        </span>polyscale: G::ScalarField,         <span class="comment">// scaling factor for polynoms
+        </span>elm: <span class="kw-2">&amp;</span>[F],                         <span class="comment">// vector of evaluation points
+        </span>polyscale: F,                      <span class="comment">// scaling factor for polynoms
     </span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>(p, blinding_factor) = combine_polys::&lt;G, D&gt;(plnms, polyscale, srs.full_srs.g.len());
         <span class="kw">let </span>evals: Vec&lt;<span class="kw">_</span>&gt; = elm.iter().map(|pt| p.evaluate(pt)).collect();
@@ -752,8 +750,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         srs: <span class="kw-2">&amp;</span>PairingSRS&lt;Pair&gt;,           <span class="comment">// SRS
         </span>evaluations: <span class="kw-2">&amp;</span>Vec&lt;Evaluation&lt;G&gt;&gt;, <span class="comment">// commitments to the polynomials
-        </span>polyscale: G::ScalarField,        <span class="comment">// scaling factor for polynoms
-        </span>elm: <span class="kw-2">&amp;</span>[G::ScalarField],           <span class="comment">// vector of evaluation points
+        </span>polyscale: F,                     <span class="comment">// scaling factor for polynoms
+        </span>elm: <span class="kw-2">&amp;</span>[F],                        <span class="comment">// vector of evaluation points
     </span>) -&gt; bool {
         <span class="kw">let </span>poly_commitment = {
             <span class="kw">let </span><span class="kw-2">mut </span>scalars: Vec&lt;F&gt; = Vec::new();
