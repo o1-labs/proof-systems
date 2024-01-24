@@ -382,7 +382,7 @@
 </span><span class="kw">pub struct </span>KeccakColumns&lt;T&gt; {
     <span class="kw">pub </span>hash_index: T,
     <span class="kw">pub </span>step_index: T,
-    <span class="kw">pub </span>mode_flags: [T; MODE_FLAGS_COLS_LEN], <span class="comment">// Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
+    <span class="kw">pub </span>mode_flags: [T; MODE_FLAGS_COLS_LEN], <span class="comment">// Round, Absorb, Squeeze
     </span><span class="kw">pub </span>curr: [T; ZKVM_KECCAK_COLS_CURR],     <span class="comment">// Curr[0..1965) + RC as quarters
     </span><span class="kw">pub </span>next: [T; ZKVM_KECCAK_COLS_NEXT],     <span class="comment">// Next[0..100)
 </span>}

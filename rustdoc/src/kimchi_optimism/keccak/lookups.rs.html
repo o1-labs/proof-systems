@@ -262,6 +262,10 @@
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
 <a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="kw">use super</span>::{
     column::KeccakColumn,
     environment::{KeccakEnv, KeccakEnvironment},
@@ -283,7 +287,7 @@
     <span class="doccomment">/// Adds a given Lookup to the environment
     </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
 
-    <span class="doccomment">/// Adds all lookups of Self
+    <span class="doccomment">/// Adds all 2342 lookups of Self
     </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
     <span class="doccomment">/// Reads Lookups containing the 136 bytes of the block of the preimage
@@ -308,19 +312,19 @@
     <span class="doccomment">/// Adds a lookup to the Byte table
     </span><span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
 
-    <span class="doccomment">/// Adds the lookups required for the sponge
+    <span class="doccomment">/// Adds the 601 lookups required for the sponge
     </span><span class="kw">fn </span>lookups_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="doccomment">/// Adds the lookups required for Theta in the round
+    <span class="doccomment">/// Adds the 140 lookups required for Theta in the round
     </span><span class="kw">fn </span>lookups_round_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="doccomment">/// Adds the lookups required for PiRho in the round
+    <span class="doccomment">/// Adds the 800 lookups required for PiRho in the round
     </span><span class="kw">fn </span>lookups_round_pirho(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="doccomment">/// Adds the lookups required for Chi in the round
+    <span class="doccomment">/// Adds the 800 lookups required for Chi in the round
     </span><span class="kw">fn </span>lookups_round_chi(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="doccomment">/// Adds the lookups required for Iota in the round
+    <span class="doccomment">/// Adds the 1 lookup required for Iota in the round
     </span><span class="kw">fn </span>lookups_round_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 
@@ -514,14 +518,18 @@
     }
 
     <span class="kw">fn </span>lookups_round_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-            <span class="comment">// Check round constants correspond with the current round
-            </span><span class="self">self</span>.add_lookup(Lookup::read_if(
-                <span class="self">self</span>.is_round(),
-                LookupTable::RoundConstantsLookup,
-                <span class="macro">vec!</span>[<span class="self">self</span>.round(), <span class="self">self</span>.round_constants()[i].clone()],
-            ));
-        }
+        <span class="comment">// Check round constants correspond with the current round
+        </span><span class="self">self</span>.add_lookup(Lookup::read_if(
+            <span class="self">self</span>.is_round(),
+            LookupTable::RoundConstantsLookup,
+            <span class="macro">vec!</span>[
+                <span class="self">self</span>.round(),
+                <span class="self">self</span>.round_constants()[<span class="number">0</span>].clone(),
+                <span class="self">self</span>.round_constants()[<span class="number">1</span>].clone(),
+                <span class="self">self</span>.round_constants()[<span class="number">2</span>].clone(),
+                <span class="self">self</span>.round_constants()[<span class="number">3</span>].clone(),
+            ],
+        ));
     }
 }
 </code></pre></div></section></main></body></html>
