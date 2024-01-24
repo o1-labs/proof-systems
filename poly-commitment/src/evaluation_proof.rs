@@ -1,7 +1,7 @@
-use crate::{commitment::*, srs::endos};
-use crate::PolynomialsToCombine;
 use crate::srs::SRS;
+use crate::PolynomialsToCombine;
 use crate::SRS as _;
+use crate::{commitment::*, srs::endos};
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
@@ -424,10 +424,8 @@ pub struct OpeningProof<G: AffineRepr> {
     pub sg: G,
 }
 
-impl<
-        BaseField: PrimeField,
-        G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve,
-    > crate::OpenProof<G> for OpeningProof<G>
+impl<BaseField: PrimeField, G: AffineRepr<BaseField = BaseField> + CommitmentCurve + EndoCurve>
+    crate::OpenProof<G> for OpeningProof<G>
 {
     type SRS = SRS<G>;
 
@@ -442,7 +440,7 @@ impl<
         elm: &[<G as AffineRepr>::ScalarField], // vector of evaluation points
         polyscale: <G as AffineRepr>::ScalarField, // scaling factor for polynoms
         evalscale: <G as AffineRepr>::ScalarField, // scaling factor for evaluation point powers
-        sponge: EFqSponge,                       // sponge
+        sponge: EFqSponge,                      // sponge
         rng: &mut RNG,
     ) -> Self
     where

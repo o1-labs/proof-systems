@@ -3,7 +3,7 @@
 use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{PrimeField, Zero, One, BigInteger};
+use ark_ff::{BigInteger, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};

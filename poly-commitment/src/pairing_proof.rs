@@ -2,13 +2,12 @@ use crate::commitment::*;
 use crate::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
 use crate::srs::SRS;
 use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
-use ark_ec::{AffineRepr, scalar_mul::variable_base::VariableBaseMSM};
 use ark_ec::pairing::Pairing;
+use ark_ec::{scalar_mul::variable_base::VariableBaseMSM, AffineRepr};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
-    DenseUVPolynomial,
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
+    DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain as D,
 };
 use mina_poseidon::FqSponge;
 use rand_core::{CryptoRng, RngCore};
@@ -340,10 +339,7 @@ impl<
             .unshifted[0];
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
 
-        let numerator = Pair::pairing(
-            numerator_commitment,
-            Pair::G2Affine::generator(),
-        );
+        let numerator = Pair::pairing(numerator_commitment, Pair::G2Affine::generator());
         let scaled_quotient = Pair::pairing(self.quotient, divisor_commitment);
         numerator == scaled_quotient
     }
@@ -356,12 +352,12 @@ mod tests {
     use crate::evaluation_proof::DensePolynomialOrEvaluations;
     use crate::srs::SRS;
     use crate::SRS as _;
-    use ark_bn254::{Fr as ScalarField, Bn254};
+    use ark_bn254::{Bn254, Fr as ScalarField};
     use ark_bn254::{G1Affine as G1, G2Affine as G2};
     use ark_ff::UniformRand;
     use ark_poly::{
-        univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain as D,
-        DenseUVPolynomial,
+        univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Polynomial,
+        Radix2EvaluationDomain as D,
     };
 
     use rand::{rngs::StdRng, SeedableRng};
