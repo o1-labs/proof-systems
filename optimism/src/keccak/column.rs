@@ -1,5 +1,6 @@
-use std::ops::{Index, IndexMut};
-
+/// This module defines the custom columns used in the Keccak witness, which
+/// are aliases for the actual Keccak witness columns also defined here.
+use super::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use ark_ff::{One, Zero};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
@@ -9,32 +10,35 @@ use kimchi::circuits::polynomials::keccak::constants::{
     THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
 };
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+use std::ops::{Index, IndexMut};
 
-use super::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
-
+// The total number of witness columns used by the Keccak circuit.
 const ZKVM_KECCAK_COLS_LENGTH: usize =
     ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + 2;
 
+// The number of columns used by the Keccak circuit to represent the mode flags.
 const MODE_FLAGS_COLS_LEN: usize = 3;
 
-const FLAG_ROUND_OFF: usize = 0;
-const FLAG_ABSORB_OFF: usize = 1;
-const FLAG_SQUEEZE_OFF: usize = 2;
+const FLAG_ROUND_OFF: usize = 0; // Offset of the FlagRound column inside the mode flags
+const FLAG_ABSORB_OFF: usize = 1; // Offset of the FlagAbsorb column inside the mode flags
+const FLAG_SQUEEZE_OFF: usize = 2; // Offset of the FlagSqueeze column inside the mode flags
 
+// The round constants are located after the witness columns used by the Keccak round.
 const ROUND_COEFFS_OFF: usize = KECCAK_COLS;
+// The round constant of each round is stored in expanded form as quarters
 pub(crate) const ROUND_COEFFS_LEN: usize = QUARTERS;
 
 // The following elements do not increase the total column count
 // because they only appear in sponge rows, which only have 800 curr columns used.
-const SPONGE_COEFFS_OFF: usize = 800;
-const FLAG_ROOT_OFF: usize = SPONGE_COEFFS_OFF;
-const PAD_LEN_OFF: usize = 801;
-const PAD_INV_OFF: usize = 802;
-const PAD_TWO_OFF: usize = 803;
-const PAD_BYTES_OFF: usize = 804;
-pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
-const PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES;
-pub(crate) const PAD_SUFFIX_LEN: usize = 5;
+const SPONGE_COEFFS_OFF: usize = 800; // The sponge coefficients start after the sponge columns
+const FLAG_ROOT_OFF: usize = SPONGE_COEFFS_OFF; // Offset of the FlagRoot column inside the sponge coefficients
+const PAD_LEN_OFF: usize = 801; // Offset of the PadLength column inside the sponge coefficients
+const PAD_INV_OFF: usize = 802; // Offset of the InvPadLength column inside the sponge coefficients
+const PAD_TWO_OFF: usize = 803; // Offset of the TwoToPad column inside the sponge coefficients
+const PAD_BYTES_OFF: usize = 804; // Offset of the PadBytesFlags inside the sponge coefficients
+pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES; // The maximum number of padding bytes involved
+const PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES; // Offset of the PadSuffix column inside the sponge coefficients
+pub(crate) const PAD_SUFFIX_LEN: usize = 5; // The padding suffix of 1088 bits is stored as 5 field elements: 1x12 + 4x31 bytes
 
 /// Column aliases used by the Keccak circuit.
 /// The number of aliases is not necessarily equal to the actual number of
@@ -43,8 +47,8 @@ pub(crate) const PAD_SUFFIX_LEN: usize = 5;
 /// (Sponge or Round) that is currently being executed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
-    HashIndex,
-    StepIndex,
+    HashIndex,              // Which hash this is inside the circuit
+    StepIndex,              // Which step this is inside the hash
     FlagRound,              // Coeff Round = [0..24)
     FlagAbsorb,             // Coeff Absorb = 0 | 1
     FlagSqueeze,            // Coeff Squeeze = 0 | 1
@@ -76,29 +80,29 @@ pub enum KeccakColumn {
     Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
 }
 
-/// The columns used by the Keccak circuit.
-/// The Keccak circuit is split into two parts: Sponge and Round.
+/// The witness columns used by the Keccak circuit.
+/// The Keccak circuit is split into two main modes: Sponge and Round.
 /// The columns are shared between the Sponge and Round steps.
-/// The step index and hash index are shared between the Sponge and Round step
-/// type.
+/// The hash and step indices are shared between both modes.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct KeccakColumns<T> {
-    pub hash_index: T,
-    pub step_index: T,
-    pub mode_flags: [T; MODE_FLAGS_COLS_LEN], // Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
-    pub curr: [T; ZKVM_KECCAK_COLS_CURR],     // Curr[0..1965) + RC as quarters
-    pub next: [T; ZKVM_KECCAK_COLS_NEXT],     // Next[0..100)
+pub struct KeccakWitness<T> {
+    pub hash_index: T,                        // Which hash this is inside the circuit
+    pub step_index: T,                        // Which step this is inside the hash
+    pub mode_flags: [T; MODE_FLAGS_COLS_LEN], // Round, Absorb, Squeeze
+    pub curr: [T; ZKVM_KECCAK_COLS_CURR], // Contains 1969 witnesses used in the current step including Input and RoundConstants
+    pub next: [T; ZKVM_KECCAK_COLS_NEXT], // Contains the Output
 }
 
-impl<T: Clone> KeccakColumns<T> {
+impl<T: Clone> KeccakWitness<T> {
+    /// Returns a chunk of the `curr` witness columns
     pub fn chunk(&self, offset: usize, length: usize) -> &[T] {
         &self.curr[offset..offset + length]
     }
 }
 
-impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
+impl<T: Zero + One + Clone> Default for KeccakWitness<T> {
     fn default() -> Self {
-        KeccakColumns {
+        KeccakWitness {
             hash_index: T::zero(),
             step_index: T::zero(),
             mode_flags: std::array::from_fn(|_| T::zero()), // Defaults are zero, but lookups will not be triggered
@@ -108,7 +112,7 @@ impl<T: Zero + One + Clone> Default for KeccakColumns<T> {
     }
 }
 
-impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
+impl<T: Clone> Index<KeccakColumn> for KeccakWitness<T> {
     type Output = T;
 
     /// Map the column alias to the actual column index.
@@ -152,7 +156,7 @@ impl<T: Clone> Index<KeccakColumn> for KeccakColumns<T> {
     }
 }
 
-impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
+impl<T: Clone> IndexMut<KeccakColumn> for KeccakWitness<T> {
     fn index_mut(&mut self, index: KeccakColumn) -> &mut Self::Output {
         match index {
             KeccakColumn::HashIndex => &mut self.hash_index,
@@ -190,7 +194,7 @@ impl<T: Clone> IndexMut<KeccakColumn> for KeccakColumns<T> {
     }
 }
 
-impl<F> IntoIterator for KeccakColumns<F> {
+impl<F> IntoIterator for KeccakWitness<F> {
     type Item = F;
     type IntoIter = std::vec::IntoIter<F>;
 
@@ -206,7 +210,7 @@ impl<F> IntoIterator for KeccakColumns<F> {
     }
 }
 
-impl<G> IntoParallelIterator for KeccakColumns<G>
+impl<G> IntoParallelIterator for KeccakWitness<G>
 where
     Vec<G>: IntoParallelIterator,
 {
@@ -225,7 +229,7 @@ where
     }
 }
 
-impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
+impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakWitness<G> {
     fn from_par_iter<I>(par_iter: I) -> Self
     where
         I: IntoParallelIterator<Item = G>,
@@ -248,7 +252,7 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
             .unwrap();
         let step_index = iter_contents.pop().unwrap();
         let hash_index = iter_contents.pop().unwrap();
-        KeccakColumns {
+        KeccakWitness {
             hash_index,
             step_index,
             mode_flags,
@@ -258,7 +262,7 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for KeccakColumns<G> {
     }
 }
 
-impl<'data, G> IntoParallelIterator for &'data KeccakColumns<G>
+impl<'data, G> IntoParallelIterator for &'data KeccakWitness<G>
 where
     Vec<&'data G>: IntoParallelIterator,
 {
@@ -276,7 +280,7 @@ where
     }
 }
 
-impl<'data, G> IntoParallelIterator for &'data mut KeccakColumns<G>
+impl<'data, G> IntoParallelIterator for &'data mut KeccakWitness<G>
 where
     Vec<&'data mut G>: IntoParallelIterator,
 {

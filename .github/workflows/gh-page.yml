@@ -2,8 +2,7 @@ name: Deploy Specifications & Docs to GitHub Pages
 
 on:
   push:
-    branches:
-      - "*"
+    branches: ["master"]
 
 env:
   OCAML_VERSION: "4.14.0"

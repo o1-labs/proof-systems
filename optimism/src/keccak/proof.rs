@@ -1,4 +1,4 @@
-use super::column::KeccakColumns;
+use super::column::KeccakWitness;
 use crate::DOMAIN_SIZE;
 use ark_ff::Zero;
 use ark_poly::univariate::DensePolynomial;
@@ -22,13 +22,13 @@ use rayon::iter::{
 
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
-    evaluations: KeccakColumns<Vec<G::ScalarField>>,
+    evaluations: KeccakWitness<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     fn default() -> Self {
         KeccakProofInputs {
-            evaluations: KeccakColumns {
+            evaluations: KeccakWitness {
                 hash_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 step_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 mode_flags: std::array::from_fn(|_| {
@@ -47,9 +47,9 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
 
 #[derive(Debug)]
 pub struct KeccakProof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    commitments: KeccakColumns<PolyComm<G>>,
-    zeta_evaluations: KeccakColumns<G::ScalarField>,
-    zeta_omega_evaluations: KeccakColumns<G::ScalarField>,
+    commitments: KeccakWitness<PolyComm<G>>,
+    zeta_evaluations: KeccakWitness<G::ScalarField>,
+    zeta_omega_evaluations: KeccakWitness<G::ScalarField>,
     opening_proof: OpeningProof,
 }
 
@@ -62,7 +62,7 @@ pub fn fold<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     accumulator: &mut KeccakProofInputs<G>,
-    inputs: &KeccakColumns<Vec<G::ScalarField>>,
+    inputs: &KeccakWitness<Vec<G::ScalarField>>,
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {
@@ -76,7 +76,7 @@ pub fn fold<
                 );
                 srs.commit_evaluations_non_hiding(domain.d1, &evals)
             })
-            .collect::<KeccakColumns<_>>()
+            .collect::<KeccakWitness<_>>()
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
@@ -125,7 +125,7 @@ where
                 .map(|e| eval_col(e.to_vec()))
                 .collect::<Vec<_>>()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: eval_col(evaluations.hash_index),
             step_index: eval_col(evaluations.step_index),
             mode_flags: eval_array_col(&evaluations.mode_flags).try_into().unwrap(),
@@ -138,7 +138,7 @@ where
         let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
             polys.into_par_iter().map(comm).collect::<Vec<_>>()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
             mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
@@ -163,7 +163,7 @@ where
         let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
             polys.par_iter().map(comm).collect::<Vec<_>>()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
             mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
@@ -336,7 +336,7 @@ fn test_keccak_prover() {
 
     let proof_inputs = {
         KeccakProofInputs {
-            evaluations: KeccakColumns {
+            evaluations: KeccakWitness {
                 hash_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 step_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 mode_flags: std::array::from_fn(|_| {

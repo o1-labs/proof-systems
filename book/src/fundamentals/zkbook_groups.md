@@ -112,7 +112,7 @@ Another really important assumption is the no-relation assumption (TODO: name).
 
 Basically what this says is that randomly selected group elements have no efficiently computable linear relations between them. Formally, letting $G$ be a group and $\mu$ a probability distribution on $G$, and $\mathcal{A}$ a set of programs (with resource bounds) that take in a list of group elements as inputs and outputs a list of integers of the same length.
 
-Then the $(G, \mu, \mathcal{A}, N,\varepsilon)$-no-relation assumption says for all $(P,t,m) \in \mathcal{A}$, for any $n \leq N$, if you sample $g_1, \dots, g_n$ according to $G$, letting $[e_1, \dots, e_n] = P([g_1, \dots, g_n])$, it is not the case that
+Then the $(G, \mu, \mathcal{A}, N,\varepsilon)$-no-relation assumption says for all $(P,t,m) \in \mathcal{A}$, for any $n \leq N$, if you sample $g_1, \dots, g_n$ according to $\mu$, letting $[e_1, \dots, e_n] = P([g_1, \dots, g_n])$, it is not the case that
 
 $$
 e_1 \cdot g_1 + \dots + e_n \cdot g_n = 0

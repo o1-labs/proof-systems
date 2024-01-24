@@ -76,7 +76,7 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
 /// Combine the polynomials using `polyscale`, creating a single unified polynomial to open.
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
-    polyscale: G::ScalarField,         // scaling factor for polynoms
+    polyscale: G::ScalarField,         // scaling factor for polynomials
     srs_length: usize,
 ) -> (DensePolynomial<G::ScalarField>, G::ScalarField) {
     let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
@@ -214,9 +214,17 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, self.g.len());
 
+        // @volhovm: FIXME: this duplicates the definition of rounds
+        // above. Either it should be removed, or it's a bug and it
+        // should use the local g, and not self.g.
         let rounds = math::ceil_log2(self.g.len());
 
-        // b_j = sum_i r^i elm_i^j
+        // The initial evaluation vector for polynomial commitment b_init is not
+        // just the powers of a single point as in the original IPA, but rather
+        // a vector of linearly combined powers with `evalscale` as recombiner.
+        //
+        // b_init_j = sum_i r^i elm_i^j
+        //          = zeta^j + evalscale * zeta^j omega^j
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
@@ -231,6 +239,7 @@ impl<G: CommitmentCurve> SRS<G> {
             res
         };
 
+        // Combined polynomial p, evaluated at the combined point b_init.
         let combined_inner_product = p
             .coeffs
             .iter()
@@ -256,18 +265,24 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut chals = vec![];
         let mut chal_invs = vec![];
 
+        // The main IPA folding loop that has log iterations.
         for _ in 0..rounds {
             let n = g.len() / 2;
-            let (g_lo, g_hi) = (g[0..n].to_vec(), g[n..].to_vec());
+            // Pedersen bases
+            let (g_lo, g_hi) = (&g[0..n], &g[n..]);
+            // Polynomial coefficients
             let (a_lo, a_hi) = (&a[0..n], &a[n..]);
+            // Evaluation points
             let (b_lo, b_hi) = (&b[0..n], &b[n..]);
 
+            // Blinders for L/R
             let rand_l = <G::ScalarField as UniformRand>::rand(rng);
             let rand_r = <G::ScalarField as UniformRand>::rand(rng);
 
+            // Pedersen commitment to a_lo,rand_l,<a_hi,b_lo>
             let l = G::Group::msm_bigint(
-                &[&g[0..n], &[self.h, u]].concat(),
-                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]]
+                &[g_lo, &[self.h, u]].concat(),
+                &[a_hi, &[rand_l, inner_prod(a_hi, b_lo)]]
                     .concat()
                     .iter()
                     .map(|x| x.into_bigint())
@@ -276,8 +291,8 @@ impl<G: CommitmentCurve> SRS<G> {
             .into_affine();
 
             let r = G::Group::msm_bigint(
-                &[&g[n..], &[self.h, u]].concat(),
-                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]]
+                &[g_hi, &[self.h, u]].concat(),
+                &[a_lo, &[rand_r, inner_prod(a_lo, b_hi)]]
                     .concat()
                     .iter()
                     .map(|x| x.into_bigint())
@@ -291,6 +306,7 @@ impl<G: CommitmentCurve> SRS<G> {
             sponge.absorb_g(&[l]);
             sponge.absorb_g(&[r]);
 
+            // Round #i challenges
             let u_pre = squeeze_prechallenge(&mut sponge);
             let u = u_pre.to_field(&endo_r);
             let u_inv = u.inverse().unwrap();
@@ -298,6 +314,7 @@ impl<G: CommitmentCurve> SRS<G> {
             chals.push(u);
             chal_invs.push(u_inv);
 
+            // IPA-folding polynomial coefficients
             a = a_hi
                 .par_iter()
                 .zip(a_lo)
@@ -310,6 +327,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
+            // IPA-folding evaluation points
             b = b_lo
                 .par_iter()
                 .zip(b_hi)
@@ -322,23 +340,33 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
-            g = G::combine_one_endo(endo_r, endo_q, &g_lo, &g_hi, u_pre);
+            // IPA-folding bases
+            g = G::combine_one_endo(endo_r, endo_q, g_lo, g_hi, u_pre);
         }
 
-        assert!(g.len() == 1);
+        assert!(
+            g.len() == 1 && a.len() == 1 && b.len() == 1,
+            "IPA commitment folding must produce single elements after log rounds"
+        );
         let a0 = a[0];
         let b0 = b[0];
         let g0 = g[0];
 
+        // Schnorr/Sigma-protocol part
+
+        // r_prime = blinding_factor + \sum_i (rand_l[i] * (u[i]^{-1}) + rand_r * u[i])
+        //   where u is a vector of folding challenges, and rand_l/rand_r are
+        //   intermediate L/R blinders
         let r_prime = blinders
             .iter()
             .zip(chals.iter().zip(chal_invs.iter()))
-            .map(|((l, r), (u, u_inv))| ((*l) * u_inv) + (*r * u))
+            .map(|((rand_l, rand_r), (u, u_inv))| ((*rand_l) * u_inv) + (*rand_r * u))
             .fold(blinding_factor, |acc, x| acc + x);
 
         let d = <G::ScalarField as UniformRand>::rand(rng);
         let r_delta = <G::ScalarField as UniformRand>::rand(rng);
 
+        // delta = (g0 + u*b0)*d + h*r_delta
         let delta = ((g0.into_group() + (u.mul(b0))).into_affine().mul(d) + self.h.mul(r_delta))
             .into_affine();
 
@@ -346,7 +374,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
 
         let z1 = a0 * c + d;
-        let z2 = c * r_prime + r_delta;
+        let z2 = r_prime * c + r_delta;
 
         OpeningProof {
             delta,
@@ -420,6 +448,7 @@ pub struct OpeningProof<G: AffineRepr> {
     pub z1: G::ScalarField,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub z2: G::ScalarField,
+    /// A final folded commitment base
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub sg: G,
 }
@@ -465,12 +494,15 @@ impl<BaseField: PrimeField, G: AffineRepr<BaseField = BaseField> + CommitmentCur
     }
 }
 
+/// Commitment round challenges (endo mapped) and their inverses.
 pub struct Challenges<F> {
     pub chal: Vec<F>,
     pub chal_inv: Vec<F>,
 }
 
 impl<G: AffineRepr> OpeningProof<G> {
+    /// Computes a log-sized vector of scalar challenges for
+    /// recombining elements inside the IPA.
     pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         sponge: &mut EFqSponge,
@@ -486,6 +518,8 @@ impl<G: AffineRepr> OpeningProof<G> {
             .collect()
     }
 
+    /// Same as `prechallenges`, but maps scalar challenges using the
+    /// provided endomorphism, and computes their inverses.
     pub fn challenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         endo_r: &G::ScalarField,

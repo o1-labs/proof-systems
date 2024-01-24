@@ -48,9 +48,9 @@ fn ec_test() {
         let mut acc = p;
         for _ in 0..num_additions {
             res.push(acc);
-            acc = acc + p;
+            acc += p;
         }
-        <Other as AffineRepr>::Group::normalize_batch(&mut res)
+        <Other as AffineRepr>::Group::normalize_batch(&res)
     };
 
     let qs = {
@@ -61,9 +61,9 @@ fn ec_test() {
         let mut acc = q;
         for _ in 0..num_additions {
             res.push(acc);
-            acc = acc + q;
+            acc += q;
         }
-        <Other as AffineRepr>::Group::normalize_batch(&mut res)
+        <Other as AffineRepr>::Group::normalize_batch(&res)
     };
 
     for &p in ps.iter().take(num_doubles) {
