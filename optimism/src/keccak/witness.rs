@@ -84,6 +84,19 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for i in pad_range {
             self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
+        let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
+        for (idx, value) in pad_blocks.iter().enumerate() {
+            self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
+        }
+    }
+
+    fn set_flag_round(&mut self, round: u64) {
+        assert!(round < ROUNDS as u64);
+        self.write_column(KeccakColumn::FlagRound, round);
+    }
+
+    fn set_flag_squeeze(&mut self) {
+        self.write_column(KeccakColumn::FlagSqueeze, 1);
     }
 
     fn set_flag_absorb(&mut self, absorb: Absorb) {
@@ -99,11 +112,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
     }
 
-    fn set_flag_round(&mut self, round: u64) {
-        assert!(round < ROUNDS as u64);
-        self.write_column(KeccakColumn::FlagRound, round);
-    }
-
     fn run_sponge(&mut self, sponge: Sponge) {
         match sponge {
             Sponge::Absorb(absorb) => self.run_absorb(absorb),
@@ -112,7 +120,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     fn run_squeeze(&mut self) {
-        self.write_column(KeccakColumn::FlagSqueeze, 1);
+        self.set_flag_squeeze();
 
         // Compute witness values
         let state = self.prev_block.clone();
@@ -178,10 +186,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
         for (idx, value) in shifts.iter().enumerate() {
             self.write_column(KeccakColumn::SpongeShifts(idx), *value);
-        }
-        let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
-        for (idx, value) in pad_blocks.iter().enumerate() {
-            self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
         }
         // Rest is zero thanks to null_state
 

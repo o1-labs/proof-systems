@@ -1,4 +1,4 @@
-/// This module contains the constraints for one Keccak step.
+//! This module contains the constraints for one Keccak step.
 use crate::keccak::{
     column::{KeccakColumn, PAD_SUFFIX_LEN},
     environment::{KeccakEnv, KeccakEnvironment},
