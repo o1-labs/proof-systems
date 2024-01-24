@@ -378,10 +378,7 @@ pub trait EndoCurve: CommitmentCurve {
     }
 }
 
-impl<P: SWCurveConfig + Clone> CommitmentCurve for SWJAffine<P>
-where
-    P::BaseField: PrimeField,
-{
+impl<P: SWCurveConfig + Clone> CommitmentCurve for SWJAffine<P> {
     type Params = P;
     type Map = BWParameters<P>;
 

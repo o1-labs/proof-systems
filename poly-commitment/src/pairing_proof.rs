@@ -3,7 +3,8 @@ use crate::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
 use crate::srs::SRS;
 use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
 use ark_ec::pairing::Pairing;
-use ark_ec::{scalar_mul::variable_base::VariableBaseMSM, AffineRepr};
+use ark_ec::AffineRepr;
+use ark_ec::VariableBaseMSM;
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
@@ -264,11 +265,9 @@ fn divisor_polynomial<F: PrimeField>(elm: &[F]) -> DensePolynomial<F> {
         .unwrap()
 }
 
-use ark_ec::ScalarMul;
-
 impl<
         F: PrimeField,
-        G: CommitmentCurve<ScalarField = F> + ScalarMul,
+        G: CommitmentCurve<ScalarField = F>,
         G2: CommitmentCurve<ScalarField = F>,
         Pair: Pairing<G1Affine = G, G2Affine = G2>,
     > PairingProof<Pair>
@@ -306,6 +305,7 @@ impl<
             blinding: blinding_factor,
         })
     }
+
     pub fn verify(
         &self,
         srs: &PairingSRS<Pair>,           // SRS
@@ -324,22 +324,26 @@ impl<
                 F::one(), /* TODO: This is inefficient */
             );
             let scalars: Vec<_> = scalars.iter().map(|x| x.into_bigint()).collect();
-
-            <G as VariableBaseMSM>::msm_bigint(&points, &scalars)
+            G::Group::msm_bigint(&points, &scalars)
         };
         let evals = combine_evaluations(evaluations, polyscale);
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
+        let eval_commitment = srs
+            .full_srs
+            .commit_non_hiding(&eval_polynomial(elm, &evals), 1, None)
+            .unshifted[0]
+            .into_group();
+        let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
+        let g = Pair::G2Affine::generator();
+        // FIXME: we should not do two pairing. We should do one miller loop +
+        // final exponentiation and check it is equals to 1
+        let numerator = Pair::pairing(numerator_commitment.into(), g);
+
+        // Right side pairing
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1, None)
             .unshifted[0];
-        let eval_commitment = srs
-            .full_srs
-            .commit_non_hiding(&eval_polynomial(elm, &evals), 1, None)
-            .unshifted[0];
-        let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
-
-        let numerator = Pair::pairing(numerator_commitment, Pair::G2Affine::generator());
         let scaled_quotient = Pair::pairing(self.quotient, divisor_commitment);
         numerator == scaled_quotient
     }
