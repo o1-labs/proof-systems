@@ -1,3 +1,4 @@
+/// This module includes the lookups of the Keccak circuit
 use crate::{
     keccak::{
         column::KeccakColumn,
