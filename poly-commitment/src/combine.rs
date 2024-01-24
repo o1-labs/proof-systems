@@ -340,7 +340,7 @@ fn affine_window_combine_one_endo_base<P: SWCurveConfig>(
     points
 }
 
-///! Double an array of curve points in-place.
+/// Double an array of curve points in-place.
 fn batch_double_in_place<P: SWCurveConfig>(
     denominators: &mut Vec<P::BaseField>,
     points: &mut [SWJAffine<P>],
