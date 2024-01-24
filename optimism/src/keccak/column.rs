@@ -85,7 +85,7 @@ pub enum KeccakColumn {
 pub struct KeccakColumns<T> {
     pub hash_index: T,
     pub step_index: T,
-    pub mode_flags: [T; MODE_FLAGS_COLS_LEN], // Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad
+    pub mode_flags: [T; MODE_FLAGS_COLS_LEN], // Round, Absorb, Squeeze
     pub curr: [T; ZKVM_KECCAK_COLS_CURR],     // Curr[0..1965) + RC as quarters
     pub next: [T; ZKVM_KECCAK_COLS_NEXT],     // Next[0..100)
 }
