@@ -1,7 +1,7 @@
 use std::array;
 
 use super::{
-    column::{KeccakColumn, KeccakColumns, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+    column::{KeccakColumn, KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
     constraints::Constraints,
     grid_index,
     interpreter::{Absorb, KeccakStep, Sponge},
@@ -23,7 +23,7 @@ pub struct KeccakEnv<Fp> {
     pub(crate) lookups: Vec<Lookup<E<Fp>>>,
 
     /// The full state of the Keccak gate (witness)
-    pub keccak_witness: KeccakColumns<Fp>,
+    pub keccak_witness: KeccakWitness<Fp>,
     /// What step of the hash is being executed (or None, if just ended)
     pub keccak_step: Option<KeccakStep>,
 
@@ -49,7 +49,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
         let mut env = Self {
             constraints: vec![],
             lookups: vec![],
-            keccak_witness: KeccakColumns::default(),
+            keccak_witness: KeccakWitness::default(),
             keccak_step: None,
             hash_idx,
             step_idx: 0,
@@ -93,7 +93,7 @@ impl<Fp: Field> KeccakEnv<Fp> {
     }
 
     pub fn null_state(&mut self) {
-        self.keccak_witness = KeccakColumns::default();
+        self.keccak_witness = KeccakWitness::default();
     }
 
     pub fn update_step(&mut self) {

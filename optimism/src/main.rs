@@ -5,7 +5,7 @@ use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::{
-        column::KeccakColumns,
+        column::KeccakWitness,
         interpreter::KeccakInterpreter,
         proof::{self as keccak_proof, KeccakProofInputs},
     },
@@ -106,7 +106,7 @@ pub fn main() -> ExitCode {
     >::default();
 
     let keccak_reset_pre_folding_witness =
-        |keccak_columns: &mut KeccakColumns<Vec<Fp256<FrParameters>>>| {
+        |keccak_columns: &mut KeccakWitness<Vec<Fp256<FrParameters>>>| {
             // Resize without deallocating
             keccak_columns.hash_index.clear();
             keccak_columns.step_index.clear();
@@ -115,8 +115,8 @@ pub fn main() -> ExitCode {
             keccak_columns.next.iter_mut().for_each(Vec::clear);
         };
 
-    let mut keccak_current_pre_folding_witness: KeccakColumns<Vec<Fp256<FrParameters>>> =
-        KeccakColumns {
+    let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp256<FrParameters>>> =
+        KeccakWitness {
             hash_index: Vec::with_capacity(domain_size),
             step_index: Vec::with_capacity(domain_size),
             mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
@@ -134,7 +134,7 @@ pub fn main() -> ExitCode {
             }
 
             // Update the witness with the Keccak step columns before resetting the environment
-            // TODO: simplify the contents of the KeccakColumns or create an iterator for it
+            // TODO: simplify the contents of the KeccakWitness or create an iterator for it
             keccak_current_pre_folding_witness
                 .hash_index
                 .push(keccak_env.keccak_witness.hash_index);
