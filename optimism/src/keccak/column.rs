@@ -89,8 +89,8 @@ pub struct KeccakWitness<T> {
     pub hash_index: T,                        // Which hash this is inside the circuit
     pub step_index: T,                        // Which step this is inside the hash
     pub mode_flags: [T; MODE_FLAGS_COLS_LEN], // Round, Absorb, Squeeze
-    pub curr: [T; ZKVM_KECCAK_COLS_CURR],     // Curr[0..1965) + RC as quarters
-    pub next: [T; ZKVM_KECCAK_COLS_NEXT],     // Next[0..100)
+    pub curr: [T; ZKVM_KECCAK_COLS_CURR], // Contains 1969 witnesses used in the current step including Input and RoundConstants
+    pub next: [T; ZKVM_KECCAK_COLS_NEXT], // Contains the Output
 }
 
 impl<T: Clone> KeccakWitness<T> {
