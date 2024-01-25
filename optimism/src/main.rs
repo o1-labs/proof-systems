@@ -100,24 +100,22 @@ pub fn main() -> ExitCode {
 
     let mut keccak_folded_witness = KeccakProofInputs::default();
 
-    let keccak_reset_pre_folding_witness =
-        |keccak_columns: &mut KeccakWitness<Vec<Fp>>| {
-            // Resize without deallocating
-            keccak_columns.hash_index.clear();
-            keccak_columns.step_index.clear();
-            keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
-            keccak_columns.curr.iter_mut().for_each(Vec::clear);
-            keccak_columns.next.iter_mut().for_each(Vec::clear);
-        };
+    let keccak_reset_pre_folding_witness = |keccak_columns: &mut KeccakWitness<Vec<Fp>>| {
+        // Resize without deallocating
+        keccak_columns.hash_index.clear();
+        keccak_columns.step_index.clear();
+        keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
+        keccak_columns.curr.iter_mut().for_each(Vec::clear);
+        keccak_columns.next.iter_mut().for_each(Vec::clear);
+    };
 
-    let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp>> =
-        KeccakWitness {
-            hash_index: Vec::with_capacity(domain_size),
-            step_index: Vec::with_capacity(domain_size),
-            mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-        };
+    let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp>> = KeccakWitness {
+        hash_index: Vec::with_capacity(domain_size),
+        step_index: Vec::with_capacity(domain_size),
+        mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+    };
 
     while !env.halt {
         env.step(&configuration, &meta, &start);
