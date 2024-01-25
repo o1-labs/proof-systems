@@ -372,21 +372,36 @@
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::column::KeccakWitness;
-<span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the proof system for the Keccak circuit
+
+</span><span class="kw">use crate</span>::{keccak::column::KeccakWitness, DOMAIN_SIZE};
 <span class="kw">use </span>ark_ff::Zero;
-<span class="kw">use </span>ark_poly::univariate::DensePolynomial;
-<span class="kw">use </span>ark_poly::{Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
-<span class="kw">use </span>kimchi::groupmap::GroupMap;
-<span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-<span class="kw">use </span>mina_poseidon::sponge::ScalarChallenge;
-<span class="kw">use </span>mina_poseidon::FqSponge;
-<span class="kw">use </span>poly_commitment::commitment::{combined_inner_product, BatchEvaluationProof, Evaluation};
-<span class="kw">use </span>poly_commitment::evaluation_proof::DensePolynomialOrEvaluations;
-<span class="kw">use </span>poly_commitment::OpenProof;
+<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>kimchi::{
+    circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+};
+<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>poly_commitment::{
-    commitment::{absorb_commitment, PolyComm},
-    SRS <span class="kw">as _</span>,
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    evaluation_proof::DensePolynomialOrEvaluations,
+    OpenProof, SRS <span class="kw">as _</span>,
 };
 <span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>rayon::iter::{
@@ -394,7 +409,8 @@
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
-<span class="attr">#[derive(Debug)]
+<span class="doccomment">/// This struct contains the evaluations of the KeccakWitness columns across the whole domain of the circuit
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>KeccakProofInputs&lt;G: KimchiCurve&gt; {
     evaluations: KeccakWitness&lt;Vec&lt;G::ScalarField&gt;&gt;,
 }
@@ -419,15 +435,22 @@
     }
 }
 
-<span class="attr">#[derive(Debug)]
+<span class="doccomment">/// This struct contains the proof of the Keccak circuit
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>KeccakProof&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
-    commitments: KeccakWitness&lt;PolyComm&lt;G&gt;&gt;,
-    zeta_evaluations: KeccakWitness&lt;G::ScalarField&gt;,
-    zeta_omega_evaluations: KeccakWitness&lt;G::ScalarField&gt;,
-    opening_proof: OpeningProof,
+    <span class="doccomment">/// Polynomial commitments to the witness columns
+    </span>commitments: KeccakWitness&lt;PolyComm&lt;G&gt;&gt;,
+    <span class="doccomment">/// Evaluations of witness polynomials at current rows on random evaluation point `zeta`
+    </span>zeta_evaluations: KeccakWitness&lt;G::ScalarField&gt;,
+    <span class="doccomment">/// Evaluations of witness polynomials at next rows (where `* omega` comes from) on random evaluation point `zeta`
+    </span>zeta_omega_evaluations: KeccakWitness&lt;G::ScalarField&gt;,
+    <span class="doccomment">/// Proof of opening for the evaluations with respect to the polynomial commitments
+    </span>opening_proof: OpeningProof,
 }
 
-<span class="kw">pub fn </span>fold&lt;
+<span class="doccomment">/// This function folds the witness of the current circuit with the accumulated Keccak instance
+/// with a random combination using a scaling challenge
+</span><span class="kw">pub fn </span>fold&lt;
     G: KimchiCurve,
     OpeningProof: OpenProof&lt;G&gt;,
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
@@ -474,7 +497,9 @@
         });
 }
 
-<span class="kw">pub fn </span>prove&lt;
+<span class="doccomment">/// This function provides a proof for a Keccak instance.
+</span><span class="comment">// TODO: this proof does not contain information about the constraints nor lookups yet
+</span><span class="kw">pub fn </span>prove&lt;
     G: KimchiCurve,
     OpeningProof: OpenProof&lt;G&gt;,
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
@@ -599,7 +624,9 @@
     }
 }
 
-<span class="kw">pub fn </span>verify&lt;
+<span class="doccomment">/// This function verifies the proof of a Keccak instance.
+</span><span class="comment">// TODO: this still does not verify the constraints nor lookups
+</span><span class="kw">pub fn </span>verify&lt;
     G: KimchiCurve,
     OpeningProof: OpenProof&lt;G&gt;,
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
@@ -690,7 +717,8 @@
     OpeningProof::verify(srs, <span class="kw-2">&amp;</span>group_map, <span class="kw-2">&amp;mut </span>[batch], <span class="kw-2">&amp;mut </span>thread_rng())
 }
 
-<span class="attr">#[test]
+<span class="comment">// Dummy test with random witness that verifies because the proof still does not include constraints nor lookups
+</span><span class="attr">#[test]
 </span><span class="kw">fn </span>test_keccak_prover() {
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>mina_poseidon::{
