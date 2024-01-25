@@ -11,7 +11,6 @@ use crate::keccak::{
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    lookups::KeccakLookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
