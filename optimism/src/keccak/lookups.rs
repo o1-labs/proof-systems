@@ -103,6 +103,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
 
+    // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {
             self.add_lookup(Lookup::read_if(

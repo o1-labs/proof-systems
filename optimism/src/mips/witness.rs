@@ -623,6 +623,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
 
             // COMMUNICATION CHANNEL: Write preimage bytes
+            // FIXME: this should be executed in the constraints side
             let preimage = self.preimage.as_ref().unwrap();
             for (i, byte) in preimage.iter().enumerate() {
                 keccak_env.add_lookup(Lookup::write_one(
@@ -636,6 +637,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
 
             // COMMUNICATION CHANNEL: Read hash output
+            // FIXME: this should be executed in the constraints side
             match self.preimage_key {
                 Some(preimage_key) => {
                     let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
