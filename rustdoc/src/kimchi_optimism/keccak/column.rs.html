@@ -348,37 +348,37 @@
 /// (Sponge or Round) that is currently being executed.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>KeccakColumn {
-    HashIndex,              <span class="comment">// Which hash this is inside the circuit
-    </span>StepIndex,              <span class="comment">// Which step this is inside the hash
-    </span>FlagRound,              <span class="comment">// Coeff Round = [0..24)
-    </span>FlagAbsorb,             <span class="comment">// Coeff Absorb = 0 | 1
-    </span>FlagSqueeze,            <span class="comment">// Coeff Squeeze = 0 | 1
-    </span>FlagRoot,               <span class="comment">// Coeff Root = 0 | 1
-    </span>PadLength,              <span class="comment">// Coeff Length 0 | 1 ..=136
-    </span>InvPadLength,           <span class="comment">// Inverse of PadLength when PadLength != 0
-    </span>TwoToPad,               <span class="comment">// 2^PadLength
-    </span>PadBytesFlags(usize),   <span class="comment">// 136 boolean values
-    </span>PadSuffix(usize),       <span class="comment">// 5 values with padding suffix
-    </span>RoundConstants(usize),  <span class="comment">// Round constants
-    </span>Input(usize),           <span class="comment">// Curr[0..100) either ThetaStateA or SpongeOldState
-    </span>ThetaShiftsC(usize),    <span class="comment">// Round Curr[100..180)
-    </span>ThetaDenseC(usize),     <span class="comment">// Round Curr[180..200)
-    </span>ThetaQuotientC(usize),  <span class="comment">// Round Curr[200..205)
+    HashIndex,    <span class="comment">// Hash identifier to distinguish inside the syscalls communication channel
+    </span>StepIndex,    <span class="comment">// Hash step identifier to distinguish inside interstep communication
+    </span>FlagRound,    <span class="comment">// Coeff Round = [0..24)
+    </span>FlagAbsorb,   <span class="comment">// Coeff Absorb = 0 | 1
+    </span>FlagSqueeze,  <span class="comment">// Coeff Squeeze = 0 | 1
+    </span>FlagRoot,     <span class="comment">// Coeff Root = 0 | 1
+    </span>PadLength,    <span class="comment">// Coeff Length 0 | 1 ..=136
+    </span>InvPadLength, <span class="comment">// Inverse of PadLength when PadLength != 0
+    </span>TwoToPad,     <span class="comment">// 2^PadLength
+    </span>PadBytesFlags(usize), <span class="comment">// 136 boolean values
+    </span>PadSuffix(usize), <span class="comment">// 5 values with padding suffix
+    </span>RoundConstants(usize), <span class="comment">// Round constants
+    </span>Input(usize), <span class="comment">// Curr[0..100) either ThetaStateA or SpongeOldState
+    </span>ThetaShiftsC(usize), <span class="comment">// Round Curr[100..180)
+    </span>ThetaDenseC(usize), <span class="comment">// Round Curr[180..200)
+    </span>ThetaQuotientC(usize), <span class="comment">// Round Curr[200..205)
     </span>ThetaRemainderC(usize), <span class="comment">// Round Curr[205..225)
-    </span>ThetaDenseRotC(usize),  <span class="comment">// Round Curr[225..245)
+    </span>ThetaDenseRotC(usize), <span class="comment">// Round Curr[225..245)
     </span>ThetaExpandRotC(usize), <span class="comment">// Round Curr[245..265)
-    </span>PiRhoShiftsE(usize),    <span class="comment">// Round Curr[265..665)
-    </span>PiRhoDenseE(usize),     <span class="comment">// Round Curr[665..765)
-    </span>PiRhoQuotientE(usize),  <span class="comment">// Round Curr[765..865)
+    </span>PiRhoShiftsE(usize), <span class="comment">// Round Curr[265..665)
+    </span>PiRhoDenseE(usize), <span class="comment">// Round Curr[665..765)
+    </span>PiRhoQuotientE(usize), <span class="comment">// Round Curr[765..865)
     </span>PiRhoRemainderE(usize), <span class="comment">// Round Curr[865..965)
-    </span>PiRhoDenseRotE(usize),  <span class="comment">// Round Curr[965..1065)
+    </span>PiRhoDenseRotE(usize), <span class="comment">// Round Curr[965..1065)
     </span>PiRhoExpandRotE(usize), <span class="comment">// Round Curr[1065..1165)
-    </span>ChiShiftsB(usize),      <span class="comment">// Round Curr[1165..1565)
-    </span>ChiShiftsSum(usize),    <span class="comment">// Round Curr[1565..1965)
-    </span>SpongeNewState(usize),  <span class="comment">// Sponge Curr[100..200)
-    </span>SpongeBytes(usize),     <span class="comment">// Sponge Curr[200..400)
-    </span>SpongeShifts(usize),    <span class="comment">// Sponge Curr[400..800)
-    </span>Output(usize),          <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
+    </span>ChiShiftsB(usize), <span class="comment">// Round Curr[1165..1565)
+    </span>ChiShiftsSum(usize), <span class="comment">// Round Curr[1565..1965)
+    </span>SpongeNewState(usize), <span class="comment">// Sponge Curr[100..200)
+    </span>SpongeBytes(usize), <span class="comment">// Sponge Curr[200..400)
+    </span>SpongeShifts(usize), <span class="comment">// Sponge Curr[400..800)
+    </span>Output(usize), <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
 </span>}
 
 <span class="doccomment">/// The witness columns used by the Keccak circuit.
