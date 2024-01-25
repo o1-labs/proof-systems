@@ -1,18 +1,19 @@
-use super::column::KeccakWitness;
-use crate::DOMAIN_SIZE;
+//! This module contains the proof system for the Keccak circuit
+
+use crate::{keccak::column::KeccakWitness, DOMAIN_SIZE};
 use ark_ff::Zero;
-use ark_poly::univariate::DensePolynomial;
-use ark_poly::{Evaluations, Polynomial, Radix2EvaluationDomain as D};
-use kimchi::groupmap::GroupMap;
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::sponge::ScalarChallenge;
-use mina_poseidon::FqSponge;
-use poly_commitment::commitment::{combined_inner_product, BatchEvaluationProof, Evaluation};
-use poly_commitment::evaluation_proof::DensePolynomialOrEvaluations;
-use poly_commitment::OpenProof;
+use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
+use kimchi::{
+    circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
-    commitment::{absorb_commitment, PolyComm},
-    SRS as _,
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    evaluation_proof::DensePolynomialOrEvaluations,
+    OpenProof, SRS as _,
 };
 use rand::thread_rng;
 use rayon::iter::{
@@ -20,6 +21,7 @@ use rayon::iter::{
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
+/// This struct contains the evaluations of the KeccakWitness columns across the whole domain of the circuit
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
     evaluations: KeccakWitness<Vec<G::ScalarField>>,
@@ -45,14 +47,21 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     }
 }
 
+/// This struct contains the proof of the Keccak circuit
 #[derive(Debug)]
 pub struct KeccakProof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
+    /// Polynomial commitments to the witness columns
     commitments: KeccakWitness<PolyComm<G>>,
+    /// Evaluations of witness polynomials at current rows on random evaluation point `zeta`
     zeta_evaluations: KeccakWitness<G::ScalarField>,
+    /// Evaluations of witness polynomials at next rows (where `* omega` comes from) on random evaluation point `zeta`
     zeta_omega_evaluations: KeccakWitness<G::ScalarField>,
+    /// Proof of opening for the evaluations with respect to the polynomial commitments
     opening_proof: OpeningProof,
 }
 
+/// This function folds the witness of the current circuit with the accumulated Keccak instance
+/// with a random combination using a scaling challenge
 pub fn fold<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -100,6 +109,8 @@ pub fn fold<
         });
 }
 
+/// This function provides a proof for a Keccak instance.
+// TODO: this proof does not contain information about the constraints nor lookups yet
 pub fn prove<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -225,6 +236,8 @@ where
     }
 }
 
+/// This function verifies the proof of a Keccak instance.
+// TODO: this still does not verify the constraints nor lookups
 pub fn verify<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -316,6 +329,7 @@ pub fn verify<
     OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }
 
+// Dummy test with random witness that verifies because the proof still does not include constraints nor lookups
 #[test]
 fn test_keccak_prover() {
     use ark_ff::UniformRand;

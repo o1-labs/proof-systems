@@ -1,14 +1,18 @@
-use super::{
-    column::KeccakColumn,
-    environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, BoolOps, E,
+//! This module includes the lookups of the Keccak circuit
+use crate::{
+    keccak::{
+        column::KeccakColumn,
+        environment::{KeccakEnv, KeccakEnvironment},
+        ArithOps, BoolOps, E,
+    },
+    mips::interpreter::{Lookup, LookupTable},
 };
-use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
+/// This trait adds useful methods to deal with lookups in the Keccak environment
 pub(crate) trait Lookups {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
@@ -69,8 +73,6 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     }
 
     fn lookups(&mut self) {
-        // TODO: preimage lookups (somewhere else)
-
         // SPONGE LOOKUPS
         self.lookups_sponge();
 
