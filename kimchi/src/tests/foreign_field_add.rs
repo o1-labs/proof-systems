@@ -23,6 +23,7 @@ use mina_poseidon::{
 };
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
+use o1_utils::tests::make_test_rng;
 use o1_utils::{
     foreign_field::{BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers, Two,
@@ -31,9 +32,10 @@ use poly_commitment::{
     evaluation_proof::OpeningProof,
     srs::{endos, SRS},
 };
-use rand::{prelude::*, rngs::StdRng, Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng};
 use std::array;
 use std::sync::Arc;
+
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
 
@@ -884,9 +886,7 @@ fn test_pasta_sub_max_pallas() {
 #[test]
 // Test with a random addition
 fn test_random_add() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(&mut rng, foreign_mod.clone(), true);
     let right_input = random_input(&mut rng, foreign_mod.clone(), true);
@@ -907,9 +907,7 @@ fn test_random_add() {
 // Test with a random subtraction
 fn test_random_sub() {
     let foreign_mod = secp256k1_modulus();
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
     let left_input = random_input(&mut rng, foreign_mod.clone(), true);
     let right_input = random_input(&mut rng, foreign_mod.clone(), true);
     let left_big = BigUint::from_bytes_be(&left_input);
@@ -931,9 +929,7 @@ fn test_random_sub() {
 #[test]
 // Random test with foreign field being the native field add
 fn test_foreign_is_native_add() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
     let pallas = PallasField::modulus_biguint();
     let left_input = random_input(&mut rng, pallas.clone(), true);
     let right_input = random_input(&mut rng, pallas.clone(), true);
@@ -966,9 +962,7 @@ fn test_foreign_is_native_add() {
 #[test]
 // Random test with foreign field being the native field add
 fn test_foreign_is_native_sub() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
     let pallas = PallasField::modulus_biguint();
     let left_input = random_input(&mut rng, pallas.clone(), true);
     let right_input = random_input(&mut rng, pallas.clone(), true);
@@ -1001,9 +995,7 @@ fn test_foreign_is_native_sub() {
 #[test]
 // Test with a random addition
 fn test_random_small_add() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
     // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
     let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
     let foreign_mod = prime.clone();
@@ -1028,9 +1020,8 @@ fn test_random_small_add() {
 #[test]
 // Test with a random subtraction
 fn test_random_small_sub() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
+
     // 2^200 - 75 is prime with 200 bits (3 limbs but smaller than Pallas)
     let prime = BigUint::from_u128(2u128.pow(100)).unwrap().pow(2) - BigUint::from_u32(75).unwrap();
     let foreign_mod = prime.clone();
@@ -1055,9 +1046,7 @@ fn test_random_small_sub() {
 #[test]
 // Test with bad parameters in bound check
 fn test_bad_bound() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
 
     let foreign_mod = secp256k1_modulus();
     let left_input = BigUint::from_bytes_be(&random_input(&mut rng, foreign_mod.clone(), false));
@@ -1117,9 +1106,7 @@ fn test_bad_bound() {
 #[test]
 // Test with bad left input
 fn test_random_bad_input() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(&mut rng, foreign_mod.clone(), false);
     let right_input = random_input(&mut rng, foreign_mod, false);
@@ -1163,9 +1150,7 @@ fn test_random_bad_input() {
 #[test]
 // Test with bad parameters
 fn test_random_bad_parameters() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(&mut rng, foreign_mod.clone(), false);
     let right_input = random_input(&mut rng, foreign_mod, false);
@@ -1229,9 +1214,7 @@ fn test_random_bad_parameters() {
 #[test]
 // Test with chain of random operations
 fn test_random_chain() {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
 
     let nops = 20;
     let foreign_mod = secp256k1_modulus();
@@ -1265,9 +1248,7 @@ fn test_random_chain() {
 
 // Prove and verify used for end-to-end tests
 fn prove_and_verify(operation_count: usize) {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
 
     // Create random operations
     let operations = (0..operation_count)
@@ -1334,10 +1315,8 @@ fn extend_witness_bound_rc(witness: &mut [Vec<PallasField>; COLUMNS]) {
 #[test]
 fn test_ffadd_no_rc() {
     let operation_count = 3;
-
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    use o1_utils::tests::make_test_rng;
+    let mut rng = make_test_rng();
 
     // Create foreign modulus
     let foreign_mod = secp256k1_modulus();
@@ -1410,9 +1389,7 @@ where
     G::BaseField: PrimeField,
     G: KimchiCurve,
 {
-    let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
-    let mut rng = StdRng::from_seed(seed);
+    let mut rng = make_test_rng();
 
     // Create foreign field addition gates
     let (_next_row, gates) = short_circuit(&[FFOps::Add], foreign_field_modulus);
