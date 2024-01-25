@@ -7,9 +7,9 @@ use crate::{
     snarky::api::SnarkyCircuit,
     snarky::{cvar::FieldVar, runner::RunState},
 };
-use ark_ec::AffineCurve;
+use ark_ec::{AffineCurve, SWModelParameters};
 use ark_ff::{BigInteger, One, PrimeField};
-use mina_curves::pasta::Fp;
+use mina_curves::pasta::{Fp, PallasParameters};
 use poly_commitment::{evaluation_proof::OpeningProof, OpenProof};
 use std::marker::PhantomData;
 use std::ops::Add;
@@ -18,9 +18,15 @@ mod instance;
 
 const CHALLENGE_BITS: usize = 127;
 
-struct FoldingCircuit<C: KimchiCurve, P: OpenProof<C>, const N: usize> {
+struct FoldingCircuit<C, P, OC, const N: usize>
+where
+    C: KimchiCurve,
+    P: OpenProof<C>,
+    OC: SWModelParameters<BaseField = C::ScalarField>,
+{
     _field: PhantomData<C>,
     _proof: PhantomData<P>,
+    _other_curve: PhantomData<OC>,
     /// Commitment sets and their sizes
     commitments: Vec<usize>,
     /// Challenges sets and their sizes
@@ -90,10 +96,7 @@ fn commitment_linear_combination<F: PrimeField>(
     // TODO
     todo!()
 }
-fn ec_add<F: PrimeField>(_a: Point<FieldVar<F>>, _b: Point<FieldVar<F>>) -> Point<FieldVar<F>> {
-    // TODO
-    todo!()
-}
+
 fn ec_scale<F: PrimeField>(
     _point: Point<FieldVar<F>>,
     _scalar: &SmallChallenge<F>,
@@ -143,7 +146,12 @@ fn hash<F: PrimeField, const N: usize>(
     trim(sys, &hash, base)
 }
 
-impl<C: KimchiCurve, P: OpenProof<C>, const N: usize> SnarkyCircuit for FoldingCircuit<C, P, N> {
+impl<C, P, OC, const N: usize> SnarkyCircuit for FoldingCircuit<C, P, OC, N>
+where
+    C: KimchiCurve,
+    P: OpenProof<C>,
+    OC: SWModelParameters<BaseField = C::ScalarField>,
+{
     type Curve = C;
     type Proof = P;
 
@@ -183,7 +191,7 @@ impl<C: KimchiCurve, P: OpenProof<C>, const N: usize> SnarkyCircuit for FoldingC
         inputs_hash.assert_equals(sys, loc!(), &hash1)?;
 
         let t = sys.compute(loc!(), |_| private.unwrap().t)?;
-        let u_acc_new = u_acc.fold(sys, u_i, t, &power)?;
+        let u_acc_new = u_acc.fold::<OC>(sys, u_i, t, &power)?;
         let z_next = apply(z_i);
         let i = i.add(one);
 
@@ -208,6 +216,7 @@ fn example<const N: usize>(private: Private<Fp, N>) {
     let circuit = FoldingCircuit {
         _field: PhantomData,
         _proof: PhantomData::<OpeningProof<Vesta>>,
+        _other_curve: PhantomData::<PallasParameters>,
         commitments: vec![15],
         challenges: vec![1, 5],
     };

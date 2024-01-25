@@ -1,18 +1,19 @@
 use crate::{
     loc,
     snarky::{
+        ec::ec_add,
         folding::{ForeignElement, FullChallenge, Point, Private},
         poseidon::DuplexState,
         snarky_type::SnarkyType,
     },
     FieldVar, RunState, SnarkyResult,
 };
+use ark_ec::SWModelParameters;
 use ark_ff::PrimeField;
 use std::iter::successors;
 
 use super::{
-    challenge_linear_combination, commitment_linear_combination, ec_add, ec_scale, trim,
-    SmallChallenge,
+    challenge_linear_combination, commitment_linear_combination, ec_scale, trim, SmallChallenge,
 };
 
 #[derive(Debug, Clone)]
@@ -101,7 +102,7 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
 
     /// See https://eprint.iacr.org/2021/370.pdf, page 15
     /// Fold the circuit described by `sys` with the other circuit `other`.
-    pub fn fold(
+    pub fn fold<P: SWModelParameters<BaseField = F>>(
         self,
         sys: &mut RunState<F>,
         other: Instance<FieldVar<F>>,
@@ -133,8 +134,9 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         let [t1, t2] = error_terms;
         let t1 = ec_scale(t1, &r);
         let t2 = ec_scale(t2, &SmallChallenge(rr));
-        let error_commitment = ec_add(t1, t2);
-        let error_commitment = ec_add(self.error_commitment, error_commitment);
+        let error_commitment = ec_add::<F, P>(sys, loc!(), t1, t2)?;
+        let error_commitment =
+            ec_add::<F, P>(sys, loc!(), self.error_commitment, error_commitment)?;
 
         let mut new_sets = Vec::with_capacity(self.challenges.len());
         for _ in 0..self.challenges.len() {
