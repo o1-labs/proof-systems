@@ -1,4 +1,4 @@
-use ark_ff::One;
+use ark_ff::{Field, One};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Sign {
@@ -41,6 +41,25 @@ pub struct Lookup<Fp> {
     pub magnitude: Fp,
     pub table_id: LookupTable,
     pub value: Vec<Fp>,
+}
+
+impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let numerator = match self.mode {
+            LookupMode::Read => self.magnitude,
+            LookupMode::Write => -self.magnitude,
+        };
+        write!(
+            formatter,
+            "numerator: {}\ntable_id: {:?}\nvalue:\n[\n",
+            numerator, self.table_id
+        )?;
+        for value in self.value.iter() {
+            write!(formatter, "\t{}\n", value)?;
+        }
+        write!(formatter, "]")?;
+        Ok(())
+    }
 }
 
 impl<T: One> Lookup<T> {
