@@ -55,7 +55,7 @@ impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
             numerator, self.table_id
         )?;
         for value in self.value.iter() {
-            write!(formatter, "\t{}\n", value)?;
+            writeln!(formatter, "\t{}", value)?;
         }
         write!(formatter, "]")?;
         Ok(())
