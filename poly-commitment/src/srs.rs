@@ -3,10 +3,12 @@
 use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{One, PrimeField, Zero};
+use ark_ff::BigInteger;
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
+use groupmap::GroupMap;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -56,6 +58,40 @@ where
         }
     };
     (endo_q, endo_r)
+}
+
+fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
+where
+    G::BaseField: Field,
+{
+    // packing in bit-representation
+    assert_eq!(
+        <G::BaseField as Field>::BasePrimeField::MODULUS_BIT_SIZE / 8,
+        31
+    );
+    const N: usize = 31;
+    let extension_degree = G::BaseField::extension_degree() as usize;
+
+    let mut base_fields = Vec::with_capacity(N * extension_degree);
+
+    for base_count in 0..extension_degree {
+        let mut bits = [false; 8 * N];
+        let offset = base_count * N;
+        for i in 0..N {
+            for j in 0..8 {
+                bits[8 * i + j] = (random_bytes[offset + i] >> j) & 1 == 1;
+            }
+        }
+
+        let n =
+            <<G::BaseField as Field>::BasePrimeField as PrimeField>::BigInt::from_bits_be(&bits);
+        let t = <<G::BaseField as Field>::BasePrimeField as PrimeField>::from_bigint(n)
+            .expect("packing code has a bug");
+        base_fields.push(t)
+    }
+    let t = G::BaseField::from_base_prime_field_elems(&base_fields).unwrap();
+    let (x, y) = map.to_group(t);
+    G::of_coordinates(x, y)
 }
 
 impl<G: CommitmentCurve> SRS<G> {
@@ -195,6 +231,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
     /// This function creates a trusted-setup SRS instance for circuits with number of rows up to `depth`.
     pub fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
+        let m = G::Map::setup();
         let mut x_pow = G::ScalarField::one();
         let g: Vec<_> = (0..depth)
             .map(|_| {
@@ -210,14 +247,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
             h.update((i as u32).to_be_bytes());
-            // FIXME: this is not the most efficient, and we must check the mod
-            // order. We cannot use point_of_random_bytes as this function
-            // expects only one coordinate of 32 bytes - bn254 using Fq2 as a
-            // base for G2.
-            let gen = G::generator();
-            let bs = h.finalize();
-            let scalar = G::ScalarField::from_be_bytes_mod_order(&bs);
-            gen.mul(scalar).into()
+            point_of_random_bytes(&m, &h.finalize())
         });
 
         SRS {
@@ -231,18 +261,13 @@ impl<G: CommitmentCurve> SRS<G> {
 impl<G: CommitmentCurve> SRS<G> {
     /// This function creates SRS instance for circuits with number of rows up to `depth`.
     pub fn create(depth: usize) -> Self {
+        let m = G::Map::setup();
+
         let g: Vec<_> = (0..depth)
             .map(|i| {
                 let mut h = Blake2b512::new();
                 h.update((i as u32).to_be_bytes());
-                // FIXME: this is not the most efficient, and we must check the mod
-                // order. We cannot use point_of_random_bytes as this function
-                // expects only one coordinate of 32 bytes - bn254 using Fq2 as a
-                // base for G2.
-                let gen = G::generator();
-                let bs = h.finalize();
-                let scalar = G::ScalarField::from_be_bytes_mod_order(&bs);
-                gen.mul(scalar).into()
+                point_of_random_bytes(&m, &h.finalize())
             })
             .collect();
 
@@ -251,14 +276,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
             h.update((i as u32).to_be_bytes());
-            // FIXME: this is not the most efficient, and we must check the mod
-            // order. We cannot use point_of_random_bytes as this function
-            // expects only one coordinate of 32 bytes - bn254 using Fq2 as a
-            // base for G2.
-            let gen = G::generator();
-            let bs = h.finalize();
-            let scalar = G::ScalarField::from_be_bytes_mod_order(&bs);
-            gen.mul(scalar).into()
+            point_of_random_bytes(&m, &h.finalize())
         });
 
         SRS {
