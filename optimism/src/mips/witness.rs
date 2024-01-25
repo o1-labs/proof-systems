@@ -16,16 +16,13 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
-use kimchi::{
-    circuits::expr::{ConstantTerm::Literal, Operations},
-    o1_utils::Two,
-};
+use kimchi::o1_utils::Two;
 use log::{debug, info};
-use std::array;
-use std::fs::File;
-use std::io::{BufWriter, Write};
-
-use super::E;
+use std::{
+    array,
+    fs::File,
+    io::{BufWriter, Write},
+};
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
 pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
@@ -48,7 +45,6 @@ impl SyscallEnv {
 }
 
 pub struct Env<Fp> {
-    pub lookups: Vec<Lookup<E<Fp>>>,
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
     pub last_memory_accesses: [usize; 3],
@@ -138,17 +134,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
     }
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        self.lookups.push(Lookup {
-            mode: lookup.mode,
-            magnitude: E::<Fp>::constant(Operations::from(Literal(Fp::from(lookup.magnitude)))),
-            table_id: lookup.table_id,
-            value: lookup
-                .value
-                .into_iter()
-                .map(|x| E::<Fp>::constant(Operations::from(Literal(Fp::from(x)))))
-                .collect::<Vec<_>>(),
-        });
+    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
+        // No-op, constraints only
     }
 
     fn instruction_counter(&self) -> Self::Variable {
@@ -765,7 +752,6 @@ impl<Fp: Field> Env<Fp> {
         };
 
         Env {
-            lookups: Vec::new(),
             instruction_counter: state.step,
             memory: initial_memory.clone(),
             last_memory_accesses: [0usize; 3],
