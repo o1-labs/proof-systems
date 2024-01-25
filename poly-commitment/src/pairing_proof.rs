@@ -30,7 +30,7 @@ pub struct PairingProof<Pair: Pairing> {
 impl<Pair: Pairing> Default for PairingProof<Pair> {
     fn default() -> Self {
         Self {
-            quotient: Pair::G1Affine::generator().mul_by_cofactor(),
+            quotient: Pair::G1Affine::generator(),
             blinding: <Pair::G1Affine as AffineRepr>::ScalarField::zero(),
         }
     }
