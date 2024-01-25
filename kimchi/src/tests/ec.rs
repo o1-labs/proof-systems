@@ -2,7 +2,7 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::AffineRepr;
 use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -50,7 +50,7 @@ fn ec_test() {
             res.push(acc);
             acc += p;
         }
-        <Other as AffineRepr>::Group::normalize_batch(&res)
+        res
     };
 
     let qs = {
@@ -63,7 +63,7 @@ fn ec_test() {
             res.push(acc);
             acc += q;
         }
-        <Other as AffineRepr>::Group::normalize_batch(&res)
+        res
     };
 
     for &p in ps.iter().take(num_doubles) {
