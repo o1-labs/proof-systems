@@ -1,6 +1,6 @@
-use crate::mips::{
-    column::Column as MIPSColumn,
-    interpreter::{self, InterpreterEnv},
+use crate::{
+    lookup::Lookup,
+    mips::{column::Column as MIPSColumn, interpreter::InterpreterEnv},
 };
 use ark_ff::Field;
 use kimchi::circuits::{
@@ -40,7 +40,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // No-op, witness only
     }
 
-    fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
+    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
         // FIXME: Track the lookup values in the environment.
     }
 

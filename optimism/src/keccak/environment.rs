@@ -7,7 +7,7 @@ use crate::{
         interpreter::{Absorb, KeccakStep, Sponge},
         ArithOps, BoolOps, DIM, E, QUARTERS,
     },
-    mips::interpreter::Lookup,
+    lookup::Lookup,
 };
 use ark_ff::{Field, One};
 use kimchi::{

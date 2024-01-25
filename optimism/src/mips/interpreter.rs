@@ -1,5 +1,6 @@
 use crate::{
     cannon::PAGE_ADDRESS_SIZE,
+    lookup::{Lookup, LookupTable},
     mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
@@ -112,87 +113,6 @@ pub enum ITypeInstruction {
     Store32Conditional,           // sc
     StoreWordLeft,                // swl
     StoreWordRight,               // swr
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Sign {
-    Pos,
-    Neg,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum LookupMode {
-    Read,
-    Write,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum LookupTable {
-    MemoryLookup,
-    RegisterLookup,
-    // Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup,
-    // Single-column table of all values in the range [0, 2^16)
-    RangeCheck16Lookup,
-    // Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    ResetLookup,
-    // 24-row table with all possible values for round and their round constant in expanded form
-    RoundConstantsLookup,
-    // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    PadLookup,
-    // All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    ByteLookup,
-    // Input/Output of Keccak steps
-    KeccakStepLookup,
-    // Syscalls communication channel
-    SyscallLookup,
-}
-
-#[derive(Clone, Debug)]
-pub struct Lookup<Fp> {
-    pub mode: LookupMode,
-    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
-    pub magnitude: Fp,
-    pub table_id: LookupTable,
-    pub value: Vec<Fp>,
-}
-
-impl<T: One> Lookup<T> {
-    pub fn read_if(if_is_true: T, table_id: LookupTable, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Read,
-            magnitude: if_is_true,
-            table_id,
-            value,
-        }
-    }
-
-    pub fn write_if(if_is_true: T, table_id: LookupTable, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Write,
-            magnitude: if_is_true,
-            table_id,
-            value,
-        }
-    }
-
-    pub fn read_one(table_id: LookupTable, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Read,
-            magnitude: T::one(),
-            table_id,
-            value,
-        }
-    }
-
-    pub fn write_one(table_id: LookupTable, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Write,
-            magnitude: T::one(),
-            table_id,
-            value,
-        }
-    }
 }
 
 pub trait InterpreterEnv {
