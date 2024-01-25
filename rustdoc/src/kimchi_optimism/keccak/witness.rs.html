@@ -322,7 +322,18 @@
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
-</pre></div><pre class="rust"><code><span class="doccomment">/// This file contains the implementation of the witness for the Keccak permutation.
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+</pre></div><pre class="rust"><code><span class="doccomment">/// This file contains the witness for the Keccak hash function for the zkVM project.
+/// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
+///
+/// The actual witness generation code makes use of the code which is already present in Kimchi,
+/// to avoid code duplication and reduce error-proneness.
+///
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
 </span><span class="kw">use super</span>::{
@@ -343,7 +354,9 @@
     Keccak,
 };
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad_blocks&lt;Fp: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;Fp&gt; {
+<span class="doccomment">/// This function returns a vector of field elements that represent the 5 padding suffixes.
+/// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad_blocks&lt;Fp: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;Fp&gt; {
     <span class="comment">// Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
     </span><span class="kw">let </span><span class="kw-2">mut </span>blocks = <span class="macro">vec!</span>[Fp::zero(); <span class="number">5</span>];
     <span class="kw">let </span><span class="kw-2">mut </span>pad = [Fp::zero(); RATE_IN_BYTES];
@@ -370,8 +383,7 @@
 
     <span class="kw">type </span>Variable = Fp;
 
-    <span class="comment">// FIXME: read preimage from memory and pad and expand
-    </span><span class="kw">fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="kw">fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Reset columns to zeros to avoid conflicts between steps
         </span><span class="self">self</span>.null_state();
 
