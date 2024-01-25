@@ -1,7 +1,7 @@
 //! This adds a few utility functions for serializing and deserializing
 //! [arkworks](http://arkworks.rs/) types that implement [CanonicalSerialize] and [CanonicalDeserialize].
 
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate};
 use serde_with::Bytes;
 
 //
@@ -60,7 +60,7 @@ where
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize_uncompressed(&mut bytes)
+        val.serialize_with_mode(&mut bytes, Compress::Yes)
             .map_err(serde::ser::Error::custom)?;
 
         if serializer.is_human_readable() {
@@ -80,6 +80,7 @@ where
         D: serde::Deserializer<'de>,
     {
         let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
-        T::deserialize_uncompressed(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_with_mode(&mut &bytes[..], Compress::Yes, Validate::Yes)
+            .map_err(serde::de::Error::custom)
     }
 }
