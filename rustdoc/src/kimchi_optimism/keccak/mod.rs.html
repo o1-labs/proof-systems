@@ -75,6 +75,31 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
@@ -90,16 +115,23 @@
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>witness;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BITLENGTH: usize = <span class="number">256</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BYTELENGTH: usize = HASH_BITLENGTH / <span class="number">8</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORD_LENGTH_IN_BITS: usize = <span class="number">64</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
+<span class="doccomment">/// Desired output length of the hash in bits
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BITLENGTH: usize = <span class="number">256</span>;
+<span class="doccomment">/// Desired output length of the hash in bytes
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>HASH_BYTELENGTH: usize = HASH_BITLENGTH / <span class="number">8</span>;
+<span class="doccomment">/// Length of each word in the Keccak state, in bits
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORD_LENGTH_IN_BITS: usize = <span class="number">64</span>;
+<span class="doccomment">/// Number of columns required in the `curr` part of the witness
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
+<span class="doccomment">/// Number of columns required in the `next` part of the witness, corresponding to the output length
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
+<span class="doccomment">/// Number of words that fit in the hash digest
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, KeccakColumn&gt;;
 
-<span class="kw">fn </span>grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -&gt; usize {
+<span class="comment">// This function maps a 4D index into a 1D index depending on the length of the grid
+</span><span class="kw">fn </span>grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -&gt; usize {
     <span class="kw">match </span>length {
         <span class="number">5 </span>=&gt; x,
         <span class="number">20 </span>=&gt; q + QUARTERS * x,
@@ -110,7 +142,8 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>BoolOps {
+<span class="doccomment">/// This trait defines common boolean operations used in the Keccak circuit
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>BoolOps {
     <span class="kw">type </span>Column;
     <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
@@ -118,22 +151,33 @@
         + Clone;
     <span class="kw">type </span>Fp: std::ops::Neg&lt;Output = <span class="self">Self</span>::Fp&gt;;
 
-    <span class="kw">fn </span>is_boolean(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-2 variable encoding whether the input is a boolean value
+    </span><span class="kw">fn </span>is_boolean(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>not(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-1 variable encoding the negation of the input
+    /// Note: it only works as expected if the input is a boolean value
+    </span><span class="kw">fn </span>not(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>is_one(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-1 variable encoding whether the input is the value one
+    </span><span class="kw">fn </span>is_one(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>is_nonzero(x: <span class="self">Self</span>::Variable, x_inv: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-2 variable encoding whether the first input is nonzero.
+    /// It requires the second input to be the multiplicative inverse of the first.
+    /// Note: if the first input is zero, there is no multiplicative inverse.
+    </span><span class="kw">fn </span>is_nonzero(x: <span class="self">Self</span>::Variable, x_inv: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>xor(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-1 variable encoding the XOR of two variables which should be boolean
+    </span><span class="kw">fn </span>xor(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>or(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-1 variable encoding the OR of two variables, which should be boolean
+    </span><span class="kw">fn </span>or(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>either_false(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-2 variable encoding whether at least one of the two inputs is zero
+    </span><span class="kw">fn </span>either_false(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>ArithOps {
+<span class="doccomment">/// This trait defines common arithmetic operations used in the Keccak circuit
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>ArithOps {
     <span class="kw">type </span>Column;
     <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
@@ -141,13 +185,19 @@
         + Clone;
     <span class="kw">type </span>Fp: std::ops::Neg&lt;Output = <span class="self">Self</span>::Fp&gt;;
 
-    <span class="kw">fn </span>constant(x: u64) -&gt; <span class="self">Self</span>::Variable;
-    <span class="kw">fn </span>constant_field(x: <span class="self">Self</span>::Fp) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Creates a variable from a constant integer
+    </span><span class="kw">fn </span>constant(x: u64) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Creates a variable from a constant field element
+    </span><span class="kw">fn </span>constant_field(x: <span class="self">Self</span>::Fp) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>zero() -&gt; <span class="self">Self</span>::Variable;
-    <span class="kw">fn </span>one() -&gt; <span class="self">Self</span>::Variable;
-    <span class="kw">fn </span>two() -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns a variable representing the value zero
+    </span><span class="kw">fn </span>zero() -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns a variable representing the value one
+    </span><span class="kw">fn </span>one() -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns a variable representing the value two
+    </span><span class="kw">fn </span>two() -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns a variable representing the value 2^x
+    </span><span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable;
 }
 </code></pre></div></section></main></body></html>
