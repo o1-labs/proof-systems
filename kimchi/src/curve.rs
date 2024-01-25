@@ -1,7 +1,7 @@
 //! This module contains a useful trait for recursion: [KimchiCurve],
 //! which defines how a pair of curves interact.
 
-use ark_ec::{short_weierstrass::Affine, CurveConfig, AffineRepr};
+use ark_ec::{short_weierstrass::Affine, AffineRepr, CurveConfig};
 use mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},

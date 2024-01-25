@@ -1517,11 +1517,11 @@ internal_tracing::decl_traces!(internal_traces;
 pub mod caml {
     use super::*;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
+    use ark_ec::AffineRepr;
     use poly_commitment::{
         commitment::caml::{CamlOpeningProof, CamlPolyComm},
         evaluation_proof::OpeningProof,
     };
-    use ark_ec::AffineRepr;
 
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;

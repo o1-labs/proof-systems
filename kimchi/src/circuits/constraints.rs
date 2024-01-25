@@ -278,11 +278,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<
-        F: PrimeField,
-        G: KimchiCurve<ScalarField = F>,
-        OpeningProof: OpenProof<G>,
-    > ProverIndex<G, OpeningProof>
+impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
+    ProverIndex<G, OpeningProof>
 {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
