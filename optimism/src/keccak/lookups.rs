@@ -1,14 +1,18 @@
-use super::{
-    column::KeccakColumn,
-    environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, BoolOps, E,
+//! This module includes the lookups of the Keccak circuit
+use crate::{
+    keccak::{
+        column::KeccakColumn,
+        environment::{KeccakEnv, KeccakEnvironment},
+        ArithOps, BoolOps, E,
+    },
+    mips::interpreter::{Lookup, LookupTable},
 };
-use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
-    DIM, QUARTERS, SHIFTS, SHIFTS_LEN, STATE_LEN,
+    DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
+/// This trait adds useful methods to deal with lookups in the Keccak environment
 pub(crate) trait Lookups {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
@@ -19,8 +23,14 @@ pub(crate) trait Lookups {
     /// Adds a given Lookup to the environment
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
-    /// Adds all lookups of Self
+    /// Adds all 2342 lookups of Self
     fn lookups(&mut self);
+
+    /// Reads Lookups containing the 136 bytes of the block of the preimage
+    fn lookup_syscall_preimage(&mut self);
+
+    /// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    fn lookup_syscall_hash(&mut self);
 
     /// Reads a Lookup containing the input of a step
     /// and writes a Lookup containing the output of the next step
@@ -38,19 +48,19 @@ pub(crate) trait Lookups {
     /// Adds a lookup to the Byte table
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable);
 
-    /// Adds the lookups required for the sponge
+    /// Adds the 601 lookups required for the sponge
     fn lookups_sponge(&mut self);
 
-    /// Adds the lookups required for Theta in the round
+    /// Adds the 140 lookups required for Theta in the round
     fn lookups_round_theta(&mut self);
 
-    /// Adds the lookups required for PiRho in the round
+    /// Adds the 800 lookups required for PiRho in the round
     fn lookups_round_pirho(&mut self);
 
-    /// Adds the lookups required for Chi in the round
+    /// Adds the 800 lookups required for Chi in the round
     fn lookups_round_chi(&mut self);
 
-    /// Adds the lookups required for Iota in the round
+    /// Adds the 1 lookup required for Iota in the round
     fn lookups_round_iota(&mut self);
 }
 
@@ -63,8 +73,6 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     }
 
     fn lookups(&mut self) {
-        // TODO: preimage lookups (somewhere else)
-
         // SPONGE LOOKUPS
         self.lookups_sponge();
 
@@ -79,9 +87,29 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
             // IOTA LOOKUPS
             self.lookups_round_iota();
         }
+    }
 
-        // STEP (INPUT/OUTPUT) COMMUNICATION CHANNEL
-        // Must be done inside caller
+    fn lookup_syscall_preimage(&mut self) {
+        for i in 0..RATE_IN_BYTES {
+            self.add_lookup(Lookup::read_one(
+                LookupTable::SyscallLookup,
+                vec![
+                    self.hash_index(),
+                    Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
+                    self.sponge_byte(i),
+                ],
+            ));
+        }
+    }
+
+    fn lookup_syscall_hash(&mut self) {
+        let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
+            acc * Self::two_pow(8) + self.sponge_byte(i)
+        });
+        self.add_lookup(Lookup::write_one(
+            LookupTable::SyscallLookup,
+            vec![self.hash_index(), bytes31],
+        ));
     }
 
     fn lookup_steps(&mut self) {
@@ -136,12 +164,11 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
         // Pad suffixes correspond to 10*1 rule
-        // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
         self.add_lookup(Lookup::read_if(
-            self.is_sponge(),
+            self.is_pad(),
             LookupTable::PadLookup,
             vec![
-                self.length(),
+                self.pad_length(),
                 self.two_to_pad(),
                 self.pad_suffix(0),
                 self.pad_suffix(1),
@@ -153,7 +180,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // BYTES LOOKUPS
         for i in 0..200 {
             // Bytes are <2^8
-            self.lookup_byte(self.is_sponge(), self.sponge_bytes(i));
+            self.lookup_byte(self.is_sponge(), self.sponge_byte(i));
         }
         // SHIFTS LOOKUPS
         for i in 100..SHIFTS_LEN {
@@ -162,7 +189,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         }
         for i in 0..STATE_LEN {
             // Shifts0 together with Bits composition by pairs are in the Reset table
-            let dense = self.sponge_bytes(2 * i) + self.sponge_bytes(2 * i + 1) * Self::two_pow(8);
+            let dense = self.sponge_byte(2 * i) + self.sponge_byte(2 * i + 1) * Self::two_pow(8);
             self.lookup_reset(self.is_sponge(), dense, self.sponge_shifts(i));
         }
     }
@@ -225,13 +252,17 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     }
 
     fn lookups_round_iota(&mut self) {
-        for i in 0..QUARTERS {
-            // Check round constants correspond with the current round
-            self.add_lookup(Lookup::read_if(
-                self.is_round(),
-                LookupTable::RoundConstantsLookup,
-                vec![self.round(), self.round_constants()[i].clone()],
-            ));
-        }
+        // Check round constants correspond with the current round
+        self.add_lookup(Lookup::read_if(
+            self.is_round(),
+            LookupTable::RoundConstantsLookup,
+            vec![
+                self.round(),
+                self.round_constants()[0].clone(),
+                self.round_constants()[1].clone(),
+                self.round_constants()[2].clone(),
+                self.round_constants()[3].clone(),
+            ],
+        ));
     }
 }

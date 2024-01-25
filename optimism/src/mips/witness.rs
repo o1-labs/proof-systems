@@ -1,4 +1,7 @@
 use crate::cannon::{Page, State};
+use crate::keccak::lookups::Lookups;
+use crate::keccak::ArithOps;
+use crate::mips::interpreter::{Lookup, LookupTable};
 use crate::{
     cannon::{
         Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -8,8 +11,7 @@ use crate::{
     mips::{
         column::Column,
         interpreter::{
-            self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
-            JTypeInstruction, RTypeInstruction,
+            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
     },
@@ -17,6 +19,7 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
+use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::array;
 use std::fs::File;
@@ -54,8 +57,11 @@ pub struct Env<Fp> {
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
+    pub hash_count: u64,
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
+    pub preimage_bytes_read: u64,
+    pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
 }
 
@@ -571,6 +577,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
             self.preimage = Some(preimage);
+            self.preimage_key = Some(preimage_key);
         }
 
         const LENGTH_SIZE: usize = 8;
@@ -587,7 +594,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 - preimage_offset;
         // We read at most 4 bytes, ensuring that we respect word alignment.
         let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
-
         for i in 0..actual_read_len {
             let idx = (preimage_offset + i) as usize;
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
@@ -608,6 +614,52 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
         }
         self.write_column(pos, actual_read_len);
+
+        // Update the total number of preimage bytes read so far
+        self.preimage_bytes_read += actual_read_len;
+        // If we've read the entire preimage, trigger Keccak workflow
+        if self.preimage_bytes_read == preimage_len as u64 {
+            debug!("Preimage has been read entirely, triggering Keccak process");
+            let mut keccak_env =
+                KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
+
+            // COMMUNICATION CHANNEL: Write preimage bytes
+            let preimage = self.preimage.as_ref().unwrap();
+            for (i, byte) in preimage.iter().enumerate() {
+                keccak_env.add_lookup(Lookup::write_one(
+                    LookupTable::SyscallLookup,
+                    vec![
+                        <KeccakEnv<Fp> as ArithOps>::constant(self.hash_count),
+                        <KeccakEnv<Fp> as ArithOps>::constant(i as u64),
+                        <KeccakEnv<Fp> as ArithOps>::constant(*byte as u64),
+                    ],
+                ))
+            }
+
+            // COMMUNICATION CHANNEL: Read hash output
+            match self.preimage_key {
+                Some(preimage_key) => {
+                    let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
+                        acc * Fp::two_pow(8) + Fp::from(preimage_key[i])
+                    });
+                    keccak_env.add_lookup(Lookup::read_one(
+                        LookupTable::SyscallLookup,
+                        vec![
+                            <KeccakEnv<Fp> as ArithOps>::constant(self.hash_count),
+                            <KeccakEnv<Fp> as ArithOps>::constant_field(bytes31),
+                        ],
+                    ));
+                }
+                None => panic!("preimage_key should be set"),
+            }
+            self.keccak_env = Some(keccak_env);
+
+            // Reset environment
+            self.preimage_bytes_read = 0;
+            self.preimage_key = None;
+            self.hash_count += 1;
+        }
+
         actual_read_len
     }
 
@@ -715,8 +767,11 @@ impl<Fp: Field> Env<Fp> {
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
+            hash_count: 0,
             preimage_oracle,
             preimage: state.preimage,
+            preimage_bytes_read: 0,
+            preimage_key: None,
             keccak_env: None,
         }
     }
@@ -934,16 +989,7 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
         self.reset_scratch_state();
-        let (opcode, instruction) = self.decode_instruction();
-        let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
-        debug!("instruction: {:?}", opcode);
-        debug!("Instruction hex: {:#010x}", instruction);
-        debug!("Instruction: {:#034b}", instruction);
-        debug!("Rs: {:#07b}", instruction_parts.rs);
-        debug!("Rt: {:#07b}", instruction_parts.rt);
-        debug!("Rd: {:#07b}", instruction_parts.rd);
-        debug!("Shamt: {:#07b}", instruction_parts.shamt);
-        debug!("Funct: {:#08b}", instruction_parts.funct);
+        let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
         self.snapshot_state_at(&config.snapshot_state_at);

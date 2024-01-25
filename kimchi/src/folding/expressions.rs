@@ -1,11 +1,12 @@
 use crate::{
-    circuits::expr::{Op2, Variable},
+    circuits::expr::{Op2, Operations, Variable},
     folding::{
         quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
         FoldingConfig, ScalarField,
     },
 };
 use ark_ec::AffineCurve;
+use ark_ff::One;
 use itertools::Itertools;
 use num_traits::Zero;
 
@@ -31,24 +32,31 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Alpha(usize),
 }
 
-///designed for easy translation to and from most Expr
-pub enum FoldingCompatibleExpr<C: FoldingConfig> {
+#[derive(Clone)]
+pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable<C::Column>),
-    Double(Box<Self>),
-    Square(Box<Self>),
-    BinOp(Op2, Box<Self>, Box<Self>),
     VanishesOnZeroKnowledgeAndPreviousRows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
-    Pow(Box<Self>, u64),
     ///extra nodes created by folding, should not be passed to folding
     Extensions(ExpExtension),
 }
 
+///designed for easy translation to and from most Expr
+#[derive(Clone)]
+pub enum FoldingCompatibleExpr<C: FoldingConfig> {
+    Atom(FoldingCompatibleExprInner<C>),
+    Double(Box<Self>),
+    Square(Box<Self>),
+    BinOp(Op2, Box<Self>, Box<Self>),
+    Pow(Box<Self>, u64),
+}
+
 /// Extra expressions that can be created by folding
+#[derive(Clone)]
 pub enum ExpExtension {
     U,
     Error,
@@ -58,15 +66,7 @@ pub enum ExpExtension {
 }
 
 ///Internal expression used for folding, simplified for that purpose
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum FoldingExp<C: FoldingConfig> {
-    Cell(ExtendedFoldingColumn<C>),
-    Double(Box<FoldingExp<C>>),
-    Square(Box<FoldingExp<C>>),
-    Add(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
-    Sub(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
-    Mul(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
-}
+pub type FoldingExp<C> = Operations<ExtendedFoldingColumn<C>>;
 
 impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
     type Output = Self;
@@ -101,11 +101,22 @@ impl<C: FoldingConfig> FoldingExp<C> {
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
-        use FoldingExp::*;
+        use Operations::*;
         match self {
-            FoldingCompatibleExpr::Constant(c) => Cell(ExtendedFoldingColumn::Constant(c)),
-            FoldingCompatibleExpr::Challenge(c) => Cell(ExtendedFoldingColumn::Challenge(c)),
-            FoldingCompatibleExpr::Cell(col) => Cell(ExtendedFoldingColumn::Inner(col)),
+            FoldingCompatibleExpr::Atom(atom) => match atom {
+                FoldingCompatibleExprInner::Constant(c) => Atom(ExtendedFoldingColumn::Constant(c)),
+                FoldingCompatibleExprInner::Challenge(c) => {
+                    Atom(ExtendedFoldingColumn::Challenge(c))
+                }
+                FoldingCompatibleExprInner::Cell(col) => Atom(ExtendedFoldingColumn::Inner(col)),
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) => {
+                    Atom(Ex::UnnormalizedLagrangeBasis(i))
+                }
+                FoldingCompatibleExprInner::Extensions(_) => {
+                    panic!("this should only be created by folding itself")
+                }
+            },
             FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::Square(exp) => Square(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::BinOp(op, e1, e2) => {
@@ -117,14 +128,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
                     Op2::Sub => Sub(e1, e2),
                 }
             }
-            FoldingCompatibleExpr::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-            FoldingCompatibleExpr::UnnormalizedLagrangeBasis(i) => {
-                Cell(Ex::UnnormalizedLagrangeBasis(i))
-            }
             FoldingCompatibleExpr::Pow(e, p) => Self::pow_to_mul(e.simplify(), p),
-            FoldingCompatibleExpr::Extensions(_) => {
-                panic!("this should only be created by folding itself")
-            }
         }
     }
 
@@ -133,7 +137,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
         C::Column: Clone,
         C::Challenge: Clone,
     {
-        use FoldingExp::*;
+        use Operations::*;
         let e = Box::new(exp);
         let e_2 = Box::new(Square(e.clone()));
         match p {
@@ -166,7 +170,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
     pub(super) fn folding_degree(&self) -> Degree {
         use Degree::*;
         match self {
-            FoldingExp::Cell(ex_col) => match ex_col {
+            FoldingExp::Atom(ex_col) => match ex_col {
                 ExtendedFoldingColumn::Inner(col) => col.col.degree(),
                 ExtendedFoldingColumn::WitnessExtended(_) => One,
                 ExtendedFoldingColumn::Error => One,
@@ -181,22 +185,37 @@ impl<C: FoldingConfig> FoldingExp<C> {
             FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) => {
                 e1.folding_degree() + e2.folding_degree()
             }
+            FoldingExp::Pow(_, 0) => Zero,
+            FoldingExp::Pow(e, 1) => e.folding_degree(),
+            FoldingExp::Pow(e, i) => {
+                let degree = e.folding_degree();
+                let mut acc = degree;
+                for _ in 1..*i {
+                    acc = &acc * &degree;
+                }
+                acc
+            }
+            FoldingExp::Cache(_, _) => todo!(),
+            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 
     fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
+        use FoldingCompatibleExprInner::*;
         match self {
-            FoldingExp::Cell(c) => match c {
-                ExtendedFoldingColumn::Inner(col) => Cell(col),
+            FoldingExp::Atom(c) => match c {
+                ExtendedFoldingColumn::Inner(col) => Atom(Cell(col)),
                 ExtendedFoldingColumn::WitnessExtended(i) => {
-                    Extensions(ExpExtension::ExtendedWitness(i))
+                    Atom(Extensions(ExpExtension::ExtendedWitness(i)))
                 }
-                ExtendedFoldingColumn::Error => Extensions(ExpExtension::Error),
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(i),
-                ExtendedFoldingColumn::Constant(c) => Constant(c),
-                ExtendedFoldingColumn::Challenge(c) => Challenge(c),
-                ExtendedFoldingColumn::Alpha(i) => Extensions(ExpExtension::Alpha(i)),
+                ExtendedFoldingColumn::Error => Atom(Extensions(ExpExtension::Error)),
+                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => {
+                    Atom(UnnormalizedLagrangeBasis(i))
+                }
+                ExtendedFoldingColumn::Constant(c) => Atom(Constant(c)),
+                ExtendedFoldingColumn::Challenge(c) => Atom(Challenge(c)),
+                ExtendedFoldingColumn::Alpha(i) => Atom(Extensions(ExpExtension::Alpha(i))),
             },
             FoldingExp::Double(exp) => Double(Box::new(exp.into_compatible())),
             FoldingExp::Square(exp) => Square(Box::new(exp.into_compatible())),
@@ -215,6 +234,19 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 let e2 = Box::new(e2.into_compatible());
                 BinOp(Op2::Mul, e1, e2)
             }
+            // TODO: Replace with `Pow`
+            FoldingExp::Pow(_, 0) => Atom(Constant(<C::Curve as AffineCurve>::ScalarField::one())),
+            FoldingExp::Pow(e, 1) => e.into_compatible(),
+            FoldingExp::Pow(e, i) => {
+                let e = e.into_compatible();
+                let mut acc = e.clone();
+                for _ in 1..i {
+                    acc = BinOp(Op2::Mul, Box::new(e.clone()), Box::new(acc))
+                }
+                acc
+            }
+            FoldingExp::Cache(_, _) => todo!(),
+            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 }
@@ -323,8 +355,9 @@ impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     ///combines constraints into single expression
     pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
-        ///todo: should use powers of alpha
         use FoldingCompatibleExpr::*;
+        ///todo: should use powers of alpha
+        use FoldingCompatibleExprInner::*;
         let Self {
             degree_0,
             degree_1,
@@ -333,7 +366,7 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
         let [d0, d1, d2] = [degree_0, degree_1, degree_2]
             .map(|exps| {
                 let init =
-                    FoldingExp::Cell(ExtendedFoldingColumn::Constant(ScalarField::<C>::zero()));
+                    FoldingExp::Atom(ExtendedFoldingColumn::Constant(ScalarField::<C>::zero()));
                 exps.into_iter().fold(init, |acc, (exp, sign, alpha)| {
                     let e = match sign {
                         Sign::Pos => FoldingExp::Add(Box::new(acc), Box::new(exp)),
@@ -341,26 +374,30 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
                     };
                     FoldingExp::Mul(
                         Box::new(e),
-                        Box::new(FoldingExp::Cell(ExtendedFoldingColumn::Alpha(alpha))),
+                        Box::new(FoldingExp::Atom(ExtendedFoldingColumn::Alpha(alpha))),
                     )
                 })
             })
             .map(|e| e.into_compatible());
-        let u = || Box::new(Extensions(ExpExtension::U));
+        let u = || Box::new(Atom(Extensions(ExpExtension::U)));
         let u2 = || Box::new(Square(u()));
         let d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));
         let d1 = Box::new(BinOp(Op2::Mul, Box::new(d1), u()));
         let d2 = Box::new(d2);
         let exp = Box::new(BinOp(Op2::Add, d0, d1));
         let exp = Box::new(BinOp(Op2::Add, exp, d2));
-        BinOp(Op2::Add, exp, Box::new(Extensions(ExpExtension::Error)))
+        BinOp(
+            Op2::Add,
+            exp,
+            Box::new(Atom(Extensions(ExpExtension::Error))),
+        )
     }
 }
 
 pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
-    use FoldingExp::*;
+    use Operations::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
-        exp @ Cell(_) => Box::new(
+        exp @ Atom(_) => Box::new(
             [Term {
                 exp,
                 sign: Sign::Pos,
@@ -399,6 +436,34 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
             }
             Box::new(combinations.into_iter())
         }
+        Pow(_, 0) => Box::new(
+            [Term {
+                exp: FoldingExp::Atom(ExtendedFoldingColumn::Constant(
+                    <C::Curve as AffineCurve>::ScalarField::one(),
+                )),
+                sign: Sign::Pos,
+            }]
+            .into_iter(),
+        ),
+        Pow(e, 1) => extract_terms(*e),
+        Pow(e, mut i) => {
+            let e = extract_terms(*e).collect_vec();
+            let mut acc = e.clone();
+            // Could do this inplace, but it's more annoying to write
+            while i > 2 {
+                let mut combinations = Vec::with_capacity(e.len() * acc.len());
+                for t1 in e.iter() {
+                    for t2 in acc.iter() {
+                        combinations.push(t1 * t2)
+                    }
+                }
+                acc = combinations;
+                i -= 1;
+            }
+            Box::new(acc.into_iter())
+        }
+        Cache(_, _) => todo!(),
+        IfFeature(_, _, _) => todo!(),
     };
     exps
 }

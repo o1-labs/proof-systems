@@ -2165,7 +2165,7 @@ The prover then follows the following steps to create the proof:
 	* If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
-	* Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	* Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TODO: specify)
 	* If multiple lookup tables are involved,
 	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
 	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
@@ -2222,7 +2222,7 @@ The prover then follows the following steps to create the proof:
 
    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
 
-   TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+   TODO: do we want to specify more on that? It seems unnecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 1. Evaluate the same polynomials without chunking them
    (so that each polynomial should correspond to a single value this time).
 1. Compute the ft polynomial.
@@ -2279,7 +2279,7 @@ We define two helper algorithms below, used in the batch verification of proofs.
 
 We run the following algorithm:
 
-1. Setup the Fq-Sponge.
+1. Setup the Fq-Sponge. This sponge mostly absorbs group
 1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
@@ -2301,7 +2301,7 @@ We run the following algorithm:
 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
-1. Setup the Fr-Sponge.
+1. Setup the Fr-Sponge. This sponge absorbs elements from
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Absorb the previous recursion challenges.
 1. Compute evaluations for the previous recursion challenges.
@@ -2316,9 +2316,9 @@ We run the following algorithm:
 	* poseidon selector
 	* the 15 register/witness
 	* 6 sigmas evaluations (the last one is not evaluated)
-1. Sample $v'$ with the Fr-Sponge.
+1. Sample the "polyscale" $v'$ with the Fr-Sponge.
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-1. Sample $u'$ with the Fr-Sponge.
+1. Sample the "evalscale" $u'$ with the Fr-Sponge.
 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
 1. Create a list of all polynomials that have an evaluation proof.
 1. Compute the evaluation of $ft(\zeta)$.

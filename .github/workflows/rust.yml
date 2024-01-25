@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  push:
   pull_request:
 
 env:
@@ -64,17 +63,22 @@ jobs:
 
       - name: Build the kimchi specification
         run: |
-          cd book/specifications
-          cd kimchi && make build
+          cd book/specifications/kimchi
+          make build
 
       - name: Build the polynomial commitment specification
         run: |
-          cd book/specifications
-          cd poly-commitment && make build
+          cd book/specifications/poly-commitment
+          make build
 
       - name: Check that up-to-date specification is checked in
         run: |
           git diff --exit-code ":(exclude)rust-toolchain"
+
+      - name: Build cargo docs
+        run: |
+          eval $(opam env)
+          RUSTDOCFLAGS="-D warnings" cargo doc --all-features --no-deps
 
       #
       # Coding guidelines

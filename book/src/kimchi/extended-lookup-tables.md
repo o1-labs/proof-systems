@@ -471,7 +471,7 @@ This also increases the complexity of the proof system.
 This design combines the 3 different 'modes' of random access memory, roughly
 approximating `ROM -> RAM` loading, `disk -> RAM` loading, and `RAM r/w`. This
 gives the maximum flexibility for circuit designers, and each primitive has
-uses for projects that we are persuing.
+uses for projects that we are pursuing.
 
 This design has been refined over several iterations to reduce the number of
 components exposed in the proof and the amount of computation that the verifier

@@ -145,7 +145,7 @@ The communication complexity will be solved by a well-known folding argument, ho
 
 First a reduction from PCS to an inner product relation.
 
-## Reduction: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$
+## Reduction 1: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$
 
 Formally the relation of the inner product argument is:
 
@@ -194,7 +194,7 @@ $$
 this also works, however we (in Kimchi) simply hash to the curve to sample $H$.
 
 
-## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},\ell/2}$
+## Reduction 2 (Incremental Step): $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},\ell/2}$
 
 **Note:** The folding argument described below is the particular variant implemented in Kimchi, although some of the variable names are different.
 
@@ -486,7 +486,7 @@ This would require half as much communication as the naive proof. A modest impro
 
 However, we can iteratively apply this transformation until we reach an instance of constant size:
 
-## Reduction: $\relIPA{\ell} \to \ldots \to \relIPA{1}$
+## Reduction 2 (Full): $\relIPA{\ell} \to \ldots \to \relIPA{1}$
 
 That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{\openx}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
 By doing so $k = \log_2(\ell)$ times the total communication is brought down to $2 k$ $\GG$-elements
@@ -498,21 +498,22 @@ we let
 $\vec{G}^{(i)}$, $\vec{f}^{(i)}$, $\vec{\openx}^{(i)}$
 be the
 $\vec{G}'$, $\vec{f}'$, $\vec{\openx}'$ vectors respectively after $i$ recursive applications, with $\vec{G}^{(0)}$, $\vec{f}^{(0)}$, $\vec{\openx}^{(0)}$ being the original instance.
+We will drop the vector arrow for $\vec{G}^{(k)}$ (similarly, for $f,x$), since the last step vector has size $1$, so we refer to this single value instead.
 We denote by $\chalfold_i$ the challenge of the $i$'th application.
 
-## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$
+## Reduction 3: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$
 
 While the proof for $\relIPA{\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$:
 
-- Computing $\vec{G}^{(k)}$ from $\vec{G}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
-- Computing $\vec{\openx}^{(k)}$ from $\vec{\openx}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
+- Computing $G^{(k)}$ from $\vec{G}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
+- Computing $\openx^{(k)}$ from $\vec{\openx}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
 
 The rest of the verifiers computation is only $O(\log(\ell))$, namely computing:
 
 - Sampling all the challenges $\chalfold \sample \FF$.
 - Computing $C^{(i)} \gets [\chalfold_i^{-1}] \cdot L^{(i)} + C^{(i-1)} + [\chalfold_i] \cdot R^{(i)}$ for every $i$
 
-However, upon inspection, the naive claim that computing $\vec{\openx}^{(k)}$ takes $O(\ell)$ turns out not to be true:
+However, upon inspection, the more pessimistic claim that computing $\vec{\openx}^{(k)}$ takes $O(\ell)$ turns out to be false:
 
 **Claim:**
 Define
@@ -521,31 +522,39 @@ $
 $,
 then
 $
-\vec{\openx}^{(k)} = \hpoly(\openx)
-$ for all $\openx$.
+\openx^{(k)} = \hpoly(\openx)
+$ for all $\openx$. Therefore, $\openx^{(k)}$ can be evaluated in $O(k) = O(\log \ell)$.
 
 **Proof:**
 This can be verified by looking at the expansion of $\hpoly(X)$.
-In slightly more detail:
-an equivalent claim is that $\openx^{(k)} = \sum_{i=1}^{\ell} h_i \cdot \openx^{i-1}$
-where $\hpoly(X) = \sum_{i=1}^\ell h_i \cdot X^{i-1}$.
-Let $\vec{b}$ be the bit-decomposition of the index $i$ and observe that:
+Define $\{h_i\}_{i=0}^l$ to be the coefficients of $\hpoly(X)$, that is $\hpoly(X) = \sum_{i=1}^\ell h_i \cdot X^{i-1}$.
+Then the claim is equivalent to $\openx^{(k)} = \sum_{i=1}^{\ell} h_i \cdot \openx^{i-1}$.
+Let $\vec{b}(i,j)$ denote the $j$th bit in the bit-decomposition of the index $i$ and observe that:
 $$
-h_i = \sum_{b_j} b_j \cdot \chalfold_{k-i}, \text{ where } i = \sum_{j} b_j \cdot 2^j
+h_i = \prod_{j=1}^k \vec \chalfold_{k-j}^{b(i,j)} \text{\qquad where\qquad } \sum_{j} \vec b(i,j) \cdot 2^j = i
 $$
-Which is simply a special case of the binomial theorem for the product:
-$$(1 + \chalfold_1) \cdot (1 + \chalfold_2) \cdots (1 + \chalfold_k)$$
+Now, compare this with how a $k$th element of $x^{(i)}$ is constructed:
+$$
+\begin{align*}
+x^{(1)}_k &= x^{(0)}_k + \alpha_1 \cdot x^{(0)}_{n/2+k}\\
+x^{(2)}_k &= x^{(1)}_k + \alpha_2 \cdot x^{(2)}_{n/4+k}\\
+&= x^{(0)}_k + \alpha_1 \cdot x^{(0)}_{n/2+k} + \alpha_2 \cdot (x^{(0)}_{n/4+k} + \alpha_1 \cdot x^{(0)}_{n/2 + n/4 +k})\\
+&= \sum_{i=0}^3 x^{(0)}_{i \cdot \frac{n}{4} + k} \cdot \big( \prod_{j=0}^1 \alpha_j^{b(i,j)} \big)
+\end{align*}
+$$
+Recalling that $x^{(0)}_k = x^k$, it is easy to see that this generalizes exactly to the expression for $h_i$ that we derived later, which concludes that evaluation through $h(X)$ is correct.
 
-Looking at $\hpoly$ it can clearly can be evaluated in $O(k = \log \ell)$ time,
-computing $\vec{\openx}^{(k)}$ therefore takes just $O(\log \ell)$ time!
+Finally, regarding evaluation complexity, it is clear that $\hpoly$ can be evaluated in $O(k = \log \ell)$ time as a product of $k$ factors.
+This concludes the proof.
+
 
 #### The "Halo Trick"
 
 The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$:
-since it is folded the same way as $\vec{\openx}$. It is not hard to convince one-self (using the same type of argument as above) that:
+since it is folded the same way as $\vec{\openx}^{(k)}$. It is not hard to convince one-self (using the same type of argument as above) that:
 
 $$
-\vec{G}^{(k)} = \langle \vec{h}, \vec{G} \rangle
+G^{(k)} = \langle \vec{h}, \vec{G} \rangle
 $$
 
 Where $\vec{h}$ is the coefficients of $h(X)$ (like $\vec{f}$ is the coefficients of $f(X)$), i.e. $h(X) = \sum_{i = 1}^{\ell} h_i X^{i-1}$
@@ -613,7 +622,7 @@ $(\statement = (\accCom, \vec{\accChal}), \witness = \epsilon) \in \relAcc$
 
 **Note:** The above can be optimized, in particular there is no need for the prover to send $\accCom$.
 
-## Reduction: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$
+## Reduction 4: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$
 
 Tying the final knot in the diagram.
 
@@ -637,6 +646,13 @@ y &= \sum_i \ \chalfold^{i-1} \cdot h^{(i)}(u) \in \FF \\
 C &= \sum_i \ [\chalfold^{i-1}] \cdot U^{(i)} \in \GG
 \end{align}
 $$
+Alternatively:
+$$
+\begin{align}
+y &= \sum_i \ u^{i-1} \cdot h^{(i)}(\chaleval) \in \FF \\
+C &= \sum_i \ [u^{i-1}] \cdot U^{(i)} \in \GG
+\end{align}
+$$
 
 And outputs the following claim:
 
@@ -656,7 +672,9 @@ Taking a union bound over all $n$ terms leads to soundness error $\frac{n \ell}{
 
 The reduction above requires $n$ $\GG$ operations and $O(n \log \ell)$ $\FF$ operations.
 
-**Addition of Polynomial Relations:** additional polynomial commitments (i.e. from PlonK) can be added to the randomized sums $(C, y)$ above and opened at $\chaleval$ as well: in which case the prover proves the claimed openings at $\chaleval$ before sampling the challenge $u$.
+## Support for Arbitrary Polynomial Relations
+
+Additional polynomial commitments (i.e. from PlonK) can be added to the randomized sums $(C, y)$ above and opened at $\chaleval$ as well: in which case the prover proves the claimed openings at $\chaleval$ before sampling the challenge $u$.
 This is done in Kimchi/Pickles: the $\chaleval$ and $u$ above is the same as in the Kimchi code.
 The combined $y$ (including both the $h(\cdot)$ evaluations and polynomial commitment openings at $\chaleval$ and $\chaleval \omega$) is called `combined_inner_product` in Kimchi.
 
@@ -673,7 +691,8 @@ Cycle of reductions with the added polynomial relations from PlonK.
 This $\relation_{\mathsf{PCS},\ell}$ instance reduced back into a single $\relAcc$ instance,
 which is included with the proof.
 
-**Multiple Accumulators (the case of PCD):**
+## Multiple Accumulators (PCD Case)
+
 From the section above it may seem like there is always going to be a single $\relAcc$ instance,
 this is indeed the case if the proof only verifies a <u>single</u> proof, "Incremental Verifiable Computation" (IVC) in the literature.
 If the proof verifies <u>multiple</u> proofs, "Proof-Carrying Data" (PCD), then there will be multiple accumulators:
@@ -709,9 +728,9 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
 1. PlonK verifier on $\pi$ outputs polynomial relations (in Purple in Fig. 4).
 1. Checking $\relation_{\mathsf{Acc}, \vec{G}}$ and polynomial relations (from PlonK) to $\relation_{\mathsf{PCS},d}$ (the dotted arrows):
     1. Sample $\chaleval \sample \mathcal{C}$ (evaluation point) using the Poseidon sponge.
-    1. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`ProofEvaluations`).
-    1. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge) using the Poseidon sponge.
-    1. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge) using the Poseidon sponge.
+    1. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`PointEvaluations`).
+    1. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge, `polyscale`) using the Poseidon sponge.
+    1. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge, `evalscale`) using the Poseidon sponge.
     1. Compute $C \in \GG$ with $\chalu$ from:
         - $\accCom^{(1)}, \ldots, \accCom^{(n)}$ (`RecursionChallenge.comm` $\in \GG$)
         - Polynomial commitments from PlonK (`ProverCommitments`)
