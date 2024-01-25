@@ -1,4 +1,4 @@
-/// This module contains the definition and implementation of the Keccak environment
+//! This module contains the definition and implementation of the Keccak environment
 use crate::{
     keccak::{
         column::{KeccakColumn, KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},

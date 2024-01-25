@@ -1,5 +1,5 @@
-/// This module defines the custom columns used in the Keccak witness, which
-/// are aliases for the actual Keccak witness columns also defined here.
+//! This module defines the custom columns used in the Keccak witness, which
+//! are aliases for the actual Keccak witness columns also defined here.
 use super::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use ark_ff::{One, Zero};
 use kimchi::circuits::polynomials::keccak::constants::{
