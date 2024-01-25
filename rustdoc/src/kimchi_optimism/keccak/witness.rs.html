@@ -328,6 +328,10 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// This file contains the witness for the Keccak hash function for the zkVM project.
 /// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 ///
@@ -414,6 +418,19 @@
         <span class="kw">for </span>i <span class="kw">in </span>pad_range {
             <span class="self">self</span>.write_column(KeccakColumn::PadBytesFlags(i), <span class="number">1</span>);
         }
+        <span class="kw">let </span>pad_blocks = pad_blocks::&lt;Fp&gt;(<span class="self">self</span>.pad_len <span class="kw">as </span>usize);
+        <span class="kw">for </span>(idx, value) <span class="kw">in </span>pad_blocks.iter().enumerate() {
+            <span class="self">self</span>.write_column_field(KeccakColumn::PadSuffix(idx), <span class="kw-2">*</span>value);
+        }
+    }
+
+    <span class="kw">fn </span>set_flag_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, round: u64) {
+        <span class="macro">assert!</span>(round &lt; ROUNDS <span class="kw">as </span>u64);
+        <span class="self">self</span>.write_column(KeccakColumn::FlagRound, round);
+    }
+
+    <span class="kw">fn </span>set_flag_squeeze(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.write_column(KeccakColumn::FlagSqueeze, <span class="number">1</span>);
     }
 
     <span class="kw">fn </span>set_flag_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, absorb: Absorb) {
@@ -429,11 +446,6 @@
         }
     }
 
-    <span class="kw">fn </span>set_flag_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, round: u64) {
-        <span class="macro">assert!</span>(round &lt; ROUNDS <span class="kw">as </span>u64);
-        <span class="self">self</span>.write_column(KeccakColumn::FlagRound, round);
-    }
-
     <span class="kw">fn </span>run_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sponge: Sponge) {
         <span class="kw">match </span>sponge {
             Sponge::Absorb(absorb) =&gt; <span class="self">self</span>.run_absorb(absorb),
@@ -442,7 +454,7 @@
     }
 
     <span class="kw">fn </span>run_squeeze(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.write_column(KeccakColumn::FlagSqueeze, <span class="number">1</span>);
+        <span class="self">self</span>.set_flag_squeeze();
 
         <span class="comment">// Compute witness values
         </span><span class="kw">let </span>state = <span class="self">self</span>.prev_block.clone();
@@ -508,10 +520,6 @@
         }
         <span class="kw">for </span>(idx, value) <span class="kw">in </span>shifts.iter().enumerate() {
             <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(idx), <span class="kw-2">*</span>value);
-        }
-        <span class="kw">let </span>pad_blocks = pad_blocks::&lt;Fp&gt;(<span class="self">self</span>.pad_len <span class="kw">as </span>usize);
-        <span class="kw">for </span>(idx, value) <span class="kw">in </span>pad_blocks.iter().enumerate() {
-            <span class="self">self</span>.write_column_field(KeccakColumn::PadSuffix(idx), <span class="kw-2">*</span>value);
         }
         <span class="comment">// Rest is zero thanks to null_state
 
