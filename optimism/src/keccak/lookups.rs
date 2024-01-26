@@ -5,26 +5,47 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, E,
     },
-    mips::interpreter::{Lookup, LookupTable},
+    lookup::{Lookup, LookupTable, Lookups},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
+impl<Fp: Field> Lookups for KeccakEnv<Fp> {
+    type Column = KeccakColumn;
+    type Variable = E<Fp>;
+
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        self.lookups.push(lookup);
+    }
+
+    /// Adds all 2342 lookups to the Keccak environment
+    fn lookups(&mut self) {
+        // SPONGE LOOKUPS
+        self.lookups_sponge();
+
+        // ROUND LOOKUPS
+        {
+            // THETA LOOKUPS
+            self.lookups_round_theta();
+            // PIRHO LOOKUPS
+            self.lookups_round_pirho();
+            // CHI LOOKUPS
+            self.lookups_round_chi();
+            // IOTA LOOKUPS
+            self.lookups_round_iota();
+        }
+    }
+}
+
 /// This trait adds useful methods to deal with lookups in the Keccak environment
-pub(crate) trait Lookups {
+pub(crate) trait KeccakLookups {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + Clone;
-
-    /// Adds a given Lookup to the environment
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
-
-    /// Adds all 2342 lookups of Self
-    fn lookups(&mut self);
 
     /// Reads Lookups containing the 136 bytes of the block of the preimage
     fn lookup_syscall_preimage(&mut self);
@@ -64,30 +85,9 @@ pub(crate) trait Lookups {
     fn lookups_round_iota(&mut self);
 }
 
-impl<Fp: Field> Lookups for KeccakEnv<Fp> {
+impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
-
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        self.lookups.push(lookup);
-    }
-
-    fn lookups(&mut self) {
-        // SPONGE LOOKUPS
-        self.lookups_sponge();
-
-        // ROUND LOOKUPS
-        {
-            // THETA LOOKUPS
-            self.lookups_round_theta();
-            // PIRHO LOOKUPS
-            self.lookups_round_pirho();
-            // CHI LOOKUPS
-            self.lookups_round_chi();
-            // IOTA LOOKUPS
-            self.lookups_round_iota();
-        }
-    }
 
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {

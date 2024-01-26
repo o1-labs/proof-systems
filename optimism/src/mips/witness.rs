@@ -1,13 +1,10 @@
-use crate::cannon::{Page, State};
-use crate::keccak::lookups::Lookups;
-use crate::keccak::ArithOps;
-use crate::mips::interpreter::{Lookup, LookupTable};
 use crate::{
     cannon::{
-        Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
-        PAGE_SIZE,
+        Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
+        PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
-    keccak::environment::KeccakEnv,
+    keccak::{environment::KeccakEnv, ArithOps},
+    lookup::{Lookup, LookupTable, Lookups},
     mips::{
         column::Column,
         interpreter::{
@@ -21,9 +18,11 @@ use ark_ff::Field;
 use core::panic;
 use kimchi::o1_utils::Two;
 use log::{debug, info};
-use std::array;
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::{
+    array,
+    fs::File,
+    io::{BufWriter, Write},
+};
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
 pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
@@ -135,8 +134,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
     }
 
-    fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
-        // FIXME: Track the lookup values in the environment.
+    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
+        // No-op, constraints only
     }
 
     fn instruction_counter(&self) -> Self::Variable {

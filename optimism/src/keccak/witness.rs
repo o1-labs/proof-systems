@@ -6,12 +6,12 @@
 ///
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
-use super::{
+use crate::keccak::{
     column::KeccakColumn,
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    lookups::Lookups,
+    lookups::KeccakLookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
