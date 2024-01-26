@@ -67,7 +67,7 @@ fn ec_test() {
     };
 
     for &p in ps.iter().take(num_doubles) {
-        let p2 = p + p;
+        let p2: Other = (p + p).into();
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = 3 * x1^2
@@ -95,7 +95,7 @@ fn ec_test() {
         let p = ps[i];
         let q = qs[i];
 
-        let pq = p + q;
+        let pq: Other = (p + q).into();
         let (x1, y1) = (p.x, p.y);
         let (x2, y2) = (q.x, q.y);
         // (x2 - x1) * s = y2 - y1
@@ -119,9 +119,9 @@ fn ec_test() {
     }
 
     for &p in ps.iter().take(num_infs) {
-        let q = -p;
+        let q: Other = (-p).into();
 
-        let p2 = p + p;
+        let p2: Other = (p + p).into();
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = -3 * x1^2
