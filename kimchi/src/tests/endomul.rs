@@ -71,8 +71,9 @@ fn endomul_test() {
         // let g = Other::generator().into_group();
         let acc0 = {
             let t = Other::new_unchecked(endo_q * base.x, base.y);
-            let p = t + base;
-            let acc = p + p;
+            // Ensuring we use the affine coordinates
+            let p: Other = (t + base).into();
+            let acc: Other = (p + p).into();
             (acc.x, acc.y)
         };
 
