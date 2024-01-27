@@ -1142,17 +1142,13 @@
 <a href="#1140" id="1140">1140</a>
 <a href="#1141" id="1141">1141</a>
 <a href="#1142" id="1142">1142</a>
-<a href="#1143" id="1143">1143</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{Page, State};
-<span class="kw">use </span><span class="kw">crate</span>::keccak::lookups::Lookups;
-<span class="kw">use </span><span class="kw">crate</span>::keccak::ArithOps;
-<span class="kw">use </span><span class="kw">crate</span>::mips::interpreter::{Lookup, LookupTable};
-<span class="kw">use crate</span>::{
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
-        Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
-        PAGE_SIZE,
+        Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
+        PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
-    keccak::environment::KeccakEnv,
+    keccak::{environment::KeccakEnv, ArithOps},
+    lookup::{Lookup, LookupTable, Lookups},
     mips::{
         column::Column,
         interpreter::{
@@ -1166,9 +1162,11 @@
 <span class="kw">use </span>core::panic;
 <span class="kw">use </span>kimchi::o1_utils::Two;
 <span class="kw">use </span>log::{debug, info};
-<span class="kw">use </span>std::array;
-<span class="kw">use </span>std::fs::File;
-<span class="kw">use </span>std::io::{BufWriter, Write};
+<span class="kw">use </span>std::{
+    array,
+    fs::File,
+    io::{BufWriter, Write},
+};
 
 <span class="kw">pub const </span>NUM_GLOBAL_LOOKUP_TERMS: usize = <span class="number">1</span>;
 <span class="kw">pub const </span>NUM_DECODING_LOOKUP_TERMS: usize = <span class="number">2</span>;
@@ -1280,8 +1278,8 @@
         }
     }
 
-    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _lookup: interpreter::Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="comment">// FIXME: Track the lookup values in the environment.
+    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="comment">// No-op, constraints only
     </span>}
 
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {

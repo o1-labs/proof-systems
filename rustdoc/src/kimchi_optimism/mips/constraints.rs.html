@@ -438,9 +438,10 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::{
-    column::Column <span class="kw">as </span>MIPSColumn,
-    interpreter::{<span class="self">self</span>, InterpreterEnv},
+<a href="#439" id="439">439</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    lookup::Lookup,
+    mips::{column::Column <span class="kw">as </span>MIPSColumn, interpreter::InterpreterEnv, E},
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
@@ -450,7 +451,8 @@
 
 <span class="kw">pub struct </span>Env&lt;Fp&gt; {
     <span class="kw">pub </span>scratch_state_idx: usize,
-    <span class="kw">pub </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;Fp&gt;, MIPSColumn&gt;&gt;,
+    <span class="kw">pub </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
+    <span class="kw">pub </span>lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp&gt; {
@@ -480,9 +482,9 @@
         <span class="comment">// No-op, witness only
     </span>}
 
-    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _lookup: interpreter::Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="comment">// FIXME: Track the lookup values in the environment.
-    </span>}
+    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.lookups.push(lookup);
+    }
 
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         Expr::Atom(ExprInner::Cell(Variable {

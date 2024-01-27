@@ -275,26 +275,47 @@
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, E,
     },
-    mips::interpreter::{Lookup, LookupTable},
+    lookup::{Lookup, LookupTable, Lookups},
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
+<span class="kw">impl</span>&lt;Fp: Field&gt; Lookups <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
+    <span class="kw">type </span>Column = KeccakColumn;
+    <span class="kw">type </span>Variable = E&lt;Fp&gt;;
+
+    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.lookups.push(lookup);
+    }
+
+    <span class="doccomment">/// Adds all 2342 lookups to the Keccak environment
+    </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// SPONGE LOOKUPS
+        </span><span class="self">self</span>.lookups_sponge();
+
+        <span class="comment">// ROUND LOOKUPS
+        </span>{
+            <span class="comment">// THETA LOOKUPS
+            </span><span class="self">self</span>.lookups_round_theta();
+            <span class="comment">// PIRHO LOOKUPS
+            </span><span class="self">self</span>.lookups_round_pirho();
+            <span class="comment">// CHI LOOKUPS
+            </span><span class="self">self</span>.lookups_round_chi();
+            <span class="comment">// IOTA LOOKUPS
+            </span><span class="self">self</span>.lookups_round_iota();
+        }
+    }
+}
+
 <span class="doccomment">/// This trait adds useful methods to deal with lookups in the Keccak environment
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Lookups {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>KeccakLookups {
     <span class="kw">type </span>Column;
     <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + Clone;
-
-    <span class="doccomment">/// Adds a given Lookup to the environment
-    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
-
-    <span class="doccomment">/// Adds all 2342 lookups of Self
-    </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
     <span class="doccomment">/// Reads Lookups containing the 136 bytes of the block of the preimage
     </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
@@ -334,30 +355,9 @@
     </span><span class="kw">fn </span>lookups_round_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 
-<span class="kw">impl</span>&lt;Fp: Field&gt; Lookups <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
+<span class="kw">impl</span>&lt;Fp: Field&gt; KeccakLookups <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
     <span class="kw">type </span>Column = KeccakColumn;
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
-
-    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="self">self</span>.lookups.push(lookup);
-    }
-
-    <span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// SPONGE LOOKUPS
-        </span><span class="self">self</span>.lookups_sponge();
-
-        <span class="comment">// ROUND LOOKUPS
-        </span>{
-            <span class="comment">// THETA LOOKUPS
-            </span><span class="self">self</span>.lookups_round_theta();
-            <span class="comment">// PIRHO LOOKUPS
-            </span><span class="self">self</span>.lookups_round_pirho();
-            <span class="comment">// CHI LOOKUPS
-            </span><span class="self">self</span>.lookups_round_chi();
-            <span class="comment">// IOTA LOOKUPS
-            </span><span class="self">self</span>.lookups_round_iota();
-        }
-    }
 
     <span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
