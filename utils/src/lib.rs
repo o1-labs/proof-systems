@@ -22,3 +22,15 @@ pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;
 pub use field_helpers::{BigUintFieldHelpers, FieldHelpers, RandomField, Two};
 pub use foreign_field::{ForeignElement, LIMB_COUNT};
+
+/// Utils only for testing
+pub mod tests {
+    use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
+
+    /// Create a new test rng with a random seed
+    pub fn make_test_rng() -> StdRng {
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        StdRng::from_seed(seed)
+    }
+}

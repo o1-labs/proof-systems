@@ -9,7 +9,6 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
 use super::framework::TestFramework;
@@ -21,6 +20,9 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 // Tests add and double gates
 #[test]
 fn ec_test() {
+    use o1_utils::tests::make_test_rng;
+    let mut rng = make_test_rng();
+
     let num_doubles = 100;
     let num_additions = 100;
     let num_infs = 100;
@@ -37,12 +39,10 @@ fn ec_test() {
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
-    let rng = &mut StdRng::from_seed([0; 32]);
-
     let ps = {
         let p = Other::prime_subgroup_generator()
             .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+            .mul(<Other as AffineCurve>::ScalarField::rand(&mut rng).into_repr())
             .into_affine();
         let mut res = vec![];
         let mut acc = p;
@@ -56,7 +56,7 @@ fn ec_test() {
     let qs = {
         let q = Other::prime_subgroup_generator()
             .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+            .mul(<Other as AffineCurve>::ScalarField::rand(&mut rng).into_repr())
             .into_affine();
         let mut res = vec![];
         let mut acc = q;
