@@ -47,9 +47,12 @@ pub(crate) const PAD_SUFFIX_LEN: usize = 5; // The padding suffix of 1088 bits i
 /// (Sponge or Round) that is currently being executed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
-    HashIndex,    // Hash identifier to distinguish inside the syscalls communication channel
-    StepIndex,    // Hash step identifier to distinguish inside interstep communication
-    FlagRound,    // Coeff Round = [0..24)
+    /// Hash identifier to distinguish inside the syscalls communication channel
+    HashIndex,
+    /// Hash step identifier to distinguish inside interstep communication
+    StepIndex,
+    /// Coeff Round = [0..24)
+    FlagRound,
     FlagAbsorb,   // Coeff Absorb = 0 | 1
     FlagSqueeze,  // Coeff Squeeze = 0 | 1
     FlagRoot,     // Coeff Root = 0 | 1
