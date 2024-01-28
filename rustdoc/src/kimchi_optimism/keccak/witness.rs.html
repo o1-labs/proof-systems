@@ -321,17 +321,6 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// This file contains the witness for the Keccak hash function for the zkVM project.
 /// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 ///
@@ -345,7 +334,6 @@
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    lookups::KeccakLookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 <span class="kw">use </span>ark_ff::Field;
@@ -396,10 +384,6 @@
             KeccakStep::Round(i) =&gt; <span class="self">self</span>.run_round(i),
         }
         <span class="self">self</span>.write_column(KeccakColumn::StepIndex, <span class="self">self</span>.step_idx);
-
-        <span class="comment">// INTER-STEP CHANNEL
-        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
-        </span><span class="self">self</span>.lookup_steps();
 
         <span class="self">self</span>.update_step();
     }
@@ -474,10 +458,7 @@
         }
 
         <span class="comment">// Rest is zero thanks to null_state
-
-        // COMMUNICATION CHANNEL: Write hash output
-        </span><span class="self">self</span>.lookup_syscall_hash();
-    }
+    </span>}
 
     <span class="kw">fn </span>run_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, absorb: Absorb) {
         <span class="self">self</span>.set_flag_absorb(absorb);
@@ -523,10 +504,7 @@
         }
         <span class="comment">// Rest is zero thanks to null_state
 
-        // COMMUNICATION CHANNEL: read bytes of current block
-        </span><span class="self">self</span>.lookup_syscall_preimage();
-
-        <span class="comment">// Update environment
+        // Update environment
         </span><span class="self">self</span>.prev_block = xor_state;
         <span class="self">self</span>.block_idx += <span class="number">1</span>; <span class="comment">// To be used in next absorb (if any)
     </span>}

@@ -268,6 +268,23 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module includes the lookups of the Keccak circuit
 </span><span class="kw">use crate</span>::{
     keccak::{
@@ -290,7 +307,11 @@
         <span class="self">self</span>.lookups.push(lookup);
     }
 
-    <span class="doccomment">/// Adds all 2342 lookups to the Keccak environment
+    <span class="doccomment">/// Adds all 2481 lookups to the Keccak environment:
+    /// - 2342 lookups for the step row
+    /// - 2 lookups for the inter-step channel
+    /// - 136 lookups for the syscall channel (preimage bytes)
+    /// - 1 lookups for the syscall channel (hash)
     </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// SPONGE LOOKUPS
         </span><span class="self">self</span>.lookups_sponge();
@@ -306,6 +327,16 @@
             <span class="comment">// IOTA LOOKUPS
             </span><span class="self">self</span>.lookups_round_iota();
         }
+
+        <span class="comment">// INTER-STEP CHANNEL
+        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        </span><span class="self">self</span>.lookup_steps();
+
+        <span class="comment">// COMMUNICATION CHANNEL: read bytes of current block
+        </span><span class="self">self</span>.lookup_syscall_preimage();
+
+        <span class="comment">// COMMUNICATION CHANNEL: Write hash output
+        </span><span class="self">self</span>.lookup_syscall_hash();
     }
 }
 
@@ -359,9 +390,11 @@
     <span class="kw">type </span>Column = KeccakColumn;
     <span class="kw">type </span>Variable = E&lt;Fp&gt;;
 
-    <span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="comment">// TODO: optimize this by using a single lookup reusing PadSuffix
+    </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
-            <span class="self">self</span>.add_lookup(Lookup::read_one(
+            <span class="self">self</span>.add_lookup(Lookup::read_if(
+                <span class="self">self</span>.is_absorb(),
                 LookupTable::SyscallLookup,
                 <span class="macro">vec!</span>[
                     <span class="self">self</span>.hash_index(),
@@ -376,7 +409,8 @@
         <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(<span class="self">Self</span>::zero(), |acc, i| {
             acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_byte(i)
         });
-        <span class="self">self</span>.add_lookup(Lookup::write_one(
+        <span class="self">self</span>.add_lookup(Lookup::write_if(
+            <span class="self">self</span>.is_squeeze(),
             LookupTable::SyscallLookup,
             <span class="macro">vec!</span>[<span class="self">self</span>.hash_index(), bytes31],
         ));

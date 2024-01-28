@@ -1142,6 +1142,8 @@
 <a href="#1140" id="1140">1140</a>
 <a href="#1141" id="1141">1141</a>
 <a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1767,6 +1769,7 @@
                 KeccakEnv::&lt;Fp&gt;::new(<span class="self">self</span>.hash_count, <span class="self">self</span>.preimage.as_ref().unwrap());
 
             <span class="comment">// COMMUNICATION CHANNEL: Write preimage bytes
+            // FIXME: this should be executed in the constraints side
             </span><span class="kw">let </span>preimage = <span class="self">self</span>.preimage.as_ref().unwrap();
             <span class="kw">for </span>(i, byte) <span class="kw">in </span>preimage.iter().enumerate() {
                 keccak_env.add_lookup(Lookup::write_one(
@@ -1780,6 +1783,7 @@
             }
 
             <span class="comment">// COMMUNICATION CHANNEL: Read hash output
+            // FIXME: this should be executed in the constraints side
             </span><span class="kw">match </span><span class="self">self</span>.preimage_key {
                 <span class="prelude-val">Some</span>(preimage_key) =&gt; {
                     <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(Fp::zero(), |acc, i| {
