@@ -44,6 +44,12 @@ impl SyscallEnv {
     }
 }
 
+/// This structure represents the environment the virtual machine state will use
+/// to transition. This environment will be used by the interpreter.
+/// The virtual machine has access to its internal state and some external memory.
+/// In addition to that, it has access to the environment of the Keccak
+/// interpreter that is used to verify the preimage requested during the
+/// execution.
 pub struct Env<Fp> {
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
