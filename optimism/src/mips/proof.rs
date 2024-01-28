@@ -425,8 +425,10 @@ fn test_mips_prover() {
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+    use poly_commitment::pairing_proof::{PairingProof, PairingSRS};
 
     type Fp = ark_bn254::Fr;
+    type BN254Parameters = ark_ec::bn::Bn<ark_bn254::Parameters>;
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
@@ -453,19 +455,18 @@ fn test_mips_prover() {
     // Trusted setup toxic waste
     let x = Fp::rand(rng);
 
-    let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, domain_size);
+    let mut srs = PairingSRS::create(x, domain_size);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
-    let proof = prove::<
-        _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-        BaseSponge,
-        ScalarSponge,
-    >(domain, &srs, proof_inputs);
+    let proof = prove::<_, PairingProof<BN254Parameters>, BaseSponge, ScalarSponge>(
+        domain,
+        &srs,
+        proof_inputs,
+    );
 
     assert!(verify::<
         _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        PairingProof<BN254Parameters>,
         BaseSponge,
         ScalarSponge,
     >(domain, &srs, &proof));
