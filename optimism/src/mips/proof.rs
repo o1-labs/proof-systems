@@ -21,6 +21,20 @@ use rayon::iter::{
 };
 
 /// Represents one line of the execution trace of the virtual machine
+/// It does contain [SCRATCH_SIZE] columns + 2 additional columns to keep track
+/// of the instruction index and one for the system error code.
+/// The column are, in order,
+/// - the 32 general purpose registers
+/// - the low and hi registers used by some arithmetic instructions
+/// - the current instruction pointer
+/// - the next instruction pointer
+/// - the heap pointer
+/// - the preimage key, splitted in 8 consecutive columns representing 4 bytes
+/// of the 32 bytes long preimage key
+/// - the preimage offset, i.e. the number of bytes that have been read for the
+/// currently processing preimage
+/// - `[SCRATCH_SIZE] - 46` intermediate columns that can be used by the
+/// instruction set
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
     pub scratch: [G; SCRATCH_SIZE],
