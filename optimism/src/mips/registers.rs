@@ -12,6 +12,7 @@ pub const REGISTER_PREIMAGE_OFFSET: usize = 45;
 
 pub const NUM_REGISTERS: usize = 46;
 
+/// This represents the internal state of the virtual machine.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Registers<T> {
     pub general_purpose: [T; 32],
