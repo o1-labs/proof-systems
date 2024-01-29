@@ -1,8 +1,9 @@
-use self::column::KeccakColumn;
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
-    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
 };
+
+use self::column::KeccakColumn;
 
 pub mod column;
 pub mod constraints;
@@ -24,10 +25,6 @@ pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
 pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 /// Number of words that fit in the hash digest
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
-/// The maximum number of bytes that is read from the MIPS interpreter at a time
-pub const CHUNK_IN_BYTES: usize = 4;
-/// The number of chunks that can be absorbed by one row of the Keccak step
-pub const CHUNKS_PER_ROW: usize = RATE_IN_BYTES / CHUNK_IN_BYTES;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
