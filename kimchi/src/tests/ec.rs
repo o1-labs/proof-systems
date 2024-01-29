@@ -19,8 +19,6 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 // Tests add and double gates
-// FIXME
-#[ignore]
 #[test]
 fn ec_test() {
     use o1_utils::tests::make_test_rng;
