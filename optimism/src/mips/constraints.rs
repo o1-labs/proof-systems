@@ -8,7 +8,10 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
-use super::registers::REGISTER_PREIMAGE_KEY_START;
+use super::{
+    column::{MIPS_HASH_COUNTER_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET},
+    registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
+};
 
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
@@ -434,11 +437,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             row: CurrOrNext::Curr,
         }));
         let hash_counter = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::HashCounter,
+            col: Self::Position::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+            row: CurrOrNext::Curr,
+        }));
+        let preimage_left = Expr::Atom(ExprInner::Cell(Variable {
+            col: Self::Position::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
             row: CurrOrNext::Curr,
         }));
         let preimage_counter = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::PreimageCounter,
+            col: Self::Position::ScratchState(REGISTER_PREIMAGE_OFFSET),
             row: CurrOrNext::Curr,
         }));
 
@@ -456,7 +463,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                     row: CurrOrNext::Curr,
                 }))
         });
-        self.add_lookup(Lookup::read_one(
+        // If no more bytes left to be read, then the end of the preimage is true
+        let end_of_preimage = Expr::from(1) - preimage_left;
+        self.add_lookup(Lookup::read_if(
+            end_of_preimage,
             LookupTable::SyscallLookup,
             vec![hash_counter, preimage_key],
         ));

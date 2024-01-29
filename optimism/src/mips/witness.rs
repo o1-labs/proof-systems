@@ -6,7 +6,7 @@ use crate::{
     keccak::environment::KeccakEnv,
     lookup::Lookup,
     mips::{
-        column::Column,
+        column::{Column, MIPS_HASH_COUNTER_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET},
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
         },
@@ -28,7 +28,7 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 80; // TODO: Delete and use a vector instead
+pub const SCRATCH_SIZE: usize = 86; // TODO: Delete and use a vector instead
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -581,8 +581,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             }
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
-            self.preimage = Some(preimage);
+            self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);
+
+            // Initialize bytes left to read from preimage length
+            self.write_column(
+                Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+                preimage.len() as u64,
+            );
         }
 
         const LENGTH_SIZE: usize = 8;
@@ -620,11 +626,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
         self.write_column(pos, actual_read_len);
 
-        // Update the PreimageCounter column (starts with 0)
-        self.write_column(Column::PreimageCounter, self.preimage_bytes_read / 4);
-
         // Update the total number of preimage bytes read so far
         self.preimage_bytes_read += actual_read_len;
+
+        // Update how many bytes are left to be read
+        self.write_column(
+            Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+            (preimage_len as u64) - self.preimage_bytes_read,
+        );
 
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
@@ -636,8 +645,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
             // COMMUNICATION CHANNEL: only on constraint side
 
-            // Update HashCounter column
-            self.write_column(Column::HashCounter, self.hash_counter);
+            // Update hash counter column
+            self.write_column(
+                Column::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+                self.hash_counter,
+            );
+            // Number of preimage bytes left to be read should be zero at this point
 
             // Reset environment
             self.preimage_bytes_read = 0;
@@ -769,18 +782,13 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
-        match column {
-            Column::HashCounter => self.hash_counter = value,
-            _ => self.write_field_column(column, value.into()),
-        }
+        self.write_field_column(column, value.into())
     }
 
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
-            Column::PreimageCounter => self.preimage_counter = value,
-            Column::HashCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }
 
