@@ -492,6 +492,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             let read_4 = (row_bytes.clone() - Expr::from(1))
                 * (row_bytes.clone() - Expr::from(2))
                 * (row_bytes.clone() - Expr::from(4));
+
+            // Note there is no need to multiply by the Syscall flag because the constraints are zero when the witnesses are zero
             {
                 // Constrain the byte decomposition of the preimage chunk
                 // TODO: smaller degree?
@@ -532,7 +534,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
 
             // Constrain the bytes flags depending on the number of bytes read in this row
-            // FIXME: need a flag to activate these constraints only when keccak syscall?
             {
                 // When at least has_1_byte, then any number of bytes can be read
                 self.constraints.push(
@@ -568,11 +569,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                     row: CurrOrNext::Curr,
                 }))
         });
-        // If no more bytes left to be read, and some bytes have been read already, then the end of the preimage is true
+
+        // If no more bytes left to be read, and syscall row, then the end of the preimage is true
         // Otherwise, there was no a syscall in this row or there is still more to read
         // FIXME: can the condition be a degree-2 variable?
-        // TODO: this should only be true if this is a syscall row
-        let end_of_preimage = Expr::from(1) - preimage_left;
+        let is_syscall = Expr::Atom(ExprInner::Cell(Variable {
+            col: Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET),
+            row: CurrOrNext::Curr,
+        }));
+        let end_of_preimage = is_syscall * (Expr::from(1) - preimage_left);
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTable::SyscallLookup,
