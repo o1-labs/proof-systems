@@ -527,9 +527,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
             // Constrain booleanity of has_n_bytes
             {
-                for i in 0..MIPS_CHUNK_BYTES_LENGTH {
+                for flag in has_n_bytes.clone() {
                     self.constraints
-                        .push(has_n_bytes[i].clone() * (has_n_bytes[i].clone() - Expr::from(1)));
+                        .push(flag.clone() * (flag.clone() - Expr::from(1)));
                 }
             }
 

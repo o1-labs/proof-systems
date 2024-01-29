@@ -72,7 +72,6 @@ pub struct Env<Fp> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
-    pub preimage_counter: Fp,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -642,7 +641,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // Update the flags to count how many bytes are contained at least
         // FIXME: add constraints for this notation?
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
-            if actual_read_len >= 1 + i as u64 {
+            if actual_read_len > i as u64 {
                 self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
             }
         }
@@ -797,7 +796,6 @@ impl<Fp: Field> Env<Fp> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
-            preimage_counter: Fp::zero(),
         }
     }
 
