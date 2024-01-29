@@ -6,12 +6,11 @@
 ///
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
-use super::{
+use crate::keccak::{
     column::KeccakColumn,
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
@@ -62,10 +61,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakStep::Round(i) => self.run_round(i),
         }
         self.write_column(KeccakColumn::StepIndex, self.step_idx);
-
-        // INTER-STEP CHANNEL
-        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
-        self.lookup_steps();
 
         self.update_step();
     }
@@ -140,9 +135,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
 
         // Rest is zero thanks to null_state
-
-        // COMMUNICATION CHANNEL: Write hash output
-        self.lookup_syscall_hash();
     }
 
     fn run_absorb(&mut self, absorb: Absorb) {
@@ -188,9 +180,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             self.write_column(KeccakColumn::SpongeShifts(idx), *value);
         }
         // Rest is zero thanks to null_state
-
-        // COMMUNICATION CHANNEL: read bytes of current block
-        self.lookup_syscall_preimage();
 
         // Update environment
         self.prev_block = xor_state;

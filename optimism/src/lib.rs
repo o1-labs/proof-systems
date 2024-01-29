@@ -11,6 +11,9 @@ pub mod cannon_cli;
 /// Implementation of Keccak used by the zkVM.
 pub mod keccak;
 
+/// The lookup argument.
+pub mod lookup;
+
 /// MIPS interpreter.
 pub mod mips;
 

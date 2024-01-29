@@ -40,9 +40,42 @@ where
 mod tests {
     use super::*;
 
+    use ark_ec::AffineRepr;
     use ark_ff::PrimeField;
     use ark_serialize::Write;
+    use hex;
     use mina_curves::pasta::{Pallas, Vesta};
+    use std::collections::HashMap;
+
+    fn test_regression_serialization_srs_with_generators<G: AffineRepr>(exp_output: String) {
+        let h = G::generator();
+        let g = vec![h];
+        let lagrange_bases = HashMap::new();
+        let srs = SRS::<G> {
+            g,
+            h,
+            lagrange_bases,
+        };
+        let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
+        let output = hex::encode(srs_bytes.clone());
+        assert_eq!(output, exp_output)
+    }
+
+    #[test]
+    fn test_regression_serialization_srs_with_generators_vesta() {
+        // This is the same as Pallas as we encode the coordinate x only.
+        // Generated with commit 4c69a4defdb109b94f1124fe93283e728f1d8758
+        let exp_output = "9291c421010000000000000000000000000000000000000000000000000000000000000000c421010000000000000000000000000000000000000000000000000000000000000000";
+        test_regression_serialization_srs_with_generators::<Vesta>(exp_output.to_string())
+    }
+
+    #[test]
+    fn test_regression_serialization_srs_with_generators_pallas() {
+        // This is the same as Vesta as we encode the coordinate x only.
+        // Generated with commit 4c69a4defdb109b94f1124fe93283e728f1d8758
+        let exp_output = "9291c421010000000000000000000000000000000000000000000000000000000000000000c421010000000000000000000000000000000000000000000000000000000000000000";
+        test_regression_serialization_srs_with_generators::<Pallas>(exp_output.to_string())
+    }
 
     fn create_or_check_srs<G>(log2_size: u32)
     where

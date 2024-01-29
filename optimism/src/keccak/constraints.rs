@@ -1,9 +1,11 @@
 //! This module contains the constraints for one Keccak step.
-use crate::keccak::{
-    column::{KeccakColumn, PAD_SUFFIX_LEN},
-    environment::{KeccakEnv, KeccakEnvironment},
-    lookups::Lookups,
-    {ArithOps, BoolOps, E, WORDS_IN_HASH},
+use crate::{
+    keccak::{
+        column::{KeccakColumn, PAD_SUFFIX_LEN},
+        environment::{KeccakEnv, KeccakEnvironment},
+        {ArithOps, BoolOps, E, WORDS_IN_HASH},
+    },
+    lookup::Lookups,
 };
 use ark_ff::Field;
 use kimchi::circuits::{

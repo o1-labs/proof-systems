@@ -2,14 +2,13 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
-use ark_ec::AffineRepr;
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 use std::ops::Mul;
 
@@ -24,6 +23,9 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 #[ignore]
 #[test]
 fn ec_test() {
+    use o1_utils::tests::make_test_rng;
+    let mut rng = make_test_rng();
+
     let num_doubles = 100;
     let num_additions = 100;
     let num_infs = 100;
@@ -40,17 +42,16 @@ fn ec_test() {
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
-    let rng = &mut StdRng::from_seed([0; 32]);
-
     let ps = {
         let p = Other::generator()
             .into_group()
-            .mul(<Other as AffineRepr>::ScalarField::rand(rng));
+            .mul(<Other as AffineRepr>::ScalarField::rand(&mut rng))
+            .into_affine();
         let mut res = vec![];
         let mut acc = p;
         for _ in 0..num_additions {
             res.push(acc);
-            acc += p;
+            acc = (acc + p).into();
         }
         res
     };
@@ -58,12 +59,13 @@ fn ec_test() {
     let qs = {
         let q = Other::generator()
             .into_group()
-            .mul(<Other as AffineRepr>::ScalarField::rand(rng));
+            .mul(<Other as AffineRepr>::ScalarField::rand(&mut rng))
+            .into_affine();
         let mut res = vec![];
         let mut acc = q;
         for _ in 0..num_additions {
             res.push(acc);
-            acc += q;
+            acc = (acc + q).into();
         }
         res
     };
@@ -121,7 +123,7 @@ fn ec_test() {
     }
 
     for &p in ps.iter().take(num_infs) {
-        let q: Other = (-p).into();
+        let q: Other = -p;
 
         let p2: Other = (p + p).into();
         let (x1, y1) = (p.x, p.y);

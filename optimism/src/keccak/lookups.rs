@@ -5,26 +5,61 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, E,
     },
-    mips::interpreter::{Lookup, LookupTable},
+    lookup::{Lookup, LookupTable, Lookups},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
+impl<Fp: Field> Lookups for KeccakEnv<Fp> {
+    type Column = KeccakColumn;
+    type Variable = E<Fp>;
+
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        self.lookups.push(lookup);
+    }
+
+    /// Adds all 2481 lookups to the Keccak environment:
+    /// - 2342 lookups for the step row
+    /// - 2 lookups for the inter-step channel
+    /// - 136 lookups for the syscall channel (preimage bytes)
+    /// - 1 lookups for the syscall channel (hash)
+    fn lookups(&mut self) {
+        // SPONGE LOOKUPS
+        self.lookups_sponge();
+
+        // ROUND LOOKUPS
+        {
+            // THETA LOOKUPS
+            self.lookups_round_theta();
+            // PIRHO LOOKUPS
+            self.lookups_round_pirho();
+            // CHI LOOKUPS
+            self.lookups_round_chi();
+            // IOTA LOOKUPS
+            self.lookups_round_iota();
+        }
+
+        // INTER-STEP CHANNEL
+        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        self.lookup_steps();
+
+        // COMMUNICATION CHANNEL: read bytes of current block
+        self.lookup_syscall_preimage();
+
+        // COMMUNICATION CHANNEL: Write hash output
+        self.lookup_syscall_hash();
+    }
+}
+
 /// This trait adds useful methods to deal with lookups in the Keccak environment
-pub(crate) trait Lookups {
+pub(crate) trait KeccakLookups {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + Clone;
-
-    /// Adds a given Lookup to the environment
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
-
-    /// Adds all 2342 lookups of Self
-    fn lookups(&mut self);
 
     /// Reads Lookups containing the 136 bytes of the block of the preimage
     fn lookup_syscall_preimage(&mut self);
@@ -64,34 +99,15 @@ pub(crate) trait Lookups {
     fn lookups_round_iota(&mut self);
 }
 
-impl<Fp: Field> Lookups for KeccakEnv<Fp> {
+impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        self.lookups.push(lookup);
-    }
-
-    fn lookups(&mut self) {
-        // SPONGE LOOKUPS
-        self.lookups_sponge();
-
-        // ROUND LOOKUPS
-        {
-            // THETA LOOKUPS
-            self.lookups_round_theta();
-            // PIRHO LOOKUPS
-            self.lookups_round_pirho();
-            // CHI LOOKUPS
-            self.lookups_round_chi();
-            // IOTA LOOKUPS
-            self.lookups_round_iota();
-        }
-    }
-
+    // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {
-            self.add_lookup(Lookup::read_one(
+            self.add_lookup(Lookup::read_if(
+                self.is_absorb(),
                 LookupTable::SyscallLookup,
                 vec![
                     self.hash_index(),
@@ -106,7 +122,8 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        self.add_lookup(Lookup::write_one(
+        self.add_lookup(Lookup::write_if(
+            self.is_squeeze(),
             LookupTable::SyscallLookup,
             vec![self.hash_index(), bytes31],
         ));
