@@ -1,3 +1,4 @@
+use crate::mips::witness::SCRATCH_SIZE;
 use crate::DOMAIN_SIZE;
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
@@ -22,7 +23,7 @@ use rayon::iter::{
 /// Represents one line of the execution trace of the virtual machine
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
-    pub scratch: [G; crate::mips::witness::SCRATCH_SIZE],
+    pub scratch: [G; SCRATCH_SIZE],
     pub instruction_counter: G,
     pub error: G,
 }
