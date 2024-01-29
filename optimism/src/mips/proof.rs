@@ -35,6 +35,12 @@ use rayon::iter::{
 /// currently processing preimage
 /// - `[SCRATCH_SIZE] - 46` intermediate columns that can be used by the
 /// instruction set
+/// - the hash counter
+/// - the flag to indicate if the current instruction is a preimage syscall
+/// - the number of bytes read so far for the current preimage
+/// - how many bytes are left to be read for the current preimage
+/// - the (at most) 4 bytes of the preimage key that are currently being processed
+/// - 4 helpers to check if at least n bytes were read in the current row
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
     pub scratch: [G; SCRATCH_SIZE],
