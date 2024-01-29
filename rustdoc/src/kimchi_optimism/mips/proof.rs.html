@@ -472,6 +472,7 @@
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -899,8 +900,10 @@
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+    <span class="kw">use </span>poly_commitment::pairing_proof::{PairingProof, PairingSRS};
 
     <span class="kw">type </span>Fp = ark_bn254::Fr;
+    <span class="kw">type </span>BN254Parameters = ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;;
     <span class="kw">type </span>SpongeParams = PlonkSpongeConstantsKimchi;
     <span class="kw">type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Parameters, SpongeParams&gt;;
     <span class="kw">type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
@@ -927,19 +930,18 @@
     <span class="comment">// Trusted setup toxic waste
     </span><span class="kw">let </span>x = Fp::rand(rng);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>srs = poly_commitment::pairing_proof::PairingSRS::create(x, domain_size);
+    <span class="kw">let </span><span class="kw-2">mut </span>srs = PairingSRS::create(x, domain_size);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
-    <span class="kw">let </span>proof = prove::&lt;
-        <span class="kw">_</span>,
-        poly_commitment::pairing_proof::PairingProof&lt;ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;&gt;,
-        BaseSponge,
-        ScalarSponge,
-    &gt;(domain, <span class="kw-2">&amp;</span>srs, proof_inputs);
+    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, PairingProof&lt;BN254Parameters&gt;, BaseSponge, ScalarSponge&gt;(
+        domain,
+        <span class="kw-2">&amp;</span>srs,
+        proof_inputs,
+    );
 
     <span class="macro">assert!</span>(verify::&lt;
         <span class="kw">_</span>,
-        poly_commitment::pairing_proof::PairingProof&lt;ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;&gt;,
+        PairingProof&lt;BN254Parameters&gt;,
         BaseSponge,
         ScalarSponge,
     &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof));
