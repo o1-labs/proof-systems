@@ -19,6 +19,8 @@ use kimchi::{
 };
 use std::array;
 
+use super::CHUNK_IN_BYTES;
+
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<Fp> {
@@ -305,6 +307,9 @@ pub(crate) trait KeccakEnvironment {
     /// Returns the `idx`-th byte of the sponge, as a variable
     fn sponge_byte(&self, idx: usize) -> Self::Variable;
 
+    /// Returns the idx-th chunk of 4 bytes of the preimage data, as a variable
+    fn preimage_chunk(&self, idx: usize) -> Self::Variable;
+
     /// Returns the (y,x,q)-th input of the theta algorithm, as a variable
     fn state_a(&self, y: usize, x: usize, q: usize) -> Self::Variable;
 
@@ -568,6 +573,12 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn vec_sponge_shifts(&self) -> [Self::Variable; SPONGE_SHIFTS_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::SpongeShifts(idx)))
+    }
+
+    fn preimage_chunk(&self, idx: usize) -> Self::Variable {
+        (0..CHUNK_IN_BYTES).fold(Self::zero(), |acc, i| {
+            acc * Self::two() + self.sponge_byte(idx * CHUNK_IN_BYTES + i)
+        })
     }
 
     fn sponge_shifts(&self, idx: usize) -> Self::Variable {

@@ -3,13 +3,13 @@ use crate::{
     keccak::{
         column::KeccakColumn,
         environment::{KeccakEnv, KeccakEnvironment},
-        ArithOps, BoolOps, E,
+        ArithOps, BoolOps, CHUNKS_PER_ROW, E,
     },
     lookup::{Lookup, LookupTable, Lookups},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
-    DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
+    DIM, QUARTERS, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
@@ -20,10 +20,10 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         self.lookups.push(lookup);
     }
 
-    /// Adds all 2481 lookups to the Keccak environment:
+    /// Adds all 2379 lookups to the Keccak environment:
     /// - 2342 lookups for the step row
     /// - 2 lookups for the inter-step channel
-    /// - 136 lookups for the syscall channel (preimage bytes)
+    /// - 34 lookups for the syscall channel (preimage bytes)
     /// - 1 lookups for the syscall channel (hash)
     fn lookups(&mut self) {
         // SPONGE LOOKUPS
@@ -61,7 +61,7 @@ pub(crate) trait KeccakLookups {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + Clone;
 
-    /// Reads Lookups containing the 136 bytes of the block of the preimage
+    /// Reads Lookups containing 34 chunks of the block of the preimage
     fn lookup_syscall_preimage(&mut self);
 
     /// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
@@ -103,16 +103,15 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
 
-    // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
-        for i in 0..RATE_IN_BYTES {
+        for i in 0..CHUNKS_PER_ROW {
             self.add_lookup(Lookup::read_if(
                 self.is_absorb(),
                 LookupTable::SyscallLookup,
                 vec![
                     self.hash_index(),
-                    Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
-                    self.sponge_byte(i),
+                    Self::constant(self.block_idx * CHUNKS_PER_ROW as u64 + i as u64),
+                    self.preimage_chunk(i),
                 ],
             ));
         }
