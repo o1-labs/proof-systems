@@ -7,7 +7,8 @@ use kimchi::circuits::{
     expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
-use kimchi::o1_utils::Two;
+
+use super::registers::REGISTER_PREIMAGE_KEY_START;
 
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
@@ -444,21 +445,22 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // COMMUNICATION CHANNEL: Write preimage chunk
         self.add_lookup(Lookup::write_one(
             LookupTable::SyscallLookup,
-            vec![hash_counter, preimage_counter, read_chunk.clone()],
+            vec![hash_counter.clone(), preimage_counter, read_chunk.clone()],
         ));
 
-        /* Everything below fails
         // COMMUNICATION CHANNEL: Read hash output
-        // TODO: optimize this by using a single lookup reusing PadSuffix
-        let preimage_key = (1..32).fold(Fp::zero(), |acc, i| {
-            acc * Fp::two_pow(8) + Fp::from(preimage_key[i])
+        let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
+            acc * Expr::from(2u64.pow(32))
+                + Expr::Atom(ExprInner::Cell(Variable {
+                    col: Self::Position::ScratchState(REGISTER_PREIMAGE_KEY_START + i),
+                    row: CurrOrNext::Curr,
+                }))
         });
-        self.add_lookup(Lookup::read_if(
-            self.end_of_preimage(),
+        self.add_lookup(Lookup::read_one(
             LookupTable::SyscallLookup,
             vec![hash_counter, preimage_key],
         ));
-        */
+
         read_chunk
     }
 

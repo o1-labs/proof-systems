@@ -3,8 +3,8 @@ use crate::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
         PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
-    keccak::{environment::KeccakEnv, ArithOps},
-    lookup::{Lookup, LookupTable, Lookups},
+    keccak::environment::KeccakEnv,
+    lookup::Lookup,
     mips::{
         column::Column,
         interpreter::{
@@ -16,7 +16,6 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
-use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::{
     array,
@@ -630,12 +629,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
             debug!("Preimage has been read entirely, triggering Keccak process");
-            let mut keccak_env =
-                KeccakEnv::<Fp>::new(self.hash_counter, self.preimage.as_ref().unwrap());
+            self.keccak_env = Some(KeccakEnv::<Fp>::new(
+                self.hash_counter,
+                self.preimage.as_ref().unwrap(),
+            ));
 
             // COMMUNICATION CHANNEL: only on constraint side
-
-            self.keccak_env = Some(keccak_env);
 
             // Update HashCounter column
             self.write_column(Column::HashCounter, self.hash_counter);
