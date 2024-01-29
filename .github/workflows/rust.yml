@@ -50,7 +50,8 @@ jobs:
 
       - name: Install markdownlint
         run: |
-          npm install -g markdownlint-cli
+          # FIXME: 0.39.0 makes the CI fail
+          npm install -g markdownlint-cli@0.38.0
 
       #
       # Doc & Spec
