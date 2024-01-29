@@ -627,7 +627,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 // Write the individual byte to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + idx),
+                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i as usize),
                     preimage_byte as u64,
                 );
                 unsafe {
