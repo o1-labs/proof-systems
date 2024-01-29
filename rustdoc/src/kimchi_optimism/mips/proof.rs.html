@@ -473,7 +473,24 @@
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::witness::SCRATCH_SIZE;
+<span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -494,9 +511,24 @@
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
-<span class="attr">#[derive(Debug)]
+<span class="doccomment">/// Represents one line of the execution trace of the virtual machine
+/// It does contain [SCRATCH_SIZE] columns + 2 additional columns to keep track
+/// of the instruction index and one for the system error code.
+/// The column are, in order,
+/// - the 32 general purpose registers
+/// - the low and hi registers used by some arithmetic instructions
+/// - the current instruction pointer
+/// - the next instruction pointer
+/// - the heap pointer
+/// - the preimage key, splitted in 8 consecutive columns representing 4 bytes
+/// of the 32 bytes long preimage key
+/// - the preimage offset, i.e. the number of bytes that have been read for the
+/// currently processing preimage
+/// - `[SCRATCH_SIZE] - 46` intermediate columns that can be used by the
+/// instruction set
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>WitnessColumns&lt;G&gt; {
-    <span class="kw">pub </span>scratch: [G; <span class="kw">crate</span>::mips::witness::SCRATCH_SIZE],
+    <span class="kw">pub </span>scratch: [G; SCRATCH_SIZE],
     <span class="kw">pub </span>instruction_counter: G,
     <span class="kw">pub </span>error: G,
 }
