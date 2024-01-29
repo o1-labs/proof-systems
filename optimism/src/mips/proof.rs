@@ -27,7 +27,6 @@ pub struct WitnessColumns<G> {
     pub error: G,
 }
 
-/// Helpers to iterate over the elements of the execution trace in parallel
 impl<G> IntoParallelIterator for WitnessColumns<G>
 where
     Vec<G>: IntoParallelIterator,
@@ -44,7 +43,6 @@ where
     }
 }
 
-/// Helpers to iterate over the elements of the execution trace in parallel
 impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for WitnessColumns<G> {
     fn from_par_iter<I>(par_iter: I) -> Self
     where
@@ -61,7 +59,6 @@ impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for WitnessColumns<G> {
     }
 }
 
-/// Helpers to iterate over the elements of the execution trace in parallel
 impl<'data, G> IntoParallelIterator for &'data WitnessColumns<G>
 where
     Vec<&'data G>: IntoParallelIterator,
@@ -78,7 +75,6 @@ where
     }
 }
 
-/// Helpers to iterate over the elements of the execution trace in parallel
 impl<'data, G> IntoParallelIterator for &'data mut WitnessColumns<G>
 where
     Vec<&'data mut G>: IntoParallelIterator,
