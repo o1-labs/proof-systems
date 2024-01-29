@@ -67,7 +67,7 @@ pub struct Env<Fp> {
     pub preimage_bytes_read: u64,
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
-    pub hash_counter: Fp,
+    pub hash_counter: u64,
     pub preimage_counter: Fp,
 }
 
@@ -638,12 +638,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.keccak_env = Some(keccak_env);
 
             // Update HashCounter column
-            self.write_field_column(Column::HashCounter, self.hash_counter);
+            self.write_column(Column::HashCounter, self.hash_counter);
 
             // Reset environment
             self.preimage_bytes_read = 0;
             self.preimage_key = None;
-            self.hash_counter += Fp::one();
+            self.hash_counter += 1;
 
             // Reset PreimageCounter column will be done in the next call
         }
@@ -759,7 +759,7 @@ impl<Fp: Field> Env<Fp> {
             preimage_bytes_read: 0,
             preimage_key: None,
             keccak_env: None,
-            hash_counter: Fp::zero(),
+            hash_counter: 0,
             preimage_counter: Fp::zero(),
         }
     }
@@ -770,7 +770,10 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
-        self.write_field_column(column, value.into())
+        match column {
+            Column::HashCounter => self.hash_counter = value,
+            _ => self.write_field_column(column, value.into()),
+        }
     }
 
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
@@ -778,7 +781,7 @@ impl<Fp: Field> Env<Fp> {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
             Column::PreimageCounter => self.preimage_counter = value,
-            Column::HashCounter => self.hash_counter = value,
+            Column::HashCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }
 

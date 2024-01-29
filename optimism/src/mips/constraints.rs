@@ -444,7 +444,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // COMMUNICATION CHANNEL: Write preimage chunk
         self.add_lookup(Lookup::write_one(
             LookupTable::SyscallLookup,
-            vec![hash_counter, preimage_counter, read_chunk],
+            vec![hash_counter, preimage_counter, read_chunk.clone()],
         ));
 
         /* Everything below fails
@@ -459,7 +459,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             vec![hash_counter, preimage_key],
         ));
         */
-
         read_chunk
     }
 

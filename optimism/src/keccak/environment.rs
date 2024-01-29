@@ -51,13 +51,13 @@ pub struct KeccakEnv<Fp> {
 
 impl<Fp: Field> KeccakEnv<Fp> {
     /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
-    pub fn new(hash_idx: Fp, preimage: &[u8]) -> Self {
+    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
         let mut env = Self {
             constraints: vec![],
             lookups: vec![],
             keccak_witness: KeccakWitness::default(),
             keccak_step: None,
-            hash_idx: hash_idx.try_into().unwrap(),
+            hash_idx,
             step_idx: 0,
             block_idx: 0,
             prev_block: vec![],
