@@ -1144,6 +1144,12 @@
 <a href="#1142" id="1142">1142</a>
 <a href="#1143" id="1143">1143</a>
 <a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1190,7 +1196,13 @@
     }
 }
 
-<span class="kw">pub struct </span>Env&lt;Fp&gt; {
+<span class="doccomment">/// This structure represents the environment the virtual machine state will use
+/// to transition. This environment will be used by the interpreter.
+/// The virtual machine has access to its internal state and some external memory.
+/// In addition to that, it has access to the environment of the Keccak
+/// interpreter that is used to verify the preimage requested during the
+/// execution.
+</span><span class="kw">pub struct </span>Env&lt;Fp&gt; {
     <span class="kw">pub </span>instruction_counter: u64,
     <span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
     <span class="kw">pub </span>last_memory_accesses: [usize; <span class="number">3</span>],
