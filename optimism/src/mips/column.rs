@@ -2,4 +2,6 @@
 pub enum Column {
     ScratchState(usize),
     InstructionCounter,
+    PreimageCounter,
+    HashCounter,
 }

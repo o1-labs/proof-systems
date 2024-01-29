@@ -1,5 +1,5 @@
 use crate::{
-    lookup::Lookup,
+    lookup::{Lookup, LookupTable},
     mips::{column::Column as MIPSColumn, interpreter::InterpreterEnv, E},
 };
 use ark_ff::Field;
@@ -7,6 +7,7 @@ use kimchi::circuits::{
     expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+use kimchi::o1_utils::Two;
 
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
@@ -427,10 +428,39 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
+        let read_chunk = Expr::Atom(ExprInner::Cell(Variable {
             col: pos,
             row: CurrOrNext::Curr,
-        }))
+        }));
+        let hash_counter = Expr::Atom(ExprInner::Cell(Variable {
+            col: Self::Position::HashCounter,
+            row: CurrOrNext::Curr,
+        }));
+        let preimage_counter = Expr::Atom(ExprInner::Cell(Variable {
+            col: Self::Position::PreimageCounter,
+            row: CurrOrNext::Curr,
+        }));
+
+        // COMMUNICATION CHANNEL: Write preimage chunk
+        self.add_lookup(Lookup::write_one(
+            LookupTable::SyscallLookup,
+            vec![hash_counter, preimage_counter, read_chunk],
+        ));
+
+        /* Everything below fails
+        // COMMUNICATION CHANNEL: Read hash output
+        // TODO: optimize this by using a single lookup reusing PadSuffix
+        let preimage_key = (1..32).fold(Fp::zero(), |acc, i| {
+            acc * Fp::two_pow(8) + Fp::from(preimage_key[i])
+        });
+        self.add_lookup(Lookup::read_if(
+            self.end_of_preimage(),
+            LookupTable::SyscallLookup,
+            vec![hash_counter, preimage_key],
+        ));
+        */
+
+        read_chunk
     }
 
     fn request_hint_write(&mut self, _addr: &Self::Variable, _len: &Self::Variable) {
