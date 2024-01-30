@@ -8,8 +8,11 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
+/// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
+    /// A list of constraints, which are multi-variate polynomials over a field,
+    /// represented using the expression framework of `kimchi`.
     pub constraints: Vec<E<Fp>>,
     pub lookups: Vec<Lookup<E<Fp>>>,
 }
