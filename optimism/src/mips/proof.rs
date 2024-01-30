@@ -106,6 +106,10 @@ where
     }
 }
 
+/// This structure contains the execution trace (or in other terms, the inputs
+/// to construct the SNARK proof, explaining the structure name) as evaluations
+/// of polynomials. It will be used by the prover as an input of the function
+/// `prove` to build the commitments and evaluations of the polynomials.
 #[derive(Debug)]
 pub struct ProofInputs<G: KimchiCurve> {
     evaluations: WitnessColumns<Vec<G::ScalarField>>,
