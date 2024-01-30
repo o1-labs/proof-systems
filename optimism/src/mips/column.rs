@@ -2,7 +2,7 @@
 /// describe our constraints.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Column {
-    // Can be seen as the indexed variable X_{i}
+    // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     InstructionCounter,
 }
