@@ -1,6 +1,9 @@
 use ark_ff::{Field, One};
 use kimchi::{
-    circuits::polynomials::keccak::{constants::ROUNDS, Keccak, RC},
+    circuits::polynomials::keccak::{
+        constants::{RATE_IN_BYTES, ROUNDS},
+        Keccak, RC,
+    },
     o1_utils::Two,
 };
 
@@ -209,16 +212,16 @@ impl<F: Field> LookupTable<F> {
 
     fn _table_pad() -> Self {
         Self {
-            _table: (1..=136)
+            _table: (1..=RATE_IN_BYTES)
                 .map(|i| {
-                    let suffix = pad_blocks(i as usize);
+                    let suffix = pad_blocks(i);
                     Lookup {
                         mode: LookupMode::Write,
                         magnitude: F::one(),
                         table_id: LookupTables::PadLookup,
                         value: vec![
-                            F::from(i),
-                            F::two_pow(i),
+                            F::from(i as u64),
+                            F::two_pow(i as u64),
                             suffix[0],
                             suffix[1],
                             suffix[2],
