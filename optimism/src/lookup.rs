@@ -13,7 +13,7 @@ pub enum LookupMode {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum LookupTable {
+pub enum LookupTables {
     MemoryLookup,
     RegisterLookup,
     // Single-column table of 2^16 entries with the sparse representation of all values
@@ -39,7 +39,7 @@ pub struct Lookup<Fp> {
     pub mode: LookupMode,
     /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
     pub magnitude: Fp,
-    pub table_id: LookupTable,
+    pub table_id: LookupTables,
     pub value: Vec<Fp>,
 }
 
@@ -63,7 +63,7 @@ impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
 }
 
 impl<T: One> Lookup<T> {
-    pub fn read_if(if_is_true: T, table_id: LookupTable, value: Vec<T>) -> Self {
+    pub fn read_if(if_is_true: T, table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
             magnitude: if_is_true,
@@ -72,7 +72,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
-    pub fn write_if(if_is_true: T, table_id: LookupTable, value: Vec<T>) -> Self {
+    pub fn write_if(if_is_true: T, table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
             magnitude: if_is_true,
@@ -81,7 +81,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
-    pub fn read_one(table_id: LookupTable, value: Vec<T>) -> Self {
+    pub fn read_one(table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
             magnitude: T::one(),
@@ -90,7 +90,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
-    pub fn write_one(table_id: LookupTable, value: Vec<T>) -> Self {
+    pub fn write_one(table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
             magnitude: T::one(),
@@ -113,4 +113,22 @@ pub trait Lookups {
 
     /// Adds all lookups of Self to the environment
     fn lookups(&mut self);
+}
+
+/// A table of values that can be used for a lookup, along with the ID for the table.
+#[derive(Debug, Clone)]
+pub struct LookupTable<F> {
+    pub id: LookupTables,
+    pub table: Vec<Vec<F>>,
+}
+
+const _TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
+
+impl<F: Field> LookupTable<F> {
+    fn _table_range_check_16() -> Self {
+        Self {
+            id: LookupTables::RangeCheck16Lookup,
+            table: vec![(0.._TWO_TO_16_UPPERBOUND).map(F::from).collect()],
+        }
+    }
 }
