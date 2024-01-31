@@ -118,10 +118,8 @@ pub trait Lookups {
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
-    /// Unique table identifier
-    pub id: LookupTables,
-    /// The table is a vector of entries, which can have multiple columns
-    pub table: Vec<Vec<F>>,
+    /// The table is a vector of read lookups with the same table ID
+    _table: Vec<Lookup<F>>,
 }
 
 const _TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
@@ -129,9 +127,13 @@ const _TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 impl<F: Field> LookupTable<F> {
     fn _table_range_check_16() -> Self {
         Self {
-            id: LookupTables::RangeCheck16Lookup,
-            table: (0.._TWO_TO_16_UPPERBOUND)
-                .map(|i| vec![F::from(i)])
+            _table: (0.._TWO_TO_16_UPPERBOUND)
+                .map(|i| Lookup {
+                    mode: LookupMode::Read,
+                    magnitude: F::one(),
+                    table_id: LookupTables::RangeCheck16Lookup,
+                    value: vec![F::from(i)],
+                })
                 .collect(),
         }
     }
