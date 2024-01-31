@@ -44,15 +44,15 @@ pub enum LookupTables {
 }
 
 #[derive(Clone, Debug)]
-pub struct Lookup<Fp> {
+pub struct Lookup<T> {
     pub mode: LookupMode,
     /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
-    pub magnitude: Fp,
+    pub magnitude: T,
     pub table_id: LookupTables,
-    pub value: Vec<Fp>,
+    pub value: Vec<T>,
 }
 
-impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
+impl<F: std::fmt::Display + Field> std::fmt::Display for Lookup<F> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let numerator = match self.mode {
             LookupMode::Read => self.magnitude,
