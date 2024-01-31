@@ -150,4 +150,19 @@ impl<F: Field> LookupTable<F> {
                 .collect(),
         }
     }
+
+    fn _table_sparse() -> Self {
+        Self {
+            _table: (0.._TWO_TO_16_UPPERBOUND)
+                .map(|i| Lookup {
+                    mode: LookupMode::Write,
+                    magnitude: F::one(),
+                    table_id: LookupTables::SparseLookup,
+                    value: vec![F::from(
+                        u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
+                    )],
+                })
+                .collect(),
+        }
+    }
 }
