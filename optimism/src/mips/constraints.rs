@@ -1,33 +1,44 @@
-use std::array;
-
 use crate::{
     lookup::{Lookup, LookupTables},
-    mips::{column::Column as MIPSColumn, interpreter::InterpreterEnv, E},
+    mips::{
+        column::{
+            Column as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
+            MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
+            MIPS_PREIMAGE_LEFT_OFFSET,
+        },
+        interpreter::InterpreterEnv,
+        registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
+        E,
+    },
 };
 use ark_ff::Field;
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+use std::array;
 
-use super::{
-    column::{
-        MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
-        MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET,
-    },
-    registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
-};
-
+/// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
+    /// A list of constraints, which are multi-variate polynomials over a field,
+    /// represented using the expression framework of `kimchi`.
     pub constraints: Vec<E<Fp>>,
     pub lookups: Vec<Lookup<E<Fp>>>,
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
+    /// In the concrete implementation for the constraints, the interpreter will
+    /// work over columns. The position in this case can be seen as a new
+    /// variable/input of our circuit.
     type Position = MIPSColumn;
 
+    // Allocate a new input of our circuit
     fn alloc_scratch(&mut self) -> Self::Position {
+        // All columns are implemented using a simple index, and a name is given
+        // to the index.
+        // See crate::SCRATCH_SIZE for the maximum number of columns the circuit
+        // can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         MIPSColumn::ScratchState(scratch_idx)
