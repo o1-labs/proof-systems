@@ -119,7 +119,14 @@ pub trait InterpreterEnv {
     /// A position can be seen as an indexed variable
     type Position;
 
-    /// Allocate a new abstract variable
+    /// Allocate a new abstract variable for the current step.
+    /// The variable can be used to store temporary values.
+    /// The variables are "freed" after each step/instruction.
+    /// The variable allocation can be seen as an allocation on a stack that is
+    /// popped after each step execution.
+    /// At the moment, [crate::mips::witness::SCRATCH_SIZE - 46] elements can be
+    /// allocated. If more temporary variables are required for an instruction,
+    /// increase the value [crate::mips::witness::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
 
     type Variable: Clone
