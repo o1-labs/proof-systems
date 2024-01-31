@@ -489,6 +489,10 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::witness::SCRATCH_SIZE;
 <span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
@@ -597,7 +601,11 @@
     }
 }
 
-<span class="attr">#[derive(Debug)]
+<span class="doccomment">/// This structure contains the execution trace (or in other terms, the inputs
+/// to construct the SNARK proof, explaining the structure name) as evaluations
+/// of polynomials. It will be used by the prover as an input of the function
+/// `prove` to build the commitments and evaluations of the polynomials.
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>ProofInputs&lt;G: KimchiCurve&gt; {
     evaluations: WitnessColumns&lt;Vec&lt;G::ScalarField&gt;&gt;,
 }
