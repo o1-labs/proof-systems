@@ -1,5 +1,4 @@
 use ark_ff::{Field, One};
-use kimchi::circuits::polynomials::keccak::{constants::ROUNDS, Keccak, RC};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Sign {
@@ -23,7 +22,7 @@ pub enum LookupTables {
     RangeCheck16Lookup,
     // Dual-column table of all values in the range [0, 2^16) and their sparse representation
     ResetLookup,
-    // 24-row table with all possible values for round and their round constant in expanded form (in big endian)
+    // 24-row table with all possible values for round and their round constant in expanded form
     RoundConstantsLookup,
     // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     PadLookup,
@@ -177,25 +176,6 @@ impl<F: Field> LookupTable<F> {
                     value: vec![
                         F::from(i),
                         F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
-                    ],
-                })
-                .collect(),
-        }
-    }
-
-    fn _table_round_constants() -> Self {
-        Self {
-            _table: (0..ROUNDS)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::RoundConstantsLookup,
-                    value: vec![
-                        F::from(i as u32),
-                        F::from(Keccak::sparse(RC[i])[3]),
-                        F::from(Keccak::sparse(RC[i])[2]),
-                        F::from(Keccak::sparse(RC[i])[1]),
-                        F::from(Keccak::sparse(RC[i])[0]),
                     ],
                 })
                 .collect(),
