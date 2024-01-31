@@ -165,4 +165,20 @@ impl<F: Field> LookupTable<F> {
                 .collect(),
         }
     }
+
+    fn _table_reset() -> Self {
+        Self {
+            _table: (0.._TWO_TO_16_UPPERBOUND)
+                .map(|i| Lookup {
+                    mode: LookupMode::Write,
+                    magnitude: F::one(),
+                    table_id: LookupTables::ResetLookup,
+                    value: vec![
+                        F::from(i),
+                        F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
+                    ],
+                })
+                .collect(),
+        }
+    }
 }
