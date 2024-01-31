@@ -72,6 +72,7 @@ impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
 }
 
 impl<T: One> Lookup<T> {
+    /// Reads one value when `if_is_true` is 1.
     pub fn read_if(if_is_true: T, table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
@@ -81,6 +82,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
+    /// Writes one value when `if_is_true` is 1.
     pub fn write_if(if_is_true: T, table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
@@ -90,6 +92,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
+    /// Reads one value from a table.
     pub fn read_one(table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
@@ -99,6 +102,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
+    /// Writes one value to a table.
     pub fn write_one(table_id: LookupTables, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
