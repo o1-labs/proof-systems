@@ -286,7 +286,7 @@ impl<F: PrimeField> ChallengeGenerator<F> {
         other: &Instance<FieldVar<F>>,
         initial_state: Option<DuplexState<F>>,
     ) -> Self {
-        let mut state = initial_state.unwrap_or(DuplexState::new());
+        let mut state = initial_state.unwrap_or_default();
         relaxed.absorb_into_sponge(&mut state, sys);
         other.absorb_into_sponge(&mut state, sys);
         ChallengeGenerator { state }
