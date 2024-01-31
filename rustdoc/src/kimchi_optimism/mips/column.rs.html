@@ -5,9 +5,15 @@
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
 <a href="#5" id="5">5</a>
-</pre></div><pre class="rust"><code><span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+</pre></div><pre class="rust"><code><span class="doccomment">/// Abstract columns (or variables of our multi-variate polynomials) that will be used to
+/// describe our constraints.
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>Column {
-    ScratchState(usize),
+    <span class="comment">// Can be seen as the abstract indexed variable X_{i}
+    </span>ScratchState(usize),
     InstructionCounter,
 }
 </code></pre></div></section></main></body></html>
