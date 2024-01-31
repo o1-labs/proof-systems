@@ -1,5 +1,10 @@
 use ark_ff::{Field, One};
-use kimchi::circuits::polynomials::keccak::{constants::ROUNDS, Keccak, RC};
+use kimchi::{
+    circuits::polynomials::keccak::{constants::ROUNDS, Keccak, RC},
+    o1_utils::Two,
+};
+
+use crate::keccak::witness::pad_blocks;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Sign {
@@ -197,6 +202,30 @@ impl<F: Field> LookupTable<F> {
                         F::from(Keccak::sparse(RC[i])[1]),
                         F::from(Keccak::sparse(RC[i])[0]),
                     ],
+                })
+                .collect(),
+        }
+    }
+
+    fn _table_pad() -> Self {
+        Self {
+            _table: (1..=136)
+                .map(|i| {
+                    let suffix = pad_blocks(i as usize);
+                    Lookup {
+                        mode: LookupMode::Write,
+                        magnitude: F::one(),
+                        table_id: LookupTables::PadLookup,
+                        value: vec![
+                            F::from(i),
+                            F::two_pow(i),
+                            suffix[0],
+                            suffix[1],
+                            suffix[2],
+                            suffix[3],
+                            suffix[4],
+                        ],
+                    }
                 })
                 .collect(),
         }
