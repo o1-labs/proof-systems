@@ -118,7 +118,9 @@ pub trait Lookups {
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
+    /// Unique table identifier
     pub id: LookupTables,
+    /// The table is a vector of entries, which can have multiple columns
     pub table: Vec<Vec<F>>,
 }
 
@@ -128,7 +130,9 @@ impl<F: Field> LookupTable<F> {
     fn _table_range_check_16() -> Self {
         Self {
             id: LookupTables::RangeCheck16Lookup,
-            table: vec![(0.._TWO_TO_16_UPPERBOUND).map(F::from).collect()],
+            table: (0.._TWO_TO_16_UPPERBOUND)
+                .map(|i| vec![F::from(i)])
+                .collect(),
         }
     }
 }
