@@ -108,7 +108,8 @@ impl Keccak {
             .collect::<Vec<T>>()
     }
 
-    /// Returns the expansion of the 4 dense decomposed quarters of a word
+    /// Returns the expansion of the 4 dense decomposed quarters of a word where
+    /// the first expanded element corresponds to the 16 least significant bits of the word.
     pub fn sparse(word: u64) -> Vec<u64> {
         Self::decompose(word)
             .iter()
