@@ -118,7 +118,7 @@ pub trait Lookups {
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
-    /// The table is a vector of read lookups with the same table ID
+    /// The table is a vector of write lookups with the same table ID
     _table: Vec<Lookup<F>>,
 }
 
@@ -129,7 +129,7 @@ impl<F: Field> LookupTable<F> {
         Self {
             _table: (0.._TWO_TO_16_UPPERBOUND)
                 .map(|i| Lookup {
-                    mode: LookupMode::Read,
+                    mode: LookupMode::Write,
                     magnitude: F::one(),
                     table_id: LookupTables::RangeCheck16Lookup,
                     value: vec![F::from(i)],
