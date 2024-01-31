@@ -18,9 +18,17 @@ pub struct Env<Fp> {
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
+    /// In the concrete implementation for the constraints, the interpreter will
+    /// work over columns. The position in this case can be seen as a new
+    /// variable/input of our circuit.
     type Position = MIPSColumn;
 
+    // Allocate a new input of our circuit
     fn alloc_scratch(&mut self) -> Self::Position {
+        // All columns are implemented using a simple index, and a name is given
+        // to the index.
+        // See crate::SCRATCH_SIZE for the maximum number of columns the circuit
+        // can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         MIPSColumn::ScratchState(scratch_idx)
