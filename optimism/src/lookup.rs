@@ -115,7 +115,7 @@ pub trait Lookups {
     fn lookups(&mut self);
 }
 
-/// A table of values that can be used for a lookup, along with the ID for the table.
+/// A table of lookup entries
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
     /// The table is a vector of write lookups with the same table ID
