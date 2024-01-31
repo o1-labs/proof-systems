@@ -116,8 +116,10 @@ pub enum ITypeInstruction {
 }
 
 pub trait InterpreterEnv {
+    /// A position can be seen as an indexed variable
     type Position;
 
+    /// Allocate a new abstract variable
     fn alloc_scratch(&mut self) -> Self::Position;
 
     type Variable: Clone
