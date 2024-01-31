@@ -2519,6 +2519,15 @@
 <a href="#2517" id="2517">2517</a>
 <a href="#2518" id="2518">2518</a>
 <a href="#2519" id="2519">2519</a>
+<a href="#2520" id="2520">2520</a>
+<a href="#2521" id="2521">2521</a>
+<a href="#2522" id="2522">2522</a>
+<a href="#2523" id="2523">2523</a>
+<a href="#2524" id="2524">2524</a>
+<a href="#2525" id="2525">2525</a>
+<a href="#2526" id="2526">2526</a>
+<a href="#2527" id="2527">2527</a>
+<a href="#2528" id="2528">2528</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookup::{Lookup, LookupTable},
@@ -2637,9 +2646,18 @@
 </span>}
 
 <span class="kw">pub trait </span>InterpreterEnv {
-    <span class="kw">type </span>Position;
+    <span class="doccomment">/// A position can be seen as an indexed variable
+    </span><span class="kw">type </span>Position;
 
-    <span class="kw">fn </span>alloc_scratch(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position;
+    <span class="doccomment">/// Allocate a new abstract variable for the current step.
+    /// The variable can be used to store temporary values.
+    /// The variables are "freed" after each step/instruction.
+    /// The variable allocation can be seen as an allocation on a stack that is
+    /// popped after each step execution.
+    /// At the moment, [crate::mips::witness::SCRATCH_SIZE - 46] elements can be
+    /// allocated. If more temporary variables are required for an instruction,
+    /// increase the value [crate::mips::witness::SCRATCH_SIZE]
+    </span><span class="kw">fn </span>alloc_scratch(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Position;
 
     <span class="kw">type </span>Variable: Clone
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
