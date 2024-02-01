@@ -256,6 +256,7 @@ where
         fr_sponge.absorb(zeta_omega_eval);
     }
     // TODO: add B and C
+    // TODO: lookup
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
