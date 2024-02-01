@@ -8,6 +8,7 @@ members = [
     "kimchi",
     "kimchi/snarky-deriver/",
     "optimism",
+    "msm",
     "poseidon",
     "poseidon/export_test_vectors",
     "poly-commitment",

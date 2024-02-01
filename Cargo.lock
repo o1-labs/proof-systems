@@ -1257,6 +1257,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "kimchi_msm"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "groupmap",
+ "kimchi",
+ "mina-curves",
+ "mina-poseidon",
+ "poly-commitment",
+ "rand",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with",
+]
+
+[[package]]
 name = "kimchi_optimism"
 version = "0.1.0"
 dependencies = [
@@ -1435,6 +1455,7 @@ dependencies = [
  "ark-ec",
  "ark-ff",
  "ark-std",
+ "num-bigint",
  "rand",
 ]
 
