@@ -1,6 +1,7 @@
 use self::instance::{Instance, RelaxedInstance};
-use super::poseidon::DuplexState;
+use super::ec::ec_add;
 use super::prelude::*;
+use super::{ec::ec_scale, poseidon::DuplexState};
 use crate::{
     curve::KimchiCurve,
     loc,
@@ -11,6 +12,7 @@ use ark_ec::{AffineCurve, SWModelParameters};
 use ark_ff::{BigInteger, One, PrimeField};
 use mina_curves::pasta::{Fp, PallasParameters};
 use poly_commitment::{evaluation_proof::OpeningProof, OpenProof};
+use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::ops::Add;
 
@@ -88,21 +90,15 @@ fn challenge_linear_combination<F: PrimeField>(
     todo!()
 }
 
-fn commitment_linear_combination<F: PrimeField>(
-    _a: Point<FieldVar<F>>,
-    _b: Point<FieldVar<F>>,
-    _combiner: &SmallChallenge<F>,
-) -> Point<FieldVar<F>> {
-    // TODO
-    todo!()
-}
-
-fn ec_scale<F: PrimeField>(
-    _point: Point<FieldVar<F>>,
-    _scalar: &SmallChallenge<F>,
-) -> Point<FieldVar<F>> {
-    // TODO
-    todo!()
+fn commitment_linear_combination<F: PrimeField, C: SWModelParameters<BaseField = F>>(
+    sys: &mut RunState<F>,
+    loc: Cow<'static, str>,
+    a: Point<FieldVar<F>>,
+    b: Point<FieldVar<F>>,
+    combiner: &SmallChallenge<F>,
+) -> SnarkyResult<Point<FieldVar<F>>> {
+    let br = ec_scale::<F, C>(sys, loc.clone(), b, &combiner.0)?;
+    ec_add::<F, C>(sys, loc, a, br)
 }
 
 /// Trims to 127 bits

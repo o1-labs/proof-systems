@@ -1,3 +1,4 @@
+use crate::snarky::ec::ec_scale;
 use crate::{
     loc,
     snarky::{
@@ -12,9 +13,7 @@ use ark_ec::SWModelParameters;
 use ark_ff::PrimeField;
 use std::iter::successors;
 
-use super::{
-    challenge_linear_combination, commitment_linear_combination, ec_scale, trim, SmallChallenge,
-};
+use super::{challenge_linear_combination, commitment_linear_combination, trim, SmallChallenge};
 
 #[derive(Debug, Clone)]
 pub struct WitnessCommitments<F>(Vec<Point<F>>);
@@ -118,22 +117,27 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         let witness_commitments = self
             .witness_commitments
             .into_iter()
-            .zip(other.witness_commitments.into_iter())
+            .zip(other.witness_commitments)
             .map(|(a, b)| {
                 let set =
                     a.0.into_iter()
-                        .zip(b.0.into_iter())
-                        .map(|(a, b)| commitment_linear_combination(a, b, &r));
-                WitnessCommitments(set.collect())
-            })
-            .collect();
+                        .zip(b.0)
+                        .map(|(a, b)| commitment_linear_combination::<F, P>(sys, loc!(), a, b, &r));
+                let set: SnarkyResult<Vec<Point<FieldVar<F>>>> = set.collect();
+                set.map(WitnessCommitments)
+            });
+        let witness_commitments: SnarkyResult<Vec<WitnessCommitments<FieldVar<F>>>> =
+            witness_commitments.collect();
+        let witness_commitments = witness_commitments?;
+
         let one = FieldVar::constant(F::one());
         let u = challenge_linear_combination(self.u, SmallChallenge(one.clone()), &r);
 
         let rr = r.0.mul(&r.0, None, loc!(), sys)?;
         let [t1, t2] = error_terms;
-        let t1 = ec_scale(t1, &r);
-        let t2 = ec_scale(t2, &SmallChallenge(rr));
+        //ec_scale could be speciallized for 127 bits elements in this case
+        let t1 = ec_scale::<F, P>(sys, loc!(), t1, &r.0)?;
+        let t2 = ec_scale::<F, P>(sys, loc!(), t2, &rr)?;
         let error_commitment = ec_add::<F, P>(sys, loc!(), t1, t2)?;
         let error_commitment =
             ec_add::<F, P>(sys, loc!(), self.error_commitment, error_commitment)?;
@@ -146,14 +150,13 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         let mut new_sets: Vec<Vec<FieldVar<F>>> = self
             .challenges
             .iter()
-            .zip(new_sets.into_iter())
+            .zip(new_sets)
             .map(|(acc_set, new)| {
-                let new_set = successors(Some(one.clone()), |last| {
+                successors(Some(one.clone()), |last| {
                     Some(last.mul(&new.0, None, loc!(), sys).unwrap())
                 })
                 .take(acc_set.0.len())
-                .collect();
-                new_set
+                .collect()
             })
             .collect();
         for set in new_sets.iter_mut() {
@@ -165,11 +168,11 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
         let challenges = self
             .challenges
             .into_iter()
-            .zip(new_sets.into_iter())
+            .zip(new_sets)
             .map(|(a, b)| {
                 let set =
                     a.0.into_iter()
-                        .zip(b.into_iter())
+                        .zip(b)
                         .map(|(a, b)| challenge_linear_combination(a, SmallChallenge(b), &r))
                         .collect();
                 Challenges(set)
@@ -262,13 +265,11 @@ impl<F: PrimeField> SnarkyType<F> for FullChallenge<FieldVar<F>> {
         _cs: &mut RunState<F>,
         _loc: std::borrow::Cow<'static, str>,
     ) -> SnarkyResult<()> {
-        ///TODO: maybe check the size of each limb
+        //TODO: maybe check the size of each limb
         Ok(())
     }
 
-    fn constraint_system_auxiliary() -> Self::Auxiliary {
-        ()
-    }
+    fn constraint_system_auxiliary() -> Self::Auxiliary {}
 
     fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
         (value.0 .0.to_vec(), ())
@@ -291,7 +292,7 @@ impl<F: PrimeField> ChallengeGenerator<F> {
         other: &Instance<FieldVar<F>>,
         initial_state: Option<DuplexState<F>>,
     ) -> Self {
-        let mut state = initial_state.unwrap_or(DuplexState::new());
+        let mut state = initial_state.unwrap_or_default();
         relaxed.absorb_into_sponge(&mut state, sys);
         other.absorb_into_sponge(&mut state, sys);
         ChallengeGenerator { state }
