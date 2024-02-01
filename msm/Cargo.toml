@@ -12,6 +12,11 @@ license = "Apache-2.0"
 [lib]
 path = "src/lib.rs"
 
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+
 [dependencies]
 ark-bn254 = { version = "0.3.0" }
 kimchi = { path = "../kimchi", version = "0.1.0", features = [ "bn254" ] }
