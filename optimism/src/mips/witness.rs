@@ -1,13 +1,10 @@
-use crate::cannon::{Page, State};
-use crate::keccak::lookups::Lookups;
-use crate::keccak::ArithOps;
-use crate::mips::interpreter::{Lookup, LookupTable};
 use crate::{
     cannon::{
-        Hint, Meta, Start, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
-        PAGE_SIZE,
+        Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
+        PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
-    keccak::environment::KeccakEnv,
+    keccak::{environment::KeccakEnv, ArithOps},
+    lookup::{Lookup, LookupTable, Lookups},
     mips::{
         column::Column,
         interpreter::{
@@ -21,9 +18,11 @@ use ark_ff::Field;
 use core::panic;
 use kimchi::o1_utils::Two;
 use log::{debug, info};
-use std::array;
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::{
+    array,
+    fs::File,
+    io::{BufWriter, Write},
+};
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
 pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
@@ -45,6 +44,12 @@ impl SyscallEnv {
     }
 }
 
+/// This structure represents the environment the virtual machine state will use
+/// to transition. This environment will be used by the interpreter.
+/// The virtual machine has access to its internal state and some external memory.
+/// In addition to that, it has access to the environment of the Keccak
+/// interpreter that is used to verify the preimage requested during the
+/// execution.
 pub struct Env<Fp> {
     pub instruction_counter: u64,
     pub memory: Vec<(u32, Vec<u8>)>,
@@ -135,8 +140,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
     }
 
-    fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
-        // FIXME: Track the lookup values in the environment.
+    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
+        // No-op, constraints only
     }
 
     fn instruction_counter(&self) -> Self::Variable {
@@ -624,6 +629,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
 
             // COMMUNICATION CHANNEL: Write preimage bytes
+            // FIXME: this should be executed in the constraints side
             let preimage = self.preimage.as_ref().unwrap();
             for (i, byte) in preimage.iter().enumerate() {
                 keccak_env.add_lookup(Lookup::write_one(
@@ -637,6 +643,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
 
             // COMMUNICATION CHANNEL: Read hash output
+            // FIXME: this should be executed in the constraints side
             match self.preimage_key {
                 Some(preimage_key) => {
                     let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {

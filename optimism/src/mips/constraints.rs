@@ -1,6 +1,6 @@
-use crate::mips::{
-    column::Column as MIPSColumn,
-    interpreter::{self, InterpreterEnv},
+use crate::{
+    lookup::Lookup,
+    mips::{column::Column as MIPSColumn, interpreter::InterpreterEnv, E},
 };
 use ark_ff::Field;
 use kimchi::circuits::{
@@ -8,15 +8,29 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
+/// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
-    pub constraints: Vec<Expr<ConstantExpr<Fp>, MIPSColumn>>,
+    /// A list of constraints, which are multi-variate polynomials over a field,
+    /// represented using the expression framework of `kimchi`.
+    pub constraints: Vec<E<Fp>>,
+    pub lookups: Vec<Lookup<E<Fp>>>,
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
+    /// In the concrete implementation for the constraints, the interpreter will
+    /// work over columns. The position in this case can be seen as a new
+    /// variable/input of our circuit.
     type Position = MIPSColumn;
 
+    // Use one of the available columns. It won't
+    // create a new column every time this function is called. The number
+    // of columns is defined upfront by crate::mips::witness::SCRATCH_SIZE.
     fn alloc_scratch(&mut self) -> Self::Position {
+        // All columns are implemented using a simple index, and a name is given
+        // to the index.
+        // See crate::SCRATCH_SIZE for the maximum number of columns the circuit
+        // can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         MIPSColumn::ScratchState(scratch_idx)
@@ -40,8 +54,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // No-op, witness only
     }
 
-    fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
-        // FIXME: Track the lookup values in the environment.
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        self.lookups.push(lookup);
     }
 
     fn instruction_counter(&self) -> Self::Variable {

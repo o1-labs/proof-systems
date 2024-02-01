@@ -7,6 +7,11 @@ use mina_poseidon::{
 
 use crate::proof::{PointEvaluations, ProofEvaluations};
 
+/// Abstracts a sponge that operates on the scalar field of an
+/// elliptic curve. Unlike the [`FqSponge`](mina_poseidon::FqSponge)
+/// it cannot absorb or digest base field elements. However, the
+/// [`FqSponge`](mina_poseidon::FqSponge) can *also* operate on the
+/// scalar field by the means of a specific encoding technique.
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
     fn new(p: &'static ArithmeticSpongeParams<Fr>) -> Self;

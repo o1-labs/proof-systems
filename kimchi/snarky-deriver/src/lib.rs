@@ -17,9 +17,9 @@ use syn::{
 };
 
 /// The [SnarkyType] derive macro.
-/// It generates implementations of [`kimchi::snarky::SnarkyType`],
+/// It generates implementations of \[`kimchi::snarky::SnarkyType`\],
 /// as long as your structure's fields implement that type as well.
-/// It works very similarly to [`serde`].
+/// It works very similarly to \[`serde`\].
 ///
 /// For example:
 ///
@@ -30,10 +30,11 @@ use syn::{
 /// }
 /// ```
 ///
-/// You can specify your snarky type implementation to only apply to a single field (e.g. `Fp`),
-/// or to apply to a field that has a different name than `F`:
+/// You can specify your snarky type implementation to only apply to a single
+/// field (e.g. `Fp`), or to apply to a field that has a different name than
+/// `F`:
 ///
-/// ```ignore
+/// ```text
 /// #[derive(kimchi::SnarkyType)]
 /// #[snarky(field = "G::ScalarField")]
 /// struct MyType<G> where G: KimchiCurve {
@@ -41,7 +42,7 @@ use syn::{
 ///
 /// You can skip a field in the serializer:
 ///
-/// ```ignore
+/// ```text
 /// #[derive(kimchi::SnarkyType)]
 /// struct MyType<F> where F: PrimeField {
 ///  #[snarky(skip)]
@@ -51,7 +52,7 @@ use syn::{
 /// Finally, you can specify a custom check function,
 /// as well as a custom auxiliary function and type:
 ///
-/// ```ignore
+/// ```text
 /// #[derive(kimchi::SnarkyType)]
 /// #[snarky(check_fn = "my_check_fn")]
 /// #[snarky(auxiliary_fn = "my_auxiliary_fn")]
@@ -62,13 +63,13 @@ use syn::{
 /// By default, a tuple will be use to represent the out-of-circuit type.
 /// You can specify it yourself by using the `value` helper attribute:
 ///
-/// ```ignore
+/// ```text
 /// #[derive(kimchi::SnarkyType)]
 /// #[snarky(value = "MyOutOfCircuitType")]
 /// struct MyType<F> where F: PrimeField {
 /// ```
 ///
-/// and implement the [`CircuitAndValue`] trait on your [`SnarkyType`].
+/// and implement the \[`CircuitAndValue`\] trait on your \[`SnarkyType`\].
 ///
 #[proc_macro_derive(SnarkyType, attributes(snarky))]
 pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
