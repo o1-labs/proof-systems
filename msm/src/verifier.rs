@@ -87,6 +87,7 @@ pub fn verify<
         })
         .collect();
     // TODO: add B and C
+    // TODO: add lookup
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .a
