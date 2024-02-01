@@ -2,7 +2,7 @@ use ark_ff::Zero;
 use kimchi::curve::KimchiCurve;
 use poly_commitment::{commitment::PolyComm, OpenProof};
 
-use crate::{DOMAIN_SIZE, NUM_LIMBS};
+use crate::{DOMAIN_SIZE, NUM_LIMBS, NUM_LOOKUP_M};
 
 // Compute a + b = q * p + c
 // p being the scalar field of Pallas
@@ -39,8 +39,21 @@ impl<G: KimchiCurve> Default for Witness<G> {
 }
 
 #[derive(Debug)]
+pub struct LookupProof<G: KimchiCurve> {
+    // m(X)
+    #[allow(dead_code)]
+    pub(crate) lookup_counter: PolyComm<G>,
+    #[allow(dead_code)]
+    pub(crate) lookup_terms: [PolyComm<G>; NUM_LOOKUP_M],
+    #[allow(dead_code)]
+    pub(crate) lookup_aggregation: PolyComm<G>,
+}
+
+#[derive(Debug)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub(crate) commitments: WitnessColumns<PolyComm<G>>,
+    pub(crate) lookup_commitments: LookupProof<G>,
+    // TODO: add lookup
     pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
     pub(crate) zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
     pub(crate) opening_proof: OpeningProof,

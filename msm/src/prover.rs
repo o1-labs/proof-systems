@@ -11,12 +11,11 @@ use poly_commitment::{
     OpenProof, SRS as _,
 };
 
-use crate::lookup::Lookup;
-use crate::proof::{Proof, Witness, WitnessColumns};
-use std::array;
+use crate::NUM_LOOKUP_M;
 
-// M in the paper
-pub const NUM_LOOKUP_M: usize = 8;
+use crate::lookup::Lookup;
+use crate::proof::{LookupProof, Proof, Witness, WitnessColumns};
+use std::array;
 
 pub fn prove<
     G: KimchiCurve,
@@ -274,6 +273,11 @@ where
 
     Proof {
         commitments,
+        lookup_commitments: LookupProof {
+            lookup_counter: lookup_counters_comm,
+            lookup_terms: lookup_terms_comms,
+            lookup_aggregation: lookup_aggregation_comm,
+        },
         zeta_evaluations,
         zeta_omega_evaluations,
         opening_proof,

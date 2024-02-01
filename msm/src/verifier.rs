@@ -11,7 +11,7 @@ use rand::thread_rng;
 
 use crate::DOMAIN_SIZE;
 
-use crate::proof::Proof;
+use crate::proof::{LookupProof, Proof};
 
 pub fn verify<
     G: KimchiCurve,
@@ -25,11 +25,18 @@ pub fn verify<
 ) -> bool {
     let Proof {
         commitments,
+        lookup_commitments:
+            LookupProof {
+                lookup_counter: _,
+                lookup_terms: _,
+                lookup_aggregation: _,
+            },
         zeta_evaluations,
         zeta_omega_evaluations,
         opening_proof,
     } = proof;
 
+    // -- Absorbing the commitments
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     for comm in commitments.a.iter() {
         absorb_commitment(&mut fq_sponge, comm)
@@ -40,6 +47,10 @@ pub fn verify<
     for comm in commitments.c.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
+    // TODO: absorb lookup commitments
+
+    // -- Finish absorbing the commitments
+
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
