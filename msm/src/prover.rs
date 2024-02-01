@@ -6,9 +6,7 @@ use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
 use poly_commitment::{
-    commitment::{
-        absorb_commitment, PolyComm,
-    },
+    commitment::{absorb_commitment, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS as _,
 };
@@ -55,9 +53,9 @@ where
             c,
         } = &polys;
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
-        let a = a.into_iter().map(comm).collect::<Vec<_>>();
-        let b = b.into_iter().map(comm).collect::<Vec<_>>();
-        let c = c.into_iter().map(comm).collect::<Vec<_>>();
+        let a = a.iter().map(comm).collect::<Vec<_>>();
+        let b = b.iter().map(comm).collect::<Vec<_>>();
+        let c = c.iter().map(comm).collect::<Vec<_>>();
         WitnessColumns {
             a: a.try_into().unwrap(),
             b: b.try_into().unwrap(),
@@ -82,15 +80,11 @@ where
     let zeta_omega = zeta * omega;
 
     let evals = |point| {
-        let WitnessColumns {
-            a,
-            b,
-            c,
-        } = &polys;
+        let WitnessColumns { a, b, c } = &polys;
         let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-        let a = a.into_iter().map(comm).collect::<Vec<_>>();
-        let b = b.into_iter().map(comm).collect::<Vec<_>>();
-        let c = c.into_iter().map(comm).collect::<Vec<_>>();
+        let a = a.iter().map(comm).collect::<Vec<_>>();
+        let b = b.iter().map(comm).collect::<Vec<_>>();
+        let c = c.iter().map(comm).collect::<Vec<_>>();
         WitnessColumns {
             a: a.try_into().unwrap(),
             b: b.try_into().unwrap(),
@@ -153,4 +147,3 @@ where
         opening_proof,
     }
 }
-
