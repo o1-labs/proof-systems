@@ -7,14 +7,11 @@ use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{
-        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+        absorb_commitment, PolyComm,
     },
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS as _,
 };
-use rand::thread_rng;
-
-use crate::{DOMAIN_SIZE, NUM_LIMBS};
 
 use crate::proof::{Proof, ProofInputs, WitnessColumns};
 
@@ -103,7 +100,8 @@ where
     let zeta_evaluations = evals(&zeta);
     let zeta_omega_evaluations = evals(&zeta_omega);
     let group_map = G::Map::setup();
-    let mut polynomials: Vec<_> = polys.a.into_iter().collect();
+    // TODO make mut
+    let polynomials: Vec<_> = polys.a.into_iter().collect();
     // TODO: add B and C
     let polynomials: Vec<_> = polynomials
         .iter()

@@ -4,17 +4,14 @@ use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
 use poly_commitment::{
-    commitment::{
-        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation
-    },
-    OpenProof
+    commitment::{absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation},
+    OpenProof,
 };
 use rand::thread_rng;
 
 use crate::DOMAIN_SIZE;
 
 use crate::proof::Proof;
-
 
 pub fn verify<
     G: KimchiCurve,
@@ -53,7 +50,8 @@ pub fn verify<
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    let mut es: Vec<_> = zeta_evaluations
+    // TODO make mut
+    let es: Vec<_> = zeta_evaluations
         .a
         .iter()
         .zip(zeta_omega_evaluations.a.iter())
@@ -61,7 +59,8 @@ pub fn verify<
         .collect();
     // TODO: add B and C
 
-    let mut evaluations: Vec<_> = commitments
+    // TODO make mut
+    let evaluations: Vec<_> = commitments
         .a
         .iter()
         .zip(
@@ -77,7 +76,6 @@ pub fn verify<
         })
         .collect();
     // TODO: add B and C
-
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .a
@@ -125,4 +123,3 @@ pub fn verify<
     let group_map = G::Map::setup();
     OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }
-

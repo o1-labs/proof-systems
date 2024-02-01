@@ -1,14 +1,8 @@
 use ark_ff::Zero;
 use kimchi::curve::KimchiCurve;
-use poly_commitment::{
-    commitment::{
-        PolyComm,
-    },
-    OpenProof
-};
+use poly_commitment::{commitment::PolyComm, OpenProof};
 
 use crate::{DOMAIN_SIZE, NUM_LIMBS};
-
 
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
@@ -40,7 +34,6 @@ impl<G: KimchiCurve> Default for ProofInputs<G> {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub commitments: WitnessColumns<PolyComm<G>>,
@@ -48,5 +41,3 @@ pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
     pub opening_proof: OpeningProof,
 }
-
-
