@@ -228,6 +228,8 @@ where
     // TODO make mut
     let polynomials: Vec<_> = polys.a.into_iter().collect();
     // TODO: add B and C
+    // TODO: lookups
+
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
