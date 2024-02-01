@@ -1,5 +1,6 @@
+// Let's add later the constraints
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Column {
+pub enum MSMColumn {
     A(usize),
     B(usize),
     C(usize),

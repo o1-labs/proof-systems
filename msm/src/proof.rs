@@ -8,15 +8,15 @@ use crate::{DOMAIN_SIZE, NUM_LIMBS};
 // p being the scalar field of Pallas
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
-    pub a: [G; NUM_LIMBS],
-    pub b: [G; NUM_LIMBS],
-    pub c: [G; NUM_LIMBS],
+    pub(crate) a: [G; NUM_LIMBS],
+    pub(crate) b: [G; NUM_LIMBS],
+    pub(crate) c: [G; NUM_LIMBS],
     // pub q: G,
 }
 
 #[derive(Debug)]
 pub struct Witness<G: KimchiCurve> {
-    pub evaluations: WitnessColumns<Vec<G::ScalarField>>,
+    pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for Witness<G> {
@@ -40,8 +40,8 @@ impl<G: KimchiCurve> Default for Witness<G> {
 
 #[derive(Debug)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    pub commitments: WitnessColumns<PolyComm<G>>,
-    pub zeta_evaluations: WitnessColumns<G::ScalarField>,
-    pub zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
-    pub opening_proof: OpeningProof,
+    pub(crate) commitments: WitnessColumns<PolyComm<G>>,
+    pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
+    pub(crate) zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
+    pub(crate) opening_proof: OpeningProof,
 }

@@ -31,8 +31,16 @@ pub fn main() {
         srs
     };
 
+    let lookups = vec![];
+    let lookup_counters = vec![];
     let witness = Witness::default();
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
+        domain,
+        &srs,
+        lookups,
+        lookup_counters,
+        witness,
+    );
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
     println!("Does it verifies? {verifies}")
 }
