@@ -94,7 +94,7 @@ where
     // Polynomial m(X), domain D1
     let lookup_counters = lookup_counters
         .into_iter()
-        .map(|x| G::ScalarField::from(x as u64))
+        .map(G::ScalarField::from)
         .collect();
     let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
         lookup_counters,
@@ -174,7 +174,7 @@ where
         array::from_fn(|i| srs.commit_evaluations_non_hiding(domain.d1, &lookup_terms[i]));
 
     for comm in lookup_terms_comms.iter() {
-        absorb_commitment(&mut fq_sponge, &comm);
+        absorb_commitment(&mut fq_sponge, comm);
     }
 
     // Lookup aggregation
