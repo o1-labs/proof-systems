@@ -15,7 +15,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
 
 use kimchi::circuits::domains::EvaluationDomains;
-use kimchi_msm::proof::ProofInputs;
+use kimchi_msm::proof::Witness;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 
@@ -31,7 +31,7 @@ pub fn main() {
         srs
     };
 
-    let witness = ProofInputs::default();
+    let witness = Witness::default();
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
     println!("Does it verifies? {verifies}")

@@ -15,13 +15,13 @@ pub struct WitnessColumns<G> {
 }
 
 #[derive(Debug)]
-pub struct ProofInputs<G: KimchiCurve> {
+pub struct Witness<G: KimchiCurve> {
     pub evaluations: WitnessColumns<Vec<G::ScalarField>>,
 }
 
-impl<G: KimchiCurve> Default for ProofInputs<G> {
+impl<G: KimchiCurve> Default for Witness<G> {
     fn default() -> Self {
-        ProofInputs {
+        Witness {
             evaluations: WitnessColumns {
                 a: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
