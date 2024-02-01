@@ -32,6 +32,7 @@ where
             a,
             b,
             c,
+            // q,
         } = evaluations;
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
@@ -44,6 +45,7 @@ where
             a: a.try_into().unwrap(),
             b: b.try_into().unwrap(),
             c: c.try_into().unwrap(),
+            // q,
         }
     };
     let commitments = {
@@ -51,6 +53,7 @@ where
             a,
             b,
             c,
+            // q,
         } = &polys;
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
         let a = a.iter().map(comm).collect::<Vec<_>>();
@@ -60,6 +63,7 @@ where
             a: a.try_into().unwrap(),
             b: b.try_into().unwrap(),
             c: c.try_into().unwrap(),
+            // q,
         }
     };
 

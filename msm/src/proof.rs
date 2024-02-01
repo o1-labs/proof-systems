@@ -4,11 +4,14 @@ use poly_commitment::{commitment::PolyComm, OpenProof};
 
 use crate::{DOMAIN_SIZE, NUM_LIMBS};
 
+// Compute a + b = q * p + c
+// p being the scalar field of Pallas
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
     pub a: [G; NUM_LIMBS],
     pub b: [G; NUM_LIMBS],
     pub c: [G; NUM_LIMBS],
+    // pub q: G,
 }
 
 #[derive(Debug)]
@@ -29,6 +32,7 @@ impl<G: KimchiCurve> Default for ProofInputs<G> {
                 c: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
+                // q: G::ScalarField::zero(),
             },
         }
     }
