@@ -19,15 +19,15 @@ ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 blake2 = "0.10.0"
-num-derive = "0.3"
+num-derive = "0.4"
 num-traits = "0.2"
-itertools = "0.10.3"
+itertools = "0.12.1"
 rand = "0.8.0"
 rand_core = "0.6.3"
 rayon = "1.5.0"
 rmp-serde = "1.0.0"
 serde = "1.0.130"
-serde_with = "1.10.0"
+serde_with = "3.6.0"
 thiserror = "1.0.30"
 
 poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
@@ -39,9 +39,9 @@ kimchi = { path = "../kimchi", version = "0.1.0" }
 
 [dev-dependencies]
 proptest = "1.0.0"
-proptest-derive = "0.3.0"
+proptest-derive = "0.4.0"
 colored = "2.0.0"
 
 # benchmarks
-criterion = "0.3"
+criterion = "0.5"
 iai = "0.1"

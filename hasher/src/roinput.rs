@@ -138,6 +138,7 @@ impl ROInput {
         let bits_as_fields =
             self.bits
                 .chunks(Fp::size_in_bits() - 1)
+                .into_iter()
                 .fold(vec![], |mut acc, chunk| {
                     // Workaround: chunk.clone() does not appear to respect
                     // the chunk's boundaries when it's not byte-aligned.

@@ -115,7 +115,7 @@ mod tests {
         // end
         // And checks that memory writing and reading works as expected by completing
         // the total memory of executing the program
-        let instrs = [0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
             .iter()
             .map(|&i: &i64| F::from(i))
             .collect();
