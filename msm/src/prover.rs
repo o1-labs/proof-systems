@@ -94,18 +94,24 @@ where
     // -- Start MVLookup, lookup argument, see
     // https://github.com/Orbis-Tertius/MVlookups/blob/main/MVlookup.pdf
     // Lookup counters, computing the number of lookups per row
-    // Polynomial m(X), domain D1
-    let lookup_counters = lookup_counters
-        .into_iter()
-        .map(G::ScalarField::from)
-        .collect();
-    let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-        lookup_counters,
-        domain.d1,
-    );
-    let evals = evals.interpolate().evaluate_over_domain(domain.d1);
+    // Polynomial m(X), domain D8
+    let lookup_counters_evals = {
+        let lookup_counters = lookup_counters
+            .into_iter()
+            .map(G::ScalarField::from)
+            .collect();
+        // Evaluate first on D1
+        let evals: Evaluations<_, D<_>> =
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                lookup_counters,
+                domain.d1,
+            );
+        // And after on domain 8, see below
+        evals.interpolate().evaluate_over_domain(domain.d8)
+    };
 
-    let lookup_counters_comm = srs.commit_evaluations_non_hiding(domain.d1, &evals);
+    let lookup_counters_comm: PolyComm<G> =
+        srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals);
 
     absorb_commitment(&mut fq_sponge, &lookup_counters_comm);
 
