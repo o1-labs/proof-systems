@@ -197,6 +197,8 @@ where
 
     // -- End of MVLookup
 
+    // TODO: add quotient polynomial (based on constraints and expresion framework)
+
     // We start the evaluations.
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
