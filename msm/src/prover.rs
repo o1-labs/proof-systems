@@ -13,7 +13,7 @@ use poly_commitment::{
 
 use crate::NUM_LOOKUP_M;
 
-use crate::lookup::Lookup;
+use crate::mvlookup::Lookup;
 use crate::proof::{LookupProof, Proof, Witness, WitnessColumns};
 use std::array;
 
