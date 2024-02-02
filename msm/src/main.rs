@@ -39,6 +39,7 @@ pub fn main() {
 
     // TODO: Use random witness atm.
     let witness = Witness::random();
+
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
         domain,
         &srs,

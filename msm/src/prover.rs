@@ -117,6 +117,7 @@ where
     // we use a batch inversion optimisation. Computing first the denominator
     // and inverting it in batch, and after that multiplying by the numerator
     // TODO: we do a lookup on the 16 results
+    // TODO: check domain size
     let lookup_terms: [Evaluations<G::ScalarField, D<G::ScalarField>>; NUM_LOOKUP_M] =
         array::from_fn(|i| {
             // is 6 * domain size not sure why
