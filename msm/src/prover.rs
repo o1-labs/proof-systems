@@ -202,7 +202,8 @@ where
         assert_eq!(acc, G::ScalarField::zero());
         let evals =
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1);
-        evals.interpolate().evaluate_over_domain(domain.d1)
+        // TODO: check domain
+        evals.interpolate().evaluate_over_domain(domain.d8)
     };
 
     let lookup_aggregation_comm = srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation);
