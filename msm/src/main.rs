@@ -5,7 +5,7 @@ use kimchi_msm::proof::Witness;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::DOMAIN_SIZE;
-use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, SpongeParams};
+use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge};
 
 pub fn main() {
     println!("Creating the domain and SRS");
