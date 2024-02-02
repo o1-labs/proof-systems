@@ -92,7 +92,7 @@ where
     // -- End: Absorbing commitments for FS
 
     // -- Start MVLookup, lookup argument, see
-    // https://github.com/Orbis-Tertius/MVlookups/blob/main/MVlookup.pdf
+    // https://eprint.iacr.org/2022/1530.pdf
     // Lookup counters, computing the number of lookups per row
     // Polynomial m(X), domain D8
     let lookup_counters_evals = {
@@ -122,7 +122,7 @@ where
     let beta = fq_sponge.challenge();
 
     // We will now compute the f_{i}(X)
-    // https://github.com/Orbis-Tertius/MVlookups/blob/main/MVlookup.pdf
+    // https://eprint.iacr.org/2022/1530.pdf
     // (12) - page 9
     // we use a batch inversion optimisation. Computing first the denominator
     // and inverting it in batch, and after that multiplying by the numerator
