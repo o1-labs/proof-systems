@@ -5,8 +5,10 @@ use rand::thread_rng;
 
 use crate::{DOMAIN_SIZE, NUM_LIMBS, NUM_LOOKUP_M};
 
-// Compute a + b = q * p + c
-// p being the scalar field of Pallas
+/// List all columns of the circuit.
+/// It is parametrized by a type G which can be either:
+/// - Vec<G::ScalarField> for the evaluations
+/// - PolyComm<G> for the commitments
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
     pub(crate) a: [G; NUM_LIMBS],
