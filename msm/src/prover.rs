@@ -113,7 +113,6 @@ where
 
     let beta = fq_sponge.challenge();
 
-    // https://eprint.iacr.org/2022/1530.pdf
     // TODO: we do a lookup on the 16 results
     // TODO: check domain size
     // TODO: we have the table t(x) in the first index, fix it. Split between f_i and t_i
