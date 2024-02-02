@@ -120,7 +120,7 @@ where
     // TODO: check domain size
     let lookup_terms: [Evaluations<G::ScalarField, D<G::ScalarField>>; NUM_LOOKUP_M] =
         array::from_fn(|i| {
-            // is 6 * domain size not sure why
+            // TODO: check domain size
             let mut denominators = Vec::with_capacity(6 * domain.d1.size as usize);
             for row_lookups in lookups.iter() {
                 // First computing the denominators
