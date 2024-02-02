@@ -27,9 +27,9 @@ pub fn verify<
         commitments,
         lookup_commitments:
             LookupProof {
-                lookup_counter: _,
-                lookup_terms: _,
-                lookup_aggregation: _,
+                lookup_counter,
+                lookup_terms,
+                lookup_aggregation,
             },
         zeta_evaluations,
         zeta_omega_evaluations,
@@ -47,7 +47,12 @@ pub fn verify<
     for comm in commitments.c.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
-    // TODO: absorb lookup commitments
+    // Lookup
+    absorb_commitment(&mut fq_sponge, lookup_counter);
+    for comm in lookup_terms.iter() {
+        absorb_commitment(&mut fq_sponge, comm)
+    }
+    absorb_commitment(&mut fq_sponge, lookup_aggregation);
 
     // -- Finish absorbing the commitments
 

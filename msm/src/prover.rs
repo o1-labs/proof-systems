@@ -219,7 +219,7 @@ where
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
-    // Evaluate the polynomials at zeta and zeta * omega
+    // Evaluate the polynomials at zeta and zeta * omega -- Columns
     let (zeta_evaluations, zeta_omega_evaluations) = {
         let evals = |point| {
             let WitnessColumns { a, b, c } = &polys;
@@ -235,6 +235,20 @@ where
         };
         (evals(&zeta), evals(&zeta_omega))
     };
+    let evals = |point| {
+        let WitnessColumns { a, b, c } = &polys;
+        let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+        let a = a.iter().map(comm).collect::<Vec<_>>();
+        let b = b.iter().map(comm).collect::<Vec<_>>();
+        let c = c.iter().map(comm).collect::<Vec<_>>();
+        WitnessColumns {
+            a: a.try_into().unwrap(),
+            b: b.try_into().unwrap(),
+            c: c.try_into().unwrap(),
+        }
+    };
+    (evals(&zeta), evals(&zeta_omega))
+    // TODO: add lookup
 
     // -- Start opening proof - Preparing the Rust structures
     let group_map = G::Map::setup();
