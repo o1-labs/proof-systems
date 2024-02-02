@@ -229,13 +229,15 @@ where
         (evals(&zeta), evals(&zeta_omega))
     };
 
+    // -- Start opening proof - Preparing the Rust structures
     let group_map = G::Map::setup();
-    let mut polynomials: Vec<_> = polys.a.into_iter().collect();
+
+    // Gathering all polynomials
+    let mut polynomials: Vec<DensePolynomial<_>> = polys.a.into_iter().collect();
     polynomials.extend(polys.b.into_iter().collect::<Vec<_>>());
     polynomials.extend(polys.c.into_iter().collect::<Vec<_>>());
     // TODO: lookups
 
-    // -- Start opening proof - Preparing the Rust structures
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
@@ -249,6 +251,8 @@ where
             )
         })
         .collect();
+
+    // Fiat Shamir - absorbing evaluations
     let fq_sponge_before_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
@@ -261,7 +265,22 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    // TODO: add B and C
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .b
+        .iter()
+        .zip(zeta_omega_evaluations.b.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+        .c
+        .iter()
+        .zip(zeta_omega_evaluations.b.iter())
+    {
+        fr_sponge.absorb(zeta_eval);
+        fr_sponge.absorb(zeta_omega_eval);
+    }
     // TODO: lookup
 
     let v_chal = fr_sponge.challenge();
