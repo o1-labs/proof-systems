@@ -34,8 +34,6 @@ where
     OpeningProof::SRS: Sync,
 {
     let Witness { evaluations } = inputs;
-    // Start: Evaluations -> Coefficients -> Commitments
-    // Computate the polynomial coefficients from the evaluations using interpolation
     let polys = {
         let WitnessColumns {
             a,
@@ -57,7 +55,7 @@ where
             // q,
         }
     };
-    // Commit to the polynomials
+
     let commitments = {
         let WitnessColumns {
             a,
@@ -76,9 +74,7 @@ where
             // q,
         }
     };
-    // End: Evaluations -> Coefficients -> Commitments
 
-    // -- Start: Absorbing commitments for FS
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     for comm in commitments.a.iter() {
         absorb_commitment(&mut fq_sponge, comm)
@@ -89,12 +85,10 @@ where
     for comm in commitments.c.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
-    // -- End: Absorbing commitments for FS
 
-    // -- Start MVLookup, lookup argument, see
+    // -- Start MVLookup
     // https://eprint.iacr.org/2022/1530.pdf
-    // Lookup counters, computing the number of lookups per row
-    // Polynomial m(X), domain D8
+    // Polynomial m(X)
     let lookup_counters_evals = {
         let lookup_counters = lookup_counters
             .into_iter()
@@ -115,19 +109,14 @@ where
 
     absorb_commitment(&mut fq_sponge, &lookup_counters_comm);
 
-    // Combiner for denominator
     let vector_lookup_value_combiner = fq_sponge.challenge();
 
-    // Random point for evaluation
     let beta = fq_sponge.challenge();
 
-    // We will now compute the f_{i}(X)
     // https://eprint.iacr.org/2022/1530.pdf
-    // (12) - page 9
-    // we use a batch inversion optimisation. Computing first the denominator
-    // and inverting it in batch, and after that multiplying by the numerator
     // TODO: we do a lookup on the 16 results
     // TODO: check domain size
+    // TODO: we have the table t(x) in the first index, fix it. Split between f_i and t_i
     let lookup_terms: [Evaluations<G::ScalarField, D<G::ScalarField>>; NUM_LOOKUP_M] =
         array::from_fn(|i| {
             // TODO: check domain size
@@ -157,7 +146,6 @@ where
             let mut evals = Vec::with_capacity(domain.d1.size as usize);
             let mut denominator_index = 0;
 
-            // numerator
             for row_lookups in lookups.iter() {
                 let mut row_acc = G::ScalarField::zero();
                 for Lookup {
@@ -179,7 +167,6 @@ where
             evals.interpolate().evaluate_over_domain(domain.d8)
         });
 
-    // Compute commitments to f_{i}(X)
     let lookup_terms_comms: [PolyComm<G>; NUM_LOOKUP_M] =
         array::from_fn(|i| srs.commit_evaluations_non_hiding(domain.d1, &lookup_terms[i]));
 
@@ -187,8 +174,6 @@ where
         absorb_commitment(&mut fq_sponge, comm);
     }
 
-    // Lookup aggregation
-    // Sum of f_{i}
     let lookup_aggregation: Evaluations<_, D<_>> = {
         let mut evals = Vec::with_capacity(domain.d1.size as usize);
         let mut acc = G::ScalarField::zero();
@@ -196,6 +181,7 @@ where
         for i in 0..domain.d1.size as usize {
             evals.push(acc);
             for terms in lookup_terms.iter() {
+                // Because of domain 8
                 acc += terms[8 * i];
             }
         }
