@@ -61,17 +61,30 @@ pub fn verify<
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    // TODO make mut
-    let es: Vec<_> = zeta_evaluations
+    let mut es: Vec<_> = zeta_evaluations
         .a
         .iter()
         .zip(zeta_omega_evaluations.a.iter())
         .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
         .collect();
-    // TODO: add B and C
+    es.extend(
+        zeta_evaluations
+            .b
+            .iter()
+            .zip(zeta_omega_evaluations.b.iter())
+            .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
+            .collect::<Vec<_>>(),
+    );
+    es.extend(
+        zeta_evaluations
+            .c
+            .iter()
+            .zip(zeta_omega_evaluations.c.iter())
+            .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
+            .collect::<Vec<_>>(),
+    );
 
-    // TODO make mut
-    let evaluations: Vec<_> = commitments
+    let mut evaluations: Vec<_> = commitments
         .a
         .iter()
         .zip(
@@ -86,7 +99,40 @@ pub fn verify<
             degree_bound: None,
         })
         .collect();
-    // TODO: add B and C
+    evaluations.extend(
+        commitments
+            .b
+            .iter()
+            .zip(
+                zeta_evaluations
+                    .b
+                    .iter()
+                    .zip(zeta_omega_evaluations.b.iter()),
+            )
+            .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
+                commitment: commitment.clone(),
+                evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
+                degree_bound: None,
+            })
+            .collect::<Vec<_>>(),
+    );
+    evaluations.extend(
+        commitments
+            .c
+            .iter()
+            .zip(
+                zeta_evaluations
+                    .c
+                    .iter()
+                    .zip(zeta_omega_evaluations.c.iter()),
+            )
+            .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
+                commitment: commitment.clone(),
+                evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
+                degree_bound: None,
+            })
+            .collect::<Vec<_>>(),
+    );
     // TODO: add lookup
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
