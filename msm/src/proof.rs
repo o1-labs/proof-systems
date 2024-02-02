@@ -1,6 +1,7 @@
-use ark_ff::Zero;
+use ark_ff::{One, UniformRand};
 use kimchi::curve::KimchiCurve;
 use poly_commitment::{commitment::PolyComm, OpenProof};
+use rand::thread_rng;
 
 use crate::{DOMAIN_SIZE, NUM_LIMBS, NUM_LOOKUP_M};
 
@@ -24,13 +25,40 @@ impl<G: KimchiCurve> Default for Witness<G> {
         Witness {
             evaluations: WitnessColumns {
                 a: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::one()).collect()
                 }),
                 b: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::one()).collect()
                 }),
                 c: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::one()).collect()
+                }),
+                // q: G::ScalarField::zero(),
+            },
+        }
+    }
+}
+
+#[allow(dead_code)]
+impl<G: KimchiCurve> Witness<G> {
+    pub fn random() -> Self {
+        let mut rng = thread_rng();
+        Witness {
+            evaluations: WitnessColumns {
+                a: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE)
+                        .map(|_| G::ScalarField::rand(&mut rng))
+                        .collect()
+                }),
+                b: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE)
+                        .map(|_| G::ScalarField::rand(&mut rng))
+                        .collect()
+                }),
+                c: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE)
+                        .map(|_| G::ScalarField::rand(&mut rng))
+                        .collect()
                 }),
                 // q: G::ScalarField::zero(),
             },

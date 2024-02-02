@@ -37,7 +37,8 @@ pub fn main() {
     // Provided by the prover, it is m(X)
     let lookup_counters = vec![];
 
-    let witness = Witness::default();
+    // TODO: Use random witness atm.
+    let witness = Witness::random();
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
         domain,
         &srs,
