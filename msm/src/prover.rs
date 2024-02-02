@@ -165,7 +165,7 @@ where
             let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 evals, domain.d1,
             );
-            // why 8?
+            // TODO: check domain size
             evals.interpolate().evaluate_over_domain(domain.d8)
         });
 
