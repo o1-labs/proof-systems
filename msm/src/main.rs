@@ -31,8 +31,12 @@ pub fn main() {
         srs
     };
 
+    // The f_{i}(X), provided by the prover
     let lookups = vec![];
+
+    // Provided by the prover, it is m(X)
     let lookup_counters = vec![];
+
     let witness = Witness::default();
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
         domain,
