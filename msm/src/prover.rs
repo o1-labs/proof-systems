@@ -283,7 +283,7 @@ where
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .c
         .iter()
-        .zip(zeta_omega_evaluations.b.iter())
+        .zip(zeta_omega_evaluations.c.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
