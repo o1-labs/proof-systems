@@ -11,7 +11,8 @@ use rand::thread_rng;
 
 use crate::DOMAIN_SIZE;
 
-use crate::proof::{LookupProof, Proof};
+use crate::mvlookup::LookupProof;
+use crate::proof::Proof;
 
 pub fn verify<
     G: KimchiCurve,
@@ -25,14 +26,10 @@ pub fn verify<
 ) -> bool {
     let Proof {
         commitments,
-        lookup_commitments:
-            LookupProof {
-                lookup_counter,
-                lookup_terms,
-                lookup_aggregation,
-            },
         zeta_evaluations,
         zeta_omega_evaluations,
+        // FIXME
+        lookup_commitments: _,
         opening_proof,
     } = proof;
 
@@ -47,12 +44,12 @@ pub fn verify<
     for comm in commitments.c.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
-    // Lookup
-    absorb_commitment(&mut fq_sponge, lookup_counter);
-    for comm in lookup_terms.iter() {
-        absorb_commitment(&mut fq_sponge, comm)
-    }
-    absorb_commitment(&mut fq_sponge, lookup_aggregation);
+    // TODO: Lookup
+    // absorb_commitment(&mut fq_sponge, lookup_counter);
+    // for comm in lookup_terms.iter() {
+    //     absorb_commitment(&mut fq_sponge, comm)
+    // }
+    // absorb_commitment(&mut fq_sponge, lookup_aggregation);
 
     // -- Finish absorbing the commitments
 

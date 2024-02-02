@@ -13,8 +13,8 @@ use poly_commitment::{
 
 use crate::NUM_LOOKUP_M;
 
-use crate::mvlookup::Lookup;
-use crate::proof::{LookupProof, Proof, Witness, WitnessColumns};
+use crate::mvlookup::{Lookup, LookupProof};
+use crate::proof::{Proof, Witness, WitnessColumns};
 use std::array;
 
 pub fn prove<
@@ -169,8 +169,8 @@ where
             evals.interpolate().evaluate_over_domain(domain.d8)
         });
 
-    let lookup_terms_comms: [PolyComm<G>; NUM_LOOKUP_M] =
-        array::from_fn(|i| srs.commit_evaluations_non_hiding(domain.d1, &lookup_terms[i]));
+    let lookup_terms_comms: Vec<PolyComm<G>> =
+        array::from_fn(|i| srs.commit_evaluations_non_hiding(domain.d1, &lookup_terms[i])).to_vec();
 
     for comm in lookup_terms_comms.iter() {
         absorb_commitment(&mut fq_sponge, comm);
@@ -178,7 +178,7 @@ where
     // -- end computing invividual elements of the lookup (f_i and t_i)
 
     // -- start computing the running sum in lookup_aggregation
-    let lookup_aggregation: Evaluations<_, D<_>> = {
+    let lookup_aggregation = {
         let mut evals = Vec::with_capacity(domain.d1.size as usize);
         let mut acc = G::ScalarField::zero();
         for i in 0..domain.d1.size as usize {
@@ -200,6 +200,12 @@ where
     let lookup_aggregation_comm = srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation);
 
     absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm);
+
+    let mvlookup_commitment = LookupProof {
+        m: lookup_counters_comm,
+        f: lookup_terms_comms,
+        sum: lookup_aggregation_comm,
+    };
     // -- end computing the running sum in lookup_aggregation
 
     // -- End of MVLookup
@@ -229,7 +235,18 @@ where
         };
         (evals(&zeta), evals(&zeta_omega))
     };
-    // TODO: add lookup
+    // TODO: evaluate lookup polynomials at zeta
+    // let lookup_zeta_evaluastions = LookupProof {
+    //     m: lookup_counters_evals.evaluate(&zeta),
+    //     f: lookup_terms.iter().map(|terms| terms.evaluate(&zeta)).collect(),
+    //     sum: lookup_aggregation.evaluate(&zeta),
+    // };
+    // TODO: evaluate lookup polynomials at zeta omega
+    // let lookup_zeta_omega_evaluastions = LookupProof {
+    //     m: lookup_counters_evals.evaluate(&zeta_omega),
+    //     f: lookup_terms.iter().map(|terms| terms.evaluate(&zeta_omega)).collect(),
+    //     sum: lookup_aggregation.evaluate(&zeta_omega)
+    // };
 
     // -- Start opening proof - Preparing the Rust structures
     let group_map = G::Map::setup();
@@ -238,7 +255,9 @@ where
     let mut polynomials: Vec<DensePolynomial<_>> = polys.a.into_iter().collect();
     polynomials.extend(polys.b.into_iter().collect::<Vec<_>>());
     polynomials.extend(polys.c.into_iter().collect::<Vec<_>>());
-    // TODO: lookups
+    // TODO: add lookup fs
+    // TODO: add lookup t
+    // TODO: add lookup sum
 
     let polynomials: Vec<_> = polynomials
         .iter()
@@ -283,6 +302,7 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    // MVLookup absorb evaluations
     // TODO: lookup
 
     let v_chal = fr_sponge.challenge();
@@ -304,13 +324,11 @@ where
 
     Proof {
         commitments,
-        lookup_commitments: LookupProof {
-            lookup_counter: lookup_counters_comm,
-            lookup_terms: lookup_terms_comms,
-            lookup_aggregation: lookup_aggregation_comm,
-        },
         zeta_evaluations,
         zeta_omega_evaluations,
+        lookup_commitments: mvlookup_commitment,
+        // TODO: add lookup evaluations at zeta
+        // TODO: add lookup evaluations at zeta omega
         opening_proof,
     }
 }
