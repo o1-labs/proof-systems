@@ -34,6 +34,7 @@ where
     OpeningProof::SRS: Sync,
 {
     let Witness { evaluations } = inputs;
+    // Start: Evaluations -> Coefficients -> Commitments
     // Computate the polynomial coefficients from the evaluations using interpolation
     let polys = {
         let WitnessColumns {
@@ -75,7 +76,9 @@ where
             // q,
         }
     };
+    // End: Evaluations -> Coefficients -> Commitments
 
+    // -- Start: Absorbing commitments for FS
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     for comm in commitments.a.iter() {
         absorb_commitment(&mut fq_sponge, comm)
@@ -86,10 +89,11 @@ where
     for comm in commitments.c.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
+    // -- End: Absorbing commitments for FS
 
-    // Start of MVLookup
+    // -- Start MVLookup, lookup argument, see
+    // https://github.com/Orbis-Tertius/MVlookups/blob/main/MVlookup.pdf
     // Lookup counters, computing the number of lookups per row
-    // ---
     // Polynomial m(X), domain D1
     let lookup_counters = lookup_counters
         .into_iter()
@@ -199,10 +203,9 @@ where
 
     absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm);
 
-    // End of MVLookup
+    // -- End of MVLookup
 
     // We start the evaluations.
-
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta = zeta_chal.to_field(endo_r);
@@ -231,6 +234,7 @@ where
     // TODO: add B and C
     // TODO: lookups
 
+    // -- Start opening proof - Preparing the Rust structures
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
@@ -274,6 +278,7 @@ where
         fq_sponge_before_evaluations,
         &mut rand::rngs::OsRng,
     );
+    // -- End opening proof - Preparing the structures
 
     Proof {
         commitments,
