@@ -20,6 +20,7 @@ use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 
 pub fn main() {
+    println!("Creating the domain and SRS");
     let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
     let srs = {
@@ -40,6 +41,7 @@ pub fn main() {
     // TODO: Use random witness atm.
     let witness = Witness::random();
 
+    println!("Generating the proof");
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
         domain,
         &srs,
@@ -47,6 +49,7 @@ pub fn main() {
         lookup_counters,
         witness,
     );
+    println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
-    println!("Does it verifies? {verifies}")
+    println!("Proof verification result: {verifies}")
 }
