@@ -14,7 +14,7 @@ use crate::{Fp, MsmBN254, DOMAIN_SIZE};
 /// The path of the serialized BN254 SRS.
 pub fn get_bn254_srs_path() -> PathBuf {
     let base_path = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(base_path).join("../msm/msm_srs/msm_bn254.srs")
+    PathBuf::from(base_path).join("./msm_srs/msm_bn254.srs")
 }
 
 /// Tries to read the SRS from disk, otherwise panics.
@@ -64,15 +64,22 @@ pub fn create_and_store_srs(
 
 /// Obtains an SRS for a specific curve from disk, or generates it if absent.
 pub fn get_bn254_srs(domain: EvaluationDomains<Fp>) -> PairingSRS<MsmBN254> {
-    let srs_path = get_bn254_srs_path();
-    match File::open(srs_path.clone()) {
-        Ok(file) => {
-            let reader = BufReader::new(file);
-            rmp_serde::from_read(reader).unwrap()
-        }
-        Err(_) => {
-            println!("missing SRS file: {srs_path:?}");
-            create_and_store_srs(true, domain)
-        }
-    }
+    // Trusted setup toxic waste
+    let x = Fp::rand(&mut rand::rngs::OsRng);
+
+    let mut srs = PairingSRS::create(x, DOMAIN_SIZE);
+    srs.full_srs.add_lagrange_basis(domain.d1);
+    srs
+
+    //    let srs_path = get_bn254_srs_path();
+    //    match File::open(srs_path.clone()) {
+    //        Ok(file) => {
+    //            let reader = BufReader::new(file);
+    //            rmp_serde::from_read(reader).unwrap()
+    //        }
+    //        Err(_) => {
+    //            println!("missing SRS file: {srs_path:?}. Will create a new SRS...");
+    //            create_and_store_srs(true, domain)
+    //        }
+    //    }
 }
