@@ -213,25 +213,26 @@ where
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at zeta and zeta * omega
-    let evals = |point| {
-        let WitnessColumns { a, b, c } = &polys;
-        let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-        let a = a.iter().map(comm).collect::<Vec<_>>();
-        let b = b.iter().map(comm).collect::<Vec<_>>();
-        let c = c.iter().map(comm).collect::<Vec<_>>();
-        WitnessColumns {
-            a: a.try_into().unwrap(),
-            b: b.try_into().unwrap(),
-            c: c.try_into().unwrap(),
-        }
+    let (zeta_evaluations, zeta_omega_evaluations) = {
+        let evals = |point| {
+            let WitnessColumns { a, b, c } = &polys;
+            let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+            let a = a.iter().map(comm).collect::<Vec<_>>();
+            let b = b.iter().map(comm).collect::<Vec<_>>();
+            let c = c.iter().map(comm).collect::<Vec<_>>();
+            WitnessColumns {
+                a: a.try_into().unwrap(),
+                b: b.try_into().unwrap(),
+                c: c.try_into().unwrap(),
+            }
+        };
+        (evals(&zeta), evals(&zeta_omega))
     };
-    let zeta_evaluations = evals(&zeta);
-    let zeta_omega_evaluations = evals(&zeta_omega);
 
     let group_map = G::Map::setup();
-    // TODO make mut
-    let polynomials: Vec<_> = polys.a.into_iter().collect();
-    // TODO: add B and C
+    let mut polynomials: Vec<_> = polys.a.into_iter().collect();
+    polynomials.extend(polys.b.into_iter().collect::<Vec<_>>());
+    polynomials.extend(polys.c.into_iter().collect::<Vec<_>>());
     // TODO: lookups
 
     // -- Start opening proof - Preparing the Rust structures
