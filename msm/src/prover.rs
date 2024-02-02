@@ -189,7 +189,7 @@ where
 
     // Lookup aggregation
     // Sum of f_{i}
-    let lookup_aggregation = {
+    let lookup_aggregation: Evaluations<_, D<_>> = {
         let mut evals = Vec::with_capacity(domain.d1.size as usize);
         let mut acc = G::ScalarField::zero();
         // Accumulate lookup terms
