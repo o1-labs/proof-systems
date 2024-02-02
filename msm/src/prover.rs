@@ -100,7 +100,7 @@ where
                 lookup_counters,
                 domain.d1,
             );
-        // And after on domain 8, see below
+        // We interpolate on d8 also. TODO: check if required.
         evals.interpolate().evaluate_over_domain(domain.d8)
     };
 
@@ -108,20 +108,23 @@ where
         srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals);
 
     absorb_commitment(&mut fq_sponge, &lookup_counters_comm);
+    // -- end of m(X)
 
+    // -- start computing invividual elements of the lookup (f_i and t_i)
+    // It will be used to compute the running sum in lookup_aggregation
     let vector_lookup_value_combiner = fq_sponge.challenge();
 
     let beta = fq_sponge.challenge();
 
-    // TODO: we do a lookup on the 16 results
     // TODO: check domain size
-    // TODO: we have the table t(x) in the first index, fix it. Split between f_i and t_i
+    // TODO: we have the table t(x) in the first index, fix it. Split between
+    // f_i and t_i. We have also NUM_LOOKUP_M - 1 lookups per row. Use a struct
+    // with the trait Iterator implemented.
     let lookup_terms: [Evaluations<G::ScalarField, D<G::ScalarField>>; NUM_LOOKUP_M] =
         array::from_fn(|i| {
-            // TODO: check domain size
+            // TODO: check domain size. Why 6?
             let mut denominators = Vec::with_capacity(6 * domain.d1.size as usize);
             for row_lookups in lookups.iter() {
-                // First computing the denominators
                 for Lookup {
                     numerator: _,
                     table_id,
@@ -162,7 +165,7 @@ where
             let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 evals, domain.d1,
             );
-            // TODO: check domain size
+            // We interpolate on d8 also. TODO: check if required.
             evals.interpolate().evaluate_over_domain(domain.d8)
         });
 
@@ -172,28 +175,32 @@ where
     for comm in lookup_terms_comms.iter() {
         absorb_commitment(&mut fq_sponge, comm);
     }
+    // -- end computing invividual elements of the lookup (f_i and t_i)
 
+    // -- start computing the running sum in lookup_aggregation
     let lookup_aggregation: Evaluations<_, D<_>> = {
         let mut evals = Vec::with_capacity(domain.d1.size as usize);
         let mut acc = G::ScalarField::zero();
-        // Accumulate lookup terms
         for i in 0..domain.d1.size as usize {
+            // phi(1) = 0
             evals.push(acc);
+            // Terms are f_1, ..., f_n, t
             for terms in lookup_terms.iter() {
-                // Because of domain 8
+                // Because the individual evaluations of f_i and t are on d1
                 acc += terms[8 * i];
             }
         }
         assert_eq!(acc, G::ScalarField::zero());
         let evals =
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1);
-        // TODO: check domain
+        // We interpolate on d8 also. TODO: check if required.
         evals.interpolate().evaluate_over_domain(domain.d8)
     };
 
     let lookup_aggregation_comm = srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation);
 
     absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm);
+    // -- end computing the running sum in lookup_aggregation
 
     // -- End of MVLookup
 
