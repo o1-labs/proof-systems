@@ -53,6 +53,7 @@ pub fn verify<
 
     // -- Finish absorbing the commitments
 
+    // -- Preparing for opening proof verification
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
@@ -85,6 +86,28 @@ pub fn verify<
             .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
             .collect::<Vec<_>>(),
     );
+    es.push((
+        vec![
+            vec![lookup_zeta_evaluations.m],
+            vec![lookup_zeta_omega_evaluations.m],
+        ],
+        None,
+    ));
+    es.extend(
+        lookup_zeta_evaluations
+            .f
+            .iter()
+            .zip(lookup_zeta_omega_evaluations.f.iter())
+            .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
+            .collect::<Vec<_>>(),
+    );
+    es.push((
+        vec![
+            vec![lookup_zeta_evaluations.sum],
+            vec![lookup_zeta_omega_evaluations.sum],
+        ],
+        None,
+    ));
 
     let mut evaluations: Vec<_> = commitments
         .a
@@ -135,8 +158,41 @@ pub fn verify<
             })
             .collect::<Vec<_>>(),
     );
-    // TODO: add lookup
+    evaluations.push(Evaluation {
+        commitment: lookup_commitments.m.clone(),
+        evaluations: vec![
+            vec![lookup_zeta_evaluations.m],
+            vec![lookup_zeta_omega_evaluations.m],
+        ],
+        degree_bound: None,
+    });
+    evaluations.extend(
+        lookup_commitments
+            .f
+            .iter()
+            .zip(
+                lookup_zeta_evaluations
+                    .f
+                    .iter()
+                    .zip(lookup_zeta_omega_evaluations.f.iter()),
+            )
+            .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
+                commitment: commitment.clone(),
+                evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
+                degree_bound: None,
+            })
+            .collect::<Vec<_>>(),
+    );
+    evaluations.push(Evaluation {
+        commitment: lookup_commitments.sum.clone(),
+        evaluations: vec![
+            vec![lookup_zeta_evaluations.m],
+            vec![lookup_zeta_omega_evaluations.sum],
+        ],
+        degree_bound: None,
+    });
 
+    // -- Absorb all evaluations
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
         .a
         .iter()
@@ -175,6 +231,7 @@ pub fn verify<
     }
     fr_sponge.absorb(&lookup_zeta_evaluations.sum);
     fr_sponge.absorb(&lookup_zeta_omega_evaluations.sum);
+    // -- End absorb all evaluations
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);

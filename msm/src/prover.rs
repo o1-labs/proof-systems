@@ -33,9 +33,7 @@ pub fn prove<
 where
     OpeningProof::SRS: Sync,
 {
-    let Witness {
-        evaluations: evaluations,
-    } = inputs;
+    let Witness { evaluations } = inputs;
     let polys = {
         let WitnessColumns {
             a,
@@ -275,9 +273,9 @@ where
     let mut polynomials: Vec<DensePolynomial<_>> = polys.a.into_iter().collect();
     polynomials.extend(polys.b.into_iter().collect::<Vec<_>>());
     polynomials.extend(polys.c.into_iter().collect::<Vec<_>>());
-    // TODO: add lookup fs
-    // TODO: add lookup t
-    // TODO: add lookup sum
+    polynomials.push(lookup_counters_poly_d1);
+    polynomials.extend(lookup_terms_poly_d1.into_iter().collect::<Vec<_>>());
+    polynomials.push(lookup_aggregation_poly_d1);
 
     let polynomials: Vec<_> = polynomials
         .iter()
