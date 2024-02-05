@@ -1269,6 +1269,8 @@ dependencies = [
  "kimchi",
  "mina-curves",
  "mina-poseidon",
+ "num-bigint",
+ "o1-utils",
  "poly-commitment",
  "rand",
  "rmp-serde",

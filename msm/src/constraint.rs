@@ -4,7 +4,11 @@ use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 use kimchi::circuits::expr::{ExprInner, Variable};
 use kimchi::circuits::gate::CurrOrNext;
+use num_bigint::{BigUint, RandBigInt};
 use rand::thread_rng;
+
+use o1_utils::field_helpers::FieldHelpers;
+use o1_utils::foreign_field::ForeignElement;
 
 use crate::column::MSMColumn;
 use crate::proof::{Witness, WitnessColumns};
@@ -53,15 +57,17 @@ pub fn make_mips_constraint() -> MSMExpr<Fp> {
 }
 
 #[allow(dead_code)]
-fn limb_decompose(_input: Ff1) -> Vec<u8> {
-    // TODO see foreign_field.rs with from/to bigint conversion
-    unimplemented!()
+// TODO use more foreign_field.rs with from/to bigint conversion
+fn limb_decompose(input: &Ff1) -> [Fp; NUM_LIMBS] {
+    let input_bi: BigUint = FieldHelpers::to_biguint(input);
+    let ff_el: ForeignElement<Fp, NUM_LIMBS> = ForeignElement::from_biguint(input_bi);
+    ff_el.limbs
 }
 
 pub fn make_mips_witness() -> Witness<MsmBN254G1Affine> {
     let mut rng = thread_rng();
 
-    let row_num = 100;
+    let row_num = 1;
     assert!(row_num < DOMAIN_SIZE);
 
     let mut witness_columns_vec: Vec<WitnessColumns<Fp>> = vec![];
@@ -70,34 +76,21 @@ pub fn make_mips_witness() -> Witness<MsmBN254G1Affine> {
         let a: Ff1 = Ff1::rand(&mut rng);
         let b: Ff1 = Ff1::rand(&mut rng);
 
-        let a_limbs: Vec<u8> = limb_decompose(a);
-        let b_limbs: Vec<u8> = limb_decompose(b);
-        let c_limbs: Vec<u64> = a_limbs
+        let a_limbs: [Fp; NUM_LIMBS] = limb_decompose(&a);
+        let b_limbs: [Fp; NUM_LIMBS] = limb_decompose(&b);
+        let c_limbs_vec: Vec<Fp> = a_limbs
             .iter()
             .zip(b_limbs.iter())
-            .map(|(ai, bi)| (*ai as u64) + (*bi as u64))
+            .map(|(ai, bi)| *ai + *bi)
             .collect();
-
-        let mut witness_a: Vec<Fp> = vec![];
-        let mut witness_b: Vec<Fp> = vec![];
-        let mut witness_c: Vec<Fp> = vec![];
-
-        for i in 0..NUM_LIMBS {
-            witness_a.push(From::from(a_limbs[i] as u64));
-            witness_b.push(From::from(b_limbs[i] as u64));
-            witness_c.push(From::from(c_limbs[i]));
-        }
+        let c_limbs: [Fp; NUM_LIMBS] = c_limbs_vec
+            .try_into()
+            .unwrap_or_else(|_| panic!("Length mismatch"));
 
         witness_columns_vec.push(WitnessColumns {
-            a: witness_a
-                .try_into()
-                .unwrap_or_else(|_| panic!("Length mismatch")),
-            b: witness_b
-                .try_into()
-                .unwrap_or_else(|_| panic!("Length mismatch")),
-            c: witness_c
-                .try_into()
-                .unwrap_or_else(|_| panic!("Length mismatch")),
+            a: a_limbs,
+            b: b_limbs,
+            c: c_limbs,
         });
     }
 
