@@ -30,16 +30,16 @@ columns) to handle one elliptic curve addition on one row.
 The foreign field elements are defined with 16 limbs of 16bits. Limbs-wise
 elementary addition and multiplication is used, and range checks on 16 bits is
 used.
-An addition of two field elements $a = (a_1, ..., a_16)$ and $b = (b_1, ...,
-b_16)$ will be performed on one row, using one power of alpha for each (i.e one
+An addition of two field elements $a = (a_{1}, ..., a_{16})$ and $b = (b_{1}, ...,
+b_{16})$ will be performed on one row, using one power of alpha for each (i.e one
 constraint for each).
 
 The elliptic curve points are represented in affine coordinates.
 As a reminder, the equation for addition is:
 
-\begin{math}
+```math
 \lambda = \frac{y_2 - y_1}{x_2 - x_1}
 
 x_3 = \lambda^2 - x_{1} - x_{2}
 y_3 = \lambda (x_{1} - x_{3}) - y_{1}
-\end{math}
+```
