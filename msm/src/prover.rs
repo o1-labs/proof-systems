@@ -104,7 +104,7 @@ where
     };
     let lookup_counters_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>> = {
         // We interpolate and get evaluations on d8 also. TODO: check if required.
-        lookup_counters_poly_d1.evaluate_over_domain(domain.d8)
+        (&lookup_counters_poly_d1).evaluate_over_domain_by_ref(domain.d8)
     };
 
     let lookup_counters_comm_d1: PolyComm<G> =
@@ -169,14 +169,14 @@ where
 
     let lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>> = lookup_terms_evals_d1
         .into_iter()
-        .map(|evals| evals.interpolate())
+        .map(|evals| evals.interpolate_by_ref())
         .collect();
 
     // We evaluate on d8 also. TODO: check if required.
     let lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
         lookup_terms_poly_d1
-            .into_iter()
-            .map(|p| p.evaluate_over_domain(domain.d8))
+            .iter()
+            .map(|p| (&p).evaluate_over_domain_by_ref(domain.d8))
             .collect();
 
     let lookup_terms_comms_d1: Vec<PolyComm<G>> = lookup_terms_evals_d8
@@ -191,7 +191,7 @@ where
     // -- end computing invividual elements of the lookup (f_i and t_i)
 
     // -- start computing the running sum in lookup_aggregation
-    let lookup_aggregation = {
+    let lookup_aggregation_evals_d1 = {
         let mut evals = Vec::with_capacity(domain.d1.size as usize);
         let mut acc = G::ScalarField::zero();
         for i in 0..domain.d1.size as usize {
@@ -204,20 +204,22 @@ where
             }
         }
         assert_eq!(acc, G::ScalarField::zero());
-        let evals =
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1);
-        // We interpolate on d8 also. TODO: check if required.
-        evals.interpolate().evaluate_over_domain(domain.d8)
+        Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
     };
+    let lookup_aggregation_poly_d1 = lookup_aggregation_evals_d1.interpolate();
+    // We evaluate on d8 also. TODO: check if required.
+    let lookup_aggregation_evals_d8 =
+        (&lookup_aggregation_poly_d1).evaluate_over_domain_by_ref(domain.d8);
 
-    let lookup_aggregation_comm = srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation);
+    let lookup_aggregation_comm_d1 =
+        srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation_evals_d8);
 
-    absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm);
+    absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm_d1);
 
     let mvlookup_commitment = LookupProof {
         m: lookup_counters_comm_d1,
         f: lookup_terms_comms_d1,
-        sum: lookup_aggregation_comm,
+        sum: lookup_aggregation_comm_d1,
     };
     // -- end computing the running sum in lookup_aggregation
 
@@ -248,18 +250,23 @@ where
         };
         (evals(&zeta), evals(&zeta_omega))
     };
-    // TODO: evaluate lookup polynomials at zeta
-    // let lookup_zeta_evaluastions = LookupProof {
-    //     m: lookup_counters_evals.evaluate(&zeta),
-    //     f: lookup_terms.iter().map(|terms| terms.evaluate(&zeta)).collect(),
-    //     sum: lookup_aggregation.evaluate(&zeta),
-    // };
-    // TODO: evaluate lookup polynomials at zeta omega
-    // let lookup_zeta_omega_evaluastions = LookupProof {
-    //     m: lookup_counters_evals.evaluate(&zeta_omega),
-    //     f: lookup_terms.iter().map(|terms| terms.evaluate(&zeta_omega)).collect(),
-    //     sum: lookup_aggregation.evaluate(&zeta_omega)
-    // };
+    // Lookup polynomials
+    let mvlookup_zeta_evaluations: LookupProof<G::ScalarField> = LookupProof {
+        m: lookup_counters_poly_d1.evaluate(&zeta),
+        f: lookup_terms_poly_d1
+            .iter()
+            .map(|terms| (&terms).evaluate(&zeta))
+            .collect::<Vec<_>>(),
+        sum: lookup_aggregation_poly_d1.evaluate(&zeta),
+    };
+    let mvlookup_zeta_omega_evaluations = LookupProof {
+        m: lookup_counters_poly_d1.evaluate(&zeta_omega),
+        f: lookup_terms_poly_d1
+            .iter()
+            .map(|terms| (&terms).evaluate(&zeta_omega))
+            .collect::<Vec<_>>(),
+        sum: lookup_aggregation_poly_d1.evaluate(&zeta_omega),
+    };
 
     // -- Start opening proof - Preparing the Rust structures
     let group_map = G::Map::setup();
@@ -316,7 +323,19 @@ where
         fr_sponge.absorb(zeta_omega_eval);
     }
     // MVLookup absorb evaluations
-    // TODO: lookup
+    // First evaluations of m, after that f and finisshing with sum
+    fr_sponge.absorb(&mvlookup_zeta_evaluations.m);
+    fr_sponge.absorb(&mvlookup_zeta_omega_evaluations.m);
+    for (zeta_eval, zeta_omega_eval) in mvlookup_zeta_evaluations
+        .f
+        .iter()
+        .zip(mvlookup_zeta_omega_evaluations.f.iter())
+    {
+        fr_sponge.absorb(&zeta_eval);
+        fr_sponge.absorb(&zeta_omega_eval);
+    }
+    fr_sponge.absorb(&mvlookup_zeta_evaluations.sum);
+    fr_sponge.absorb(&mvlookup_zeta_omega_evaluations.sum);
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
@@ -339,9 +358,9 @@ where
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
-        lookup_commitments: mvlookup_commitment,
-        // TODO: add lookup evaluations at zeta
-        // TODO: add lookup evaluations at zeta omega
         opening_proof,
+        lookup_commitments: mvlookup_commitment,
+        lookup_zeta_evaluations: mvlookup_zeta_evaluations,
+        lookup_zeta_omega_evaluations: mvlookup_zeta_omega_evaluations,
     }
 }

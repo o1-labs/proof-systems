@@ -28,9 +28,10 @@ pub fn verify<
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
-        // FIXME
-        lookup_commitments: _,
         opening_proof,
+        lookup_commitments,
+        lookup_zeta_evaluations,
+        lookup_zeta_omega_evaluations,
     } = proof;
 
     // -- Absorbing the commitments
@@ -44,12 +45,11 @@ pub fn verify<
     for comm in commitments.c.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
-    // TODO: Lookup
-    // absorb_commitment(&mut fq_sponge, lookup_counter);
-    // for comm in lookup_terms.iter() {
-    //     absorb_commitment(&mut fq_sponge, comm)
-    // }
-    // absorb_commitment(&mut fq_sponge, lookup_aggregation);
+    absorb_commitment(&mut fq_sponge, &lookup_commitments.m);
+    for comm in lookup_commitments.f.iter() {
+        absorb_commitment(&mut fq_sponge, comm)
+    }
+    absorb_commitment(&mut fq_sponge, &lookup_commitments.sum);
 
     // -- Finish absorbing the commitments
 
@@ -161,6 +161,20 @@ pub fn verify<
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    // MVLookup absorb evaluations
+    // First evaluations of m, after that f and finisshing with sum
+    fr_sponge.absorb(&lookup_zeta_evaluations.m);
+    fr_sponge.absorb(&lookup_zeta_omega_evaluations.m);
+    for (zeta_eval, zeta_omega_eval) in lookup_zeta_evaluations
+        .f
+        .iter()
+        .zip(lookup_zeta_omega_evaluations.f.iter())
+    {
+        fr_sponge.absorb(&zeta_eval);
+        fr_sponge.absorb(&zeta_omega_eval);
+    }
+    fr_sponge.absorb(&lookup_zeta_evaluations.sum);
+    fr_sponge.absorb(&lookup_zeta_omega_evaluations.sum);
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
