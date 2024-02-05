@@ -35,7 +35,7 @@ b_{16})$ will be performed on one row, using one power of alpha for each (i.e on
 constraint for each).
 
 The elliptic curve points are represented in affine coordinates.
-As a reminder, the equation for addition is:
+As a reminder, the equations for addition are:
 
 ```math
 \lambda = \frac{y_2 - y_1}{x_2 - x_1}
