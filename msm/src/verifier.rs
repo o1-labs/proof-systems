@@ -11,7 +11,7 @@ use rand::thread_rng;
 
 use crate::DOMAIN_SIZE;
 
-use crate::mvlookup::LookupProof;
+// use crate::mvlookup::LookupProof;
 use crate::proof::Proof;
 
 pub fn verify<

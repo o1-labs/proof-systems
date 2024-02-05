@@ -170,7 +170,7 @@ where
         });
 
     let lookup_terms_comms: Vec<PolyComm<G>> =
-        array::from_fn(|i| srs.commit_evaluations_non_hiding(domain.d1, &lookup_terms[i])).to_vec();
+        lookup_terms.into_iter().map(|lt| srs.commit_evaluations_non_hiding(domain.d1, lt));
 
     for comm in lookup_terms_comms.iter() {
         absorb_commitment(&mut fq_sponge, comm);

@@ -3,7 +3,7 @@ use kimchi::curve::KimchiCurve;
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
 
-use crate::{DOMAIN_SIZE, NUM_LIMBS, NUM_LOOKUP_M};
+use crate::{DOMAIN_SIZE, NUM_LIMBS};
 use crate::mvlookup::LookupProof;
 
 /// List all columns of the circuit.
