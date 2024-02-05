@@ -1,5 +1,8 @@
 use kimchi::circuits::domains::EvaluationDomains;
 
+use kimchi::circuits::expr::{ExprInner, Variable};
+use kimchi_msm::column::MSMColumn;
+use kimchi_msm::constraint::E;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::proof::Witness;
 use kimchi_msm::prover::prove;
@@ -20,7 +23,23 @@ pub fn main() {
     let lookup_counters = vec![];
 
     // TODO: Use random witness atm.
-    let witness = Witness::random();
+    let mut witness = Witness::random();
+
+    // a_1 + b_1 = c_1 + q * 2^16
+    let a_1 = E::Atom(ExprInner::<kimchi::circuits::expr::Operations<kimchi::circuits::expr::ConstantExprInner<Fp>>, kimchi_msm::column::MSMColumn>::Cell(Variable {
+        col: MSMColumn::A(1),
+        row: kimchi::circuits::gate::CurrOrNext::Curr,
+    }));
+    let b_1 = E::Atom(ExprInner::Cell(Variable {
+        col: MSMColumn::B(1),
+        row: kimchi::circuits::gate::CurrOrNext::Curr,
+    }));
+    let c_1 = E::Atom(ExprInner::Cell(Variable {
+        col: MSMColumn::C(1),
+        row: kimchi::circuits::gate::CurrOrNext::Curr,
+    }));
+    let constraint = a_1 + b_1 - c_1;
+    println!("{:?}", constraint);
 
     println!("Generating the proof");
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
