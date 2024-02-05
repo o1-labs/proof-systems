@@ -18,10 +18,13 @@ pub struct Lookup<F> {
 /// TODO: Use this instead of lookup_counters and lookups in prove
 pub struct LookupWitness<T> {
     /// A list of functions/looked-up values.
+    #[allow(dead_code)]
     pub(crate) f: Vec<T>,
     /// The table the lookup is performed on.
+    #[allow(dead_code)]
     pub(crate) t: T,
     /// The multiplicity polynomial
+    #[allow(dead_code)]
     pub(crate) m: T,
 }
 
@@ -31,9 +34,12 @@ pub struct LookupWitness<T> {
 /// - (F, F) for the evaluations at zeta and zeta omega.
 #[derive(Debug)]
 pub struct LookupProof<T> {
+    #[allow(dead_code)]
     pub(crate) m: T,
     // Contain t. FIXME
+    #[allow(dead_code)]
     pub(crate) f: Vec<T>,
     // pub(crate) t: T,
+    #[allow(dead_code)]
     pub(crate) sum: T,
 }

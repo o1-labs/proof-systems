@@ -75,6 +75,7 @@ pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
     pub(crate) zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
     // MVLookup
+    #[allow(dead_code)]
     pub(crate) lookup_commitments: LookupProof<PolyComm<G>>,
     // TODO
     // pub(crate) lookup_zeta_evaluations: LookupProof<G::ScalarField>,
