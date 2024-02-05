@@ -7,14 +7,14 @@ use crate::mvlookup::LookupProof;
 use crate::{DOMAIN_SIZE, NUM_LIMBS};
 
 /// List all columns of the circuit.
-/// It is parametrized by a type G which can be either:
-/// - Vec<G::ScalarField> for the evaluations
-/// - PolyComm<G> for the commitments
+/// It is parametrized by a type `T` which can be either:
+/// - `Vec<G::ScalarField>` for the evaluations
+/// - `PolyComm<G>` for the commitments
 #[derive(Debug)]
-pub struct WitnessColumns<G> {
-    pub(crate) a: [G; NUM_LIMBS],
-    pub(crate) b: [G; NUM_LIMBS],
-    pub(crate) c: [G; NUM_LIMBS],
+pub struct WitnessColumns<T> {
+    pub(crate) a: [T; NUM_LIMBS],
+    pub(crate) b: [T; NUM_LIMBS],
+    pub(crate) c: [T; NUM_LIMBS],
     // pub q: G,
 }
 
@@ -66,6 +66,13 @@ impl<G: KimchiCurve> Witness<G> {
                 // q: G::ScalarField::zero(),
             },
         }
+    }
+
+    pub fn from_witness_columns_vec(
+        witness_columns_vec: Vec<WitnessColumns<G::ScalarField>>,
+    ) -> Witness<G> {
+        // Transpose the thing
+        unimplemented!()
     }
 }
 

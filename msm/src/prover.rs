@@ -33,7 +33,9 @@ pub fn prove<
 where
     OpeningProof::SRS: Sync,
 {
-    let Witness { evaluations } = inputs;
+    let Witness {
+        evaluations: evaluations,
+    } = inputs;
     let polys = {
         let WitnessColumns {
             a,

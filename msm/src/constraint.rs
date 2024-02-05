@@ -8,7 +8,7 @@ use rand::thread_rng;
 
 use crate::column::MSMColumn;
 use crate::proof::{Witness, WitnessColumns};
-use crate::{Ff1, Fp, MsmBN254G1Affine, NUM_LIMBS};
+use crate::{Ff1, Fp, MsmBN254G1Affine, DOMAIN_SIZE, NUM_LIMBS};
 
 pub type MSMExpr<F> = Expr<ConstantExpr<F>, MSMColumn>;
 
@@ -72,47 +72,48 @@ fn limb_decompose(_input: Ff1) -> Vec<u8> {
     unimplemented!()
 }
 
-pub fn make_mips_witness(_domain: EvaluationDomains<Fp>) -> Witness<MsmBN254G1Affine> {
+pub fn make_mips_witness() -> Witness<MsmBN254G1Affine> {
     let mut rng = thread_rng();
-    let a: Ff1 = Ff1::rand(&mut rng);
-    let b: Ff1 = Ff1::rand(&mut rng);
 
-    let a_limbs: Vec<u8> = limb_decompose(a);
-    let b_limbs: Vec<u8> = limb_decompose(b);
-    let c_limbs: Vec<u64> = a_limbs
-        .iter()
-        .zip(b_limbs.iter())
-        .map(|(ai, bi)| (*ai as u64) + (*bi as u64))
-        .collect();
+    let row_num = 100;
+    assert!(row_num < DOMAIN_SIZE);
 
-    let mut witness_a: Vec<MsmBN254G1Affine> = vec![];
-    let mut witness_b: Vec<MsmBN254G1Affine> = vec![];
-    let mut witness_c: Vec<MsmBN254G1Affine> = vec![];
+    let mut witness_columns_vec: Vec<WitnessColumns<Fp>> = vec![];
 
-    let g: MsmBN254G1Affine = <MsmBN254G1Affine as ark_ec::AffineCurve>::prime_subgroup_generator();
+    for _row_i in 0..row_num {
+        let a: Ff1 = Ff1::rand(&mut rng);
+        let b: Ff1 = Ff1::rand(&mut rng);
 
-    for i in 0..NUM_LIMBS {
-        witness_a.push(From::from(g.mul(a_limbs[i] as u64)));
-        witness_b.push(From::from(g.mul(b_limbs[i] as u64)));
-        witness_c.push(From::from(g.mul(c_limbs[i])));
+        let a_limbs: Vec<u8> = limb_decompose(a);
+        let b_limbs: Vec<u8> = limb_decompose(b);
+        let c_limbs: Vec<u64> = a_limbs
+            .iter()
+            .zip(b_limbs.iter())
+            .map(|(ai, bi)| (*ai as u64) + (*bi as u64))
+            .collect();
+
+        let mut witness_a: Vec<Fp> = vec![];
+        let mut witness_b: Vec<Fp> = vec![];
+        let mut witness_c: Vec<Fp> = vec![];
+
+        for i in 0..NUM_LIMBS {
+            witness_a.push(From::from(a_limbs[i] as u64));
+            witness_b.push(From::from(b_limbs[i] as u64));
+            witness_c.push(From::from(c_limbs[i]));
+        }
+
+        witness_columns_vec.push(WitnessColumns {
+            a: witness_a
+                .try_into()
+                .unwrap_or_else(|_| panic!("Length mismatch")),
+            b: witness_b
+                .try_into()
+                .unwrap_or_else(|_| panic!("Length mismatch")),
+            c: witness_c
+                .try_into()
+                .unwrap_or_else(|_| panic!("Length mismatch")),
+        });
     }
 
-    let _witness_columns = WitnessColumns {
-        a: witness_a
-            .try_into()
-            .unwrap_or_else(|_| panic!("Length mismatch")),
-        b: witness_b
-            .try_into()
-            .unwrap_or_else(|_| panic!("Length mismatch")),
-        c: witness_c
-            .try_into()
-            .unwrap_or_else(|_| panic!("Length mismatch")),
-    };
-
-    // TODO evaluate these on the domain
-    //let eval_a_1: MsmBn254G1Affine =
-
-    // TODO build witness
-
-    unimplemented!()
+    Witness::from_witness_columns_vec(witness_columns_vec)
 }
