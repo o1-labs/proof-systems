@@ -123,7 +123,7 @@ where
     // TODO: we have the table t(x) in the first index, fix it. Split between
     // f_i and t_i. We have also NUM_LOOKUP_M - 1 lookups per row. Use a struct
     // with the trait Iterator implemented.
-    let lookup_terms: [Evaluations<G::ScalarField, D<G::ScalarField>>; NUM_LOOKUP_M] =
+    let lookup_terms_evals_d1: [Evaluations<G::ScalarField, D<G::ScalarField>>; NUM_LOOKUP_M] =
         array::from_fn(|i| {
             // TODO: check domain size. Why 6?
             let mut denominators = Vec::with_capacity(6 * domain.d1.size as usize);
@@ -164,21 +164,28 @@ where
                 }
                 evals.push(row_acc)
             }
-            //
-            let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                evals, domain.d1,
-            );
-            // We interpolate on d8 also. TODO: check if required.
-            evals.interpolate().evaluate_over_domain(domain.d8)
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
         });
 
-    let lookup_terms_comms: Vec<PolyComm<G>> = lookup_terms
+    let lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>> = lookup_terms_evals_d1
+        .into_iter()
+        .map(|evals| evals.interpolate())
+        .collect();
+
+    // We evaluate on d8 also. TODO: check if required.
+    let lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
+        lookup_terms_poly_d1
+            .into_iter()
+            .map(|p| p.evaluate_over_domain(domain.d8))
+            .collect();
+
+    let lookup_terms_comms_d1: Vec<PolyComm<G>> = lookup_terms_evals_d8
         .clone()
         .into_iter()
         .map(|lt| srs.commit_evaluations_non_hiding(domain.d1, &lt))
         .collect();
 
-    for comm in lookup_terms_comms.iter() {
+    for comm in lookup_terms_comms_d1.iter() {
         absorb_commitment(&mut fq_sponge, comm);
     }
     // -- end computing invividual elements of the lookup (f_i and t_i)
@@ -191,7 +198,7 @@ where
             // phi(1) = 0
             evals.push(acc);
             // Terms are f_1, ..., f_n, t
-            for terms in lookup_terms.iter() {
+            for terms in lookup_terms_evals_d8.iter() {
                 // Because the individual evaluations of f_i and t are on d1
                 acc += terms[8 * i];
             }
@@ -209,7 +216,7 @@ where
 
     let mvlookup_commitment = LookupProof {
         m: lookup_counters_comm_d1,
-        f: lookup_terms_comms,
+        f: lookup_terms_comms_d1,
         sum: lookup_aggregation_comm,
     };
     // -- end computing the running sum in lookup_aggregation
