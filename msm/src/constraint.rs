@@ -98,9 +98,15 @@ pub fn make_mips_witness(_domain: EvaluationDomains<Fp>) -> Witness<MsmBN254G1Af
     }
 
     let _witness_columns = WitnessColumns {
-        a: witness_a.try_into().unwrap_or(panic!("Length mismatch")),
-        b: witness_b.try_into().unwrap_or(panic!("Length mismatch")),
-        c: witness_c.try_into().unwrap_or(panic!("Length mismatch")),
+        a: witness_a
+            .try_into()
+            .unwrap_or_else(|_| panic!("Length mismatch")),
+        b: witness_b
+            .try_into()
+            .unwrap_or_else(|_| panic!("Length mismatch")),
+        c: witness_c
+            .try_into()
+            .unwrap_or_else(|_| panic!("Length mismatch")),
     };
 
     // TODO evaluate these on the domain
