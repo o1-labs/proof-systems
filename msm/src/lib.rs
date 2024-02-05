@@ -1,3 +1,4 @@
+use mina_curves::pasta::curves::pallas;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -21,7 +22,12 @@ pub const NUM_LOOKUP_M: usize = 8;
 pub type MsmBN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
 pub type MsmBN254G1Affine = <MsmBN254 as ark_ec::PairingEngine>::G1Affine;
 pub type MsmBN254G2Affine = <MsmBN254 as ark_ec::PairingEngine>::G2Affine;
+
+// THe native field we are working with
 pub type Fp = ark_bn254::Fr;
+// The foreign field we are emulating (one of the two)
+pub type Ff1 = mina_curves::pasta::Fp;
+pub type Ff2 = mina_curves::pasta::Fq;
 
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
