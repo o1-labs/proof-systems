@@ -169,8 +169,11 @@ where
             evals.interpolate().evaluate_over_domain(domain.d8)
         });
 
-    let lookup_terms_comms: Vec<PolyComm<G>> =
-        lookup_terms.into_iter().map(|lt| srs.commit_evaluations_non_hiding(domain.d1, lt));
+    let lookup_terms_comms: Vec<PolyComm<G>> = lookup_terms
+        .clone()
+        .into_iter()
+        .map(|lt| srs.commit_evaluations_non_hiding(domain.d1, &lt))
+        .collect();
 
     for comm in lookup_terms_comms.iter() {
         absorb_commitment(&mut fq_sponge, comm);
