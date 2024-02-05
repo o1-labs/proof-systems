@@ -18,3 +18,5 @@ pub struct Env<F: Field> {
     // TODO
     pub(crate) _constraints: Vec<E<F>>,
 }
+
+// constraints mips_demo combine(constrainsts) with alpha

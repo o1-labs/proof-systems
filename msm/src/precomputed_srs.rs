@@ -34,6 +34,7 @@ pub fn read_bn254_srs_from_disk() -> PairingSRS<MsmBN254> {
 // @volhovm: Serialization of G2Affine points is broken somewhere deep
 // underneath. This test works for most types including G1Affine, but
 // it fails for G2 while reading with 'value: InvalidData'.
+// Try to find a "mode" setting -- maybe serialization is optimised, while deserialization is not. Serialize_with_mode
 pub fn test_serialization() {
     let path = PathBuf::from("./test_file.srs");
 
