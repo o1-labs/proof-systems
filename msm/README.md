@@ -6,7 +6,8 @@ For simplicity, we suppose the foreign field is on maximum 256 bits.
 
 The witness is splitted in two different parts:
 - Columns: this is the column of the circuit.
-- Lookups: this contain a list of lookups per row. MVLookup is used. It contains
+- Lookups: this contain a list of lookups per row.
+  [MVLookup](https://eprint.iacr.org/2022/1530.pdf) is used. It contains
   the individual polynomials $f_i(X)$ containing the looked up values, the
   table/polynomial $t(X)$ the polynomials $f_i(X)$ look into and the
   multiplicity polynomial $m(X)$ as defined in the paper.
