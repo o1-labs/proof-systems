@@ -441,7 +441,6 @@
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
 //! ```ignore
@@ -494,11 +493,10 @@
 //~ ```ignore
 //~ Acc := [2]T
 //~ for i = n-1 ... 0:
-//~    Q := (r_i == 1) ? T : -T
+//~    Q := (k_{i + 1} == 1) ? T : -T
 //~    Acc := Acc + (Q + Acc)
-//~ return (d_0 == 0) ? Q - P : Q
+//~ return (k_0 == 0) ? Acc - P : Acc
 //~ ```
-//~
 //~
 //~ The layout of the witness requires 2 rows.
 //~ The i-th row will be a `VBSM` gate whereas the next row will be a `ZERO` gate.
