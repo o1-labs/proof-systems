@@ -24,9 +24,7 @@ pub struct BuilderEnv<F: Field> {
     pub(crate) accumulated_result: F,
 }
 
-// constraints mips_demo combine(constrainsts) with alpha
-
-pub fn make_mips_constraint() -> MSMExpr<Fp> {
+pub fn make_msm_constraint() -> MSMExpr<Fp> {
     let mut limb_constraints: Vec<_> = vec![];
 
     for i in 0..NUM_LIMBS {
@@ -65,7 +63,7 @@ fn limb_decompose(input: &Ff1) -> [Fp; NUM_LIMBS] {
 }
 
 // *TODO* This absolutely does not use the Expr framework. Should it?
-pub fn make_mips_witness() -> Witness<MsmBN254G1Affine> {
+pub fn make_msm_witness() -> Witness<MsmBN254G1Affine> {
     let mut rng = thread_rng();
 
     let row_num = 1;
