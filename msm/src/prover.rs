@@ -91,23 +91,24 @@ where
     // -- Start MVLookup
     // https://eprint.iacr.org/2022/1530.pdf
     // Polynomial m(X)
-    let lookup_counters_evals = {
+    let lookup_counters_poly_d1: DensePolynomial<G::ScalarField> = {
         let lookup_counters = lookup_counters
             .into_iter()
             .map(G::ScalarField::from)
             .collect();
-        // Evaluate first on D1
-        let evals: Evaluations<_, D<_>> =
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                lookup_counters,
-                domain.d1,
-            );
-        // We interpolate on d8 also. TODO: check if required.
-        evals.interpolate().evaluate_over_domain(domain.d8)
+        let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+            lookup_counters,
+            domain.d1,
+        );
+        evals.interpolate()
+    };
+    let lookup_counters_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>> = {
+        // We interpolate and get evaluations on d8 also. TODO: check if required.
+        lookup_counters_poly_d1.evaluate_over_domain(domain.d8)
     };
 
     let lookup_counters_comm: PolyComm<G> =
-        srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals);
+        srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals_d8);
 
     absorb_commitment(&mut fq_sponge, &lookup_counters_comm);
     // -- end of m(X)
