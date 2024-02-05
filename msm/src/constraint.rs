@@ -12,20 +12,6 @@ use crate::{Ff1, Fp, MsmBN254G1Affine, DOMAIN_SIZE, NUM_LIMBS};
 
 pub type MSMExpr<F> = Expr<ConstantExpr<F>, MSMColumn>;
 
-// t(X) = CONSTRAINT_1 * 1 + \
-//        CONSTRAINT_2 * \alpha + \
-//        CONSTRAINT_3 * \alpha^2
-//        ...
-//pub fn combine_within_constraint<F: Field>(constraints: Vec<E<F>>) -> E<F> {
-//    let zero: E<F> = Expr::<ConstantExpr<F>, MSMColumn>::zero();
-//    let alpha: E<F> = Expr::from(ChallengeTerm::Alpha);
-//    constraints
-//        .iter()
-//        .reduce(|acc, x| alpha.clone() * *acc + x.clone())
-//        .unwrap_or(&zero)
-//        .clone()
-//}
-
 #[allow(dead_code)]
 pub struct BuilderEnv<F: Field> {
     // TODO something like a running list of constraints
