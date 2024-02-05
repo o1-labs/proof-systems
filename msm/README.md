@@ -39,7 +39,11 @@ As a reminder, the equation for addition is:
 
 ```math
 \lambda = \frac{y_2 - y_1}{x_2 - x_1}
+```
 
-x_3 = \lambda^2 - x_{1} - x_{2}
-y_3 = \lambda (x_{1} - x_{3}) - y_{1}
+```math
+\begin{align}
+x_3 & = \lambda^2 - x_{1} - x_{2} \\
+y_3 & = \lambda (x_{1} - x_{3}) - y_{1}
+\end{align}
 ```
