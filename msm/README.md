@@ -47,3 +47,8 @@ x_3 & = \lambda^2 - x_{1} - x_{2} \\
 y_3 & = \lambda (x_{1} - x_{3}) - y_{1}
 \end{align}
 ```
+
+
+The remaining tasks are the following:
+- [ ] Finishing MVLookup integration (adding evaluations points and commitments).
+- [ ] Write an interface to create the witness and create constraints
