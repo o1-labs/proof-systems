@@ -1,6 +1,7 @@
 use kimchi::circuits::domains::EvaluationDomains;
-
 use kimchi::circuits::expr::{ExprInner, Variable};
+
+use kimchi_msm::constraint::make_mips_witness;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::proof::Witness;
 use kimchi_msm::prover::prove;
@@ -21,7 +22,7 @@ pub fn main() {
     let lookup_counters = vec![];
 
     // TODO: Use random witness atm.
-    let mut witness = Witness::random();
+    let mut witness = make_mips_witness();
 
     println!("Generating the proof");
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(

@@ -64,6 +64,7 @@ fn limb_decompose(input: &Ff1) -> [Fp; NUM_LIMBS] {
     ff_el.limbs
 }
 
+// *TODO* This absolutely does not use the Expr framework. Should it?
 pub fn make_mips_witness() -> Witness<MsmBN254G1Affine> {
     let mut rng = thread_rng();
 
