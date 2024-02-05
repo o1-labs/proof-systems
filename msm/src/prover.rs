@@ -107,10 +107,10 @@ where
         lookup_counters_poly_d1.evaluate_over_domain(domain.d8)
     };
 
-    let lookup_counters_comm_d8: PolyComm<G> =
+    let lookup_counters_comm_d1: PolyComm<G> =
         srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals_d8);
 
-    absorb_commitment(&mut fq_sponge, &lookup_counters_comm_d8);
+    absorb_commitment(&mut fq_sponge, &lookup_counters_comm_d1);
     // -- end of m(X)
 
     // -- start computing invividual elements of the lookup (f_i and t_i)
@@ -208,7 +208,7 @@ where
     absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm);
 
     let mvlookup_commitment = LookupProof {
-        m: lookup_counters_comm_d8,
+        m: lookup_counters_comm_d1,
         f: lookup_terms_comms,
         sum: lookup_aggregation_comm,
     };
