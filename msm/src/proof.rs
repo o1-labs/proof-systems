@@ -3,7 +3,8 @@ use kimchi::curve::KimchiCurve;
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
 
-use crate::{DOMAIN_SIZE, NUM_LIMBS, NUM_LOOKUP_M};
+use crate::mvlookup::LookupProof;
+use crate::{DOMAIN_SIZE, NUM_LIMBS};
 
 /// List all columns of the circuit.
 /// It is parametrized by a type G which can be either:
@@ -69,22 +70,15 @@ impl<G: KimchiCurve> Witness<G> {
 }
 
 #[derive(Debug)]
-pub struct LookupProof<G: KimchiCurve> {
-    // m(X)
-    #[allow(dead_code)]
-    pub(crate) lookup_counter: PolyComm<G>,
-    #[allow(dead_code)]
-    pub(crate) lookup_terms: [PolyComm<G>; NUM_LOOKUP_M],
-    #[allow(dead_code)]
-    pub(crate) lookup_aggregation: PolyComm<G>,
-}
-
-#[derive(Debug)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub(crate) commitments: WitnessColumns<PolyComm<G>>,
-    pub(crate) lookup_commitments: LookupProof<G>,
-    // TODO: add lookup
     pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
     pub(crate) zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
+    // MVLookup
+    #[allow(dead_code)]
+    pub(crate) lookup_commitments: LookupProof<PolyComm<G>>,
+    // TODO
+    // pub(crate) lookup_zeta_evaluations: LookupProof<G::ScalarField>,
+    // pub(crate) lookup_zeta_omega_evaluations: LookupProof<G::ScalarField>,
     pub(crate) opening_proof: OpeningProof,
 }

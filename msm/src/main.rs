@@ -1,6 +1,6 @@
 use kimchi::circuits::domains::EvaluationDomains;
 
-use kimchi_msm::precomputed_srs::{get_bn254_srs, test_serialization};
+use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::proof::Witness;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;

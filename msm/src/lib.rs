@@ -6,7 +6,7 @@ use poly_commitment::pairing_proof::PairingProof;
 
 pub mod column;
 pub mod constraint;
-pub mod lookup;
+pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;

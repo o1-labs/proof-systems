@@ -1,5 +1,4 @@
-/// Implement the protocol MVLookup https://eprint.iacr.org/2022/1530.pdf
-use ark_ff::Field;
+//! Implement the protocol MVLookup https://eprint.iacr.org/2022/1530.pdf
 
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTable {
@@ -13,15 +12,34 @@ pub struct Lookup<F> {
 }
 
 /// Represents a witness of one instance of the lookup argument
-/// The type is parametrized by the type `T` which can be either:
+/// It is parametrized by the type `T` which can be either:
 /// - `Vec<Lookup<F: Field>>` for the evaluations
 /// - Polycomm<G: KimchiCurve> for the commitments
 /// TODO: Use this instead of lookup_counters and lookups in prove
 pub struct LookupWitness<T> {
     /// A list of functions/looked-up values.
+    #[allow(dead_code)]
     pub(crate) f: Vec<T>,
     /// The table the lookup is performed on.
+    #[allow(dead_code)]
     pub(crate) t: T,
     /// The multiplicity polynomial
+    #[allow(dead_code)]
     pub(crate) m: T,
+}
+
+/// Represents the proof of the lookup argument
+/// It is parametrized by the type `T` which can be either:
+/// - Polycomm<G: KimchiCurve> for the commitments
+/// - (F, F) for the evaluations at zeta and zeta omega.
+#[derive(Debug)]
+pub struct LookupProof<T> {
+    #[allow(dead_code)]
+    pub(crate) m: T,
+    // Contain t. FIXME
+    #[allow(dead_code)]
+    pub(crate) f: Vec<T>,
+    // pub(crate) t: T,
+    #[allow(dead_code)]
+    pub(crate) sum: T,
 }
