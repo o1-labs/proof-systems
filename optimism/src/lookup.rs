@@ -1,4 +1,4 @@
-use ark_ff::{Field, One};
+use ark_ff::{Field, One, Zero};
 use kimchi::{
     circuits::polynomials::keccak::{
         constants::{RATE_IN_BYTES, ROUNDS},
@@ -12,12 +12,6 @@ use poly_commitment::PolyComm;
 use crate::keccak::witness::pad_blocks;
 
 pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
-
-#[derive(Copy, Clone, Debug)]
-pub enum Sign {
-    Pos,
-    Neg,
-}
 
 #[derive(Copy, Clone, Debug)]
 pub enum LookupMode {
@@ -78,7 +72,14 @@ impl<F: std::fmt::Display + Field> std::fmt::Display for Lookup<F> {
     }
 }
 
-impl<T: One> Lookup<T> {
+impl<T: One + Zero + std::ops::Sub<T, Output = T>> Lookup<T> {
+    pub fn numerator(&self) -> T {
+        match self.mode {
+            LookupMode::Read => self.magnitude,
+            LookupMode::Write => T::zero() - self.magnitude,
+        }
+    }
+
     /// Reads one value when `if_is_true` is 1.
     pub fn read_if(if_is_true: T, table_id: LookupTables, value: Vec<T>) -> Self {
         Self {

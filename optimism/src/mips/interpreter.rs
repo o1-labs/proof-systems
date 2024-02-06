@@ -6,7 +6,7 @@ use crate::{
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
 };
-use ark_ff::One;
+use ark_ff::{One, Zero};
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -134,7 +134,8 @@ pub trait InterpreterEnv {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug
-        + One;
+        + One
+        + Zero;
 
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
