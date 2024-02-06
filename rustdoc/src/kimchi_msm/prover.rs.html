@@ -121,8 +121,7 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::proof::Into;
-<span class="kw">use </span>ark_ff::Zero;
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
@@ -151,7 +150,8 @@
     </span>OpeningProof::SRS: Sync,
 {
     <span class="comment">// Interpolate all columns on d1, using trait Into.
-    </span><span class="kw">let </span>polys: WitnessColumns&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = Into::into(inputs, domain.d1);
+    </span><span class="kw">let </span>polys: WitnessColumns&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; =
+        inputs.interpolate_columns(domain.d1);
 
     <span class="kw">let </span>commitments = {
         <span class="kw">let </span>WitnessColumns { x } = <span class="kw-2">&amp;</span>polys;
