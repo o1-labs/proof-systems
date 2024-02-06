@@ -7,9 +7,11 @@ use kimchi::{
     curve::KimchiCurve,
     o1_utils::Two,
 };
-use poly_commitment::{OpenProof, PolyComm};
+use poly_commitment::PolyComm;
 
-use crate::keccak::{lookups::KeccakLookupColumns, witness::pad_blocks};
+use crate::keccak::witness::pad_blocks;
+
+pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Sign {
@@ -25,24 +27,27 @@ pub enum LookupMode {
 
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTables {
+    // RAM Tables
     MemoryLookup = 0,
     RegisterLookup = 1,
-    // Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup = 2,
-    // Single-column table of all values in the range [0, 2^16)
-    RangeCheck16Lookup = 3,
-    // Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    ResetLookup = 4,
-    // 24-row table with all possible values for round and their round constant in expanded form (in big endian)
-    RoundConstantsLookup = 5,
-    // All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    PadLookup = 6,
-    // All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    ByteLookup = 7,
-    // Input/Output of Keccak steps
-    KeccakStepLookup = 8,
-    // Syscalls communication channel
-    SyscallLookup = 9,
+    /// Syscalls communication channel
+    SyscallLookup = 2,
+    /// Input/Output of Keccak steps
+    KeccakStepLookup = 3,
+
+    // Read Tables
+    /// Single-column table of 2^16 entries with the sparse representation of all values
+    SparseLookup = 4,
+    /// Single-column table of all values in the range [0, 2^16)
+    RangeCheck16Lookup = 5,
+    /// Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    ResetLookup = 6,
+    /// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
+    RoundConstantsLookup = 7,
+    /// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    PadLookup = 8,
+    /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
+    ByteLookup = 9,
 }
 
 #[derive(Clone, Debug)]
@@ -133,108 +138,101 @@ pub trait Lookups {
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
-    /// The table is a vector of write lookups with the same table ID
-    _table: Vec<Lookup<F>>,
+    /// Table ID corresponding to this table
+    table_id: LookupTables,
+    /// Vector of values inside each entry of the table
+    entries: Vec<Vec<F>>,
 }
 
-pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
-
 impl<F: Field> LookupTable<F> {
-    fn _table_range_check_16() -> Self {
+    fn table_terms(&self, mixer: F) -> Vec<F> {
+        self.entries
+            .iter()
+            .map(|entry| {
+                entry
+                    .iter()
+                    .fold(F::from(self.table_id as u32), |acc, value| {
+                        acc + *value * mixer
+                    })
+            })
+            .collect()
+    }
+
+    fn table_range_check_16() -> Self {
         Self {
-            _table: (0..TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::RangeCheck16Lookup,
-                    value: vec![F::from(i)],
-                })
+            table_id: LookupTables::RangeCheck16Lookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| vec![F::from(i)])
                 .collect(),
         }
     }
 
-    fn _table_byte() -> Self {
+    fn table_byte() -> Self {
         Self {
-            _table: (0..(1 << 8) as u32)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::ByteLookup,
-                    value: vec![F::from(i)],
-                })
-                .collect(),
+            table_id: LookupTables::ByteLookup,
+            entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
         }
     }
 
-    fn _table_sparse() -> Self {
+    fn table_sparse() -> Self {
         Self {
-            _table: (0..TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::SparseLookup,
-                    value: vec![F::from(
+            table_id: LookupTables::SparseLookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    vec![F::from(
                         u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
-                    )],
+                    )]
                 })
                 .collect(),
         }
     }
 
-    fn _table_reset() -> Self {
+    fn table_reset() -> Self {
         Self {
-            _table: (0..TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::ResetLookup,
-                    value: vec![
+            table_id: LookupTables::ResetLookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    vec![
                         F::from(i),
                         F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
-                    ],
+                    ]
                 })
                 .collect(),
         }
     }
 
-    fn _table_round_constants() -> Self {
+    fn table_round_constants() -> Self {
         Self {
-            _table: (0..ROUNDS)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::RoundConstantsLookup,
-                    value: vec![
+            table_id: LookupTables::RoundConstantsLookup,
+            entries: (0..=ROUNDS)
+                .map(|i| {
+                    vec![
                         F::from(i as u32),
                         F::from(Keccak::sparse(RC[i])[3]),
                         F::from(Keccak::sparse(RC[i])[2]),
                         F::from(Keccak::sparse(RC[i])[1]),
                         F::from(Keccak::sparse(RC[i])[0]),
-                    ],
+                    ]
                 })
                 .collect(),
         }
     }
 
-    fn _table_pad() -> Self {
+    fn table_pad() -> Self {
         Self {
-            _table: (1..=RATE_IN_BYTES)
+            table_id: LookupTables::PadLookup,
+            entries: (1..=RATE_IN_BYTES)
                 .map(|i| {
                     let suffix = pad_blocks(i);
-                    Lookup {
-                        mode: LookupMode::Write,
-                        magnitude: F::one(),
-                        table_id: LookupTables::PadLookup,
-                        value: vec![
-                            F::from(i as u64),
-                            F::two_pow(i as u64),
-                            suffix[0],
-                            suffix[1],
-                            suffix[2],
-                            suffix[3],
-                            suffix[4],
-                        ],
-                    }
+                    vec![
+                        F::from(i as u64),
+                        F::two_pow(i as u64),
+                        suffix[0],
+                        suffix[1],
+                        suffix[2],
+                        suffix[3],
+                        suffix[4],
+                    ]
                 })
                 .collect(),
         }
@@ -252,11 +250,11 @@ pub struct MVLookupProof<T> {
     pub(crate) multiplicities: Vec<T>,
     /// Each table entry.
     #[allow(dead_code)]
-    pub(crate) table_entries: Vec<T>,
+    pub(crate) table_terms: Vec<T>,
     /// All lookup requests per row.
     #[allow(dead_code)]
-    pub(crate) lookup_requests: Vec<T>,
-    /// Selectors of each lookup per row.
+    pub(crate) lookup_terms: Vec<T>,
+    /// Selectors to switch on/off each lookup per row.
     #[allow(dead_code)]
     pub(crate) selectors: Vec<T>,
     /// Accumulated sum of both sides of the equations of sums.

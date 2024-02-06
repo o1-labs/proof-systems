@@ -271,8 +271,8 @@ where
             };
             MVLookupProof {
                 multiplicities: eval_array_col(&lookups.multiplicities).try_into().unwrap(),
-                table_entries: eval_array_col(&lookups.table_entries).try_into().unwrap(),
-                lookup_requests: eval_array_col(&lookups.table_entries).try_into().unwrap(),
+                table_terms: eval_array_col(&lookups.table_terms).try_into().unwrap(),
+                lookup_terms: eval_array_col(&lookups.lookup_terms).try_into().unwrap(),
                 selectors: eval_array_col(&lookups.table_entries).try_into().unwrap(),
                 sum: {},
             }
@@ -286,10 +286,8 @@ where
             };
             MVLookupProof {
                 multiplicities: comm_array(&lookup_polys.multiplicities).try_into().unwrap(),
-                table_entries: comm_array(&lookup_polys.table_entries).try_into().unwrap(),
-                lookup_requests: comm_array(&lookup_polys.lookup_requests)
-                    .try_into()
-                    .unwrap(),
+                table_terms: comm_array(&lookup_polys.table_terms).try_into().unwrap(),
+                lookup_terms: comm_array(&lookup_polys.lookup_terms).try_into().unwrap(),
                 selectors: comm_array(&lookup_polys.selectors).try_into().unwrap(),
                 sum: {},
             }
