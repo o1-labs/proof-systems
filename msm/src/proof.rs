@@ -7,7 +7,7 @@ use rand::{prelude::*, thread_rng};
 /// It is parametrized by a type `T` which can be either:
 /// - `Vec<G::ScalarField>` for the evaluations
 /// - `PolyComm<G>` for the commitments
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WitnessColumns<T> {
     pub x: Vec<T>,
 }
@@ -36,7 +36,7 @@ impl<G: KimchiCurve> Witness<G> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub(crate) commitments: WitnessColumns<PolyComm<G>>,
     pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
