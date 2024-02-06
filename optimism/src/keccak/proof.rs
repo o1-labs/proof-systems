@@ -1,6 +1,6 @@
 //! This module contains the proof system for the Keccak circuit
 
-use crate::{keccak::column::KeccakWitness, DOMAIN_SIZE};
+use crate::{keccak::column::KeccakWitness, DOMAIN_SIZE, lookup::LookupProof};
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
@@ -21,10 +21,13 @@ use rayon::iter::{
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
+use super::lookups::KeccakLookupColumns;
+
 /// This struct contains the evaluations of the KeccakWitness columns across the whole domain of the circuit
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
     evaluations: KeccakWitness<Vec<G::ScalarField>>,
+    lookups: KeccakLookupColumns<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
@@ -43,6 +46,20 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
             },
+            lookups: KeccakLookupColumns {
+                multiplicities: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                }),
+                table_entries: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                }),
+                lookup_requests: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                }),
+                selectors: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                }),
+            },
         }
     }
 }
@@ -58,6 +75,8 @@ pub struct KeccakProof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     zeta_omega_evaluations: KeccakWitness<G::ScalarField>,
     /// Proof of opening for the evaluations with respect to the polynomial commitments
     opening_proof: OpeningProof,
+    /// MV-Lookup proof
+    lookup_proof: LookupProof<G>,
 }
 
 /// This function folds the witness of the current circuit with the accumulated Keccak instance
@@ -124,7 +143,10 @@ pub fn prove<
 where
     OpeningProof::SRS: Sync,
 {
-    let KeccakProofInputs { evaluations } = inputs;
+    let KeccakProofInputs {
+        evaluations,
+        lookups,
+    } = inputs;
     let polys = {
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
@@ -228,11 +250,56 @@ where
         &mut rand::rngs::OsRng,
     );
 
+    // MV Lookups proof
+    let lookup_proof = {
+        let lookup_polys = {
+            let eval_col = |evals: Vec<G::ScalarField>| {
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
+                    .interpolate()
+            };
+            let eval_array_col = |evals: &[Vec<G::ScalarField>]| {
+                evals
+                    .into_par_iter()
+                    .map(|e| eval_col(e.to_vec()))
+                    .collect::<Vec<_>>()
+            };
+            KeccakLookupColumns {
+                multiplicities: eval_array_col(&lookups.multiplicities).try_into().unwrap(),
+                table_entries: eval_array_col(&lookups.table_entries).try_into().unwrap(),
+                lookup_requests: eval_array_col(&lookups.table_entries).try_into().unwrap(),
+                selectors: eval_array_col(&lookups.table_entries).try_into().unwrap(),
+            }
+        };
+
+        let lookup_commitments = {
+            let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
+            let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
+                polys.into_par_iter().map(comm).collect::<Vec<_>>()
+            };
+            KeccakLookupColumns {
+                multiplicities: comm_array(&lookup_polys.multiplicities).try_into().unwrap(),
+                table_entries: comm_array(&lookup_polys.table_entries).try_into().unwrap(),
+                lookup_requests: comm_array(&lookup_polys.lookup_requests).try_into().unwrap(),
+                selectors: comm_array(&lookup_polys.selectors).try_into().unwrap(),
+            }
+        };
+
+        let lookup_omega_evaluations = {};
+        let lookup_zeta_omega_evaluations = {};
+
+        LookupProof {
+            lookup_commitments,
+            lookup_zeta_evaluations,
+            lookup_zeta_omega_evaluations,
+        }
+    }
+
     KeccakProof {
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
         opening_proof,
+        lookup_proof,
     }
 }
 

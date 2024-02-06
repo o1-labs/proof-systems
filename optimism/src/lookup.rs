@@ -4,10 +4,12 @@ use kimchi::{
         constants::{RATE_IN_BYTES, ROUNDS},
         Keccak, RC,
     },
+    curve::KimchiCurve,
     o1_utils::Two,
 };
+use poly_commitment::{OpenProof, PolyComm};
 
-use crate::keccak::witness::pad_blocks;
+use crate::keccak::{lookups::KeccakLookupColumns, witness::pad_blocks};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Sign {
@@ -33,7 +35,7 @@ pub enum LookupTables {
     ResetLookup = 4,
     // 24-row table with all possible values for round and their round constant in expanded form (in big endian)
     RoundConstantsLookup = 5,
-    // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    // All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     PadLookup = 6,
     // All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
     ByteLookup = 7,
@@ -135,12 +137,12 @@ pub struct LookupTable<F> {
     _table: Vec<Lookup<F>>,
 }
 
-const _TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
+pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
 impl<F: Field> LookupTable<F> {
     fn _table_range_check_16() -> Self {
         Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
+            _table: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| Lookup {
                     mode: LookupMode::Write,
                     magnitude: F::one(),
@@ -166,7 +168,7 @@ impl<F: Field> LookupTable<F> {
 
     fn _table_sparse() -> Self {
         Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
+            _table: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| Lookup {
                     mode: LookupMode::Write,
                     magnitude: F::one(),
@@ -181,7 +183,7 @@ impl<F: Field> LookupTable<F> {
 
     fn _table_reset() -> Self {
         Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
+            _table: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| Lookup {
                     mode: LookupMode::Write,
                     magnitude: F::one(),
@@ -237,4 +239,41 @@ impl<F: Field> LookupTable<F> {
                 .collect(),
         }
     }
+}
+
+/// Represents the proof of the MV lookup argument
+/// It is parametrized by the type `T` which can be either:
+/// - Polycomm<G: KimchiCurve> for the commitments
+/// - (F, F) for the evaluations at zeta and zeta omega.
+#[derive(Debug)]
+pub struct MVLookupProof<T> {
+    /// Multiplicities of each table entry.
+    #[allow(dead_code)]
+    pub(crate) multiplicities: Vec<T>,
+    /// Each table entry.
+    #[allow(dead_code)]
+    pub(crate) table_entries: Vec<T>,
+    /// All lookup requests per row.
+    #[allow(dead_code)]
+    pub(crate) lookup_requests: Vec<T>,
+    /// Selectors of each lookup per row.
+    #[allow(dead_code)]
+    pub(crate) selectors: Vec<T>,
+    /// Accumulated sum of both sides of the equations of sums.
+    #[allow(dead_code)]
+    pub(crate) sum: T,
+}
+
+/// Represents a proof of the system
+/// It is parametrized by the type `T` which can be either:
+/// - Polycomm<G: KimchiCurve> for the commitments
+/// - (F, F) for the evaluations at zeta and zeta omega.
+#[derive(Debug)]
+pub struct LookupProof<G: KimchiCurve> {
+    /// Polynomial commitments to the witness columns
+    lookup_commitments: MVLookupProof<PolyComm<G>>,
+    /// Evaluations of witness polynomials at current rows on random evaluation point `zeta`
+    lookup_zeta_evaluations: MVLookupProof<G::ScalarField>,
+    /// Evaluations of witness polynomials at next rows (where `* omega` comes from) on random evaluation point `zeta`
+    lookup_zeta_omega_evaluations: MVLookupProof<G::ScalarField>,
 }

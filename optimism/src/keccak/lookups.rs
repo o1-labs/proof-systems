@@ -5,12 +5,41 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, E,
     },
-    lookup::{Lookup, LookupTables, Lookups},
+    lookup::{Lookup, LookupTables, Lookups, TWO_TO_16_UPPERBOUND},
+    DOMAIN_SIZE,
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
-    DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
+    DIM, QUARTERS, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
+
+/// When tables have more entries than circuit rows,
+/// they are split into multiple tables (7 of size 2^15)
+// FIXME: This does not account for syscalls nor step ram lookups
+pub(crate) const NUM_KECCAK_SUBTABLES: u32 =
+    (TWO_TO_16_UPPERBOUND * 3 + (ROUNDS as u32) + (RATE_IN_BYTES as u32) + 1 << 8)
+        / (DOMAIN_SIZE as u32)
+        + 1;
+
+/// The number of lookups per row in the Keccak circuit
+// FIXME: This does not account for syscalls nor step ram lookups
+pub(crate) const NUM_KECCAK_LOOKUPS_PER_ROW: u64 = 2342;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct KeccakLookupColumns<T> {
+    /// Multiplicities of each table entry.
+    #[allow(dead_code)]
+    pub multiplicities: [T; NUM_KECCAK_SUBTABLES as usize],
+    /// Each table entry.
+    #[allow(dead_code)]
+    pub table_entries: [T; NUM_KECCAK_SUBTABLES as usize],
+    /// All lookup requests per row.
+    #[allow(dead_code)]
+    pub lookup_requests: [T; NUM_KECCAK_LOOKUPS_PER_ROW as usize],
+    /// Selectors of each lookup per row.
+    #[allow(dead_code)]
+    pub selectors: [T; NUM_KECCAK_LOOKUPS_PER_ROW as usize],
+}
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
