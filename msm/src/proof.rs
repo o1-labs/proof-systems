@@ -17,6 +17,10 @@ pub struct Witness<G: KimchiCurve> {
     pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
 }
 
+// This should be used only for testing purposes.
+// It is not only in the test API because it is used at the moment in the
+// main.rs. It should be moved to the test API when main.rs is replaced with
+// real production code.
 #[allow(dead_code)]
 impl<G: KimchiCurve> Witness<G> {
     pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
