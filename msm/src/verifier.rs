@@ -9,8 +9,6 @@ use poly_commitment::{
 };
 use rand::thread_rng;
 
-use crate::DOMAIN_SIZE;
-
 use crate::proof::Proof;
 
 pub fn verify<
@@ -87,8 +85,13 @@ pub fn verify<
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
 
-    let combined_inner_product =
-        combined_inner_product(&[zeta, zeta_omega], &v, &u, es.as_slice(), DOMAIN_SIZE);
+    let combined_inner_product = combined_inner_product(
+        &[zeta, zeta_omega],
+        &v,
+        &u,
+        es.as_slice(),
+        domain.d1.size as usize,
+    );
 
     let batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,

@@ -16,10 +16,10 @@ pub fn main() {
     // Trusted setup toxic waste
     let x = Fp::rand(&mut rand::rngs::OsRng);
 
-    let mut srs: PairingSRS<BN254> = PairingSRS::create(x, DOMAIN_SIZE);
+    let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
-    let witness = Witness::random();
+    let witness = Witness::random(domain);
 
     println!("Generating the proof");
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);

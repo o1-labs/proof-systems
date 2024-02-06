@@ -1,9 +1,7 @@
 use ark_ff::UniformRand;
-use kimchi::curve::KimchiCurve;
+use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::{prelude::*, thread_rng};
-
-use crate::DOMAIN_SIZE;
 
 /// List all columns of the circuit.
 /// It is parametrized by a type `T` which can be either:
@@ -21,14 +19,14 @@ pub struct Witness<G: KimchiCurve> {
 
 #[allow(dead_code)]
 impl<G: KimchiCurve> Witness<G> {
-    pub fn random() -> Self {
+    pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
         let mut rng = thread_rng();
         let random_n = rng.gen_range(1..1000);
         Witness {
             evaluations: WitnessColumns {
                 x: (0..random_n)
                     .map(|_| {
-                        (0..DOMAIN_SIZE)
+                        (0..domain.d1.size as usize)
                             .map(|_| G::ScalarField::rand(&mut rng))
                             .collect::<Vec<_>>()
                     })
