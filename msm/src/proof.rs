@@ -4,6 +4,8 @@ use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::{prelude::*, thread_rng};
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
+use crate::mvlookup::{LookupProof, LookupWitness};
+
 /// List all columns of the circuit.
 /// It is parametrized by a type `T` which can be either:
 /// - `Vec<G::ScalarField>` for the evaluations
@@ -83,7 +85,7 @@ where
 #[derive(Debug)]
 pub struct Witness<G: KimchiCurve> {
     pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
-    // TODO: add MVLookup
+    pub(crate) mvlookups: Vec<LookupWitness<G::ScalarField>>,
 }
 
 // This should be used only for testing purposes.
@@ -105,14 +107,20 @@ impl<G: KimchiCurve> Witness<G> {
                     })
                     .collect::<Vec<_>>(),
             },
+            mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
+    // Columns/PlonK argument
     pub(crate) commitments: WitnessColumns<PolyComm<G>>,
     pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
     pub(crate) zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
+    // MVLookup argument
+    pub(crate) mvlookup_commitments: LookupProof<PolyComm<G>>,
+    pub(crate) mvlookup_zeta_evaluations: LookupProof<G::ScalarField>,
+    pub(crate) mvlookup_zeta_omega_evaluations: LookupProof<G::ScalarField>,
     pub(crate) opening_proof: OpeningProof,
 }
