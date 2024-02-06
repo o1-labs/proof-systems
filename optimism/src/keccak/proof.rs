@@ -1,7 +1,7 @@
 //! This module contains the proof system for the Keccak circuit
 
 use crate::{
-    keccak::column::KeccakWitness,
+    keccak::{column::KeccakWitness, lookups::NUM_KECCAK_SUBTABLES},
     lookup::{LookupProof, LookupTable, MVLookupProof},
     DOMAIN_SIZE,
 };
@@ -53,13 +53,7 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
                 }),
             },
             lookups: KeccakLookupColumns {
-                multiplicities: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                table_entries: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                lookup_requests: std::array::from_fn(|_| {
+                lookup_terms: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
                 selectors: std::array::from_fn(|_| {
@@ -260,18 +254,40 @@ where
     // MV Lookups proof
     let lookup_proof = {
         // This is t(omega_i) in the paper
-        let table_evaluations = vec![
-            LookupTable::table_byte(),
-            LookupTable::table_range_check_16(),
-            LookupTable::table_sparse(),
-            LookupTable::table_reset(),
-            LookupTable::table_round_constants(),
-            LookupTable::table_pad(),
-        ]
-        .iter()
-        .flat_map(|table| table.field_terms(challenges.joint_combiner.unwrap()))
-        .collect::<Vec<_>>();
-        assert_eq!(table_evaluations.len() as u32, NUM_KECCAK_ENTRIES);
+        let table_terms = {
+            let evals = vec![
+                LookupTable::table_byte(),
+                LookupTable::table_range_check_16(),
+                LookupTable::table_sparse(),
+                LookupTable::table_reset(),
+                LookupTable::table_round_constants(),
+                LookupTable::table_pad(),
+            ]
+            .iter()
+            .flat_map(|table| table.field_terms(challenges.joint_combiner.unwrap()))
+            .collect::<Vec<_>>();
+            assert_eq!(evals.len() as u32, NUM_KECCAK_ENTRIES);
+            // Fill in dummy values until reaching a multiple of the domain size
+            let mut split_evals = evals
+                .chunks(DOMAIN_SIZE)
+                .map(|x| x.to_vec())
+                .collect::<Vec<_>>();
+            assert_eq!(split_evals.len() as u32, NUM_KECCAK_SUBTABLES);
+            let last_idx = split_evals.len() - 1;
+            split_evals[last_idx].extend(
+                std::iter::repeat(G::ScalarField::zero())
+                    .take(DOMAIN_SIZE - split_evals[last_idx].len()),
+            );
+            assert_eq!(
+                split_evals[last_idx].len(),
+                DOMAIN_SIZE,
+                "Last subtable is not full"
+            );
+            split_evals
+        };
+
+        // This is m(omega^i) in the paper
+        let multiplicities = {};
 
         let lookup_polys = {
             let eval_col = |evals: Vec<G::ScalarField>| {
@@ -287,10 +303,10 @@ where
                     .collect::<Vec<_>>()
             };
             MVLookupProof {
-                multiplicities: eval_array_col(&lookups.multiplicities).try_into().unwrap(),
-                table_terms: eval_array_col(&lookups.table_terms).try_into().unwrap(),
+                multiplicities: eval_array_col(&multiplicities).try_into().unwrap(),
+                table_terms: eval_array_col(&table_terms).try_into().unwrap(),
                 lookup_terms: eval_array_col(&lookups.lookup_terms).try_into().unwrap(),
-                selectors: eval_array_col(&lookups.table_entries).try_into().unwrap(),
+                selectors: eval_array_col(&lookups.selectors).try_into().unwrap(),
                 sum: {},
             }
         };
@@ -459,13 +475,7 @@ fn test_keccak_prover() {
                 }),
             },
             lookups: KeccakLookupColumns {
-                multiplicities: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                table_entries: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                lookup_requests: std::array::from_fn(|_| {
+                lookup_terms: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
                 selectors: std::array::from_fn(|_| {
@@ -482,9 +492,11 @@ fn test_keccak_prover() {
     let mut srs = PairingSRS::create(x, DOMAIN_SIZE);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
+    // TODO: include challenges
     let proof = prove::<_, PairingProof<BN254Parameters>, BaseSponge, ScalarSponge>(
         domain,
         &srs,
+        challenges,
         proof_inputs,
     );
 

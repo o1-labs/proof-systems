@@ -29,15 +29,9 @@ pub(crate) const NUM_KECCAK_LOOKUPS_PER_ROW: u64 = 2342;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KeccakLookupColumns<T> {
-    /// Multiplicities of each table entry.
-    #[allow(dead_code)]
-    pub multiplicities: [T; NUM_KECCAK_SUBTABLES as usize],
-    /// Each table entry.
-    #[allow(dead_code)]
-    pub table_entries: [T; NUM_KECCAK_SUBTABLES as usize],
     /// All lookup requests per row.
     #[allow(dead_code)]
-    pub lookup_requests: [T; NUM_KECCAK_LOOKUPS_PER_ROW as usize],
+    pub lookup_terms: [T; NUM_KECCAK_LOOKUPS_PER_ROW as usize],
     /// Selectors of each lookup per row.
     #[allow(dead_code)]
     pub selectors: [T; NUM_KECCAK_LOOKUPS_PER_ROW as usize],
