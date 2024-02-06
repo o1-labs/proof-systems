@@ -1,8 +1,8 @@
 use ark_ff::UniformRand;
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
-use poly_commitment::{commitment::PolyComm, OpenProof, SRS as _};
+use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::{prelude::*, thread_rng};
+use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
 /// List all columns of the circuit.
 /// It is parametrized by a type `T` which can be either:
@@ -13,40 +13,77 @@ pub struct WitnessColumns<T> {
     pub x: Vec<T>,
 }
 
+impl<'lt, G> IntoIterator for &'lt WitnessColumns<G> {
+    type Item = &'lt G;
+    type IntoIter = std::vec::IntoIter<&'lt G>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let n = self.x.len();
+        let mut iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(&self.x);
+        iter_contents.into_iter()
+    }
+}
+
+impl<G> IntoParallelIterator for WitnessColumns<G>
+where
+    Vec<G>: IntoParallelIterator,
+{
+    type Iter = <Vec<G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let n = self.x.len();
+        let mut iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(self.x);
+        iter_contents.into_par_iter()
+    }
+}
+
+impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for WitnessColumns<G> {
+    fn from_par_iter<I>(par_iter: I) -> Self
+    where
+        I: IntoParallelIterator<Item = G>,
+    {
+        let iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
+        WitnessColumns { x: iter_contents }
+    }
+}
+
+impl<'data, G> IntoParallelIterator for &'data WitnessColumns<G>
+where
+    Vec<&'data G>: IntoParallelIterator,
+{
+    type Iter = <Vec<&'data G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<&'data G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let n = self.x.len();
+        let mut iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(self.x.iter());
+        iter_contents.into_par_iter()
+    }
+}
+
+impl<'data, G> IntoParallelIterator for &'data mut WitnessColumns<G>
+where
+    Vec<&'data mut G>: IntoParallelIterator,
+{
+    type Iter = <Vec<&'data mut G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<&'data mut G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let n = self.x.len();
+        let mut iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(self.x.iter_mut());
+        iter_contents.into_par_iter()
+    }
+}
+
 #[derive(Debug)]
 pub struct Witness<G: KimchiCurve> {
     pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
     // TODO: add MVLookup
-}
-
-impl<G: KimchiCurve> Witness<G> {
-    /// Interpolate the witness columns into the corresponding polynomials.
-    /// This function makes the addition of new columns easy as
-    /// the prover will get automatically the new polynomials.
-    /// If new columns are added, this function should be updated.
-    pub fn interpolate_columns(
-        self,
-        domain: D<G::ScalarField>,
-    ) -> WitnessColumns<DensePolynomial<G::ScalarField>> {
-        let WitnessColumns { x } = self.evaluations;
-        let eval_col = |evals: Vec<G::ScalarField>| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain)
-                .interpolate()
-        };
-        let x = x.into_iter().map(eval_col).collect::<Vec<_>>();
-        WitnessColumns { x }
-    }
-}
-
-/// Commit to each individual polynomial
-pub fn commit_witness_columns<G: KimchiCurve, OpeningProof: OpenProof<G>>(
-    polynomials: &WitnessColumns<DensePolynomial<G::ScalarField>>,
-    srs: &OpeningProof::SRS,
-) -> WitnessColumns<PolyComm<G>> {
-    let WitnessColumns { x } = polynomials;
-    let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
-    let x = x.iter().map(comm).collect::<Vec<_>>();
-    WitnessColumns { x }
 }
 
 // This should be used only for testing purposes.
