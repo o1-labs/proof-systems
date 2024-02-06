@@ -19,20 +19,15 @@ pub struct Witness<G: KimchiCurve> {
     // TODO: add MVLookup
 }
 
-pub(crate) trait Into<G: KimchiCurve> {
-    type Output;
-
-    fn into(self, domain: D<G::ScalarField>) -> Self::Output;
-}
-
-/// Interpolate the witness columns into the corresponding polynomials.
-/// The implementation of this trait makes the addition of new columns easy as
-/// the prover will get automatically the new polynomials.
-/// If new columns are added, this trait should be updated.
-impl<G: KimchiCurve> Into<G> for Witness<G> {
-    type Output = WitnessColumns<DensePolynomial<G::ScalarField>>;
-
-    fn into(self, domain: D<G::ScalarField>) -> WitnessColumns<DensePolynomial<G::ScalarField>> {
+impl<G: KimchiCurve> Witness<G> {
+    /// Interpolate the witness columns into the corresponding polynomials.
+    /// This function makes the addition of new columns easy as
+    /// the prover will get automatically the new polynomials.
+    /// If new columns are added, this function should be updated.
+    pub fn interpolate_columns(
+        self,
+        domain: D<G::ScalarField>,
+    ) -> WitnessColumns<DensePolynomial<G::ScalarField>> {
         let WitnessColumns { x } = self.evaluations;
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain)
