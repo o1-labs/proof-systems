@@ -105,6 +105,9 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
 <span class="kw">use </span>kimchi::{curve::KimchiCurve, groupmap::GroupMap};
@@ -115,8 +118,6 @@
     OpenProof,
 };
 <span class="kw">use </span>rand::thread_rng;
-
-<span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 
 <span class="kw">use </span><span class="kw">crate</span>::proof::Proof;
 
@@ -194,8 +195,13 @@
     <span class="kw">let </span>u_chal = fr_sponge.challenge();
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
-    <span class="kw">let </span>combined_inner_product =
-        combined_inner_product(<span class="kw-2">&amp;</span>[zeta, zeta_omega], <span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice(), DOMAIN_SIZE);
+    <span class="kw">let </span>combined_inner_product = combined_inner_product(
+        <span class="kw-2">&amp;</span>[zeta, zeta_omega],
+        <span class="kw-2">&amp;</span>v,
+        <span class="kw-2">&amp;</span>u,
+        es.as_slice(),
+        domain.d1.size <span class="kw">as </span>usize,
+    );
 
     <span class="kw">let </span>batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,

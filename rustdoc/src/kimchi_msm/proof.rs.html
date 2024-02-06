@@ -45,14 +45,10 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
-<a href="#46" id="46">46</a>
-<a href="#47" id="47">47</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
-<span class="kw">use </span>kimchi::curve::KimchiCurve;
+<span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 <span class="kw">use </span>poly_commitment::{commitment::PolyComm, OpenProof};
 <span class="kw">use </span>rand::{prelude::<span class="kw-2">*</span>, thread_rng};
-
-<span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 
 <span class="doccomment">/// List all columns of the circuit.
 /// It is parametrized by a type `T` which can be either:
@@ -70,14 +66,14 @@
 
 <span class="attr">#[allow(dead_code)]
 </span><span class="kw">impl</span>&lt;G: KimchiCurve&gt; Witness&lt;G&gt; {
-    <span class="kw">pub fn </span>random() -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;G::ScalarField&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
         <span class="kw">let </span>random_n = rng.gen_range(<span class="number">1</span>..<span class="number">1000</span>);
         Witness {
             evaluations: WitnessColumns {
                 x: (<span class="number">0</span>..random_n)
                     .map(|<span class="kw">_</span>| {
-                        (<span class="number">0</span>..DOMAIN_SIZE)
+                        (<span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize)
                             .map(|<span class="kw">_</span>| G::ScalarField::rand(<span class="kw-2">&amp;mut </span>rng))
                             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                     })

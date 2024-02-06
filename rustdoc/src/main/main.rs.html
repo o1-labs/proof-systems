@@ -48,10 +48,10 @@
     <span class="comment">// Trusted setup toxic waste
     </span><span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rand::rngs::OsRng);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, DOMAIN_SIZE);
+    <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
-    <span class="kw">let </span>witness = Witness::random();
+    <span class="kw">let </span>witness = Witness::random(domain);
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
     <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, witness);
