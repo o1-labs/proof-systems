@@ -13,13 +13,15 @@ use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
+/// The number of table entries required by Keccak circuits.
+// FIXME: This does not account for syscalls nor step ram lookups
+pub(crate) const NUM_KECCAK_ENTRIES: u32 =
+    TWO_TO_16_UPPERBOUND * 3 + (ROUNDS as u32) + (RATE_IN_BYTES as u32) + 1 << 8;
+
 /// When tables have more entries than circuit rows,
 /// they are split into multiple tables (7 of size 2^15)
 // FIXME: This does not account for syscalls nor step ram lookups
-pub(crate) const NUM_KECCAK_SUBTABLES: u32 =
-    (TWO_TO_16_UPPERBOUND * 3 + (ROUNDS as u32) + (RATE_IN_BYTES as u32) + 1 << 8)
-        / (DOMAIN_SIZE as u32)
-        + 1;
+pub(crate) const NUM_KECCAK_SUBTABLES: u32 = NUM_KECCAK_ENTRIES / (DOMAIN_SIZE as u32) + 1;
 
 /// The number of lookups per row in the Keccak circuit
 // FIXME: This does not account for syscalls nor step ram lookups

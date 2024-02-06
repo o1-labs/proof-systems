@@ -2,13 +2,15 @@
 
 use crate::{
     keccak::column::KeccakWitness,
-    lookup::{LookupProof, MVLookupProof},
+    lookup::{LookupProof, LookupTable, MVLookupProof},
     DOMAIN_SIZE,
 };
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
-    circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
+    circuits::{domains::EvaluationDomains, expr::Challenges},
+    curve::KimchiCurve,
+    groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -25,7 +27,7 @@ use rayon::iter::{
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
-use super::lookups::KeccakLookupColumns;
+use super::lookups::{KeccakLookupColumns, NUM_KECCAK_ENTRIES};
 
 /// This struct contains the evaluations of the KeccakWitness columns across the whole domain of the circuit
 #[derive(Debug)]
@@ -142,6 +144,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
+    challenges: Challenges<G::ScalarField>,
     inputs: KeccakProofInputs<G>,
 ) -> KeccakProof<G, OpeningProof>
 where
@@ -256,6 +259,20 @@ where
 
     // MV Lookups proof
     let lookup_proof = {
+        // This is t(omega_i) in the paper
+        let table_evaluations = vec![
+            LookupTable::table_byte(),
+            LookupTable::table_range_check_16(),
+            LookupTable::table_sparse(),
+            LookupTable::table_reset(),
+            LookupTable::table_round_constants(),
+            LookupTable::table_pad(),
+        ]
+        .iter()
+        .flat_map(|table| table.field_terms(challenges.joint_combiner.unwrap()))
+        .collect::<Vec<_>>();
+        assert_eq!(table_evaluations.len() as u32, NUM_KECCAK_ENTRIES);
+
         let lookup_polys = {
             let eval_col = |evals: Vec<G::ScalarField>| {
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(

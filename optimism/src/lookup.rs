@@ -36,18 +36,18 @@ pub enum LookupTables {
     KeccakStepLookup = 3,
 
     // Read Tables
-    /// Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup = 4,
+    /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
+    ByteLookup = 4,
     /// Single-column table of all values in the range [0, 2^16)
     RangeCheck16Lookup = 5,
+    /// Single-column table of 2^16 entries with the sparse representation of all values
+    SparseLookup = 6,
     /// Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    ResetLookup = 6,
+    ResetLookup = 7,
     /// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
-    RoundConstantsLookup = 7,
+    RoundConstantsLookup = 8,
     /// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    PadLookup = 8,
-    /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    ByteLookup = 9,
+    PadLookup = 9,
 }
 
 #[derive(Clone, Debug)]
@@ -139,44 +139,42 @@ pub trait Lookups {
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
     /// Table ID corresponding to this table
-    table_id: LookupTables,
+    pub id: LookupTables,
     /// Vector of values inside each entry of the table
-    entries: Vec<Vec<F>>,
+    pub entries: Vec<Vec<F>>,
 }
 
 impl<F: Field> LookupTable<F> {
-    fn table_terms(&self, mixer: F) -> Vec<F> {
+    pub fn field_terms(&self, mixer: F) -> Vec<F> {
         self.entries
             .iter()
             .map(|entry| {
                 entry
                     .iter()
-                    .fold(F::from(self.table_id as u32), |acc, value| {
-                        acc + *value * mixer
-                    })
+                    .fold(F::from(self.id as u32), |acc, value| acc + *value * mixer)
             })
             .collect()
     }
 
-    fn table_range_check_16() -> Self {
+    pub fn table_range_check_16() -> Self {
         Self {
-            table_id: LookupTables::RangeCheck16Lookup,
+            id: LookupTables::RangeCheck16Lookup,
             entries: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| vec![F::from(i)])
                 .collect(),
         }
     }
 
-    fn table_byte() -> Self {
+    pub fn table_byte() -> Self {
         Self {
-            table_id: LookupTables::ByteLookup,
+            id: LookupTables::ByteLookup,
             entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
         }
     }
 
-    fn table_sparse() -> Self {
+    pub fn table_sparse() -> Self {
         Self {
-            table_id: LookupTables::SparseLookup,
+            id: LookupTables::SparseLookup,
             entries: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| {
                     vec![F::from(
@@ -187,9 +185,9 @@ impl<F: Field> LookupTable<F> {
         }
     }
 
-    fn table_reset() -> Self {
+    pub fn table_reset() -> Self {
         Self {
-            table_id: LookupTables::ResetLookup,
+            id: LookupTables::ResetLookup,
             entries: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| {
                     vec![
@@ -201,9 +199,9 @@ impl<F: Field> LookupTable<F> {
         }
     }
 
-    fn table_round_constants() -> Self {
+    pub fn table_round_constants() -> Self {
         Self {
-            table_id: LookupTables::RoundConstantsLookup,
+            id: LookupTables::RoundConstantsLookup,
             entries: (0..=ROUNDS)
                 .map(|i| {
                     vec![
@@ -218,9 +216,9 @@ impl<F: Field> LookupTable<F> {
         }
     }
 
-    fn table_pad() -> Self {
+    pub fn table_pad() -> Self {
         Self {
-            table_id: LookupTables::PadLookup,
+            id: LookupTables::PadLookup,
             entries: (1..=RATE_IN_BYTES)
                 .map(|i| {
                     let suffix = pad_blocks(i);
