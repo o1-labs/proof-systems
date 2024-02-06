@@ -1,6 +1,10 @@
 //! This module contains the proof system for the Keccak circuit
 
-use crate::{keccak::column::KeccakWitness, DOMAIN_SIZE, lookup::LookupProof};
+use crate::{
+    keccak::column::KeccakWitness,
+    lookup::{LookupProof, MVLookupProof},
+    DOMAIN_SIZE,
+};
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
@@ -254,8 +258,10 @@ where
     let lookup_proof = {
         let lookup_polys = {
             let eval_col = |evals: Vec<G::ScalarField>| {
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
-                    .interpolate()
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    evals, domain.d1,
+                )
+                .interpolate()
             };
             let eval_array_col = |evals: &[Vec<G::ScalarField>]| {
                 evals
@@ -263,36 +269,43 @@ where
                     .map(|e| eval_col(e.to_vec()))
                     .collect::<Vec<_>>()
             };
-            KeccakLookupColumns {
+            MVLookupProof {
                 multiplicities: eval_array_col(&lookups.multiplicities).try_into().unwrap(),
                 table_entries: eval_array_col(&lookups.table_entries).try_into().unwrap(),
                 lookup_requests: eval_array_col(&lookups.table_entries).try_into().unwrap(),
                 selectors: eval_array_col(&lookups.table_entries).try_into().unwrap(),
+                sum: {},
             }
         };
 
         let lookup_commitments = {
-            let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
+            let comm =
+                |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
             let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
                 polys.into_par_iter().map(comm).collect::<Vec<_>>()
             };
-            KeccakLookupColumns {
+            MVLookupProof {
                 multiplicities: comm_array(&lookup_polys.multiplicities).try_into().unwrap(),
                 table_entries: comm_array(&lookup_polys.table_entries).try_into().unwrap(),
-                lookup_requests: comm_array(&lookup_polys.lookup_requests).try_into().unwrap(),
+                lookup_requests: comm_array(&lookup_polys.lookup_requests)
+                    .try_into()
+                    .unwrap(),
                 selectors: comm_array(&lookup_polys.selectors).try_into().unwrap(),
+                sum: {},
             }
         };
 
         let lookup_omega_evaluations = {};
         let lookup_zeta_omega_evaluations = {};
 
+        // TODO: Must inlcude not just column commitments (requests, selectors, multiplicities)
+        //       but also table entries, and sum
         LookupProof {
             lookup_commitments,
             lookup_zeta_evaluations,
             lookup_zeta_omega_evaluations,
         }
-    }
+    };
 
     KeccakProof {
         commitments,
@@ -320,6 +333,7 @@ pub fn verify<
         zeta_evaluations,
         zeta_omega_evaluations,
         opening_proof,
+        lookup_proof,
     } = proof;
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
@@ -426,6 +440,20 @@ fn test_keccak_prover() {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
                 next: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+            },
+            lookups: KeccakLookupColumns {
+                multiplicities: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                table_entries: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                lookup_requests: std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                }),
+                selectors: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
             },

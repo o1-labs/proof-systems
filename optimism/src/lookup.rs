@@ -271,9 +271,9 @@ pub struct MVLookupProof<T> {
 #[derive(Debug)]
 pub struct LookupProof<G: KimchiCurve> {
     /// Polynomial commitments to the witness columns
-    lookup_commitments: MVLookupProof<PolyComm<G>>,
+    pub lookup_commitments: MVLookupProof<PolyComm<G>>,
     /// Evaluations of witness polynomials at current rows on random evaluation point `zeta`
-    lookup_zeta_evaluations: MVLookupProof<G::ScalarField>,
+    pub lookup_zeta_evaluations: MVLookupProof<G::ScalarField>,
     /// Evaluations of witness polynomials at next rows (where `* omega` comes from) on random evaluation point `zeta`
-    lookup_zeta_omega_evaluations: MVLookupProof<G::ScalarField>,
+    pub lookup_zeta_omega_evaluations: MVLookupProof<G::ScalarField>,
 }
