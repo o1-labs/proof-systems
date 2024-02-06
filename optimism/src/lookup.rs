@@ -23,30 +23,30 @@ pub enum LookupMode {
 
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTables {
-    MemoryLookup,
-    RegisterLookup,
+    MemoryLookup = 0,
+    RegisterLookup = 1,
     // Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup,
+    SparseLookup = 2,
     // Single-column table of all values in the range [0, 2^16)
-    RangeCheck16Lookup,
+    RangeCheck16Lookup = 3,
     // Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    ResetLookup,
+    ResetLookup = 4,
     // 24-row table with all possible values for round and their round constant in expanded form (in big endian)
-    RoundConstantsLookup,
+    RoundConstantsLookup = 5,
     // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    PadLookup,
+    PadLookup = 6,
     // All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    ByteLookup,
+    ByteLookup = 7,
     // Input/Output of Keccak steps
-    KeccakStepLookup,
+    KeccakStepLookup = 8,
     // Syscalls communication channel
-    SyscallLookup,
+    SyscallLookup = 9,
 }
 
 #[derive(Clone, Debug)]
 pub struct Lookup<T> {
     pub mode: LookupMode,
-    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
+    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.
     pub magnitude: T,
     pub table_id: LookupTables,
     pub value: Vec<T>,
