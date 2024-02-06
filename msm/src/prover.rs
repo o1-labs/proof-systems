@@ -1,4 +1,3 @@
-use crate::proof::Into;
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
@@ -28,7 +27,8 @@ where
     OpeningProof::SRS: Sync,
 {
     // Interpolate all columns on d1, using trait Into.
-    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = Into::into(inputs, domain.d1);
+    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> =
+        inputs.interpolate_columns(domain.d1);
 
     let commitments = {
         let WitnessColumns { x } = &polys;
