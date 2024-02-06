@@ -1,4 +1,5 @@
 use ark_ff::UniformRand;
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::{prelude::*, thread_rng};
@@ -15,6 +16,31 @@ pub struct WitnessColumns<T> {
 #[derive(Debug)]
 pub struct Witness<G: KimchiCurve> {
     pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
+    // TODO: add MVLookup
+}
+
+pub(crate) trait Into<G: KimchiCurve> {
+    type Output;
+
+    fn into(self, domain: D<G::ScalarField>) -> Self::Output;
+}
+
+/// Interpolate the witness columns into the corresponding polynomials.
+/// The implementation of this trait makes the addition of new columns easy as
+/// the prover will get automatically the new polynomials.
+/// If new columns are added, this trait should be updated.
+impl<G: KimchiCurve> Into<G> for Witness<G> {
+    type Output = WitnessColumns<DensePolynomial<G::ScalarField>>;
+
+    fn into(self, domain: D<G::ScalarField>) -> WitnessColumns<DensePolynomial<G::ScalarField>> {
+        let WitnessColumns { x } = self.evaluations;
+        let eval_col = |evals: Vec<G::ScalarField>| {
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain)
+                .interpolate()
+        };
+        let x = x.into_iter().map(eval_col).collect::<Vec<_>>();
+        WitnessColumns { x }
+    }
 }
 
 // This should be used only for testing purposes.
