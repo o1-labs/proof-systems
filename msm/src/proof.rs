@@ -1,7 +1,7 @@
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
-use poly_commitment::{commitment::PolyComm, OpenProof};
+use poly_commitment::{commitment::PolyComm, OpenProof, SRS as _};
 use rand::{prelude::*, thread_rng};
 
 /// List all columns of the circuit.
@@ -36,6 +36,17 @@ impl<G: KimchiCurve> Witness<G> {
         let x = x.into_iter().map(eval_col).collect::<Vec<_>>();
         WitnessColumns { x }
     }
+}
+
+/// Commit to each individual polynomial
+pub fn commit_witness_columns<G: KimchiCurve, OpeningProof: OpenProof<G>>(
+    polynomials: &WitnessColumns<DensePolynomial<G::ScalarField>>,
+    srs: &OpeningProof::SRS,
+) -> WitnessColumns<PolyComm<G>> {
+    let WitnessColumns { x } = polynomials;
+    let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
+    let x = x.iter().map(comm).collect::<Vec<_>>();
+    WitnessColumns { x }
 }
 
 // This should be used only for testing purposes.

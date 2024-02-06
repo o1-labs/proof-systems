@@ -1,3 +1,4 @@
+use crate::proof::commit_witness_columns;
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
@@ -8,7 +9,7 @@ use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
-    OpenProof, SRS as _,
+    OpenProof,
 };
 
 use crate::proof::{Proof, Witness, WitnessColumns};
@@ -30,12 +31,7 @@ where
     let polys: WitnessColumns<DensePolynomial<G::ScalarField>> =
         inputs.interpolate_columns(domain.d1);
 
-    let commitments = {
-        let WitnessColumns { x } = &polys;
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
-        let x = x.iter().map(comm).collect::<Vec<_>>();
-        WitnessColumns { x }
-    };
+    let commitments = commit_witness_columns::<G, OpeningProof>(&polys, srs);
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     for comm in commitments.x.iter() {
