@@ -1,5 +1,6 @@
+use crate::proof::Into;
 use ark_ff::Zero;
-use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
+use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::plonk_sponge::FrSponge;
 use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
@@ -26,17 +27,8 @@ pub fn prove<
 where
     OpeningProof::SRS: Sync,
 {
-    let Witness { evaluations } = inputs;
-    // TODO: generalize this by using a trait on the column type
-    let polys = {
-        let WitnessColumns { x } = evaluations;
-        let eval_col = |evals: Vec<G::ScalarField>| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
-                .interpolate()
-        };
-        let x = x.into_iter().map(eval_col).collect::<Vec<_>>();
-        WitnessColumns { x }
-    };
+    // Interpolate all columns on d1, using trait Into.
+    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = Into::into(inputs, domain.d1);
 
     let commitments = {
         let WitnessColumns { x } = &polys;
