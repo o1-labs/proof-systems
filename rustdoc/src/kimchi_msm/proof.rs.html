@@ -70,11 +70,59 @@
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 <span class="kw">use </span>poly_commitment::{commitment::PolyComm, OpenProof};
 <span class="kw">use </span>rand::{prelude::<span class="kw-2">*</span>, thread_rng};
+<span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
 <span class="doccomment">/// List all columns of the circuit.
 /// It is parametrized by a type `T` which can be either:
@@ -85,30 +133,78 @@
     <span class="kw">pub </span>x: Vec&lt;T&gt;,
 }
 
+<span class="kw">impl</span>&lt;<span class="lifetime">'lt</span>, G&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'lt </span>WitnessColumns&lt;G&gt; {
+    <span class="kw">type </span>Item = <span class="kw-2">&amp;</span><span class="lifetime">'lt </span>G;
+    <span class="kw">type </span>IntoIter = std::vec::IntoIter&lt;<span class="kw-2">&amp;</span><span class="lifetime">'lt </span>G&gt;;
+
+    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+        <span class="kw">let </span>n = <span class="self">self</span>.x.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.x);
+        iter_contents.into_iter()
+    }
+}
+
+<span class="kw">impl</span>&lt;G&gt; IntoParallelIterator <span class="kw">for </span>WitnessColumns&lt;G&gt;
+<span class="kw">where
+    </span>Vec&lt;G&gt;: IntoParallelIterator,
+{
+    <span class="kw">type </span>Iter = &lt;Vec&lt;G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Iter;
+    <span class="kw">type </span>Item = &lt;Vec&lt;G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Item;
+
+    <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
+        <span class="kw">let </span>n = <span class="self">self</span>.x.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(<span class="self">self</span>.x);
+        iter_contents.into_par_iter()
+    }
+}
+
+<span class="kw">impl</span>&lt;G: Send + std::fmt::Debug&gt; FromParallelIterator&lt;G&gt; <span class="kw">for </span>WitnessColumns&lt;G&gt; {
+    <span class="kw">fn </span>from_par_iter&lt;I&gt;(par_iter: I) -&gt; <span class="self">Self
+    </span><span class="kw">where
+        </span>I: IntoParallelIterator&lt;Item = G&gt;,
+    {
+        <span class="kw">let </span>iter_contents = par_iter.into_par_iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        WitnessColumns { x: iter_contents }
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">'data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'data </span>WitnessColumns&lt;G&gt;
+<span class="kw">where
+    </span>Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span>G&gt;: IntoParallelIterator,
+{
+    <span class="kw">type </span>Iter = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Iter;
+    <span class="kw">type </span>Item = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Item;
+
+    <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
+        <span class="kw">let </span>n = <span class="self">self</span>.x.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(<span class="self">self</span>.x.iter());
+        iter_contents.into_par_iter()
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">'data</span>, G&gt; IntoParallelIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'data </span><span class="kw-2">mut </span>WitnessColumns&lt;G&gt;
+<span class="kw">where
+    </span>Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span><span class="kw-2">mut </span>G&gt;: IntoParallelIterator,
+{
+    <span class="kw">type </span>Iter = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span><span class="kw-2">mut </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Iter;
+    <span class="kw">type </span>Item = &lt;Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'data </span><span class="kw-2">mut </span>G&gt; <span class="kw">as </span>IntoParallelIterator&gt;::Item;
+
+    <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
+        <span class="kw">let </span>n = <span class="self">self</span>.x.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(n);
+        iter_contents.extend(<span class="self">self</span>.x.iter_mut());
+        iter_contents.into_par_iter()
+    }
+}
+
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>Witness&lt;G: KimchiCurve&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) evaluations: WitnessColumns&lt;Vec&lt;G::ScalarField&gt;&gt;,
     <span class="comment">// TODO: add MVLookup
 </span>}
-
-<span class="kw">impl</span>&lt;G: KimchiCurve&gt; Witness&lt;G&gt; {
-    <span class="doccomment">/// Interpolate the witness columns into the corresponding polynomials.
-    /// This function makes the addition of new columns easy as
-    /// the prover will get automatically the new polynomials.
-    /// If new columns are added, this function should be updated.
-    </span><span class="kw">pub fn </span>interpolate_columns(
-        <span class="self">self</span>,
-        domain: D&lt;G::ScalarField&gt;,
-    ) -&gt; WitnessColumns&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; {
-        <span class="kw">let </span>WitnessColumns { x } = <span class="self">self</span>.evaluations;
-        <span class="kw">let </span>eval_col = |evals: Vec&lt;G::ScalarField&gt;| {
-            Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(evals, domain)
-                .interpolate()
-        };
-        <span class="kw">let </span>x = x.into_iter().map(eval_col).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-        WitnessColumns { x }
-    }
-}
 
 <span class="comment">// This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the
