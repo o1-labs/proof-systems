@@ -97,17 +97,6 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
 <span class="kw">use </span>kimchi::{curve::KimchiCurve, groupmap::GroupMap};
@@ -140,9 +129,9 @@
 
     <span class="comment">// -- Absorbing the commitments
     </span><span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    <span class="kw">for </span>comm <span class="kw">in </span>commitments.x.iter() {
-        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
-    }
+    commitments
+        .into_iter()
+        .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
     <span class="comment">// -- Finish absorbing the commitments
 
     // -- Preparing for opening proof verification
@@ -157,21 +146,14 @@
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
 
     <span class="kw">let </span>es: Vec&lt;<span class="kw">_</span>&gt; = zeta_evaluations
-        .x
-        .iter()
-        .zip(zeta_omega_evaluations.x.iter())
+        .into_iter()
+        .zip(zeta_omega_evaluations)
         .map(|(zeta, zeta_omega)| (<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]], <span class="prelude-val">None</span>))
         .collect();
 
     <span class="kw">let </span>evaluations: Vec&lt;<span class="kw">_</span>&gt; = commitments
-        .x
-        .iter()
-        .zip(
-            zeta_evaluations
-                .x
-                .iter()
-                .zip(zeta_omega_evaluations.x.iter()),
-        )
+        .into_iter()
+        .zip(zeta_evaluations.into_iter().zip(zeta_omega_evaluations))
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
             commitment: commitment.clone(),
             evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_eval], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega_eval]],
@@ -180,11 +162,7 @@
         .collect();
 
     <span class="comment">// -- Absorb all evaluations
-    </span><span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
-        .x
-        .iter()
-        .zip(zeta_omega_evaluations.x.iter())
-    {
+    </span><span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations.into_iter().zip(zeta_omega_evaluations) {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
