@@ -1,11 +1,13 @@
 //! This module contains the proof system for the Keccak circuit
 
+use std::collections::HashMap;
+
 use crate::{
     keccak::{column::KeccakWitness, lookups::NUM_KECCAK_SUBTABLES},
     lookup::{LookupProof, LookupTable, MVLookupProof},
     DOMAIN_SIZE,
 };
-use ark_ff::Zero;
+use ark_ff::{One, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
     circuits::{domains::EvaluationDomains, expr::Challenges},
@@ -287,7 +289,31 @@ where
         };
 
         // This is m(omega^i) in the paper
-        let multiplicities = {};
+        let multiplicities = {
+            let mut field_to_idx = HashMap::new();
+            // Initialize hashmap with the field elements in the tables
+            for (i, subtable) in table_terms.iter().enumerate() {
+                for entry in subtable {
+                    field_to_idx.insert(entry, i);
+                }
+            }
+
+            // Initialize counter same shape as the tables
+            let mut counter = vec![
+                vec![G::ScalarField::zero(); DOMAIN_SIZE as usize];
+                NUM_KECCAK_SUBTABLES as usize
+            ];
+
+            // Increment multiplicities for each field element being looked up
+            for column in &lookups.lookup_terms {
+                for lookup in column {
+                    if let Some(&index) = field_to_idx.get(lookup) {
+                        counter[index][field_to_idx[lookup]] += G::ScalarField::one();
+                    }
+                }
+            }
+            counter
+        };
 
         let lookup_polys = {
             let eval_col = |evals: Vec<G::ScalarField>| {

@@ -16,7 +16,7 @@ use kimchi::circuits::polynomials::keccak::constants::{
 /// The number of table entries required by Keccak circuits.
 // FIXME: This does not account for syscalls nor step ram lookups
 pub(crate) const NUM_KECCAK_ENTRIES: u32 =
-    TWO_TO_16_UPPERBOUND * 3 + (ROUNDS as u32) + (RATE_IN_BYTES as u32) + 1 << 8;
+    TWO_TO_16_UPPERBOUND * 3 + (ROUNDS as u32) + (RATE_IN_BYTES as u32) + (1 << 8);
 
 /// When tables have more entries than circuit rows,
 /// they are split into multiple tables (7 of size 2^15)
