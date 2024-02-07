@@ -1,4 +1,5 @@
 use ark_ff::Zero;
+use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::plonk_sponge::FrSponge;
@@ -8,8 +9,10 @@ use mina_poseidon::FqSponge;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
-    OpenProof, SRS as _,
+    OpenProof, SRS,
 };
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 
 use crate::proof::{Proof, Witness, WitnessColumns};
 
@@ -27,20 +30,32 @@ where
     OpeningProof::SRS: Sync,
 {
     // Interpolate all columns on d1, using trait Into.
-    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> =
-        inputs.interpolate_columns(domain.d1);
+    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
+        let eval_col = |evals: Vec<G::ScalarField>| {
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
+                .interpolate()
+        };
+        inputs
+            .evaluations
+            .into_par_iter()
+            .map(eval_col)
+            .collect::<WitnessColumns<_>>()
+    };
 
-    let commitments = {
-        let WitnessColumns { x } = &polys;
+    let commitments: WitnessColumns<PolyComm<G>> = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
-        let x = x.iter().map(comm).collect::<Vec<_>>();
-        WitnessColumns { x }
+        (&polys)
+            .into_par_iter()
+            .map(comm)
+            .collect::<WitnessColumns<_>>()
     };
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.x.iter() {
-        absorb_commitment(&mut fq_sponge, comm)
-    }
+
+    // Do not use parallelism
+    commitments
+        .into_iter()
+        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     // TODO: add quotient polynomial (based on constraints and expresion framework)
 

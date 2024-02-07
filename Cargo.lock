@@ -1273,6 +1273,7 @@ dependencies = [
  "o1-utils",
  "poly-commitment",
  "rand",
+ "rayon",
  "rmp-serde",
  "serde",
  "serde_json",

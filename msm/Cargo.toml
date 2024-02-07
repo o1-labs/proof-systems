@@ -35,3 +35,4 @@ ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-ff = { version = "0.3.0", features = [ "parallel" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 rand = "0.8.5"
+rayon = "1.5.0"
