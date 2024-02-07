@@ -30,9 +30,9 @@ pub fn verify<
 
     // -- Absorbing the commitments
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.x.iter() {
-        absorb_commitment(&mut fq_sponge, comm)
-    }
+    commitments
+        .into_iter()
+        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
     // -- Finish absorbing the commitments
 
     // -- Preparing for opening proof verification
@@ -47,21 +47,14 @@ pub fn verify<
     fr_sponge.absorb(&fq_sponge.digest());
 
     let es: Vec<_> = zeta_evaluations
-        .x
-        .iter()
-        .zip(zeta_omega_evaluations.x.iter())
+        .into_iter()
+        .zip(zeta_omega_evaluations)
         .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
         .collect();
 
     let evaluations: Vec<_> = commitments
-        .x
-        .iter()
-        .zip(
-            zeta_evaluations
-                .x
-                .iter()
-                .zip(zeta_omega_evaluations.x.iter()),
-        )
+        .into_iter()
+        .zip(zeta_evaluations.into_iter().zip(zeta_omega_evaluations))
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
             commitment: commitment.clone(),
             evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
@@ -70,11 +63,7 @@ pub fn verify<
         .collect();
 
     // -- Absorb all evaluations
-    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
-        .x
-        .iter()
-        .zip(zeta_omega_evaluations.x.iter())
-    {
+    for (zeta_eval, zeta_omega_eval) in zeta_evaluations.into_iter().zip(zeta_omega_evaluations) {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
