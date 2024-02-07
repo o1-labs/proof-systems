@@ -80,7 +80,7 @@ where
     let group_map = G::Map::setup();
 
     // Gathering all polynomials to use in the opening proof
-    let polynomials: Vec<DensePolynomial<_>> = polys.x.into_iter().collect();
+    let polynomials: Vec<_> = polys.into_iter().collect();
 
     let polynomials: Vec<_> = polynomials
         .iter()
@@ -102,9 +102,8 @@ where
     fr_sponge.absorb(&fq_sponge.digest());
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
-        .x
-        .iter()
-        .zip(zeta_omega_evaluations.x.iter())
+        .into_iter()
+        .zip(zeta_omega_evaluations.into_iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
