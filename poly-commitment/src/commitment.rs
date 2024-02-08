@@ -1042,7 +1042,8 @@ pub mod caml {
 
     #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlPolyComm<CamlG> {
-        pub elems: Vec<CamlG>,
+        pub unshifted: Vec<CamlG>,
+        pub shifted: Option<CamlG>,
     }
 
     // handy conversions
@@ -1054,7 +1055,8 @@ pub mod caml {
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
-                elems: polycomm.elems.into_iter().map(Into::into).collect(),
+                unshifted: polycomm.elems.into_iter().map(Into::into).collect(),
+                shifted: None,
             }
         }
     }
@@ -1066,7 +1068,8 @@ pub mod caml {
     {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
             Self {
-                elems: polycomm.elems.iter().map(Into::into).collect(),
+                unshifted: polycomm.elems.iter().map(Into::into).collect(),
+                shifted: None,
             }
         }
     }
@@ -1076,8 +1079,12 @@ pub mod caml {
         G: AffineCurve + From<CamlG>,
     {
         fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
+            assert!(
+                camlpolycomm.shifted.is_none(),
+                "mina#14628: Shifted commitments are deprecated and must not be used"
+            );
             PolyComm {
-                elems: camlpolycomm.elems.into_iter().map(Into::into).collect(),
+                elems: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -1087,9 +1094,13 @@ pub mod caml {
         G: AffineCurve + From<&'a CamlG> + From<CamlG>,
     {
         fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
+            assert!(
+                camlpolycomm.shifted.is_none(),
+                "mina#14628: Shifted commitments are deprecated and must not be used"
+            );
             PolyComm {
                 //FIXME something with as_ref()
-                elems: camlpolycomm.elems.iter().map(Into::into).collect(),
+                elems: camlpolycomm.unshifted.iter().map(Into::into).collect(),
             }
         }
     }
