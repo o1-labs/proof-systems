@@ -19,10 +19,10 @@ pub enum LookupTableIDs {
     KeccakStepLookup = 3,
 
     // Read Tables
-    /// Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup = 4,
     /// Single-column table of all values in the range [0, 2^16)
-    RangeCheck16Lookup = 5,
+    RangeCheck16Lookup = 4,
+    /// Single-column table of 2^16 entries with the sparse representation of all values
+    SparseLookup = 5,
     /// Dual-column table of all values in the range [0, 2^16) and their sparse representation
     ResetLookup = 6,
     /// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
@@ -141,6 +141,16 @@ impl<F: Field> LookupTable<F> {
     }
 
     #[allow(dead_code)]
+    fn table_range_check_16() -> Self {
+        Self {
+            table_id: LookupTableIDs::RangeCheck16Lookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| vec![F::from(i)])
+                .collect(),
+        }
+    }
+
+    #[allow(dead_code)]
     fn table_sparse() -> Self {
         Self {
             table_id: LookupTableIDs::SparseLookup,
@@ -165,16 +175,6 @@ impl<F: Field> LookupTable<F> {
                         F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
                     ]
                 })
-                .collect(),
-        }
-    }
-
-    #[allow(dead_code)]
-    fn table_range_check_16() -> Self {
-        Self {
-            table_id: LookupTableIDs::RangeCheck16Lookup,
-            entries: (0..TWO_TO_16_UPPERBOUND)
-                .map(|i| vec![F::from(i)])
                 .collect(),
         }
     }
