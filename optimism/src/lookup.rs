@@ -150,16 +150,11 @@ impl<F: Field> LookupTable<F> {
         }
     }
 
-    fn _table_byte() -> Self {
+    #[allow(dead_code)]
+    fn table_byte() -> Self {
         Self {
-            _table: (0..(1 << 8) as u32)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::ByteLookup,
-                    value: vec![F::from(i)],
-                })
-                .collect(),
+            table_id: LookupTableIDs::ByteLookup,
+            entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
         }
     }
 }
