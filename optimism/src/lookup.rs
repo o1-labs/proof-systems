@@ -1,10 +1,6 @@
 use ark_ff::{Field, One};
 
-#[derive(Copy, Clone, Debug)]
-pub enum Sign {
-    Pos,
-    Neg,
-}
+pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LookupMode {
@@ -118,25 +114,38 @@ pub trait Lookups {
     fn lookups(&mut self);
 }
 
-/// A table of lookup entries
+/// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
-    /// The table is a vector of write lookups with the same table ID
-    _table: Vec<Lookup<F>>,
+    /// Table ID corresponding to this table
+    #[allow(dead_code)]
+    table_id: LookupTableIDs,
+    /// Vector of values inside each entry of the table
+    #[allow(dead_code)]
+    entries: Vec<Vec<F>>,
 }
 
-const _TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
-
 impl<F: Field> LookupTable<F> {
-    fn _table_range_check_16() -> Self {
+    #[allow(dead_code)]
+    fn table_terms(&self, mixer: F) -> Vec<F> {
+        self.entries
+            .iter()
+            .map(|entry| {
+                entry
+                    .iter()
+                    .fold(F::from(self.table_id as u32), |acc, value| {
+                        acc + *value * mixer
+                    })
+            })
+            .collect()
+    }
+
+    #[allow(dead_code)]
+    fn table_range_check_16() -> Self {
         Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTableIDs::RangeCheck16Lookup,
-                    value: vec![F::from(i)],
-                })
+            table_id: LookupTableIDs::RangeCheck16Lookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| vec![F::from(i)])
                 .collect(),
         }
     }
