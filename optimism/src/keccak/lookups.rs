@@ -5,13 +5,14 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, E,
     },
-    lookup::{Lookup, LookupTables, Lookups, TWO_TO_16_UPPERBOUND},
+    lookup::{Lookup, LookupTables, Lookups, MVLookupInputs, TWO_TO_16_UPPERBOUND},
     DOMAIN_SIZE,
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
+use rayon::iter::IntoParallelIterator;
 
 /// The number of table entries required by Keccak circuits.
 // FIXME: This does not account for syscalls nor step ram lookups
@@ -25,17 +26,7 @@ pub(crate) const NUM_KECCAK_SUBTABLES: u32 = NUM_KECCAK_ENTRIES / (DOMAIN_SIZE a
 
 /// The number of lookups per row in the Keccak circuit
 // FIXME: This does not account for syscalls nor step ram lookups
-pub(crate) const NUM_KECCAK_LOOKUPS_PER_ROW: u64 = 2342;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct KeccakLookupColumns<T> {
-    /// All lookup requests per row.
-    #[allow(dead_code)]
-    pub lookup_terms: [T; NUM_KECCAK_LOOKUPS_PER_ROW as usize],
-    /// Selectors of each lookup per row.
-    #[allow(dead_code)]
-    pub selectors: [T; NUM_KECCAK_LOOKUPS_PER_ROW as usize],
-}
+pub(crate) const NUM_KECCAK_LOOKUPS_PER_ROW: u32 = 2342;
 
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
@@ -306,5 +297,25 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
                 self.round_constants()[0].clone(),
             ],
         ));
+    }
+}
+
+impl<G> IntoParallelIterator for MVLookupInputs<G>
+where
+    Vec<G>: IntoParallelIterator,
+{
+    type Iter = <Vec<G> as IntoParallelIterator>::Iter;
+    type Item = <Vec<G> as IntoParallelIterator>::Item;
+
+    fn into_par_iter(self) -> Self::Iter {
+        let mut iter_contents = Vec::with_capacity(
+            (NUM_KECCAK_SUBTABLES * 2 + NUM_KECCAK_LOOKUPS_PER_ROW * 2 + 1) as usize,
+        );
+        iter_contents.extend(self.multiplicities);
+        iter_contents.extend(self.table_terms);
+        iter_contents.extend(self.lookup_terms);
+        iter_contents.extend(self.selectors);
+        iter_contents.push(self.sum);
+        iter_contents.into_par_iter()
     }
 }

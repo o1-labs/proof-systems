@@ -9,6 +9,7 @@ use kimchi_optimism::{
         interpreter::KeccakInterpreter,
         proof::{self as keccak_proof, KeccakProofInputs},
     },
+    lookup::Lookups,
     mips::{proof, witness as mips_witness},
     preimage_oracle::PreImageOracle,
 };
@@ -77,11 +78,11 @@ pub fn main() -> ExitCode {
 
     let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    let mut folded_witness = proof::ProofInputs::<
+    let mut mips_folded_instance = proof::ProofInputs::<
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
-    let reset_pre_folding_witness = |witness_columns: &mut proof::WitnessColumns<Vec<_>>| {
+    let mips_reset_pre_folding_witness = |witness_columns: &mut proof::WitnessColumns<Vec<_>>| {
         let proof::WitnessColumns {
             scratch,
             instruction_counter,
@@ -93,7 +94,7 @@ pub fn main() -> ExitCode {
         error.clear();
     };
 
-    let mut current_pre_folding_witness = proof::WitnessColumns {
+    let mut mips_current_pre_folding_witness = proof::WitnessColumns {
         scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         instruction_counter: Vec::with_capacity(domain_size),
         error: Vec::with_capacity(domain_size),
@@ -101,7 +102,7 @@ pub fn main() -> ExitCode {
 
     // The keccak environment is extracted inside the loop
 
-    let mut keccak_folded_witness = KeccakProofInputs::<
+    let mut keccak_folded_instance = KeccakProofInputs::<
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
@@ -123,6 +124,10 @@ pub fn main() -> ExitCode {
             curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
             next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         };
+
+    // Initialize lookups
+
+    let mut keccak_pre_folding_lookups = Vec::with_capacity(domain_size);
 
     while !env.halt {
         env.step(&configuration, &meta, &start);
@@ -166,17 +171,20 @@ pub fn main() -> ExitCode {
                 pre_fold_wit.push(*env_wit);
             }
 
+            // Update the lookups with the Keccak step lookups before folding
+            keccak_pre_folding_lookups.push(keccak_env.lookups);
+
+            // Fold the instance when reaching the domain size
             if keccak_current_pre_folding_witness.step_index.len() == DOMAIN_SIZE {
                 keccak_proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                     domain,
                     &srs,
-                    &mut keccak_folded_witness,
+                    &mut keccak_folded_instance,
                     &keccak_current_pre_folding_witness,
+                    &keccak_pre_folding_lookups,
                 );
                 keccak_reset_pre_folding_witness(&mut keccak_current_pre_folding_witness);
             }
-
-            // TODO: create READ lookup tables
 
             // When the Keccak interpreter is finished, we can reset the environment
             env.keccak_env = None;
@@ -185,53 +193,59 @@ pub fn main() -> ExitCode {
         for (scratch, scratch_pre_folding_witness) in env
             .scratch_state
             .iter()
-            .zip(current_pre_folding_witness.scratch.iter_mut())
+            .zip(mips_current_pre_folding_witness.scratch.iter_mut())
         {
             scratch_pre_folding_witness.push(*scratch);
         }
-        current_pre_folding_witness
+        mips_current_pre_folding_witness
             .instruction_counter
             .push(ark_bn254::Fr::from(env.instruction_counter));
         // TODO
-        current_pre_folding_witness
+        mips_current_pre_folding_witness
             .error
             .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
-        if current_pre_folding_witness.instruction_counter.len() == DOMAIN_SIZE {
+        if mips_current_pre_folding_witness.instruction_counter.len() == DOMAIN_SIZE {
             proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut folded_witness,
+                &mut folded_instance,
                 &current_pre_folding_witness,
             );
-            reset_pre_folding_witness(&mut current_pre_folding_witness);
+            mips_reset_pre_folding_witness(&mut current_pre_folding_witness);
         }
     }
-    if !current_pre_folding_witness.instruction_counter.is_empty() {
-        let remaining = domain_size - current_pre_folding_witness.instruction_counter.len();
-        for scratch in current_pre_folding_witness.scratch.iter_mut() {
+    if !mips_current_pre_folding_witness
+        .instruction_counter
+        .is_empty()
+    {
+        let remaining = domain_size - mips_current_pre_folding_witness.instruction_counter.len();
+        for scratch in mips_current_pre_folding_witness.scratch.iter_mut() {
             scratch.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         }
-        current_pre_folding_witness
+        mips_current_pre_folding_witness
             .instruction_counter
             .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
-        current_pre_folding_witness
+        mips_current_pre_folding_witness
             .error
             .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
             domain,
             &srs,
-            &mut folded_witness,
-            &current_pre_folding_witness,
+            &mut mips_folded_instance,
+            &mips_current_pre_folding_witness,
         );
     }
 
     {
         // MIPS
-        let proof =
-            proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, folded_witness);
-        println!("Generated a proof:\n{:?}", proof);
+        let mips_proof = proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
+            domain,
+            &srs,
+            mips_folded_instance,
+        );
+        println!("Generated a proof:\n{:?}", mips_proof);
         let verifies =
-            proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+            proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &mips_proof);
         if verifies {
             println!("The MIPS proof verifies")
         } else {
@@ -244,7 +258,7 @@ pub fn main() -> ExitCode {
         let keccak_proof = keccak_proof::prove::<_, OpeningProof, BaseSponge, ScalarSponge>(
             domain,
             &srs,
-            keccak_folded_witness,
+            keccak_folded_instance,
         );
         println!("Generated a proof:\n{:?}", keccak_proof);
         let verifies = keccak_proof::verify::<_, OpeningProof, BaseSponge, ScalarSponge>(

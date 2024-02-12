@@ -8,8 +8,12 @@ use kimchi::{
     o1_utils::Two,
 };
 use poly_commitment::PolyComm;
+use rayon::iter::IntoParallelIterator;
 
-use crate::keccak::witness::pad_blocks;
+use crate::keccak::{
+    lookups::{NUM_KECCAK_LOOKUPS_PER_ROW, NUM_KECCAK_SUBTABLES},
+    witness::pad_blocks,
+};
 
 pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
@@ -73,6 +77,7 @@ impl<F: std::fmt::Display + Field> std::fmt::Display for Lookup<F> {
 }
 
 impl<T: One + Zero + std::ops::Sub<T, Output = T>> Lookup<T> {
+    /// Returns the numerator of the lookup (the selector)
     pub fn numerator(&self) -> T {
         match self.mode {
             LookupMode::Read => self.magnitude,
@@ -146,7 +151,7 @@ pub struct LookupTable<F> {
 }
 
 impl<F: Field> LookupTable<F> {
-    pub fn field_terms(&self, mixer: F) -> Vec<F> {
+    pub fn entries_as_fields(&self, mixer: F) -> Vec<F> {
         self.entries
             .iter()
             .map(|entry| {
@@ -238,29 +243,6 @@ impl<F: Field> LookupTable<F> {
     }
 }
 
-/// Represents the proof of the MV lookup argument
-/// It is parametrized by the type `T` which can be either:
-/// - Polycomm<G: KimchiCurve> for the commitments
-/// - (F, F) for the evaluations at zeta and zeta omega.
-#[derive(Debug)]
-pub struct MVLookupProof<T> {
-    /// Multiplicities of each table entry.
-    #[allow(dead_code)]
-    pub(crate) multiplicities: Vec<T>,
-    /// Each table entry.
-    #[allow(dead_code)]
-    pub(crate) table_terms: Vec<T>,
-    /// All lookup requests per row.
-    #[allow(dead_code)]
-    pub(crate) lookup_terms: Vec<T>,
-    /// Selectors to switch on/off each lookup per row.
-    #[allow(dead_code)]
-    pub(crate) selectors: Vec<T>,
-    /// Accumulated sum of both sides of the equations of sums.
-    #[allow(dead_code)]
-    pub(crate) sum: T,
-}
-
 /// Represents a proof of the system
 /// It is parametrized by the type `T` which can be either:
 /// - Polycomm<G: KimchiCurve> for the commitments
@@ -268,9 +250,27 @@ pub struct MVLookupProof<T> {
 #[derive(Debug)]
 pub struct LookupProof<G: KimchiCurve> {
     /// Polynomial commitments to the witness columns
-    pub lookup_commitments: MVLookupProof<PolyComm<G>>,
+    pub lookup_commitments: MVLookupInputs<PolyComm<G>>,
     /// Evaluations of witness polynomials at current rows on random evaluation point `zeta`
-    pub lookup_zeta_evaluations: MVLookupProof<G::ScalarField>,
+    pub lookup_zeta_evaluations: MVLookupInputs<G::ScalarField>,
     /// Evaluations of witness polynomials at next rows (where `* omega` comes from) on random evaluation point `zeta`
-    pub lookup_zeta_omega_evaluations: MVLookupProof<G::ScalarField>,
+    pub lookup_zeta_omega_evaluations: MVLookupInputs<G::ScalarField>,
+}
+
+/// Represents the proof of the MV lookup argument
+/// It is parametrized by the type `T` which can be either:
+/// - Polycomm<G: KimchiCurve> for the commitments
+/// - (F, F) for the evaluations at zeta and zeta omega.
+#[derive(Debug)]
+pub struct MVLookupInputs<T> {
+    /// Multiplicities of each table entry.
+    pub(crate) multiplicities: Vec<T>,
+    /// Each table entry.
+    pub(crate) table_terms: Vec<T>,
+    /// All lookup requests per row.
+    pub(crate) lookup_terms: Vec<T>,
+    /// Selectors to switch on/off each lookup per row.
+    pub(crate) selectors: Vec<T>,
+    /// Accumulated sum of both sides of the equations of sums.
+    pub(crate) sum: T,
 }

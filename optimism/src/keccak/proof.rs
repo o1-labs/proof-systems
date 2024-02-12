@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    keccak::{column::KeccakWitness, lookups::NUM_KECCAK_SUBTABLES},
-    lookup::{LookupProof, LookupTable, MVLookupProof},
+    keccak::{column::KeccakWitness, lookups::NUM_KECCAK_SUBTABLES, E},
+    lookup::{Lookup, LookupProof, LookupTable, MVLookupInputs},
     DOMAIN_SIZE,
 };
 use ark_ff::{One, Zero};
@@ -29,13 +29,13 @@ use rayon::iter::{
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
-use super::lookups::{KeccakLookupColumns, NUM_KECCAK_ENTRIES};
+use super::lookups::{NUM_KECCAK_ENTRIES, NUM_KECCAK_LOOKUPS_PER_ROW};
 
 /// This struct contains the evaluations of the KeccakWitness columns across the whole domain of the circuit
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
     evaluations: KeccakWitness<Vec<G::ScalarField>>,
-    lookups: KeccakLookupColumns<Vec<G::ScalarField>>,
+    mvlookups: MVLookupInputs<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
@@ -54,13 +54,24 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
             },
-            lookups: KeccakLookupColumns {
-                lookup_terms: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                selectors: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
+            mvlookups: MVLookupInputs {
+                multiplicities: vec![
+                    vec![G::ScalarField::zero(); DOMAIN_SIZE];
+                    NUM_KECCAK_SUBTABLES as usize
+                ],
+                table_terms: vec![
+                    vec![G::ScalarField::zero(); DOMAIN_SIZE];
+                    NUM_KECCAK_SUBTABLES as usize
+                ],
+                lookup_terms: vec![
+                    vec![G::ScalarField::zero(); DOMAIN_SIZE];
+                    NUM_KECCAK_LOOKUPS_PER_ROW as usize
+                ],
+                selectors: vec![
+                    vec![G::ScalarField::zero(); DOMAIN_SIZE];
+                    NUM_KECCAK_LOOKUPS_PER_ROW as usize
+                ],
+                sum: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
             },
         }
     }
@@ -93,9 +104,12 @@ pub fn fold<
     srs: &OpeningProof::SRS,
     accumulator: &mut KeccakProofInputs<G>,
     inputs: &KeccakWitness<Vec<G::ScalarField>>,
+    lookups: &[Vec<Lookup<E<G::ScalarField>>>], // The lookup expressions of the whole circuit
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {
+    // WITNESS INSTANCE
+
     let commitments = {
         inputs
             .par_iter()
@@ -113,11 +127,128 @@ pub fn fold<
     for column in commitments.into_iter() {
         absorb_commitment(&mut fq_sponge, &column);
     }
+
+    // LOOKUPS EVALUATION
+
+    // Joint combiner for lookup values
+    let joint_combiner = ScalarChallenge(fq_sponge.challenge());
+    let (_, endo_r) = G::endos();
+    let joint_combiner = joint_combiner.to_field(endo_r);
+
+    // This is t_j(omega_i) in the paper
+    let table_terms = {
+        let evals = vec![
+            LookupTable::table_byte(),
+            LookupTable::table_range_check_16(),
+            LookupTable::table_sparse(),
+            LookupTable::table_reset(),
+            LookupTable::table_round_constants(),
+            LookupTable::table_pad(),
+        ]
+        .iter()
+        .flat_map(|table| table.entries_as_fields(joint_combiner))
+        .collect::<Vec<_>>();
+        assert_eq!(evals.len() as u32, NUM_KECCAK_ENTRIES);
+        // Fill in dummy values until reaching a multiple of the domain size
+        let mut split_evals = evals
+            .chunks(DOMAIN_SIZE)
+            .map(|x| x.to_vec())
+            .collect::<Vec<_>>();
+        assert_eq!(split_evals.len() as u32, NUM_KECCAK_SUBTABLES);
+        let last_idx = split_evals.len() - 1;
+        split_evals[last_idx].extend(
+            std::iter::repeat(G::ScalarField::zero())
+                .take(DOMAIN_SIZE - split_evals[last_idx].len()),
+        );
+        assert_eq!(
+            split_evals[last_idx].len(),
+            DOMAIN_SIZE,
+            "Last subtable is not full"
+        );
+        split_evals
+    };
+
+    // This is f_k(omega_i) in the paper
+    let lookup_terms = {
+        let mut requests = vec![
+            vec![G::ScalarField::zero(); DOMAIN_SIZE as usize];
+            NUM_KECCAK_LOOKUPS_PER_ROW as usize
+        ];
+        for (col, lookup) in lookups.iter().enumerate() {
+            for (row, term) in lookup.iter().enumerate() {
+                requests[col][row] = term
+                    .value
+                    .iter()
+                    .fold(G::ScalarField::from(term.table_id as u32), |acc, value| {
+                        acc + *value.evaluate_constants().evaluate() * joint_combiner
+                    })
+            }
+        }
+        requests
+    };
+
+    // This is m_l(omega^i) in the paper
+    let multiplicities = {
+        let mut field_to_idx = HashMap::new();
+        // Initialize hashmap with the field elements in the tables
+        for (i, subtable) in table_terms.iter().enumerate() {
+            for entry in subtable {
+                field_to_idx.insert(entry, i);
+            }
+        }
+
+        // Initialize counter same shape as the tables
+        let mut counter =
+            vec![vec![G::ScalarField::zero(); DOMAIN_SIZE as usize]; NUM_KECCAK_SUBTABLES as usize];
+
+        // Increment multiplicities for each field element being looked up
+        for column in &lookup_terms {
+            for lookup in column {
+                if let Some(&index) = field_to_idx.get(lookup) {
+                    counter[index][field_to_idx[lookup]] += G::ScalarField::one();
+                }
+            }
+        }
+        counter
+    };
+
+    // This is s_k(omega_i)
+    let selectors = {
+        let numerators = vec![
+            vec![G::ScalarField::zero(); DOMAIN_SIZE as usize];
+            NUM_KECCAK_LOOKUPS_PER_ROW as usize
+        ];
+        for (col, lookup) in lookups.iter().enumerate() {
+            for (row, term) in lookup.iter().enumerate() {
+                numerators[col][row] = term.numerator();
+            }
+        }
+        numerators
+    };
+
+    let sum = {};
+
+    // ACCUMULATOR FOLDING
+
     let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let scaling_challenge = scaling_challenge.to_field(endo_r);
+
     accumulator
         .evaluations
+        .par_iter_mut()
+        .zip(inputs.par_iter())
+        .for_each(|(accumulator, inputs)| {
+            accumulator
+                .par_iter_mut()
+                .zip(inputs.par_iter())
+                .for_each(|(accumulator, input)| {
+                    *accumulator = *input + scaling_challenge * *accumulator
+                });
+        });
+
+    accumulator
+        .mvlookups
         .par_iter_mut()
         .zip(inputs.par_iter())
         .for_each(|(accumulator, inputs)| {
@@ -140,7 +271,6 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    challenges: Challenges<G::ScalarField>,
     inputs: KeccakProofInputs<G>,
 ) -> KeccakProof<G, OpeningProof>
 where
@@ -148,7 +278,7 @@ where
 {
     let KeccakProofInputs {
         evaluations,
-        lookups,
+        mvlookups,
     } = inputs;
     let polys = {
         let eval_col = |evals: Vec<G::ScalarField>| {
@@ -331,8 +461,8 @@ where
             MVLookupProof {
                 multiplicities: eval_array_col(&multiplicities).try_into().unwrap(),
                 table_terms: eval_array_col(&table_terms).try_into().unwrap(),
-                lookup_terms: eval_array_col(&lookups.lookup_terms).try_into().unwrap(),
-                selectors: eval_array_col(&lookups.selectors).try_into().unwrap(),
+                lookup_terms: eval_array_col(&mvlookups.lookup_terms).try_into().unwrap(),
+                selectors: eval_array_col(&mvlookups.selectors).try_into().unwrap(),
                 sum: {},
             }
         };
