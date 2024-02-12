@@ -1,10 +1,6 @@
 use ark_ff::{Field, One};
 
-#[derive(Copy, Clone, Debug)]
-pub enum Sign {
-    Pos,
-    Neg,
-}
+pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LookupMode {
@@ -13,25 +9,28 @@ pub enum LookupMode {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum LookupTables {
-    MemoryLookup,
-    RegisterLookup,
-    // Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup,
-    // Single-column table of all values in the range [0, 2^16)
-    RangeCheck16Lookup,
-    // Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    ResetLookup,
-    // 24-row table with all possible values for round and their round constant in expanded form
-    RoundConstantsLookup,
-    // All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    PadLookup,
-    // All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    ByteLookup,
-    // Input/Output of Keccak steps
-    KeccakStepLookup,
-    // Syscalls communication channel
-    SyscallLookup,
+pub enum LookupTableIDs {
+    // RAM Tables
+    MemoryLookup = 0,
+    RegisterLookup = 1,
+    /// Syscalls communication channel
+    SyscallLookup = 2,
+    /// Input/Output of Keccak steps
+    KeccakStepLookup = 3,
+
+    // Read Tables
+    /// Single-column table of 2^16 entries with the sparse representation of all values
+    SparseLookup = 4,
+    /// Single-column table of all values in the range [0, 2^16)
+    RangeCheck16Lookup = 5,
+    /// Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    ResetLookup = 6,
+    /// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
+    RoundConstantsLookup = 7,
+    /// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    PadLookup = 8,
+    /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
+    ByteLookup = 9,
 }
 
 #[derive(Clone, Debug)]
@@ -39,7 +38,7 @@ pub struct Lookup<Fp> {
     pub mode: LookupMode,
     /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
     pub magnitude: Fp,
-    pub table_id: LookupTables,
+    pub table_id: LookupTableIDs,
     pub value: Vec<Fp>,
 }
 
@@ -63,7 +62,7 @@ impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
 }
 
 impl<T: One> Lookup<T> {
-    pub fn read_if(if_is_true: T, table_id: LookupTables, value: Vec<T>) -> Self {
+    pub fn read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
             magnitude: if_is_true,
@@ -72,7 +71,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
-    pub fn write_if(if_is_true: T, table_id: LookupTables, value: Vec<T>) -> Self {
+    pub fn write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
             magnitude: if_is_true,
@@ -81,7 +80,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
-    pub fn read_one(table_id: LookupTables, value: Vec<T>) -> Self {
+    pub fn read_one(table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
             magnitude: T::one(),
@@ -90,7 +89,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
-    pub fn write_one(table_id: LookupTables, value: Vec<T>) -> Self {
+    pub fn write_one(table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
             magnitude: T::one(),
@@ -118,67 +117,73 @@ pub trait Lookups {
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
-    /// The table is a vector of write lookups with the same table ID
-    _table: Vec<Lookup<F>>,
+    /// Table ID corresponding to this table
+    #[allow(dead_code)]
+    table_id: LookupTableIDs,
+    /// Vector of values inside each entry of the table
+    #[allow(dead_code)]
+    entries: Vec<Vec<F>>,
 }
 
-const _TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
-
 impl<F: Field> LookupTable<F> {
-    fn _table_range_check_16() -> Self {
-        Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::RangeCheck16Lookup,
-                    value: vec![F::from(i)],
-                })
-                .collect(),
-        }
+    #[allow(dead_code)]
+    fn table_terms(&self, mixer: F) -> Vec<F> {
+        self.entries
+            .iter()
+            .map(|entry| {
+                entry
+                    .iter()
+                    .fold(F::from(self.table_id as u32), |acc, value| {
+                        acc + *value * mixer
+                    })
+            })
+            .collect()
     }
 
-    fn _table_byte() -> Self {
+    #[allow(dead_code)]
+    fn table_sparse() -> Self {
         Self {
-            _table: (0..(1 << 8) as u32)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::ByteLookup,
-                    value: vec![F::from(i)],
-                })
-                .collect(),
-        }
-    }
-
-    fn _table_sparse() -> Self {
-        Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::SparseLookup,
-                    value: vec![F::from(
+            table_id: LookupTableIDs::SparseLookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    vec![F::from(
                         u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
-                    )],
+                    )]
                 })
                 .collect(),
         }
     }
 
-    fn _table_reset() -> Self {
+    #[allow(dead_code)]
+    fn table_reset() -> Self {
         Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::ResetLookup,
-                    value: vec![
+            table_id: LookupTableIDs::ResetLookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    vec![
                         F::from(i),
                         F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
-                    ],
+                    ]
                 })
                 .collect(),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn table_range_check_16() -> Self {
+        Self {
+            table_id: LookupTableIDs::RangeCheck16Lookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| vec![F::from(i)])
+                .collect(),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn table_byte() -> Self {
+        Self {
+            table_id: LookupTableIDs::ByteLookup,
+            entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
         }
     }
 }
