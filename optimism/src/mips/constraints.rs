@@ -33,7 +33,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// variable/input of our circuit.
     type Position = MIPSColumn;
 
-    // Allocate a new input of our circuit
+    // Use one of the available columns. It won't
+    // create a new column every time this function is called. The number
+    // of columns is defined upfront by crate::mips::witness::SCRATCH_SIZE.
     fn alloc_scratch(&mut self) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
         // to the index.
