@@ -65,20 +65,16 @@ where
     let LookupWitness { f, t, m } = mvlookup;
 
     // Polynomial m(X)
-    let lookup_counters_poly_d1: DensePolynomial<G::ScalarField> = {
-        let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+    let lookup_counters_evals_d1 =
+        Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
             m.to_vec(),
             domain.d1,
         );
-        evals.interpolate()
-    };
-    let lookup_counters_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>> = {
-        // We interpolate and get evaluations on d8 also
-        lookup_counters_poly_d1.evaluate_over_domain_by_ref(domain.d8)
-    };
+    let lookup_counters_poly_d1: DensePolynomial<G::ScalarField> =
+        { lookup_counters_evals_d1.interpolate_by_ref() };
 
     let lookup_counters_comm_d1: PolyComm<G> =
-        srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals_d8);
+        srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals_d1);
 
     absorb_commitment(&mut fq_sponge, &lookup_counters_comm_d1);
     // -- end of m(X)
