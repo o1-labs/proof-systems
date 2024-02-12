@@ -141,6 +141,20 @@ impl<F: Field> LookupTable<F> {
     }
 
     #[allow(dead_code)]
+    fn table_sparse() -> Self {
+        Self {
+            table_id: LookupTableIDs::SparseLookup,
+            entries: (0..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    vec![F::from(
+                        u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
+                    )]
+                })
+                .collect(),
+        }
+    }
+
+    #[allow(dead_code)]
     fn table_range_check_16() -> Self {
         Self {
             table_id: LookupTableIDs::RangeCheck16Lookup,
@@ -155,21 +169,6 @@ impl<F: Field> LookupTable<F> {
         Self {
             table_id: LookupTableIDs::ByteLookup,
             entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
-        }
-    }
-
-    fn _table_sparse() -> Self {
-        Self {
-            _table: (0.._TWO_TO_16_UPPERBOUND)
-                .map(|i| Lookup {
-                    mode: LookupMode::Write,
-                    magnitude: F::one(),
-                    table_id: LookupTables::SparseLookup,
-                    value: vec![F::from(
-                        u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
-                    )],
-                })
-                .collect(),
         }
     }
 }
