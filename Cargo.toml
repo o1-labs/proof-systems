@@ -7,6 +7,7 @@ members = [
     "hasher",
     "kimchi",
     "kimchi/snarky-deriver/",
+    "msm",
     "optimism",
     "poseidon",
     "poseidon/export_test_vectors",
