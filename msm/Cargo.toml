@@ -1,0 +1,38 @@
+[package]
+name = "kimchi_msm"
+version = "0.1.0"
+description = "Large MSM circuit"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+
+[dependencies]
+ark-bn254 = { version = "0.3.0" }
+ark-serialize = "0.3.0"
+o1-utils = { path = "../utils" }
+kimchi = { path = "../kimchi", version = "0.1.0", features = [ "bn254" ] }
+poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
+groupmap = { path = "../groupmap", version = "0.1.0" }
+mina-curves = { path = "../curves", version = "0.1.0" }
+mina-poseidon = { path = "../poseidon", version = "0.1.0" }
+num-bigint = { version = "0.4.3", features = ["rand"] }
+rmp-serde = "1.1.1"
+serde_json = "1.0.91"
+serde = "1.0.130"
+serde_with = "1.10.0"
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
+ark-ff = { version = "0.3.0", features = [ "parallel" ] }
+ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+rand = "0.8.5"
+rayon = "1.5.0"
