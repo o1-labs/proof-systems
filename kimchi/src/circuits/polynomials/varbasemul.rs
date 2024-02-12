@@ -50,11 +50,10 @@ type Variable = VariableGen<Column>;
 //~ ```ignore
 //~ Acc := [2]T
 //~ for i = n-1 ... 0:
-//~    Q := (r_i == 1) ? T : -T
+//~    Q := (k_{i + 1} == 1) ? T : -T
 //~    Acc := Acc + (Q + Acc)
-//~ return (d_0 == 0) ? Q - P : Q
+//~ return (k_0 == 0) ? Acc - P : Acc
 //~ ```
-//~
 //~
 //~ The layout of the witness requires 2 rows.
 //~ The i-th row will be a `VBSM` gate whereas the next row will be a `ZERO` gate.

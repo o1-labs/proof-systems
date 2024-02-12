@@ -1,5 +1,5 @@
 use crate::{
-    lookup::{Lookup, LookupTables},
+    lookup::{Lookup, LookupTableIDs},
     mips::{
         column::{
             Column as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
@@ -33,7 +33,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// variable/input of our circuit.
     type Position = MIPSColumn;
 
-    // Allocate a new input of our circuit
+    // Use one of the available columns. It won't
+    // create a new column every time this function is called. The number
+    // of columns is defined upfront by crate::mips::witness::SCRATCH_SIZE.
     fn alloc_scratch(&mut self) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
         // to the index.
@@ -568,7 +570,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
             self.add_lookup(Lookup::write_if(
                 has_n_bytes[i].clone(),
-                LookupTables::SyscallLookup,
+                LookupTableIDs::SyscallLookup,
                 vec![hash_counter.clone(), byte_counter.clone(), bytes[i].clone()],
             ));
         }
@@ -591,7 +593,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let end_of_preimage = is_syscall * (Expr::from(1) - preimage_left);
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
-            LookupTables::SyscallLookup,
+            LookupTableIDs::SyscallLookup,
             vec![hash_counter, preimage_key],
         ));
 
