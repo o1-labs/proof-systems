@@ -1,6 +1,6 @@
 use kimchi::circuits::domains::EvaluationDomains;
 
-use ark_ff::UniformRand;
+use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::proof::Witness;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
@@ -13,11 +13,7 @@ pub fn main() {
     println!("Creating the domain and SRS");
     let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
-    // Trusted setup toxic waste
-    let x = Fp::rand(&mut rand::rngs::OsRng);
-
-    let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
-    srs.full_srs.add_lagrange_basis(domain.d1);
+    let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
     let witness = Witness::random(domain);
 
