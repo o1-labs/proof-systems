@@ -149,4 +149,12 @@ impl<F: Field> LookupTable<F> {
                 .collect(),
         }
     }
+
+    #[allow(dead_code)]
+    fn table_byte() -> Self {
+        Self {
+            table_id: LookupTableIDs::ByteLookup,
+            entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
+        }
+    }
 }
