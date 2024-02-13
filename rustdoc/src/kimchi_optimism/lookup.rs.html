@@ -237,10 +237,6 @@
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
@@ -286,15 +282,15 @@
 }
 
 <span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>Lookup&lt;T&gt; {
+</span><span class="kw">pub struct </span>Lookup&lt;Fp&gt; {
     <span class="kw">pub </span>mode: LookupMode,
     <span class="doccomment">/// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
-    </span><span class="kw">pub </span>magnitude: T,
+    </span><span class="kw">pub </span>magnitude: Fp,
     <span class="kw">pub </span>table_id: LookupTableIDs,
-    <span class="kw">pub </span>value: Vec&lt;T&gt;,
+    <span class="kw">pub </span>value: Vec&lt;Fp&gt;,
 }
 
-<span class="kw">impl</span>&lt;F: std::fmt::Display + Field&gt; std::fmt::Display <span class="kw">for </span>Lookup&lt;F&gt; {
+<span class="kw">impl</span>&lt;Fp: std::fmt::Display + Field&gt; std::fmt::Display <span class="kw">for </span>Lookup&lt;Fp&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">let </span>numerator = <span class="kw">match </span><span class="self">self</span>.mode {
             LookupMode::Read =&gt; <span class="self">self</span>.magnitude,
@@ -314,8 +310,7 @@
 }
 
 <span class="kw">impl</span>&lt;T: One&gt; Lookup&lt;T&gt; {
-    <span class="doccomment">/// Reads one value when `if_is_true` is 1.
-    </span><span class="kw">pub fn </span>read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Read,
             magnitude: if_is_true,
@@ -324,8 +319,7 @@
         }
     }
 
-    <span class="doccomment">/// Writes one value when `if_is_true` is 1.
-    </span><span class="kw">pub fn </span>write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Write,
             magnitude: if_is_true,
@@ -334,8 +328,7 @@
         }
     }
 
-    <span class="doccomment">/// Reads one value from a table.
-    </span><span class="kw">pub fn </span>read_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>read_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Read,
             magnitude: T::one(),
@@ -344,8 +337,7 @@
         }
     }
 
-    <span class="doccomment">/// Writes one value to a table.
-    </span><span class="kw">pub fn </span>write_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>write_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Write,
             magnitude: T::one(),
