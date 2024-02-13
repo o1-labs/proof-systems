@@ -5,7 +5,7 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, E,
     },
-    lookup::{Lookup, LookupTable, Lookups},
+    lookup::{Lookup, LookupTableIDs, Lookups},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
@@ -108,7 +108,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         for i in 0..RATE_IN_BYTES {
             self.add_lookup(Lookup::read_if(
                 self.is_absorb(),
-                LookupTable::SyscallLookup,
+                LookupTableIDs::SyscallLookup,
                 vec![
                     self.hash_index(),
                     Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
@@ -124,7 +124,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         });
         self.add_lookup(Lookup::write_if(
             self.is_squeeze(),
-            LookupTable::SyscallLookup,
+            LookupTableIDs::SyscallLookup,
             vec![self.hash_index(), bytes31],
         ));
     }
@@ -133,13 +133,13 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         // (if not a root) Output of previous step is input of current step
         self.add_lookup(Lookup::read_if(
             Self::not(self.is_root()),
-            LookupTable::KeccakStepLookup,
+            LookupTableIDs::KeccakStepLookup,
             self.input_of_step(),
         ));
         // (if not a squeeze) Input for next step is output of current step
         self.add_lookup(Lookup::write_if(
             Self::not(self.is_squeeze()),
-            LookupTable::KeccakStepLookup,
+            LookupTableIDs::KeccakStepLookup,
             self.output_of_step(),
         ));
     }
@@ -147,7 +147,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(
             flag,
-            LookupTable::RangeCheck16Lookup,
+            LookupTableIDs::RangeCheck16Lookup,
             vec![value],
         ));
     }
@@ -160,7 +160,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     ) {
         self.add_lookup(Lookup::read_if(
             flag,
-            LookupTable::ResetLookup,
+            LookupTableIDs::ResetLookup,
             vec![dense, sparse],
         ));
     }
@@ -168,13 +168,17 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(
             flag,
-            LookupTable::SparseLookup,
+            LookupTableIDs::SparseLookup,
             vec![value],
         ));
     }
 
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(flag, LookupTable::ByteLookup, vec![value]));
+        self.add_lookup(Lookup::read_if(
+            flag,
+            LookupTableIDs::ByteLookup,
+            vec![value],
+        ));
     }
 
     fn lookups_sponge(&mut self) {
@@ -183,7 +187,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         // Pad suffixes correspond to 10*1 rule
         self.add_lookup(Lookup::read_if(
             self.is_pad(),
-            LookupTable::PadLookup,
+            LookupTableIDs::PadLookup,
             vec![
                 self.pad_length(),
                 self.two_to_pad(),
@@ -272,7 +276,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         // Check round constants correspond with the current round
         self.add_lookup(Lookup::read_if(
             self.is_round(),
-            LookupTable::RoundConstantsLookup,
+            LookupTableIDs::RoundConstantsLookup,
             vec![
                 self.round(),
                 self.round_constants()[0].clone(),

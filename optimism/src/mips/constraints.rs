@@ -1,5 +1,5 @@
 use crate::{
-    lookup::{Lookup, LookupTable},
+    lookup::{Lookup, LookupTableIDs},
     mips::{
         column::{
             Column as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
@@ -584,7 +584,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
             self.add_lookup(Lookup::write_if(
                 has_n_bytes[i].clone(),
-                LookupTable::SyscallLookup,
+                LookupTableIDs::SyscallLookup,
                 vec![
                     hash_counter.clone(),
                     byte_counter.clone() + Expr::from(i as u64),
@@ -611,7 +611,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let end_of_preimage = is_syscall * (Expr::from(1) - preimage_left);
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
-            LookupTable::SyscallLookup,
+            LookupTableIDs::SyscallLookup,
             vec![hash_counter, preimage_key],
         ));
 
