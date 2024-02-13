@@ -10,12 +10,27 @@ pub mod proof;
 pub mod prover;
 pub mod verifier;
 
+/// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
-pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
+// @volhovm: maybe move these to the FF circuits module later.
+/// Bitsize of the foreign field limb representation.
+pub const LIMB_BITSIZE: usize = 16;
 
-/// The native field we are working with
+/// Number of limbs representing one foreign field element (either
+/// [`Ff1`] or [`Ff2`]).
+pub const LIMBS_NUM: usize = 16;
+
+pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
+pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
+pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
+
+/// The native field we are working with.
 pub type Fp = ark_bn254::Fr;
+
+/// The foreign field we are emulating (one of the two)
+pub type Ff1 = mina_curves::pasta::Fp;
+pub type Ff2 = mina_curves::pasta::Fq;
 
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
