@@ -1,5 +1,13 @@
 use ark_ff::{Field, One};
-use kimchi::circuits::polynomials::keccak::{constants::ROUNDS, Keccak, RC};
+use kimchi::{
+    circuits::polynomials::keccak::{
+        constants::{RATE_IN_BYTES, ROUNDS},
+        Keccak, RC,
+    },
+    o1_utils::Two,
+};
+
+use crate::keccak::witness::pad_blocks;
 
 pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
@@ -192,6 +200,27 @@ impl<F: Field> LookupTable<F> {
                         F::from(Keccak::sparse(RC[i])[2]),
                         F::from(Keccak::sparse(RC[i])[1]),
                         F::from(Keccak::sparse(RC[i])[0]),
+                    ]
+                })
+                .collect(),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn table_pad() -> Self {
+        Self {
+            table_id: LookupTableIDs::PadLookup,
+            entries: (1..=RATE_IN_BYTES)
+                .map(|i| {
+                    let suffix = pad_blocks(i);
+                    vec![
+                        F::from(i as u64),
+                        F::two_pow(i as u64),
+                        suffix[0],
+                        suffix[1],
+                        suffix[2],
+                        suffix[3],
+                        suffix[4],
                     ]
                 })
                 .collect(),

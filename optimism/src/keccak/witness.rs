@@ -25,7 +25,7 @@ use kimchi::circuits::polynomials::keccak::{
 
 /// This function returns a vector of field elements that represent the 5 padding suffixes.
 /// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
+pub fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
     // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
     let mut blocks = vec![Fp::zero(); 5];
     let mut pad = [Fp::zero(); RATE_IN_BYTES];
