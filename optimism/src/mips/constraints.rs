@@ -504,7 +504,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 * (row_bytes.clone() - Expr::from(4));
             let read_4 = (row_bytes.clone() - Expr::from(1))
                 * (row_bytes.clone() - Expr::from(2))
-                * (row_bytes.clone() - Expr::from(4));
+                * (row_bytes.clone() - Expr::from(3));
 
             // Note there is no need to multiply by the Syscall flag because the constraints are zero when the witnesses are zero
             {
