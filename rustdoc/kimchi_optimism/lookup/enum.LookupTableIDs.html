@@ -4,16 +4,16 @@
     RegisterLookup = 1,
     SyscallLookup = 2,
     KeccakStepLookup = 3,
-    SparseLookup = 4,
-    RangeCheck16Lookup = 5,
+    RangeCheck16Lookup = 4,
+    SparseLookup = 5,
     ResetLookup = 6,
     RoundConstantsLookup = 7,
     PadLookup = 8,
     ByteLookup = 9,
 }</code></pre><h2 id="variants" class="variants section-header">Variants<a href="#variants" class="anchor">§</a></h2><div class="variants"><section id="variant.MemoryLookup" class="variant"><a href="#variant.MemoryLookup" class="anchor">§</a><h3 class="code-header">MemoryLookup = 0</h3></section><section id="variant.RegisterLookup" class="variant"><a href="#variant.RegisterLookup" class="anchor">§</a><h3 class="code-header">RegisterLookup = 1</h3></section><section id="variant.SyscallLookup" class="variant"><a href="#variant.SyscallLookup" class="anchor">§</a><h3 class="code-header">SyscallLookup = 2</h3></section><div class="docblock"><p>Syscalls communication channel</p>
 </div><section id="variant.KeccakStepLookup" class="variant"><a href="#variant.KeccakStepLookup" class="anchor">§</a><h3 class="code-header">KeccakStepLookup = 3</h3></section><div class="docblock"><p>Input/Output of Keccak steps</p>
-</div><section id="variant.SparseLookup" class="variant"><a href="#variant.SparseLookup" class="anchor">§</a><h3 class="code-header">SparseLookup = 4</h3></section><div class="docblock"><p>Single-column table of 2^16 entries with the sparse representation of all values</p>
-</div><section id="variant.RangeCheck16Lookup" class="variant"><a href="#variant.RangeCheck16Lookup" class="anchor">§</a><h3 class="code-header">RangeCheck16Lookup = 5</h3></section><div class="docblock"><p>Single-column table of all values in the range [0, 2^16)</p>
+</div><section id="variant.RangeCheck16Lookup" class="variant"><a href="#variant.RangeCheck16Lookup" class="anchor">§</a><h3 class="code-header">RangeCheck16Lookup = 4</h3></section><div class="docblock"><p>Single-column table of all values in the range [0, 2^16)</p>
+</div><section id="variant.SparseLookup" class="variant"><a href="#variant.SparseLookup" class="anchor">§</a><h3 class="code-header">SparseLookup = 5</h3></section><div class="docblock"><p>Single-column table of 2^16 entries with the sparse representation of all values</p>
 </div><section id="variant.ResetLookup" class="variant"><a href="#variant.ResetLookup" class="anchor">§</a><h3 class="code-header">ResetLookup = 6</h3></section><div class="docblock"><p>Dual-column table of all values in the range [0, 2^16) and their sparse representation</p>
 </div><section id="variant.RoundConstantsLookup" class="variant"><a href="#variant.RoundConstantsLookup" class="anchor">§</a><h3 class="code-header">RoundConstantsLookup = 7</h3></section><div class="docblock"><p>24-row table with all possible values for round and their round constant in expanded form (in big endian)</p>
 </div><section id="variant.PadLookup" class="variant"><a href="#variant.PadLookup" class="anchor">§</a><h3 class="code-header">PadLookup = 8</h3></section><div class="docblock"><p>All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule</p>

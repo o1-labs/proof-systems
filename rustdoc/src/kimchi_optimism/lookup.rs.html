@@ -152,6 +152,43 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>TWO_TO_16_UPPERBOUND: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
@@ -173,10 +210,10 @@
     </span>KeccakStepLookup = <span class="number">3</span>,
 
     <span class="comment">// Read Tables
-    </span><span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of all values
-    </span>SparseLookup = <span class="number">4</span>,
-    <span class="doccomment">/// Single-column table of all values in the range [0, 2^16)
-    </span>RangeCheck16Lookup = <span class="number">5</span>,
+    </span><span class="doccomment">/// Single-column table of all values in the range [0, 2^16)
+    </span>RangeCheck16Lookup = <span class="number">4</span>,
+    <span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of all values
+    </span>SparseLookup = <span class="number">5</span>,
     <span class="doccomment">/// Dual-column table of all values in the range [0, 2^16) and their sparse representation
     </span>ResetLookup = <span class="number">6</span>,
     <span class="doccomment">/// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
@@ -301,6 +338,43 @@
             entries: (<span class="number">0</span>..TWO_TO_16_UPPERBOUND)
                 .map(|i| <span class="macro">vec!</span>[F::from(i)])
                 .collect(),
+        }
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_sparse() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::SparseLookup,
+            entries: (<span class="number">0</span>..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    <span class="macro">vec!</span>[F::from(
+                        u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap(),
+                    )]
+                })
+                .collect(),
+        }
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_reset() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::ResetLookup,
+            entries: (<span class="number">0</span>..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    <span class="macro">vec!</span>[
+                        F::from(i),
+                        F::from(u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap()),
+                    ]
+                })
+                .collect(),
+        }
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_byte() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::ByteLookup,
+            entries: (<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>) <span class="kw">as </span>u32).map(|i| <span class="macro">vec!</span>[F::from(i)]).collect(),
         }
     }
 }
