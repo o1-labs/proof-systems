@@ -279,10 +279,10 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
             LookupTableIDs::RoundConstantsLookup,
             vec![
                 self.round(),
-                self.round_constants()[0].clone(),
-                self.round_constants()[1].clone(),
-                self.round_constants()[2].clone(),
                 self.round_constants()[3].clone(),
+                self.round_constants()[2].clone(),
+                self.round_constants()[1].clone(),
+                self.round_constants()[0].clone(),
             ],
         ));
     }

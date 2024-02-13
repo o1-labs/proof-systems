@@ -1,4 +1,5 @@
 use ark_ff::{Field, One};
+use kimchi::circuits::polynomials::keccak::{constants::ROUNDS, Keccak, RC};
 
 pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
@@ -173,6 +174,24 @@ impl<F: Field> LookupTable<F> {
                     vec![
                         F::from(i),
                         F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
+                    ]
+                })
+                .collect(),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn table_round_constants() -> Self {
+        Self {
+            table_id: LookupTableIDs::RoundConstantsLookup,
+            entries: (0..=ROUNDS)
+                .map(|i| {
+                    vec![
+                        F::from(i as u32),
+                        F::from(Keccak::sparse(RC[i])[3]),
+                        F::from(Keccak::sparse(RC[i])[2]),
+                        F::from(Keccak::sparse(RC[i])[1]),
+                        F::from(Keccak::sparse(RC[i])[0]),
                     ]
                 })
                 .collect(),
