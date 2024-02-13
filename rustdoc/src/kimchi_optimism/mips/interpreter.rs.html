@@ -2530,7 +2530,7 @@
 <a href="#2528" id="2528">2528</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
-    lookup::{Lookup, LookupTable},
+    lookup::{Lookup, LookupTableIDs},
     mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
@@ -2807,12 +2807,12 @@
         <span class="kw">unsafe </span>{ <span class="self">self</span>.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         <span class="self">self</span>.add_lookup(Lookup::write_if(
             if_is_true.clone(),
-            LookupTable::RegisterLookup,
+            LookupTableIDs::RegisterLookup,
             <span class="macro">vec!</span>[idx.clone(), last_accessed, old_value.clone()],
         ));
         <span class="self">self</span>.add_lookup(Lookup::read_if(
             if_is_true.clone(),
-            LookupTable::RegisterLookup,
+            LookupTableIDs::RegisterLookup,
             <span class="macro">vec!</span>[idx.clone(), new_accessed, new_value.clone()],
         ));
         <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
@@ -2941,11 +2941,11 @@
         };
         <span class="kw">unsafe </span>{ <span class="self">self</span>.push_memory_access(addr, new_accessed.clone()) };
         <span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTable::MemoryLookup,
+            LookupTableIDs::MemoryLookup,
             <span class="macro">vec!</span>[addr.clone(), last_accessed, old_value.clone()],
         ));
         <span class="self">self</span>.add_lookup(Lookup::read_one(
-            LookupTable::MemoryLookup,
+            LookupTableIDs::MemoryLookup,
             <span class="macro">vec!</span>[addr.clone(), new_accessed, new_value.clone()],
         ));
         <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
@@ -2989,7 +2989,7 @@
             <span class="self">self</span>.push_register(<span class="kw-2">&amp;</span>idx, ip.clone());
         }
         <span class="self">self</span>.add_lookup(Lookup::read_one(
-            LookupTable::RegisterLookup,
+            LookupTableIDs::RegisterLookup,
             <span class="macro">vec!</span>[idx, new_accessed, ip],
         ));
     }
@@ -3001,7 +3001,7 @@
             <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(<span class="kw-2">&amp;</span>idx, value_location) }
         };
         <span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTable::RegisterLookup,
+            LookupTableIDs::RegisterLookup,
             <span class="macro">vec!</span>[idx, <span class="self">self</span>.instruction_counter(), ip.clone()],
         ));
         ip
@@ -3017,7 +3017,7 @@
             <span class="self">self</span>.push_register(<span class="kw-2">&amp;</span>idx, ip.clone());
         }
         <span class="self">self</span>.add_lookup(Lookup::read_one(
-            LookupTable::RegisterLookup,
+            LookupTableIDs::RegisterLookup,
             <span class="macro">vec!</span>[idx, new_accessed, ip],
         ));
     }
@@ -3029,7 +3029,7 @@
             <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(<span class="kw-2">&amp;</span>idx, value_location) }
         };
         <span class="self">self</span>.add_lookup(Lookup::write_one(
-            LookupTable::RegisterLookup,
+            LookupTableIDs::RegisterLookup,
             <span class="macro">vec!</span>[idx, <span class="self">self</span>.instruction_counter(), ip.clone()],
         ));
         ip

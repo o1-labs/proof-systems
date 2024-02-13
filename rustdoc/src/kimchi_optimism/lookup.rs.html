@@ -116,13 +116,67 @@
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One};
 
-<span class="attr">#[derive(Copy, Clone, Debug)]
-</span><span class="kw">pub enum </span>Sign {
-    Pos,
-    Neg,
-}
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>TWO_TO_16_UPPERBOUND: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
 
 <span class="attr">#[derive(Copy, Clone, Debug)]
 </span><span class="kw">pub enum </span>LookupMode {
@@ -131,25 +185,28 @@
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug)]
-</span><span class="kw">pub enum </span>LookupTable {
-    MemoryLookup,
-    RegisterLookup,
-    <span class="comment">// Single-column table of 2^16 entries with the sparse representation of all values
-    </span>SparseLookup,
-    <span class="comment">// Single-column table of all values in the range [0, 2^16)
-    </span>RangeCheck16Lookup,
-    <span class="comment">// Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    </span>ResetLookup,
-    <span class="comment">// 24-row table with all possible values for round and their round constant in expanded form
-    </span>RoundConstantsLookup,
-    <span class="comment">// All [0..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    </span>PadLookup,
-    <span class="comment">// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    </span>ByteLookup,
-    <span class="comment">// Input/Output of Keccak steps
-    </span>KeccakStepLookup,
-    <span class="comment">// Syscalls communication channel
-    </span>SyscallLookup,
+</span><span class="kw">pub enum </span>LookupTableIDs {
+    <span class="comment">// RAM Tables
+    </span>MemoryLookup = <span class="number">0</span>,
+    RegisterLookup = <span class="number">1</span>,
+    <span class="doccomment">/// Syscalls communication channel
+    </span>SyscallLookup = <span class="number">2</span>,
+    <span class="doccomment">/// Input/Output of Keccak steps
+    </span>KeccakStepLookup = <span class="number">3</span>,
+
+    <span class="comment">// Read Tables
+    </span><span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of all values
+    </span>SparseLookup = <span class="number">4</span>,
+    <span class="doccomment">/// Single-column table of all values in the range [0, 2^16)
+    </span>RangeCheck16Lookup = <span class="number">5</span>,
+    <span class="doccomment">/// Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    </span>ResetLookup = <span class="number">6</span>,
+    <span class="doccomment">/// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
+    </span>RoundConstantsLookup = <span class="number">7</span>,
+    <span class="doccomment">/// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    </span>PadLookup = <span class="number">8</span>,
+    <span class="doccomment">/// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
+    </span>ByteLookup = <span class="number">9</span>,
 }
 
 <span class="attr">#[derive(Clone, Debug)]
@@ -157,7 +214,7 @@
     <span class="kw">pub </span>mode: LookupMode,
     <span class="doccomment">/// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
     </span><span class="kw">pub </span>magnitude: Fp,
-    <span class="kw">pub </span>table_id: LookupTable,
+    <span class="kw">pub </span>table_id: LookupTableIDs,
     <span class="kw">pub </span>value: Vec&lt;Fp&gt;,
 }
 
@@ -181,7 +238,7 @@
 }
 
 <span class="kw">impl</span>&lt;T: One&gt; Lookup&lt;T&gt; {
-    <span class="kw">pub fn </span>read_if(if_is_true: T, table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Read,
             magnitude: if_is_true,
@@ -190,7 +247,7 @@
         }
     }
 
-    <span class="kw">pub fn </span>write_if(if_is_true: T, table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Write,
             magnitude: if_is_true,
@@ -199,7 +256,7 @@
         }
     }
 
-    <span class="kw">pub fn </span>read_one(table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>read_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Read,
             magnitude: T::one(),
@@ -208,7 +265,7 @@
         }
     }
 
-    <span class="kw">pub fn </span>write_one(table_id: LookupTable, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>write_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Write,
             magnitude: T::one(),
@@ -231,5 +288,64 @@
 
     <span class="doccomment">/// Adds all lookups of Self to the environment
     </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+}
+
+<span class="doccomment">/// A table of values that can be used for a lookup, along with the ID for the table.
+</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>LookupTable&lt;F&gt; {
+    <span class="doccomment">/// Table ID corresponding to this table
+    </span><span class="attr">#[allow(dead_code)]
+    </span>table_id: LookupTableIDs,
+    <span class="doccomment">/// Vector of values inside each entry of the table
+    </span><span class="attr">#[allow(dead_code)]
+    </span>entries: Vec&lt;Vec&lt;F&gt;&gt;,
+}
+
+<span class="kw">impl</span>&lt;F: Field&gt; LookupTable&lt;F&gt; {
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_terms(<span class="kw-2">&amp;</span><span class="self">self</span>, mixer: F) -&gt; Vec&lt;F&gt; {
+        <span class="self">self</span>.entries
+            .iter()
+            .map(|entry| {
+                entry
+                    .iter()
+                    .fold(F::from(<span class="self">self</span>.table_id <span class="kw">as </span>u32), |acc, value| {
+                        acc + <span class="kw-2">*</span>value * mixer
+                    })
+            })
+            .collect()
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_sparse() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::SparseLookup,
+            entries: (<span class="number">0</span>..TWO_TO_16_UPPERBOUND)
+                .map(|i| {
+                    <span class="macro">vec!</span>[F::from(
+                        u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap(),
+                    )]
+                })
+                .collect(),
+        }
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_range_check_16() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::RangeCheck16Lookup,
+            entries: (<span class="number">0</span>..TWO_TO_16_UPPERBOUND)
+                .map(|i| <span class="macro">vec!</span>[F::from(i)])
+                .collect(),
+        }
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_byte() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::ByteLookup,
+            entries: (<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>) <span class="kw">as </span>u32).map(|i| <span class="macro">vec!</span>[F::from(i)]).collect(),
+        }
+    }
 }
 </code></pre></div></section></main></body></html>

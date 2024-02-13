@@ -626,7 +626,7 @@
 <a href="#624" id="624">624</a>
 <a href="#625" id="625">625</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    lookup::{Lookup, LookupTable},
+    lookup::{Lookup, LookupTableIDs},
     mips::{
         column::{
             Column <span class="kw">as </span>MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
@@ -1211,7 +1211,7 @@
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..MIPS_CHUNK_BYTES_LENGTH {
             <span class="self">self</span>.add_lookup(Lookup::write_if(
                 has_n_bytes[i].clone(),
-                LookupTable::SyscallLookup,
+                LookupTableIDs::SyscallLookup,
                 <span class="macro">vec!</span>[
                     hash_counter.clone(),
                     byte_counter.clone() + Expr::from(i <span class="kw">as </span>u64),
@@ -1238,7 +1238,7 @@
         <span class="kw">let </span>end_of_preimage = is_syscall * (Expr::from(<span class="number">1</span>) - preimage_left);
         <span class="self">self</span>.add_lookup(Lookup::read_if(
             end_of_preimage,
-            LookupTable::SyscallLookup,
+            LookupTableIDs::SyscallLookup,
             <span class="macro">vec!</span>[hash_counter, preimage_key],
         ));
 
