@@ -43,15 +43,15 @@ pub enum LookupTableIDs {
 }
 
 #[derive(Clone, Debug)]
-pub struct Lookup<Fp> {
+pub struct Lookup<T> {
     pub mode: LookupMode,
     /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
-    pub magnitude: Fp,
+    pub magnitude: T,
     pub table_id: LookupTableIDs,
-    pub value: Vec<Fp>,
+    pub value: Vec<T>,
 }
 
-impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
+impl<F: std::fmt::Display + Field> std::fmt::Display for Lookup<F> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let numerator = match self.mode {
             LookupMode::Read => self.magnitude,
@@ -71,6 +71,7 @@ impl<Fp: std::fmt::Display + Field> std::fmt::Display for Lookup<Fp> {
 }
 
 impl<T: One> Lookup<T> {
+    /// Reads one value when `if_is_true` is 1.
     pub fn read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
@@ -80,6 +81,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
+    /// Writes one value when `if_is_true` is 1.
     pub fn write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
@@ -89,6 +91,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
+    /// Reads one value from a table.
     pub fn read_one(table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Read,
@@ -98,6 +101,7 @@ impl<T: One> Lookup<T> {
         }
     }
 
+    /// Writes one value to a table.
     pub fn write_one(table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
             mode: LookupMode::Write,
