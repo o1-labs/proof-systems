@@ -493,16 +493,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // EXTRA CONSTRAINTS
         {
-            // Check that you can only read 1, 2, 3 or 4 bytes
-            {
-                self.constraints.push(
-                    (row_bytes.clone() - Expr::from(1))
-                        * (row_bytes.clone() - Expr::from(2))
-                        * (row_bytes.clone() - Expr::from(3))
-                        * (row_bytes.clone() - Expr::from(4)),
-                );
-            }
-
             // Expressions that are nonzero when the corresponding number of bytes are read
             let read_1 = (row_bytes.clone() - Expr::from(2))
                 * (row_bytes.clone() - Expr::from(3))
@@ -549,9 +539,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
             }
 
-            // Constrain booleanity of has_n_bytes
+            // Constrain booleanity of has_n_bytes (at least the one for 1 byte must be 1)
+            // TODO: could it read 0 bytes?
             {
-                for flag in has_n_bytes.clone() {
+                self.constraints
+                    .push(has_n_bytes[0].clone() - Expr::from(1));
+                for flag in &has_n_bytes[1..] {
                     self.constraints
                         .push(flag.clone() * (flag.clone() - Expr::from(1)));
                 }
@@ -560,13 +553,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // Constrain the bytes flags depending on the number of bytes read in this row
             {
                 // When at least has_1_byte, then any number of bytes can be read
+                // <=> Check that you can only read 1, 2, 3 or 4 bytes
                 self.constraints.push(
-                    has_n_bytes[0].clone()
-                        * (row_bytes.clone() - Expr::from(1))
+                    (row_bytes.clone() - Expr::from(1))
                         * (row_bytes.clone() - Expr::from(2))
                         * (row_bytes.clone() - Expr::from(3))
                         * (row_bytes.clone() - Expr::from(4)),
                 );
+
                 // When at least has_2_byte, then any number of bytes can be read except 1
                 self.constraints.push(
                     has_n_bytes[1].clone()
