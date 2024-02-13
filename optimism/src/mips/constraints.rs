@@ -493,6 +493,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // EXTRA CONSTRAINTS
         {
+            // Check that you can only read 1, 2, 3 or 4 bytes
+            {
+                self.constraints.push(
+                    (row_bytes.clone() - Expr::from(1))
+                        * (row_bytes.clone() - Expr::from(2))
+                        * (row_bytes.clone() - Expr::from(3))
+                        * (row_bytes.clone() - Expr::from(4)),
+                );
+            }
+
             let read_1 = (row_bytes.clone() - Expr::from(2))
                 * (row_bytes.clone() - Expr::from(3))
                 * (row_bytes.clone() - Expr::from(4));
