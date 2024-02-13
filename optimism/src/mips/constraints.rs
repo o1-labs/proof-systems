@@ -493,6 +493,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // EXTRA CONSTRAINTS
         {
+            // Expressions that are nonzero when the corresponding number of bytes are read
             let read_1 = (row_bytes.clone() - Expr::from(2))
                 * (row_bytes.clone() - Expr::from(3))
                 * (row_bytes.clone() - Expr::from(4));
@@ -504,7 +505,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 * (row_bytes.clone() - Expr::from(4));
             let read_4 = (row_bytes.clone() - Expr::from(1))
                 * (row_bytes.clone() - Expr::from(2))
-                * (row_bytes.clone() - Expr::from(4));
+                * (row_bytes.clone() - Expr::from(3));
 
             // Note there is no need to multiply by the Syscall flag because the constraints are zero when the witnesses are zero
             {
@@ -538,9 +539,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
             }
 
-            // Constrain booleanity of has_n_bytes
+            // Constrain booleanity of has_n_bytes (at least the one for 1 byte must be 1)
+            // TODO: could it read 0 bytes?
             {
-                for flag in has_n_bytes.clone() {
+                self.constraints
+                    .push(has_n_bytes[0].clone() - Expr::from(1));
+                for flag in &has_n_bytes[1..] {
                     self.constraints
                         .push(flag.clone() * (flag.clone() - Expr::from(1)));
                 }
@@ -549,20 +553,30 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // Constrain the bytes flags depending on the number of bytes read in this row
             {
                 // When at least has_1_byte, then any number of bytes can be read
+                // <=> Check that you can only read 1, 2, 3 or 4 bytes
                 self.constraints.push(
-                    has_n_bytes[0].clone()
-                        * (read_1.clone() + read_2.clone() + read_3.clone() + read_4.clone()),
+                    (row_bytes.clone() - Expr::from(1))
+                        * (row_bytes.clone() - Expr::from(2))
+                        * (row_bytes.clone() - Expr::from(3))
+                        * (row_bytes.clone() - Expr::from(4)),
                 );
+
                 // When at least has_2_byte, then any number of bytes can be read except 1
                 self.constraints.push(
-                    has_n_bytes[1].clone() * (read_2.clone() + read_3.clone() + read_4.clone()),
+                    has_n_bytes[1].clone()
+                        * (row_bytes.clone() - Expr::from(2))
+                        * (row_bytes.clone() - Expr::from(3))
+                        * (row_bytes.clone() - Expr::from(4)),
                 );
                 // When at least has_3_byte, then any number of bytes can be read except 1 nor 2
-                self.constraints
-                    .push(has_n_bytes[2].clone() * (read_3.clone() + read_4.clone()));
+                self.constraints.push(
+                    has_n_bytes[2].clone()
+                        * (row_bytes.clone() - Expr::from(3))
+                        * (row_bytes.clone() - Expr::from(4)),
+                );
                 // When has_4_byte, then only can read 4
                 self.constraints
-                    .push(has_n_bytes[3].clone() * read_4.clone());
+                    .push(has_n_bytes[3].clone() * (row_bytes.clone() - Expr::from(4)));
             }
         }
 
@@ -571,7 +585,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.add_lookup(Lookup::write_if(
                 has_n_bytes[i].clone(),
                 LookupTableIDs::SyscallLookup,
-                vec![hash_counter.clone(), byte_counter.clone(), bytes[i].clone()],
+                vec![
+                    hash_counter.clone(),
+                    byte_counter.clone() + Expr::from(i as u64),
+                    bytes[i].clone(),
+                ],
             ));
         }
         // COMMUNICATION CHANNEL: Read hash output
