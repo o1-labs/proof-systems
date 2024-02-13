@@ -1150,15 +1150,35 @@
 <a href="#1148" id="1148">1148</a>
 <a href="#1149" id="1149">1149</a>
 <a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
         PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
-    keccak::{environment::KeccakEnv, ArithOps},
-    lookup::{Lookup, LookupTable, Lookups},
+    keccak::environment::KeccakEnv,
+    lookup::Lookup,
     mips::{
-        column::Column,
+        column::{
+            Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
+            MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
+            MIPS_PREIMAGE_LEFT_OFFSET,
+        },
         interpreter::{
             <span class="self">self</span>, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
         },
@@ -1168,7 +1188,6 @@
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>core::panic;
-<span class="kw">use </span>kimchi::o1_utils::Two;
 <span class="kw">use </span>log::{debug, info};
 <span class="kw">use </span>std::{
     array,
@@ -1181,7 +1200,8 @@
 <span class="kw">pub const </span>NUM_INSTRUCTION_LOOKUP_TERMS: usize = <span class="number">5</span>;
 <span class="kw">pub const </span>NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-<span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">80</span>; <span class="comment">// TODO: Delete and use a vector instead
+<span class="comment">// TODO: Delete and use a vector instead
+</span><span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">92</span>; <span class="comment">// MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes
 
 </span><span class="attr">#[derive(Clone, Default)]
 </span><span class="kw">pub struct </span>SyscallEnv {
@@ -1214,12 +1234,12 @@
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
-    <span class="kw">pub </span>hash_count: u64,
     <span class="kw">pub </span>preimage_oracle: PreImageOracle,
     <span class="kw">pub </span>preimage: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
     <span class="kw">pub </span>preimage_bytes_read: u64,
     <span class="kw">pub </span>preimage_key: <span class="prelude-ty">Option</span>&lt;[u8; <span class="number">32</span>]&gt;,
     <span class="kw">pub </span>keccak_env: <span class="prelude-ty">Option</span>&lt;KeccakEnv&lt;Fp&gt;&gt;,
+    <span class="kw">pub </span>hash_counter: u64,
 }
 
 <span class="kw">fn </span>fresh_scratch_state&lt;Fp: Field, <span class="kw">const </span>N: usize&gt;() -&gt; [Fp; N] {
@@ -1724,6 +1744,9 @@
         len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         pos: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="comment">// This is a syscall row, otherwise is zero
+        </span><span class="self">self</span>.write_column(Column::ScratchState(MIPS_IS_SYSCALL_OFFSET), <span class="number">1</span>);
+
         <span class="kw">if </span><span class="self">self</span>.registers.preimage_offset == <span class="number">0 </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>preimage_key = [<span class="number">0u8</span>; <span class="number">32</span>];
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
@@ -1733,8 +1756,14 @@
                 }
             }
             <span class="kw">let </span>preimage = <span class="self">self</span>.preimage_oracle.get_preimage(preimage_key).get();
-            <span class="self">self</span>.preimage = <span class="prelude-val">Some</span>(preimage);
+            <span class="self">self</span>.preimage = <span class="prelude-val">Some</span>(preimage.clone());
             <span class="self">self</span>.preimage_key = <span class="prelude-val">Some</span>(preimage_key);
+
+            <span class="comment">// Initialize bytes left to read from preimage length
+            </span><span class="self">self</span>.write_column(
+                Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+                preimage.len() <span class="kw">as </span>u64,
+            );
         }
 
         <span class="kw">const </span>LENGTH_SIZE: usize = <span class="number">8</span>;
@@ -1764,6 +1793,11 @@
             } <span class="kw">else </span>{
                 <span class="comment">// This should really be handled by the keccak oracle.
                 </span><span class="kw">let </span>preimage_byte = <span class="self">self</span>.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
+                <span class="comment">// Write the individual byte to the witness
+                </span><span class="self">self</span>.write_column(
+                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i <span class="kw">as </span>usize),
+                    preimage_byte <span class="kw">as </span>u64,
+                );
                 <span class="kw">unsafe </span>{
                     <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), preimage_byte <span class="kw">as </span>u64);
                     <span class="self">self</span>.push_memory_access(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), <span class="self">self</span>.instruction_counter + <span class="number">1</span>);
@@ -1772,53 +1806,51 @@
         }
         <span class="self">self</span>.write_column(pos, actual_read_len);
 
+        <span class="comment">// Update the flags to count how many bytes are contained at least
+        // FIXME: add constraints for this notation?
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..MIPS_CHUNK_BYTES_LENGTH {
+            <span class="kw">if </span>actual_read_len &gt; i <span class="kw">as </span>u64 {
+                <span class="self">self</span>.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), <span class="number">1</span>);
+            }
+        }
+
         <span class="comment">// Update the total number of preimage bytes read so far
         </span><span class="self">self</span>.preimage_bytes_read += actual_read_len;
+        <span class="self">self</span>.write_column(
+            Column::ScratchState(MIPS_BYTES_READ_OFFSET),
+            <span class="self">self</span>.preimage_bytes_read,
+        );
+
+        <span class="comment">// Update how many bytes are left to be read
+        </span><span class="self">self</span>.write_column(
+            Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+            (preimage_len <span class="kw">as </span>u64) - <span class="self">self</span>.preimage_bytes_read,
+        );
+
         <span class="comment">// If we've read the entire preimage, trigger Keccak workflow
         </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read == preimage_len <span class="kw">as </span>u64 {
             <span class="macro">debug!</span>(<span class="string">"Preimage has been read entirely, triggering Keccak process"</span>);
-            <span class="kw">let </span><span class="kw-2">mut </span>keccak_env =
-                KeccakEnv::&lt;Fp&gt;::new(<span class="self">self</span>.hash_count, <span class="self">self</span>.preimage.as_ref().unwrap());
+            <span class="self">self</span>.keccak_env = <span class="prelude-val">Some</span>(KeccakEnv::&lt;Fp&gt;::new(
+                <span class="self">self</span>.hash_counter,
+                <span class="self">self</span>.preimage.as_ref().unwrap(),
+            ));
 
-            <span class="comment">// COMMUNICATION CHANNEL: Write preimage bytes
-            // FIXME: this should be executed in the constraints side
-            </span><span class="kw">let </span>preimage = <span class="self">self</span>.preimage.as_ref().unwrap();
-            <span class="kw">for </span>(i, byte) <span class="kw">in </span>preimage.iter().enumerate() {
-                keccak_env.add_lookup(Lookup::write_one(
-                    LookupTable::SyscallLookup,
-                    <span class="macro">vec!</span>[
-                        &lt;KeccakEnv&lt;Fp&gt; <span class="kw">as </span>ArithOps&gt;::constant(<span class="self">self</span>.hash_count),
-                        &lt;KeccakEnv&lt;Fp&gt; <span class="kw">as </span>ArithOps&gt;::constant(i <span class="kw">as </span>u64),
-                        &lt;KeccakEnv&lt;Fp&gt; <span class="kw">as </span>ArithOps&gt;::constant(<span class="kw-2">*</span>byte <span class="kw">as </span>u64),
-                    ],
-                ))
-            }
+            <span class="comment">// COMMUNICATION CHANNEL: only on constraint side
 
-            <span class="comment">// COMMUNICATION CHANNEL: Read hash output
-            // FIXME: this should be executed in the constraints side
-            </span><span class="kw">match </span><span class="self">self</span>.preimage_key {
-                <span class="prelude-val">Some</span>(preimage_key) =&gt; {
-                    <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(Fp::zero(), |acc, i| {
-                        acc * Fp::two_pow(<span class="number">8</span>) + Fp::from(preimage_key[i])
-                    });
-                    keccak_env.add_lookup(Lookup::read_one(
-                        LookupTable::SyscallLookup,
-                        <span class="macro">vec!</span>[
-                            &lt;KeccakEnv&lt;Fp&gt; <span class="kw">as </span>ArithOps&gt;::constant(<span class="self">self</span>.hash_count),
-                            &lt;KeccakEnv&lt;Fp&gt; <span class="kw">as </span>ArithOps&gt;::constant_field(bytes31),
-                        ],
-                    ));
-                }
-                <span class="prelude-val">None </span>=&gt; <span class="macro">panic!</span>(<span class="string">"preimage_key should be set"</span>),
-            }
-            <span class="self">self</span>.keccak_env = <span class="prelude-val">Some</span>(keccak_env);
+            // Update hash counter column
+            </span><span class="self">self</span>.write_column(
+                Column::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+                <span class="self">self</span>.hash_counter,
+            );
+            <span class="comment">// Number of preimage bytes left to be read should be zero at this point
 
-            <span class="comment">// Reset environment
+            // Reset environment
             </span><span class="self">self</span>.preimage_bytes_read = <span class="number">0</span>;
             <span class="self">self</span>.preimage_key = <span class="prelude-val">None</span>;
-            <span class="self">self</span>.hash_count += <span class="number">1</span>;
-        }
+            <span class="self">self</span>.hash_counter += <span class="number">1</span>;
 
+            <span class="comment">// Reset PreimageCounter column will be done in the next call
+        </span>}
         actual_read_len
     }
 
@@ -1926,12 +1958,12 @@
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
-            hash_count: <span class="number">0</span>,
             preimage_oracle,
             preimage: state.preimage,
             preimage_bytes_read: <span class="number">0</span>,
             preimage_key: <span class="prelude-val">None</span>,
             keccak_env: <span class="prelude-val">None</span>,
+            hash_counter: <span class="number">0</span>,
         }
     }
 

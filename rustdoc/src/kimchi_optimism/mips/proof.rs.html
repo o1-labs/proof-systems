@@ -493,6 +493,12 @@
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::witness::SCRATCH_SIZE;
 <span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
@@ -530,6 +536,12 @@
 /// currently processing preimage
 /// - `[SCRATCH_SIZE] - 46` intermediate columns that can be used by the
 /// instruction set
+/// - the hash counter
+/// - the flag to indicate if the current instruction is a preimage syscall
+/// - the number of bytes read so far for the current preimage
+/// - how many bytes are left to be read for the current preimage
+/// - the (at most) 4 bytes of the preimage key that are currently being processed
+/// - 4 helpers to check if at least n bytes were read in the current row
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>WitnessColumns&lt;G&gt; {
     <span class="kw">pub </span>scratch: [G; SCRATCH_SIZE],
