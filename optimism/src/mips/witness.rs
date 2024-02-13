@@ -3,10 +3,14 @@ use crate::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
         PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
-    keccak::{environment::KeccakEnv, ArithOps},
-    lookup::{Lookup, LookupTable, Lookups},
+    keccak::environment::KeccakEnv,
+    lookup::Lookup,
     mips::{
-        column::Column,
+        column::{
+            Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
+            MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
+            MIPS_PREIMAGE_LEFT_OFFSET,
+        },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
         },
@@ -16,7 +20,6 @@ use crate::{
 };
 use ark_ff::Field;
 use core::panic;
-use kimchi::o1_utils::Two;
 use log::{debug, info};
 use std::{
     array,
@@ -29,7 +32,8 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 80; // TODO: Delete and use a vector instead
+// TODO: Delete and use a vector instead
+pub const SCRATCH_SIZE: usize = 92; // MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -62,12 +66,12 @@ pub struct Env<Fp> {
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
-    pub hash_count: u64,
     pub preimage_oracle: PreImageOracle,
     pub preimage: Option<Vec<u8>>,
     pub preimage_bytes_read: u64,
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
+    pub hash_counter: u64,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -572,6 +576,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         len: &Self::Variable,
         pos: Self::Position,
     ) -> Self::Variable {
+        // This is a syscall row, otherwise is zero
+        self.write_column(Column::ScratchState(MIPS_IS_SYSCALL_OFFSET), 1);
+
         if self.registers.preimage_offset == 0 {
             let mut preimage_key = [0u8; 32];
             for i in 0..8 {
@@ -581,8 +588,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             }
             let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
-            self.preimage = Some(preimage);
+            self.preimage = Some(preimage.clone());
             self.preimage_key = Some(preimage_key);
+
+            // Initialize bytes left to read from preimage length
+            self.write_column(
+                Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+                preimage.len() as u64,
+            );
         }
 
         const LENGTH_SIZE: usize = 8;
@@ -612,6 +625,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             } else {
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
+                // Write the individual byte to the witness
+                self.write_column(
+                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i as usize),
+                    preimage_byte as u64,
+                );
                 unsafe {
                     self.push_memory(&(*addr + i), preimage_byte as u64);
                     self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
@@ -620,53 +638,51 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
         self.write_column(pos, actual_read_len);
 
+        // Update the flags to count how many bytes are contained at least
+        // FIXME: add constraints for this notation?
+        for i in 0..MIPS_CHUNK_BYTES_LENGTH {
+            if actual_read_len > i as u64 {
+                self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
+            }
+        }
+
         // Update the total number of preimage bytes read so far
         self.preimage_bytes_read += actual_read_len;
+        self.write_column(
+            Column::ScratchState(MIPS_BYTES_READ_OFFSET),
+            self.preimage_bytes_read,
+        );
+
+        // Update how many bytes are left to be read
+        self.write_column(
+            Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+            (preimage_len as u64) - self.preimage_bytes_read,
+        );
+
         // If we've read the entire preimage, trigger Keccak workflow
         if self.preimage_bytes_read == preimage_len as u64 {
             debug!("Preimage has been read entirely, triggering Keccak process");
-            let mut keccak_env =
-                KeccakEnv::<Fp>::new(self.hash_count, self.preimage.as_ref().unwrap());
+            self.keccak_env = Some(KeccakEnv::<Fp>::new(
+                self.hash_counter,
+                self.preimage.as_ref().unwrap(),
+            ));
 
-            // COMMUNICATION CHANNEL: Write preimage bytes
-            // FIXME: this should be executed in the constraints side
-            let preimage = self.preimage.as_ref().unwrap();
-            for (i, byte) in preimage.iter().enumerate() {
-                keccak_env.add_lookup(Lookup::write_one(
-                    LookupTable::SyscallLookup,
-                    vec![
-                        <KeccakEnv<Fp> as ArithOps>::constant(self.hash_count),
-                        <KeccakEnv<Fp> as ArithOps>::constant(i as u64),
-                        <KeccakEnv<Fp> as ArithOps>::constant(*byte as u64),
-                    ],
-                ))
-            }
+            // COMMUNICATION CHANNEL: only on constraint side
 
-            // COMMUNICATION CHANNEL: Read hash output
-            // FIXME: this should be executed in the constraints side
-            match self.preimage_key {
-                Some(preimage_key) => {
-                    let bytes31 = (1..32).fold(Fp::zero(), |acc, i| {
-                        acc * Fp::two_pow(8) + Fp::from(preimage_key[i])
-                    });
-                    keccak_env.add_lookup(Lookup::read_one(
-                        LookupTable::SyscallLookup,
-                        vec![
-                            <KeccakEnv<Fp> as ArithOps>::constant(self.hash_count),
-                            <KeccakEnv<Fp> as ArithOps>::constant_field(bytes31),
-                        ],
-                    ));
-                }
-                None => panic!("preimage_key should be set"),
-            }
-            self.keccak_env = Some(keccak_env);
+            // Update hash counter column
+            self.write_column(
+                Column::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+                self.hash_counter,
+            );
+            // Number of preimage bytes left to be read should be zero at this point
 
             // Reset environment
             self.preimage_bytes_read = 0;
             self.preimage_key = None;
-            self.hash_count += 1;
-        }
+            self.hash_counter += 1;
 
+            // Reset PreimageCounter column will be done in the next call
+        }
         actual_read_len
     }
 
@@ -774,12 +790,12 @@ impl<Fp: Field> Env<Fp> {
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
-            hash_count: 0,
             preimage_oracle,
             preimage: state.preimage,
             preimage_bytes_read: 0,
             preimage_key: None,
             keccak_env: None,
+            hash_counter: 0,
         }
     }
 
