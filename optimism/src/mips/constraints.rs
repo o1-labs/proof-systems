@@ -503,6 +503,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
             }
 
+            // Expressions that are nonzero when the corresponding number of bytes are read
             let read_1 = (row_bytes.clone() - Expr::from(2))
                 * (row_bytes.clone() - Expr::from(3))
                 * (row_bytes.clone() - Expr::from(4));
