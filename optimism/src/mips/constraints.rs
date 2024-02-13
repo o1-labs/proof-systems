@@ -571,7 +571,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.add_lookup(Lookup::write_if(
                 has_n_bytes[i].clone(),
                 LookupTable::SyscallLookup,
-                vec![hash_counter.clone(), byte_counter.clone(), bytes[i].clone()],
+                vec![
+                    hash_counter.clone(),
+                    byte_counter.clone() + Expr::from(i as u64),
+                    bytes[i].clone(),
+                ],
             ));
         }
         // COMMUNICATION CHANNEL: Read hash output
