@@ -12,21 +12,21 @@ use crate::columns::Column;
 /// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
 /// use kimchi::circuits::gate::CurrOrNext;
 /// use kimchi_msm::columns::Column;
-/// use kimchi_msm::constraint::E;
+/// use kimchi_msm::constraint::MSMExpr;
 /// pub type Fp = ark_bn254::Fr;
-/// let x1 = E::<Fp>::Atom(
+/// let x1 = MSMExpr::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
 ///         col: Column::X(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
-/// let x2 = E::<Fp>::Atom(
+/// let x2 = MSMExpr::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
 ///         col: Column::X(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
-/// let x3 = E::<Fp>::Atom(
+/// let x3 = MSMExpr::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
 ///         col: Column::X(1),
 ///         row: CurrOrNext::Curr,
@@ -36,4 +36,4 @@ use crate::columns::Column;
 /// ```
 /// A list of such constraints is used to represent the entire circuit and will
 /// be used to build the quotient polynomial.
-pub type E<F> = Expr<ConstantExpr<F>, Column>;
+pub type MSMExpr<F> = Expr<ConstantExpr<F>, Column>;
