@@ -551,18 +551,27 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 // When at least has_1_byte, then any number of bytes can be read
                 self.constraints.push(
                     has_n_bytes[0].clone()
-                        * (read_1.clone() + read_2.clone() + read_3.clone() + read_4.clone()),
+                        * (row_bytes.clone() - Expr::from(1))
+                        * (row_bytes.clone() - Expr::from(2))
+                        * (row_bytes.clone() - Expr::from(3))
+                        * (row_bytes.clone() - Expr::from(4)),
                 );
                 // When at least has_2_byte, then any number of bytes can be read except 1
                 self.constraints.push(
-                    has_n_bytes[1].clone() * (read_2.clone() + read_3.clone() + read_4.clone()),
+                    has_n_bytes[1].clone()
+                        * (row_bytes.clone() - Expr::from(2))
+                        * (row_bytes.clone() - Expr::from(3))
+                        * (row_bytes.clone() - Expr::from(4)),
                 );
                 // When at least has_3_byte, then any number of bytes can be read except 1 nor 2
-                self.constraints
-                    .push(has_n_bytes[2].clone() * (read_3.clone() + read_4.clone()));
+                self.constraints.push(
+                    has_n_bytes[2].clone()
+                        * (row_bytes.clone() - Expr::from(3))
+                        * (row_bytes.clone() - Expr::from(4)),
+                );
                 // When has_4_byte, then only can read 4
                 self.constraints
-                    .push(has_n_bytes[3].clone() * read_4.clone());
+                    .push(has_n_bytes[3].clone() * (row_bytes.clone() - Expr::from(4)));
             }
         }
 
