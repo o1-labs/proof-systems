@@ -162,7 +162,7 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     }
 
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        x + y
+        x.clone() + y.clone() - Self::constant(2) * x * y
     }
 
     fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable {
