@@ -189,7 +189,68 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One};
+<span class="kw">use </span>kimchi::{
+    circuits::polynomials::keccak::{
+        constants::{RATE_IN_BYTES, ROUNDS},
+        Keccak, RC,
+    },
+    o1_utils::Two,
+};
+
+<span class="kw">use </span><span class="kw">crate</span>::keccak::witness::pad_blocks;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>TWO_TO_16_UPPERBOUND: u32 = <span class="number">1 </span>&lt;&lt; <span class="number">16</span>;
 
@@ -225,15 +286,15 @@
 }
 
 <span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>Lookup&lt;Fp&gt; {
+</span><span class="kw">pub struct </span>Lookup&lt;T&gt; {
     <span class="kw">pub </span>mode: LookupMode,
     <span class="doccomment">/// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
-    </span><span class="kw">pub </span>magnitude: Fp,
+    </span><span class="kw">pub </span>magnitude: T,
     <span class="kw">pub </span>table_id: LookupTableIDs,
-    <span class="kw">pub </span>value: Vec&lt;Fp&gt;,
+    <span class="kw">pub </span>value: Vec&lt;T&gt;,
 }
 
-<span class="kw">impl</span>&lt;Fp: std::fmt::Display + Field&gt; std::fmt::Display <span class="kw">for </span>Lookup&lt;Fp&gt; {
+<span class="kw">impl</span>&lt;F: std::fmt::Display + Field&gt; std::fmt::Display <span class="kw">for </span>Lookup&lt;F&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">let </span>numerator = <span class="kw">match </span><span class="self">self</span>.mode {
             LookupMode::Read =&gt; <span class="self">self</span>.magnitude,
@@ -253,7 +314,8 @@
 }
 
 <span class="kw">impl</span>&lt;T: One&gt; Lookup&lt;T&gt; {
-    <span class="kw">pub fn </span>read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Reads one value when `if_is_true` is 1.
+    </span><span class="kw">pub fn </span>read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Read,
             magnitude: if_is_true,
@@ -262,7 +324,8 @@
         }
     }
 
-    <span class="kw">pub fn </span>write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Writes one value when `if_is_true` is 1.
+    </span><span class="kw">pub fn </span>write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Write,
             magnitude: if_is_true,
@@ -271,7 +334,8 @@
         }
     }
 
-    <span class="kw">pub fn </span>read_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Reads one value from a table.
+    </span><span class="kw">pub fn </span>read_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Read,
             magnitude: T::one(),
@@ -280,7 +344,8 @@
         }
     }
 
-    <span class="kw">pub fn </span>write_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Writes one value to a table.
+    </span><span class="kw">pub fn </span>write_one(table_id: LookupTableIDs, value: Vec&lt;T&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             mode: LookupMode::Write,
             magnitude: T::one(),
@@ -364,6 +429,45 @@
                     <span class="macro">vec!</span>[
                         F::from(i),
                         F::from(u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap()),
+                    ]
+                })
+                .collect(),
+        }
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_round_constants() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::RoundConstantsLookup,
+            entries: (<span class="number">0</span>..=ROUNDS)
+                .map(|i| {
+                    <span class="macro">vec!</span>[
+                        F::from(i <span class="kw">as </span>u32),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">3</span>]),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">2</span>]),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">1</span>]),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">0</span>]),
+                    ]
+                })
+                .collect(),
+        }
+    }
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="kw">fn </span>table_pad() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: LookupTableIDs::PadLookup,
+            entries: (<span class="number">1</span>..=RATE_IN_BYTES)
+                .map(|i| {
+                    <span class="kw">let </span>suffix = pad_blocks(i);
+                    <span class="macro">vec!</span>[
+                        F::from(i <span class="kw">as </span>u64),
+                        F::two_pow(i <span class="kw">as </span>u64),
+                        suffix[<span class="number">0</span>],
+                        suffix[<span class="number">1</span>],
+                        suffix[<span class="number">2</span>],
+                        suffix[<span class="number">3</span>],
+                        suffix[<span class="number">4</span>],
                     ]
                 })
                 .collect(),

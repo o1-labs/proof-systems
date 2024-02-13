@@ -348,7 +348,7 @@
 
 <span class="doccomment">/// This function returns a vector of field elements that represent the 5 padding suffixes.
 /// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad_blocks&lt;Fp: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;Fp&gt; {
+</span><span class="kw">pub fn </span>pad_blocks&lt;Fp: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;Fp&gt; {
     <span class="comment">// Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
     </span><span class="kw">let </span><span class="kw-2">mut </span>blocks = <span class="macro">vec!</span>[Fp::zero(); <span class="number">5</span>];
     <span class="kw">let </span><span class="kw-2">mut </span>pad = [Fp::zero(); RATE_IN_BYTES];
