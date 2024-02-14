@@ -38,6 +38,9 @@ where
 /// The value of the input an output of the function being folded
 struct Argument<F, const N: usize>([F; N]);
 
+/// Represents a point of an elliptic curve in affine coordinates.
+/// The type parameter is the base field of the curve.
+/// The point is not enforced to be in the prime subgroup of the curve.
 type Point<F> = [F; 2];
 
 /// Represents the result of a (Poseidon) hash, encoded in the circuit
