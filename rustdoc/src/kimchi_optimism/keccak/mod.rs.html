@@ -151,29 +151,29 @@
         + Clone;
     <span class="kw">type </span>Fp: std::ops::Neg&lt;Output = <span class="self">Self</span>::Fp&gt;;
 
-    <span class="doccomment">/// Degree-2 variable encoding whether the input is a boolean value
+    <span class="doccomment">/// Degree-2 variable encoding whether the input is a boolean value (0 = yes)
     </span><span class="kw">fn </span>is_boolean(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Degree-1 variable encoding the negation of the input
     /// Note: it only works as expected if the input is a boolean value
     </span><span class="kw">fn </span>not(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Degree-1 variable encoding whether the input is the value one
+    <span class="doccomment">/// Degree-1 variable encoding whether the input is the value one (0 = yes)
     </span><span class="kw">fn </span>is_one(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Degree-2 variable encoding whether the first input is nonzero.
+    <span class="doccomment">/// Degree-2 variable encoding whether the first input is nonzero (0 = yes).
     /// It requires the second input to be the multiplicative inverse of the first.
     /// Note: if the first input is zero, there is no multiplicative inverse.
     </span><span class="kw">fn </span>is_nonzero(x: <span class="self">Self</span>::Variable, x_inv: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Degree-1 variable encoding the XOR of two variables which should be boolean
+    <span class="doccomment">/// Degree-1 variable encoding the XOR of two variables which should be boolean (1 = true)
     </span><span class="kw">fn </span>xor(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Degree-1 variable encoding the OR of two variables, which should be boolean
+    <span class="doccomment">/// Degree-1 variable encoding the OR of two variables, which should be boolean (1 = true)
     </span><span class="kw">fn </span>or(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Degree-2 variable encoding whether at least one of the two inputs is zero
-    </span><span class="kw">fn </span>either_false(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Degree-2 variable encoding whether at least one of the two inputs is zero (0 = yes)
+    </span><span class="kw">fn </span>either_zero(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
 }
 
 <span class="doccomment">/// This trait defines common arithmetic operations used in the Keccak circuit

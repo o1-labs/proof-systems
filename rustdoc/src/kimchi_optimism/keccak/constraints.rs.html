@@ -282,6 +282,7 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
 </span><span class="kw">use crate</span>::{
     keccak::{
@@ -364,15 +365,16 @@
             // - 1 of degree 2
             </span>{
                 <span class="comment">// Squeeze and Root are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_root()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_root()));
                 <span class="comment">// Squeeze and Pad are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_pad()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_pad()));
                 <span class="comment">// Round and Pad are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_pad()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_pad()));
                 <span class="comment">// Round and Root are not both true
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_root()));
-                <span class="comment">// Absorb and Squeeze cannot happen at the same time
-                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_false(<span class="self">self</span>.is_absorb(), <span class="self">self</span>.is_squeeze()));
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_root()));
+                <span class="comment">// Absorb and Squeeze cannot happen at the same time.
+                // Equivalent to is_boolean(is_sponge())
+                </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_absorb(), <span class="self">self</span>.is_squeeze()));
                 <span class="comment">// Trivially, is_sponge and is_round are mutually exclusive
             </span>}
         }
