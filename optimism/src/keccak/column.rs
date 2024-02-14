@@ -47,37 +47,40 @@ pub(crate) const PAD_SUFFIX_LEN: usize = 5; // The padding suffix of 1088 bits i
 /// (Sponge or Round) that is currently being executed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum KeccakColumn {
-    HashIndex,    // Hash identifier to distinguish inside the syscalls communication channel
-    StepIndex,    // Hash step identifier to distinguish inside interstep communication
-    FlagRound,    // Coeff Round = [0..24)
-    FlagAbsorb,   // Coeff Absorb = 0 | 1
-    FlagSqueeze,  // Coeff Squeeze = 0 | 1
-    FlagRoot,     // Coeff Root = 0 | 1
-    PadLength,    // Coeff Length 0 | 1 ..=136
-    InvPadLength, // Inverse of PadLength when PadLength != 0
-    TwoToPad,     // 2^PadLength
-    PadBytesFlags(usize), // 136 boolean values
-    PadSuffix(usize), // 5 values with padding suffix
-    RoundConstants(usize), // Round constants
-    Input(usize), // Curr[0..100) either ThetaStateA or SpongeOldState
-    ThetaShiftsC(usize), // Round Curr[100..180)
-    ThetaDenseC(usize), // Round Curr[180..200)
-    ThetaQuotientC(usize), // Round Curr[200..205)
+    /// Hash identifier to distinguish inside the syscalls communication channel
+    HashIndex,
+    /// Hash step identifier to distinguish inside interstep communication
+    StepIndex,
+    /// Coeff Round = [0..24)
+    FlagRound,
+    FlagAbsorb,             // Coeff Absorb = 0 | 1
+    FlagSqueeze,            // Coeff Squeeze = 0 | 1
+    FlagRoot,               // Coeff Root = 0 | 1
+    PadLength,              // Coeff Length 0 | 1 ..=136
+    InvPadLength,           // Inverse of PadLength when PadLength != 0
+    TwoToPad,               // 2^PadLength
+    PadBytesFlags(usize),   // 136 boolean values
+    PadSuffix(usize),       // 5 values with padding suffix
+    RoundConstants(usize),  // Round constants
+    Input(usize),           // Curr[0..100) either ThetaStateA or SpongeOldState
+    ThetaShiftsC(usize),    // Round Curr[100..180)
+    ThetaDenseC(usize),     // Round Curr[180..200)
+    ThetaQuotientC(usize),  // Round Curr[200..205)
     ThetaRemainderC(usize), // Round Curr[205..225)
-    ThetaDenseRotC(usize), // Round Curr[225..245)
+    ThetaDenseRotC(usize),  // Round Curr[225..245)
     ThetaExpandRotC(usize), // Round Curr[245..265)
-    PiRhoShiftsE(usize), // Round Curr[265..665)
-    PiRhoDenseE(usize), // Round Curr[665..765)
-    PiRhoQuotientE(usize), // Round Curr[765..865)
+    PiRhoShiftsE(usize),    // Round Curr[265..665)
+    PiRhoDenseE(usize),     // Round Curr[665..765)
+    PiRhoQuotientE(usize),  // Round Curr[765..865)
     PiRhoRemainderE(usize), // Round Curr[865..965)
-    PiRhoDenseRotE(usize), // Round Curr[965..1065)
+    PiRhoDenseRotE(usize),  // Round Curr[965..1065)
     PiRhoExpandRotE(usize), // Round Curr[1065..1165)
-    ChiShiftsB(usize), // Round Curr[1165..1565)
-    ChiShiftsSum(usize), // Round Curr[1565..1965)
-    SpongeNewState(usize), // Sponge Curr[100..200)
-    SpongeBytes(usize), // Sponge Curr[200..400)
-    SpongeShifts(usize), // Sponge Curr[400..800)
-    Output(usize), // Next[0..100) either IotaStateG or SpongeXorState
+    ChiShiftsB(usize),      // Round Curr[1165..1565)
+    ChiShiftsSum(usize),    // Round Curr[1565..1965)
+    SpongeNewState(usize),  // Sponge Curr[100..200)
+    SpongeBytes(usize),     // Sponge Curr[200..400)
+    SpongeShifts(usize),    // Sponge Curr[400..800)
+    Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
 }
 
 /// The witness columns used by the Keccak circuit.
