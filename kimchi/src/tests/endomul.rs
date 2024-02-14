@@ -70,8 +70,9 @@ fn endomul_test() {
         // let g = Other::prime_subgroup_generator().into_projective();
         let acc0 = {
             let t = Other::new(endo_q * base.x, base.y, false);
-            let p = t + base;
-            let acc = p + p;
+            // Ensuring we use affine coordinates
+            let p: Other = t + base;
+            let acc: Other = p + p;
             (acc.x, acc.y)
         };
 

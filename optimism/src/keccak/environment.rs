@@ -7,7 +7,7 @@ use crate::{
         interpreter::{Absorb, KeccakStep, Sponge},
         ArithOps, BoolOps, DIM, E, QUARTERS,
     },
-    mips::interpreter::Lookup,
+    lookup::Lookup,
 };
 use ark_ff::{Field, One};
 use kimchi::{
@@ -154,22 +154,22 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     }
 
     fn is_one(x: Self::Variable) -> Self::Variable {
-        x - Self::Variable::one()
+        Self::not(x)
     }
 
     fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable {
-        x * x_inv - Self::Variable::one()
+        Self::is_one(x * x_inv)
     }
 
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        Self::is_one(x + y)
+        x.clone() + y.clone() - Self::constant(2) * x * y
     }
 
     fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x.clone() + y.clone() - x * y
     }
 
-    fn either_false(x: Self::Variable, y: Self::Variable) -> Self::Variable {
+    fn either_zero(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x * y
     }
 }
@@ -233,18 +233,18 @@ pub(crate) trait KeccakEnvironment {
     ///     - `x` must range between [0..5)
     fn from_quarters(quarters: &[Self::Variable], y: Option<usize>, x: usize) -> Self::Variable;
 
-    /// Returns a variable that encodes whether the current step is a sponge
+    /// Returns a variable that encodes whether the current step is a sponge (1 = yes)
     fn is_sponge(&self) -> Self::Variable;
-    /// Returns a variable that encodes whether the current step is an absorb sponge
+    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
     fn is_absorb(&self) -> Self::Variable;
-    /// Returns a variable that encodes whether the current step is a squeeze sponge
+    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
     fn is_squeeze(&self) -> Self::Variable;
-    /// Returns a variable that encodes whether the current step is the first absorb sponge
+    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
     fn is_root(&self) -> Self::Variable;
-    /// Returns a degree-2 variable that encodes whether the current step is the last absorb sponge
+    /// Returns a degree-2 variable that encodes whether the current step is the last absorb sponge (1 = yes)
     fn is_pad(&self) -> Self::Variable;
 
-    /// Returns a variable that encodes whether the current step is a permutation round
+    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
     fn is_round(&self) -> Self::Variable;
     /// Returns a variable that encodes the current round number [0..24)
     fn round(&self) -> Self::Variable;
@@ -254,7 +254,7 @@ pub(crate) trait KeccakEnvironment {
     /// Returns a variable that encodes the value 2^pad_length
     fn two_to_pad(&self) -> Self::Variable;
 
-    /// Returns a variable that encodes whether the `idx`-th byte of the new block is involved in the padding
+    /// Returns a variable that encodes whether the `idx`-th byte of the new block is involved in the padding (1 = yes)
     fn in_padding(&self, idx: usize) -> Self::Variable;
 
     /// Returns a variable that encodes the `idx`-th chunk of the padding suffix
@@ -477,7 +477,10 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_pad(&self) -> Self::Variable {
-        Self::is_nonzero(self.pad_length(), self.variable(KeccakColumn::InvPadLength))
+        Self::not(Self::is_nonzero(
+            self.pad_length(),
+            self.variable(KeccakColumn::InvPadLength),
+        ))
     }
 
     fn is_round(&self) -> Self::Variable {

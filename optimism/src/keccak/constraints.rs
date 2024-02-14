@@ -1,9 +1,11 @@
 //! This module contains the constraints for one Keccak step.
-use crate::keccak::{
-    column::{KeccakColumn, PAD_SUFFIX_LEN},
-    environment::{KeccakEnv, KeccakEnvironment},
-    lookups::Lookups,
-    {ArithOps, BoolOps, E, WORDS_IN_HASH},
+use crate::{
+    keccak::{
+        column::{KeccakColumn, PAD_SUFFIX_LEN},
+        environment::{KeccakEnv, KeccakEnvironment},
+        {ArithOps, BoolOps, E, WORDS_IN_HASH},
+    },
+    lookup::Lookups,
 };
 use ark_ff::Field;
 use kimchi::circuits::{
@@ -78,15 +80,16 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             // - 1 of degree 2
             {
                 // Squeeze and Root are not both true
-                self.constrain(Self::either_false(self.is_squeeze(), self.is_root()));
+                self.constrain(Self::either_zero(self.is_squeeze(), self.is_root()));
                 // Squeeze and Pad are not both true
-                self.constrain(Self::either_false(self.is_squeeze(), self.is_pad()));
+                self.constrain(Self::either_zero(self.is_squeeze(), self.is_pad()));
                 // Round and Pad are not both true
-                self.constrain(Self::either_false(self.is_round(), self.is_pad()));
+                self.constrain(Self::either_zero(self.is_round(), self.is_pad()));
                 // Round and Root are not both true
-                self.constrain(Self::either_false(self.is_round(), self.is_root()));
-                // Absorb and Squeeze cannot happen at the same time
-                self.constrain(Self::either_false(self.is_absorb(), self.is_squeeze()));
+                self.constrain(Self::either_zero(self.is_round(), self.is_root()));
+                // Absorb and Squeeze cannot happen at the same time.
+                // Equivalent to is_boolean(is_sponge())
+                self.constrain(Self::either_zero(self.is_absorb(), self.is_squeeze()));
                 // Trivially, is_sponge and is_round are mutually exclusive
             }
         }

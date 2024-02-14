@@ -729,15 +729,16 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
 1. Checking $\relation_{\mathsf{Acc}, \vec{G}}$ and polynomial relations (from PlonK) to $\relation_{\mathsf{PCS},d}$ (the dotted arrows):
     1. Sample $\chaleval \sample \mathcal{C}$ (evaluation point) using the Poseidon sponge.
     1. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`PointEvaluations`).
-    1. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge, `polyscale`) using the Poseidon sponge.
-    1. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge, `evalscale`) using the Poseidon sponge.
-    1. Compute $C \in \GG$ with $\chalu$ from:
+    1. Sample $\chalv \sample \mathcal{C}$ (commitment combination challenge, `polyscale`) using the Poseidon sponge.
+    1. Sample $\chalu \sample \mathcal{C}$ (evaluation combination challenge, `evalscale`) using the Poseidon sponge.
+        - The $(\chalv, \chalu)$ notation is consistent with the Plonk paper where $\chalv$ recombines commitments and $\chalu$ recombines evaluations
+    1. Compute $C \in \GG$ with $\chalv$ from:
         - $\accCom^{(1)}, \ldots, \accCom^{(n)}$ (`RecursionChallenge.comm` $\in \GG$)
         - Polynomial commitments from PlonK (`ProverCommitments`)
-    1. Compute $\openy_{\chaleval}$ (part of `combined_inner_product`) with $\chalu$ from:
+    1. Compute $\openy_{\chaleval}$ (part of `combined_inner_product`) with $\chalv$ from:
         - The evaluations of $h^{(1)}(\chaleval), \ldots, h^{(n)}(\chaleval)$
         - Polynomial openings from PlonK (`ProofEvaluations`) at $\chaleval$
-    1. Compute $\openy_{\chaleval\omega}$ (part of `combined_inner_product`) with $\chalu$ from:
+    1. Compute $\openy_{\chaleval\omega}$ (part of `combined_inner_product`) with $\chalv$ from:
         - The evaluations of $h^{(1)}(\chaleval\omega), \ldots, h^{(n)}(\chaleval\omega)$
         - Polynomial openings from PlonK (`ProofEvaluations`) at $\chaleval \cdot \omega$
 
@@ -750,13 +751,13 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
             (\comm, \chaleval\omega, \openy_{\chaleval\omega}) &\in \langPCS{\degree}
             \end{align}
             $$
-        These are combined using a random linear combination with $\chalv$ in the inner product argument
+        These are combined using a random linear combination with $\chalu$ in the inner product argument
         (see [Different functionalities](/plonk/inner_product_api.html) for details).
         </details>
 
 1. Checking $\relation_{\mathsf{PCS}, d} \to \relation_{\mathsf{IPA},\ell}$.
     1. Sample $\genOpen \sample \GG$ using the Poseidon sponge: hash to curve.
-    1. Compute $\openy \gets \openy_{\chaleval} + \chalv \cdot \openy_{\chaleval\omega}$.
+    1. Compute $\openy \gets \openy_{\chaleval} + \chalu \cdot \openy_{\chaleval\omega}$.
     1. Update $\comm' \gets \comm + [\openy] \cdot \genOpen$.
 1. Checking $\relation_{\mathsf{IPA}, \ell} \to \relation_{\mathsf{IPA},1}$: <br>
    Check the correctness of the folding argument, for every $i = 1, \ldots, k$:
@@ -770,12 +771,12 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
 1. Checking $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc}, \vec{G}}$
     1. Receive $c$ form the prover.
     1. Define $\hpoly$ from $\vec{\chalfold}$ (folding challenges, computed above).
-    1. Compute a combined evaluation of the IPA challenge polynomial on two points: $b = \hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega)$
+    1. Compute a combined evaluation of the IPA challenge polynomial on two points: $b = \hpoly(\chaleval) + \chalu \cdot \hpoly(\chaleval \omega)$
        - Computationally, $b$ is obtained inside bulletproof folding procedure, by folding the vector $b_{\mathsf{init}}$ such that $b_{\mathsf{init},j} = \zeta^j + v \cdot \zeta^j w^j$ using the same standard bulletproof challenges that constitute $h(X)$. This $b_{\mathsf{init}}$ is a $v$-recombined evaluation point. The equality is by linearity of IPA recombination.
-    1. Compute $\openy' \gets c \cdot b = c \cdot (\hpoly(\chaleval) + \chalv \cdot \hpoly(\chaleval \omega))$, this works since:
+    1. Compute $\openy' \gets c \cdot b = c \cdot (\hpoly(\chaleval) + \chalu \cdot \hpoly(\chaleval \omega))$, this works since:
        $$
        \openx^{(\rounds)} =
-       \openx^{(\rounds)}_{\chaleval} + \chalv \cdot \openx^{(\rounds)}_{\chaleval\omega}
+       \openx^{(\rounds)}_{\chaleval} + \chalu \cdot \openx^{(\rounds)}_{\chaleval\omega}
        $$
        See [Different functionalities](/plonk/inner_product_api.html) for more details or
        [the relevant code](https://github.com/o1-labs/proof-systems/blob/76c678d3db9878730f8a4eead65d1e038a509916/poly-commitment/src/commitment.rs#L785).

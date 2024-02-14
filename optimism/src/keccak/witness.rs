@@ -6,12 +6,11 @@
 ///
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
-use super::{
+use crate::keccak::{
     column::KeccakColumn,
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
@@ -26,7 +25,7 @@ use kimchi::circuits::polynomials::keccak::{
 
 /// This function returns a vector of field elements that represent the 5 padding suffixes.
 /// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
+pub fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
     // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
     let mut blocks = vec![Fp::zero(); 5];
     let mut pad = [Fp::zero(); RATE_IN_BYTES];
@@ -62,10 +61,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakStep::Round(i) => self.run_round(i),
         }
         self.write_column(KeccakColumn::StepIndex, self.step_idx);
-
-        // INTER-STEP CHANNEL
-        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
-        self.lookup_steps();
 
         self.update_step();
     }
@@ -140,9 +135,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
 
         // Rest is zero thanks to null_state
-
-        // COMMUNICATION CHANNEL: Write hash output
-        self.lookup_syscall_hash();
     }
 
     fn run_absorb(&mut self, absorb: Absorb) {
@@ -188,9 +180,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             self.write_column(KeccakColumn::SpongeShifts(idx), *value);
         }
         // Rest is zero thanks to null_state
-
-        // COMMUNICATION CHANNEL: read bytes of current block
-        self.lookup_syscall_preimage();
 
         // Update environment
         self.prev_block = xor_state;
