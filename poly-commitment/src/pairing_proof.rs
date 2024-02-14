@@ -91,23 +91,22 @@ impl<
 {
     type SRS = PairingSRS<Pair>;
 
-    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
+    fn open<EFqSponge, RNG, D: EvaluationDomain<F>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
         plnms: &[(
-            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
+            DensePolynomialOrEvaluations<F, D>,
             Option<usize>,
-            PolyComm<<G as AffineCurve>::ScalarField>,
+            PolyComm<F>,
         )], // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        _evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
-        _sponge: EFqSponge,                      // sponge
+        elm: &[F],          // vector of evaluation points
+        polyscale: F,       // scaling factor for polynoms
+        _evalscale: F,      // scaling factor for evaluation point powers
+        _sponge: EFqSponge, // sponge
         _rng: &mut RNG,
     ) -> Self
     where
-        EFqSponge:
-            Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
+        EFqSponge: Clone + FqSponge<<G as AffineCurve>::BaseField, G, F>,
         RNG: RngCore + CryptoRng,
     {
         PairingProof::create(srs, plnms, elm, polyscale).unwrap()
@@ -120,7 +119,7 @@ impl<
         _rng: &mut RNG,
     ) -> bool
     where
-        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+        EFqSponge: FqSponge<G::BaseField, G, F>,
         RNG: RngCore + CryptoRng,
     {
         for BatchEvaluationProof {
@@ -162,7 +161,7 @@ impl<
 
     fn commit(
         &self,
-        plnm: &DensePolynomial<G::ScalarField>,
+        plnm: &DensePolynomial<F>,
         num_chunks: usize,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
@@ -271,11 +270,11 @@ impl<
         Pair: PairingEngine<G1Affine = G, G2Affine = G2>,
     > PairingProof<Pair>
 {
-    pub fn create<D: EvaluationDomain<G::ScalarField>>(
+    pub fn create<D: EvaluationDomain<F>>(
         srs: &PairingSRS<Pair>,
         plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[G::ScalarField],            // vector of evaluation points
-        polyscale: G::ScalarField,         // scaling factor for polynoms
+        elm: &[F],                         // vector of evaluation points
+        polyscale: F,                      // scaling factor for polynoms
     ) -> Option<Self> {
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, srs.full_srs.g.len());
         let evals: Vec<_> = elm.iter().map(|pt| p.evaluate(pt)).collect();
@@ -308,8 +307,8 @@ impl<
         &self,
         srs: &PairingSRS<Pair>,           // SRS
         evaluations: &Vec<Evaluation<G>>, // commitments to the polynomials
-        polyscale: G::ScalarField,        // scaling factor for polynoms
-        elm: &[G::ScalarField],           // vector of evaluation points
+        polyscale: F,                     // scaling factor for polynoms
+        elm: &[F],                        // vector of evaluation points
     ) -> bool {
         let poly_commitment = {
             let mut scalars: Vec<F> = Vec::new();

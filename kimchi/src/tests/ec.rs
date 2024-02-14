@@ -9,7 +9,6 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
 use super::framework::TestFramework;
@@ -21,6 +20,9 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 // Tests add and double gates
 #[test]
 fn ec_test() {
+    use o1_utils::tests::make_test_rng;
+    let mut rng = make_test_rng();
+
     let num_doubles = 100;
     let num_additions = 100;
     let num_infs = 100;
@@ -37,12 +39,10 @@ fn ec_test() {
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
-    let rng = &mut StdRng::from_seed([0; 32]);
-
     let ps = {
         let p = Other::prime_subgroup_generator()
             .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+            .mul(<Other as AffineCurve>::ScalarField::rand(&mut rng).into_repr())
             .into_affine();
         let mut res = vec![];
         let mut acc = p;
@@ -56,7 +56,7 @@ fn ec_test() {
     let qs = {
         let q = Other::prime_subgroup_generator()
             .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+            .mul(<Other as AffineCurve>::ScalarField::rand(&mut rng).into_repr())
             .into_affine();
         let mut res = vec![];
         let mut acc = q;
@@ -68,7 +68,7 @@ fn ec_test() {
     };
 
     for &p in ps.iter().take(num_doubles) {
-        let p2 = p + p;
+        let p2: Other = p + p;
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = 3 * x1^2
@@ -96,7 +96,7 @@ fn ec_test() {
         let p = ps[i];
         let q = qs[i];
 
-        let pq = p + q;
+        let pq: Other = p + q;
         let (x1, y1) = (p.x, p.y);
         let (x2, y2) = (q.x, q.y);
         // (x2 - x1) * s = y2 - y1
@@ -120,9 +120,9 @@ fn ec_test() {
     }
 
     for &p in ps.iter().take(num_infs) {
-        let q = -p;
+        let q: Other = -p;
 
-        let p2 = p + p;
+        let p2: Other = p + p;
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = -3 * x1^2

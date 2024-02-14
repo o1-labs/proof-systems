@@ -1101,7 +1101,7 @@ where
 
         //~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
-        let evals = {
+        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> = {
             let powers_of_eval_points_for_chunks = PointEvaluations {
                 zeta: zeta_to_srs_len,
                 zeta_omega: zeta_omega_to_srs_len,

@@ -1,18 +1,19 @@
-use super::column::KeccakColumns;
-use crate::DOMAIN_SIZE;
-use ark_ff::{One, Zero};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly::{Evaluations, Polynomial, Radix2EvaluationDomain as D};
-use kimchi::groupmap::GroupMap;
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
-use mina_poseidon::sponge::ScalarChallenge;
-use mina_poseidon::FqSponge;
-use poly_commitment::commitment::{combined_inner_product, BatchEvaluationProof, Evaluation};
-use poly_commitment::evaluation_proof::DensePolynomialOrEvaluations;
-use poly_commitment::OpenProof;
+//! This module contains the proof system for the Keccak circuit
+
+use crate::{keccak::column::KeccakWitness, DOMAIN_SIZE};
+use ark_ff::Zero;
+use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
+use kimchi::{
+    circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
-    commitment::{absorb_commitment, PolyComm},
-    SRS as _,
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    evaluation_proof::DensePolynomialOrEvaluations,
+    OpenProof, SRS as _,
 };
 use rand::thread_rng;
 use rayon::iter::{
@@ -20,32 +21,19 @@ use rayon::iter::{
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
+/// This struct contains the evaluations of the KeccakWitness columns across the whole domain of the circuit
 #[derive(Debug)]
 pub struct KeccakProofInputs<G: KimchiCurve> {
-    evaluations: KeccakColumns<Vec<G::ScalarField>>,
+    evaluations: KeccakWitness<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     fn default() -> Self {
         KeccakProofInputs {
-            evaluations: KeccakColumns {
+            evaluations: KeccakWitness {
                 hash_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
                 step_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_round: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_absorb: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_squeeze: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_root: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_pad: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flag_length: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                two_to_pad: (0..DOMAIN_SIZE).map(|_| G::ScalarField::one()).collect(),
-                inverse_round: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                flags_bytes: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                pad_suffix: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                round_constants: std::array::from_fn(|_| {
+                mode_flags: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
                 curr: std::array::from_fn(|_| {
@@ -59,14 +47,21 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     }
 }
 
+/// This struct contains the proof of the Keccak circuit
 #[derive(Debug)]
 pub struct KeccakProof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    commitments: KeccakColumns<PolyComm<G>>,
-    zeta_evaluations: KeccakColumns<G::ScalarField>,
-    zeta_omega_evaluations: KeccakColumns<G::ScalarField>,
+    /// Polynomial commitments to the witness columns
+    commitments: KeccakWitness<PolyComm<G>>,
+    /// Evaluations of witness polynomials at current rows on random evaluation point `zeta`
+    zeta_evaluations: KeccakWitness<G::ScalarField>,
+    /// Evaluations of witness polynomials at next rows (where `* omega` comes from) on random evaluation point `zeta`
+    zeta_omega_evaluations: KeccakWitness<G::ScalarField>,
+    /// Proof of opening for the evaluations with respect to the polynomial commitments
     opening_proof: OpeningProof,
 }
 
+/// This function folds the witness of the current circuit with the accumulated Keccak instance
+/// with a random combination using a scaling challenge
 pub fn fold<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -76,7 +71,7 @@ pub fn fold<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     accumulator: &mut KeccakProofInputs<G>,
-    inputs: &KeccakColumns<Vec<G::ScalarField>>,
+    inputs: &KeccakWitness<Vec<G::ScalarField>>,
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {
@@ -90,7 +85,7 @@ pub fn fold<
                 );
                 srs.commit_evaluations_non_hiding(domain.d1, &evals)
             })
-            .collect::<KeccakColumns<_>>()
+            .collect::<KeccakWitness<_>>()
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
@@ -114,6 +109,8 @@ pub fn fold<
         });
 }
 
+/// This function provides a proof for a Keccak instance.
+// TODO: this proof does not contain information about the constraints nor lookups yet
 pub fn prove<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -139,22 +136,10 @@ where
                 .map(|e| eval_col(e.to_vec()))
                 .collect::<Vec<_>>()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: eval_col(evaluations.hash_index),
             step_index: eval_col(evaluations.step_index),
-            flag_round: eval_col(evaluations.flag_round),
-            flag_absorb: eval_col(evaluations.flag_absorb),
-            flag_squeeze: eval_col(evaluations.flag_squeeze),
-            flag_root: eval_col(evaluations.flag_root),
-            flag_pad: eval_col(evaluations.flag_pad),
-            flag_length: eval_col(evaluations.flag_length),
-            two_to_pad: eval_col(evaluations.two_to_pad),
-            inverse_round: eval_col(evaluations.inverse_round),
-            flags_bytes: eval_array_col(&evaluations.flags_bytes).try_into().unwrap(),
-            pad_suffix: eval_array_col(&evaluations.pad_suffix).try_into().unwrap(),
-            round_constants: eval_array_col(&evaluations.round_constants)
-                .try_into()
-                .unwrap(),
+            mode_flags: eval_array_col(&evaluations.mode_flags).try_into().unwrap(),
             curr: eval_array_col(&evaluations.curr).try_into().unwrap(),
             next: eval_array_col(&evaluations.next).try_into().unwrap(),
         }
@@ -164,20 +149,10 @@ where
         let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
             polys.into_par_iter().map(comm).collect::<Vec<_>>()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
-            flag_round: comm(&polys.flag_round),
-            flag_absorb: comm(&polys.flag_absorb),
-            flag_squeeze: comm(&polys.flag_squeeze),
-            flag_root: comm(&polys.flag_root),
-            flag_pad: comm(&polys.flag_pad),
-            flag_length: comm(&polys.flag_length),
-            two_to_pad: comm(&polys.two_to_pad),
-            inverse_round: comm(&polys.inverse_round),
-            flags_bytes: comm_array(&polys.flags_bytes).try_into().unwrap(),
-            pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
-            round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
+            mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
             curr: comm_array(&polys.curr).try_into().unwrap(),
             next: comm_array(&polys.next).try_into().unwrap(),
         }
@@ -199,20 +174,10 @@ where
         let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
             polys.par_iter().map(comm).collect::<Vec<_>>()
         };
-        KeccakColumns {
+        KeccakWitness {
             hash_index: comm(&polys.hash_index),
             step_index: comm(&polys.step_index),
-            flag_round: comm(&polys.flag_round),
-            flag_absorb: comm(&polys.flag_absorb),
-            flag_squeeze: comm(&polys.flag_squeeze),
-            flag_root: comm(&polys.flag_root),
-            flag_pad: comm(&polys.flag_pad),
-            flag_length: comm(&polys.flag_length),
-            two_to_pad: comm(&polys.two_to_pad),
-            inverse_round: comm(&polys.inverse_round),
-            flags_bytes: comm_array(&polys.flags_bytes).try_into().unwrap(),
-            pad_suffix: comm_array(&polys.pad_suffix).try_into().unwrap(),
-            round_constants: comm_array(&polys.round_constants).try_into().unwrap(),
+            mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
             curr: comm_array(&polys.curr).try_into().unwrap(),
             next: comm_array(&polys.next).try_into().unwrap(),
         }
@@ -271,6 +236,8 @@ where
     }
 }
 
+/// This function verifies the proof of a Keccak instance.
+// TODO: this still does not verify the constraints nor lookups
 pub fn verify<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -362,6 +329,7 @@ pub fn verify<
     OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }
 
+// Dummy test with random witness that verifies because the proof still does not include constraints nor lookups
 #[test]
 fn test_keccak_prover() {
     use ark_ff::UniformRand;
@@ -369,8 +337,10 @@ fn test_keccak_prover() {
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+    use poly_commitment::pairing_proof::{PairingProof, PairingSRS};
 
     type Fp = ark_bn254::Fr;
+    type BN254Parameters = ark_ec::bn::Bn<ark_bn254::Parameters>;
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
@@ -379,24 +349,10 @@ fn test_keccak_prover() {
 
     let proof_inputs = {
         KeccakProofInputs {
-            evaluations: KeccakColumns {
+            evaluations: KeccakWitness {
                 hash_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
                 step_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_round: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_absorb: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_squeeze: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_root: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flag_length: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                two_to_pad: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                inverse_round: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                flags_bytes: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                pad_suffix: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                round_constants: std::array::from_fn(|_| {
+                mode_flags: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
                 curr: std::array::from_fn(|_| {
@@ -413,19 +369,18 @@ fn test_keccak_prover() {
     // Trusted setup toxic waste
     let x = Fp::rand(rng);
 
-    let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, DOMAIN_SIZE);
+    let mut srs = PairingSRS::create(x, DOMAIN_SIZE);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
-    let proof = prove::<
-        _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-        BaseSponge,
-        ScalarSponge,
-    >(domain, &srs, proof_inputs);
+    let proof = prove::<_, PairingProof<BN254Parameters>, BaseSponge, ScalarSponge>(
+        domain,
+        &srs,
+        proof_inputs,
+    );
 
     assert!(verify::<
         _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        PairingProof<BN254Parameters>,
         BaseSponge,
         ScalarSponge,
     >(domain, &srs, &proof));
