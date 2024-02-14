@@ -22,13 +22,28 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
+
+    /// The type of challenge that the Sponge returns
     type Challenge: Clone + Copy + Debug + Eq + Hash;
+
+    /// The target curve used by the polynomial commitment
     type Curve: CommitmentCurve;
+
     type Srs: SRS<Self::Curve>;
+
+    /// FIXME: use Sponge from kimchi
+    /// The sponge used to create challenges
     type Sponge: Sponge<Self::Curve>;
+
+    /// FIXME: ??
     type Instance: Instance<Self::Curve>;
+
+    /// For PlonK, it will be the polynomials we commit to, i.e. the columns.
+    /// In the generic prover/verifier, it would be WitnessColumns.
     type Witness: Witness<Self::Curve>;
+
     type Structure;
+
     type Env: FoldingEnv<
         <Self::Curve as AffineCurve>::ScalarField,
         Self::Instance,
@@ -37,6 +52,8 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
         Self::Challenge,
         Structure = Self::Structure,
     >;
+
+    /// Return the size of the circuit, i.e. the number of rows
     fn rows() -> usize;
 }
 
@@ -161,18 +178,35 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
     }
 }
 
+/// Describe a folding environment.
+/// The type parameters are:
+/// - `F`: The field of the circuit/computation
+/// - `I`: The instance type, i.e the public inputs
+/// - `W`: The type of the witness, i.e. the private inputs
+/// - `Col`: The type of the column
+/// - `Chal`: The type of the challenge
 pub trait FoldingEnv<F, I, W, Col, Chal> {
+    /// Equivalent to a polynomial that
     type Structure;
-    /// A vec of just zeros of the same length as other columns
+
+    /// A vec of zeros of the same length as other columns
     fn zero_vec(&self) -> Vec<F>;
+
+    /// ??
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
+
     fn lagrange_basis(&self, i: usize) -> &Vec<F>;
+
     fn challenge(&self, challenge: Chal, side: Side) -> F;
+
     fn alpha(&self, i: usize, side: Side) -> F;
+
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 }
 
+/// TODO: Use Sponge trait from kimchi
 pub trait Sponge<G: CommitmentCurve> {
+    /// Compute a challenge from two commitments
     fn challenge(absorbe: &[PolyComm<G>; 2]) -> G::ScalarField;
 }
 
@@ -267,5 +301,156 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
         let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax(self.zero_commitment.clone());
         let challenge = <CF::Sponge>::challenge(&error_commitments);
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ark_poly::Evaluations;
+    use mina_poseidon::FqSponge;
+
+    use crate::folding::{FoldingConfig, FoldingEnv, Instance, Sponge, Witness};
+
+    use super::expressions::FoldingColumnTrait;
+
+    struct TestConfig;
+
+    /// Field = BN254 prime field
+    /// Statement: I know w such that C(x, y, w) = 0
+    ///   public
+    ///     |
+    ///   ----  |--- private
+    /// C(x, y, w) = x + y - w
+    /// I want to fold two instances
+
+    /// (A Z) . (B Z) = (C Z)
+    /// Z = (x, y, z)
+    /// A = (1 1 -1)
+    /// B = (0, 0, 0)
+    /// C = (1 1 -1)
+
+    fn test_folding_instance() {
+        /// X(1) = x
+        /// X(2) = y
+        /// X(3) = w
+        use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
+        use kimchi::circuits::gate::CurrOrNext;
+        use mina_poseidon::{
+            constants::PlonkSpongeConstantsKimchi,
+            sponge::{DefaultFqSponge, DefaultFrSponge},
+        };
+        use poly_commitment::PolyComm;
+
+        #[derive(Debug, Eq, Hash, Clone)]
+        pub enum Column {
+            X(usize),
+        }
+
+        type Fp = ark_bn254::Fr;
+        type Curve = ark_bn254::G1Affine;
+        type SpongeParams = PlonkSpongeConstantsKimchi;
+        type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+
+        // TODO: get rid of trait Sponge in folding, and use the one from kimchi
+        impl Sponge<Curve> for BaseSponge {
+            fn challenge(absorbe: &[PolyComm<Curve>; 2]) -> Fp {
+                // FIXME: we should have a self maybe?
+                let mut s = BaseSponge::new(SpongeParams::new());
+                s.absorb_fq(absorbe[0].unshifted.clone());
+                s.absorb_fq(absorbe[1].unshifted.clone());
+            }
+        }
+
+        type E<F> = Expr<ConstantExpr<F>, Column>;
+        let x1 = E::<Fp>::Atom(
+            ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
+                col: Column::X(1),
+                row: CurrOrNext::Curr,
+            }),
+        );
+        let x2 = E::<Fp>::Atom(
+            ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
+                col: Column::X(2),
+                row: CurrOrNext::Curr,
+            }),
+        );
+        let x3 = E::<Fp>::Atom(
+            ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
+                col: Column::X(3),
+                row: CurrOrNext::Curr,
+            }),
+        );
+        let constraint = x3 - x1 - x2;
+
+        /// The instance is the commitments to the polynomials.
+        type SInstance = [Curve; 3];
+        impl Instance<Curve> for SInstance {
+            fn combine(a: Self, b: Self, challenge: Fp) -> Self {
+                [
+                    a[0] + challenge * b[0],
+                    a[1] + challenge * b[1],
+                    a[2] + challenge * b[2],
+                ]
+            }
+        }
+
+        /// Our witness is going to be the polynomials that we will commit too.
+        /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
+        /// FIXME: use evaluations
+        type SWitness = [Vec<Fp>; 3];
+
+        impl Witness<Curve> for SWitness {
+            fn combine(a: Self, b: Self, challenge: Fp) -> Self {
+                a.into_iter()
+                    .zip(b)
+                    .map(|(p1, p2)| {
+                        p1.iter()
+                            .zip(p2)
+                            .map(|x1, x2| x1 + challenge * x2)
+                            .collect::<Vec<Fp>>()
+                    })
+                    .collect::<Vec<_>>().try_into().unwrap()
+            }
+        }
+
+        struct SFoldingEnv;
+        impl FoldingEnv for SFoldingEnv {
+            type Structure = ();
+            type Column = Column;
+            type Challenge = ();
+            type Curve = Curve;
+            type Instance = ();
+            type Witness = ();
+            type Env = ();
+        }
+
+        struct SFoldingConfig;
+
+        impl FoldingConfig for SFoldingConfig {
+            type Column = Column;
+            // FIXME
+            type Challenge = ();
+
+            type Curve = Curve;
+            type Srs = poly_commitment::srs::SRS<Curve>;
+            type Sponge = BaseSponge;
+
+            // FIXME
+            type Instance = Witness<Curve>;
+
+            type Witness = Witness<Curve>;
+
+            // FIXME
+            type Structure = ();
+
+            // FIXME
+            type Env = ();
+
+            fn rows() -> usize {
+                // FIXME: this is the domain size. Atm, let's have only one
+                // column
+                1
+            }
+        }
     }
 }

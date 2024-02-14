@@ -18,14 +18,20 @@ use super::{challenge_linear_combination, commitment_linear_combination, trim, S
 #[derive(Debug, Clone)]
 pub struct WitnessCommitments<F>(Vec<Point<F>>);
 
+/// Represents an instance of the circuit.
 #[derive(Debug, Clone)]
 pub struct Instance<F> {
+    /// ??
     pub hash1: F,
+    /// ??
     pub hash2: F,
     // pub witness_commitment: Point<F>,
     pub witness_commitments: Vec<WitnessCommitments<F>>,
 }
+
 impl<F: PrimeField> Instance<FieldVar<F>> {
+    /// Apply Fiat Shamir by absorbing all the commitments into the sponge, and
+    /// end with absorbing the individual hashes
     fn absorb_into_sponge(&self, sponge: &mut DuplexState<F>, sys: &mut RunState<F>) {
         for commitment_set in &self.witness_commitments {
             for commitment in &commitment_set.0 {
@@ -67,12 +73,21 @@ impl<F> Instance<F> {
         })
     }
 }
+
 #[derive(Debug, Clone)]
 struct Challenges<F>(Vec<FullChallenge<F>>);
 
+/// Represents a relaxed instance for the circuit.
+/// TODO: what is the initial structure of the circuit?
+/// 3 inputs
+/// P(x, y, z) = x + y - z
+///
+/// TODO: what is the structure of the relaxed instance?
 #[derive(Debug, Clone)]
 pub struct RelaxedInstance<F> {
+    /// TODO
     pub hash1: FullChallenge<F>,
+    /// TODO
     pub hash2: FullChallenge<F>,
     pub witness_commitments: Vec<WitnessCommitments<F>>,
     u: FullChallenge<F>,
@@ -81,6 +96,8 @@ pub struct RelaxedInstance<F> {
 }
 
 impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
+    /// Apply Fiat Shamir by absorbing all the commitments into the sponge, the
+    /// hashes, the error commitment and the challenges
     pub fn absorb_into_sponge(&self, sponge: &mut DuplexState<F>, sys: &mut RunState<F>) {
         for commitment_set in &self.witness_commitments {
             for commitment in &commitment_set.0 {

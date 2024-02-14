@@ -160,6 +160,20 @@ where
 
     /// Implement the IVC circuit, see https://eprint.iacr.org/2021/370.pdf, Fig
     /// 4, page 18
+    ///        ------------------------------------------
+    /// i   -> |                                        |
+    /// z0  -> |
+    /// zi  -> |       |----------------------------|   |
+    /// u_i -> |       |          sys               |   |
+    ///        |       |----------------------------|   |
+    ///        |                                        |
+    /// U_i -> |                                        |
+    ///        |-----------------------------------------
+    ///
+    /// U_i is the accumulated relaxed instance
+    /// u_i is
+    /// z_0 is the initial input, i.e. the step 0
+    /// z_i is the input for the step i
     fn circuit(
         &self,
         sys: &mut RunState<C::ScalarField>,
