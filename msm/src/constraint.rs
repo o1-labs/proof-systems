@@ -130,7 +130,6 @@ impl BuilderEnv<BN254G1Affine> {
         }
         let combined_constraint =
             Expr::combine_constraints(0..(limb_constraints.len() as u32), limb_constraints);
-        println!("{:?}", combined_constraint);
         self.constraints.push(combined_constraint);
 
         let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
