@@ -210,12 +210,9 @@ where
         Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
     };
 
-    let lookup_aggregation_poly_d1 = lookup_aggregation_evals_d1.interpolate();
-    let lookup_aggregation_evals_d8 =
-        lookup_aggregation_poly_d1.evaluate_over_domain_by_ref(domain.d8);
-
+    let lookup_aggregation_poly_d1 = lookup_aggregation_evals_d1.interpolate_by_ref();
     let lookup_aggregation_comm_d1 =
-        srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation_evals_d8);
+        srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation_evals_d1);
 
     absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm_d1);
 
