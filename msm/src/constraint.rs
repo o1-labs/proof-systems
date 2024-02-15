@@ -1,4 +1,5 @@
 use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::expr::{ConstantExprInner, Operations};
 use kimchi::circuits::expr::{ExprInner, Variable};
 use kimchi::circuits::gate::CurrOrNext;
 use kimchi::curve::KimchiCurve;
@@ -107,15 +108,12 @@ impl BuilderEnv<BN254G1Affine> {
         let mut limb_constraints: Vec<_> = vec![];
         for i in 0..LIMBS_NUM {
             let limb_constraint = {
-                let a_i = MSMExpr::Atom(ExprInner::<
-                    kimchi::circuits::expr::Operations<
-                        kimchi::circuits::expr::ConstantExprInner<Fp>,
-                    >,
-                    Column,
-                >::Cell(Variable {
-                    col: MSMColumnIndexer::A(i).ix_to_column(),
-                    row: CurrOrNext::Curr,
-                }));
+                let a_i = MSMExpr::Atom(
+                    ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
+                        col: MSMColumnIndexer::A(i).ix_to_column(),
+                        row: CurrOrNext::Curr,
+                    }),
+                );
                 let b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
                     col: MSMColumnIndexer::B(i).ix_to_column(),
                     row: CurrOrNext::Curr,
