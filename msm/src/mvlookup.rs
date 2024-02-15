@@ -35,11 +35,8 @@ impl LookupTable {
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
 pub struct Lookup<F> {
-    #[allow(dead_code)]
     pub(crate) table_id: LookupTable,
-    #[allow(dead_code)]
     pub(crate) numerator: F,
-    #[allow(dead_code)]
     pub(crate) value: Vec<F>,
 }
 
@@ -47,13 +44,10 @@ pub struct Lookup<F> {
 #[derive(Debug)]
 pub struct LookupWitness<F> {
     /// A list of functions/looked-up values.
-    #[allow(dead_code)]
     pub(crate) f: Vec<Vec<Lookup<F>>>,
     /// The table the lookup is performed on.
-    #[allow(dead_code)]
     pub(crate) t: Vec<Lookup<F>>,
     /// The multiplicity polynomial
-    #[allow(dead_code)]
     pub(crate) m: Vec<F>,
 }
 
@@ -142,14 +136,11 @@ impl<F: FftField> LookupWitness<F> {
 /// - F for the evaluations at zeta (resp. zeta omega).
 #[derive(Debug, Clone)]
 pub struct LookupProof<T> {
-    #[allow(dead_code)]
     pub(crate) m: T,
-    #[allow(dead_code)]
     // Contain t.
     // TODO: split t and f
     pub(crate) f: Vec<T>,
     // pub(crate) t: T,
-    #[allow(dead_code)]
     pub(crate) sum: T,
 }
 
