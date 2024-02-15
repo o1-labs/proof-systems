@@ -66,7 +66,8 @@ pub struct BuilderEnv<G: KimchiCurve> {
     // TODO something like a running list of constraints
     /// Aggregated constraints.
     pub(crate) constraints: Vec<MSMExpr<G::ScalarField>>,
-    /// Aggregated witness, in raw form. For accessing [`Witness`], see the `get_witness` method.
+    /// Aggregated witness, in raw form. For accessing [`Witness`], see the
+    /// `get_witness` method.
     pub(crate) witness_raw: Vec<WitnessColumnsIndexer<G::ScalarField>>,
 }
 

@@ -101,7 +101,8 @@ pub fn create_and_store_srs(
 
 /// Obtains an SRS for a specific curve from disk, or generates it if absent.
 pub fn get_bn254_srs(domain: EvaluationDomains<Fp>) -> PairingSRS<BN254> {
-    // Temporarily just generate it from scratch since SRS serialization is broken. See test_serialization.
+    // Temporarily just generate it from scratch since SRS serialization is
+    // broken. See test_serialization.
     let trapdoor = Fp::rand(&mut rand::rngs::OsRng);
     let mut srs = PairingSRS::create(trapdoor, DOMAIN_SIZE);
     srs.full_srs.add_lagrange_basis(domain.d1);
