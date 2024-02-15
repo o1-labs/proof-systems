@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["create_and_store_srs","get_bn254_srs","get_bn254_srs_path","read_bn254_srs_from_disk","test_serialization"]};
+window.SIDEBAR_ITEMS = {"fn":["get_bn254_srs"]};

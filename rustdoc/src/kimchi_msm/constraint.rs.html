@@ -150,9 +150,8 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::expr::{ConstantExprInner, Operations};
 <span class="kw">use </span>kimchi::circuits::expr::{ExprInner, Variable};
 <span class="kw">use </span>kimchi::circuits::gate::CurrOrNext;
 <span class="kw">use </span>kimchi::curve::KimchiCurve;
@@ -220,7 +219,8 @@
     <span class="comment">// TODO something like a running list of constraints
     </span><span class="doccomment">/// Aggregated constraints.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) constraints: Vec&lt;MSMExpr&lt;G::ScalarField&gt;&gt;,
-    <span class="doccomment">/// Aggregated witness, in raw form. For accessing [`Witness`], see the `get_witness` method.
+    <span class="doccomment">/// Aggregated witness, in raw form. For accessing [`Witness`], see the
+    /// `get_witness` method.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) witness_raw: Vec&lt;WitnessColumnsIndexer&lt;G::ScalarField&gt;&gt;,
 }
 
@@ -260,15 +260,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>limb_constraints: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
             <span class="kw">let </span>limb_constraint = {
-                <span class="kw">let </span>a_i = MSMExpr::Atom(ExprInner::&lt;
-                    kimchi::circuits::expr::Operations&lt;
-                        kimchi::circuits::expr::ConstantExprInner&lt;Fp&gt;,
-                    &gt;,
-                    Column,
-                &gt;::Cell(Variable {
-                    col: MSMColumnIndexer::A(i).ix_to_column(),
-                    row: CurrOrNext::Curr,
-                }));
+                <span class="kw">let </span>a_i = MSMExpr::Atom(
+                    ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
+                        col: MSMColumnIndexer::A(i).ix_to_column(),
+                        row: CurrOrNext::Curr,
+                    }),
+                );
                 <span class="kw">let </span>b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
                     col: MSMColumnIndexer::B(i).ix_to_column(),
                     row: CurrOrNext::Curr,
@@ -283,7 +280,6 @@
         }
         <span class="kw">let </span>combined_constraint =
             Expr::combine_constraints(<span class="number">0</span>..(limb_constraints.len() <span class="kw">as </span>u32), limb_constraints);
-        <span class="macro">println!</span>(<span class="string">"{:?}"</span>, combined_constraint);
         <span class="self">self</span>.constraints.push(combined_constraint);
 
         <span class="kw">let </span>a_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>a);
