@@ -121,6 +121,22 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -129,16 +145,32 @@
 
 <span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraint;
+<span class="kw">pub mod </span>precomputed_srs;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
 <span class="kw">pub mod </span>verifier;
 
-<span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
+<span class="doccomment">/// Domain size for the MSM project, equal to the BN254 SRS size.
+</span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
+
+<span class="comment">// @volhovm: maybe move these to the FF circuits module later.
+</span><span class="doccomment">/// Bitsize of the foreign field limb representation.
+</span><span class="kw">pub const </span>LIMB_BITSIZE: usize = <span class="number">16</span>;
+
+<span class="doccomment">/// Number of limbs representing one foreign field element (either
+/// [`Ff1`] or [`Ff2`]).
+</span><span class="kw">pub const </span>LIMBS_NUM: usize = <span class="number">16</span>;
 
 <span class="kw">pub type </span>BN254 = ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;;
+<span class="kw">pub type </span>BN254G1Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G1Affine;
+<span class="kw">pub type </span>BN254G2Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G2Affine;
 
-<span class="doccomment">/// The native field we are working with
+<span class="doccomment">/// The native field we are working with.
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
+
+<span class="doccomment">/// The foreign field we are emulating (one of the two)
+</span><span class="kw">pub type </span>Ff1 = mina_curves::pasta::Fp;
+<span class="kw">pub type </span>Ff2 = mina_curves::pasta::Fq;
 
 <span class="kw">pub type </span>SpongeParams = PlonkSpongeConstantsKimchi;
 <span class="kw">pub type </span>BaseSponge = DefaultFqSponge&lt;ark_bn254::g1::Parameters, SpongeParams&gt;;

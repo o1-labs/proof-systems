@@ -30,28 +30,60 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
+<span class="kw">use </span>rand::thread_rng;
 
-<span class="kw">use </span>ark_ff::UniformRand;
-<span class="kw">use </span>kimchi_msm::proof::Witness;
+<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
+
+<span class="kw">use </span>kimchi_msm::constraint::BuilderEnv;
+<span class="kw">use </span>kimchi_msm::precomputed_srs::get_bn254_srs;
 <span class="kw">use </span>kimchi_msm::prover::prove;
 <span class="kw">use </span>kimchi_msm::verifier::verify;
-<span class="kw">use </span>kimchi_msm::BN254;
-<span class="kw">use </span>kimchi_msm::DOMAIN_SIZE;
-<span class="kw">use </span>kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge};
-<span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
+<span class="kw">use </span>kimchi_msm::{
+    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
+};
+
+<span class="kw">pub fn </span>generate_random_msm_witness() -&gt; BuilderEnv&lt;BN254G1Affine&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>env = BuilderEnv::&lt;BN254G1Affine&gt;::empty();
+    <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
+
+    <span class="kw">let </span>row_num = <span class="number">5</span>;
+    <span class="macro">assert!</span>(row_num &lt; DOMAIN_SIZE);
+
+    <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..row_num {
+        <span class="kw">let </span>a: Ff1 = Ff1::rand(<span class="kw-2">&amp;mut </span>rng);
+        <span class="kw">let </span>b: Ff1 = Ff1::rand(<span class="kw-2">&amp;mut </span>rng);
+        env.add_test_addition(a, b);
+    }
+
+    env
+}
 
 <span class="kw">pub fn </span>main() {
     <span class="macro">println!</span>(<span class="string">"Creating the domain and SRS"</span>);
     <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
 
-    <span class="comment">// Trusted setup toxic waste
-    </span><span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rand::rngs::OsRng);
+    <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
-    srs.full_srs.add_lagrange_basis(domain.d1);
-
-    <span class="kw">let </span>witness = Witness::random(domain);
+    <span class="kw">let </span>env = generate_random_msm_witness();
+    <span class="kw">let </span>witness = env.get_witness();
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
     <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, witness);

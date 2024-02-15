@@ -486,7 +486,7 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Serialize, Deserialize)]
+<span class="attr">#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>PairingSRS&lt;Pair: PairingEngine&gt; {
     <span class="kw">pub </span>full_srs: SRS&lt;Pair::G1Affine&gt;,
     <span class="kw">pub </span>verifier_srs: SRS&lt;Pair::G2Affine&gt;,

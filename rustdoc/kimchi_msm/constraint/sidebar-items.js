@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["E"]};
+window.SIDEBAR_ITEMS = {"struct":["BuilderEnv","WitnessColumnsIndexer"],"type":["MSMExpr"]};

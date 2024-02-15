@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Column"]};
+window.SIDEBAR_ITEMS = {"enum":["Column","MSMColumnIndexer"],"trait":["ColumnIndexer"]};
