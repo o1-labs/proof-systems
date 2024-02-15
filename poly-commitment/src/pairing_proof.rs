@@ -43,7 +43,7 @@ impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PairingSRS<Pair: PairingEngine> {
     pub full_srs: SRS<Pair::G1Affine>,
     pub verifier_srs: SRS<Pair::G2Affine>,

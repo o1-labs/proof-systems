@@ -1,4 +1,5 @@
 use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::expr::{ConstantExprInner, Operations};
 use kimchi::circuits::expr::{ExprInner, Variable};
 use kimchi::circuits::gate::CurrOrNext;
 use kimchi::curve::KimchiCurve;
@@ -66,7 +67,8 @@ pub struct BuilderEnv<G: KimchiCurve> {
     // TODO something like a running list of constraints
     /// Aggregated constraints.
     pub(crate) constraints: Vec<MSMExpr<G::ScalarField>>,
-    /// Aggregated witness, in raw form. For accessing [`Witness`], see the `get_witness` method.
+    /// Aggregated witness, in raw form. For accessing [`Witness`], see the
+    /// `get_witness` method.
     pub(crate) witness_raw: Vec<WitnessColumnsIndexer<G::ScalarField>>,
 }
 
@@ -106,15 +108,12 @@ impl BuilderEnv<BN254G1Affine> {
         let mut limb_constraints: Vec<_> = vec![];
         for i in 0..LIMBS_NUM {
             let limb_constraint = {
-                let a_i = MSMExpr::Atom(ExprInner::<
-                    kimchi::circuits::expr::Operations<
-                        kimchi::circuits::expr::ConstantExprInner<Fp>,
-                    >,
-                    Column,
-                >::Cell(Variable {
-                    col: MSMColumnIndexer::A(i).ix_to_column(),
-                    row: CurrOrNext::Curr,
-                }));
+                let a_i = MSMExpr::Atom(
+                    ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
+                        col: MSMColumnIndexer::A(i).ix_to_column(),
+                        row: CurrOrNext::Curr,
+                    }),
+                );
                 let b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
                     col: MSMColumnIndexer::B(i).ix_to_column(),
                     row: CurrOrNext::Curr,
@@ -129,7 +128,6 @@ impl BuilderEnv<BN254G1Affine> {
         }
         let combined_constraint =
             Expr::combine_constraints(0..(limb_constraints.len() as u32), limb_constraints);
-        println!("{:?}", combined_constraint);
         self.constraints.push(combined_constraint);
 
         let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
