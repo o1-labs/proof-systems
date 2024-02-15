@@ -14,7 +14,7 @@ use poly_commitment::{
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
-use crate::mvlookup::{Lookup, LookupProof, LookupWitness};
+use crate::mvlookup::{self, LookupProof, LookupWitness};
 use crate::proof::{Proof, Witness, WitnessColumns};
 
 pub fn prove<
@@ -59,167 +59,17 @@ where
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     // -- Start MVLookup
-    // TODO: handle more than one, use into_parallel
-    assert_eq!(inputs.mvlookups.len(), 1);
-    let mvlookup: &LookupWitness<G::ScalarField> = &inputs.mvlookups[0];
-    let LookupWitness { f, t, m } = mvlookup;
-
-    // Polynomial m(X)
-    let lookup_counters_evals_d1 =
-        Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            m.to_vec(),
-            domain.d1,
-        );
-    let lookup_counters_poly_d1: DensePolynomial<G::ScalarField> =
-        { lookup_counters_evals_d1.interpolate_by_ref() };
-
-    let lookup_counters_comm_d1: PolyComm<G> =
-        srs.commit_evaluations_non_hiding(domain.d1, &lookup_counters_evals_d1);
-
-    absorb_commitment(&mut fq_sponge, &lookup_counters_comm_d1);
-    // -- end of m(X)
-
-    // -- start computing individual elements of the lookup (f_i and t)
-    // It will be used to compute the running sum in lookup_aggregation
-    // Coin a combiner to perform vector lookup.
-    let vector_lookup_value_combiner = fq_sponge.challenge();
-
-    // Coin an evaluation point for the rational functions
-    let beta = fq_sponge.challenge();
-
-    let n = f.len();
-    let lookup_terms_evals: Vec<G::ScalarField> = {
-        // We compute first the denominators of all f_i and t. We gather them in
-        // a vector to perform a batch inversion.
-        // We include t in the denominator, therefore n + 1
-        let mut denominators = Vec::with_capacity((n + 1) * domain.d1.size as usize);
-        // Iterate over the rows
-        for f_i in f.iter() {
-            // Iterate over individual columns (i.e. f_i and t)
-            for Lookup {
-                numerator: _,
-                table_id,
-                value,
-            } in f_i.iter().chain(t.iter())
-            // Include t
-            {
-                // x + r * y + r^2 * z + ... + r^n table_id
-                let combined_value: G::ScalarField =
-                    value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
-                        x * vector_lookup_value_combiner + y
-                    }) * vector_lookup_value_combiner
-                        + table_id.into_field::<G::ScalarField>();
-
-                // beta + a_{i}
-                let lookup_denominator = beta + combined_value;
-                denominators.push(lookup_denominator);
-            }
-        }
-
-        ark_ff::fields::batch_inversion(&mut denominators);
-
-        // n + 1 for t
-        let mut evals = Vec::with_capacity((n + 1) * domain.d1.size as usize);
-        let mut denominator_index = 0;
-
-        // Including now the numerator
-        for row_lookups in f.iter() {
-            let mut row_acc = G::ScalarField::zero();
-            for Lookup {
-                numerator,
-                table_id: _,
-                value: _,
-            } in row_lookups.iter().chain(t.iter())
-            {
-                row_acc += *numerator * denominators[denominator_index];
-                denominator_index += 1;
-            }
-            evals.push(row_acc)
-        }
-        evals
-    };
-
-    // evals contain the evaluations for the N + 1 polynomials. We must split it
-    // in individual vectors to interpolate and commit.
-    // Get back the individual evaluation f_i and t
-    let mut individual_evals: Vec<Vec<G::ScalarField>> = Vec::with_capacity(n + 1);
-    for _i in 0..=n {
-        individual_evals.push(Vec::with_capacity(domain.d1.size as usize));
-    }
-
-    for (i, v) in lookup_terms_evals.iter().enumerate() {
-        individual_evals[i % (n + 1)].push(*v)
-    }
-
-    let lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
-        individual_evals
-            // Parallelize
-            .into_par_iter()
-            .map(|evals| {
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    evals, domain.d1,
-                )
-            })
-            .collect();
-
-    let lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>> = (&lookup_terms_evals_d1)
-        // Parallelize
-        .into_par_iter()
-        .map(|evals| evals.interpolate_by_ref())
-        .collect();
-
-    let lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
-        (&lookup_terms_poly_d1)
-            // Parallelize
-            .into_par_iter()
-            .map(|p| p.evaluate_over_domain_by_ref(domain.d8))
-            .collect();
-
-    let lookup_terms_comms_d1: Vec<PolyComm<G>> = (&lookup_terms_evals_d8)
-        // Parallelize
-        .into_par_iter()
-        .map(|lt| srs.commit_evaluations_non_hiding(domain.d1, lt))
-        .collect();
-
-    lookup_terms_comms_d1
-        .iter()
-        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
-    // -- end computing individual elements of the lookup (f_i and t)
-
-    // -- start computing the running sum in lookup_aggregation
-    // The running sum, \phi, is defined recursively over the subgroup as followed:
-    // - phi(1) = 0
-    // - phi(\omega^{j + 1}) = \phi(\omega^j) + \
-    //                         \sum_{i = 1}^{n} (1 / \beta + f_i(\omega^{j + 1})) - \
-    //                         (m(\omega^{j + 1}) / beta + t(\omega^{j + 1}))
-    // - phi(\omega^n) = 0
-    let lookup_aggregation_evals_d1 = {
-        let mut evals = Vec::with_capacity(domain.d1.size as usize);
-        let mut acc = G::ScalarField::zero();
-        for i in 0..domain.d1.size as usize {
-            // phi(1) = 0
-            evals.push(acc);
-            // Terms are f_1, ..., f_n, t
-            for terms in lookup_terms_evals_d8.iter() {
-                // Because the individual evaluations of f_i and t are on d1
-                acc += terms[8 * i];
-            }
-        }
-        // Sanity check to verify that the accumulator ends up being zero.
-        assert_eq!(acc, G::ScalarField::zero());
-        Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
-    };
-
-    let lookup_aggregation_poly_d1 = lookup_aggregation_evals_d1.interpolate_by_ref();
-    let lookup_aggregation_comm_d1 =
-        srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation_evals_d1);
-
-    absorb_commitment(&mut fq_sponge, &lookup_aggregation_comm_d1);
-
-    let mvlookup_commitments = LookupProof {
-        m: lookup_counters_comm_d1,
-        f: lookup_terms_comms_d1,
-        sum: lookup_aggregation_comm_d1,
+    let lookup_env = if !inputs.mvlookups.is_empty() {
+        // FIXME: only one lookup for now
+        let mvlookup: &LookupWitness<G::ScalarField> = &inputs.mvlookups[0];
+        Some(mvlookup::prover::Env::create::<OpeningProof, EFqSponge>(
+            mvlookup,
+            domain,
+            &mut fq_sponge,
+            srs,
+        ))
+    } else {
+        None
     };
     // -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
@@ -246,14 +96,22 @@ where
     };
     // TODO: Parallelize
     let (mvlookup_zeta_evaluations, mvlookup_zeta_omega_evaluations) = {
-        let evals = |point| {
-            let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-            let m = comm(&lookup_counters_poly_d1);
-            let f = lookup_terms_poly_d1.iter().map(comm).collect::<Vec<_>>();
-            let sum = comm(&lookup_aggregation_poly_d1);
-            LookupProof { m, f, sum }
-        };
-        (evals(&zeta), evals(&zeta_omega))
+        if let Some(ref lookup_env) = lookup_env {
+            let evals = |point| {
+                let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+                let m = eval(&lookup_env.lookup_counters_poly_d1);
+                let h = lookup_env
+                    .lookup_terms_poly_d1
+                    .iter()
+                    .map(eval)
+                    .collect::<Vec<_>>();
+                let sum = eval(&lookup_env.lookup_aggregation_poly_d1);
+                LookupProof { m, h, sum }
+            };
+            (Some(evals(&zeta)), Some(evals(&zeta_omega)))
+        } else {
+            (None, None)
+        }
     };
     // -- Start opening proof - Preparing the Rust structures
     let group_map = G::Map::setup();
@@ -275,40 +133,43 @@ where
         })
         .collect();
     // Adding MVLookup
-    // -- first m(X)
-    polynomials.push((
-        DensePolynomialOrEvaluations::DensePolynomial(&lookup_counters_poly_d1),
-        None,
-        PolyComm {
-            unshifted: vec![G::ScalarField::zero()],
-            shifted: None,
-        },
-    ));
-    // -- after that f_i and t
-    polynomials.extend(
-        lookup_terms_poly_d1
-            .iter()
-            .map(|poly| {
-                (
-                    DensePolynomialOrEvaluations::DensePolynomial(poly),
-                    None,
-                    PolyComm {
-                        unshifted: vec![G::ScalarField::zero()],
-                        shifted: None,
-                    },
-                )
-            })
-            .collect::<Vec<_>>(),
-    );
-    // -- after that the running sum
-    polynomials.push((
-        DensePolynomialOrEvaluations::DensePolynomial(&lookup_aggregation_poly_d1),
-        None,
-        PolyComm {
-            unshifted: vec![G::ScalarField::zero()],
-            shifted: None,
-        },
-    ));
+    if let Some(ref lookup_env) = lookup_env {
+        // -- first m(X)
+        polynomials.push((
+            DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_counters_poly_d1),
+            None,
+            PolyComm {
+                unshifted: vec![G::ScalarField::zero()],
+                shifted: None,
+            },
+        ));
+        // -- after that f_i and t
+        polynomials.extend(
+            lookup_env
+                .lookup_terms_poly_d1
+                .iter()
+                .map(|poly| {
+                    (
+                        DensePolynomialOrEvaluations::DensePolynomial(poly),
+                        None,
+                        PolyComm {
+                            unshifted: vec![G::ScalarField::zero()],
+                            shifted: None,
+                        },
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
+        // -- after that the running sum
+        polynomials.push((
+            DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_aggregation_poly_d1),
+            None,
+            PolyComm {
+                unshifted: vec![G::ScalarField::zero()],
+                shifted: None,
+            },
+        ));
+    }
 
     // Fiat Shamir - absorbing evaluations
     let fq_sponge_before_evaluations = fq_sponge.clone();
@@ -322,13 +183,19 @@ where
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    // MVLookup FS
-    for (zeta_eval, zeta_omega_eval) in mvlookup_zeta_evaluations
-        .into_iter()
-        .zip(mvlookup_zeta_omega_evaluations.into_iter())
-    {
-        fr_sponge.absorb(zeta_eval);
-        fr_sponge.absorb(zeta_omega_eval);
+    if lookup_env.is_some() {
+        // MVLookup FS
+        for (zeta_eval, zeta_omega_eval) in
+            mvlookup_zeta_evaluations.as_ref().unwrap().into_iter().zip(
+                mvlookup_zeta_omega_evaluations
+                    .as_ref()
+                    .unwrap()
+                    .into_iter(),
+            )
+        {
+            fr_sponge.absorb(zeta_eval);
+            fr_sponge.absorb(zeta_omega_eval);
+        }
     }
 
     let v_chal = fr_sponge.challenge();
@@ -347,6 +214,17 @@ where
         &mut rand::rngs::OsRng,
     );
     // -- End opening proof - Preparing the structures
+
+    // FIXME: remove clone
+    let mvlookup_commitments = if let Some(lookup_env) = lookup_env {
+        Some(LookupProof {
+            m: lookup_env.lookup_counters_comm_d1.clone(),
+            h: lookup_env.lookup_terms_comms_d1.clone(),
+            sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+        })
+    } else {
+        None
+    };
 
     Proof {
         commitments,

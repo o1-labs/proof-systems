@@ -36,9 +36,11 @@ pub fn verify<
     commitments
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
-    mvlookup_commitments
-        .into_iter()
-        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+    if let Some(mvlookup_commitments) = mvlookup_commitments {
+        mvlookup_commitments
+            .into_iter()
+            .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+    }
     // -- Finish absorbing the commitments
 
     // -- Preparing for opening proof verification
@@ -54,13 +56,17 @@ pub fn verify<
         .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
         .collect();
 
-    es.extend(
-        mvlookup_zeta_evaluations
-            .into_iter()
-            .zip(mvlookup_zeta_omega_evaluations)
-            .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
-            .collect::<Vec<_>>(),
-    );
+    if mvlookup_commitments.is_some() {
+        es.extend(
+            mvlookup_zeta_evaluations
+                .as_ref()
+                .unwrap()
+                .into_iter()
+                .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
+                .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
+                .collect::<Vec<_>>(),
+        );
+    }
 
     let mut evaluations: Vec<_> = commitments
         .into_iter()
@@ -72,21 +78,25 @@ pub fn verify<
         })
         .collect();
 
-    evaluations.extend(
-        mvlookup_commitments
-            .into_iter()
-            .zip(
-                mvlookup_zeta_evaluations
-                    .into_iter()
-                    .zip(mvlookup_zeta_omega_evaluations),
-            )
-            .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
-                commitment: commitment.clone(),
-                evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
-                degree_bound: None,
-            })
-            .collect::<Vec<_>>(),
-    );
+    if let Some(mvlookup_commitments) = mvlookup_commitments {
+        evaluations.extend(
+            mvlookup_commitments
+                .into_iter()
+                .zip(
+                    mvlookup_zeta_evaluations
+                        .as_ref()
+                        .unwrap()
+                        .into_iter()
+                        .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap()),
+                )
+                .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
+                    commitment: commitment.clone(),
+                    evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
+                    degree_bound: None,
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
 
     // -- Absorb all evaluations
     let fq_sponge_before_evaluations = fq_sponge.clone();
@@ -97,14 +107,20 @@ pub fn verify<
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    // MVLookup FS
-    for (zeta_eval, zeta_omega_eval) in mvlookup_zeta_evaluations
-        .into_iter()
-        .zip(mvlookup_zeta_omega_evaluations)
-    {
-        fr_sponge.absorb(zeta_eval);
-        fr_sponge.absorb(zeta_omega_eval);
-    }
+    if mvlookup_commitments.is_some() {
+        // MVLookup FS
+        for (zeta_eval, zeta_omega_eval) in
+            mvlookup_zeta_evaluations.as_ref().unwrap().into_iter().zip(
+                mvlookup_zeta_omega_evaluations
+                    .as_ref()
+                    .unwrap()
+                    .into_iter(),
+            )
+        {
+            fr_sponge.absorb(zeta_eval);
+            fr_sponge.absorb(zeta_omega_eval);
+        }
+    };
     // -- End absorb all evaluations
 
     let v_chal = fr_sponge.challenge();
