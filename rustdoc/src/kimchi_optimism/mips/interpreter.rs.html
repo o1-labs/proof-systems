@@ -2528,6 +2528,11 @@
 <a href="#2526" id="2526">2526</a>
 <a href="#2527" id="2527">2527</a>
 <a href="#2528" id="2528">2528</a>
+<a href="#2529" id="2529">2529</a>
+<a href="#2530" id="2530">2530</a>
+<a href="#2531" id="2531">2531</a>
+<a href="#2532" id="2532">2532</a>
+<a href="#2533" id="2533">2533</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookup::{Lookup, LookupTableIDs},
@@ -3371,7 +3376,12 @@
 
     <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
-    <span class="kw">fn </span>request_preimage_write(
+    <span class="doccomment">/// Request the preimage oracle for `len` bytes and store the bytes starting
+    /// from `addr`, and it returns the number of bytes actually read.
+    /// The number of bytes actually read will be set into `pos`.
+    /// The first 8 bytes will be the length of the preimage, encoded as an
+    /// unsigned 64bits, and the rest will be the preimage.
+    </span><span class="kw">fn </span>request_preimage_write(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         len: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
