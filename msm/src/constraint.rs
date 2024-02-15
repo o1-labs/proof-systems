@@ -101,6 +101,7 @@ impl BuilderEnv<BN254G1Affine> {
 
         Witness {
             evaluations: WitnessColumns { x },
+            mvlookups: vec![],
         }
     }
 
