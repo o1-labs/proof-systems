@@ -47,9 +47,8 @@ pub const OFF: [[u64; DIM]; DIM] = [
     [18, 2, 61, 56, 14],
 ];
 
-/// Contains the 24 round constants for Keccak and an initial dummy entry
-pub const RC: [u64; ROUNDS + 1] = [
-    0x0000000000000000,
+/// Contains the 24 round constants for Keccak
+pub const RC: [u64; ROUNDS] = [
     0x0000000000000001,
     0x0000000000008082,
     0x800000000000808a,
@@ -109,7 +108,8 @@ impl Keccak {
             .collect::<Vec<T>>()
     }
 
-    /// Returns the expansion of the 4 dense decomposed quarters of a word
+    /// Returns the expansion of the 4 dense decomposed quarters of a word where
+    /// the first expanded element corresponds to the 16 least significant bits of the word.
     pub fn sparse(word: u64) -> Vec<u64> {
         Self::decompose(word)
             .iter()

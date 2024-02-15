@@ -1,3 +1,4 @@
+use crate::mips::witness::SCRATCH_SIZE;
 use crate::DOMAIN_SIZE;
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
@@ -19,9 +20,30 @@ use rayon::iter::{
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
+/// Represents one line of the execution trace of the virtual machine
+/// It does contain [SCRATCH_SIZE] columns + 2 additional columns to keep track
+/// of the instruction index and one for the system error code.
+/// The column are, in order,
+/// - the 32 general purpose registers
+/// - the low and hi registers used by some arithmetic instructions
+/// - the current instruction pointer
+/// - the next instruction pointer
+/// - the heap pointer
+/// - the preimage key, splitted in 8 consecutive columns representing 4 bytes
+/// of the 32 bytes long preimage key
+/// - the preimage offset, i.e. the number of bytes that have been read for the
+/// currently processing preimage
+/// - `[SCRATCH_SIZE] - 46` intermediate columns that can be used by the
+/// instruction set
+/// - the hash counter
+/// - the flag to indicate if the current instruction is a preimage syscall
+/// - the number of bytes read so far for the current preimage
+/// - how many bytes are left to be read for the current preimage
+/// - the (at most) 4 bytes of the preimage key that are currently being processed
+/// - 4 helpers to check if at least n bytes were read in the current row
 #[derive(Debug)]
 pub struct WitnessColumns<G> {
-    pub scratch: [G; crate::mips::witness::SCRATCH_SIZE],
+    pub scratch: [G; SCRATCH_SIZE],
     pub instruction_counter: G,
     pub error: G,
 }
@@ -90,6 +112,10 @@ where
     }
 }
 
+/// This structure contains the execution trace (or in other terms, the inputs
+/// to construct the SNARK proof, explaining the structure name) as evaluations
+/// of polynomials. It will be used by the prover as an input of the function
+/// `prove` to build the commitments and evaluations of the polynomials.
 #[derive(Debug)]
 pub struct ProofInputs<G: KimchiCurve> {
     evaluations: WitnessColumns<Vec<G::ScalarField>>,
@@ -425,8 +451,10 @@ fn test_mips_prover() {
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+    use poly_commitment::pairing_proof::{PairingProof, PairingSRS};
 
     type Fp = ark_bn254::Fr;
+    type BN254Parameters = ark_ec::bn::Bn<ark_bn254::Parameters>;
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
@@ -453,19 +481,18 @@ fn test_mips_prover() {
     // Trusted setup toxic waste
     let x = Fp::rand(rng);
 
-    let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, domain_size);
+    let mut srs = PairingSRS::create(x, domain_size);
     srs.full_srs.add_lagrange_basis(domain.d1);
 
-    let proof = prove::<
-        _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
-        BaseSponge,
-        ScalarSponge,
-    >(domain, &srs, proof_inputs);
+    let proof = prove::<_, PairingProof<BN254Parameters>, BaseSponge, ScalarSponge>(
+        domain,
+        &srs,
+        proof_inputs,
+    );
 
     assert!(verify::<
         _,
-        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        PairingProof<BN254Parameters>,
         BaseSponge,
         ScalarSponge,
     >(domain, &srs, &proof));

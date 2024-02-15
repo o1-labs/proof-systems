@@ -1,8 +1,11 @@
-use crate::keccak::{
-    column::KeccakColumn,
-    environment::{KeccakEnv, KeccakEnvironment},
-    lookups::Lookups,
-    {ArithOps, BoolOps, E, WORDS_IN_HASH},
+//! This module contains the constraints for one Keccak step.
+use crate::{
+    keccak::{
+        column::{KeccakColumn, PAD_SUFFIX_LEN},
+        environment::{KeccakEnv, KeccakEnvironment},
+        {ArithOps, BoolOps, E, WORDS_IN_HASH},
+    },
+    lookup::Lookups,
 };
 use ark_ff::Field;
 use kimchi::circuits::{
@@ -14,6 +17,7 @@ use kimchi::circuits::{
     },
 };
 
+/// This trait contains the constraints for one Keccak step.
 pub trait Constraints {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
@@ -22,10 +26,16 @@ pub trait Constraints {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
+    /// Returns the variable corresponding to a given column alias.
     fn variable(&self, column: Self::Column) -> Self::Variable;
 
+    /// Adds one constraint to the environment.
     fn constrain(&mut self, x: Self::Variable);
 
+    /// Adds all 887 constraints to the environment and triggers read lookups:
+    /// - 143 constraints of degree 1
+    /// - 739 constraints of degree 2
+    /// - 5 constraints of degree 5
     fn constraints(&mut self);
 }
 
@@ -35,6 +45,8 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
     type Fp = Fp;
 
     fn variable(&self, column: Self::Column) -> Self::Variable {
+        // Despite `KeccakWitness` containing both `curr` and `next` fields,
+        // the Keccak step spans across one row only.
         Expr::Atom(ExprInner::Cell(Variable {
             col: column,
             row: CurrOrNext::Curr,
@@ -46,11 +58,11 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
     }
 
     fn constraints(&mut self) {
-        // CORRECTNESS OF FLAGS
+        // CORRECTNESS OF FLAGS: 144 CONSTRAINTS
+        // - 143 constraints of degree 1
+        // - 1 constraint of degree 2
         {
-            // TODO: remove redundancy if any
-
-            // Booleanity of sponge flags
+            // Booleanity of sponge flags: 139 constraints of degree 1
             {
                 // Absorb is either true or false
                 self.constrain(Self::is_boolean(self.is_absorb()));
@@ -58,34 +70,31 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 self.constrain(Self::is_boolean(self.is_squeeze()));
                 // Root is either true or false
                 self.constrain(Self::is_boolean(self.is_root()));
-                // Pad is either true or false
-                self.constrain(Self::is_boolean(self.is_pad()));
                 for i in 0..RATE_IN_BYTES {
                     // Bytes are either involved on padding or not
                     self.constrain(Self::is_boolean(self.in_padding(i)));
                 }
             }
-            // Mutually exclusiveness of flags
+            // Mutual exclusivity of flags: 5 constraints:
+            // - 4 of degree 1
+            // - 1 of degree 2
             {
                 // Squeeze and Root are not both true
-                self.constrain(Self::either_false(self.is_squeeze(), self.is_root()));
+                self.constrain(Self::either_zero(self.is_squeeze(), self.is_root()));
                 // Squeeze and Pad are not both true
-                self.constrain(Self::either_false(self.is_squeeze(), self.is_pad()));
+                self.constrain(Self::either_zero(self.is_squeeze(), self.is_pad()));
                 // Round and Pad are not both true
-                self.constrain(Self::either_false(self.is_round(), self.is_pad()));
+                self.constrain(Self::either_zero(self.is_round(), self.is_pad()));
                 // Round and Root are not both true
-                self.constrain(Self::either_false(self.is_round(), self.is_root()));
-                // Absorb and Squeeze cannot happen at the same time
-                self.constrain(Self::either_false(self.is_absorb(), self.is_squeeze()));
-                // Only one of Round and Sponge can be zero
-                // This means either Sponge is true or Round is nonzero -> has an inverse
-                self.constrain(self.is_sponge() * self.round());
-                self.constrain(self.is_round() * Self::is_one(self.round() * self.inverse_round()));
+                self.constrain(Self::either_zero(self.is_round(), self.is_root()));
+                // Absorb and Squeeze cannot happen at the same time.
+                // Equivalent to is_boolean(is_sponge())
+                self.constrain(Self::either_zero(self.is_absorb(), self.is_squeeze()));
                 // Trivially, is_sponge and is_round are mutually exclusive
             }
         }
 
-        // SPONGE CONSTRAINTS
+        // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         {
             for i in 0..SPONGE_ZEROS_LEN {
                 // Absorb phase pads with zeros the new state
@@ -133,12 +142,14 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             });
             self.constrain(self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end));
             // Check that the padding value is correct
-            for i in 0..5 {
+            for i in 0..PAD_SUFFIX_LEN {
                 self.constrain(self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)));
             }
         }
 
-        // ROUND CONSTRAINTS
+        // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
+        // - 384 constraints of degree 2
+        // - 5 constraints of degree 3
         {
             // Define vectors storing expressions which are not in the witness layout for efficiency
             let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
@@ -148,6 +159,8 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             let mut state_f = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
 
             // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
+            // - 30 constraints of degree 2
+            // - 5 constraints of degree 3
             for x in 0..DIM {
                 let word_c = Self::from_quarters(&self.vec_dense_c(), None, x);
                 let rem_c = Self::from_quarters(&self.vec_remainder_c(), None, x);
@@ -188,7 +201,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 }
             } // END theta
 
-            // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
+            // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
             for (y, col) in OFF.iter().enumerate() {
                 for (x, off) in col.iter().enumerate() {
                     let word_e = Self::from_quarters(&self.vec_dense_e(), Some(y), x);
@@ -219,7 +232,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 }
             } // END pirho
 
-            // STEP chi: 4 * 5 * 5 * 2 = 200 constraints
+            // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
             for q in 0..QUARTERS {
                 for x in 0..DIM {
                     for y in 0..DIM {
@@ -255,7 +268,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                 }
             } // END chi
 
-            // STEP iota: 4 constraints
+            // STEP iota: 4 constraints of degree 2
             for (q, c) in self.round_constants().to_vec().iter().enumerate() {
                 self.constrain(
                     self.is_round()

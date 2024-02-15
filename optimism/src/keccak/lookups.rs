@@ -1,26 +1,65 @@
-use super::{
-    column::KeccakColumn,
-    environment::{KeccakEnv, KeccakEnvironment},
-    ArithOps, BoolOps, E,
+//! This module includes the lookups of the Keccak circuit
+use crate::{
+    keccak::{
+        column::KeccakColumn,
+        environment::{KeccakEnv, KeccakEnvironment},
+        ArithOps, BoolOps, E,
+    },
+    lookup::{Lookup, LookupTableIDs, Lookups},
 };
-use crate::mips::interpreter::{Lookup, LookupTable};
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
-pub(crate) trait Lookups {
+impl<Fp: Field> Lookups for KeccakEnv<Fp> {
+    type Column = KeccakColumn;
+    type Variable = E<Fp>;
+
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        self.lookups.push(lookup);
+    }
+
+    /// Adds all 2481 lookups to the Keccak environment:
+    /// - 2342 lookups for the step row
+    /// - 2 lookups for the inter-step channel
+    /// - 136 lookups for the syscall channel (preimage bytes)
+    /// - 1 lookups for the syscall channel (hash)
+    fn lookups(&mut self) {
+        // SPONGE LOOKUPS
+        self.lookups_sponge();
+
+        // ROUND LOOKUPS
+        {
+            // THETA LOOKUPS
+            self.lookups_round_theta();
+            // PIRHO LOOKUPS
+            self.lookups_round_pirho();
+            // CHI LOOKUPS
+            self.lookups_round_chi();
+            // IOTA LOOKUPS
+            self.lookups_round_iota();
+        }
+
+        // INTER-STEP CHANNEL
+        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        self.lookup_steps();
+
+        // COMMUNICATION CHANNEL: read bytes of current block
+        self.lookup_syscall_preimage();
+
+        // COMMUNICATION CHANNEL: Write hash output
+        self.lookup_syscall_hash();
+    }
+}
+
+/// This trait adds useful methods to deal with lookups in the Keccak environment
+pub(crate) trait KeccakLookups {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + Clone;
-
-    /// Adds a given Lookup to the environment
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
-
-    /// Adds all lookups of Self
-    fn lookups(&mut self);
 
     /// Reads Lookups containing the 136 bytes of the block of the preimage
     fn lookup_syscall_preimage(&mut self);
@@ -44,53 +83,32 @@ pub(crate) trait Lookups {
     /// Adds a lookup to the Byte table
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable);
 
-    /// Adds the lookups required for the sponge
+    /// Adds the 601 lookups required for the sponge
     fn lookups_sponge(&mut self);
 
-    /// Adds the lookups required for Theta in the round
+    /// Adds the 140 lookups required for Theta in the round
     fn lookups_round_theta(&mut self);
 
-    /// Adds the lookups required for PiRho in the round
+    /// Adds the 800 lookups required for PiRho in the round
     fn lookups_round_pirho(&mut self);
 
-    /// Adds the lookups required for Chi in the round
+    /// Adds the 800 lookups required for Chi in the round
     fn lookups_round_chi(&mut self);
 
-    /// Adds the lookups required for Iota in the round
+    /// Adds the 1 lookup required for Iota in the round
     fn lookups_round_iota(&mut self);
 }
 
-impl<Fp: Field> Lookups for KeccakEnv<Fp> {
+impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        self.lookups.push(lookup);
-    }
-
-    fn lookups(&mut self) {
-        // TODO: preimage lookups (somewhere else)
-
-        // SPONGE LOOKUPS
-        self.lookups_sponge();
-
-        // ROUND LOOKUPS
-        {
-            // THETA LOOKUPS
-            self.lookups_round_theta();
-            // PIRHO LOOKUPS
-            self.lookups_round_pirho();
-            // CHI LOOKUPS
-            self.lookups_round_chi();
-            // IOTA LOOKUPS
-            self.lookups_round_iota();
-        }
-    }
-
+    // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {
-            self.add_lookup(Lookup::read_one(
-                LookupTable::SyscallLookup,
+            self.add_lookup(Lookup::read_if(
+                self.is_absorb(),
+                LookupTableIDs::SyscallLookup,
                 vec![
                     self.hash_index(),
                     Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
@@ -104,8 +122,9 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        self.add_lookup(Lookup::write_one(
-            LookupTable::SyscallLookup,
+        self.add_lookup(Lookup::write_if(
+            self.is_squeeze(),
+            LookupTableIDs::SyscallLookup,
             vec![self.hash_index(), bytes31],
         ));
     }
@@ -114,13 +133,13 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
         // (if not a root) Output of previous step is input of current step
         self.add_lookup(Lookup::read_if(
             Self::not(self.is_root()),
-            LookupTable::KeccakStepLookup,
+            LookupTableIDs::KeccakStepLookup,
             self.input_of_step(),
         ));
         // (if not a squeeze) Input for next step is output of current step
         self.add_lookup(Lookup::write_if(
             Self::not(self.is_squeeze()),
-            LookupTable::KeccakStepLookup,
+            LookupTableIDs::KeccakStepLookup,
             self.output_of_step(),
         ));
     }
@@ -128,7 +147,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(
             flag,
-            LookupTable::RangeCheck16Lookup,
+            LookupTableIDs::RangeCheck16Lookup,
             vec![value],
         ));
     }
@@ -141,7 +160,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     ) {
         self.add_lookup(Lookup::read_if(
             flag,
-            LookupTable::ResetLookup,
+            LookupTableIDs::ResetLookup,
             vec![dense, sparse],
         ));
     }
@@ -149,25 +168,28 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(
             flag,
-            LookupTable::SparseLookup,
+            LookupTableIDs::SparseLookup,
             vec![value],
         ));
     }
 
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(flag, LookupTable::ByteLookup, vec![value]));
+        self.add_lookup(Lookup::read_if(
+            flag,
+            LookupTableIDs::ByteLookup,
+            vec![value],
+        ));
     }
 
     fn lookups_sponge(&mut self) {
         // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
         // Pad suffixes correspond to 10*1 rule
-        // Note: When FlagLength=0, TwoToPad=1, and all PadSuffix=0
         self.add_lookup(Lookup::read_if(
-            self.is_sponge(),
-            LookupTable::PadLookup,
+            self.is_pad(),
+            LookupTableIDs::PadLookup,
             vec![
-                self.length(),
+                self.pad_length(),
                 self.two_to_pad(),
                 self.pad_suffix(0),
                 self.pad_suffix(1),
@@ -251,13 +273,17 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     }
 
     fn lookups_round_iota(&mut self) {
-        for i in 0..QUARTERS {
-            // Check round constants correspond with the current round
-            self.add_lookup(Lookup::read_if(
-                self.is_round(),
-                LookupTable::RoundConstantsLookup,
-                vec![self.round(), self.round_constants()[i].clone()],
-            ));
-        }
+        // Check round constants correspond with the current round
+        self.add_lookup(Lookup::read_if(
+            self.is_round(),
+            LookupTableIDs::RoundConstantsLookup,
+            vec![
+                self.round(),
+                self.round_constants()[3].clone(),
+                self.round_constants()[2].clone(),
+                self.round_constants()[1].clone(),
+                self.round_constants()[0].clone(),
+            ],
+        ));
     }
 }

@@ -1,12 +1,16 @@
-/// This file contains the implementation of the witness for the Keccak permutation.
+/// This file contains the witness for the Keccak hash function for the zkVM project.
+/// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
+///
+/// The actual witness generation code makes use of the code which is already present in Kimchi,
+/// to avoid code duplication and reduce error-proneness.
+///
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
-use super::{
+use crate::keccak::{
     column::KeccakColumn,
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    lookups::Lookups,
     DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
@@ -19,7 +23,9 @@ use kimchi::circuits::polynomials::keccak::{
     Keccak,
 };
 
-pub(crate) fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
+/// This function returns a vector of field elements that represent the 5 padding suffixes.
+/// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+pub fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
     // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
     let mut blocks = vec![Fp::zero(); 5];
     let mut pad = [Fp::zero(); RATE_IN_BYTES];
@@ -46,7 +52,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
 
     type Variable = Fp;
 
-    // FIXME: read preimage from memory and pad and expand
     fn step(&mut self) {
         // Reset columns to zeros to avoid conflicts between steps
         self.null_state();
@@ -57,10 +62,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
         self.write_column(KeccakColumn::StepIndex, self.step_idx);
 
-        // INTER-STEP CHANNEL
-        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
-        self.lookup_steps();
-
         self.update_step();
     }
 
@@ -69,12 +70,28 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     fn set_flag_pad(&mut self) {
-        self.write_column(KeccakColumn::FlagPad, 1);
-        self.write_column(KeccakColumn::FlagLength, self.pad_len);
+        self.write_column(KeccakColumn::PadLength, self.pad_len);
+        self.write_column_field(
+            KeccakColumn::InvPadLength,
+            Fp::inverse(&Fp::from(self.pad_len)).unwrap(),
+        );
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
-            self.write_column(KeccakColumn::FlagsBytes(i), 1);
+            self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
+        let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
+        for (idx, value) in pad_blocks.iter().enumerate() {
+            self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
+        }
+    }
+
+    fn set_flag_round(&mut self, round: u64) {
+        assert!(round < ROUNDS as u64);
+        self.write_column(KeccakColumn::FlagRound, round);
+    }
+
+    fn set_flag_squeeze(&mut self) {
+        self.write_column(KeccakColumn::FlagSqueeze, 1);
     }
 
     fn set_flag_absorb(&mut self, absorb: Absorb) {
@@ -90,18 +107,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
     }
 
-    fn set_flag_round(&mut self, round: u64) {
-        assert!(round <= ROUNDS as u64);
-        // Values between 0 (dummy, for sponges) and 24
-        self.write_column(KeccakColumn::FlagRound, round);
-        if round != 0 {
-            self.write_column_field(
-                KeccakColumn::InverseRound,
-                Fp::from(round).inverse().unwrap(),
-            );
-        }
-    }
-
     fn run_sponge(&mut self, sponge: Sponge) {
         match sponge {
             Sponge::Absorb(absorb) => self.run_absorb(absorb),
@@ -110,7 +115,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     }
 
     fn run_squeeze(&mut self) {
-        self.write_column(KeccakColumn::FlagSqueeze, 1);
+        self.set_flag_squeeze();
 
         // Compute witness values
         let state = self.prev_block.clone();
@@ -130,9 +135,6 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         }
 
         // Rest is zero thanks to null_state
-
-        // COMMUNICATION CHANNEL: Write hash output
-        self.lookup_syscall_hash();
     }
 
     fn run_absorb(&mut self, absorb: Absorb) {
@@ -177,14 +179,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for (idx, value) in shifts.iter().enumerate() {
             self.write_column(KeccakColumn::SpongeShifts(idx), *value);
         }
-        let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
-        for (idx, value) in pad_blocks.iter().enumerate() {
-            self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
-        }
         // Rest is zero thanks to null_state
-
-        // COMMUNICATION CHANNEL: read bytes of current block
-        self.lookup_syscall_preimage();
 
         // Update environment
         self.prev_block = xor_state;

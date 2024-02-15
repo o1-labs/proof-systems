@@ -135,7 +135,9 @@ where
 
         let zk_rows = index.zk_rows;
 
-        //~ 1. Setup the Fq-Sponge.
+        //~ 1. Setup the Fq-Sponge. This sponge mostly absorbs group
+        // elements (points as tuples over the base field), but it
+        // squeezes out elements of the group's scalar field.
         let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
@@ -246,7 +248,11 @@ where
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta = zeta_chal.to_field(endo_r);
 
-        //~ 1. Setup the Fr-Sponge.
+        //~ 1. Setup the Fr-Sponge. This sponge absorbs elements from
+        // the scalar field of the curve (equal to the base field of
+        // the previous recursion round), and squeezes scalar elements
+        // of the field. The squeeze result is the same as with the
+        // `fq_sponge`.
         let digest = fq_sponge.clone().digest();
         let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
@@ -359,13 +365,13 @@ where
         fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
 
-        //~ 1. Sample $v'$ with the Fr-Sponge.
+        //~ 1. Sample the "polyscale" $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         let v = v_chal.to_field(endo_r);
 
-        //~ 1. Sample $u'$ with the Fr-Sponge.
+        //~ 1. Sample the "evalscale" $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
