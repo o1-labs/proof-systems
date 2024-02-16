@@ -4,7 +4,7 @@ use crate::{
         column::{
             Column as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
             MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
-            MIPS_PREIMAGE_LEFT_OFFSET,
+            MIPS_PREIMAGE_BYTLENGTH_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET,
         },
         interpreter::InterpreterEnv,
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
@@ -17,8 +17,6 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 use std::array;
-
-use super::column::MIPS_PREIMAGE_BYTLENGTH_OFFSET;
 
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
