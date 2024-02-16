@@ -365,8 +365,10 @@ pub mod prover {
                     acc += lookup_terms_evals_d1[i]
                 }
                 // Sanity check to verify that the accumulator ends up being zero.
-                // FIXME: should we add it at runtime?
-                // assert_eq!(acc, G::ScalarField::zero());
+                // FIXME: This should be removed from runtime, and a constraint
+                // should be added. For now, the verifier accepts any proof.
+                // This will be fixed when constraints are added.
+                assert_eq!(acc, G::ScalarField::zero());
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                     evals, domain.d1,
                 )
