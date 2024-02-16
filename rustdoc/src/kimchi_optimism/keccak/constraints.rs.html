@@ -283,6 +283,7 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
 </span><span class="kw">use crate</span>::{
     keccak::{
@@ -495,8 +496,9 @@
                     <span class="kw">let </span>rot_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_rot_e(), <span class="prelude-val">Some</span>(y), x);
 
                     <span class="self">self</span>.constrain(
-                        word_e * <span class="self">Self</span>::two_pow(<span class="kw-2">*</span>off)
-                            - (quo_e.clone() * <span class="self">Self</span>::two_pow(<span class="number">64</span>) + rem_e.clone()),
+                        <span class="self">self</span>.is_round()
+                            * (word_e * <span class="self">Self</span>::two_pow(<span class="kw-2">*</span>off)
+                                - (quo_e.clone() * <span class="self">Self</span>::two_pow(<span class="number">64</span>) + rem_e.clone())),
                     );
                     <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (rot_e - (quo_e.clone() + rem_e)));
 
