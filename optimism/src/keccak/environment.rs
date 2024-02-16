@@ -41,7 +41,7 @@ pub struct KeccakEnv<Fp> {
 
     /// Expanded block of previous step
     pub(crate) prev_block: Vec<u64>,
-    /// How many blocks are left to absrob (including current absorb)
+    /// How many blocks are left to absorb (including current absorb)
     pub(crate) blocks_left_to_absorb: u64,
     /// Padded preimage data
     pub(crate) padded: Vec<u8>,
