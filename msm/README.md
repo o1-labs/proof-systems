@@ -74,14 +74,22 @@ Our MSM will be decomposed in the new basis as:
 ```
 
 From there, we will "bucket" the coefficients. We create an array of size 9, and add each individual scaled base element:
+$$
+\begin{align}
+buckets[0] & = 0 [18 G_{1}]
+           & + 0 [9 G_{2}] + 0 [18 G_{2}]
+           & + 0 [9 G_{3}]
+\end{align}
+$$
+
+$$
+\begin{align}
+buckets[1] & = 1 [G_{1}] + 1 [9 G_{1}]
+           & + 1 [18 G_{3}] + 1 [18 G_{3}]
+\end{align}
+$$
+
 ```math
-buckets[0] = 0 [18 G_{1}] +
-             0 [9 G_{2}] + 0 [18 G_{2}] +
-             0 [9 G_{3}]
-
-buckets[1] = 1 [G_{1}] + 1 [9 G_{1}] +
-             1 [18 G_{3}] + 1 [18 G_{3}]
-
 buckets[2] = \emptyset
 buckets[3] = 3 G_{2}
 buckets[4] = \emptyset
@@ -89,4 +97,5 @@ buckets[5] = \emptyset
 buckets[6] = \emptyset
 buckets[7] = \emptyset
 buckets[8] = \emptyset
+\end{align}
 ```
