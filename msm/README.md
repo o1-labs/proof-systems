@@ -49,3 +49,92 @@ x_3 & = \lambda^2 - x_{1} - x_{2} \\
 y_3 & = \lambda (x_{1} - x_{3}) - y_{1}
 \end{align}
 ```
+
+### Splitted MSM
+
+Let's start with a simple example. For the formal generialization, see the [MSM
+RFC](https://github.com/o1-labs/rfcs/blob/msm/00XX-efficient-msms-for-non-native-pickles-verification.md).
+
+Let define the base $G_{1}$, $G_{2}$ and $G_{3}$.
+Let's suppose we have to compute the following (small) MSM:
+
+$$
+10 G_{1} + 3 G_{2} + 19 G_{3}
+$$
+
+We will split the coefficients in base 9, and our field is $\mathbb{F}_{23}$. It means we have the following "scaled" basis:
+
+$$
+G_{1}, 9 G_{1}, 18 G_{1}, G_{2}, 9 G_{2}, 18 G_{2}, G_{3}, 9 G_{3}, 18 G_{3}
+$$
+
+Our MSM will be decomposed in the new basis as:
+
+$$
+\begin{align}
+& 1 G_{1} + 1 [9 G_{1}] + 0 [18 G_{1}] + \\
+& 3 G_{2} + 0 [9 G_{2}] + 0 [18 G_{2}] + \\
+& 1 G_{3} + 0 [9 G_{3}] + 1 [18 G_{3}]
+\end{align}
+$$
+
+We notice that we can represent the computation in 3 sets of new 3 bases:
+- $`\{G_{1}, G_{2}, G_{3}\}`$,
+- $`\{ [9]G_{1}, [9]G_{2}, [9]G_{3} \}`$
+- $`\{ [18]G_{1}, [18]G_{2}, [18]G_{3} \}`$.
+
+What we will do is performing 3 different proofs, which will compute separately the three following MSM:
+
+$$
+1 G_{1} + 3 G_{2} + 1 G_{3}
+$$
+
+$$
+1 [9G_{1}] + 0 [9G_{2}] + 0 [9G_{3}]
+$$
+
+$$
+0 [18G_{1}] + 0 [18G_{2}] + 1 [18G_{3}]
+$$
+
+The addition of the three MSM would give the expected value.
+
+The 3 proofs will be from the same circuit. Therefore, we will use folding to
+gather them. The proof will share a memory cell where the intermediate result
+will be written.
+
+For each individual MSM, we will use a "bucket" strategy. As an example, we take the first MSM.
+We start by creating an array of size 9 which will represent the different
+values of the coefficients we can have for each element of the base. We will
+then go through each element of the MSM, and we will append the element in the corresponding
+bucket.
+
+We will have:
+
+$$
+\begin{align}
+buckets[0] & = \emptyset
+\end{align}
+$$
+
+$$
+\begin{align}
+buckets[1] & = [G_{1}] + [G_{3}]
+\end{align}
+$$
+
+$$
+\begin{align}
+buckets[2] & = \emptyset \\
+buckets[3] & = G_{2} \\
+buckets[4] & = \emptyset \\
+buckets[5] & = \emptyset \\
+buckets[6] & = \emptyset \\
+buckets[7] & = \emptyset \\
+buckets[8] & = \emptyset
+\end{align}
+$$
+
+For the real case, we will have $2^{15}$ base elements, and we will split in 17
+individual proofs, and the coefficients will be on 15bits (i.e from $0$ to
+$2^{15} - 1$
