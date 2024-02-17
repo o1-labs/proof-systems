@@ -89,11 +89,11 @@ $$
 $$
 
 $$
-1 [9]G_{1} + 0 [9]G_{2} + 0 [9]G_{3}
+1 [9G_{1}] + 0 [9G_{2}] + 0 [9G_{3}]
 $$
 
 $$
-0 [18]G_{1} + 0 [18]G_{2} + 1 [18] G_{3}
+0 [18G_{1}] + 0 [18G_{2}] + 1 [18G_{3}]
 $$
 
 From there, we will "bucket" the coefficients. We create an array of size 9, and add each individual scaled base element:
