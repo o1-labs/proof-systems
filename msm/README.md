@@ -82,23 +82,23 @@ From there, we will "bucket" the coefficients. We create an array of size 9, and
 
 $$
 \begin{align}
-buckets[0] & = 0 [18 G_{1}] \\
-           & + 0 [9 G_{2}] + 0 [18 G_{2}] \\
-           & + 0 [9 G_{3}]
+buckets[0] & = [18 G_{1}] \\
+           & + [9 G_{2}] + [18 G_{2}] \\
+           & + [9 G_{3}]
 \end{align}
 $$
 
 $$
 \begin{align}
-buckets[1] & = 1 [G_{1}] + 1 [9 G_{1}] \\
-           & + 1 [18 G_{3}] + 1 [18 G_{3}]
+buckets[1] & = [G_{1}] + [9 G_{1}] \\
+           & + [18 G_{3}] + [18 G_{3}]
 \end{align}
 $$
 
 $$
 \begin{align}
 buckets[2] & = \emptyset \\
-buckets[3] & = 3 G_{2} \\
+buckets[3] & = G_{2} \\
 buckets[4] & = \emptyset \\
 buckets[5] & = \emptyset \\
 buckets[6] & = \emptyset \\
@@ -109,3 +109,18 @@ $$
 
 *Note that the $buckets[0]$ can be set to the empty set like the others, it is
 only to be complete with the decomposition given above
+
+The elements in the bucket are added "on-the-fly", while processing the MSM
+individual elements and bucketing by the coefficients.
+
+From there, we can iterate over the buckets, and multiply by the coefficients of the currently processed bucket.
+
+$$
+total = 0_{G}
+for i = 0 to 8:
+  total = i * bucket[i]
+$$
+
+By doing this operation, we provided a way to save computation of scalar
+multiplications over the curve, which is an expensive operations. We only do
+perform one scalar multiplication of a "running sum" of scaled basis elements.
