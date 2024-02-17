@@ -92,19 +92,16 @@ where
         };
         (evals(&zeta), evals(&zeta_omega))
     };
-    // TODO: Parallelize
     let (mvlookup_zeta_evaluations, mvlookup_zeta_omega_evaluations) = {
         if let Some(ref lookup_env) = lookup_env {
             let evals = |point| {
                 let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-                let m = lookup_env
-                    .lookup_counters_poly_d1
-                    .iter()
+                let m = (&lookup_env.lookup_counters_poly_d1)
+                    .into_par_iter()
                     .map(eval)
                     .collect::<Vec<_>>();
-                let h = lookup_env
-                    .lookup_terms_poly_d1
-                    .iter()
+                let h = (&lookup_env.lookup_terms_poly_d1)
+                    .into_par_iter()
                     .map(eval)
                     .collect::<Vec<_>>();
                 let sum = eval(&lookup_env.lookup_aggregation_poly_d1);
@@ -138,9 +135,8 @@ where
     if let Some(ref lookup_env) = lookup_env {
         // -- first m(X)
         polynomials.extend(
-            lookup_env
-                .lookup_counters_poly_d1
-                .iter()
+            (&lookup_env.lookup_counters_poly_d1)
+                .into_par_iter()
                 .map(|poly| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(poly),
@@ -155,9 +151,8 @@ where
         );
         // -- after that f_i and t
         polynomials.extend(
-            lookup_env
-                .lookup_terms_poly_d1
-                .iter()
+            (&lookup_env.lookup_terms_poly_d1)
+                .into_par_iter()
                 .map(|poly| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(poly),
