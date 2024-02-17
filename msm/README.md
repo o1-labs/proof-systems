@@ -65,15 +65,18 @@ $$
 We will split the coefficients in base 9. It means we have the following "scaled" basis:
 
 $$
-{G_{1}, 9 G_{1}, 18 G_{1}, G_{2}, 9 G_{2}, 18 G_{2}, G_{3}, 9 G_{3}, 18 G_{3}
+G_{1}, 9 G_{1}, 18 G_{1}, G_{2}, 9 G_{2}, 18 G_{2}, G_{3}, 9 G_{3}, 18 G_{3}
 $$
 
 Our MSM will be decomposed in the new basis as:
-```math
-1 G_{1} + 1 [9 G_{1}] + 0 [18 G_{1}] +
-3 G_{2} + 0 [9 G_{2}] + 0 [18 G_{2}] +
-1 G_{3} + 0 [9 G_{3}] + 1 [18 G_{3}]
-```
+
+$$
+\begin{align}
+& 1 G_{1} + 1 [9 G_{1}] + 0 [18 G_{1}] + \\
+& 3 G_{2} + 0 [9 G_{2}] + 0 [18 G_{2}] + \\
+& 1 G_{3} + 0 [9 G_{3}] + 1 [18 G_{3}]
+\end{align}
+$$
 
 From there, we will "bucket" the coefficients. We create an array of size 9, and add each individual scaled base element:
 
