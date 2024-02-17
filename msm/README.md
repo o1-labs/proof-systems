@@ -106,3 +106,6 @@ buckets[7] & = \emptyset \\
 buckets[8] & = \emptyset
 \end{align}
 $$
+
+*Note that the $buckets[0]$ can be set to the empty set like the others, it is
+only to be complete with the decomposition given above
