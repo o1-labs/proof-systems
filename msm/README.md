@@ -115,11 +115,11 @@ individual elements and bucketing by the coefficients.
 
 From there, we can iterate over the buckets, and multiply by the coefficients of the currently processed bucket.
 
-$$
+```
 total = 0_{G}
 for i = 0 to 8:
-  total = i * bucket[i]
-$$
+  total += i * bucket[i]
+```
 
 By doing this operation, we provided a way to save computation of scalar
 multiplications over the curve, which is an expensive operations. We only do
