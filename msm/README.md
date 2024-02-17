@@ -57,18 +57,36 @@ Let's start with a simple example. For the formal generialization, see the [MSM 
 
 Let define the base $G_{1}, G_{2} and G_{3}$.
 Let's suppose we have to compute the following (small) MSM:
-```
+```math
 10 G_{1} + 3 G_{2} + 19 G_{3}
 ```
 
 We will split the coefficients in base 9. It means we have the following "scaled" basis:
-```
+```math
 {G_{1}, 9 G_{1}, 18 G_{1}, G_{2}, 9 G_{2}, 18 G_{2}, G_{3}, 9 G_{3}, 18 G_{3}
 ```
 
 Our MSM will be decomposed in the new basis as:
-```
+```math
 1 G_{1} + 1 [9 G_{1}] + 0 [18 G_{1}] +
 3 G_{2} + 0 [9 G_{2}] + 0 [18 G_{2}] +
 1 G_{3} + 0 [9 G_{3}] + 1 [18 G_{3}]
+```
+
+From there, we will "bucket" the coefficients. We create an array of size 9, and add each individual scaled base element:
+```math
+buckets[0] = 0 [18 G_{1}] +
+             0 [9 G_{2}] + 0 [18 G_{2}] +
+             0 [9 G_{3}]
+
+buckets[1] = 1 [G_{1}] + 1 [9 G_{1}] +
+             1 [18 G_{3}] + 1 [18 G_{3}]
+
+buckets[2] = \emptyset
+buckets[3] = 3 G_{2}
+buckets[4] = \emptyset
+buckets[5] = \emptyset
+buckets[6] = \emptyset
+buckets[7] = \emptyset
+buckets[8] = \emptyset
 ```
