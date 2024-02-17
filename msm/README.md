@@ -68,5 +68,7 @@ We will split the coefficients in base 9. It means we have the following "scaled
 
 Our MSM will be decomposed in the new basis as:
 ```
-1 G_{1} + 1 [9 G_{1}] + 0 [18 G_{1}] + 3 G_{2} + 0 9 G_{2} + 0 18 G_{2} + 1 G_{3} + 0 [9 G_{3}] + 1 [18 G_{3}]
+1 G_{1} + 1 [9 G_{1}] + 0 [18 G_{1}] +
+3 G_{2} + 0 [9 G_{2}] + 0 [18 G_{2}] +
+1 G_{3} + 0 [9 G_{3}] + 1 [18 G_{3}]
 ```
