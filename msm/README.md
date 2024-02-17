@@ -55,16 +55,18 @@ y_3 & = \lambda (x_{1} - x_{3}) - y_{1}
 
 Let's start with a simple example. For the formal generialization, see the [MSM RFC](https://github.com/o1-labs/rfcs/blob/msm/00XX-efficient-msms-for-non-native-pickles-verification.md).
 
-Let define the base $G_{1}, G_{2} and G_{3}$.
+Let define the base $G_{1}$, $G_{2}$ and $G_{3}$.
 Let's suppose we have to compute the following (small) MSM:
-```math
+
+$$
 10 G_{1} + 3 G_{2} + 19 G_{3}
-```
+$$
 
 We will split the coefficients in base 9. It means we have the following "scaled" basis:
-```math
+
+$$
 {G_{1}, 9 G_{1}, 18 G_{1}, G_{2}, 9 G_{2}, 18 G_{2}, G_{3}, 9 G_{3}, 18 G_{3}
-```
+$$
 
 Our MSM will be decomposed in the new basis as:
 ```math
@@ -90,7 +92,8 @@ buckets[1] & = 1 [G_{1}] + 1 [9 G_{1}] \\
 \end{align}
 $$
 
-```math
+$$
+\begin{align}
 buckets[2] = \emptyset
 buckets[3] = 3 G_{2}
 buckets[4] = \emptyset
@@ -99,4 +102,4 @@ buckets[6] = \emptyset
 buckets[7] = \emptyset
 buckets[8] = \emptyset
 \end{align}
-```
+$$
