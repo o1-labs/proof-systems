@@ -85,9 +85,15 @@ $\{G_{1}, G_{2}, G_{3}\}$, $\{[9]G_{1}, [9]G_{2}, [9]G_{3} \}$and $\{[18]G_{1},
 What we will do is performing 3 different proofs, which will compute separately the three following MSM:
 
 $$
-- 1 G_{1} + 3 G_{2} + 1 G_{3}
-- 1 [9]G_{1} + 0 [9]G_{2} + 0 [9]G_{3}
-- 0 [18]G_{1} + 0 [18]G_{2} + 1 [18] G_{3}
+1 G_{1} + 3 G_{2} + 1 G_{3}
+$$
+
+$$
+1 [9]G_{1} + 0 [9]G_{2} + 0 [9]G_{3}
+$$
+
+$$
+0 [18]G_{1} + 0 [18]G_{2} + 1 [18] G_{3}
 $$
 
 From there, we will "bucket" the coefficients. We create an array of size 9, and add each individual scaled base element:
