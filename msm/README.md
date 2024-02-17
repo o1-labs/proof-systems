@@ -62,7 +62,7 @@ $$
 10 G_{1} + 3 G_{2} + 19 G_{3}
 $$
 
-We will split the coefficients in base 9. It means we have the following "scaled" basis:
+We will split the coefficients in base 9, and our field is $\mathbb{F}_{23}$. It means we have the following "scaled" basis:
 
 $$
 G_{1}, 9 G_{1}, 18 G_{1}, G_{2}, 9 G_{2}, 18 G_{2}, G_{3}, 9 G_{3}, 18 G_{3}
