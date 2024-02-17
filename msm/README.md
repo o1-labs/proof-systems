@@ -93,7 +93,6 @@ buckets[1] & = 1 [G_{1}] + 1 [9 G_{1}] \\
 $$
 
 $$
-\begin{align}
 buckets[2] = \emptyset
 buckets[3] = 3 G_{2}
 buckets[4] = \emptyset
@@ -101,5 +100,4 @@ buckets[5] = \emptyset
 buckets[6] = \emptyset
 buckets[7] = \emptyset
 buckets[8] = \emptyset
-\end{align}
 $$
