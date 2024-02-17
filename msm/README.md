@@ -108,6 +108,7 @@ then go through each element of the MSM, and we will append in the corresponding
 bucket the element.
 
 We will have:
+
 $$
 \begin{align}
 buckets[0] & = \emptyset
