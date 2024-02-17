@@ -124,3 +124,24 @@ for i = 0 to 8:
 By doing this operation, we provided a way to save computation of scalar
 multiplications over the curve, which is an expensive operation. We only do
 perform one scalar multiplication of a "running sum" of scaled basis elements.
+
+
+### Computing the coefficients in the scaled basis
+
+The prover must first compute the coefficients for the scaled basis. As a
+reminder, the size of the MSM is around 2^15. Therefore, we can have a circuit
+computing only the decomposition.
+We will have 1 + 16 columns.
+For the coefficients $c_{1}$, $c_{2}$, ..., $c_{2^15}$, we will have the
+following trace:
+
+| C          | $DEC_{1}$         | $DEC_{2}$         | ... |   $DEC_{16}$      |
+|-------     |------------       |------------       | --- | ------------      |
+| $c_{1}$    |   $c_{1, 1}$      |   $c_{1, 2}$      | ... |   $c_{1, 16}$     |
+| $c_{2}$    |   $c_{2, 1}$      |   $c_{2, 2}$      | ... |   $c_{2, 16}$     |
+|  ...       |  ...              |   ...             | ... |    ...            |
+| $c_{2^15}$ |   $c_{2^{15}, 1}$ |   $c_{2^{15}, 2}$ | ... |  $c_{2^{15}, 16}$ |
+
+The constraint for each row will be $c_{i} = \sum 2^{k * j} c_{i, j}$ and 16
+range check in $[0, 2^{15}[$ will be performed on each column $DEC_{i}$.
+MVLookup will be used.
