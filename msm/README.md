@@ -97,20 +97,26 @@ $$
 0 [18G_{1}] + 0 [18G_{2}] + 1 [18G_{3}]
 $$
 
-From there, we will "bucket" the coefficients. We create an array of size 9, and add each individual scaled base element:
+The addition of the three MSM would give the expected value.
 
+The 3 proofs will be from the same circuit. Therefore, we will use folding to gather them. The proof will share a memory cell where the intermediate result will be written.
+
+For each individual MSM, we will use a "bucket" strategy. As an example, we take the first MSM.
+We start by creating an array of size 9 which will represent the different
+values of the coefficients we can have for each elements of the base. We will
+then go through each element of the MSM, and we will append in the corresponding
+bucket the element.
+
+We will have:
 $$
 \begin{align}
-buckets[0] & = [18 G_{1}] \\
-           & + [9 G_{2}] + [18 G_{2}] \\
-           & + [9 G_{3}]
+buckets[0] & = \emptyset
 \end{align}
 $$
 
 $$
 \begin{align}
-buckets[1] & = [G_{1}] + [9 G_{1}] \\
-           & + [18 G_{3}] + [18 G_{3}]
+buckets[1] & = [G_{1}] + [G_{3}]
 \end{align}
 $$
 
@@ -125,9 +131,6 @@ buckets[7] & = \emptyset \\
 buckets[8] & = \emptyset
 \end{align}
 $$
-
-*Note that the $buckets[0]$ can be set to the empty set like the others, it is
-only to be complete with the decomposition given above
 
 The elements in the bucket are added "on-the-fly", while processing the MSM
 individual elements and bucketing by the coefficients.
