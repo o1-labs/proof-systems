@@ -79,9 +79,9 @@ $$
 $$
 
 We notice that we can represent the computation in 3 sets of new 3 bases:
-- $\{G_{1}, G_{2}, G_{3}\}$,
-- $\{ [9]G_{1}, [9]G_{2}, [9]G_{3} \}$
-- $\left\{ [18]G_{1}, [18]G_{2}, [18]G_{3} \right\}$.
+- $`\{G_{1}, G_{2}, G_{3}\}`$,
+- $`\{ [9]G_{1}, [9]G_{2}, [9]G_{3} \}`$
+- $`\{ [18]G_{1}, [18]G_{2}, [18]G_{3} \}`$.
 
 What we will do is performing 3 different proofs, which will compute separately the three following MSM:
 
