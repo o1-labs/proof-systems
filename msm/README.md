@@ -126,12 +126,21 @@ multiplications over the curve, which is an expensive operation. We only do
 perform one scalar multiplication of a "running sum" of scaled basis elements.
 
 
-### Computing the coefficients in the scaled basis
+### Step 1: computing the coefficients in the scaled basis
 
-The prover must first compute the coefficients for the scaled basis. As a
-reminder, the size of the MSM is around 2^15. Therefore, we can have a circuit
-computing only the decomposition.
-We will have 1 + 16 columns.
+To start, we want to make a proof that the prover computed correctly the
+coefficients for the scaled basis. As a reminder, we will use a basis of 17
+limbs of 15 bits.
+The scalars of the MSM are field elements of the scalar/base field of Vesta.
+The elements are 255bits long. Therefore, we can encode each value in exactly 17
+chunks of 15 bits.
+
+The circuit for this proof will be the following:
+The inputs will be two field elements of the $F_{scalar}(BN254)$. The first
+field element will encode the first 240 bits of the challenge, and the second
+the last 15 bits.
+
+We will have 2 + 17 columns.
 For the coefficients $c_{1}$, $c_{2}$, ..., $c_{2^15}$, we will have the
 following trace:
 
@@ -145,3 +154,22 @@ following trace:
 The constraint for each row will be $c_{i} = \sum 2^{k * j} c_{i, j}$ and 16
 range check in $[0, 2^{15}[$ will be performed on each column $DEC_{i}$.
 MVLookup will be used.
+
+### Mina proof structure
+
+As a reminder, we have the following diagram:
+
+
+```
+Step
+    \
+     \
+     ----> Wrap
+     /
+    /
+Step
+```
+
+A Wrap proof verifies maximum two step proofs.
+Wrap circuits are encoded into the scalar field of Pallas.
+Step circuits are encoded in the scalar field of Vesta.
