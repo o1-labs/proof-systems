@@ -205,10 +205,11 @@ where
             }
         }
 
-        //~ 1. Sample $\beta$ with the Fq-Sponge.
+        // --- PlonK - Round 2
+        //~ 1. Sample the first permutation challenge $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
 
-        //~ 1. Sample $\gamma$ with the Fq-Sponge.
+        //~ 1. Sample the second permutation challenge $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
         //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
@@ -221,7 +222,8 @@ where
         //~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &self.commitments.z_comm);
 
-        //~ 1. Sample $\alpha'$ with the Fq-Sponge.
+        // --- PlonK - Round 3
+        //~ 1. Sample the quotient challenge $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
@@ -239,6 +241,7 @@ where
         //~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
         absorb_commitment(&mut fq_sponge, &self.commitments.t_comm);
 
+        // --- PlonK - Round 4
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
