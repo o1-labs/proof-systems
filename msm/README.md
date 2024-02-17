@@ -49,3 +49,24 @@ x_3 & = \lambda^2 - x_{1} - x_{2} \\
 y_3 & = \lambda (x_{1} - x_{3}) - y_{1}
 \end{align}
 ```
+
+
+### How is it implemented?
+
+Let's start with a simple example. For the formal generialization, see the [MSM RFC](https://github.com/o1-labs/rfcs/blob/msm/00XX-efficient-msms-for-non-native-pickles-verification.md).
+
+Let define the base $G_{1}, G_{2} and G_{3}$.
+Let's suppose we have to compute the following (small) MSM:
+```
+10 G_{1} + 3 G_{2} + 19 G_{3}
+```
+
+We will split the coefficients in base 9. It means we have the following "scaled" basis:
+```
+{G_{1}, 9 G_{1}, 18 G_{1}, G_{2}, 9 G_{2}, 18 G_{2}, G_{3}, 9 G_{3}, 18 G_{3}
+```
+
+Our MSM will be decomposed in the new basis as:
+```
+1 G_{1} + 1 [9 G_{1}] + 0 [18 G_{1}] + 3 G_{2} + 0 9 G_{2} + 0 18 G_{2} + 1 G_{3} + 0 [9 G_{3}] + 1 [18 G_{3}]
+```
