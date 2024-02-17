@@ -122,5 +122,5 @@ for i = 0 to 8:
 ```
 
 By doing this operation, we provided a way to save computation of scalar
-multiplications over the curve, which is an expensive operations. We only do
+multiplications over the curve, which is an expensive operation. We only do
 perform one scalar multiplication of a "running sum" of scaled basis elements.
