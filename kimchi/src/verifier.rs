@@ -214,7 +214,11 @@ where
         //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         if index.lookup_index.is_some() {
             // Should not fail, as the lookup index is present
-            let lookup_commits = self.commitments.lookup.as_ref()..ok_or(VerifyError::LookupCommitmentMissing)?;
+            let lookup_commits = self
+                .commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)?;
             absorb_commitment(&mut fq_sponge, &lookup_commits.aggreg);
         }
 
