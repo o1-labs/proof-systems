@@ -25,6 +25,9 @@ pub fn verify<
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
+        mvlookup_commitments,
+        mvlookup_zeta_evaluations,
+        mvlookup_zeta_omega_evaluations,
         opening_proof,
     } = proof;
 
@@ -33,6 +36,11 @@ pub fn verify<
     commitments
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+    if let Some(mvlookup_commitments) = mvlookup_commitments {
+        mvlookup_commitments
+            .into_iter()
+            .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+    }
     // -- Finish absorbing the commitments
 
     // -- Preparing for opening proof verification
@@ -42,17 +50,25 @@ pub fn verify<
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
-    let fq_sponge_before_evaluations = fq_sponge.clone();
-    let mut fr_sponge = EFrSponge::new(G::sponge_params());
-    fr_sponge.absorb(&fq_sponge.digest());
-
-    let es: Vec<_> = zeta_evaluations
+    let mut es: Vec<_> = zeta_evaluations
         .into_iter()
         .zip(zeta_omega_evaluations)
         .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
         .collect();
 
-    let evaluations: Vec<_> = commitments
+    if mvlookup_commitments.is_some() {
+        es.extend(
+            mvlookup_zeta_evaluations
+                .as_ref()
+                .unwrap()
+                .into_iter()
+                .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
+                .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    let mut evaluations: Vec<_> = commitments
         .into_iter()
         .zip(zeta_evaluations.into_iter().zip(zeta_omega_evaluations))
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
@@ -62,11 +78,49 @@ pub fn verify<
         })
         .collect();
 
+    if let Some(mvlookup_commitments) = mvlookup_commitments {
+        evaluations.extend(
+            mvlookup_commitments
+                .into_iter()
+                .zip(
+                    mvlookup_zeta_evaluations
+                        .as_ref()
+                        .unwrap()
+                        .into_iter()
+                        .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap()),
+                )
+                .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
+                    commitment: commitment.clone(),
+                    evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
+                    degree_bound: None,
+                })
+                .collect::<Vec<_>>(),
+        );
+    }
+
     // -- Absorb all evaluations
+    let fq_sponge_before_evaluations = fq_sponge.clone();
+    let mut fr_sponge = EFrSponge::new(G::sponge_params());
+    fr_sponge.absorb(&fq_sponge.digest());
+
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations.into_iter().zip(zeta_omega_evaluations) {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    if mvlookup_commitments.is_some() {
+        // MVLookup FS
+        for (zeta_eval, zeta_omega_eval) in
+            mvlookup_zeta_evaluations.as_ref().unwrap().into_iter().zip(
+                mvlookup_zeta_omega_evaluations
+                    .as_ref()
+                    .unwrap()
+                    .into_iter(),
+            )
+        {
+            fr_sponge.absorb(zeta_eval);
+            fr_sponge.absorb(zeta_omega_eval);
+        }
+    };
     // -- End absorb all evaluations
 
     let v_chal = fr_sponge.challenge();

@@ -14,6 +14,7 @@ use poly_commitment::{
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
+use crate::mvlookup::{self, LookupProof, LookupWitness};
 use crate::proof::{Proof, Witness, WitnessColumns};
 
 pub fn prove<
@@ -57,6 +58,22 @@ where
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
+    // -- Start MVLookup
+    let lookup_env = if !inputs.mvlookups.is_empty() {
+        // FIXME: only one lookup for now
+        let mvlookup: &LookupWitness<G::ScalarField> = &inputs.mvlookups[0];
+        Some(mvlookup::prover::Env::create::<OpeningProof, EFqSponge>(
+            mvlookup,
+            domain,
+            &mut fq_sponge,
+            srs,
+        ))
+    } else {
+        None
+    };
+    // -- end computing the running sum in lookup_aggregation
+    // -- End of MVLookup
+
     // TODO: add quotient polynomial (based on constraints and expresion framework)
 
     // We start the evaluations.
@@ -67,6 +84,7 @@ where
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at zeta and zeta * omega -- Columns
+    // TODO: Parallelize
     let (zeta_evaluations, zeta_omega_evaluations) = {
         let evals = |point| {
             let WitnessColumns { x } = &polys;
@@ -76,13 +94,32 @@ where
         };
         (evals(&zeta), evals(&zeta_omega))
     };
+    // TODO: Parallelize
+    let (mvlookup_zeta_evaluations, mvlookup_zeta_omega_evaluations) = {
+        if let Some(ref lookup_env) = lookup_env {
+            let evals = |point| {
+                let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+                let m = eval(&lookup_env.lookup_counters_poly_d1);
+                let h = lookup_env
+                    .lookup_terms_poly_d1
+                    .iter()
+                    .map(eval)
+                    .collect::<Vec<_>>();
+                let sum = eval(&lookup_env.lookup_aggregation_poly_d1);
+                LookupProof { m, h, sum }
+            };
+            (Some(evals(&zeta)), Some(evals(&zeta_omega)))
+        } else {
+            (None, None)
+        }
+    };
     // -- Start opening proof - Preparing the Rust structures
     let group_map = G::Map::setup();
 
     // Gathering all polynomials to use in the opening proof
     let polynomials: Vec<_> = polys.into_iter().collect();
 
-    let polynomials: Vec<_> = polynomials
+    let mut polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
             (
@@ -95,6 +132,44 @@ where
             )
         })
         .collect();
+    // Adding MVLookup
+    if let Some(ref lookup_env) = lookup_env {
+        // -- first m(X)
+        polynomials.push((
+            DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_counters_poly_d1),
+            None,
+            PolyComm {
+                unshifted: vec![G::ScalarField::zero()],
+                shifted: None,
+            },
+        ));
+        // -- after that f_i and t
+        polynomials.extend(
+            lookup_env
+                .lookup_terms_poly_d1
+                .iter()
+                .map(|poly| {
+                    (
+                        DensePolynomialOrEvaluations::DensePolynomial(poly),
+                        None,
+                        PolyComm {
+                            unshifted: vec![G::ScalarField::zero()],
+                            shifted: None,
+                        },
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
+        // -- after that the running sum
+        polynomials.push((
+            DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_aggregation_poly_d1),
+            None,
+            PolyComm {
+                unshifted: vec![G::ScalarField::zero()],
+                shifted: None,
+            },
+        ));
+    }
 
     // Fiat Shamir - absorbing evaluations
     let fq_sponge_before_evaluations = fq_sponge.clone();
@@ -107,6 +182,20 @@ where
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
+    }
+    if lookup_env.is_some() {
+        // MVLookup FS
+        for (zeta_eval, zeta_omega_eval) in
+            mvlookup_zeta_evaluations.as_ref().unwrap().into_iter().zip(
+                mvlookup_zeta_omega_evaluations
+                    .as_ref()
+                    .unwrap()
+                    .into_iter(),
+            )
+        {
+            fr_sponge.absorb(zeta_eval);
+            fr_sponge.absorb(zeta_omega_eval);
+        }
     }
 
     let v_chal = fr_sponge.challenge();
@@ -126,10 +215,24 @@ where
     );
     // -- End opening proof - Preparing the structures
 
+    // FIXME: remove clone
+    let mvlookup_commitments = if let Some(lookup_env) = lookup_env {
+        Some(LookupProof {
+            m: lookup_env.lookup_counters_comm_d1.clone(),
+            h: lookup_env.lookup_terms_comms_d1.clone(),
+            sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+        })
+    } else {
+        None
+    };
+
     Proof {
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
+        mvlookup_commitments,
+        mvlookup_zeta_evaluations,
+        mvlookup_zeta_omega_evaluations,
         opening_proof,
     }
 }

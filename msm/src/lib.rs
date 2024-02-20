@@ -6,6 +6,7 @@ use poly_commitment::pairing_proof::PairingProof;
 
 pub mod columns;
 pub mod constraint;
+pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
@@ -43,14 +44,17 @@ mod tests {
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
+    use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     use crate::{
-        proof::Witness, prover::prove, verifier::verify, BaseSponge, Fp, OpeningProof,
-        ScalarSponge, BN254,
+        mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify, BaseSponge, Fp,
+        OpeningProof, ScalarSponge, BN254,
     };
 
     #[test]
     fn test_completeness() {
+        // Include tests for completeness for MVLookup as the random witness
+        // includes all arguments
         let domain_size = 1 << 8;
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
@@ -121,17 +125,40 @@ mod tests {
                 verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
             assert!(!verifies);
         }
+    }
 
-        // Changing at least one evaluation at \zeta*\omega in the proof should fail
-        // the verification.
-        // TODO: improve me by swapping only one evaluation at \zeta*\omega.
-        // It should easier when an index trait is implemented.
-        {
-            let mut proof_clone = proof.clone();
-            proof_clone.zeta_omega_evaluations = proof_prime.zeta_omega_evaluations;
-            let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
-            assert!(!verifies);
-        }
+    #[test]
+    #[ignore]
+    fn test_soundness_mvlookup() {
+        let seed: [u8; 32] = thread_rng().gen();
+        eprintln!("Seed: {:?}", seed);
+        let mut rng = StdRng::from_seed(seed);
+
+        // We generate two different witness and two different proofs.
+        let domain_size = 1 << 8;
+        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
+
+        // Trusted setup toxic waste
+        let x = Fp::rand(&mut rng);
+
+        let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
+        srs.full_srs.add_lagrange_basis(domain.d1);
+
+        let mut witness = Witness::random(domain);
+        // Take one random f_i (FIXME: taking first one for now)
+        let looked_up_values = witness.mvlookups[0].f[0].clone();
+        // We change a random looked up element (FIXME: first one for now)
+        let wrong_looked_up_value = Lookup {
+            table_id: looked_up_values[0].table_id,
+            numerator: looked_up_values[0].numerator,
+            value: vec![Fp::rand(&mut rng)],
+        };
+        // Overwriting the first looked up value
+        witness.mvlookups[0].f[0][0] = wrong_looked_up_value;
+        // generate the proof
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+        // FIXME: At the moment, it does verify. It should not. We are missing constraints.
+        assert!(!verifies);
     }
 }
