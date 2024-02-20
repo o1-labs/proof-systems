@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-01-27T10:58:10.585Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="nsJE5r-fDmNGJlODBOsB" version="22.1.2" type="device">
+<mxfile host="Electron" modified="2024-02-20T16:25:53.735Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/120.0.6099.56 Electron/28.0.0 Safari/537.36" etag="zTdytWWecGmhpzmXWGql" version="22.1.2" type="device">
   <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
-    <mxGraphModel dx="1863" dy="1163" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+    <mxGraphModel dx="805" dy="507" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -3806,8 +3806,7 @@
         <mxCell id="Rct82W0HXJ28LCBq3rn3-174" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#0000FF;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;endArrow=classic;" parent="1" source="Rct82W0HXJ28LCBq3rn3-169" target="Rct82W0HXJ28LCBq3rn3-158" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="4162" y="5510" />
-              <mxPoint x="7450" y="5510" />
+              <mxPoint x="7450" y="5600" />
               <mxPoint x="7450" y="5325" />
             </Array>
           </mxGeometry>
@@ -3877,7 +3876,7 @@
         <mxCell id="Rct82W0HXJ28LCBq3rn3-199" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#0000FF;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;endArrow=classic;" parent="1" source="Rct82W0HXJ28LCBq3rn3-193" target="Rct82W0HXJ28LCBq3rn3-108" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="Rct82W0HXJ28LCBq3rn3-193" value="run application logic of previous statements" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;strokeColor=#6c8ebf;strokeWidth=2;fillColor=#dae8fc;" parent="1" vertex="1">
+        <mxCell id="Rct82W0HXJ28LCBq3rn3-193" value="Execute application logic of the current statement + expand the rule" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Helvetica;fontSize=12;strokeColor=#6c8ebf;strokeWidth=2;fillColor=#dae8fc;" parent="1" vertex="1">
           <mxGeometry x="3500" y="4779.67" width="150" height="70" as="geometry" />
         </mxCell>
         <mxCell id="Rct82W0HXJ28LCBq3rn3-195" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;labelBackgroundColor=default;strokeColor=#0000FF;strokeWidth=2;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=default;endArrow=classic;" parent="1" source="Rct82W0HXJ28LCBq3rn3-194" target="Rct82W0HXJ28LCBq3rn3-193" edge="1">
@@ -4181,8 +4180,11 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="LG20NbsoZ6-E1O0Kml7B-186" value="&lt;font color=&quot;#ffffff&quot; style=&quot;font-size: 22px; background-color: rgb(255, 0, 0);&quot;&gt;Assert equal ?????&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Helvetica;fontColor=default;" parent="1" vertex="1">
-          <mxGeometry x="8020" y="5261" width="60" height="30" as="geometry" />
+        <mxCell id="CsT-GZbtp9g-T2GshL0j-1" value="In this step circuit this value is returned from the circuit directly.&lt;br&gt;While in Wrap, the mechanism of returning is not implemented, so the assertion is there to &quot;return&quot; this value to the out-of-circuit computation" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="7740" y="5320" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="CsT-GZbtp9g-T2GshL0j-6" value="Does not matter for soundness. Merely simulates return from the circuit." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="6050" y="3700" width="220" height="50" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

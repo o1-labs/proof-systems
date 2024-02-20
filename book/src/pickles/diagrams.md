@@ -4,7 +4,7 @@ This section contains a series of diagrams giving an overview of implementation 
 
 The legend of the diagrams is quite straightforward:
 - The black boxes are data structures that have names and labels following the implementation.
-  - `MFNStep`/`MFNWrap` is an abbreviation from `MessagesForNextStep` and `MessagesForNextWrap` that is used for brewity. Most other datatypes are exactly the same as in the codebase.
+  - `MFNStep`/`MFNWrap` is an abbreviation from `MessagesForNextStep` and `MessagesForNextWrap` that is used for brevity. Most other datatypes are exactly the same as in the codebase.
 - The blue boxes are computations. Sometimes, when the computation is trivial or only vaguely indicated, it is denoted as a text sign directly on an arrow.
 - Arrows are blue by default and denote moving a piece of data from one place to another with no (or very little) change. Light blue arrows are denoting witness query that is implemented through the `handler` mechanism. The "chicken foot" connector means that this arrow accesses just one field in an array: such an arrow could connect e.g. a input field of type `old_a: A` in a structure `Vec<(A,B)>` to an output `new_a: A`, which just means that we are inside a `for` loop and this computation is done for all the elemnts in the vector/array.
 - Colour of the field is sometimes introduced and denotes how many steps ago was this piece of data created. The absense of the colour means either that (1) the data structure contains different subfields of different origin, or that (2) it was not coloured but it could be. The colours are assigned according to the following convention:
