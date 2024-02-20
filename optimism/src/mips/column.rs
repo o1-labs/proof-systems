@@ -1,6 +1,6 @@
 pub(crate) const MIPS_HASH_COUNTER_OFFSET: usize = 80;
 pub(crate) const MIPS_IS_SYSCALL_OFFSET: usize = 81;
-pub(crate) const MIPS_PREIMAGE_BYTLENGTH_OFFSET: usize = 82;
+pub(crate) const MIPS_READING_PREIMAGE_OFFSET: usize = 82;
 pub(crate) const MIPS_BYTES_READ_OFFSET: usize = 83;
 pub(crate) const MIPS_PREIMAGE_LEFT_OFFSET: usize = 84;
 pub(crate) const MIPS_PREIMAGE_BYTES_OFFSET: usize = 85;

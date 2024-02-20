@@ -4,7 +4,7 @@ use crate::{
         column::{
             Column as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
             MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
-            MIPS_PREIMAGE_BYTLENGTH_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET,
+            MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::InterpreterEnv,
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
@@ -467,7 +467,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         });
         // Whether this step has read any bytes of the preimage or not (bytelength otherwise)
         let reading_preimage = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::ScratchState(MIPS_PREIMAGE_BYTLENGTH_OFFSET),
+            col: Self::Position::ScratchState(MIPS_READING_PREIMAGE_OFFSET),
             row: CurrOrNext::Curr,
         }));
         // How many hashes have been performed so far in the circuit

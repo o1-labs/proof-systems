@@ -9,7 +9,7 @@ use crate::{
         column::{
             Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
             MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
-            MIPS_PREIMAGE_BYTLENGTH_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET,
+            MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -619,7 +619,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             if idx < LENGTH_SIZE {
-                self.write_column(Column::ScratchState(MIPS_PREIMAGE_BYTLENGTH_OFFSET), 1);
+                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
@@ -627,7 +627,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             } else {
                 preimage_read_len += 1; // At most, it will be actual_read_len
-                self.write_column(Column::ScratchState(MIPS_PREIMAGE_BYTLENGTH_OFFSET), 0);
+                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 // Write the individual byte to the witness
