@@ -212,9 +212,15 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-        self.commitments.lookup.iter().for_each(|l| {
-            absorb_commitment(&mut fq_sponge, &l.aggreg);
-        });
+        if index.lookup_index.is_some() {
+            // Should not fail, as the lookup index is present
+            let lookup_commits = self
+                .commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)?;
+            absorb_commitment(&mut fq_sponge, &lookup_commits.aggreg);
+        }
 
         //~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &self.commitments.z_comm);
