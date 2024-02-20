@@ -20,7 +20,7 @@ The diagram roughly illustrates the interplay of the two kimchi instances.
 ![Overview](./pickles_structure_overview.svg)
 
 
-The small remark that Step circuit may repeat items 2-3 has to do with the following. In the case where Step 2 consumes several Wrap 1.X (e.g. Wrap 1.1, Wrap 1.2, etc), it must perform all these main Wrap 1.X checks, but also all the deferred Step 1.X checks where Wrap 1.X wraps exactly Step 1.X.
+We note that the Step circuit may repeat items 2-3 to handle the following case: when Step 2 consumes several Wrap 1.X (e.g. Wrap 1.1, Wrap 1.2, etc), it must perform all these main Wrap 1.X checks, but also all the deferred Step 1.X checks where Wrap 1.X wraps exactly Step 1.X.
 
 
 #### On Accumulators
