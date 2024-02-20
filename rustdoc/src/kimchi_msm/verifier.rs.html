@@ -97,6 +97,60 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
 <span class="kw">use </span>kimchi::{curve::KimchiCurve, groupmap::GroupMap};
@@ -124,6 +178,9 @@
         commitments,
         zeta_evaluations,
         zeta_omega_evaluations,
+        mvlookup_commitments,
+        mvlookup_zeta_evaluations,
+        mvlookup_zeta_omega_evaluations,
         opening_proof,
     } = proof;
 
@@ -132,6 +189,11 @@
     commitments
         .into_iter()
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_commitments) = mvlookup_commitments {
+        mvlookup_commitments
+            .into_iter()
+            .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
+    }
     <span class="comment">// -- Finish absorbing the commitments
 
     // -- Preparing for opening proof verification
@@ -141,17 +203,25 @@
     <span class="kw">let </span>omega = domain.d1.group_gen;
     <span class="kw">let </span>zeta_omega = zeta * omega;
 
-    <span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
-    <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
-    fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
-
-    <span class="kw">let </span>es: Vec&lt;<span class="kw">_</span>&gt; = zeta_evaluations
+    <span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;<span class="kw">_</span>&gt; = zeta_evaluations
         .into_iter()
         .zip(zeta_omega_evaluations)
         .map(|(zeta, zeta_omega)| (<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]], <span class="prelude-val">None</span>))
         .collect();
 
-    <span class="kw">let </span>evaluations: Vec&lt;<span class="kw">_</span>&gt; = commitments
+    <span class="kw">if </span>mvlookup_commitments.is_some() {
+        es.extend(
+            mvlookup_zeta_evaluations
+                .as_ref()
+                .unwrap()
+                .into_iter()
+                .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
+                .map(|(zeta, zeta_omega)| (<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]], <span class="prelude-val">None</span>))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        );
+    }
+
+    <span class="kw">let </span><span class="kw-2">mut </span>evaluations: Vec&lt;<span class="kw">_</span>&gt; = commitments
         .into_iter()
         .zip(zeta_evaluations.into_iter().zip(zeta_omega_evaluations))
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
@@ -161,11 +231,49 @@
         })
         .collect();
 
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_commitments) = mvlookup_commitments {
+        evaluations.extend(
+            mvlookup_commitments
+                .into_iter()
+                .zip(
+                    mvlookup_zeta_evaluations
+                        .as_ref()
+                        .unwrap()
+                        .into_iter()
+                        .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap()),
+                )
+                .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
+                    commitment: commitment.clone(),
+                    evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_eval], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega_eval]],
+                    degree_bound: <span class="prelude-val">None</span>,
+                })
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        );
+    }
+
     <span class="comment">// -- Absorb all evaluations
-    </span><span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations.into_iter().zip(zeta_omega_evaluations) {
+    </span><span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
+    <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
+    fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
+
+    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations.into_iter().zip(zeta_omega_evaluations) {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
+    <span class="kw">if </span>mvlookup_commitments.is_some() {
+        <span class="comment">// MVLookup FS
+        </span><span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in
+            </span>mvlookup_zeta_evaluations.as_ref().unwrap().into_iter().zip(
+                mvlookup_zeta_omega_evaluations
+                    .as_ref()
+                    .unwrap()
+                    .into_iter(),
+            )
+        {
+            fr_sponge.absorb(zeta_eval);
+            fr_sponge.absorb(zeta_omega_eval);
+        }
+    };
     <span class="comment">// -- End absorb all evaluations
 
     </span><span class="kw">let </span>v_chal = fr_sponge.challenge();

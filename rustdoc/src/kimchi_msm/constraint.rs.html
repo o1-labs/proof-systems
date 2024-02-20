@@ -150,6 +150,7 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
 <span class="kw">use </span>kimchi::circuits::expr::{ConstantExprInner, Operations};
 <span class="kw">use </span>kimchi::circuits::expr::{ExprInner, Variable};
@@ -253,6 +254,7 @@
 
         Witness {
             evaluations: WitnessColumns { x },
+            mvlookups: <span class="macro">vec!</span>[],
         }
     }
 

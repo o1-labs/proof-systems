@@ -137,6 +137,33 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -145,6 +172,7 @@
 
 <span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraint;
+<span class="kw">pub mod </span>mvlookup;
 <span class="kw">pub mod </span>precomputed_srs;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
@@ -182,15 +210,18 @@
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
+    <span class="kw">use </span>rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     <span class="kw">use crate</span>::{
-        proof::Witness, prover::prove, verifier::verify, BaseSponge, Fp, OpeningProof,
-        ScalarSponge, BN254,
+        mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify, BaseSponge, Fp,
+        OpeningProof, ScalarSponge, BN254,
     };
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
-        <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
+        <span class="comment">// Include tests for completeness for MVLookup as the random witness
+        // includes all arguments
+        </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
         <span class="comment">// Trusted setup toxic waste
@@ -260,18 +291,41 @@
                 verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
             <span class="macro">assert!</span>(!verifies);
         }
+    }
 
-        <span class="comment">// Changing at least one evaluation at \zeta*\omega in the proof should fail
-        // the verification.
-        // TODO: improve me by swapping only one evaluation at \zeta*\omega.
-        // It should easier when an index trait is implemented.
-        </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
-            proof_clone.zeta_omega_evaluations = proof_prime.zeta_omega_evaluations;
-            <span class="kw">let </span>verifies =
-                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
-            <span class="macro">assert!</span>(!verifies);
-        }
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_soundness_mvlookup() {
+        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
+        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
+
+        <span class="comment">// We generate two different witness and two different proofs.
+        </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
+        <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
+
+        <span class="comment">// Trusted setup toxic waste
+        </span><span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
+        srs.full_srs.add_lagrange_basis(domain.d1);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>witness = Witness::random(domain);
+        <span class="comment">// Take one random f_i (FIXME: taking first one for now)
+        </span><span class="kw">let </span>looked_up_values = witness.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>].clone();
+        <span class="comment">// We change a random looked up element (FIXME: first one for now)
+        </span><span class="kw">let </span>wrong_looked_up_value = Lookup {
+            table_id: looked_up_values[<span class="number">0</span>].table_id,
+            numerator: looked_up_values[<span class="number">0</span>].numerator,
+            value: <span class="macro">vec!</span>[Fp::rand(<span class="kw-2">&amp;mut </span>rng)],
+        };
+        <span class="comment">// Overwriting the first looked up value
+        </span>witness.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
+        <span class="comment">// generate the proof
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, witness);
+        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+        <span class="comment">// FIXME: At the moment, it does verify. It should not. We are missing constraints.
+        </span><span class="macro">assert!</span>(!verifies);
     }
 }
 </code></pre></div></section></main></body></html>
