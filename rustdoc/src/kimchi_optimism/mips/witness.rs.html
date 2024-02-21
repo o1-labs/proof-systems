@@ -1791,7 +1791,7 @@
             <span class="comment">// The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             </span><span class="kw">if </span>idx &lt; LENGTH_SIZE {
-                <span class="self">self</span>.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), <span class="number">1</span>);
+                <span class="self">self</span>.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), <span class="number">0</span>);
                 <span class="kw">let </span>length_byte = u64::to_be_bytes(preimage_len <span class="kw">as </span>u64)[idx];
                 <span class="kw">unsafe </span>{
                     <span class="self">self</span>.push_memory(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>addr + i), length_byte <span class="kw">as </span>u64);
@@ -1799,7 +1799,7 @@
                 }
             } <span class="kw">else </span>{
                 preimage_read_len += <span class="number">1</span>; <span class="comment">// At most, it will be actual_read_len
-                </span><span class="self">self</span>.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), <span class="number">0</span>);
+                </span><span class="self">self</span>.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), <span class="number">1</span>);
                 <span class="comment">// This should really be handled by the keccak oracle.
                 </span><span class="kw">let </span>preimage_byte = <span class="self">self</span>.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 <span class="comment">// Write the individual byte to the witness
