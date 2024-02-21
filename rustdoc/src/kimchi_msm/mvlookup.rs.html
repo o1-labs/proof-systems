@@ -403,6 +403,15 @@
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
 <a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>std::iter;
@@ -555,8 +564,7 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupProof&lt;T&gt; {
     <span class="comment">// The multiplicity polynomials
-    // FIXME: There should be more than one, one per lookup table
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: T,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: Vec&lt;T&gt;,
     <span class="comment">// The polynomial keeping the sum of each row
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) h: Vec&lt;T&gt;,
     <span class="comment">// The "running-sum" over the rows, coined \phi
@@ -573,7 +581,7 @@
     <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
         <span class="kw">let </span>n = <span class="self">self</span>.h.len();
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(<span class="number">1 </span>+ n + <span class="number">1</span>);
-        iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.m);
+        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.m);
         iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.h);
         iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.sum);
         iter_contents.into_iter()
@@ -590,15 +598,15 @@
     <span class="kw">use </span>poly_commitment::commitment::{absorb_commitment, PolyComm};
     <span class="kw">use </span>poly_commitment::{OpenProof, SRS <span class="kw">as _</span>};
 
+    <span class="kw">use </span>rayon::iter::IntoParallelIterator;
+    <span class="kw">use </span>rayon::iter::ParallelIterator;
+
     <span class="kw">use super</span>::{Lookup, LookupWitness};
 
     <span class="kw">pub struct </span>Env&lt;G: KimchiCurve&gt; {
-        <span class="comment">// FIXME: only one lookup terms for now
-        </span><span class="kw">pub </span>lookup_counters_evals_d1: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
-        <span class="comment">// FIXME: only one lookup terms for now
-        </span><span class="kw">pub </span>lookup_counters_poly_d1: DensePolynomial&lt;G::ScalarField&gt;,
-        <span class="comment">// FIXME: only one lookup terms for now
-        </span><span class="kw">pub </span>lookup_counters_comm_d1: PolyComm&lt;G&gt;,
+        <span class="kw">pub </span>lookup_counters_evals_d1: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
+        <span class="kw">pub </span>lookup_counters_poly_d1: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
+        <span class="kw">pub </span>lookup_counters_comm_d1: Vec&lt;PolyComm&lt;G&gt;&gt;,
 
         <span class="kw">pub </span>lookup_terms_evals_d1: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
         <span class="kw">pub </span>lookup_terms_poly_d1: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
@@ -619,8 +627,7 @@
             OpeningProof: OpenProof&lt;G&gt;,
             Sponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         &gt;(
-            <span class="comment">// FIXME: only one lookup for now
-            </span>lookup: <span class="kw-2">&amp;</span>LookupWitness&lt;G::ScalarField&gt;,
+            lookups: Vec&lt;LookupWitness&lt;G::ScalarField&gt;&gt;,
             domain: EvaluationDomains&lt;G::ScalarField&gt;,
             fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
             srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
@@ -628,23 +635,31 @@
         </span><span class="kw">where
             </span>OpeningProof::SRS: Sync,
         {
-            <span class="comment">// FIXME: only one lookup for now
-            </span><span class="kw">let </span>LookupWitness { f, t, m } = lookup;
-
             <span class="comment">// Polynomial m(X)
-            // FIXME: only one lookup terms for now
-            </span><span class="kw">let </span>lookup_counters_evals_d1 =
-                Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-                    m.to_vec(),
-                    domain.d1,
-                );
-            <span class="kw">let </span>lookup_counters_poly_d1: DensePolynomial&lt;G::ScalarField&gt; =
-                { lookup_counters_evals_d1.interpolate_by_ref() };
+            </span><span class="kw">let </span>lookup_counters_evals_d1 = (<span class="kw-2">&amp;</span>lookups)
+                .into_par_iter()
+                .map(|lookup| {
+                    Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
+                        lookup.m.to_vec(),
+                        domain.d1,
+                    )
+                })
+                .collect::&lt;Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;();
 
-            <span class="kw">let </span>lookup_counters_comm_d1: PolyComm&lt;G&gt; =
-                srs.commit_evaluations_non_hiding(domain.d1, <span class="kw-2">&amp;</span>lookup_counters_evals_d1);
+            <span class="kw">let </span>lookup_counters_poly_d1: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; =
+                (<span class="kw-2">&amp;</span>lookup_counters_evals_d1)
+                    .into_par_iter()
+                    .map(|evals| evals.interpolate_by_ref())
+                    .collect();
 
-            absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>lookup_counters_comm_d1);
+            <span class="kw">let </span>lookup_counters_comm_d1: Vec&lt;PolyComm&lt;G&gt;&gt; = (<span class="kw-2">&amp;</span>lookup_counters_evals_d1)
+                .into_par_iter()
+                .map(|poly| srs.commit_evaluations_non_hiding(domain.d1, poly))
+                .collect();
+
+            lookup_counters_comm_d1
+                .iter()
+                .for_each(|comm| absorb_commitment(fq_sponge, comm));
             <span class="comment">// -- end of m(X)
 
             // -- start computing the row sums h(X)
@@ -657,100 +672,108 @@
             <span class="comment">// Coin an evaluation point for the rational functions
             </span><span class="kw">let </span>beta = fq_sponge.challenge();
 
-            <span class="kw">let </span>n = f.len();
-            <span class="comment">// FIXME: only one lookup for now. We should have a table for this
-            // later
-            </span><span class="kw">let </span>lookup_terms_evals: Vec&lt;G::ScalarField&gt; = {
-                <span class="comment">// We compute first the denominators of all f_i and t. We gather them in
-                // a vector to perform a batch inversion.
-                // We include t in the denominator, therefore n + 1
-                </span><span class="kw">let </span><span class="kw-2">mut </span>denominators = Vec::with_capacity((n + <span class="number">1</span>) * domain.d1.size <span class="kw">as </span>usize);
-                <span class="comment">// Iterate over the rows
-                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
-                    <span class="comment">// Iterate over individual columns (i.e. f_i and t)
-                    </span><span class="kw">for </span>f_i <span class="kw">in </span>f.iter() {
-                        <span class="kw">let </span>Lookup {
+            <span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;G::ScalarField&gt;&gt; = lookups
+                .into_iter()
+                .map(|lookup| {
+                    <span class="kw">let </span>LookupWitness { f, t, m: <span class="kw">_ </span>} = lookup;
+                    <span class="kw">let </span>n = f.len();
+                    <span class="comment">// We compute first the denominators of all f_i and t. We gather them in
+                    // a vector to perform a batch inversion.
+                    // We include t in the denominator, therefore n + 1
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>denominators = Vec::with_capacity((n + <span class="number">1</span>) * domain.d1.size <span class="kw">as </span>usize);
+                    <span class="comment">// Iterate over the rows
+                    </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
+                        <span class="comment">// Iterate over individual columns (i.e. f_i and t)
+                        </span><span class="kw">for </span>f_i <span class="kw">in </span>f.iter() {
+                            <span class="kw">let </span>Lookup {
+                                numerator: <span class="kw">_</span>,
+                                table_id,
+                                value,
+                            } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
+                            <span class="comment">// x + r * y + r^2 * z + ... + r^n table_id
+                            </span><span class="kw">let </span>combined_value: G::ScalarField =
+                                value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
+                                    x * vector_lookup_combiner + y
+                                }) * vector_lookup_combiner
+                                    + table_id.into_field::&lt;G::ScalarField&gt;();
+
+                            <span class="comment">// beta + a_{i}
+                            </span><span class="kw">let </span>lookup_denominator = beta + combined_value;
+                            denominators.push(lookup_denominator);
+                        }
+
+                        <span class="comment">// We process t now
+                        </span><span class="kw">let </span>Lookup {
                             numerator: <span class="kw">_</span>,
                             table_id,
                             value,
-                        } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
-                        <span class="comment">// x + r * y + r^2 * z + ... + r^n table_id
-                        </span><span class="kw">let </span>combined_value: G::ScalarField =
+                        } = <span class="kw-2">&amp;</span>t[j <span class="kw">as </span>usize];
+                        <span class="kw">let </span>combined_value: G::ScalarField =
                             value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
                                 x * vector_lookup_combiner + y
                             }) * vector_lookup_combiner
                                 + table_id.into_field::&lt;G::ScalarField&gt;();
 
-                        <span class="comment">// beta + a_{i}
-                        </span><span class="kw">let </span>lookup_denominator = beta + combined_value;
+                        <span class="kw">let </span>lookup_denominator = beta + combined_value;
                         denominators.push(lookup_denominator);
                     }
 
-                    <span class="comment">// We process t now
-                    </span><span class="kw">let </span>Lookup {
-                        numerator: <span class="kw">_</span>,
-                        table_id,
-                        value,
-                    } = <span class="kw-2">&amp;</span>t[j <span class="kw">as </span>usize];
-                    <span class="kw">let </span>combined_value: G::ScalarField =
-                        value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
-                            x * vector_lookup_combiner + y
-                        }) * vector_lookup_combiner
-                            + table_id.into_field::&lt;G::ScalarField&gt;();
+                    ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
 
-                    <span class="kw">let </span>lookup_denominator = beta + combined_value;
-                    denominators.push(lookup_denominator);
-                }
+                    <span class="comment">// Evals is the sum on the individual columns for each row
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>evals = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
+                    <span class="kw">let </span><span class="kw-2">mut </span>denominator_index = <span class="number">0</span>;
 
-                ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
-
-                <span class="comment">// Evals is the sum on the individual columns for each row
-                </span><span class="kw">let </span><span class="kw-2">mut </span>evals = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
-                <span class="kw">let </span><span class="kw-2">mut </span>denominator_index = <span class="number">0</span>;
-
-                <span class="comment">// We only need to add the numerator now
-                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
-                    <span class="kw">let </span><span class="kw-2">mut </span>row_acc = G::ScalarField::zero();
-                    <span class="kw">for </span>f_i <span class="kw">in </span>f.iter() {
-                        <span class="kw">let </span>Lookup {
+                    <span class="comment">// We only need to add the numerator now
+                    </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
+                        <span class="kw">let </span><span class="kw-2">mut </span>row_acc = G::ScalarField::zero();
+                        <span class="kw">for </span>f_i <span class="kw">in </span>f.iter() {
+                            <span class="kw">let </span>Lookup {
+                                numerator,
+                                table_id: <span class="kw">_</span>,
+                                value: <span class="kw">_</span>,
+                            } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
+                            row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
+                            denominator_index += <span class="number">1</span>;
+                        }
+                        <span class="comment">// We process t now
+                        </span><span class="kw">let </span>Lookup {
                             numerator,
                             table_id: <span class="kw">_</span>,
                             value: <span class="kw">_</span>,
-                        } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
+                        } = <span class="kw-2">&amp;</span>t[j <span class="kw">as </span>usize];
                         row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
                         denominator_index += <span class="number">1</span>;
+                        evals.push(row_acc)
                     }
-                    <span class="comment">// We process t now
-                    </span><span class="kw">let </span>Lookup {
-                        numerator,
-                        table_id: <span class="kw">_</span>,
-                        value: <span class="kw">_</span>,
-                    } = <span class="kw-2">&amp;</span>t[j <span class="kw">as </span>usize];
-                    row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
-                    denominator_index += <span class="number">1</span>;
-                    evals.push(row_acc)
-                }
-                <span class="comment">// FIXME: only one lookup terms for now
-                </span>evals
-            };
+                    evals
+                })
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-            <span class="comment">// FIXME: only one lookup terms for now
-            </span><span class="kw">let </span>lookup_terms_evals_d1: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt; =
-                Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-                    lookup_terms_evals,
-                    domain.d1,
-                );
+            <span class="kw">let </span>lookup_terms_evals_d1: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; =
+                lookup_terms_evals
+                    .into_iter()
+                    .map(|lte| {
+                        Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
+                            lte, domain.d1,
+                        )
+                    })
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-            <span class="comment">// FIXME: only one lookup terms for now
-            </span><span class="kw">let </span>lookup_terms_poly_d1: DensePolynomial&lt;G::ScalarField&gt; =
-                lookup_terms_evals_d1.interpolate_by_ref();
+            <span class="kw">let </span>lookup_terms_poly_d1: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; =
+                (<span class="kw-2">&amp;</span>lookup_terms_evals_d1)
+                    .into_par_iter()
+                    .map(|lte| lte.interpolate_by_ref())
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-            <span class="comment">// FIXME: only one lookup terms for now
-            </span><span class="kw">let </span>lookup_terms_comms_d1: PolyComm&lt;G&gt; =
-                srs.commit_evaluations_non_hiding(domain.d1, <span class="kw-2">&amp;</span>lookup_terms_evals_d1);
+            <span class="kw">let </span>lookup_terms_comms_d1: Vec&lt;PolyComm&lt;G&gt;&gt; = (<span class="kw-2">&amp;</span>lookup_terms_evals_d1)
+                .into_par_iter()
+                .map(|lte| srs.commit_evaluations_non_hiding(domain.d1, lte))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-            <span class="comment">// FIXME: only one lookup terms for now
-            </span>absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>lookup_terms_comms_d1);
+            lookup_terms_comms_d1
+                .iter()
+                .for_each(|comm| absorb_commitment(fq_sponge, comm));
             <span class="comment">// -- end computing the row sums h
 
             // -- start computing the running sum in lookup_aggregation
@@ -766,8 +789,9 @@
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize {
                     <span class="comment">// phi(1) = 0
                     </span>evals.push(acc);
-                    <span class="comment">// FIXME: only one lookup for now.
-                    </span>acc += lookup_terms_evals_d1[i]
+                    <span class="kw">for </span>lte <span class="kw">in </span>lookup_terms_evals_d1.iter() {
+                        acc += lte[i]
+                    }
                 }
                 <span class="comment">// Sanity check to verify that the accumulator ends up being zero.
                 // FIXME: This should be removed from runtime, and a constraint
@@ -785,19 +809,13 @@
 
             absorb_commitment(fq_sponge, <span class="kw-2">&amp;</span>lookup_aggregation_comm_d1);
             <span class="self">Self </span>{
-                <span class="comment">// FIXME: only one lookup supported for now.
-                </span>lookup_counters_evals_d1,
-                <span class="comment">// FIXME: only one lookup supported for now.
-                </span>lookup_counters_poly_d1,
-                <span class="comment">// FIXME: only one lookup supported for now.
-                </span>lookup_counters_comm_d1,
+                lookup_counters_evals_d1,
+                lookup_counters_poly_d1,
+                lookup_counters_comm_d1,
 
-                <span class="comment">// FIXME: only one lookup supported for now.
-                </span>lookup_terms_evals_d1: <span class="macro">vec!</span>[lookup_terms_evals_d1],
-                <span class="comment">// FIXME: only one lookup supported for now.
-                </span>lookup_terms_poly_d1: <span class="macro">vec!</span>[lookup_terms_poly_d1],
-                <span class="comment">// FIXME: only one lookup supported for now.
-                </span>lookup_terms_comms_d1: <span class="macro">vec!</span>[lookup_terms_comms_d1],
+                lookup_terms_evals_d1,
+                lookup_terms_poly_d1,
+                lookup_terms_comms_d1,
 
                 lookup_aggregation_evals_d1,
                 lookup_aggregation_poly_d1,
