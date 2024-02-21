@@ -1,10 +1,10 @@
+use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::CircuitGate,
     lookup::{
         constraints::LookupConfiguration,
         lookups::{LookupInfo, LookupPattern},
-        runtime_tables::{RuntimeTableCfg, RuntimeTableSpec},
         tables::LookupTable,
     },
 };
@@ -23,11 +23,15 @@ use thiserror::Error;
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error, Clone)]
 pub enum LookupError {
+    #[error("One of the lookup tables has columns of different lengths")]
+    InconsistentTableLength,
     #[error("The combined lookup table is larger than allowed by the domain size. Observed: {length}, expected: {maximum_allowed}")]
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
     },
+    #[error("The table with id 0 must have an entry of all zeros")]
+    TableIDZeroMustHaveZeroEntry,
     #[error("Cannot create a combined table since ids for sub-tables are colliding. The collision type is: {collision_type}")]
     LookupTableIdCollision { collision_type: String },
 }
@@ -239,8 +243,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // explicitly to the constraint system.
                 let fixed_gate_joint_ids: Vec<i32> = fixed_lookup_tables
                     .iter()
-                    .map(|lt| lt.id())
-                    .chain(gate_lookup_tables.iter().map(|lt| lt.id()))
+                    .map(|lt| lt.id)
+                    .chain(gate_lookup_tables.iter().map(|lt| lt.id))
                     .collect();
                 check_id_duplicates(
                     fixed_gate_joint_ids.iter(),
@@ -248,30 +252,22 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 )?;
 
                 //~ 3. Concatenate explicit runtime lookup tables with the ones (implicitly) used by gates.
-                let mut lookup_tables: Vec<LookupTable<_>> = fixed_lookup_tables
+                let mut lookup_tables: Vec<_> = fixed_lookup_tables
                     .into_iter()
                     .chain(gate_lookup_tables)
                     .collect();
 
-                let fixed_lookup_tables_ids: Vec<i32> =
-                    lookup_tables.iter().map(|lt| lt.id()).collect();
-                check_id_duplicates(
-                    fixed_lookup_tables_ids.iter(),
-                    "fixed lookup table duplicates",
-                )?;
+                let mut has_table_id_0 = false;
 
                 // if we are using runtime tables
                 let (runtime_table_offset, runtime_selector) =
                     if let Some(runtime_tables) = &runtime_tables {
+                        // Check duplicates in runtime table ids
                         let runtime_tables_ids: Vec<i32> =
                             runtime_tables.iter().map(|rt| rt.id).collect();
                         check_id_duplicates(runtime_tables_ids.iter(), "runtime table duplicates")?;
-                        check_id_duplicates(
-                            runtime_tables_ids
-                                .iter()
-                                .chain(fixed_lookup_tables_ids.iter()),
-                            "duplicates between runtime and fixed tables",
-                        )?;
+                        // Runtime table IDs /may/ collide with lookup
+                        // table IDs, so we intentionally do not perform another potential check.
 
                         // save the offset of the end of the table
                         let mut runtime_table_offset = 0;
@@ -313,15 +309,18 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             let (id, first_column) =
                                 (runtime_table.id, runtime_table.first_column.clone());
 
+                            // record if table ID 0 is used in one of the runtime tables
+                            // note: the check later will still force you to have a fixed table with ID 0
+                            if id == 0 {
+                                has_table_id_0 = true;
+                            }
+
                             // important: we still need a placeholder column to make sure that
                             // if all other tables have a single column
                             // we don't use the second table as table ID column.
                             let placeholders = vec![F::zero(); first_column.len()];
                             let data = vec![first_column, placeholders];
-                            // TODO Check it does not fail actually. Maybe this should throw a different error.
-                            let table = LookupTable::create(id, data)
-                                .expect("Runtime table creation must succeed");
-
+                            let table = LookupTable { id, data };
                             lookup_tables.push(table);
                         }
 
@@ -383,21 +382,31 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
 
                 let mut non_zero_table_id = false;
+                let mut has_table_id_0_with_zero_entry = false;
 
                 for table in &lookup_tables {
                     let table_len = table.len();
 
-                    if table.id() != 0 {
+                    if table.id == 0 {
+                        has_table_id_0 = true;
+                        if table.has_zero_entry() {
+                            has_table_id_0_with_zero_entry = true;
+                        }
+                    } else {
                         non_zero_table_id = true;
                     }
 
                     //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
-                    let table_id: F = i32_to_field(table.id());
+                    let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
-                    for (i, col) in table.data().iter().enumerate() {
+                    for (i, col) in table.data.iter().enumerate() {
+                        // See GH issue: https://github.com/MinaProtocol/mina/issues/14097
+                        if col.len() != table_len {
+                            return Err(LookupError::InconsistentTableLength);
+                        }
                         lookup_table[i].extend(col);
                     }
 
@@ -405,6 +414,12 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     for lookup_table in lookup_table.iter_mut().skip(table.width()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
+                }
+
+                // If a table has ID 0, then it must have a zero entry.
+                // This is for the dummy lookups to work.
+                if has_table_id_0 && !has_table_id_0_with_zero_entry {
+                    return Err(LookupError::TableIDZeroMustHaveZeroEntry);
                 }
 
                 // Note: we use `>=` here to leave space for the dummy value.
@@ -416,6 +431,15 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 }
 
                 //~ 6. Pad the end of the concatened table with the dummy value.
+                //     By padding with 0, we constraint the table with ID 0 to
+                //     have a zero entry.
+                //     This is for the rows which do not have a lookup selector,
+                //     see ../../../../book/src/kimchi/lookup.md.
+                //     The zero entry row is contained in the built-in XOR table.
+                //     An error is raised when creating the CS if a user-defined
+                //     table is defined with ID 0 without a row contain zeroes.
+                //     If no such table is used, we artificially add a dummy
+                //     table with ID 0 and a row containing only zeroes.
                 lookup_table
                     .iter_mut()
                     .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
@@ -433,8 +457,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_table8.push(eval);
                 }
 
-                // @volhovm: Do we need to enforce that there is at least one table
-                // with id 0?
                 //~ 9. pre-compute polynomial and evaluation form for the table IDs,
                 //~    only if a table with an ID different from zero was used.
                 let (table_ids, table_ids8) = if non_zero_table_id {
@@ -479,7 +501,7 @@ mod tests {
     use mina_curves::pasta::Fp;
 
     #[test]
-    fn colliding_table_ids() {
+    fn test_colliding_table_ids() {
         let (_, gates) = CircuitGate::<Fp>::create_multi_range_check(0);
         let collision_id: i32 = 5;
 
@@ -508,8 +530,14 @@ mod tests {
 
         let cs = ConstraintSystem::<Fp>::create(gates.clone())
             .lookup(vec![
-                LookupTable::create(collision_id, vec![vec![From::from(0); 16]]).unwrap(),
-                LookupTable::create(collision_id, vec![vec![From::from(1); 16]]).unwrap(),
+                LookupTable {
+                    id: collision_id,
+                    data: vec![vec![From::from(0); 16]],
+                },
+                LookupTable {
+                    id: collision_id,
+                    data: vec![vec![From::from(1); 16]],
+                },
             ])
             .build();
 
@@ -547,11 +575,10 @@ mod tests {
         );
 
         let cs = ConstraintSystem::<Fp>::create(gates.clone())
-            .lookup(vec![LookupTable::create(
-                collision_id,
-                vec![vec![From::from(0); 16]],
-            )
-            .unwrap()])
+            .lookup(vec![LookupTable {
+                id: collision_id,
+                data: vec![vec![From::from(0); 16]],
+            }])
             .runtime(Some(vec![RuntimeTableCfg {
                 id: collision_id,
                 first_column: vec![From::from(1); 16],
@@ -559,13 +586,8 @@ mod tests {
             .build();
 
         assert!(
-            matches!(
-                cs,
-                Err(SetupError::LookupCreation(
-                    LookupError::LookupTableIdCollision { .. }
-                ))
-            ),
-            "LookupConstraintSystem::create(...) must fail, collision between runtime and lookup ids"
+            cs.is_ok(),
+            "LookupConstraintSystem::create(...) must not fail when there is a collision between runtime and lookup ids"
         );
     }
 }

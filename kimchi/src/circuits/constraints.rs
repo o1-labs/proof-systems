@@ -683,7 +683,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// If not invoked, it is `vec![]` by default.
     ///
     /// **Warning:** you have to make sure that the IDs of the lookup tables,
-    /// are unique and  not colliding with IDs of built-in lookup tables
+    /// are unique and not colliding with IDs of built-in lookup tables, otherwise
+    /// the error will be raised.
+    ///
     /// (see [crate::circuits::lookup::tables]).
     pub fn lookup(mut self, lookup_tables: Vec<LookupTable<F>>) -> Self {
         self.lookup_tables = lookup_tables;
@@ -693,8 +695,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Set up the runtime tables.
     /// If not invoked, it is `None` by default.
     ///
-    /// **Warning:** you have to make sure that the IDs of the runtime lookup tables,
-    /// are unique and not colliding with IDs of built-in lookup tables
+    /// **Warning:** you have to make sure that the IDs of the runtime
+    /// lookup tables, are unique, i.e. not colliding internaly (with other runtime tables),
+    /// otherwise error will be raised.
     /// (see [crate::circuits::lookup::tables]).
     pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<F>>>) -> Self {
         self.runtime_tables = runtime_tables;
@@ -736,9 +739,25 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let lookup_domain_size = {
             // First we sum over the lookup table size
-            let mut lookup_domain_size: usize = lookup_tables.iter().map(|lt| lt.len()).sum();
+            let mut has_table_with_id_0 = false;
+            let mut lookup_domain_size: usize = lookup_tables
+                .iter()
+                .map(|LookupTable { id, data }| {
+                    // See below for the reason
+                    if *id == 0_i32 {
+                        has_table_with_id_0 = true
+                    }
+                    if data.is_empty() {
+                        0
+                    } else {
+                        data[0].len()
+                    }
+                })
+                .sum();
             // After that on the runtime tables
             if let Some(runtime_tables) = runtime_tables.as_ref() {
+                // FIXME: Check that a runtime table with ID 0 is enforced to
+                // contain a zero entry row.
                 for runtime_table in runtime_tables.iter() {
                     lookup_domain_size += runtime_table.len();
                 }
@@ -757,7 +776,14 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             for gate_table in gate_lookup_tables.into_iter() {
                 lookup_domain_size += gate_table.table_size();
             }
-            lookup_domain_size
+
+            // A dummy zero entry will be added if there is no table with ID
+            // zero. Therefore we must count this in the size.
+            if has_table_with_id_0 {
+                lookup_domain_size
+            } else {
+                lookup_domain_size + 1
+            }
         };
 
         //~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
@@ -784,6 +810,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~    ```
         //~
         let (zk_rows, domain_size_lower_bound) = {
+            // We add 1 to the lookup domain size because there is one element
+            // used to close the permutation argument (the polynomial Z is of
+            // degree n + 1 where n is the order of the subgroup H).
             let circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + 1);
             let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
 

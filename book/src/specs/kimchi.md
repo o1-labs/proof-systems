@@ -2284,11 +2284,11 @@ We run the following algorithm:
 	* Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
 	  (TODO: specify endomorphism)
 	* absorb the commitments to the sorted polynomials.
-1. Sample $\beta$ with the Fq-Sponge.
-1. Sample $\gamma$ with the Fq-Sponge.
+1. Sample the first permutation challenge $\beta$ with the Fq-Sponge.
+1. Sample the second permutation challenge $\gamma$ with the Fq-Sponge.
 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
-1. Sample $\alpha'$ with the Fq-Sponge.
+1. Sample the quotient challenge $\alpha'$ with the Fq-Sponge.
 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
 1. Enforce that the length of the $t$ commitment is of size 7.
 1. Absorb the commitment to the quotient polynomial $t$ into the argument.

@@ -62,6 +62,8 @@ where
                     }
                 })
                 .collect::<Vec<_>>();
+
+            // TODO @volhovm remove?
             let bounds = a
                 .iter()
                 .enumerate()
@@ -82,7 +84,7 @@ where
             let comm = (0..a.len())
                 .map(|i| {
                     (
-                        srs.commit(&a[i].clone(), num_chunks, bounds[i], rng),
+                        srs.commit(&a[i].clone(), num_chunks, rng),
                         x.iter()
                             .map(|xx| a[i].to_chunked_polynomial(1, size).evaluate_chunks(*xx))
                             .collect::<Vec<_>>(),
@@ -96,12 +98,10 @@ where
             let polys: Vec<(
                 DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
                 _,
-                _,
             )> = (0..a.len())
                 .map(|i| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(&a[i]),
-                        bounds[i],
                         (comm[i].0).blinders.clone(),
                     )
                 })
@@ -120,20 +120,9 @@ where
             let combined_inner_product = {
                 let es: Vec<_> = comm
                     .iter()
-                    .map(|(commitment, evaluations, degree_bound)| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*degree_bound)?;
-                            let x = commitment.commitment.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evaluations.clone(), bound)
-                    })
+                    .map(|(_, evaluations, _)| evaluations.clone())
                     .collect();
-                combined_inner_product(&x, &polymask, &evalmask, &es, srs.g.len())
+                combined_inner_product(&polymask, &evalmask, &es)
             };
 
             (
@@ -161,7 +150,6 @@ where
                 .map(|poly| Evaluation {
                     commitment: (poly.0).commitment.clone(),
                     evaluations: poly.1.clone(),
-                    degree_bound: poly.2,
                 })
                 .collect::<Vec<_>>(),
             opening: &proof.5,

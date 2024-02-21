@@ -205,38 +205,47 @@ where
             }
         }
 
-        //~ 1. Sample $\beta$ with the Fq-Sponge.
+        // --- PlonK - Round 2
+        //~ 1. Sample the first permutation challenge $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
 
-        //~ 1. Sample $\gamma$ with the Fq-Sponge.
+        //~ 1. Sample the second permutation challenge $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
         //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-        self.commitments.lookup.iter().for_each(|l| {
-            absorb_commitment(&mut fq_sponge, &l.aggreg);
-        });
+        if index.lookup_index.is_some() {
+            // Should not fail, as the lookup index is present
+            let lookup_commits = self
+                .commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)?;
+            absorb_commitment(&mut fq_sponge, &lookup_commits.aggreg);
+        }
 
         //~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &self.commitments.z_comm);
 
-        //~ 1. Sample $\alpha'$ with the Fq-Sponge.
+        // --- PlonK - Round 3
+        //~ 1. Sample the quotient challenge $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size 7.
-        if self.commitments.t_comm.unshifted.len() > chunk_size * 7 {
+        if self.commitments.t_comm.elems.len() > chunk_size * 7 {
             return Err(VerifyError::IncorrectCommitmentLength(
                 "t",
                 chunk_size * 7,
-                self.commitments.t_comm.unshifted.len(),
+                self.commitments.t_comm.elems.len(),
             ));
         }
 
         //~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
         absorb_commitment(&mut fq_sponge, &self.commitments.t_comm);
 
+        // --- PlonK - Round 4
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
@@ -453,10 +462,10 @@ where
                 let ft_eval1 = vec![self.ft_eval1];
 
                 #[allow(clippy::type_complexity)]
-                let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
-                    polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-                es.push((public_evals.to_vec(), None));
-                es.push((vec![ft_eval0, ft_eval1], None));
+                let mut es: Vec<Vec<Vec<G::ScalarField>>> =
+                    polys.iter().map(|(_, e)| e.clone()).collect();
+                es.push(public_evals.to_vec());
+                es.push(vec![ft_eval0, ft_eval1]);
                 for col in [
                     Column::Z,
                     Column::Index(GateType::Generic),
@@ -551,19 +560,16 @@ where
                         .into_iter()
                         .flatten(),
                 ) {
-                    es.push((
-                        {
-                            let evals = self
-                                .evals
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingEvaluation(col))?;
-                            vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                        },
-                        None,
-                    ))
+                    es.push({
+                        let evals = self
+                            .evals
+                            .get_column(col)
+                            .ok_or(VerifyError::MissingEvaluation(col))?;
+                        vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                    })
                 }
 
-                combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().max_poly_size())
+                combined_inner_product(&v, &u, &es)
             };
 
         let oracles = RandomOracles {
@@ -795,10 +801,7 @@ where
             .expect("pre-computed committed lagrange bases not found");
         let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
         if public_input.is_empty() {
-            PolyComm::new(
-                vec![verifier_index.srs().blinding_commitment(); chunk_size],
-                None,
-            )
+            PolyComm::new(vec![verifier_index.srs().blinding_commitment(); chunk_size])
         } else {
             let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
             let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
@@ -917,21 +920,18 @@ where
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
-        degree_bound: None,
     }));
 
     //~~ * public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
         evaluations: public_evals.to_vec(),
-        degree_bound: None,
     });
 
     //~~ * ft commitment (chunks of it)
     evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: vec![vec![ft_eval0], vec![proof.ft_eval1]],
-        degree_bound: None,
     });
 
     for col in [
@@ -1015,7 +1015,6 @@ where
                 .ok_or(VerifyError::MissingCommitment(col))?
                 .clone(),
             evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
-            degree_bound: None,
         });
     }
 
@@ -1060,7 +1059,6 @@ where
         evaluations.push(Evaluation {
             commitment: table_comm,
             evaluations: vec![lookup_table.zeta.clone(), lookup_table.zeta_omega.clone()],
-            degree_bound: None,
         });
 
         // add evaluation of the runtime table polynomial
@@ -1077,7 +1075,6 @@ where
             evaluations.push(Evaluation {
                 commitment: runtime.clone(),
                 evaluations: vec![runtime_eval.zeta, runtime_eval.zeta_omega],
-                degree_bound: None,
             });
         }
     }
@@ -1128,7 +1125,6 @@ where
                 .ok_or(VerifyError::MissingCommitment(col))?
                 .clone(),
             evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
-            degree_bound: None,
         });
     }
 
