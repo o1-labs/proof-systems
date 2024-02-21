@@ -14,7 +14,7 @@ use poly_commitment::{
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
-use crate::mvlookup::{self, LookupProof, LookupWitness};
+use crate::mvlookup::{self, LookupProof};
 use crate::proof::{Proof, Witness, WitnessColumns};
 
 pub fn prove<
@@ -60,10 +60,8 @@ where
 
     // -- Start MVLookup
     let lookup_env = if !inputs.mvlookups.is_empty() {
-        // FIXME: only one lookup for now
-        let mvlookup: &LookupWitness<G::ScalarField> = &inputs.mvlookups[0];
         Some(mvlookup::prover::Env::create::<OpeningProof, EFqSponge>(
-            mvlookup,
+            inputs.mvlookups,
             domain,
             &mut fq_sponge,
             srs,
@@ -99,7 +97,11 @@ where
         if let Some(ref lookup_env) = lookup_env {
             let evals = |point| {
                 let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-                let m = eval(&lookup_env.lookup_counters_poly_d1);
+                let m = lookup_env
+                    .lookup_counters_poly_d1
+                    .iter()
+                    .map(eval)
+                    .collect::<Vec<_>>();
                 let h = lookup_env
                     .lookup_terms_poly_d1
                     .iter()
@@ -135,14 +137,22 @@ where
     // Adding MVLookup
     if let Some(ref lookup_env) = lookup_env {
         // -- first m(X)
-        polynomials.push((
-            DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_counters_poly_d1),
-            None,
-            PolyComm {
-                unshifted: vec![G::ScalarField::zero()],
-                shifted: None,
-            },
-        ));
+        polynomials.extend(
+            lookup_env
+                .lookup_counters_poly_d1
+                .iter()
+                .map(|poly| {
+                    (
+                        DensePolynomialOrEvaluations::DensePolynomial(poly),
+                        None,
+                        PolyComm {
+                            unshifted: vec![G::ScalarField::zero()],
+                            shifted: None,
+                        },
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
         // -- after that f_i and t
         polynomials.extend(
             lookup_env
