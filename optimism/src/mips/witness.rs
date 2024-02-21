@@ -9,7 +9,7 @@ use crate::{
         column::{
             Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
             MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
-            MIPS_PREIMAGE_LEFT_OFFSET,
+            MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -33,7 +33,7 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
-pub const SCRATCH_SIZE: usize = 92; // MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes
+pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes + reading_preimage
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -612,17 +612,22 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 - preimage_offset;
         // We read at most 4 bytes, ensuring that we respect word alignment.
         let actual_read_len = std::cmp::min(max_read_len, 4 - (addr & 3));
+        // This variable will contain the amount of bytes read which belong to the actual preimage
+        let mut preimage_read_len = 0;
         for i in 0..actual_read_len {
             let idx = (preimage_offset + i) as usize;
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             if idx < LENGTH_SIZE {
+                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
                     self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
                 }
             } else {
+                preimage_read_len += 1; // At most, it will be actual_read_len
+                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 // Write the individual byte to the witness
@@ -639,15 +644,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.write_column(pos, actual_read_len);
 
         // Update the flags to count how many bytes are contained at least
-        // FIXME: add constraints for this notation?
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
-            if actual_read_len > i as u64 {
+            if preimage_read_len > i as u64 {
                 self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
             }
         }
 
         // Update the total number of preimage bytes read so far
-        self.preimage_bytes_read += actual_read_len;
+        self.preimage_bytes_read += preimage_read_len;
         self.write_column(
             Column::ScratchState(MIPS_BYTES_READ_OFFSET),
             self.preimage_bytes_read,
