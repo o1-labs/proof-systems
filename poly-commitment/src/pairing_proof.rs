@@ -1,5 +1,5 @@
 use crate::commitment::*;
-use crate::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
+use crate::evaluation_proof::combine_polys;
 use crate::srs::SRS;
 use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
@@ -94,11 +94,7 @@ impl<
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
-        plnms: &[(
-            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
-            Option<usize>,
-            PolyComm<<G as AffineCurve>::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
+        plnms: PolynomialsToCombine<G, D>,
         elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
         polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
         _evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
@@ -164,10 +160,9 @@ impl<
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        self.full_srs.commit(plnm, num_chunks, max, rng)
+        self.full_srs.commit(plnm, num_chunks, rng)
     }
 
     fn mask_custom(
@@ -190,9 +185,8 @@ impl<
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
     ) -> PolyComm<G> {
-        self.full_srs.commit_non_hiding(plnm, num_chunks, max)
+        self.full_srs.commit_non_hiding(plnm, num_chunks)
     }
 
     fn commit_evaluations_non_hiding(
@@ -282,10 +276,7 @@ impl<
             quotient
         };
 
-        let quotient = srs
-            .full_srs
-            .commit_non_hiding(&quotient_poly, 1, None)
-            .unshifted[0];
+        let quotient = srs.full_srs.commit_non_hiding(&quotient_poly, 1).elems[0];
 
         Some(PairingProof {
             quotient,
@@ -317,12 +308,12 @@ impl<
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
         let divisor_commitment = srs
             .verifier_srs
-            .commit_non_hiding(&divisor_polynomial(elm), 1, None)
-            .unshifted[0];
+            .commit_non_hiding(&divisor_polynomial(elm), 1)
+            .elems[0];
         let eval_commitment = srs
             .full_srs
-            .commit_non_hiding(&eval_polynomial(elm, &evals), 1, None)
-            .unshifted[0]
+            .commit_non_hiding(&eval_polynomial(elm, &evals), 1)
+            .elems[0]
             .into_projective();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
 
@@ -380,18 +371,17 @@ mod tests {
 
         let comms: Vec<_> = polynomials
             .iter()
-            .map(|p| srs.full_srs.commit(p, 1, None, rng))
+            .map(|p| srs.full_srs.commit(p, 1, rng))
             .collect();
 
-        let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _, _)> =
-            polynomials
-                .iter()
-                .zip(comms.iter())
-                .map(|(p, comm)| {
-                    let p = DensePolynomialOrEvaluations::DensePolynomial(p);
-                    (p, None, comm.blinders.clone())
-                })
-                .collect();
+        let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _)> = polynomials
+            .iter()
+            .zip(comms.iter())
+            .map(|(p, comm)| {
+                let p = DensePolynomialOrEvaluations::DensePolynomial(p);
+                (p, comm.blinders.clone())
+            })
+            .collect();
 
         let evaluation_points = vec![ScalarField::rand(rng), ScalarField::rand(rng)];
 
@@ -409,7 +399,6 @@ mod tests {
                 Evaluation {
                     commitment: commitment.commitment,
                     evaluations,
-                    degree_bound: None,
                 }
             })
             .collect();

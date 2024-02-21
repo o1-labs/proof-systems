@@ -260,7 +260,7 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks, None);
+        let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks);
         let public_comm = {
             index
                 .srs
@@ -393,7 +393,7 @@ where
                 let runtime_table_comm =
                     index
                         .srs
-                        .commit(&runtime_table_contribution, num_chunks, None, rng);
+                        .commit(&runtime_table_contribution, num_chunks, rng);
 
                 // absorb the commitment
                 absorb_commitment(&mut fq_sponge, &runtime_table_comm.commitment);
@@ -607,7 +607,7 @@ where
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
-        let z_comm = index.srs.commit(&z_poly, num_chunks, None, rng);
+        let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
@@ -866,7 +866,7 @@ where
         };
 
         //~ 1. commit (hiding) to the quotient polynomial $t$
-        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, None, rng) };
+        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
 
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);
@@ -1151,10 +1151,9 @@ where
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
-                unshifted: vec![
+                elems: vec![
                     blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
-                shifted: None,
             }
         };
 
@@ -1188,7 +1187,7 @@ where
             .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
+                    comm.elems.len(),
                 )
             })
             .collect::<Vec<_>>();
@@ -1223,8 +1222,7 @@ where
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
         let non_hiding = |d1_size: usize| PolyComm {
-            unshifted: vec![G::ScalarField::zero(); d1_size],
-            shifted: None,
+            elems: vec![G::ScalarField::zero(); d1_size],
         };
 
         let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -1232,12 +1230,11 @@ where
 
         let mut polynomials = polys
             .iter()
-            .map(|(p, d1_size)| (coefficients_form(p), None, non_hiding(*d1_size)))
+            .map(|(p, d1_size)| (coefficients_form(p), non_hiding(*d1_size)))
             .collect::<Vec<_>>();
 
         let fixed_hiding = |d1_size: usize| PolyComm {
-            unshifted: vec![G::ScalarField::one(); d1_size],
-            shifted: None,
+            elems: vec![G::ScalarField::one(); d1_size],
         };
 
         //~ 1. Then, include:
@@ -1248,48 +1245,38 @@ where
         //~~ * the poseidon selector
         //~~ * the 15 registers/witness columns
         //~~ * the 6 sigmas
-        polynomials.push((
-            coefficients_form(&public_poly),
-            None,
-            fixed_hiding(num_chunks),
-        ));
-        polynomials.push((coefficients_form(&ft), None, blinding_ft));
-        polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
+        polynomials.push((coefficients_form(&public_poly), fixed_hiding(num_chunks)));
+        polynomials.push((coefficients_form(&ft), blinding_ft));
+        polynomials.push((coefficients_form(&z_poly), z_comm.blinders));
         polynomials.push((
             evaluations_form(&index.column_evaluations.generic_selector4),
-            None,
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.poseidon_selector8),
-            None,
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.complete_add_selector4),
-            None,
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.mul_selector8),
-            None,
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.emul_selector8),
-            None,
             fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
-            None,
             fixed_hiding(num_chunks),
         ));
         polynomials.extend(
             witness_poly
                 .iter()
                 .zip(w_comm.iter())
-                .map(|(w, c)| (coefficients_form(w), None, c.blinders.clone()))
+                .map(|(w, c)| (coefficients_form(w), c.blinders.clone()))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
@@ -1297,13 +1284,13 @@ where
                 .column_evaluations
                 .coefficients8
                 .iter()
-                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(num_chunks)))
+                .map(|coefficientm| (evaluations_form(coefficientm), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
             index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
                 .iter()
-                .map(|w| (evaluations_form(w), None, non_hiding(num_chunks)))
+                .map(|w| (evaluations_form(w), non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
 
@@ -1313,7 +1300,6 @@ where
         {
             polynomials.push((
                 evaluations_form(range_check0_selector8),
-                None,
                 non_hiding(num_chunks),
             ));
         }
@@ -1322,7 +1308,6 @@ where
         {
             polynomials.push((
                 evaluations_form(range_check1_selector8),
-                None,
                 non_hiding(num_chunks),
             ));
         }
@@ -1333,7 +1318,6 @@ where
         {
             polynomials.push((
                 evaluations_form(foreign_field_add_selector8),
-                None,
                 non_hiding(num_chunks),
             ));
         }
@@ -1344,23 +1328,14 @@ where
         {
             polynomials.push((
                 evaluations_form(foreign_field_mul_selector8),
-                None,
                 non_hiding(num_chunks),
             ));
         }
         if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
-            polynomials.push((
-                evaluations_form(xor_selector8),
-                None,
-                non_hiding(num_chunks),
-            ));
+            polynomials.push((evaluations_form(xor_selector8), non_hiding(num_chunks)));
         }
         if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
-            polynomials.push((
-                evaluations_form(rot_selector8),
-                None,
-                non_hiding(num_chunks),
-            ));
+            polynomials.push((evaluations_form(rot_selector8), non_hiding(num_chunks)));
         }
 
         //~~ * optionally, the runtime table
@@ -1371,41 +1346,34 @@ where
             let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
 
             for (poly, comm) in sorted_poly.iter().zip(sorted_comms) {
-                polynomials.push((coefficients_form(poly), None, comm.blinders.clone()));
+                polynomials.push((coefficients_form(poly), comm.blinders.clone()));
             }
 
             //~~ * add the lookup aggreg polynomial
             let aggreg_poly = lookup_context.aggreg_coeffs.as_ref().unwrap();
             let aggreg_comm = lookup_context.aggreg_comm.as_ref().unwrap();
-            polynomials.push((
-                coefficients_form(aggreg_poly),
-                None,
-                aggreg_comm.blinders.clone(),
-            ));
+            polynomials.push((coefficients_form(aggreg_poly), aggreg_comm.blinders.clone()));
 
             //~~ * add the combined table polynomial
             let table_blinding = if lcs.runtime_selector.is_some() {
                 let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
 
-                let unshifted = runtime_comm
+                let elems = runtime_comm
                     .blinders
-                    .unshifted
+                    .elems
                     .iter()
                     .map(|blinding| *joint_combiner * blinding)
                     .collect();
 
-                PolyComm {
-                    unshifted,
-                    shifted: None,
-                }
+                PolyComm { elems }
             } else {
                 non_hiding(num_chunks)
             };
 
             let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
 
-            polynomials.push((coefficients_form(joint_lookup_table), None, table_blinding));
+            polynomials.push((coefficients_form(joint_lookup_table), table_blinding));
 
             //~~ * if present, add the runtime table polynomial
             if lcs.runtime_selector.is_some() {
@@ -1414,7 +1382,6 @@ where
 
                 polynomials.push((
                     coefficients_form(runtime_table),
-                    None,
                     runtime_table_comm.blinders.clone(),
                 ));
             }
@@ -1424,27 +1391,21 @@ where
             if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
                 polynomials.push((
                     evaluations_form(runtime_lookup_table_selector),
-                    None,
                     non_hiding(1),
                 ))
             }
             if let Some(xor_lookup_selector) = lcs.lookup_selectors.xor.as_ref() {
-                polynomials.push((evaluations_form(xor_lookup_selector), None, non_hiding(1)))
+                polynomials.push((evaluations_form(xor_lookup_selector), non_hiding(1)))
             }
             if let Some(lookup_gate_selector) = lcs.lookup_selectors.lookup.as_ref() {
-                polynomials.push((evaluations_form(lookup_gate_selector), None, non_hiding(1)))
+                polynomials.push((evaluations_form(lookup_gate_selector), non_hiding(1)))
             }
             if let Some(range_check_lookup_selector) = lcs.lookup_selectors.range_check.as_ref() {
-                polynomials.push((
-                    evaluations_form(range_check_lookup_selector),
-                    None,
-                    non_hiding(1),
-                ))
+                polynomials.push((evaluations_form(range_check_lookup_selector), non_hiding(1)))
             }
             if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
                 polynomials.push((
                     evaluations_form(foreign_field_mul_lookup_selector),
-                    None,
                     non_hiding(1),
                 ))
             }
