@@ -45,7 +45,7 @@ pub enum LookupTableIDs {
 #[derive(Clone, Debug)]
 pub struct Lookup<T> {
     pub mode: LookupMode,
-    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.    pub magnitude_contribution: Fp,
+    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.
     pub magnitude: T,
     pub table_id: LookupTableIDs,
     pub value: Vec<T>,

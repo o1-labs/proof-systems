@@ -619,7 +619,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             if idx < LENGTH_SIZE {
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
+                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
@@ -627,7 +627,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             } else {
                 preimage_read_len += 1; // At most, it will be actual_read_len
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
+                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 // Write the individual byte to the witness
