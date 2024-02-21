@@ -1365,6 +1365,7 @@ where
                     // For example, using a runtime table with the lookup gate (width 2), but only
                     // width-1 fixed tables (e.g. range check), it would be incorrect to use the
                     // wider width (2) because there are no such contributing commitments!
+                    // Note that lookup_table8 is a list of polynomials
                     lcs.lookup_table8.len()
                 };
                 let base_blinding = {
