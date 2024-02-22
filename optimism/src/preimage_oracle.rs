@@ -61,7 +61,6 @@ pub fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
         return Err(std::io::Error::last_os_error());
     }
     unsafe {
-        use std::os::fd::FromRawFd;
         Ok((
             PipeReader::from_raw_fd(fds[0]),
             PipeWriter::from_raw_fd(fds[1]),
