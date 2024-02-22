@@ -21,6 +21,10 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 
+use log::debug;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 type Fp = ark_bn254::Fr;
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
@@ -28,6 +32,8 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
 
 pub fn main() -> ExitCode {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     let cli = cannon_cli::main_cli();
 
     let configuration = cannon_cli::read_configuration(&cli.get_matches());
@@ -54,12 +60,14 @@ pub fn main() -> ExitCode {
     });
 
     let mut po = PreImageOracle::create(&configuration.host);
-    let _child = po.start();
+    let mut child = po.start();
 
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // Install signal catcher
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term)).unwrap();
 
     let domain_size = DOMAIN_SIZE;
 
@@ -76,6 +84,10 @@ pub fn main() -> ExitCode {
     };
 
     let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
+
+    // Install signal catcher
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term)).unwrap();
 
     let mut folded_witness = proof::ProofInputs::<
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
@@ -124,7 +136,7 @@ pub fn main() -> ExitCode {
             next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         };
 
-    while !env.halt {
+    while !term.load(Ordering::Relaxed) && !env.halt {
         env.step(&configuration, &meta, &start);
 
         if let Some(ref mut keccak_env) = env.keccak_env {
@@ -259,6 +271,14 @@ pub fn main() -> ExitCode {
         }
     }
 
-    // TODO: Logic
-    ExitCode::SUCCESS
+    debug!("Killing child with id {}", child.id());
+    let _ = child.kill();
+
+    if !env.halt {
+        // TODO: Logic
+        ExitCode::FAILURE
+    } else {
+        // Consider that reaching env.halt = true is a successful run
+        ExitCode::SUCCESS
+    }
 }

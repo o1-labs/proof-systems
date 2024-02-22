@@ -45,3 +45,4 @@ os_pipe = { version = "1.1.4", features = [ "io_safety" ] }
 rand = "0.8.5"
 libc = "0.2.62"
 rayon = "1.5.0"
+signal-hook = "0.3.17"
