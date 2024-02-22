@@ -88,7 +88,6 @@ required for the MSM circuit. Each limbs $c_{i}$ will be on 15 bits.
 
 ### Computing the coefficients of the polynomial $h(X)$
 
-
 As a reminder, the polynomial we will commit to is formed by a product of the following form:
 
 $$h(X) = \prod_{i = 0}^{N} (1 + \xi_{i}X^{2^{i}})$$
@@ -100,21 +99,42 @@ $$h(X) = \sum_{i = 0}^{N} \zeta_{i} X^{i}$$
 where $\zeta_{i}$ is a product of $\xi_{j}$, where the $j's$ forms an encoding
 in base $2$ of $i$.
 
-Let's suppose the coefficients $\zeta_{i}$ are encoded on 17 limbs on 15 bits.
-Let's suppose computing the foreign field multiplication is done using $N$
-additional columns $C_{1}, \cdots, C_{N}$.
-Each row will be used to compute the products of one accumulated value and one
-of the $\xi_{i}$.
-We can use the following circuit structure to compute the elements $\zeta_{i}$:
+As an example, let's say we have N = 3. When we unfold, we have the following polynomial:
+
+$$h(X) = (1 + \xi_{1} X) (1 + \xi_{2} X^2) (1 + \xi_{3} X^{4})$$
+
+that will give the following monomials:
+
+$$
+\begin{align}
+h(X) & = 1 \\
+     &   + \xi_{1} X \\
+     &   + \xi_{2} X^{2} \\
+     &   + \xi_{1} \xi_{2} X^{3} \\
+     &   + \xi_{3} X^4 \\
+     &   + \xi_{1} \xi_{3} X^5 \\
+     &   + \xi_{2} \xi_{3} X^6 \\
+     &   + \xi_{1} \xi_{2} \xi_{3} X^{7}
+\end{align}
+$$
+
+We notice that we have the relation $h_{2^{k} + i} = h_{i} * \xi_{3 - k}$. In
+other words, the coefficients are built using accumulators.
+We can therefore have the coefficients $h_{i}$ in a column, and have an
+additional value, $\xi_{3 - k}$. We will have a table with 2^3 rows (for real
+scenarii, we have 2^15 or 2^16).
 
 
+| H coefficients | $\xi$ to add | $acc$     |
+| -------------- | ------------ | ------    |
+| $h_{0}$        | 0            |  1        |
+| $h_{1}$        | $\xi_{1}$    |  1        |
+| $h_{2}$        | $\xi_{2}$    |  1        |
+| $h_{3}$        | $\xi_{2}$    |  $h_{1}$  |
+| $h_{4}$        | $\xi_{3}$    |  1        |
+| $h_{5}$        | $\xi_{3}$    |  $h_{1}$  |
+| $h_{6}$        | $\xi_{3}$    |  $h_{2}$  |
+| $h_{7}$        | $\xi_{3}$    |  $h_{3}$  |
 
-| V                             | $l_{1}$        | $l_{2}$        | $l_{3}$        | ...      | $l_{17}$        | $C_{1}$ | $C_{2}$ | $\cdots$ | $C_{N}$ |
-| ----------------------------- | -------------- | -------------- | -------------- | -------- | --------------- | ------- | ------- | -------- | ------- |
-| $\xi_{0}$                   | $\zeta_{0, 1}$ | $\zeta_{0, 2}$ | $\zeta_{0, 3}$ | $\cdots$ | $\zeta_{0, 17}$ |         |         |          |         |
-| $\cdots$                      |                |                |                |          |                 |         |         |          |         |
-| $\xi_{N}$                   |                |                |                |          |                 |         |         |          |         |
-| $\xi_{0}\xi_{1} = \zeta_{3}$          |                |                |                |          |                 |         |         |          |         |
-| $\xi_{0}\xi_{2} = \zeta_{5}$          |                |                |                |          |                 |         |         |          |         |
-| $\xi_{0}\xi_{1}\xi_{2} = \zeta_{3} \xi_{2} = \zeta_{7}$ |                |                |                |          |                 |         |         |          |         |
-|                               |                |                |                |          |                 |         |         |          |         |
+The $\xi$ can be looked up in a fixed table of length $3$.
+We will know define a lookup argument to constraint the accumulator.
