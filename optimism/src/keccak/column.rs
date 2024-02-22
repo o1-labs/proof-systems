@@ -4,7 +4,6 @@ use crate::{
     keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
     witness::Witness,
 };
-use ark_ff::{One, Zero};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
@@ -12,7 +11,6 @@ use kimchi::circuits::polynomials::keccak::constants::{
     THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
     THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
 };
-use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 use std::ops::{Index, IndexMut};
 
 // The total number of witness columns used by the Keccak circuit.
@@ -99,29 +97,44 @@ pub enum KeccakColumn {
 pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS_LENGTH, T>;
 
 impl<T: Clone> KeccakWitness<T> {
-    /// Returns the hash index
-    pub fn hash_index(&self) -> T {
-        self.row[0]
+    // Returns the hash index
+    fn hash_index(&self) -> &T {
+        &self.row[0]
     }
 
-    /// Returns the step index
-    pub fn step_index(&self) -> T {
-        self.row[1]
+    // Returns the step index
+    fn step_index(&self) -> &T {
+        &self.row[1]
     }
 
-    /// Returns the mode flags
-    pub fn mode_flags(&self) -> &[T] {
-        &self.row[2..5]
+    // Returns the mode flags
+    fn mode_flags(&self) -> &[T] {
+        &self.row[2..2 + MODE_FLAGS_COLS_LEN]
+    }
+
+    // Returns the mode flags as a mutable reference
+    fn mode_flags_mut(&mut self) -> &mut [T] {
+        &mut self.row[2..2 + MODE_FLAGS_COLS_LEN]
     }
 
     // Returns the `curr` witness columns
     fn curr(&self) -> &[T] {
-        &self.row[5..5 + ZKVM_KECCAK_COLS_CURR]
+        &self.row[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
+    }
+
+    // Returns the `curr` witness columns as a mutable reference
+    fn curr_mut(&mut self) -> &mut [T] {
+        &mut self.row[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
     }
 
     // Returns the `next` witness columns
     fn next(&self) -> &[T] {
-        &self.row[5 + ZKVM_KECCAK_COLS_CURR..]
+        &self.row[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+    }
+
+    // Returns the `next` witness columns as a mutable reference
+    fn next_mut(&mut self) -> &mut [T] {
+        &mut self.row[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
     }
 
     /// Returns a chunk of the `curr` witness columns
@@ -177,37 +190,41 @@ impl<T: Clone> Index<KeccakColumn> for KeccakWitness<T> {
 impl<T: Clone> IndexMut<KeccakColumn> for KeccakWitness<T> {
     fn index_mut(&mut self, index: KeccakColumn) -> &mut Self::Output {
         match index {
-            KeccakColumn::HashIndex => &mut self.hash_index(),
-            KeccakColumn::StepIndex => &mut self.step_index(),
-            KeccakColumn::FlagRound => &mut self.mode_flags()[FLAG_ROUND_OFF],
-            KeccakColumn::FlagAbsorb => &mut self.mode_flags()[FLAG_ABSORB_OFF],
-            KeccakColumn::FlagSqueeze => &mut self.mode_flags()[FLAG_SQUEEZE_OFF],
-            KeccakColumn::FlagRoot => &mut self.curr()[FLAG_ROOT_OFF],
-            KeccakColumn::PadLength => &mut self.curr()[PAD_LEN_OFF],
-            KeccakColumn::InvPadLength => &mut self.curr()[PAD_INV_OFF],
-            KeccakColumn::TwoToPad => &mut self.curr()[PAD_TWO_OFF],
-            KeccakColumn::PadBytesFlags(idx) => &mut self.curr()[PAD_BYTES_OFF + idx],
-            KeccakColumn::PadSuffix(idx) => &mut self.curr()[PAD_SUFFIX_OFF + idx],
-            KeccakColumn::RoundConstants(idx) => &mut self.curr()[ROUND_COEFFS_OFF + idx],
-            KeccakColumn::Input(idx) => &mut self.curr()[idx],
-            KeccakColumn::ThetaShiftsC(idx) => &mut self.curr()[THETA_SHIFTS_C_OFF + idx],
-            KeccakColumn::ThetaDenseC(idx) => &mut self.curr()[THETA_DENSE_C_OFF + idx],
-            KeccakColumn::ThetaQuotientC(idx) => &mut self.curr()[THETA_QUOTIENT_C_OFF + idx],
-            KeccakColumn::ThetaRemainderC(idx) => &mut self.curr()[THETA_REMAINDER_C_OFF + idx],
-            KeccakColumn::ThetaDenseRotC(idx) => &mut self.curr()[THETA_DENSE_ROT_C_OFF + idx],
-            KeccakColumn::ThetaExpandRotC(idx) => &mut self.curr()[THETA_EXPAND_ROT_C_OFF + idx],
-            KeccakColumn::PiRhoShiftsE(idx) => &mut self.curr()[PIRHO_SHIFTS_E_OFF + idx],
-            KeccakColumn::PiRhoDenseE(idx) => &mut self.curr()[PIRHO_DENSE_E_OFF + idx],
-            KeccakColumn::PiRhoQuotientE(idx) => &mut self.curr()[PIRHO_QUOTIENT_E_OFF + idx],
-            KeccakColumn::PiRhoRemainderE(idx) => &mut self.curr()[PIRHO_REMAINDER_E_OFF + idx],
-            KeccakColumn::PiRhoDenseRotE(idx) => &mut self.curr()[PIRHO_DENSE_ROT_E_OFF + idx],
-            KeccakColumn::PiRhoExpandRotE(idx) => &mut self.curr()[PIRHO_EXPAND_ROT_E_OFF + idx],
-            KeccakColumn::ChiShiftsB(idx) => &mut self.curr()[CHI_SHIFTS_B_OFF + idx],
-            KeccakColumn::ChiShiftsSum(idx) => &mut self.curr()[CHI_SHIFTS_SUM_OFF + idx],
-            KeccakColumn::SpongeNewState(idx) => &mut self.curr()[SPONGE_NEW_STATE_OFF + idx],
-            KeccakColumn::SpongeBytes(idx) => &mut self.curr()[SPONGE_BYTES_OFF + idx],
-            KeccakColumn::SpongeShifts(idx) => &mut self.curr()[SPONGE_SHIFTS_OFF + idx],
-            KeccakColumn::Output(idx) => &mut self.next()[idx],
+            KeccakColumn::HashIndex => &mut self.row[0],
+            KeccakColumn::StepIndex => &mut self.row[1],
+            KeccakColumn::FlagRound => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
+            KeccakColumn::FlagAbsorb => &mut self.mode_flags_mut()[FLAG_ABSORB_OFF],
+            KeccakColumn::FlagSqueeze => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],
+            KeccakColumn::FlagRoot => &mut self.curr_mut()[FLAG_ROOT_OFF],
+            KeccakColumn::PadLength => &mut self.curr_mut()[PAD_LEN_OFF],
+            KeccakColumn::InvPadLength => &mut self.curr_mut()[PAD_INV_OFF],
+            KeccakColumn::TwoToPad => &mut self.curr_mut()[PAD_TWO_OFF],
+            KeccakColumn::PadBytesFlags(idx) => &mut self.curr_mut()[PAD_BYTES_OFF + idx],
+            KeccakColumn::PadSuffix(idx) => &mut self.curr_mut()[PAD_SUFFIX_OFF + idx],
+            KeccakColumn::RoundConstants(idx) => &mut self.curr_mut()[ROUND_COEFFS_OFF + idx],
+            KeccakColumn::Input(idx) => &mut self.curr_mut()[idx],
+            KeccakColumn::ThetaShiftsC(idx) => &mut self.curr_mut()[THETA_SHIFTS_C_OFF + idx],
+            KeccakColumn::ThetaDenseC(idx) => &mut self.curr_mut()[THETA_DENSE_C_OFF + idx],
+            KeccakColumn::ThetaQuotientC(idx) => &mut self.curr_mut()[THETA_QUOTIENT_C_OFF + idx],
+            KeccakColumn::ThetaRemainderC(idx) => &mut self.curr_mut()[THETA_REMAINDER_C_OFF + idx],
+            KeccakColumn::ThetaDenseRotC(idx) => &mut self.curr_mut()[THETA_DENSE_ROT_C_OFF + idx],
+            KeccakColumn::ThetaExpandRotC(idx) => {
+                &mut self.curr_mut()[THETA_EXPAND_ROT_C_OFF + idx]
+            }
+            KeccakColumn::PiRhoShiftsE(idx) => &mut self.curr_mut()[PIRHO_SHIFTS_E_OFF + idx],
+            KeccakColumn::PiRhoDenseE(idx) => &mut self.curr_mut()[PIRHO_DENSE_E_OFF + idx],
+            KeccakColumn::PiRhoQuotientE(idx) => &mut self.curr_mut()[PIRHO_QUOTIENT_E_OFF + idx],
+            KeccakColumn::PiRhoRemainderE(idx) => &mut self.curr_mut()[PIRHO_REMAINDER_E_OFF + idx],
+            KeccakColumn::PiRhoDenseRotE(idx) => &mut self.curr_mut()[PIRHO_DENSE_ROT_E_OFF + idx],
+            KeccakColumn::PiRhoExpandRotE(idx) => {
+                &mut self.curr_mut()[PIRHO_EXPAND_ROT_E_OFF + idx]
+            }
+            KeccakColumn::ChiShiftsB(idx) => &mut self.curr_mut()[CHI_SHIFTS_B_OFF + idx],
+            KeccakColumn::ChiShiftsSum(idx) => &mut self.curr_mut()[CHI_SHIFTS_SUM_OFF + idx],
+            KeccakColumn::SpongeNewState(idx) => &mut self.curr_mut()[SPONGE_NEW_STATE_OFF + idx],
+            KeccakColumn::SpongeBytes(idx) => &mut self.curr_mut()[SPONGE_BYTES_OFF + idx],
+            KeccakColumn::SpongeShifts(idx) => &mut self.curr_mut()[SPONGE_SHIFTS_OFF + idx],
+            KeccakColumn::Output(idx) => &mut self.next_mut()[idx],
         }
     }
 }

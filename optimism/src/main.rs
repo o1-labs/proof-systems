@@ -108,20 +108,12 @@ pub fn main() -> ExitCode {
     let keccak_reset_pre_folding_witness =
         |keccak_columns: &mut KeccakWitness<Vec<Fp256<FrParameters>>>| {
             // Resize without deallocating
-            keccak_columns.hash_index.clear();
-            keccak_columns.step_index.clear();
-            keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
-            keccak_columns.curr.iter_mut().for_each(Vec::clear);
-            keccak_columns.next.iter_mut().for_each(Vec::clear);
+            keccak_columns.row.iter_mut().for_each(Vec::clear);
         };
 
     let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp256<FrParameters>>> =
         KeccakWitness {
-            hash_index: Vec::with_capacity(domain_size),
-            step_index: Vec::with_capacity(domain_size),
-            mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            row: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         };
 
     while !env.halt {
@@ -135,38 +127,16 @@ pub fn main() -> ExitCode {
 
             // Update the witness with the Keccak step columns before resetting the environment
             // TODO: simplify the contents of the KeccakWitness or create an iterator for it
-            keccak_current_pre_folding_witness
-                .hash_index
-                .push(keccak_env.keccak_witness.hash_index);
-            keccak_current_pre_folding_witness
-                .step_index
-                .push(keccak_env.keccak_witness.step_index);
             for (env_wit, pre_fold_wit) in keccak_env
                 .keccak_witness
-                .mode_flags
+                .row
                 .iter()
-                .zip(keccak_current_pre_folding_witness.mode_flags.iter_mut())
-            {
-                pre_fold_wit.push(*env_wit);
-            }
-            for (env_wit, pre_fold_wit) in keccak_env
-                .keccak_witness
-                .curr
-                .iter()
-                .zip(keccak_current_pre_folding_witness.curr.iter_mut())
-            {
-                pre_fold_wit.push(*env_wit);
-            }
-            for (env_wit, pre_fold_wit) in keccak_env
-                .keccak_witness
-                .next
-                .iter()
-                .zip(keccak_current_pre_folding_witness.next.iter_mut())
+                .zip(keccak_current_pre_folding_witness.row.iter_mut())
             {
                 pre_fold_wit.push(*env_wit);
             }
 
-            if keccak_current_pre_folding_witness.step_index.len() == DOMAIN_SIZE {
+            if keccak_current_pre_folding_witness.row.len() == DOMAIN_SIZE {
                 keccak_proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                     domain,
                     &srs,

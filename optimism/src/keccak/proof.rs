@@ -31,15 +31,7 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     fn default() -> Self {
         KeccakProofInputs {
             evaluations: KeccakWitness {
-                hash_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                step_index: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                mode_flags: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                curr: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
-                next: std::array::from_fn(|_| {
+                row: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
             },
@@ -137,11 +129,7 @@ where
                 .collect::<Vec<_>>()
         };
         KeccakWitness {
-            hash_index: eval_col(evaluations.hash_index),
-            step_index: eval_col(evaluations.step_index),
-            mode_flags: eval_array_col(&evaluations.mode_flags).try_into().unwrap(),
-            curr: eval_array_col(&evaluations.curr).try_into().unwrap(),
-            next: eval_array_col(&evaluations.next).try_into().unwrap(),
+            row: eval_array_col(&evaluations.row).try_into().unwrap(),
         }
     };
     let commitments = {
@@ -150,11 +138,7 @@ where
             polys.into_par_iter().map(comm).collect::<Vec<_>>()
         };
         KeccakWitness {
-            hash_index: comm(&polys.hash_index),
-            step_index: comm(&polys.step_index),
-            mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
-            curr: comm_array(&polys.curr).try_into().unwrap(),
-            next: comm_array(&polys.next).try_into().unwrap(),
+            row: comm_array(&polys.row).try_into().unwrap(),
         }
     };
 
@@ -175,11 +159,7 @@ where
             polys.par_iter().map(comm).collect::<Vec<_>>()
         };
         KeccakWitness {
-            hash_index: comm(&polys.hash_index),
-            step_index: comm(&polys.step_index),
-            mode_flags: comm_array(&polys.mode_flags).try_into().unwrap(),
-            curr: comm_array(&polys.curr).try_into().unwrap(),
-            next: comm_array(&polys.next).try_into().unwrap(),
+            row: comm_array(&polys.row).try_into().unwrap(),
         }
     };
     let zeta_evaluations = evals(&zeta);
@@ -350,15 +330,7 @@ fn test_keccak_prover() {
     let proof_inputs = {
         KeccakProofInputs {
             evaluations: KeccakWitness {
-                hash_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                step_index: (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>(),
-                mode_flags: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                curr: std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                }),
-                next: std::array::from_fn(|_| {
+                row: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
             },
