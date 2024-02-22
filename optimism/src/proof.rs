@@ -309,3 +309,114 @@ pub fn verify<
     let group_map = G::Map::setup();
     OpeningProof::verify(srs, &group_map, &mut [batch], &mut thread_rng())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        keccak::column::{KeccakWitness, ZKVM_KECCAK_COLS},
+        mips::column::{MIPSWitness, MIPS_COLUMNS},
+    };
+
+    #[test]
+    fn test_mips_prover() {
+        use ark_ff::UniformRand;
+        use mina_poseidon::{
+            constants::PlonkSpongeConstantsKimchi,
+            sponge::{DefaultFqSponge, DefaultFrSponge},
+        };
+        use poly_commitment::pairing_proof::{PairingProof, PairingSRS};
+
+        type Fp = ark_bn254::Fr;
+        type BN254Parameters = ark_ec::bn::Bn<ark_bn254::Parameters>;
+        type SpongeParams = PlonkSpongeConstantsKimchi;
+        type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+        type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+
+        let rng = &mut rand::rngs::OsRng;
+
+        let proof_inputs = {
+            let cols = std::array::from_fn(|_| {
+                (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+            });
+            ProofInputs {
+                evaluations: MIPSWitness { cols },
+            }
+        };
+        let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
+
+        // Trusted setup toxic waste
+        let x = Fp::rand(rng);
+
+        let mut srs = PairingSRS::create(x, DOMAIN_SIZE);
+        srs.full_srs.add_lagrange_basis(domain.d1);
+
+        let proof = prove::<MIPS_COLUMNS, _, PairingProof<BN254Parameters>, BaseSponge, ScalarSponge>(
+            domain,
+            &srs,
+            proof_inputs,
+        );
+
+        assert!(verify::<
+            MIPS_COLUMNS,
+            _,
+            PairingProof<BN254Parameters>,
+            BaseSponge,
+            ScalarSponge,
+        >(domain, &srs, &proof));
+    }
+
+    // Dummy test with random witness that verifies because the proof still does not include constraints nor lookups
+    #[test]
+    fn test_keccak_prover() {
+        use ark_ff::UniformRand;
+        use mina_poseidon::{
+            constants::PlonkSpongeConstantsKimchi,
+            sponge::{DefaultFqSponge, DefaultFrSponge},
+        };
+        use poly_commitment::pairing_proof::{PairingProof, PairingSRS};
+
+        type Fp = ark_bn254::Fr;
+        type BN254Parameters = ark_ec::bn::Bn<ark_bn254::Parameters>;
+        type SpongeParams = PlonkSpongeConstantsKimchi;
+        type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+        type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+
+        let rng = &mut rand::rngs::OsRng;
+
+        let proof_inputs = {
+            ProofInputs {
+                evaluations: KeccakWitness {
+                    cols: std::array::from_fn(|_| {
+                        (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
+                    }),
+                },
+            }
+        };
+        let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
+
+        // Trusted setup toxic waste
+        let x = Fp::rand(rng);
+
+        let mut srs = PairingSRS::create(x, DOMAIN_SIZE);
+        srs.full_srs.add_lagrange_basis(domain.d1);
+
+        let proof: Proof<
+            2074,
+            ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+            PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+        > = prove::<ZKVM_KECCAK_COLS, _, PairingProof<BN254Parameters>, BaseSponge, ScalarSponge>(
+            domain,
+            &srs,
+            proof_inputs,
+        );
+
+        assert!(verify::<
+            ZKVM_KECCAK_COLS,
+            _,
+            PairingProof<BN254Parameters>,
+            BaseSponge,
+            ScalarSponge,
+        >(domain, &srs, &proof));
+    }
+}
