@@ -85,3 +85,36 @@ with additional lookups.
 $b_{0}$, $b_{1}$ and $b_{2}$ are the decomposition on 88 bits given by the
 foreign field gate in Kimchi. The values $c_{0}$, $\cdots$, $c_{16}$ are the limbs
 required for the MSM circuit. Each limbs $c_{i}$ will be on 15 bits.
+
+### Computing the coefficients of the polynomial $h(X)$
+
+
+As a reminder, the polynomial we will commit to is formed by a product of the following form:
+
+$$h(X) = \prod_{i = 0}^{N} (1 + \xi_{i}X^{2^{i}})$$
+
+If we unfold the coefficients of the polynomial, we will get a polynomial of the form
+
+$$h(X) = \sum_{i = 0}^{N} \zeta_{i} X^{i}$$
+
+where $\zeta_{i}$ is a product of $\xi_{j}$, where the $j's$ forms an encoding
+in base $2$ of $i$.
+
+Let's suppose the coefficients $\zeta_{i}$ are encoded on 17 limbs on 15 bits.
+Let's suppose computing the foreign field multiplication is done using $N$
+additional columns $C_{1}, \cdots, C_{N}$.
+Each row will be used to compute the products of one accumulated value and one
+of the $\xi_{i}$.
+We can use the following circuit structure to compute the elements $\zeta_{i}$:
+
+
+
+| V                             | $l_{1}$        | $l_{2}$        | $l_{3}$        | ...      | $l_{17}$        | $C_{1}$ | $C_{2}$ | $\cdots$ | $C_{N}$ |
+| ----------------------------- | -------------- | -------------- | -------------- | -------- | --------------- | ------- | ------- | -------- | ------- |
+| $\xi_{0}$                   | $\zeta_{0, 1}$ | $\zeta_{0, 2}$ | $\zeta_{0, 3}$ | $\cdots$ | $\zeta_{0, 17}$ |         |         |          |         |
+| $\cdots$                      |                |                |                |          |                 |         |         |          |         |
+| $\xi_{N}$                   |                |                |                |          |                 |         |         |          |         |
+| $\xi_{0}\xi_{1} = \zeta_{3}$          |                |                |                |          |                 |         |         |          |         |
+| $\xi_{0}\xi_{2} = \zeta_{5}$          |                |                |                |          |                 |         |         |          |         |
+| $\xi_{0}\xi_{1}\xi_{2} = \zeta_{3} \xi_{2} = \zeta_{7}$ |                |                |                |          |                 |         |         |          |         |
+|                               |                |                |                |          |                 |         |         |          |         |
