@@ -9,7 +9,11 @@ use kimchi_optimism::{
         interpreter::KeccakInterpreter,
         proof::{self as keccak_proof, KeccakProofInputs},
     },
-    mips::{proof, witness as mips_witness},
+    mips::{
+        column::{MIPSWitness, MIPS_COLUMNS},
+        proof,
+        witness::{self as mips_witness, SCRATCH_SIZE},
+    },
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::pairing_proof::PairingProof;
@@ -81,22 +85,14 @@ pub fn main() -> ExitCode {
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
-    let reset_pre_folding_witness = |witness_columns: &mut proof::WitnessColumns<Vec<_>>| {
-        let proof::WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-        } = witness_columns;
+    let reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
+        let MIPSWitness { row } = witness_columns;
         // Resize without deallocating
-        scratch.iter_mut().for_each(Vec::clear);
-        instruction_counter.clear();
-        error.clear();
+        row.iter_mut().for_each(Vec::clear);
     };
 
-    let mut current_pre_folding_witness = proof::WitnessColumns {
-        scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-        instruction_counter: Vec::with_capacity(domain_size),
-        error: Vec::with_capacity(domain_size),
+    let mut current_pre_folding_witness = MIPSWitness {
+        row: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
     };
 
     // The keccak environment is extracted inside the loop
@@ -152,21 +148,21 @@ pub fn main() -> ExitCode {
             env.keccak_env = None;
         }
 
-        for (scratch, scratch_pre_folding_witness) in env
-            .scratch_state
-            .iter()
-            .zip(current_pre_folding_witness.scratch.iter_mut())
-        {
-            scratch_pre_folding_witness.push(*scratch);
+        // TODO: unify witness of MIPS to include the instruction and the error
+        for i in 0..MIPS_COLUMNS {
+            if i < SCRATCH_SIZE {
+                current_pre_folding_witness.row[i].push(env.scratch_state[i]);
+            } else if i == MIPS_COLUMNS - 2 {
+                current_pre_folding_witness.row[i]
+                    .push(ark_bn254::Fr::from(env.instruction_counter));
+            } else {
+                // TODO: error
+                current_pre_folding_witness.row[i]
+                    .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
+            }
         }
-        current_pre_folding_witness
-            .instruction_counter
-            .push(ark_bn254::Fr::from(env.instruction_counter));
-        // TODO
-        current_pre_folding_witness
-            .error
-            .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
-        if current_pre_folding_witness.instruction_counter.len() == DOMAIN_SIZE {
+
+        if current_pre_folding_witness.instruction_counter().len() == DOMAIN_SIZE {
             proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -176,17 +172,11 @@ pub fn main() -> ExitCode {
             reset_pre_folding_witness(&mut current_pre_folding_witness);
         }
     }
-    if !current_pre_folding_witness.instruction_counter.is_empty() {
-        let remaining = domain_size - current_pre_folding_witness.instruction_counter.len();
-        for scratch in current_pre_folding_witness.scratch.iter_mut() {
-            scratch.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+    if !current_pre_folding_witness.instruction_counter().is_empty() {
+        let remaining = domain_size - current_pre_folding_witness.instruction_counter().len();
+        for col in current_pre_folding_witness.row.iter_mut() {
+            col.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         }
-        current_pre_folding_witness
-            .instruction_counter
-            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
-        current_pre_folding_witness
-            .error
-            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
             domain,
             &srs,

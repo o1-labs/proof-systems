@@ -7,7 +7,7 @@ use crate::{
     lookup::Lookup,
     mips::{
         column::{
-            Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
+            MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
             MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
             MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
@@ -114,12 +114,12 @@ fn memory_size(total: usize) -> String {
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
-    type Position = Column;
+    type Position = MIPSColumn;
 
     fn alloc_scratch(&mut self) -> Self::Position {
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
-        Column::ScratchState(scratch_idx)
+        MIPSColumn::ScratchState(scratch_idx)
     }
 
     type Variable = u64;
@@ -577,7 +577,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         pos: Self::Position,
     ) -> Self::Variable {
         // This is a syscall row, otherwise is zero
-        self.write_column(Column::ScratchState(MIPS_IS_SYSCALL_OFFSET), 1);
+        self.write_column(MIPSColumn::ScratchState(MIPS_IS_SYSCALL_OFFSET), 1);
 
         if self.registers.preimage_offset == 0 {
             let mut preimage_key = [0u8; 32];
@@ -593,7 +593,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
             // Initialize bytes left to read from preimage length
             self.write_column(
-                Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+                MIPSColumn::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
                 preimage.len() as u64,
             );
         }
@@ -619,7 +619,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // The first 8 bytes of the read preimage are the preimage length, followed by the body
             // of the preimage
             if idx < LENGTH_SIZE {
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
+                self.write_column(MIPSColumn::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 0);
                 let length_byte = u64::to_be_bytes(preimage_len as u64)[idx];
                 unsafe {
                     self.push_memory(&(*addr + i), length_byte as u64);
@@ -627,12 +627,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 }
             } else {
                 preimage_read_len += 1; // At most, it will be actual_read_len
-                self.write_column(Column::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
+                self.write_column(MIPSColumn::ScratchState(MIPS_READING_PREIMAGE_OFFSET), 1);
                 // This should really be handled by the keccak oracle.
                 let preimage_byte = self.preimage.as_ref().unwrap()[idx - LENGTH_SIZE];
                 // Write the individual byte to the witness
                 self.write_column(
-                    Column::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i as usize),
+                    MIPSColumn::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i as usize),
                     preimage_byte as u64,
                 );
                 unsafe {
@@ -646,20 +646,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // Update the flags to count how many bytes are contained at least
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
             if preimage_read_len > i as u64 {
-                self.write_column(Column::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
+                self.write_column(MIPSColumn::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i), 1);
             }
         }
 
         // Update the total number of preimage bytes read so far
         self.preimage_bytes_read += preimage_read_len;
         self.write_column(
-            Column::ScratchState(MIPS_BYTES_READ_OFFSET),
+            MIPSColumn::ScratchState(MIPS_BYTES_READ_OFFSET),
             self.preimage_bytes_read,
         );
 
         // Update how many bytes are left to be read
         self.write_column(
-            Column::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
+            MIPSColumn::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
             (preimage_len as u64) - self.preimage_bytes_read,
         );
 
@@ -675,7 +675,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
             // Update hash counter column
             self.write_column(
-                Column::ScratchState(MIPS_HASH_COUNTER_OFFSET),
+                MIPSColumn::ScratchState(MIPS_HASH_COUNTER_OFFSET),
                 self.hash_counter,
             );
             // Number of preimage bytes left to be read should be zero at this point
@@ -808,14 +808,14 @@ impl<Fp: Field> Env<Fp> {
         self.scratch_state = fresh_scratch_state();
     }
 
-    pub fn write_column(&mut self, column: Column, value: u64) {
+    pub fn write_column(&mut self, column: MIPSColumn, value: u64) {
         self.write_field_column(column, value.into())
     }
 
-    pub fn write_field_column(&mut self, column: Column, value: Fp) {
+    pub fn write_field_column(&mut self, column: MIPSColumn, value: Fp) {
         match column {
-            Column::ScratchState(idx) => self.scratch_state[idx] = value,
-            Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
+            MIPSColumn::ScratchState(idx) => self.scratch_state[idx] = value,
+            MIPSColumn::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }
 

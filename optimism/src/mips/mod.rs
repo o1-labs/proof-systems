@@ -17,7 +17,7 @@
 
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 
-use self::column::Column as MIPSColumn;
+use self::column::MIPSColumn;
 
 pub mod column;
 pub mod constraints;
