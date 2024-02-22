@@ -1,11 +1,11 @@
 //! This module contains the definition and implementation of the Keccak environment
 use crate::{
     keccak::{
-        column::{KeccakColumn, KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+        column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
         constraints::Constraints,
         grid_index,
         interpreter::{Absorb, KeccakStep, Sponge},
-        ArithOps, BoolOps, DIM, E, QUARTERS,
+        ArithOps, BoolOps, KeccakColumn, DIM, E, QUARTERS,
     },
     lookup::Lookup,
 };

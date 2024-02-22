@@ -25,7 +25,9 @@ impl<const N: usize, F: Clone> IntoIterator for Witness<N, F> {
 
     /// Iterate over the columns in the circuit.
     fn into_iter(self) -> Self::IntoIter {
-        self.row.to_vec().into_iter()
+        let mut iter_contents = Vec::with_capacity(N);
+        iter_contents.extend(self.row);
+        iter_contents.into_iter()
     }
 }
 

@@ -7,11 +7,10 @@
 /// For a pseudo code implementation of Keccap-f, see
 /// https://keccak.team/keccak_specs_summary.html
 use crate::keccak::{
-    column::KeccakColumn,
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::{

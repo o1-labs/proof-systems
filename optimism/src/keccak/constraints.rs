@@ -1,9 +1,9 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
     keccak::{
-        column::{KeccakColumn, PAD_SUFFIX_LEN},
+        column::PAD_SUFFIX_LEN,
         environment::{KeccakEnv, KeccakEnvironment},
-        {ArithOps, BoolOps, E, WORDS_IN_HASH},
+        KeccakColumn, {ArithOps, BoolOps, E, WORDS_IN_HASH},
     },
     lookup::Lookups,
 };
@@ -210,9 +210,8 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
                     let rot_e = Self::from_quarters(&self.vec_dense_rot_e(), Some(y), x);
 
                     self.constrain(
-                        self.is_round()
-                            * (word_e * Self::two_pow(*off)
-                                - (quo_e.clone() * Self::two_pow(64) + rem_e.clone())),
+                        word_e * Self::two_pow(*off)
+                            - (quo_e.clone() * Self::two_pow(64) + rem_e.clone()),
                     );
                     self.constrain(self.is_round() * (rot_e - (quo_e.clone() + rem_e)));
 
