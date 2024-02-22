@@ -32,7 +32,7 @@ impl<G: KimchiCurve> Default for ProofInputs<G> {
     fn default() -> Self {
         ProofInputs {
             evaluations: MIPSWitness {
-                row: std::array::from_fn(|_| {
+                cols: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
             },
@@ -74,7 +74,7 @@ pub fn fold<
             .collect::<MIPSWitness<_>>()
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.row.iter() {
+    for comm in commitments.cols.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
     let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
@@ -109,27 +109,27 @@ where
 {
     let ProofInputs { evaluations } = inputs;
     let polys = {
-        let MIPSWitness { row } = evaluations;
+        let MIPSWitness { cols } = evaluations;
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
-        let row = row.into_par_iter().map(eval_col).collect::<Vec<_>>();
+        let cols = cols.into_par_iter().map(eval_col).collect::<Vec<_>>();
         MIPSWitness {
-            row: row.try_into().unwrap(),
+            cols: cols.try_into().unwrap(),
         }
     };
     let commitments = {
-        let MIPSWitness { row } = &polys;
+        let MIPSWitness { cols } = &polys;
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
-        let row = row.par_iter().map(comm).collect::<Vec<_>>();
+        let cols = cols.par_iter().map(comm).collect::<Vec<_>>();
         MIPSWitness {
-            row: row.try_into().unwrap(),
+            cols: cols.try_into().unwrap(),
         }
     };
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.row.iter() {
+    for comm in commitments.cols.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -139,17 +139,17 @@ where
     let zeta_omega = zeta * omega;
 
     let evals = |point| {
-        let MIPSWitness { row } = &polys;
+        let MIPSWitness { cols } = &polys;
         let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-        let row = row.par_iter().map(comm).collect::<Vec<_>>();
+        let cols = cols.par_iter().map(comm).collect::<Vec<_>>();
         MIPSWitness {
-            row: row.try_into().unwrap(),
+            cols: cols.try_into().unwrap(),
         }
     };
     let zeta_evaluations = evals(&zeta);
     let zeta_omega_evaluations = evals(&zeta_omega);
     let group_map = G::Map::setup();
-    let polynomials: Vec<_> = polys.row.into_iter().collect();
+    let polynomials: Vec<_> = polys.cols.into_iter().collect();
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
@@ -168,9 +168,9 @@ where
     fr_sponge.absorb(&fq_sponge.digest());
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
-        .row
+        .cols
         .iter()
-        .zip(zeta_omega_evaluations.row.iter())
+        .zip(zeta_omega_evaluations.cols.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
@@ -218,7 +218,7 @@ pub fn verify<
     } = proof;
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.row.iter() {
+    for comm in commitments.cols.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -232,20 +232,20 @@ pub fn verify<
     fr_sponge.absorb(&fq_sponge.digest());
 
     let es: Vec<_> = zeta_evaluations
-        .row
+        .cols
         .iter()
-        .zip(zeta_omega_evaluations.row.iter())
+        .zip(zeta_omega_evaluations.cols.iter())
         .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
         .collect();
 
     let evaluations: Vec<_> = commitments
-        .row
+        .cols
         .iter()
         .zip(
             zeta_evaluations
-                .row
+                .cols
                 .iter()
-                .zip(zeta_omega_evaluations.row.iter()),
+                .zip(zeta_omega_evaluations.cols.iter()),
         )
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
             commitment: commitment.clone(),
@@ -255,9 +255,9 @@ pub fn verify<
         .collect();
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
-        .row
+        .cols
         .iter()
-        .zip(zeta_omega_evaluations.row.iter())
+        .zip(zeta_omega_evaluations.cols.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
@@ -305,10 +305,10 @@ fn test_mips_prover() {
     let domain_size = 1 << 15;
 
     let proof_inputs = {
-        let row =
+        let cols =
             std::array::from_fn(|_| (0..domain_size).map(|_| Fp::rand(rng)).collect::<Vec<_>>());
         ProofInputs {
-            evaluations: MIPSWitness { row },
+            evaluations: MIPSWitness { cols },
         }
     };
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();

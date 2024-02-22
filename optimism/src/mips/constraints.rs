@@ -2,7 +2,7 @@ use crate::{
     lookup::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
+            Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
             MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET,
             MIPS_READING_PREIMAGE_OFFSET,
         },
@@ -31,7 +31,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// In the concrete implementation for the constraints, the interpreter will
     /// work over columns. The position in this case can be seen as a new
     /// variable/input of our circuit.
-    type Position = MIPSColumn;
+    type Position = Column;
 
     // Use one of the available columns. It won't
     // create a new column every time this function is called. The number
@@ -43,10 +43,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
-        MIPSColumn::ScratchState(scratch_idx)
+        Column::ScratchState(scratch_idx)
     }
 
-    type Variable = Expr<ConstantExpr<Fp>, MIPSColumn>;
+    type Variable = Expr<ConstantExpr<Fp>, Column>;
 
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable) {
         self.constraints.push(assert_equals_zero)
@@ -70,7 +70,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn instruction_counter(&self) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: MIPSColumn::InstructionCounter,
+            col: Column::InstructionCounter,
             row: CurrOrNext::Curr,
         }))
     }

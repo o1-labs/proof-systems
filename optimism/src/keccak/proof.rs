@@ -31,7 +31,7 @@ impl<G: KimchiCurve> Default for KeccakProofInputs<G> {
     fn default() -> Self {
         KeccakProofInputs {
             evaluations: KeccakWitness {
-                row: std::array::from_fn(|_| {
+                cols: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
             },
@@ -129,7 +129,7 @@ where
                 .collect::<Vec<_>>()
         };
         KeccakWitness {
-            row: eval_array_col(&evaluations.row).try_into().unwrap(),
+            cols: eval_array_col(&evaluations.cols).try_into().unwrap(),
         }
     };
     let commitments = {
@@ -138,7 +138,7 @@ where
             polys.into_par_iter().map(comm).collect::<Vec<_>>()
         };
         KeccakWitness {
-            row: comm_array(&polys.row).try_into().unwrap(),
+            cols: comm_array(&polys.cols).try_into().unwrap(),
         }
     };
 
@@ -159,7 +159,7 @@ where
             polys.par_iter().map(comm).collect::<Vec<_>>()
         };
         KeccakWitness {
-            row: comm_array(&polys.row).try_into().unwrap(),
+            cols: comm_array(&polys.cols).try_into().unwrap(),
         }
     };
     let zeta_evaluations = evals(&zeta);
@@ -330,7 +330,7 @@ fn test_keccak_prover() {
     let proof_inputs = {
         KeccakProofInputs {
             evaluations: KeccakWitness {
-                row: std::array::from_fn(|_| {
+                cols: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
                 }),
             },

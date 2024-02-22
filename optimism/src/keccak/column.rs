@@ -99,42 +99,42 @@ pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS_LENGTH, T>;
 impl<T: Clone> KeccakWitness<T> {
     // Returns the hash index
     fn hash_index(&self) -> &T {
-        &self.row[0]
+        &self.cols[0]
     }
 
     // Returns the step index
     fn step_index(&self) -> &T {
-        &self.row[1]
+        &self.cols[1]
     }
 
     // Returns the mode flags
     fn mode_flags(&self) -> &[T] {
-        &self.row[2..2 + MODE_FLAGS_COLS_LEN]
+        &self.cols[2..2 + MODE_FLAGS_COLS_LEN]
     }
 
     // Returns the mode flags as a mutable reference
     fn mode_flags_mut(&mut self) -> &mut [T] {
-        &mut self.row[2..2 + MODE_FLAGS_COLS_LEN]
+        &mut self.cols[2..2 + MODE_FLAGS_COLS_LEN]
     }
 
     // Returns the `curr` witness columns
     fn curr(&self) -> &[T] {
-        &self.row[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
+        &self.cols[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
     }
 
     // Returns the `curr` witness columns as a mutable reference
     fn curr_mut(&mut self) -> &mut [T] {
-        &mut self.row[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
+        &mut self.cols[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
     }
 
     // Returns the `next` witness columns
     fn next(&self) -> &[T] {
-        &self.row[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+        &self.cols[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
     }
 
     // Returns the `next` witness columns as a mutable reference
     fn next_mut(&mut self) -> &mut [T] {
-        &mut self.row[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+        &mut self.cols[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
     }
 
     /// Returns a chunk of the `curr` witness columns
@@ -190,8 +190,8 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
 impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
     fn index_mut(&mut self, index: Column) -> &mut Self::Output {
         match index {
-            Column::HashIndex => &mut self.row[0],
-            Column::StepIndex => &mut self.row[1],
+            Column::HashIndex => &mut self.cols[0],
+            Column::StepIndex => &mut self.cols[1],
             Column::FlagRound => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
             Column::FlagAbsorb => &mut self.mode_flags_mut()[FLAG_ABSORB_OFF],
             Column::FlagSqueeze => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],

@@ -6,13 +6,14 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Witness<const N: usize, T> {
     /// A witness row is represented by an array of N witness columns
-    pub row: [T; N],
+    /// When T is a vector, then the witness describes the rows of the circuit.
+    pub cols: [T; N],
 }
 
 impl<const N: usize, T: Zero + Clone> Default for Witness<N, T> {
     fn default() -> Self {
         Witness {
-            row: std::array::from_fn(|_| T::zero()),
+            cols: std::array::from_fn(|_| T::zero()),
         }
     }
 }
@@ -26,7 +27,7 @@ impl<const N: usize, F: Clone> IntoIterator for Witness<N, F> {
     /// Iterate over the columns in the circuit.
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(self.row);
+        iter_contents.extend(self.cols);
         iter_contents.into_iter()
     }
 }
@@ -41,7 +42,7 @@ where
     /// Iterate over the columns in the circuit, in parallel.
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(self.row);
+        iter_contents.extend(self.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -52,12 +53,12 @@ impl<const N: usize, G: Send + std::fmt::Debug> FromParallelIterator<G> for Witn
         I: IntoParallelIterator<Item = G>,
     {
         let mut iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
-        let row = iter_contents
+        let cols = iter_contents
             .drain(..N)
             .collect::<Vec<G>>()
             .try_into()
             .unwrap();
-        Witness { row }
+        Witness { cols }
     }
 }
 
@@ -70,7 +71,7 @@ where
 
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&self.row);
+        iter_contents.extend(&self.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -84,7 +85,7 @@ where
 
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&mut self.row);
+        iter_contents.extend(&mut self.cols);
         iter_contents.into_par_iter()
     }
 }

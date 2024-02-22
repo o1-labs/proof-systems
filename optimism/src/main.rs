@@ -86,13 +86,13 @@ pub fn main() -> ExitCode {
     >::default();
 
     let reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
-        let MIPSWitness { row } = witness_columns;
+        let MIPSWitness { cols } = witness_columns;
         // Resize without deallocating
-        row.iter_mut().for_each(Vec::clear);
+        cols.iter_mut().for_each(Vec::clear);
     };
 
     let mut current_pre_folding_witness = MIPSWitness {
-        row: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+        cols: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
     };
 
     // The keccak environment is extracted inside the loop
@@ -104,12 +104,12 @@ pub fn main() -> ExitCode {
     let keccak_reset_pre_folding_witness =
         |keccak_columns: &mut KeccakWitness<Vec<Fp256<FrParameters>>>| {
             // Resize without deallocating
-            keccak_columns.row.iter_mut().for_each(Vec::clear);
+            keccak_columns.cols.iter_mut().for_each(Vec::clear);
         };
 
     let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp256<FrParameters>>> =
         KeccakWitness {
-            row: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            cols: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         };
 
     while !env.halt {
@@ -125,14 +125,14 @@ pub fn main() -> ExitCode {
             // TODO: simplify the contents of the KeccakWitness or create an iterator for it
             for (env_wit, pre_fold_wit) in keccak_env
                 .keccak_witness
-                .row
+                .cols
                 .iter()
-                .zip(keccak_current_pre_folding_witness.row.iter_mut())
+                .zip(keccak_current_pre_folding_witness.cols.iter_mut())
             {
                 pre_fold_wit.push(*env_wit);
             }
 
-            if keccak_current_pre_folding_witness.row.len() == DOMAIN_SIZE {
+            if keccak_current_pre_folding_witness.cols.len() == DOMAIN_SIZE {
                 keccak_proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                     domain,
                     &srs,
@@ -151,13 +151,13 @@ pub fn main() -> ExitCode {
         // TODO: unify witness of MIPS to include the instruction and the error
         for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
-                current_pre_folding_witness.row[i].push(env.scratch_state[i]);
+                current_pre_folding_witness.cols[i].push(env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
-                current_pre_folding_witness.row[i]
+                current_pre_folding_witness.cols[i]
                     .push(ark_bn254::Fr::from(env.instruction_counter));
             } else {
                 // TODO: error
-                current_pre_folding_witness.row[i]
+                current_pre_folding_witness.cols[i]
                     .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
             }
         }
@@ -174,7 +174,7 @@ pub fn main() -> ExitCode {
     }
     if !current_pre_folding_witness.instruction_counter().is_empty() {
         let remaining = domain_size - current_pre_folding_witness.instruction_counter().len();
-        for col in current_pre_folding_witness.row.iter_mut() {
+        for col in current_pre_folding_witness.cols.iter_mut() {
             col.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         }
         proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(

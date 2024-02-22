@@ -14,7 +14,7 @@ pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
 /// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum MIPSColumn {
+pub enum Column {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     InstructionCounter,
@@ -48,14 +48,14 @@ pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + 2;
 
 impl<T: Clone> MIPSWitness<T> {
     pub fn scratch(&self) -> &[T] {
-        &self.row[..SCRATCH_SIZE]
+        &self.cols[..SCRATCH_SIZE]
     }
 
     pub fn instruction_counter(&self) -> &T {
-        &self.row[SCRATCH_SIZE]
+        &self.cols[SCRATCH_SIZE]
     }
 
     pub fn error(&mut self) -> &T {
-        &self.row[SCRATCH_SIZE + 1]
+        &self.cols[SCRATCH_SIZE + 1]
     }
 }

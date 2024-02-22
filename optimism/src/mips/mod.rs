@@ -15,9 +15,8 @@
 //! [crate::mips::interpreter], and the evaluations will be kept in the
 //! structure [crate::mips::proof::ProofInputs].
 
+use self::column::Column;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
-
-use self::column::MIPSColumn;
 
 pub mod column;
 pub mod constraints;
@@ -38,4 +37,4 @@ pub mod witness;
 /// `P(X, Y, Z) = q_x X + q_y Y + q_m X Y + q_o Z + q_c`
 /// To represent this multi-variate polynomial using the expression framework,
 /// we would use 3 different columns.
-pub(crate) type E<F> = Expr<ConstantExpr<F>, MIPSColumn>;
+pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
