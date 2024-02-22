@@ -82,6 +82,7 @@ where
 
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
+        iter_contents.extend(&mut self.row);
         iter_contents.into_par_iter()
     }
 }
