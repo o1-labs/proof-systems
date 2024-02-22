@@ -10,10 +10,10 @@
 //! committed and evaluated at certain points following the polynomial protocol,
 //! and it will form the proof of the correct execution that the prover will
 //! build and send to the verifier. The corresponding structure is
-//! [crate::mips::proof::Proof]. The prover will start by computing the
+//! [crate::proof::Proof]. The prover will start by computing the
 //! execution trace using the interpreter implemented in the module
 //! [crate::mips::interpreter], and the evaluations will be kept in the
-//! structure [crate::mips::proof::ProofInputs].
+//! structure [crate::proof::ProofInputs].
 
 use self::column::Column;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
