@@ -13,18 +13,17 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
-mina-curves = { path = "../curves", version = "0.1.0" }
-mina-hasher = { path = "../hasher", version = "0.1.0" }
-o1-utils = { path = "../utils", version = "0.1.0" }
+mina-curves.workspace = true
+mina-hasher.workspace = true
+o1-utils.workspace = true
 
-ark-ec = { version = "0.3.0", features = [ "parallel" ] }
-ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-ec.workspace = true
+ark-ff.workspace = true
 
-rand = "0.8.0"
-blake2 = "0.10.0"
-hex = "0.4"
-bitvec = "1.0.0"
-sha2 = "0.10.0"
-bs58 = "0.4.0"
-thiserror = "1.0.30"
-
+rand.workspace = true
+blake2.workspace = true
+hex.workspace = true
+bitvec.workspace = true
+sha2.workspace = true
+bs58.workspace = true
+thiserror.workspace = true

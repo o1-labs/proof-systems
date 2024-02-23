@@ -6,7 +6,7 @@ use command_fds::{CommandFdExt, FdMapping};
 use log::debug;
 use os_pipe::{PipeReader, PipeWriter};
 use std::io::{Read, Write};
-use std::os::fd::AsRawFd;
+use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::process::{Child, Command};
 
 pub struct PreImageOracle {
@@ -37,7 +37,6 @@ fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
         return Err(std::io::Error::last_os_error());
     }
     unsafe {
-        use std::os::fd::FromRawFd;
         Ok((
             PipeReader::from_raw_fd(fds[0]),
             PipeWriter::from_raw_fd(fds[1]),
@@ -62,7 +61,6 @@ pub fn create_pipe() -> std::io::Result<(PipeReader, PipeWriter)> {
         return Err(std::io::Error::last_os_error());
     }
     unsafe {
-        use std::os::fd::FromRawFd;
         Ok((
             PipeReader::from_raw_fd(fds[0]),
             PipeWriter::from_raw_fd(fds[1]),
@@ -116,19 +114,19 @@ impl PreImageOracle {
         // We need to map 3, 4, 5, 6 in the child process
         cmd.fd_mappings(vec![
             FdMapping {
-                parent_fd: hint_server.0.writer.as_raw_fd(),
+                parent_fd: unsafe { OwnedFd::from_raw_fd(hint_server.0.writer.as_raw_fd()) },
                 child_fd: HINT_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: hint_server.0.reader.as_raw_fd(),
+                parent_fd: unsafe { OwnedFd::from_raw_fd(hint_server.0.reader.as_raw_fd()) },
                 child_fd: HINT_CLIENT_READ_FD,
             },
             FdMapping {
-                parent_fd: oracle_server.0.writer.as_raw_fd(),
+                parent_fd: unsafe { OwnedFd::from_raw_fd(oracle_server.0.writer.as_raw_fd()) },
                 child_fd: PREIMAGE_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: oracle_server.0.reader.as_raw_fd(),
+                parent_fd: unsafe { OwnedFd::from_raw_fd(oracle_server.0.reader.as_raw_fd()) },
                 child_fd: PREIMAGE_CLIENT_READ_FD,
             },
         ])
