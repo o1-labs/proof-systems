@@ -1,0 +1,255 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Technical Diagrams - Mina book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././assets/css/mdbook-admonish.css">
+        <link rel="stylesheet" href=".././mdbook-admonish.css">
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">Foundations</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_foundations.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_groups.html"><strong aria-hidden="true">3.</strong> Groups</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_rings.html"><strong aria-hidden="true">4.</strong> Rings</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_fields.html"><strong aria-hidden="true">5.</strong> Fields</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_polynomials.html"><strong aria-hidden="true">6.</strong> Polynomials</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_multiplying_polynomials.html"><strong aria-hidden="true">6.1.</strong> Multiplying Polynomials</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_fft.html"><strong aria-hidden="true">6.2.</strong> Fast Fourier Transform</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Cryptographic Tools</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_commitment.html"><strong aria-hidden="true">7.</strong> Commitments</a></li><li class="chapter-item expanded "><a href="../plonk/polynomial_commitments.html"><strong aria-hidden="true">8.</strong> Polynomial Commitments</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../plonk/inner_product.html"><strong aria-hidden="true">8.1.</strong> Inner Product Argument</a></li><li class="chapter-item expanded "><a href="../plonk/inner_product_api.html"><strong aria-hidden="true">8.2.</strong> Different Functionnalities</a></li></ol></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/overview.html"><strong aria-hidden="true">9.</strong> Two Party Computation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/gc.html"><strong aria-hidden="true">9.1.</strong> Garbled Circuits</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/basics.html"><strong aria-hidden="true">9.1.1.</strong> Basics</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/pap.html"><strong aria-hidden="true">9.1.2.</strong> Point and Permute</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/freexor.html"><strong aria-hidden="true">9.1.3.</strong> Free XOR</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/row_red.html"><strong aria-hidden="true">9.1.4.</strong> Row Reduction</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/halfgate.html"><strong aria-hidden="true">9.1.5.</strong> Half Gate</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/fulldesc.html"><strong aria-hidden="true">9.1.6.</strong> Full Description</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/fkaes.html"><strong aria-hidden="true">9.1.7.</strong> Fixed-Key-AES Hashes</a></li></ol></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/ot.html"><strong aria-hidden="true">9.2.</strong> Oblivious Transfer</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/baseot.html"><strong aria-hidden="true">9.2.1.</strong> Base OT</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/ote.html"><strong aria-hidden="true">9.2.2.</strong> OT Extension</a></li></ol></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_2pc/2pc.html"><strong aria-hidden="true">9.3.</strong> Full Protocol</a></li></ol></li><li class="chapter-item expanded "><a href="../fundamentals/proof_systems.html"><strong aria-hidden="true">10.</strong> Proof Systems</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_plonk.html"><strong aria-hidden="true">10.1.</strong> zk-SNARKs</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Background on PLONK</li><li class="chapter-item expanded "><a href="../plonk/overview.html"><strong aria-hidden="true">11.</strong> Overview</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../plonk/glossary.html"><strong aria-hidden="true">11.1.</strong> Glossary</a></li></ol></li><li class="chapter-item expanded "><a href="../plonk/domain.html"><strong aria-hidden="true">12.</strong> Domain</a></li><li class="chapter-item expanded "><a href="../plonk/lagrange.html"><strong aria-hidden="true">13.</strong> Lagrange Basis in Multiplicative Subgroups</a></li><li class="chapter-item expanded "><a href="../plonk/fiat_shamir.html"><strong aria-hidden="true">14.</strong> Non-Interactivity via Fiat-Shamir</a></li><li class="chapter-item expanded "><a href="../plonk/plookup.html"><strong aria-hidden="true">15.</strong> Plookup</a></li><li class="chapter-item expanded "><a href="../plonk/maller.html"><strong aria-hidden="true">16.</strong> Maller's Optimization</a></li><li class="chapter-item expanded "><a href="../plonk/zkpm.html"><strong aria-hidden="true">17.</strong> Zero-Column Approach to Zero-Knowledge</a></li><li class="chapter-item expanded affix "><li class="part-title">Kimchi</li><li class="chapter-item expanded "><a href="../kimchi/overview.html"><strong aria-hidden="true">18.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../kimchi/arguments.html"><strong aria-hidden="true">19.</strong> Arguments</a></li><li class="chapter-item expanded "><a href="../kimchi/final_check.html"><strong aria-hidden="true">20.</strong> Final Check</a></li><li class="chapter-item expanded "><a href="../kimchi/maller_15.html"><strong aria-hidden="true">21.</strong> Maller's Optimization for Kimchi</a></li><li class="chapter-item expanded "><a href="../kimchi/lookup.html"><strong aria-hidden="true">22.</strong> Lookup Tables</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/extended-lookup-tables.html"><strong aria-hidden="true">22.1.</strong> Extended Lookup Tables</a></li></ol></li><li class="chapter-item expanded "><a href="../kimchi/custom_constraints.html"><strong aria-hidden="true">23.</strong> Custom Constraints</a></li><li class="chapter-item expanded "><a href="../kimchi/gates.html"><strong aria-hidden="true">24.</strong> Custom Gates</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/foreign_field_add.html"><strong aria-hidden="true">24.1.</strong> Foreign Field Addition</a></li><li class="chapter-item expanded "><a href="../kimchi/foreign_field_mul.html"><strong aria-hidden="true">24.2.</strong> Foreign Field Multiplication</a></li><li class="chapter-item expanded "><a href="../kimchi/keccak.html"><strong aria-hidden="true">24.3.</strong> Keccak</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Pickles & Inductive Proof Systems</li><li class="chapter-item expanded "><a href="../pickles/overview.html"><strong aria-hidden="true">25.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../pickles/zkbook_ips.html"><strong aria-hidden="true">26.</strong> Inductive Proof Systems</a></li><li class="chapter-item expanded "><a href="../pickles/accumulation.html"><strong aria-hidden="true">27.</strong> Accumulation</a></li><li class="chapter-item expanded "><a href="../pickles/deferred.html"><strong aria-hidden="true">28.</strong> Deferred Computation</a></li><li class="chapter-item expanded "><a href="../pickles/diagrams.html" class="active"><strong aria-hidden="true">29.</strong> Technical Diagrams</a></li><li class="chapter-item expanded affix "><li class="part-title">Technical Specifications</li><li class="chapter-item expanded "><a href="../specs/poseidon.html"><strong aria-hidden="true">30.</strong> Poseidon hash</a></li><li class="chapter-item expanded "><a href="../specs/poly-commitment.html"><strong aria-hidden="true">31.</strong> Polynomial Commitment</a></li><li class="chapter-item expanded "><a href="../specs/pasta.html"><strong aria-hidden="true">32.</strong> Pasta Curves</a></li><li class="chapter-item expanded "><a href="../specs/kimchi.html"><strong aria-hidden="true">33.</strong> Kimchi</a></li><li class="chapter-item expanded "><a href="../specs/urs.html"><strong aria-hidden="true">34.</strong> Universal Reference String (URS)</a></li><li class="chapter-item expanded "><a href="../specs/pickles.html"><strong aria-hidden="true">35.</strong> Pickles</a></li><li class="chapter-item expanded "><a href="../specs/consensus.html"><strong aria-hidden="true">36.</strong> Consensus</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Mina book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://www.github.com/o1-labs/proof-systems" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+<h1 id="pickles-technical-diagrams"><a class="header" href="#pickles-technical-diagrams">Pickles Technical Diagrams</a></h1>
+<p>This section contains a series of diagrams giving an overview of implementation of pickles, closely following the structures and abstractions in the code. However, they are very technical and are primarily intended for developer use. The primary source of all the images in this section is <a href="./pickles_structure.drawio"><code>pickles_structure.drawio</code></a> file, and if one edits it one must re-generate the <code>.svg</code> renders by doing “export -&gt; selection”.</p>
+<p>The legend of the diagrams is quite straightforward:</p>
+<ul>
+<li>The black boxes are data structures that have names and labels following the implementation.
+<ul>
+<li><code>MFNStep</code>/<code>MFNWrap</code> is an abbreviation from <code>MessagesForNextStep</code> and <code>MessagesForNextWrap</code> that is used for brevity. Most other datatypes are exactly the same as in the codebase.</li>
+</ul>
+</li>
+<li>The blue boxes are computations. Sometimes, when the computation is trivial or only vaguely indicated, it is denoted as a text sign directly on an arrow.</li>
+<li>Arrows are blue by default and denote moving a piece of data from one place to another with no (or very little) change. Light blue arrows are denoting witness query that is implemented through the <code>handler</code> mechanism. The “chicken foot” connector means that this arrow accesses just one field in an array: such an arrow could connect e.g. a input field of type <code>old_a: A</code> in a structure <code>Vec&lt;(A,B)&gt;</code> to an output <code>new_a: A</code>, which just means that we are inside a <code>for</code> loop and this computation is done for all the elemnts in the vector/array.</li>
+<li>Colour of the field is sometimes introduced and denotes how many steps ago was this piece of data created. The absense of the colour means either that (1) the data structure contains different subfields of different origin, or that (2) it was not coloured but it could be. The colours are assigned according to the following convention:</li>
+</ul>
+<p><img src="./pickles_structure_legend_1.svg" alt="" /></p>
+<h3 id="wrap-computatiton-and-deferred-values"><a class="header" href="#wrap-computatiton-and-deferred-values">Wrap Computatiton and Deferred Values</a></h3>
+<p>The following is the diagram that explains the Wrap computation. The left half of it corresponds to the <code>wrap.ml</code> file and the general logic of proof creation, while the right part of it is <code>wrap_main.ml</code>/<code>wrap_verifier.ml</code> and explains in-circuit computation.</p>
+<p><a href="./pickles_structure_wrap.svg"> <img src="pickles_structure_wrap.svg" alt="" /> </a></p>
+<p>This diagram explains the <code>deferred_values</code> computation which is in the heart of <code>wrap.ml</code> represented as a blue box in the middle of the left pane of the main Wrap diagram. Deferred values for Wrap are computed as follows:</p>
+<p><a href="./pickles_structure_wrap_deferred_values.svg"> <img src="pickles_structure_wrap_deferred_values.svg" alt="" /> </a></p>
+<h3 id="step-computation"><a class="header" href="#step-computation">Step Computation</a></h3>
+<p>The following is the diagram that explains the Step computation, similarly to Wrap. The left half of it corresponds to the general logic in <code>step.ml</code>, and the right part of it is <code>step_main.ml</code> and explains in-circuit computation. We provide no <code>deferred_values</code> computation diagram for Step, but it is very conceptually similar to the one already presented for Wrap.</p>
+<p><a href="./pickles_structure_step.svg"> <img src="pickles_structure_step.svg" alt="" /> </a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../pickles/deferred.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../specs/poseidon.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../pickles/deferred.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../specs/poseidon.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>
