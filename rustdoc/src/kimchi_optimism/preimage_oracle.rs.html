@@ -292,8 +292,6 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{
     Hint, HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD,
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
@@ -302,7 +300,7 @@
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>os_pipe::{PipeReader, PipeWriter};
 <span class="kw">use </span>std::io::{Read, Write};
-<span class="kw">use </span>std::os::fd::AsRawFd;
+<span class="kw">use </span>std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 <span class="kw">use </span>std::process::{Child, Command};
 
 <span class="kw">pub struct </span>PreImageOracle {
@@ -333,7 +331,6 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::last_os_error());
     }
     <span class="kw">unsafe </span>{
-        <span class="kw">use </span>std::os::fd::FromRawFd;
         <span class="prelude-val">Ok</span>((
             PipeReader::from_raw_fd(fds[<span class="number">0</span>]),
             PipeWriter::from_raw_fd(fds[<span class="number">1</span>]),
@@ -358,7 +355,6 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(std::io::Error::last_os_error());
     }
     <span class="kw">unsafe </span>{
-        <span class="kw">use </span>std::os::fd::FromRawFd;
         <span class="prelude-val">Ok</span>((
             PipeReader::from_raw_fd(fds[<span class="number">0</span>]),
             PipeWriter::from_raw_fd(fds[<span class="number">1</span>]),
@@ -412,19 +408,19 @@
         // We need to map 3, 4, 5, 6 in the child process
         </span>cmd.fd_mappings(<span class="macro">vec!</span>[
             FdMapping {
-                parent_fd: hint_server.<span class="number">0</span>.writer.as_raw_fd(),
+                parent_fd: <span class="kw">unsafe </span>{ OwnedFd::from_raw_fd(hint_server.<span class="number">0</span>.writer.as_raw_fd()) },
                 child_fd: HINT_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: hint_server.<span class="number">0</span>.reader.as_raw_fd(),
+                parent_fd: <span class="kw">unsafe </span>{ OwnedFd::from_raw_fd(hint_server.<span class="number">0</span>.reader.as_raw_fd()) },
                 child_fd: HINT_CLIENT_READ_FD,
             },
             FdMapping {
-                parent_fd: oracle_server.<span class="number">0</span>.writer.as_raw_fd(),
+                parent_fd: <span class="kw">unsafe </span>{ OwnedFd::from_raw_fd(oracle_server.<span class="number">0</span>.writer.as_raw_fd()) },
                 child_fd: PREIMAGE_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: oracle_server.<span class="number">0</span>.reader.as_raw_fd(),
+                parent_fd: <span class="kw">unsafe </span>{ OwnedFd::from_raw_fd(oracle_server.<span class="number">0</span>.reader.as_raw_fd()) },
                 child_fd: PREIMAGE_CLIENT_READ_FD,
             },
         ])
