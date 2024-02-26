@@ -4,12 +4,15 @@ use crate::{
     keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
     witness::Witness,
 };
-use kimchi::circuits::polynomials::keccak::constants::{
-    CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
-    PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
-    QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
-    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
-    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
+use kimchi::{
+    circuits::polynomials::keccak::constants::{
+        CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF,
+        PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF,
+        PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF,
+        SPONGE_SHIFTS_OFF, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF,
+        THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
+    },
+    folding::expressions::FoldingColumnTrait,
 };
 use std::ops::{Index, IndexMut};
 
@@ -82,6 +85,13 @@ pub enum Column {
     SpongeBytes(usize),     // Sponge Curr[200..400)
     SpongeShifts(usize),    // Sponge Curr[400..800)
     Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
+}
+
+impl FoldingColumnTrait for Column {
+    fn is_witness(&self) -> bool {
+        // All Keccak columns are witness columns
+        true
+    }
 }
 
 /// The witness columns used by the Keccak circuit.
