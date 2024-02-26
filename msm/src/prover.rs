@@ -1,7 +1,9 @@
-use ark_ff::Zero;
+use crate::columns::Column;
+use ark_ff::{FftField, Zero};
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain};
 use kimchi::plonk_sponge::FrSponge;
 use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_poseidon::sponge::ScalarChallenge;
@@ -16,6 +18,45 @@ use rayon::iter::ParallelIterator;
 
 use crate::mvlookup::{self, LookupProof};
 use crate::proof::{Proof, Witness, WitnessColumns};
+
+struct GenericExpressionEnvironment<'a, F: FftField> {
+    challenges: Challenges<F>,
+    witness: &'a WitnessColumns<Evaluations<F, D<F>>>,
+    constants: Constants<F>,
+    // coefficient: F,
+    domain: D<F>,
+}
+
+impl<'a, F: FftField> ColumnEnvironment<'a, F> for GenericExpressionEnvironment<'a, F> {
+    type Column = Column;
+
+    fn get_column(&self, column: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
+        match column {
+            Column::X(i) => Some(&self.witness.x[*i]),
+        }
+    }
+
+    // FIXME: add different domain size
+    fn get_domain(&self, _d: Domain) -> D<F> {
+        self.domain
+    }
+
+    fn get_constants(&self) -> &Constants<F> {
+        &self.constants
+    }
+
+    fn get_challenges(&self) -> &Challenges<F> {
+        &self.challenges
+    }
+
+    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
+        unimplemented!()
+    }
+
+    fn l0_1(&self) -> F {
+        unimplemented!()
+    }
+}
 
 pub fn prove<
     G: KimchiCurve,
@@ -41,8 +82,8 @@ where
 
     let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
         let interpolate =
-            |evals: Evaluations<G::ScalarField, D<G::ScalarField>>| evals.interpolate();
-        evaluations
+            |evals: &Evaluations<G::ScalarField, D<G::ScalarField>>| evals.interpolate_by_ref();
+        (&evaluations)
             .into_par_iter()
             .map(interpolate)
             .collect::<WitnessColumns<_>>()
@@ -76,6 +117,30 @@ where
     };
     // -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
+
+    let alpha = fq_sponge.challenge();
+    // TODO: add for MVLookup
+    let beta = G::ScalarField::zero();
+    let gamma = G::ScalarField::zero();
+    let joint_combiner = None;
+
+    let _env = {
+        GenericExpressionEnvironment {
+            challenges: Challenges {
+                alpha,
+                beta,
+                gamma,
+                joint_combiner,
+            },
+            witness: &evaluations,
+            constants: Constants {
+                endo_coefficient: G::endos().1,
+                mds: &G::sponge_params().mds,
+                zk_rows: 0,
+            },
+            domain: domain.d1,
+        };
+    };
 
     // TODO: add quotient polynomial (based on constraints and expresion framework)
 
