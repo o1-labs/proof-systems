@@ -31,15 +31,20 @@ where
     OpeningProof::SRS: Sync,
 {
     // Interpolate all columns on d1, using trait Into.
-    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
-        let eval_col = |evals: Vec<G::ScalarField>| {
+    let evaluations: WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>> = inputs
+        .evaluations
+        .into_par_iter()
+        .map(|evals| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
-                .interpolate()
-        };
-        inputs
-            .evaluations
+        })
+        .collect::<WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
+
+    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
+        let interpolate =
+            |evals: Evaluations<G::ScalarField, D<G::ScalarField>>| evals.interpolate();
+        evaluations
             .into_par_iter()
-            .map(eval_col)
+            .map(interpolate)
             .collect::<WitnessColumns<_>>()
     };
 
