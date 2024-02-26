@@ -183,11 +183,11 @@
 
 <span class="comment">// @volhovm: maybe move these to the FF circuits module later.
 </span><span class="doccomment">/// Bitsize of the foreign field limb representation.
-</span><span class="kw">pub const </span>LIMB_BITSIZE: usize = <span class="number">16</span>;
+</span><span class="kw">pub const </span>LIMB_BITSIZE: usize = <span class="number">15</span>;
 
 <span class="doccomment">/// Number of limbs representing one foreign field element (either
 /// [`Ff1`] or [`Ff2`]).
-</span><span class="kw">pub const </span>LIMBS_NUM: usize = <span class="number">16</span>;
+</span><span class="kw">pub const </span>LIMBS_NUM: usize = <span class="number">17</span>;
 
 <span class="kw">pub type </span>BN254 = ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;;
 <span class="kw">pub type </span>BN254G1Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G1Affine;
