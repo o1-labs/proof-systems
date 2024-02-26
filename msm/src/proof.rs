@@ -84,8 +84,8 @@ where
 
 #[derive(Debug)]
 pub struct Witness<G: KimchiCurve> {
-    pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
-    pub(crate) mvlookups: Vec<LookupWitness<G::ScalarField>>,
+    pub evaluations: WitnessColumns<Vec<G::ScalarField>>,
+    pub mvlookups: Vec<LookupWitness<G::ScalarField>>,
 }
 
 // This should be used only for testing purposes.
