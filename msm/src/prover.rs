@@ -12,6 +12,7 @@ use poly_commitment::{
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
+use rand::{CryptoRng, RngCore};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
@@ -24,14 +25,17 @@ pub fn prove<
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
     Column,
+    RNG,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     inputs: Witness<G>,
     _constraints: Vec<Expr<ConstantExpr<G::ScalarField>, Column>>,
+    rng: &mut RNG,
 ) -> Proof<G, OpeningProof>
 where
     OpeningProof::SRS: Sync,
+    RNG: RngCore + CryptoRng,
 {
     // Interpolate all columns on d1, using trait Into.
     let evaluations: WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>> = inputs
@@ -224,7 +228,7 @@ where
         v,
         u,
         fq_sponge_before_evaluations,
-        &mut rand::rngs::OsRng,
+        rng,
     );
     // -- End opening proof - Preparing the structures
 

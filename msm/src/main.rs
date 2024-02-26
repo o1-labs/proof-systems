@@ -30,6 +30,9 @@ pub fn generate_random_msm_witness() -> BuilderEnv<BN254G1Affine> {
 }
 
 pub fn main() {
+    // FIXME: use a proper RNG
+    let mut rng = o1_utils::tests::make_test_rng();
+
     println!("Creating the domain and SRS");
     let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
@@ -40,11 +43,12 @@ pub fn main() {
 
     println!("Generating the proof");
     let constraints = vec![];
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
         domain,
         &srs,
         witness,
         constraints,
+        &mut rng,
     );
 
     println!("Verifying the proof");
