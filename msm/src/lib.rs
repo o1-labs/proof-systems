@@ -48,8 +48,8 @@ mod tests {
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     use crate::{
-        mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify, BaseSponge, Fp,
-        OpeningProof, ScalarSponge, BN254,
+        columns::Column, mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify,
+        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
     };
 
     #[test]
@@ -66,9 +66,15 @@ mod tests {
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let witness = Witness::random(domain);
+        let constraints: Vec<_> = vec![];
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+            domain,
+            &srs,
+            witness,
+            constraints,
+        );
 
         // verify the proof
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
@@ -88,12 +94,22 @@ mod tests {
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let witness = Witness::random(domain);
+        let constraints = vec![];
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+            domain,
+            &srs,
+            witness,
+            constraints.clone(),
+        );
 
         let witness_prime = Witness::random(domain);
-        let proof_prime =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness_prime);
+        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+            domain,
+            &srs,
+            witness_prime,
+            constraints,
+        );
 
         // Swap the opening proof. The verification should fail.
         {
@@ -146,6 +162,7 @@ mod tests {
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let mut witness = Witness::random(domain);
+        let constraints = vec![];
         // Take one random f_i (FIXME: taking first one for now)
         let looked_up_values = witness.mvlookups[0].f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
@@ -157,7 +174,12 @@ mod tests {
         // Overwriting the first looked up value
         witness.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+            domain,
+            &srs,
+            witness,
+            constraints,
+        );
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
         assert!(!verifies);
