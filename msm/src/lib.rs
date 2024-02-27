@@ -10,6 +10,7 @@ pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
+pub mod serialization;
 pub mod verifier;
 
 /// Domain size for the MSM project, equal to the BN254 SRS size.
