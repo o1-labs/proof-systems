@@ -1,30 +1,6 @@
 //! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
 
-use std::iter;
-
-use ark_ff::{FftField, Field};
-use kimchi::circuits::domains::EvaluationDomains;
-use rand::{seq::SliceRandom, thread_rng, Rng};
-
-// TODO: Add more built-in lookup tables
-#[derive(Copy, Clone, Debug)]
-pub enum LookupTable {
-    RangeCheck16,
-    /// Custom lookup table
-    /// The index of the table is used as the ID, padded with the number of
-    /// built-in tables.
-    Custom(usize),
-}
-
-impl LookupTable {
-    /// Assign a unique ID to the lookup tables.
-    pub fn into_field<F: Field>(self) -> F {
-        match self {
-            LookupTable::RangeCheck16 => F::one(),
-            LookupTable::Custom(id) => F::from(id as u64) + F::one(),
-        }
-    }
-}
+use ark_ff::Field;
 
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
@@ -34,15 +10,21 @@ impl LookupTable {
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct Lookup<F> {
-    pub(crate) table_id: LookupTable,
+pub struct MVLookup<F, ID: LookupTableID> {
+    pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
 }
 
+/// Trait for lookup table variants
+pub trait LookupTableID {
+    /// Assign a unique ID to the lookup tables.
+    fn into_field<F: Field>(self) -> F;
+}
+
 /// Represents a witness of one instance of the lookup argument
 #[derive(Debug)]
-pub struct LookupWitness<F> {
+pub struct LookupWitness<F, ID: LookupTableID> {
     /// A list of functions/looked-up values.
     /// The values are represented as:
     /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
@@ -55,90 +37,11 @@ pub struct LookupWitness<F> {
     /// change this structure.
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
-    pub(crate) f: Vec<Vec<Lookup<F>>>,
+    pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
     /// The table the lookup is performed on.
-    pub(crate) t: Vec<Lookup<F>>,
+    pub(crate) t: Vec<MVLookup<F, ID>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
-}
-
-// This should be used only for testing purposes.
-// It is not only in the test API because it is used at the moment in the
-// main.rs. It should be moved to the test API when main.rs is replaced with
-// real production code.
-impl<F: FftField> LookupWitness<F> {
-    /// Generate a random number of correct lookups in the table RangeCheck16
-    pub fn random(domain: EvaluationDomains<F>) -> Self {
-        let mut rng = thread_rng();
-        // TODO: generate more random f
-        let table_size: u64 = rng.gen_range(1..domain.d1.size);
-        let table_id = rng.gen_range(1..1000);
-        // Build a table of value we can look up
-        let t: Vec<u64> = {
-            // Generate distinct values to avoid to have to handle the
-            // normalized multiplicity polynomial
-            let mut n: Vec<u64> = (1..(table_size * 100)).collect();
-            n.shuffle(&mut rng);
-            n[0..table_size as usize].to_vec()
-        };
-        // permutation argument
-        let f = {
-            let mut f = t.clone();
-            f.shuffle(&mut rng);
-            f
-        };
-        let dummy_value = F::rand(&mut rng);
-        let repeated_dummy_value: Vec<F> = {
-            let r: Vec<F> = iter::repeat(dummy_value)
-                .take((domain.d1.size - table_size) as usize)
-                .collect();
-            r
-        };
-        let t_evals = {
-            let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(t.iter().map(|v| Lookup {
-                table_id: LookupTable::Custom(table_id),
-                numerator: -F::one(),
-                value: vec![F::from(*v)],
-            }));
-            table.extend(
-                repeated_dummy_value
-                    .iter()
-                    .map(|v| Lookup {
-                        table_id: LookupTable::Custom(table_id),
-                        numerator: -F::one(),
-                        value: vec![*v],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
-            );
-            table
-        };
-        let f_evals: Vec<Lookup<F>> = {
-            let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(f.iter().map(|v| Lookup {
-                table_id: LookupTable::Custom(table_id),
-                numerator: F::one(),
-                value: vec![F::from(*v)],
-            }));
-            table.extend(
-                repeated_dummy_value
-                    .iter()
-                    .map(|v| Lookup {
-                        table_id: LookupTable::Custom(table_id),
-                        numerator: F::one(),
-                        value: vec![*v],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
-            );
-            table
-        };
-        let m = (0..domain.d1.size).map(|_| F::one()).collect();
-        LookupWitness {
-            f: vec![f_evals],
-            t: t_evals,
-            m,
-        }
-    }
 }
 
 /// Represents the proof of the lookup argument
@@ -175,6 +78,7 @@ impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
 }
 
 pub mod prover {
+    use crate::mvlookup::{LookupTableID, LookupWitness, MVLookup};
     use ark_ff::Zero;
     use ark_poly::Evaluations;
     use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -183,11 +87,8 @@ pub mod prover {
     use mina_poseidon::FqSponge;
     use poly_commitment::commitment::{absorb_commitment, PolyComm};
     use poly_commitment::{OpenProof, SRS as _};
-
     use rayon::iter::IntoParallelIterator;
     use rayon::iter::ParallelIterator;
-
-    use super::{Lookup, LookupWitness};
 
     pub struct Env<G: KimchiCurve> {
         pub lookup_counters_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
@@ -212,8 +113,9 @@ pub mod prover {
         pub fn create<
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
+            ID: LookupTableID,
         >(
-            lookups: Vec<LookupWitness<G::ScalarField>>,
+            lookups: Vec<LookupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -271,7 +173,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
                         for f_i in f.iter() {
-                            let Lookup {
+                            let MVLookup {
                                 numerator: _,
                                 table_id,
                                 value,
@@ -289,7 +191,7 @@ pub mod prover {
                         }
 
                         // We process t now
-                        let Lookup {
+                        let MVLookup {
                             numerator: _,
                             table_id,
                             value,
@@ -314,7 +216,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         let mut row_acc = G::ScalarField::zero();
                         for f_i in f.iter() {
-                            let Lookup {
+                            let MVLookup {
                                 numerator,
                                 table_id: _,
                                 value: _,
@@ -323,7 +225,7 @@ pub mod prover {
                             denominator_index += 1;
                         }
                         // We process t now
-                        let Lookup {
+                        let MVLookup {
                             numerator,
                             table_id: _,
                             value: _,

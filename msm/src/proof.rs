@@ -1,10 +1,12 @@
+use crate::{
+    lookups::MSMLookupTableIDs,
+    mvlookup::{LookupProof, LookupTableID, LookupWitness},
+};
 use ark_ff::UniformRand;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::{prelude::*, thread_rng};
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
-
-use crate::mvlookup::{LookupProof, LookupWitness};
 
 /// List all columns of the circuit.
 /// It is parametrized by a type `T` which can be either:
@@ -83,16 +85,16 @@ where
 }
 
 #[derive(Debug)]
-pub struct Witness<G: KimchiCurve> {
+pub struct Witness<G: KimchiCurve, ID: LookupTableID> {
     pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
-    pub(crate) mvlookups: Vec<LookupWitness<G::ScalarField>>,
+    pub(crate) mvlookups: Vec<LookupWitness<G::ScalarField, ID>>,
 }
 
 // This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the
 // main.rs. It should be moved to the test API when main.rs is replaced with
 // real production code.
-impl<G: KimchiCurve> Witness<G> {
+impl<G: KimchiCurve> Witness<G, MSMLookupTableIDs> {
     pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
         let mut rng = thread_rng();
         let random_n = rng.gen_range(1..1000);
@@ -106,7 +108,9 @@ impl<G: KimchiCurve> Witness<G> {
                     })
                     .collect::<Vec<_>>(),
             },
-            mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
+            mvlookups: vec![LookupWitness::<G::ScalarField, MSMLookupTableIDs>::random(
+                domain,
+            )],
         }
     }
 }

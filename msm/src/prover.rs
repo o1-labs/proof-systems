@@ -1,3 +1,5 @@
+use crate::mvlookup::{prover::Env, LookupProof, LookupTableID};
+use crate::proof::{Proof, Witness, WitnessColumns};
 use ark_ff::Zero;
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
@@ -14,18 +16,16 @@ use poly_commitment::{
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
-use crate::mvlookup::{self, LookupProof};
-use crate::proof::{Proof, Witness, WitnessColumns};
-
 pub fn prove<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    inputs: Witness<G>,
+    inputs: Witness<G, ID>,
 ) -> Proof<G, OpeningProof>
 where
     OpeningProof::SRS: Sync,
@@ -60,7 +60,7 @@ where
 
     // -- Start MVLookup
     let lookup_env = if !inputs.mvlookups.is_empty() {
-        Some(mvlookup::prover::Env::create::<OpeningProof, EFqSponge>(
+        Some(Env::create::<OpeningProof, EFqSponge, ID>(
             inputs.mvlookups,
             domain,
             &mut fq_sponge,

@@ -6,11 +6,16 @@ use poly_commitment::pairing_proof::PairingProof;
 
 pub mod columns;
 pub mod constraint;
+/// Instantiations of MVLookups for the MSM project
+pub mod lookups;
+/// Generic definitions of MVLookups
 pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
 pub mod verifier;
+
+pub use lookups::{MSMLookup as Lookup, MSMLookupWitness as LookupWitness};
 
 /// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;
@@ -41,15 +46,15 @@ pub type OpeningProof = PairingProof<BN254>;
 
 #[cfg(test)]
 mod tests {
+    use super::Lookup;
+    use crate::{
+        lookups::MSMLookupTableIDs, proof::Witness, prover::prove, verifier::verify, BaseSponge,
+        Fp, OpeningProof, ScalarSponge, BN254,
+    };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
-
-    use crate::{
-        mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify, BaseSponge, Fp,
-        OpeningProof, ScalarSponge, BN254,
-    };
 
     #[test]
     fn test_completeness() {
@@ -67,7 +72,9 @@ mod tests {
         let witness = Witness::random(domain);
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, MSMLookupTableIDs>(
+            domain, &srs, witness,
+        );
 
         // verify the proof
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
@@ -88,11 +95,16 @@ mod tests {
 
         let witness = Witness::random(domain);
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, MSMLookupTableIDs>(
+            domain, &srs, witness,
+        );
 
         let witness_prime = Witness::random(domain);
-        let proof_prime =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness_prime);
+        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, MSMLookupTableIDs>(
+            domain,
+            &srs,
+            witness_prime,
+        );
 
         // Swap the opening proof. The verification should fail.
         {
@@ -156,7 +168,9 @@ mod tests {
         // Overwriting the first looked up value
         witness.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, MSMLookupTableIDs>(
+            domain, &srs, witness,
+        );
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
         assert!(!verifies);

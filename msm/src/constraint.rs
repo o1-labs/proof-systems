@@ -9,6 +9,7 @@ use o1_utils::field_helpers::FieldHelpers;
 use o1_utils::foreign_field::ForeignElement;
 
 use crate::columns::{Column, ColumnIndexer, MSMColumnIndexer};
+use crate::lookups::MSMLookupTableIDs;
 use crate::proof::{Witness, WitnessColumns};
 use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM};
 
@@ -83,7 +84,7 @@ impl BuilderEnv<BN254G1Affine> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
-    pub fn get_witness(&self) -> Witness<BN254G1Affine> {
+    pub fn get_witness(&self) -> Witness<BN254G1Affine, MSMLookupTableIDs> {
         let mut x: Vec<Vec<Fp>> = vec![vec![]; 3 * LIMBS_NUM];
 
         for wc in &self.witness_raw {
