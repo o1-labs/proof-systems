@@ -4,7 +4,7 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, KeccakColumn, E,
     },
-    lookup::{Lookup, LookupTableIDs, Lookups},
+    ramlookup::{LookupTableIDs, Lookups, RAMLookup},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
@@ -15,7 +15,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+    fn add_lookup(&mut self, lookup: RAMLookup<Self::Variable>) {
         self.lookups.push(lookup);
     }
 
@@ -105,7 +105,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {
-            self.add_lookup(Lookup::read_if(
+            self.add_lookup(RAMLookup::read_if(
                 self.is_absorb(),
                 LookupTableIDs::SyscallLookup,
                 vec![
@@ -121,7 +121,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        self.add_lookup(Lookup::write_if(
+        self.add_lookup(RAMLookup::write_if(
             self.is_squeeze(),
             LookupTableIDs::SyscallLookup,
             vec![self.hash_index(), bytes31],
@@ -130,13 +130,13 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
 
     fn lookup_steps(&mut self) {
         // (if not a root) Output of previous step is input of current step
-        self.add_lookup(Lookup::read_if(
+        self.add_lookup(RAMLookup::read_if(
             Self::not(self.is_root()),
             LookupTableIDs::KeccakStepLookup,
             self.input_of_step(),
         ));
         // (if not a squeeze) Input for next step is output of current step
-        self.add_lookup(Lookup::write_if(
+        self.add_lookup(RAMLookup::write_if(
             Self::not(self.is_squeeze()),
             LookupTableIDs::KeccakStepLookup,
             self.output_of_step(),
@@ -144,7 +144,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     }
 
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(
+        self.add_lookup(RAMLookup::read_if(
             flag,
             LookupTableIDs::RangeCheck16Lookup,
             vec![value],
@@ -157,7 +157,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         dense: Self::Variable,
         sparse: Self::Variable,
     ) {
-        self.add_lookup(Lookup::read_if(
+        self.add_lookup(RAMLookup::read_if(
             flag,
             LookupTableIDs::ResetLookup,
             vec![dense, sparse],
@@ -165,7 +165,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     }
 
     fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(
+        self.add_lookup(RAMLookup::read_if(
             flag,
             LookupTableIDs::SparseLookup,
             vec![value],
@@ -173,7 +173,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     }
 
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(
+        self.add_lookup(RAMLookup::read_if(
             flag,
             LookupTableIDs::ByteLookup,
             vec![value],
@@ -184,7 +184,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
         // Pad suffixes correspond to 10*1 rule
-        self.add_lookup(Lookup::read_if(
+        self.add_lookup(RAMLookup::read_if(
             self.is_pad(),
             LookupTableIDs::PadLookup,
             vec![
@@ -273,7 +273,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
 
     fn lookups_round_iota(&mut self) {
         // Check round constants correspond with the current round
-        self.add_lookup(Lookup::read_if(
+        self.add_lookup(RAMLookup::read_if(
             self.is_round(),
             LookupTableIDs::RoundConstantsLookup,
             vec![

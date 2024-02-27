@@ -4,7 +4,6 @@ use crate::{
         PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
     keccak::environment::KeccakEnv,
-    lookup::Lookup,
     mips::{
         column::{
             Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
@@ -17,6 +16,7 @@ use crate::{
         registers::Registers,
     },
     preimage_oracle::PreImageOracle,
+    ramlookup::RAMLookup,
 };
 use ark_ff::Field;
 use core::panic;
@@ -144,7 +144,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
     }
 
-    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
+    fn add_lookup(&mut self, _lookup: RAMLookup<Self::Variable>) {
         // No-op, constraints only
     }
 
