@@ -226,23 +226,36 @@
 <a href="#224" id="224">224</a>
 <a href="#225" id="225">225</a>
 <a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 </span><span class="kw">use crate</span>::{
     keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
     witness::Witness,
 };
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
-    CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
-    PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
-    QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
-    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
-    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
+<span class="kw">use </span>kimchi::{
+    circuits::polynomials::keccak::constants::{
+        CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF,
+        PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF,
+        PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF,
+        SPONGE_SHIFTS_OFF, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF,
+        THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
+    },
+    folding::expressions::FoldingColumnTrait,
 };
 <span class="kw">use </span>std::ops::{Index, IndexMut};
 
-<span class="comment">// The total number of witness columns used by the Keccak circuit.
-</span><span class="kw">const </span>ZKVM_KECCAK_COLS_LENGTH: usize =
+<span class="doccomment">/// The total number of witness columns used by the Keccak circuit.
+</span><span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize =
     ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + <span class="number">2</span>;
 
 <span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
@@ -312,6 +325,13 @@
     </span>Output(usize),          <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
 </span>}
 
+<span class="kw">impl </span>FoldingColumnTrait <span class="kw">for </span>Column {
+    <span class="kw">fn </span>is_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="comment">// All Keccak columns are witness columns
+        </span><span class="bool-val">true
+    </span>}
+}
+
 <span class="doccomment">/// The witness columns used by the Keccak circuit.
 /// The Keccak circuit is split into two main modes: Sponge and Round.
 /// The columns are shared between the Sponge and Round steps.
@@ -322,7 +342,7 @@
 /// - mode_flags: Round, Absorb, Squeeze
 /// - curr: Contains 1969 witnesses used in the current step including Input and RoundConstants
 /// - next: Contains the Output
-</span><span class="kw">pub type </span>KeccakWitness&lt;T&gt; = Witness&lt;ZKVM_KECCAK_COLS_LENGTH, T&gt;;
+</span><span class="kw">pub type </span>KeccakWitness&lt;T&gt; = Witness&lt;ZKVM_KECCAK_COLS, T&gt;;
 
 <span class="kw">impl</span>&lt;T: Clone&gt; KeccakWitness&lt;T&gt; {
     <span class="comment">// Returns the hash index
@@ -331,7 +351,7 @@
     }
 
     <span class="comment">// Returns the step index
-    </span><span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
+    </span><span class="kw">pub fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
         <span class="kw-2">&amp;</span><span class="self">self</span>.cols[<span class="number">1</span>]
     }
 

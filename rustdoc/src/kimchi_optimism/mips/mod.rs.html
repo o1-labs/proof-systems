@@ -39,7 +39,6 @@
 <a href="#37" id="37">37</a>
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements a zero-knowledge virtual machine (zkVM) for the MIPS
 //! architecture.
 //! A zkVM is used by a prover to convince a verifier that the execution trace
@@ -52,10 +51,10 @@
 //! committed and evaluated at certain points following the polynomial protocol,
 //! and it will form the proof of the correct execution that the prover will
 //! build and send to the verifier. The corresponding structure is
-//! [crate::mips::proof::Proof]. The prover will start by computing the
+//! [crate::proof::Proof]. The prover will start by computing the
 //! execution trace using the interpreter implemented in the module
 //! [crate::mips::interpreter], and the evaluations will be kept in the
-//! structure [crate::mips::proof::ProofInputs].
+//! structure [crate::proof::ProofInputs].
 
 </span><span class="kw">use </span><span class="self">self</span>::column::Column;
 <span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
@@ -63,7 +62,6 @@
 <span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>interpreter;
-<span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>registers;
 <span class="kw">pub mod </span>witness;
 
