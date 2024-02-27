@@ -187,6 +187,11 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -234,7 +239,6 @@
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
-    <span class="kw">use </span>rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     <span class="kw">use crate</span>::{
         columns::Column, mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify,
@@ -243,13 +247,15 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+
         <span class="comment">// Include tests for completeness for MVLookup as the random witness
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
         <span class="comment">// Trusted setup toxic waste
-        </span><span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rand::rngs::OsRng);
+        </span><span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
 
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
@@ -258,11 +264,12 @@
         <span class="kw">let </span>constraints: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             witness,
             constraints,
+            <span class="kw-2">&amp;mut </span>rng,
         );
 
         <span class="comment">// verify the proof
@@ -272,12 +279,14 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_soundness() {
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+
         <span class="comment">// We generate two different witness and two different proofs.
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
         <span class="comment">// Trusted setup toxic waste
-        </span><span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rand::rngs::OsRng);
+        </span><span class="kw">let </span>x = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
 
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
@@ -285,19 +294,21 @@
         <span class="kw">let </span>witness = Witness::random(domain);
         <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             witness,
             constraints.clone(),
+            <span class="kw-2">&amp;mut </span>rng,
         );
 
         <span class="kw">let </span>witness_prime = Witness::random(domain);
-        <span class="kw">let </span>proof_prime = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+        <span class="kw">let </span>proof_prime = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             witness_prime,
             constraints,
+            <span class="kw-2">&amp;mut </span>rng,
         );
 
         <span class="comment">// Swap the opening proof. The verification should fail.
@@ -336,9 +347,7 @@
     <span class="attr">#[test]
     #[ignore]
     </span><span class="kw">fn </span>test_soundness_mvlookup() {
-        <span class="kw">let </span>seed: [u8; <span class="number">32</span>] = thread_rng().gen();
-        <span class="macro">eprintln!</span>(<span class="string">"Seed: {:?}"</span>, seed);
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_seed(seed);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
 
         <span class="comment">// We generate two different witness and two different proofs.
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
@@ -363,11 +372,12 @@
         <span class="comment">// Overwriting the first looked up value
         </span>witness.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             witness,
             constraints,
+            <span class="kw-2">&amp;mut </span>rng,
         );
         <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
         <span class="comment">// FIXME: At the moment, it does verify. It should not. We are missing constraints.

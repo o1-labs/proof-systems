@@ -243,6 +243,10 @@
 <a href="#241" id="241">241</a>
 <a href="#242" id="242">242</a>
 <a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -257,6 +261,7 @@
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
+<span class="kw">use </span>rand::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::iter::IntoParallelIterator;
 <span class="kw">use </span>rayon::iter::ParallelIterator;
 
@@ -269,14 +274,17 @@
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
     EFrSponge: FrSponge&lt;G::ScalarField&gt;,
     Column,
+    RNG,
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
     inputs: Witness&lt;G&gt;,
     _constraints: Vec&lt;Expr&lt;ConstantExpr&lt;G::ScalarField&gt;, Column&gt;&gt;,
+    rng: <span class="kw-2">&amp;mut </span>RNG,
 ) -&gt; Proof&lt;G, OpeningProof&gt;
 <span class="kw">where
     </span>OpeningProof::SRS: Sync,
+    RNG: RngCore + CryptoRng,
 {
     <span class="comment">// Interpolate all columns on d1, using trait Into.
     </span><span class="kw">let </span>evaluations: WitnessColumns&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; = inputs
@@ -461,7 +469,7 @@
         v,
         u,
         fq_sponge_before_evaluations,
-        <span class="kw-2">&amp;mut </span>rand::rngs::OsRng,
+        rng,
     );
     <span class="comment">// -- End opening proof - Preparing the structures
 
