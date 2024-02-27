@@ -1,8 +1,6 @@
 use crate::columns::Column;
 use crate::columns::ColumnIndexer;
 use crate::LIMBS_NUM;
-use kimchi::circuits::expr::ConstantExpr;
-use kimchi::circuits::expr::Expr;
 
 /// Columns for the circuit splitting the bulletproof challenges in limbs used
 /// by the MSM.
@@ -30,5 +28,3 @@ impl ColumnIndexer for DecompositionColumnIndexer {
         }
     }
 }
-
-pub type DecompositionExpr<F> = Expr<ConstantExpr<F>, Column>;
