@@ -7,7 +7,7 @@ use crate::{
         interpreter::{Absorb, KeccakStep, Sponge},
         ArithOps, BoolOps, KeccakColumn, DIM, E, QUARTERS,
     },
-    lookup::Lookup,
+    ramlookup::RAMLookup,
 };
 use ark_ff::{Field, One};
 use kimchi::{
@@ -25,7 +25,7 @@ pub struct KeccakEnv<Fp> {
     /// Constraints that are added to the circuit
     pub(crate) constraints: Vec<E<Fp>>,
     /// Values that are looked up in the circuit
-    pub(crate) lookups: Vec<Lookup<E<Fp>>>,
+    pub(crate) lookups: Vec<RAMLookup<E<Fp>>>,
 
     /// The full state of the Keccak gate (witness)
     pub keccak_witness: KeccakWitness<Fp>,

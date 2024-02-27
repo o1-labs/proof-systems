@@ -43,7 +43,7 @@ pub enum LookupTableIDs {
 }
 
 #[derive(Clone, Debug)]
-pub struct Lookup<T> {
+pub struct RAMLookup<T> {
     pub mode: LookupMode,
     /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.
     pub magnitude: T,
@@ -51,7 +51,7 @@ pub struct Lookup<T> {
     pub value: Vec<T>,
 }
 
-impl<F: std::fmt::Display + Field> std::fmt::Display for Lookup<F> {
+impl<F: std::fmt::Display + Field> std::fmt::Display for RAMLookup<F> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let numerator = match self.mode {
             LookupMode::Read => self.magnitude,
@@ -70,7 +70,7 @@ impl<F: std::fmt::Display + Field> std::fmt::Display for Lookup<F> {
     }
 }
 
-impl<T: One> Lookup<T> {
+impl<T: One> RAMLookup<T> {
     /// Reads one value when `if_is_true` is 1.
     pub fn read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec<T>) -> Self {
         Self {
@@ -121,7 +121,7 @@ pub trait Lookups {
         + Clone;
 
     /// Adds a given Lookup to the environment
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
+    fn add_lookup(&mut self, lookup: RAMLookup<Self::Variable>);
 
     /// Adds all lookups of Self to the environment
     fn lookups(&mut self);
