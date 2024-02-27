@@ -24,9 +24,6 @@
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Domain size shared by the Keccak evaluations, MIPS evaluation and main
 /// program.
 </span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
@@ -48,9 +45,6 @@
 
 <span class="doccomment">/// Preimage oracle interface used by the zkVM.
 </span><span class="kw">pub mod </span>preimage_oracle;
-
-<span class="doccomment">/// Proof system of the zkVM.
-</span><span class="kw">pub mod </span>proof;
 
 <span class="doccomment">/// Generic definition of a zkvm witness.
 </span><span class="kw">pub mod </span>witness;
