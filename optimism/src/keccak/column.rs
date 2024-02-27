@@ -13,8 +13,8 @@ use kimchi::circuits::polynomials::keccak::constants::{
 };
 use std::ops::{Index, IndexMut};
 
-// The total number of witness columns used by the Keccak circuit.
-const ZKVM_KECCAK_COLS_LENGTH: usize =
+/// The total number of witness columns used by the Keccak circuit.
+pub const ZKVM_KECCAK_COLS: usize =
     ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + 2;
 
 // The number of columns used by the Keccak circuit to represent the mode flags.
@@ -94,7 +94,7 @@ pub enum Column {
 /// - mode_flags: Round, Absorb, Squeeze
 /// - curr: Contains 1969 witnesses used in the current step including Input and RoundConstants
 /// - next: Contains the Output
-pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS_LENGTH, T>;
+pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS, T>;
 
 impl<T: Clone> KeccakWitness<T> {
     // Returns the hash index
@@ -103,7 +103,7 @@ impl<T: Clone> KeccakWitness<T> {
     }
 
     // Returns the step index
-    fn step_index(&self) -> &T {
+    pub fn step_index(&self) -> &T {
         &self.cols[1]
     }
 
