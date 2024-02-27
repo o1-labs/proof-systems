@@ -1,12 +1,11 @@
-use crate::mips::witness::SCRATCH_SIZE;
-use crate::DOMAIN_SIZE;
+use crate::{mips::column::MIPSWitness, DOMAIN_SIZE};
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::plonk_sponge::FrSponge;
-use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
-use mina_poseidon::sponge::ScalarChallenge;
-use mina_poseidon::FqSponge;
+use kimchi::{
+    circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
@@ -16,101 +15,9 @@ use poly_commitment::{
 };
 use rand::thread_rng;
 use rayon::iter::{
-    FromParallelIterator, IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
     IntoParallelRefMutIterator, ParallelIterator,
 };
-
-/// Represents one line of the execution trace of the virtual machine
-/// It does contain [SCRATCH_SIZE] columns + 2 additional columns to keep track
-/// of the instruction index and one for the system error code.
-/// The column are, in order,
-/// - the 32 general purpose registers
-/// - the low and hi registers used by some arithmetic instructions
-/// - the current instruction pointer
-/// - the next instruction pointer
-/// - the heap pointer
-/// - the preimage key, splitted in 8 consecutive columns representing 4 bytes
-/// of the 32 bytes long preimage key
-/// - the preimage offset, i.e. the number of bytes that have been read for the
-/// currently processing preimage
-/// - `[SCRATCH_SIZE] - 46` intermediate columns that can be used by the
-/// instruction set
-/// - the hash counter
-/// - the flag to indicate if the current instruction is a preimage syscall
-/// - the number of bytes read so far for the current preimage
-/// - how many bytes are left to be read for the current preimage
-/// - the (at most) 4 bytes of the preimage key that are currently being processed
-/// - 4 helpers to check if at least n bytes were read in the current row
-#[derive(Debug)]
-pub struct WitnessColumns<G> {
-    pub scratch: [G; SCRATCH_SIZE],
-    pub instruction_counter: G,
-    pub error: G,
-}
-
-impl<G> IntoParallelIterator for WitnessColumns<G>
-where
-    Vec<G>: IntoParallelIterator,
-{
-    type Iter = <Vec<G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let mut iter_contents = Vec::with_capacity(crate::mips::witness::SCRATCH_SIZE + 2);
-        iter_contents.extend(self.scratch);
-        iter_contents.push(self.instruction_counter);
-        iter_contents.push(self.error);
-        iter_contents.into_par_iter()
-    }
-}
-
-impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for WitnessColumns<G> {
-    fn from_par_iter<I>(par_iter: I) -> Self
-    where
-        I: IntoParallelIterator<Item = G>,
-    {
-        let mut iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
-        let error = iter_contents.pop().unwrap();
-        let instruction_counter = iter_contents.pop().unwrap();
-        WitnessColumns {
-            scratch: iter_contents.try_into().unwrap(),
-            instruction_counter,
-            error,
-        }
-    }
-}
-
-impl<'data, G> IntoParallelIterator for &'data WitnessColumns<G>
-where
-    Vec<&'data G>: IntoParallelIterator,
-{
-    type Iter = <Vec<&'data G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<&'data G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let mut iter_contents = Vec::with_capacity(crate::mips::witness::SCRATCH_SIZE + 2);
-        iter_contents.extend(self.scratch.iter());
-        iter_contents.push(&self.instruction_counter);
-        iter_contents.push(&self.error);
-        iter_contents.into_par_iter()
-    }
-}
-
-impl<'data, G> IntoParallelIterator for &'data mut WitnessColumns<G>
-where
-    Vec<&'data mut G>: IntoParallelIterator,
-{
-    type Iter = <Vec<&'data mut G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<&'data mut G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let mut iter_contents = Vec::with_capacity(crate::mips::witness::SCRATCH_SIZE + 2);
-        iter_contents.extend(self.scratch.iter_mut());
-        iter_contents.push(&mut self.instruction_counter);
-        iter_contents.push(&mut self.error);
-        iter_contents.into_par_iter()
-    }
-}
 
 /// This structure contains the execution trace (or in other terms, the inputs
 /// to construct the SNARK proof, explaining the structure name) as evaluations
@@ -118,18 +25,16 @@ where
 /// `prove` to build the commitments and evaluations of the polynomials.
 #[derive(Debug)]
 pub struct ProofInputs<G: KimchiCurve> {
-    evaluations: WitnessColumns<Vec<G::ScalarField>>,
+    evaluations: MIPSWitness<Vec<G::ScalarField>>,
 }
 
 impl<G: KimchiCurve> Default for ProofInputs<G> {
     fn default() -> Self {
         ProofInputs {
-            evaluations: WitnessColumns {
-                scratch: std::array::from_fn(|_| {
+            evaluations: MIPSWitness {
+                cols: std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 }),
-                instruction_counter: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
-                error: (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect(),
             },
         }
     }
@@ -137,9 +42,9 @@ impl<G: KimchiCurve> Default for ProofInputs<G> {
 
 #[derive(Debug)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    commitments: WitnessColumns<PolyComm<G>>,
-    zeta_evaluations: WitnessColumns<G::ScalarField>,
-    zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
+    commitments: MIPSWitness<PolyComm<G>>,
+    zeta_evaluations: MIPSWitness<G::ScalarField>,
+    zeta_omega_evaluations: MIPSWitness<G::ScalarField>,
     opening_proof: OpeningProof,
 }
 
@@ -152,7 +57,7 @@ pub fn fold<
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     accumulator: &mut ProofInputs<G>,
-    inputs: &WitnessColumns<Vec<G::ScalarField>>,
+    inputs: &MIPSWitness<Vec<G::ScalarField>>,
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
 {
@@ -166,14 +71,12 @@ pub fn fold<
                 );
                 srs.commit_evaluations_non_hiding(domain.d1, &evals)
             })
-            .collect::<WitnessColumns<_>>()
+            .collect::<MIPSWitness<_>>()
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.scratch.iter() {
+    for comm in commitments.cols.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
-    absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
-    absorb_commitment(&mut fq_sponge, &commitments.error);
     let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let scaling_challenge = scaling_challenge.to_field(endo_r);
@@ -206,43 +109,29 @@ where
 {
     let ProofInputs { evaluations } = inputs;
     let polys = {
-        let WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-        } = evaluations;
+        let MIPSWitness { cols } = evaluations;
         let eval_col = |evals: Vec<G::ScalarField>| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
                 .interpolate()
         };
-        let scratch = scratch.into_par_iter().map(eval_col).collect::<Vec<_>>();
-        WitnessColumns {
-            scratch: scratch.try_into().unwrap(),
-            instruction_counter: eval_col(instruction_counter),
-            error: eval_col(error),
+        let cols = cols.into_par_iter().map(eval_col).collect::<Vec<_>>();
+        MIPSWitness {
+            cols: cols.try_into().unwrap(),
         }
     };
     let commitments = {
-        let WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-        } = &polys;
+        let MIPSWitness { cols } = &polys;
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
-        let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
-        WitnessColumns {
-            scratch: scratch.try_into().unwrap(),
-            instruction_counter: comm(instruction_counter),
-            error: comm(error),
+        let cols = cols.par_iter().map(comm).collect::<Vec<_>>();
+        MIPSWitness {
+            cols: cols.try_into().unwrap(),
         }
     };
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.scratch.iter() {
+    for comm in commitments.cols.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
-    absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
-    absorb_commitment(&mut fq_sponge, &commitments.error);
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta = zeta_chal.to_field(endo_r);
@@ -250,25 +139,17 @@ where
     let zeta_omega = zeta * omega;
 
     let evals = |point| {
-        let WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-        } = &polys;
+        let MIPSWitness { cols } = &polys;
         let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-        let scratch = scratch.par_iter().map(comm).collect::<Vec<_>>();
-        WitnessColumns {
-            scratch: scratch.try_into().unwrap(),
-            instruction_counter: comm(instruction_counter),
-            error: comm(error),
+        let cols = cols.par_iter().map(comm).collect::<Vec<_>>();
+        MIPSWitness {
+            cols: cols.try_into().unwrap(),
         }
     };
     let zeta_evaluations = evals(&zeta);
     let zeta_omega_evaluations = evals(&zeta_omega);
     let group_map = G::Map::setup();
-    let mut polynomials: Vec<_> = polys.scratch.into_iter().collect();
-    polynomials.push(polys.instruction_counter);
-    polynomials.push(polys.error);
+    let polynomials: Vec<_> = polys.cols.into_iter().collect();
     let polynomials: Vec<_> = polynomials
         .iter()
         .map(|poly| {
@@ -287,17 +168,13 @@ where
     fr_sponge.absorb(&fq_sponge.digest());
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
-        .scratch
+        .cols
         .iter()
-        .zip(zeta_omega_evaluations.scratch.iter())
+        .zip(zeta_omega_evaluations.cols.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(&zeta_evaluations.instruction_counter);
-    fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
-    fr_sponge.absorb(&zeta_evaluations.error);
-    fr_sponge.absorb(&zeta_omega_evaluations.error);
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
@@ -341,11 +218,9 @@ pub fn verify<
     } = proof;
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for comm in commitments.scratch.iter() {
+    for comm in commitments.cols.iter() {
         absorb_commitment(&mut fq_sponge, comm)
     }
-    absorb_commitment(&mut fq_sponge, &commitments.instruction_counter);
-    absorb_commitment(&mut fq_sponge, &commitments.error);
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
@@ -356,35 +231,21 @@ pub fn verify<
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    let mut es: Vec<_> = zeta_evaluations
-        .scratch
+    let es: Vec<_> = zeta_evaluations
+        .cols
         .iter()
-        .zip(zeta_omega_evaluations.scratch.iter())
+        .zip(zeta_omega_evaluations.cols.iter())
         .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
         .collect();
-    es.push((
-        vec![
-            vec![zeta_evaluations.instruction_counter],
-            vec![zeta_omega_evaluations.instruction_counter],
-        ],
-        None,
-    ));
-    es.push((
-        vec![
-            vec![zeta_evaluations.error],
-            vec![zeta_omega_evaluations.error],
-        ],
-        None,
-    ));
 
-    let mut evaluations: Vec<_> = commitments
-        .scratch
+    let evaluations: Vec<_> = commitments
+        .cols
         .iter()
         .zip(
             zeta_evaluations
-                .scratch
+                .cols
                 .iter()
-                .zip(zeta_omega_evaluations.scratch.iter()),
+                .zip(zeta_omega_evaluations.cols.iter()),
         )
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
             commitment: commitment.clone(),
@@ -392,35 +253,15 @@ pub fn verify<
             degree_bound: None,
         })
         .collect();
-    evaluations.push(Evaluation {
-        commitment: commitments.instruction_counter.clone(),
-        evaluations: vec![
-            vec![zeta_evaluations.instruction_counter],
-            vec![zeta_omega_evaluations.instruction_counter],
-        ],
-        degree_bound: None,
-    });
-    evaluations.push(Evaluation {
-        commitment: commitments.error.clone(),
-        evaluations: vec![
-            vec![zeta_evaluations.error],
-            vec![zeta_omega_evaluations.error],
-        ],
-        degree_bound: None,
-    });
 
     for (zeta_eval, zeta_omega_eval) in zeta_evaluations
-        .scratch
+        .cols
         .iter()
-        .zip(zeta_omega_evaluations.scratch.iter())
+        .zip(zeta_omega_evaluations.cols.iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
     }
-    fr_sponge.absorb(&zeta_evaluations.instruction_counter);
-    fr_sponge.absorb(&zeta_omega_evaluations.instruction_counter);
-    fr_sponge.absorb(&zeta_evaluations.error);
-    fr_sponge.absorb(&zeta_omega_evaluations.error);
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
@@ -464,16 +305,10 @@ fn test_mips_prover() {
     let domain_size = 1 << 15;
 
     let proof_inputs = {
-        let scratch =
+        let cols =
             std::array::from_fn(|_| (0..domain_size).map(|_| Fp::rand(rng)).collect::<Vec<_>>());
-        let instruction_counter = (0..domain_size).map(|_| Fp::rand(rng)).collect::<Vec<_>>();
-        let error = (0..domain_size).map(|_| Fp::rand(rng)).collect::<Vec<_>>();
         ProofInputs {
-            evaluations: WitnessColumns {
-                scratch,
-                instruction_counter,
-                error,
-            },
+            evaluations: MIPSWitness { cols },
         }
     };
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();

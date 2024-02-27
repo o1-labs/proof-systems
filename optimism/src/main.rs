@@ -9,7 +9,11 @@ use kimchi_optimism::{
         interpreter::KeccakInterpreter,
         proof::{self as keccak_proof, KeccakProofInputs},
     },
-    mips::{proof, witness as mips_witness},
+    mips::{
+        column::{MIPSWitness, MIPS_COLUMNS},
+        proof,
+        witness::{self as mips_witness, SCRATCH_SIZE},
+    },
     preimage_oracle::PreImageOracle,
 };
 use poly_commitment::pairing_proof::PairingProof;
@@ -81,22 +85,14 @@ pub fn main() -> ExitCode {
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
-    let reset_pre_folding_witness = |witness_columns: &mut proof::WitnessColumns<Vec<_>>| {
-        let proof::WitnessColumns {
-            scratch,
-            instruction_counter,
-            error,
-        } = witness_columns;
+    let reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
+        let MIPSWitness { cols } = witness_columns;
         // Resize without deallocating
-        scratch.iter_mut().for_each(Vec::clear);
-        instruction_counter.clear();
-        error.clear();
+        cols.iter_mut().for_each(Vec::clear);
     };
 
-    let mut current_pre_folding_witness = proof::WitnessColumns {
-        scratch: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-        instruction_counter: Vec::with_capacity(domain_size),
-        error: Vec::with_capacity(domain_size),
+    let mut current_pre_folding_witness = MIPSWitness {
+        cols: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
     };
 
     // The keccak environment is extracted inside the loop
@@ -108,20 +104,12 @@ pub fn main() -> ExitCode {
     let keccak_reset_pre_folding_witness =
         |keccak_columns: &mut KeccakWitness<Vec<Fp256<FrParameters>>>| {
             // Resize without deallocating
-            keccak_columns.hash_index.clear();
-            keccak_columns.step_index.clear();
-            keccak_columns.mode_flags.iter_mut().for_each(Vec::clear);
-            keccak_columns.curr.iter_mut().for_each(Vec::clear);
-            keccak_columns.next.iter_mut().for_each(Vec::clear);
+            keccak_columns.cols.iter_mut().for_each(Vec::clear);
         };
 
     let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp256<FrParameters>>> =
         KeccakWitness {
-            hash_index: Vec::with_capacity(domain_size),
-            step_index: Vec::with_capacity(domain_size),
-            mode_flags: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            curr: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
-            next: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
+            cols: std::array::from_fn(|_| Vec::with_capacity(domain_size)),
         };
 
     while !env.halt {
@@ -135,38 +123,16 @@ pub fn main() -> ExitCode {
 
             // Update the witness with the Keccak step columns before resetting the environment
             // TODO: simplify the contents of the KeccakWitness or create an iterator for it
-            keccak_current_pre_folding_witness
-                .hash_index
-                .push(keccak_env.keccak_witness.hash_index);
-            keccak_current_pre_folding_witness
-                .step_index
-                .push(keccak_env.keccak_witness.step_index);
             for (env_wit, pre_fold_wit) in keccak_env
                 .keccak_witness
-                .mode_flags
+                .cols
                 .iter()
-                .zip(keccak_current_pre_folding_witness.mode_flags.iter_mut())
-            {
-                pre_fold_wit.push(*env_wit);
-            }
-            for (env_wit, pre_fold_wit) in keccak_env
-                .keccak_witness
-                .curr
-                .iter()
-                .zip(keccak_current_pre_folding_witness.curr.iter_mut())
-            {
-                pre_fold_wit.push(*env_wit);
-            }
-            for (env_wit, pre_fold_wit) in keccak_env
-                .keccak_witness
-                .next
-                .iter()
-                .zip(keccak_current_pre_folding_witness.next.iter_mut())
+                .zip(keccak_current_pre_folding_witness.cols.iter_mut())
             {
                 pre_fold_wit.push(*env_wit);
             }
 
-            if keccak_current_pre_folding_witness.step_index.len() == DOMAIN_SIZE {
+            if keccak_current_pre_folding_witness.cols[0].len() == DOMAIN_SIZE {
                 keccak_proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                     domain,
                     &srs,
@@ -182,21 +148,21 @@ pub fn main() -> ExitCode {
             env.keccak_env = None;
         }
 
-        for (scratch, scratch_pre_folding_witness) in env
-            .scratch_state
-            .iter()
-            .zip(current_pre_folding_witness.scratch.iter_mut())
-        {
-            scratch_pre_folding_witness.push(*scratch);
+        // TODO: unify witness of MIPS to include the instruction and the error
+        for i in 0..MIPS_COLUMNS {
+            if i < SCRATCH_SIZE {
+                current_pre_folding_witness.cols[i].push(env.scratch_state[i]);
+            } else if i == MIPS_COLUMNS - 2 {
+                current_pre_folding_witness.cols[i]
+                    .push(ark_bn254::Fr::from(env.instruction_counter));
+            } else {
+                // TODO: error
+                current_pre_folding_witness.cols[i]
+                    .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
+            }
         }
-        current_pre_folding_witness
-            .instruction_counter
-            .push(ark_bn254::Fr::from(env.instruction_counter));
-        // TODO
-        current_pre_folding_witness
-            .error
-            .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
-        if current_pre_folding_witness.instruction_counter.len() == DOMAIN_SIZE {
+
+        if current_pre_folding_witness.instruction_counter().len() == DOMAIN_SIZE {
             proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -206,17 +172,11 @@ pub fn main() -> ExitCode {
             reset_pre_folding_witness(&mut current_pre_folding_witness);
         }
     }
-    if !current_pre_folding_witness.instruction_counter.is_empty() {
-        let remaining = domain_size - current_pre_folding_witness.instruction_counter.len();
-        for scratch in current_pre_folding_witness.scratch.iter_mut() {
-            scratch.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+    if !current_pre_folding_witness.instruction_counter().is_empty() {
+        let remaining = domain_size - current_pre_folding_witness.instruction_counter().len();
+        for col in current_pre_folding_witness.cols.iter_mut() {
+            col.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         }
-        current_pre_folding_witness
-            .instruction_counter
-            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
-        current_pre_folding_witness
-            .error
-            .extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
         proof::fold::<_, OpeningProof, BaseSponge, ScalarSponge>(
             domain,
             &srs,

@@ -3,7 +3,7 @@ use kimchi::circuits::{
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
 };
 
-use self::column::KeccakColumn;
+use self::column::Column as KeccakColumn;
 
 pub mod column;
 pub mod constraints;

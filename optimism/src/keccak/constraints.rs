@@ -1,9 +1,9 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
     keccak::{
-        column::{KeccakColumn, PAD_SUFFIX_LEN},
+        column::PAD_SUFFIX_LEN,
         environment::{KeccakEnv, KeccakEnvironment},
-        {ArithOps, BoolOps, E, WORDS_IN_HASH},
+        KeccakColumn, {ArithOps, BoolOps, E, WORDS_IN_HASH},
     },
     lookup::Lookups,
 };
