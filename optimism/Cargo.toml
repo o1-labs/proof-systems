@@ -17,31 +17,31 @@ name = "test_optimism_preimage_read"
 path = "src/test_preimage_read.rs"
 
 [dependencies]
-ark-bn254 = { version = "0.3.0" }
-kimchi = { path = "../kimchi", version = "0.1.0", features = [ "bn254" ] }
-poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
-groupmap = { path = "../groupmap", version = "0.1.0" }
-mina-curves = { path = "../curves", version = "0.1.0" }
-mina-poseidon = { path = "../poseidon", version = "0.1.0" }
-elf = "0.7.2"
-rmp-serde = "1.1.1"
-serde_json = "1.0.91"
-serde = "1.0.130"
-serde_with = "1.10.0"
-ark-poly = { version = "0.3.0", features = [ "parallel" ] }
-ark-ff = { version = "0.3.0", features = [ "parallel" ] }
-ark-ec = { version = "0.3.0", features = [ "parallel" ] }
-clap = "4.4.6"
-hex = "0.4.3"
-regex = "1.10.2"
-libflate = "2"
-base64 = "0.21.5"
-strum = "0.24.0"
-strum_macros = "0.24.0"
-log = "0.4.20"
-env_logger = "0.10.0"
-command-fds = "0.2.3"
-os_pipe = { version = "1.1.4", features = [ "io_safety" ] }
-rand = "0.8.5"
-libc = "0.2.62"
-rayon = "1.5.0"
+ark-bn254.workspace = true
+kimchi = { workspace = true, features = [ "bn254" ] }
+poly-commitment.workspace = true
+groupmap.workspace = true
+mina-curves.workspace = true
+mina-poseidon.workspace = true
+elf.workspace = true
+rmp-serde.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+ark-poly.workspace = true
+ark-ff.workspace = true
+ark-ec.workspace = true
+clap.workspace = true
+hex.workspace = true
+regex.workspace = true
+libflate.workspace = true
+base64.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+log.workspace = true
+env_logger.workspace = true
+command-fds.workspace = true
+os_pipe.workspace = true
+rand.workspace = true
+libc.workspace = true
+rayon.workspace = true
