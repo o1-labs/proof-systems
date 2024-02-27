@@ -719,10 +719,10 @@
                     lookup_table: cs
                         .lookup_table8
                         .iter()
-                        .map(|e| <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, e))
+                        .map(|e| mask_fixed(<span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, e)))
                         .collect(),
                     table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
-                        <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, table_ids8)
+                        mask_fixed(<span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, table_ids8))
                     }),
                     runtime_tables_selector: cs
                         .runtime_selector
@@ -966,42 +966,42 @@
         <span class="comment">// Always present
 
         </span><span class="kw">for </span>comm <span class="kw">in </span>sigma_comm.iter() {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.elems);
         }
         <span class="kw">for </span>comm <span class="kw">in </span>coefficients_comm.iter() {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.elems);
         }
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>generic_comm.unshifted);
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>psm_comm.unshifted);
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>complete_add_comm.unshifted);
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>mul_comm.unshifted);
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>emul_comm.unshifted);
-        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>endomul_scalar_comm.unshifted);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>generic_comm.elems);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>psm_comm.elems);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>complete_add_comm.elems);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>mul_comm.elems);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>emul_comm.elems);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>endomul_scalar_comm.elems);
 
         <span class="comment">// Optional gates
 
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(range_check0_comm) = range_check0_comm {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check0_comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check0_comm.elems);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(range_check1_comm) = range_check1_comm {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check1_comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check1_comm.elems);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(foreign_field_mul_comm) = foreign_field_mul_comm {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>foreign_field_mul_comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>foreign_field_mul_comm.elems);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(foreign_field_add_comm) = foreign_field_add_comm {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>foreign_field_add_comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>foreign_field_add_comm.elems);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(xor_comm) = xor_comm {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>xor_comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>xor_comm.elems);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(rot_comm) = rot_comm {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>rot_comm.unshifted);
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>rot_comm.elems);
         }
 
         <span class="comment">// Lookup index; optional
@@ -1023,26 +1023,26 @@
         }) = lookup_index
         {
             <span class="kw">for </span>entry <span class="kw">in </span>lookup_table {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>entry.unshifted);
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>entry.elems);
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(table_ids) = table_ids {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>table_ids.unshifted);
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>table_ids.elems);
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(runtime_tables_selector) = runtime_tables_selector {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>runtime_tables_selector.unshifted);
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>runtime_tables_selector.elems);
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(xor) = xor {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>xor.unshifted);
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>xor.elems);
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(lookup) = lookup {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>lookup.unshifted);
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>lookup.elems);
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(range_check) = range_check {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check.unshifted);
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check.elems);
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(ffmul) = ffmul {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>ffmul.unshifted);
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>ffmul.elems);
             }
         }
         fq_sponge.digest_fq()

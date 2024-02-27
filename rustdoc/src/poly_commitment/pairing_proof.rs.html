@@ -430,19 +430,8 @@
 <a href="#428" id="428">428</a>
 <a href="#429" id="429">429</a>
 <a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::commitment::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
+<span class="kw">use </span><span class="kw">crate</span>::evaluation_proof::combine_polys;
 <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
 <span class="kw">use crate</span>::{CommitmentError, PolynomialsToCombine, SRS <span class="kw">as </span>SRSTrait};
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
@@ -537,15 +526,11 @@
     <span class="kw">fn </span>open&lt;EFqSponge, RNG, D: EvaluationDomain&lt;F&gt;&gt;(
         srs: <span class="kw-2">&amp;</span><span class="self">Self</span>::SRS,
         _group_map: <span class="kw-2">&amp;</span>&lt;G <span class="kw">as </span>CommitmentCurve&gt;::Map,
-        plnms: <span class="kw-2">&amp;</span>[(
-            DensePolynomialOrEvaluations&lt;F, D&gt;,
-            <span class="prelude-ty">Option</span>&lt;usize&gt;,
-            PolyComm&lt;F&gt;,
-        )], <span class="comment">// vector of polynomial with optional degree bound and commitment randomness
-        </span>elm: <span class="kw-2">&amp;</span>[F],          <span class="comment">// vector of evaluation points
-        </span>polyscale: F,       <span class="comment">// scaling factor for polynoms
-        </span>_evalscale: F,      <span class="comment">// scaling factor for evaluation point powers
-        </span>_sponge: EFqSponge, <span class="comment">// sponge
+        plnms: PolynomialsToCombine&lt;G, D&gt;, <span class="comment">// vector of polynomial with commitment randomness (blinders)
+        </span>elm: <span class="kw-2">&amp;</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField], <span class="comment">// vector of evaluation points
+        </span>polyscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for polynoms
+        </span>_evalscale: &lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField, <span class="comment">// scaling factor for evaluation point powers
+        </span>_sponge: EFqSponge,                <span class="comment">// sponge
         </span>_rng: <span class="kw-2">&amp;mut </span>RNG,
     ) -&gt; <span class="self">Self
     </span><span class="kw">where
@@ -606,10 +591,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
         num_chunks: usize,
-        max: <span class="prelude-ty">Option</span>&lt;usize&gt;,
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
     ) -&gt; BlindedCommitment&lt;G&gt; {
-        <span class="self">self</span>.full_srs.commit(plnm, num_chunks, max, rng)
+        <span class="self">self</span>.full_srs.commit(plnm, num_chunks, rng)
     }
 
     <span class="kw">fn </span>mask_custom(
@@ -632,9 +616,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
         num_chunks: usize,
-        max: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; PolyComm&lt;G&gt; {
-        <span class="self">self</span>.full_srs.commit_non_hiding(plnm, num_chunks, max)
+        <span class="self">self</span>.full_srs.commit_non_hiding(plnm, num_chunks)
     }
 
     <span class="kw">fn </span>commit_evaluations_non_hiding(
@@ -736,10 +719,7 @@
             quotient
         };
 
-        <span class="kw">let </span>quotient = srs
-            .full_srs
-            .commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, <span class="number">1</span>, <span class="prelude-val">None</span>)
-            .unshifted[<span class="number">0</span>];
+        <span class="kw">let </span>quotient = srs.full_srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, <span class="number">1</span>).elems[<span class="number">0</span>];
 
         <span class="prelude-val">Some</span>(PairingProof {
             quotient,
@@ -771,12 +751,12 @@
         <span class="kw">let </span>blinding_commitment = srs.full_srs.h.mul(<span class="self">self</span>.blinding);
         <span class="kw">let </span>divisor_commitment = srs
             .verifier_srs
-            .commit_non_hiding(<span class="kw-2">&amp;</span>divisor_polynomial(elm), <span class="number">1</span>, <span class="prelude-val">None</span>)
-            .unshifted[<span class="number">0</span>];
+            .commit_non_hiding(<span class="kw-2">&amp;</span>divisor_polynomial(elm), <span class="number">1</span>)
+            .elems[<span class="number">0</span>];
         <span class="kw">let </span>eval_commitment = srs
             .full_srs
-            .commit_non_hiding(<span class="kw-2">&amp;</span>eval_polynomial(elm, <span class="kw-2">&amp;</span>evals), <span class="number">1</span>, <span class="prelude-val">None</span>)
-            .unshifted[<span class="number">0</span>]
+            .commit_non_hiding(<span class="kw-2">&amp;</span>eval_polynomial(elm, <span class="kw-2">&amp;</span>evals), <span class="number">1</span>)
+            .elems[<span class="number">0</span>]
             .into_projective();
         <span class="kw">let </span>numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
 
@@ -834,18 +814,17 @@
 
         <span class="kw">let </span>comms: Vec&lt;<span class="kw">_</span>&gt; = polynomials
             .iter()
-            .map(|p| srs.full_srs.commit(p, <span class="number">1</span>, <span class="prelude-val">None</span>, rng))
+            .map(|p| srs.full_srs.commit(p, <span class="number">1</span>, rng))
             .collect();
 
-        <span class="kw">let </span>polynomials_and_blinders: Vec&lt;(DensePolynomialOrEvaluations&lt;<span class="kw">_</span>, D&lt;<span class="kw">_</span>&gt;&gt;, <span class="kw">_</span>, <span class="kw">_</span>)&gt; =
-            polynomials
-                .iter()
-                .zip(comms.iter())
-                .map(|(p, comm)| {
-                    <span class="kw">let </span>p = DensePolynomialOrEvaluations::DensePolynomial(p);
-                    (p, <span class="prelude-val">None</span>, comm.blinders.clone())
-                })
-                .collect();
+        <span class="kw">let </span>polynomials_and_blinders: Vec&lt;(DensePolynomialOrEvaluations&lt;<span class="kw">_</span>, D&lt;<span class="kw">_</span>&gt;&gt;, <span class="kw">_</span>)&gt; = polynomials
+            .iter()
+            .zip(comms.iter())
+            .map(|(p, comm)| {
+                <span class="kw">let </span>p = DensePolynomialOrEvaluations::DensePolynomial(p);
+                (p, comm.blinders.clone())
+            })
+            .collect();
 
         <span class="kw">let </span>evaluation_points = <span class="macro">vec!</span>[ScalarField::rand(rng), ScalarField::rand(rng)];
 
@@ -863,7 +842,6 @@
                 Evaluation {
                     commitment: commitment.commitment,
                     evaluations,
-                    degree_bound: <span class="prelude-val">None</span>,
                 }
             })
             .collect();

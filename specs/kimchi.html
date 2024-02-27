@@ -1646,10 +1646,10 @@ has order greater or equal to <code>n + zk_rows</code> elements.</p>
 <p>If no lookup is used in the circuit, do not create a lookup index</p>
 </li>
 <li>
-<p>Get the lookup selectors and lookup tables (TODO: how?)</p>
+<p>Get the lookup selectors and lookup tables that are specified implicitly</p>
 </li>
 <li>
-<p>Concatenate runtime lookup tables with the ones used by gates</p>
+<p>Concatenate explicit runtime lookup tables with the ones (implicitly) used by gates.</p>
 </li>
 <li>
 <p>Get the highest number of columns <code>max_table_width</code>
@@ -2396,10 +2396,10 @@ otherwise set the joint combiner challenge $j’$ to $0$.</li>
 </ul>
 </li>
 <li>
-<p>Sample $\beta$ with the Fq-Sponge.</p>
+<p>Sample the first permutation challenge $\beta$ with the Fq-Sponge.</p>
 </li>
 <li>
-<p>Sample $\gamma$ with the Fq-Sponge.</p>
+<p>Sample the second permutation challenge $\gamma$ with the Fq-Sponge.</p>
 </li>
 <li>
 <p>If using lookup, absorb the commitment to the aggregation lookup polynomial.</p>
@@ -2408,7 +2408,7 @@ otherwise set the joint combiner challenge $j’$ to $0$.</li>
 <p>Absorb the commitment to the permutation trace with the Fq-Sponge.</p>
 </li>
 <li>
-<p>Sample $\alpha’$ with the Fq-Sponge.</p>
+<p>Sample the quotient challenge $\alpha’$ with the Fq-Sponge.</p>
 </li>
 <li>
 <p>Derive $\alpha$ from $\alpha’$ using the endomorphism (TODO: details).</p>

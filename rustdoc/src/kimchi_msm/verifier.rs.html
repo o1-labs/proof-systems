@@ -143,14 +143,6 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
 <span class="kw">use </span>kimchi::{curve::KimchiCurve, groupmap::GroupMap};
@@ -206,7 +198,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;<span class="kw">_</span>&gt; = zeta_evaluations
         .into_iter()
         .zip(zeta_omega_evaluations)
-        .map(|(zeta, zeta_omega)| (<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]], <span class="prelude-val">None</span>))
+        .map(|(zeta, zeta_omega)| <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]])
         .collect();
 
     <span class="kw">if </span>mvlookup_commitments.is_some() {
@@ -216,7 +208,7 @@
                 .unwrap()
                 .into_iter()
                 .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
-                .map(|(zeta, zeta_omega)| (<span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]], <span class="prelude-val">None</span>))
+                .map(|(zeta, zeta_omega)| <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]])
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
     }
@@ -227,7 +219,6 @@
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
             commitment: commitment.clone(),
             evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_eval], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega_eval]],
-            degree_bound: <span class="prelude-val">None</span>,
         })
         .collect();
 
@@ -245,7 +236,6 @@
                 .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
                     commitment: commitment.clone(),
                     evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_eval], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega_eval]],
-                    degree_bound: <span class="prelude-val">None</span>,
                 })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
@@ -281,13 +271,7 @@
     <span class="kw">let </span>u_chal = fr_sponge.challenge();
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
-    <span class="kw">let </span>combined_inner_product = combined_inner_product(
-        <span class="kw-2">&amp;</span>[zeta, zeta_omega],
-        <span class="kw-2">&amp;</span>v,
-        <span class="kw-2">&amp;</span>u,
-        es.as_slice(),
-        domain.d1.size <span class="kw">as </span>usize,
-    );
+    <span class="kw">let </span>combined_inner_product = combined_inner_product(<span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice());
 
     <span class="kw">let </span>batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,

@@ -962,6 +962,9 @@
 <a href="#960" id="960">960</a>
 <a href="#961" id="961">961</a>
 <a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -1647,7 +1650,9 @@
     /// If not invoked, it is `vec![]` by default.
     ///
     /// **Warning:** you have to make sure that the IDs of the lookup tables,
-    /// are unique and  not colliding with IDs of built-in lookup tables
+    /// are unique and not colliding with IDs of built-in lookup tables, otherwise
+    /// the error will be raised.
+    ///
     /// (see [crate::circuits::lookup::tables]).
     </span><span class="kw">pub fn </span>lookup(<span class="kw-2">mut </span><span class="self">self</span>, lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.lookup_tables = lookup_tables;
@@ -1657,8 +1662,9 @@
     <span class="doccomment">/// Set up the runtime tables.
     /// If not invoked, it is `None` by default.
     ///
-    /// **Warning:** you have to make sure that the IDs of the runtime lookup tables,
-    /// are unique and not colliding with IDs of built-in lookup tables
+    /// **Warning:** you have to make sure that the IDs of the runtime
+    /// lookup tables, are unique, i.e. not colliding internaly (with other runtime tables),
+    /// otherwise error will be raised.
     /// (see [crate::circuits::lookup::tables]).
     </span><span class="kw">pub fn </span>runtime(<span class="kw-2">mut </span><span class="self">self</span>, runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.runtime_tables = runtime_tables;
@@ -1836,7 +1842,7 @@
             <span class="kw-2">&amp;</span>domain,
             zk_rows <span class="kw">as </span>usize,
         )
-        .map_err(|e| SetupError::ConstraintSystem(e.to_string()))<span class="question-mark">?</span>;
+        .map_err(SetupError::LookupCreation)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>sid = shifts.map[<span class="number">0</span>].clone();
 

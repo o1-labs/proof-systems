@@ -418,10 +418,6 @@
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{witness::Witness, DOMAIN_SIZE};
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -557,7 +553,7 @@
         }
     };
     <span class="kw">let </span>commitments = {
-        <span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| srs.commit_non_hiding(poly, <span class="number">1</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| srs.commit_non_hiding(poly, <span class="number">1</span>);
         <span class="kw">let </span>comm_array = |polys: <span class="kw-2">&amp;</span>[DensePolynomial&lt;G::ScalarField&gt;]| {
             polys.into_par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
@@ -595,10 +591,8 @@
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                <span class="prelude-val">None</span>,
                 PolyComm {
-                    unshifted: <span class="macro">vec!</span>[G::ScalarField::zero()],
-                    shifted: <span class="prelude-val">None</span>,
+                    elems: <span class="macro">vec!</span>[G::ScalarField::zero()],
                 },
             )
         })
@@ -681,7 +675,7 @@
             .into_iter()
             .zip(zeta_omega_evaluations.clone().into_iter())
         {
-            evals.push((<span class="macro">vec!</span>[<span class="macro">vec!</span>[zeta], <span class="macro">vec!</span>[zeta_omega]], <span class="prelude-val">None</span>));
+            evals.push(<span class="macro">vec!</span>[<span class="macro">vec!</span>[zeta], <span class="macro">vec!</span>[zeta_omega]]);
         }
         evals
     };
@@ -697,7 +691,6 @@
             evals.push(Evaluation {
                 commitment: commitment.clone(),
                 evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[zeta_eval], <span class="macro">vec!</span>[zeta_omega_eval]],
-                degree_bound: <span class="prelude-val">None</span>,
             });
         }
         evals
@@ -717,8 +710,7 @@
     <span class="kw">let </span>u_chal = fr_sponge.challenge();
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
-    <span class="kw">let </span>combined_inner_product =
-        combined_inner_product(<span class="kw-2">&amp;</span>[zeta, zeta_omega], <span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice(), <span class="number">1 </span>&lt;&lt; <span class="number">15</span>);
+    <span class="kw">let </span>combined_inner_product = combined_inner_product(<span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice());
 
     <span class="kw">let </span>batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,

@@ -1243,10 +1243,6 @@
 <a href="#1241" id="1241">1241</a>
 <a href="#1242" id="1242">1242</a>
 <a href="#1243" id="1243">1243</a>
-<a href="#1244" id="1244">1244</a>
-<a href="#1245" id="1245">1245</a>
-<a href="#1246" id="1246">1246</a>
-<a href="#1247" id="1247">1247</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -1459,39 +1455,48 @@
             }
         }
 
-        <span class="comment">//~ 1. Sample $\beta$ with the Fq-Sponge.
+        <span class="comment">// --- PlonK - Round 2
+        //~ 1. Sample the first permutation challenge $\beta$ with the Fq-Sponge.
         </span><span class="kw">let </span>beta = fq_sponge.challenge();
 
-        <span class="comment">//~ 1. Sample $\gamma$ with the Fq-Sponge.
+        <span class="comment">//~ 1. Sample the second permutation challenge $\gamma$ with the Fq-Sponge.
         </span><span class="kw">let </span>gamma = fq_sponge.challenge();
 
         <span class="comment">//~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-        </span><span class="self">self</span>.commitments.lookup.iter().for_each(|l| {
-            absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>l.aggreg);
-        });
+        </span><span class="kw">if </span>index.lookup_index.is_some() {
+            <span class="comment">// Should not fail, as the lookup index is present
+            </span><span class="kw">let </span>lookup_commits = <span class="self">self
+                </span>.commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)<span class="question-mark">?</span>;
+            absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>lookup_commits.aggreg);
+        }
 
         <span class="comment">//~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
         </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span><span class="self">self</span>.commitments.z_comm);
 
-        <span class="comment">//~ 1. Sample $\alpha'$ with the Fq-Sponge.
+        <span class="comment">// --- PlonK - Round 3
+        //~ 1. Sample the quotient challenge $\alpha'$ with the Fq-Sponge.
         </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         <span class="comment">//~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         </span><span class="kw">let </span>alpha = alpha_chal.to_field(endo_r);
 
         <span class="comment">//~ 1. Enforce that the length of the $t$ commitment is of size 7.
-        </span><span class="kw">if </span><span class="self">self</span>.commitments.t_comm.unshifted.len() &gt; chunk_size * <span class="number">7 </span>{
+        </span><span class="kw">if </span><span class="self">self</span>.commitments.t_comm.elems.len() &gt; chunk_size * <span class="number">7 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectCommitmentLength(
                 <span class="string">"t"</span>,
                 chunk_size * <span class="number">7</span>,
-                <span class="self">self</span>.commitments.t_comm.unshifted.len(),
+                <span class="self">self</span>.commitments.t_comm.elems.len(),
             ));
         }
 
         <span class="comment">//~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
         </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span><span class="self">self</span>.commitments.t_comm);
 
-        <span class="comment">//~ 1. Sample $\zeta'$ with the Fq-Sponge.
+        <span class="comment">// --- PlonK - Round 4
+        //~ 1. Sample $\zeta'$ with the Fq-Sponge.
         </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
         <span class="comment">//~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
@@ -1714,10 +1719,10 @@
                 <span class="kw">let </span>ft_eval1 = <span class="macro">vec!</span>[<span class="self">self</span>.ft_eval1];
 
                 <span class="attr">#[allow(clippy::type_complexity)]
-                </span><span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;(Vec&lt;Vec&lt;G::ScalarField&gt;&gt;, <span class="prelude-ty">Option</span>&lt;usize&gt;)&gt; =
-                    polys.iter().map(|(<span class="kw">_</span>, e)| (e.clone(), <span class="prelude-val">None</span>)).collect();
-                es.push((public_evals.to_vec(), <span class="prelude-val">None</span>));
-                es.push((<span class="macro">vec!</span>[ft_eval0, ft_eval1], <span class="prelude-val">None</span>));
+                </span><span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; =
+                    polys.iter().map(|(<span class="kw">_</span>, e)| e.clone()).collect();
+                es.push(public_evals.to_vec());
+                es.push(<span class="macro">vec!</span>[ft_eval0, ft_eval1]);
                 <span class="kw">for </span>col <span class="kw">in </span>[
                     Column::Z,
                     Column::Index(GateType::Generic),
@@ -1812,19 +1817,16 @@
                         .into_iter()
                         .flatten(),
                 ) {
-                    es.push((
-                        {
-                            <span class="kw">let </span>evals = <span class="self">self
-                                </span>.evals
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingEvaluation(col))<span class="question-mark">?</span>;
-                            <span class="macro">vec!</span>[evals.zeta.clone(), evals.zeta_omega.clone()]
-                        },
-                        <span class="prelude-val">None</span>,
-                    ))
+                    es.push({
+                        <span class="kw">let </span>evals = <span class="self">self
+                            </span>.evals
+                            .get_column(col)
+                            .ok_or(VerifyError::MissingEvaluation(col))<span class="question-mark">?</span>;
+                        <span class="macro">vec!</span>[evals.zeta.clone(), evals.zeta_omega.clone()]
+                    })
                 }
 
-                combined_inner_product(<span class="kw-2">&amp;</span>evaluation_points, <span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, <span class="kw-2">&amp;</span>es, index.srs().max_poly_size())
+                combined_inner_product(<span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, <span class="kw-2">&amp;</span>es)
             };
 
         <span class="kw">let </span>oracles = RandomOracles {
@@ -2056,10 +2058,7 @@
             .expect(<span class="string">"pre-computed committed lagrange bases not found"</span>);
         <span class="kw">let </span>com: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().take(verifier_index.public).collect();
         <span class="kw">if </span>public_input.is_empty() {
-            PolyComm::new(
-                <span class="macro">vec!</span>[verifier_index.srs().blinding_commitment(); chunk_size],
-                <span class="prelude-val">None</span>,
-            )
+            PolyComm::new(<span class="macro">vec!</span>[verifier_index.srs().blinding_commitment(); chunk_size])
         } <span class="kw">else </span>{
             <span class="kw">let </span>elm: Vec&lt;<span class="kw">_</span>&gt; = public_input.iter().map(|s| -<span class="kw-2">*</span>s).collect();
             <span class="kw">let </span>public_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>com, <span class="kw-2">&amp;</span>elm);
@@ -2181,21 +2180,18 @@
     </span>evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
-        degree_bound: <span class="prelude-val">None</span>,
     }));
 
     <span class="comment">//~~ * public input commitment
     </span>evaluations.push(Evaluation {
         commitment: public_comm,
         evaluations: public_evals.to_vec(),
-        degree_bound: <span class="prelude-val">None</span>,
     });
 
     <span class="comment">//~~ * ft commitment (chunks of it)
     </span>evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[ft_eval0], <span class="macro">vec!</span>[proof.ft_eval1]],
-        degree_bound: <span class="prelude-val">None</span>,
     });
 
     <span class="kw">for </span>col <span class="kw">in </span>[
@@ -2279,7 +2275,6 @@
                 .ok_or(VerifyError::MissingCommitment(col))<span class="question-mark">?
                 </span>.clone(),
             evaluations: <span class="macro">vec!</span>[evals.zeta.clone(), evals.zeta_omega.clone()],
-            degree_bound: <span class="prelude-val">None</span>,
         });
     }
 
@@ -2324,7 +2319,6 @@
         </span>evaluations.push(Evaluation {
             commitment: table_comm,
             evaluations: <span class="macro">vec!</span>[lookup_table.zeta.clone(), lookup_table.zeta_omega.clone()],
-            degree_bound: <span class="prelude-val">None</span>,
         });
 
         <span class="comment">// add evaluation of the runtime table polynomial
@@ -2341,7 +2335,6 @@
             evaluations.push(Evaluation {
                 commitment: runtime.clone(),
                 evaluations: <span class="macro">vec!</span>[runtime_eval.zeta, runtime_eval.zeta_omega],
-                degree_bound: <span class="prelude-val">None</span>,
             });
         }
     }
@@ -2392,7 +2385,6 @@
                 .ok_or(VerifyError::MissingCommitment(col))<span class="question-mark">?
                 </span>.clone(),
             evaluations: <span class="macro">vec!</span>[evals.zeta.clone(), evals.zeta_omega.clone()],
-            degree_bound: <span class="prelude-val">None</span>,
         });
     }
 
