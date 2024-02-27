@@ -21,7 +21,7 @@ use std::iter;
 use thiserror::Error;
 
 /// Represents an error found when computing the lookup constraint system
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 pub enum LookupError {
     #[error("One of the lookup tables has columns of different lengths")]
     InconsistentTableLength,
@@ -32,6 +32,8 @@ pub enum LookupError {
     },
     #[error("The table with id 0 must have an entry of all zeros")]
     TableIDZeroMustHaveZeroEntry,
+    #[error("Cannot create a combined table since ids for sub-tables are colliding. The collision type is: {collision_type}")]
+    LookupTableIdCollision { collision_type: String },
 }
 
 /// Lookup selectors
@@ -200,7 +202,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
     /// Will give error if inputs validation do not match.
     pub fn create(
         gates: &[CircuitGate<F>],
-        lookup_tables: Vec<LookupTable<F>>,
+        fixed_lookup_tables: Vec<LookupTable<F>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         domain: &EvaluationDomains<F>,
         zk_rows: usize,
@@ -217,14 +219,42 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // product is 1, we cannot use those rows to store any values.
                 let max_num_entries = d1_size - zk_rows - 1;
 
-                //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
+                //~ 2. Get the lookup selectors and lookup tables that are specified implicitly
+                // by the lookup gates.
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
-                //~ 3. Concatenate runtime lookup tables with the ones used by gates
-                let mut lookup_tables: Vec<_> = gate_lookup_tables
+                // Checks whether an iterator contains any duplicates, and if yes, raises
+                // a corresponding LookupTableIdCollision error.
+                fn check_id_duplicates<'a, I: Iterator<Item = &'a i32>>(
+                    iter: I,
+                    msg: &str,
+                ) -> Result<(), LookupError> {
+                    use itertools::Itertools;
+                    match iter.duplicates().collect::<Vec<_>>() {
+                        dups if !dups.is_empty() => Err(LookupError::LookupTableIdCollision {
+                            collision_type: format!("{}: {:?}", msg, dups).to_string(),
+                        }),
+                        _ => Ok(()),
+                    }
+                }
+
+                // If there is a gate using a lookup table, this table must not be added
+                // explicitly to the constraint system.
+                let fixed_gate_joint_ids: Vec<i32> = fixed_lookup_tables
+                    .iter()
+                    .map(|lt| lt.id)
+                    .chain(gate_lookup_tables.iter().map(|lt| lt.id))
+                    .collect();
+                check_id_duplicates(
+                    fixed_gate_joint_ids.iter(),
+                    "duplicates between fixed given and fixed from-gate tables",
+                )?;
+
+                //~ 3. Concatenate explicit runtime lookup tables with the ones (implicitly) used by gates.
+                let mut lookup_tables: Vec<_> = fixed_lookup_tables
                     .into_iter()
-                    .chain(lookup_tables)
+                    .chain(gate_lookup_tables)
                     .collect();
 
                 let mut has_table_id_0 = false;
@@ -232,6 +262,13 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // if we are using runtime tables
                 let (runtime_table_offset, runtime_selector) =
                     if let Some(runtime_tables) = &runtime_tables {
+                        // Check duplicates in runtime table ids
+                        let runtime_tables_ids: Vec<i32> =
+                            runtime_tables.iter().map(|rt| rt.id).collect();
+                        check_id_duplicates(runtime_tables_ids.iter(), "runtime table duplicates")?;
+                        // Runtime table IDs /may/ collide with lookup
+                        // table IDs, so we intentionally do not perform another potential check.
+
                         // save the offset of the end of the table
                         let mut runtime_table_offset = 0;
                         for table in &lookup_tables {
@@ -450,5 +487,107 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 }))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::{LookupError, LookupTable, RuntimeTableCfg};
+    use crate::{
+        circuits::constraints::ConstraintSystem, circuits::gate::CircuitGate,
+        circuits::lookup::tables::xor, circuits::polynomials::range_check, error::SetupError,
+    };
+    use mina_curves::pasta::Fp;
+
+    #[test]
+    fn test_colliding_table_ids() {
+        let (_, gates) = CircuitGate::<Fp>::create_multi_range_check(0);
+        let collision_id: i32 = 5;
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![range_check::gadget::lookup_table()])
+            .build();
+
+        assert!(
+            matches!(
+                cs,
+                Err(SetupError::LookupCreation(
+                    LookupError::LookupTableIdCollision { .. }
+                ))
+            ),
+            "LookupConstraintSystem::create(...) must fail due to range table passed twice"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![xor::xor_table()])
+            .build();
+
+        assert!(
+            cs.is_ok(),
+            "LookupConstraintSystem::create(...) must succeed, no duplicates exist"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![
+                LookupTable {
+                    id: collision_id,
+                    data: vec![vec![From::from(0); 16]],
+                },
+                LookupTable {
+                    id: collision_id,
+                    data: vec![vec![From::from(1); 16]],
+                },
+            ])
+            .build();
+
+        assert!(
+            matches!(
+                cs,
+                Err(SetupError::LookupCreation(
+                    LookupError::LookupTableIdCollision { .. }
+                ))
+            ),
+            "LookupConstraintSystem::create(...) must fail, collision in fixed ids"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .runtime(Some(vec![
+                RuntimeTableCfg {
+                    id: collision_id,
+                    first_column: vec![From::from(0); 16],
+                },
+                RuntimeTableCfg {
+                    id: collision_id,
+                    first_column: vec![From::from(1); 16],
+                },
+            ]))
+            .build();
+
+        assert!(
+            matches!(
+                cs,
+                Err(SetupError::LookupCreation(
+                    LookupError::LookupTableIdCollision { .. }
+                ))
+            ),
+            "LookupConstraintSystem::create(...) must fail, collision in runtime ids"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![LookupTable {
+                id: collision_id,
+                data: vec![vec![From::from(0); 16]],
+            }])
+            .runtime(Some(vec![RuntimeTableCfg {
+                id: collision_id,
+                first_column: vec![From::from(1); 16],
+            }]))
+            .build();
+
+        assert!(
+            cs.is_ok(),
+            "LookupConstraintSystem::create(...) must not fail when there is a collision between runtime and lookup ids"
+        );
     }
 }

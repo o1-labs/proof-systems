@@ -39,9 +39,7 @@ use super::evaluation_proof::*;
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub unshifted: Vec<C>,
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub shifted: Option<C>,
+    pub elems: Vec<C>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -54,8 +52,8 @@ where
 }
 
 impl<T> PolyComm<T> {
-    pub fn new(unshifted: Vec<T>, shifted: Option<T>) -> Self {
-        Self { unshifted, shifted }
+    pub fn new(elems: Vec<T>) -> Self {
+        Self { elems }
     }
 }
 
@@ -68,19 +66,18 @@ where
         F: FnMut(A) -> B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        let unshifted = self.unshifted.iter().map(|x| f(x.clone())).collect();
-        let shifted = self.shifted.as_ref().map(|x| f(x.clone()));
-        PolyComm { unshifted, shifted }
+        let elems = self.elems.iter().map(|x| f(x.clone())).collect();
+        PolyComm { elems }
     }
 
-    /// Returns the length of the unshifted commitment.
+    /// Returns the length of the commitment.
     pub fn len(&self) -> usize {
-        self.unshifted.len()
+        self.elems.len()
     }
 
     /// Returns `true` if the commitment is empty.
     pub fn is_empty(&self) -> bool {
-        self.unshifted.is_empty() && self.shifted.is_none()
+        self.elems.is_empty()
     }
 }
 
@@ -90,21 +87,16 @@ impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
         &self,
         other: &PolyComm<B>,
     ) -> Option<PolyComm<(A, B)>> {
-        if self.unshifted.len() != other.unshifted.len() {
+        if self.elems.len() != other.elems.len() {
             return None;
         }
-        let unshifted = self
-            .unshifted
+        let elems = self
+            .elems
             .iter()
-            .zip(other.unshifted.iter())
+            .zip(other.elems.iter())
             .map(|(x, y)| (*x, *y))
             .collect();
-        let shifted = match (self.shifted, other.shifted) {
-            (Some(x), Some(y)) => Some((x, y)),
-            (None, None) => None,
-            (Some(_), None) | (None, Some(_)) => return None,
-        };
-        Some(PolyComm { unshifted, shifted })
+        Some(PolyComm { elems })
     }
 }
 
@@ -159,25 +151,20 @@ impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut unshifted = vec![];
-        let n1 = self.unshifted.len();
-        let n2 = other.unshifted.len();
+        let mut elems = vec![];
+        let n1 = self.elems.len();
+        let n2 = other.elems.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                self.unshifted[i] + other.unshifted[i]
+                self.elems[i] + other.elems[i]
             } else if i < n1 {
-                self.unshifted[i]
+                self.elems[i]
             } else {
-                other.unshifted[i]
+                other.elems[i]
             };
-            unshifted.push(pt);
+            elems.push(pt);
         }
-        let shifted = match (self.shifted, other.shifted) {
-            (None, _) => other.shifted,
-            (_, None) => self.shifted,
-            (Some(p1), Some(p2)) => Some(p1 + p2),
-        };
-        PolyComm { unshifted, shifted }
+        PolyComm { elems }
     }
 }
 
@@ -185,37 +172,27 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut unshifted = vec![];
-        let n1 = self.unshifted.len();
-        let n2 = other.unshifted.len();
+        let mut elems = vec![];
+        let n1 = self.elems.len();
+        let n2 = other.elems.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                self.unshifted[i] + (-other.unshifted[i])
+                self.elems[i] + (-other.elems[i])
             } else if i < n1 {
-                self.unshifted[i]
+                self.elems[i]
             } else {
-                other.unshifted[i]
+                other.elems[i]
             };
-            unshifted.push(pt);
+            elems.push(pt);
         }
-        let shifted = match (self.shifted, other.shifted) {
-            (None, _) => other.shifted,
-            (_, None) => self.shifted,
-            (Some(p1), Some(p2)) => Some(p1 + (-p2)),
-        };
-        PolyComm { unshifted, shifted }
+        PolyComm { elems }
     }
 }
 
 impl<C: AffineCurve> PolyComm<C> {
     pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
         PolyComm {
-            unshifted: self
-                .unshifted
-                .iter()
-                .map(|g| g.mul(c).into_affine())
-                .collect(),
-            shifted: self.shifted.map(|g| g.mul(c).into_affine()),
+            elems: self.elems.iter().map(|g| g.mul(c).into_affine()).collect(),
         }
     }
 
@@ -229,41 +206,27 @@ impl<C: AffineCurve> PolyComm<C> {
         assert_eq!(com.len(), elm.len());
 
         if com.is_empty() || elm.is_empty() {
-            return Self::new(vec![C::zero()], None);
+            return Self::new(vec![C::zero()]);
         }
 
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
 
-        let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
-        let mut unshifted = Vec::with_capacity(unshifted_size);
+        let elems_size = Iterator::max(com.iter().map(|c| c.elems.len())).unwrap();
+        let mut elems = Vec::with_capacity(elems_size);
 
-        for chunk in 0..unshifted_size {
+        for chunk in 0..elems_size {
             let (points, scalars): (Vec<_>, Vec<_>) = com
                 .iter()
                 .zip(&all_scalars)
                 // get rid of scalars that don't have an associated chunk
-                .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
+                .filter_map(|(com, scalar)| com.elems.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
             let chunk_msm = VariableBaseMSM::multi_scalar_mul::<C>(&points, &scalars);
-            unshifted.push(chunk_msm.into_affine());
+            elems.push(chunk_msm.into_affine());
         }
 
-        let mut shifted_pairs = com
-            .iter()
-            .zip(all_scalars)
-            // get rid of commitments without a `shifted` part
-            .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
-            .peekable();
-
-        let shifted = if shifted_pairs.peek().is_none() {
-            None
-        } else {
-            let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
-            Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
-        };
-
-        Self::new(unshifted, shifted)
+        Self::new(elems)
     }
 }
 
@@ -343,10 +306,7 @@ pub fn absorb_commitment<
     sponge: &mut EFqSponge,
     commitment: &PolyComm<G>,
 ) {
-    sponge.absorb_g(&commitment.unshifted);
-    if let Some(shifted) = commitment.shifted.as_ref() {
-        sponge.absorb_g(&[shifted.clone()]);
-    }
+    sponge.absorb_g(&commitment.elems);
 }
 
 /// A useful trait extending AffineCurve for commitments.
@@ -458,23 +418,21 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 ///    `res = \sum_{k=1}^{|polys|} \sum_{i=1}^{|segments[k]|} polyscale^{k*n+i} ( \sum_j polys[k][j][i] * evalscale^j )`
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<F: PrimeField>(
-    evaluation_points: &[F],
     polyscale: &F,
     evalscale: &F,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<Vec<F>>, Option<usize>)],
-    srs_length: usize,
+    polys: &[Vec<Vec<F>>],
 ) -> F {
     // final combined evaluation result
     let mut res = F::zero();
     // polyscale^i
     let mut xi_i = F::one();
 
-    for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
+    for evals_tr in polys.iter().filter(|evals_tr| !evals_tr[0].is_empty()) {
         // Transpose the evaluations.
         // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in evals_tr,
         // representing a segment.
-        let evals: Vec<Vec<F>> = (0..evals_tr[0].len())
+        let evals: Vec<_> = (0..evals_tr[0].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
             .collect();
 
@@ -485,31 +443,6 @@ pub fn combined_inner_product<F: PrimeField>(
         for eval in &evals {
             // p_i(evalscale)
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
-            res += &(xi_i * term);
-            xi_i *= polyscale;
-        }
-
-        // Unused, obsolete. Shifted should be removed.
-        // Given that xi_i = polyscale^i1 at this point,
-        // res += polyscale^i1 ( \sum_j elm_j^{N - m} f(elm_j) * evalscale^j )
-        if let Some(m) = shifted {
-            // Either (1) a zero vector or (2) a copy of last segment in evals.
-            let last_evals = if *m >= evals.len() * srs_length {
-                vec![F::zero(); evaluation_points.len()]
-            } else {
-                // FIXME @volhovm: How do we ensure this length is equal to
-                // evaluation_points.len()?
-                // Isn't this counted already in evals?
-                evals[evals.len() - 1].clone()
-            };
-            let n_minus_m = (srs_length - (*m) % srs_length) as u64;
-            let shifted_evals: Vec<_> = evaluation_points
-                .iter()
-                .zip(&last_evals)
-                .map(|(elm, f_elm)| elm.pow([n_minus_m]) * f_elm)
-                .collect();
-
-            let term = DensePolynomial::<F>::eval_polynomial(&shifted_evals, *evalscale);
             res += &(xi_i * term);
             xi_i *= polyscale;
         }
@@ -527,9 +460,6 @@ where
 
     /// Contains an evaluation table
     pub evaluations: Vec<Vec<G::ScalarField>>,
-
-    /// optional degree bound
-    pub degree_bound: Option<usize>,
 }
 
 /// Contains the batch evaluation
@@ -562,32 +492,16 @@ pub fn combine_commitments<G: CommitmentCurve>(
     // polyscale^i
     let mut xi_i = G::ScalarField::one();
 
-    for Evaluation {
-        commitment,
-        degree_bound,
-        ..
-    } in evaluations
+    for Evaluation { commitment, .. } in evaluations
         .iter()
-        .filter(|x| !x.commitment.unshifted.is_empty())
+        .filter(|x| !x.commitment.elems.is_empty())
     {
         // iterating over the polynomial segments
-        for comm_ch in &commitment.unshifted {
+        for comm_ch in &commitment.elems {
             scalars.push(rand_base * xi_i);
             points.push(*comm_ch);
 
             xi_i *= polyscale;
-        }
-
-        if let Some(_m) = degree_bound {
-            if let Some(comm_ch) = commitment.shifted {
-                if !comm_ch.is_zero() {
-                    // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-                    scalars.push(rand_base * xi_i);
-                    points.push(comm_ch);
-
-                    xi_i *= polyscale;
-                }
-            }
         }
     }
 }
@@ -606,13 +520,9 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         vec![G::ScalarField::zero(); num_evals]
     };
 
-    for Evaluation {
-        evaluations,
-        degree_bound,
-        ..
-    } in evaluations
+    for Evaluation { evaluations, .. } in evaluations
         .iter()
-        .filter(|x| !x.commitment.unshifted.is_empty())
+        .filter(|x| !x.commitment.elems.is_empty())
     {
         // iterating over the polynomial segments
         for j in 0..evaluations[0].len() {
@@ -620,10 +530,6 @@ pub fn combine_evaluations<G: CommitmentCurve>(
                 acc[i] += evaluations[i][j] * xi_i;
             }
             xi_i *= polyscale;
-        }
-
-        if let Some(_m) = degree_bound {
-            todo!("Misaligned chunked commitments are not supported")
         }
     }
 
@@ -652,10 +558,9 @@ where
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        self.mask(self.commit_non_hiding(plnm, num_chunks, max), rng)
+        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
     }
 
     /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
@@ -690,62 +595,34 @@ where
 
     /// This function commits a polynomial using the SRS' basis of size `n`.
     /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of unshifted commitments to be included in the output polynomial commitment
-    /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
-    /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
-    /// as well as an optional bounded commitment (if `max` is set).
-    /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
+    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
+    /// The function returns an unbounded commitment vector
+    /// (which splits the commitment into several commitments of size at most `n`).
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
     ) -> PolyComm<G> {
         let is_zero = plnm.is_zero();
 
-        let basis_len = self.g.len();
-        let coeffs_len = plnm.coeffs.len();
-
         let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
 
-        // chunk while committing
-        let mut unshifted = vec![];
+        // chunk while commiting
+        let mut elems = vec![];
         if is_zero {
-            unshifted.push(G::zero());
+            elems.push(G::zero());
         } else {
             coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
                 let chunk = VariableBaseMSM::multi_scalar_mul(&self.g, coeffs_chunk);
-                unshifted.push(chunk.into_affine());
+                elems.push(chunk.into_affine());
             });
         }
 
-        for _ in unshifted.len()..num_chunks {
-            unshifted.push(G::zero());
+        for _ in elems.len()..num_chunks {
+            elems.push(G::zero());
         }
 
-        // committing only last chunk shifted to the right edge of SRS
-        let shifted = match max {
-            None => None,
-            Some(max) => {
-                let start = max - (max % basis_len);
-                if is_zero || start >= coeffs_len {
-                    // polynomial is small, nothing was shifted
-                    Some(G::zero())
-                } else if max % basis_len == 0 {
-                    // the number of chunks should tell the verifier everything they need to know
-                    None
-                } else {
-                    // we shift the last chunk to the right as proof of the degree bound
-                    let shifted = VariableBaseMSM::multi_scalar_mul(
-                        &self.g[basis_len - (max % basis_len)..],
-                        &coeffs[start..],
-                    );
-                    Some(shifted.into_affine())
-                }
-            }
-        };
-
-        PolyComm::<G> { unshifted, shifted }
+        PolyComm::<G> { elems }
     }
 
     fn commit_evaluations_non_hiding(
@@ -1010,7 +887,7 @@ mod tests {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks, None)
+                srs.commit_non_hiding(&p, num_chunks)
             })
             .collect();
 
@@ -1024,21 +901,24 @@ mod tests {
     }
 
     #[test]
+    // This tests with two chunks.
     fn test_chunked_lagrange_commitments() {
         let n = 64;
+        let divisor = 4;
         let domain = D::<Fp>::new(n).unwrap();
 
-        let mut srs = SRS::<VestaG>::create(n / 2);
+        let mut srs = SRS::<VestaG>::create(n / divisor);
         srs.add_lagrange_basis(domain);
 
         let num_chunks = domain.size() / srs.g.len();
+        assert!(num_chunks == divisor);
 
         let expected_lagrange_commitments: Vec<_> = (0..n)
             .map(|i| {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks, None)
+                srs.commit_non_hiding(&p, num_chunks)
             })
             .collect();
 
@@ -1052,6 +932,10 @@ mod tests {
     }
 
     #[test]
+    // TODO @volhovm I don't understand what this test does and
+    // whether it is worth leaving.
+    /// Same as test_chunked_lagrange_commitments, but with a slight
+    /// offset in the SRS
     fn test_offset_chunked_lagrange_commitments() {
         let n = 64;
         let domain = D::<Fp>::new(n).unwrap();
@@ -1059,14 +943,16 @@ mod tests {
         let mut srs = SRS::<VestaG>::create(n / 2 + 1);
         srs.add_lagrange_basis(domain);
 
+        // Is this even taken into account?...
         let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();
+        assert!(num_chunks == 2);
 
         let expected_lagrange_commitments: Vec<_> = (0..n)
             .map(|i| {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks, Some(64))
+                srs.commit_non_hiding(&p, num_chunks) // this requires max = Some(64)
             })
             .collect();
 
@@ -1090,10 +976,9 @@ mod tests {
         let srs = SRS::<VestaG>::create(20);
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
-        // commit the two polynomials (and upperbound the second one)
-        let commitment = srs.commit(&poly1, 1, None, rng);
-        let upperbound = poly2.degree() + 1;
-        let bounded_commitment = srs.commit(&poly2, 1, Some(upperbound), rng);
+        // commit the two polynomials
+        let commitment1 = srs.commit(&poly1, 1, rng);
+        let commitment2 = srs.commit(&poly2, 1, rng);
 
         // create an aggregated opening proof
         let (u, v) = (Fp::rand(rng), Fp::rand(rng));
@@ -1103,18 +988,15 @@ mod tests {
 
         let polys: Vec<(
             DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
-            Option<usize>,
             PolyComm<_>,
         )> = vec![
             (
                 DensePolynomialOrEvaluations::DensePolynomial(&poly1),
-                None,
-                commitment.blinders,
+                commitment1.blinders,
             ),
             (
                 DensePolynomialOrEvaluations::DensePolynomial(&poly2),
-                Some(upperbound),
-                bounded_commitment.blinders,
+                commitment2.blinders,
             ),
         ];
         let elm = vec![Fp::rand(rng), Fp::rand(rng)];
@@ -1152,40 +1034,21 @@ mod tests {
 
         let evaluations = vec![
             Evaluation {
-                commitment: commitment.commitment,
+                commitment: commitment1.commitment,
                 evaluations: poly1_chunked_evals,
-                degree_bound: None,
             },
             Evaluation {
-                commitment: bounded_commitment.commitment,
+                commitment: commitment2.commitment,
                 evaluations: poly2_chunked_evals,
-                degree_bound: Some(upperbound),
             },
         ];
 
         let combined_inner_product = {
             let es: Vec<_> = evaluations
                 .iter()
-                .map(
-                    |Evaluation {
-                         commitment,
-                         evaluations,
-                         degree_bound,
-                     }| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*degree_bound)?;
-                            let x = commitment.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evaluations.clone(), bound)
-                    },
-                )
+                .map(|Evaluation { evaluations, .. }| evaluations.clone())
                 .collect();
-            combined_inner_product(&elm, &v, &u, &es, srs.g.len())
+            combined_inner_product(&v, &u, &es)
         };
 
         // verify the proof
@@ -1228,8 +1091,8 @@ pub mod caml {
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
-                shifted: polycomm.shifted.map(Into::into),
+                unshifted: polycomm.elems.into_iter().map(Into::into).collect(),
+                shifted: None,
             }
         }
     }
@@ -1241,8 +1104,8 @@ pub mod caml {
     {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.unshifted.iter().map(Into::into).collect(),
-                shifted: polycomm.shifted.as_ref().map(Into::into),
+                unshifted: polycomm.elems.iter().map(Into::into).collect(),
+                shifted: None,
             }
         }
     }
@@ -1252,9 +1115,12 @@ pub mod caml {
         G: AffineCurve + From<CamlG>,
     {
         fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
+            assert!(
+                camlpolycomm.shifted.is_none(),
+                "mina#14628: Shifted commitments are deprecated and must not be used"
+            );
             PolyComm {
-                unshifted: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
-                shifted: camlpolycomm.shifted.map(Into::into),
+                elems: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -1264,9 +1130,13 @@ pub mod caml {
         G: AffineCurve + From<&'a CamlG> + From<CamlG>,
     {
         fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
+            assert!(
+                camlpolycomm.shifted.is_none(),
+                "mina#14628: Shifted commitments are deprecated and must not be used"
+            );
             PolyComm {
-                unshifted: camlpolycomm.unshifted.iter().map(Into::into).collect(),
-                shifted: camlpolycomm.shifted.as_ref().map(Into::into),
+                //FIXME something with as_ref()
+                elems: camlpolycomm.unshifted.iter().map(Into::into).collect(),
             }
         }
     }
