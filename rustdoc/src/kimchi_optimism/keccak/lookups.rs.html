@@ -288,13 +288,11 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module includes the lookups of the Keccak circuit
 </span><span class="kw">use crate</span>::{
     keccak::{
-        column::KeccakColumn,
         environment::{KeccakEnv, KeccakEnvironment},
-        ArithOps, BoolOps, E,
+        ArithOps, BoolOps, KeccakColumn, E,
     },
     lookup::{Lookup, LookupTableIDs, Lookups},
 };
