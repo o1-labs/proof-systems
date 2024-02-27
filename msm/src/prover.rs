@@ -44,7 +44,7 @@ where
     };
 
     let commitments: WitnessColumns<PolyComm<G>> = {
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
+        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         (&polys)
             .into_par_iter()
             .map(comm)
@@ -123,10 +123,8 @@ where
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                None,
                 PolyComm {
-                    unshifted: vec![G::ScalarField::zero()],
-                    shifted: None,
+                    elems: vec![G::ScalarField::zero()],
                 },
             )
         })
@@ -140,10 +138,8 @@ where
                 .map(|poly| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        None,
                         PolyComm {
-                            unshifted: vec![G::ScalarField::zero()],
-                            shifted: None,
+                            elems: vec![G::ScalarField::zero()],
                         },
                     )
                 })
@@ -156,10 +152,8 @@ where
                 .map(|poly| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        None,
                         PolyComm {
-                            unshifted: vec![G::ScalarField::zero()],
-                            shifted: None,
+                            elems: vec![G::ScalarField::zero()],
                         },
                     )
                 })
@@ -168,10 +162,8 @@ where
         // -- after that the running sum
         polynomials.push((
             DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_aggregation_poly_d1),
-            None,
             PolyComm {
-                unshifted: vec![G::ScalarField::zero()],
-                shifted: None,
+                elems: vec![G::ScalarField::zero()],
             },
         ));
     }

@@ -1494,7 +1494,6 @@ fn test_ffadd_finalization() {
 
     let index = {
         let cs = ConstraintSystem::create(gates.clone())
-            .lookup(vec![range_check::gadget::lookup_table()])
             .public(num_public_inputs)
             .build()
             .unwrap();
