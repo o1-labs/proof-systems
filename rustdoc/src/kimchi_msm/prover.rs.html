@@ -235,6 +235,11 @@
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -268,15 +273,20 @@
     </span>OpeningProof::SRS: Sync,
 {
     <span class="comment">// Interpolate all columns on d1, using trait Into.
-    </span><span class="kw">let </span>polys: WitnessColumns&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = {
-        <span class="kw">let </span>eval_col = |evals: Vec&lt;G::ScalarField&gt;| {
+    </span><span class="kw">let </span>evaluations: WitnessColumns&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; = inputs
+        .evaluations
+        .into_par_iter()
+        .map(|evals| {
             Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(evals, domain.d1)
-                .interpolate()
-        };
-        inputs
-            .evaluations
+        })
+        .collect::&lt;WitnessColumns&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;();
+
+    <span class="kw">let </span>polys: WitnessColumns&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = {
+        <span class="kw">let </span>interpolate =
+            |evals: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;| evals.interpolate();
+        evaluations
             .into_par_iter()
-            .map(eval_col)
+            .map(interpolate)
             .collect::&lt;WitnessColumns&lt;<span class="kw">_</span>&gt;&gt;()
     };
 
