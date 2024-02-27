@@ -13,15 +13,15 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
-ark-ec = "0.3.0"
-ark-ff = "0.3.0"
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = "1.0.79"
-serde_with = "1.10.0"
-tinytemplate = "1.1"
+ark-ec.workspace = true
+ark-ff.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_with.workspace = true
+tinytemplate.workspace = true
 
-mina-curves = { path = "../../curves", version = "0.1.0" }
-kimchi = { path = "../../kimchi", version = "0.1.0" }
-o1-utils = { path = "../../utils", version = "0.1.0" }
-mina-poseidon = { path = "../../poseidon", version = "0.1.0" }
-poly-commitment = { path = "../../poly-commitment", version = "0.1.0" }
+mina-curves.workspace = true
+kimchi.workspace = true
+o1-utils.workspace = true
+mina-poseidon.workspace = true
+poly-commitment.workspace = true

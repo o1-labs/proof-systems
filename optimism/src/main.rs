@@ -131,7 +131,7 @@ pub fn main() -> ExitCode {
                 pre_fold_wit.push(*env_wit);
             }
 
-            if keccak_current_pre_folding_witness.cols.len() == DOMAIN_SIZE {
+            if keccak_current_pre_folding_witness.step_index().len() == DOMAIN_SIZE {
                 proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                     domain,
                     &srs,

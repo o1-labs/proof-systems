@@ -62,9 +62,11 @@
 
 # Pickles & Inductive Proof Systems
 
-- [Overview](./fundamentals/zkbook_ips.md)
+- [Overview](./pickles/overview.md)
+- [Inductive Proof Systems](./pickles/zkbook_ips.md)
 - [Accumulation](./pickles/accumulation.md)
 - [Deferred Computation](./pickles/deferred.md)
+- [Technical Diagrams](./pickles/diagrams.md)
 
 
 # Technical Specifications

@@ -103,7 +103,7 @@ impl<T: Clone> KeccakWitness<T> {
     }
 
     // Returns the step index
-    fn step_index(&self) -> &T {
+    pub fn step_index(&self) -> &T {
         &self.cols[1]
     }
 

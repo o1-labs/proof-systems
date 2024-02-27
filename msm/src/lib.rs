@@ -17,11 +17,11 @@ pub const DOMAIN_SIZE: usize = 1 << 15;
 
 // @volhovm: maybe move these to the FF circuits module later.
 /// Bitsize of the foreign field limb representation.
-pub const LIMB_BITSIZE: usize = 16;
+pub const LIMB_BITSIZE: usize = 15;
 
 /// Number of limbs representing one foreign field element (either
 /// [`Ff1`] or [`Ff2`]).
-pub const LIMBS_NUM: usize = 16;
+pub const LIMBS_NUM: usize = 17;
 
 pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
 pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;

@@ -10,11 +10,11 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-ark-ec = { version = "0.3.0", features = ["parallel"] }
-ark-ff = { version = "0.3.0", features = ["parallel", "asm"] }
-num-bigint = { version = "0.4.3", features = ["rand"] }
+ark-ec.workspace = true
+ark-ff.workspace = true
+num-bigint.workspace = true
 
 [dev-dependencies]
-rand = { version = "0.8.0", default-features = false }
-ark-algebra-test-templates = "0.3.0"
-ark-std = "0.3.0"
+rand.workspace = true
+ark-algebra-test-templates.workspace = true
+ark-std.workspace = true
