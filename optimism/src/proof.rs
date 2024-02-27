@@ -19,7 +19,8 @@ use rayon::iter::{
     IntoParallelRefMutIterator, ParallelIterator,
 };
 
-/// This struct contains the evaluations of the Witness columns across the whole domain of the circuit
+/// This struct contains the evaluations of the Witness columns across the whole
+/// domain of the circuit
 #[derive(Debug)]
 pub struct ProofInputs<const N: usize, G: KimchiCurve> {
     evaluations: Witness<N, Vec<G::ScalarField>>,

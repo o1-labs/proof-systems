@@ -12,6 +12,7 @@ pub mod proof;
 pub mod prover;
 pub mod serialization;
 pub mod verifier;
+pub mod witness;
 
 /// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;
