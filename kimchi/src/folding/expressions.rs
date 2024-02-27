@@ -21,7 +21,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExtendedFoldingColumn<C: FoldingConfig> {
+pub(crate) enum ExtendedFoldingColumn<C: FoldingConfig> {
     Inner(Variable<C::Column>),
     ///for the extra columns added by quadraticization
     WitnessExtended(usize),
@@ -42,7 +42,7 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
     ///extra nodes created by folding, should not be passed to folding
-    Extensions(ExpExtension),
+    Extensions(ExpExtension<C>),
 }
 
 ///designed for easy translation to and from most Expr
@@ -57,16 +57,18 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
 
 /// Extra expressions that can be created by folding
 #[derive(Clone)]
-pub enum ExpExtension {
+pub enum ExpExtension<C: FoldingConfig> {
     U,
     Error,
     //from quadraticization
     ExtendedWitness(usize),
     Alpha(usize),
+    //in case of using decomposable folding
+    Selector(C::S),
 }
 
 ///Internal expression used for folding, simplified for that purpose
-pub type FoldingExp<C> = Operations<ExtendedFoldingColumn<C>>;
+pub(crate) type FoldingExp<C> = Operations<ExtendedFoldingColumn<C>>;
 
 impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
     type Output = Self;
@@ -278,7 +280,7 @@ impl std::ops::Mul for &Degree {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Sign {
+pub(crate) enum Sign {
     Pos,
     Neg,
 }
@@ -295,7 +297,7 @@ impl std::ops::Neg for Sign {
 }
 
 #[derive(Clone, Debug)]
-pub struct Term<C: FoldingConfig> {
+pub(crate) struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
     pub sign: Sign,
 }
@@ -394,7 +396,9 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     }
 }
 
-pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
+pub(crate) fn extract_terms<C: FoldingConfig>(
+    exp: FoldingExp<C>,
+) -> Box<dyn Iterator<Item = Term<C>>> {
     use Operations::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
         exp @ Atom(_) => Box::new(
@@ -468,7 +472,7 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
     exps
 }
 
-pub fn folding_expression<C: FoldingConfig>(
+pub(crate) fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();

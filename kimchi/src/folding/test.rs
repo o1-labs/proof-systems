@@ -72,6 +72,8 @@ struct TestConfig;
 impl FoldingConfig for TestConfig {
     type Column = u8;
 
+    type S = ();
+
     type Challenge = Mock;
 
     type Curve = Pallas;
