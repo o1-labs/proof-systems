@@ -1,4 +1,5 @@
 use ark_ff::UniformRand;
+use kimchi_msm::columns::Column;
 use rand::thread_rng;
 
 use kimchi::circuits::domains::EvaluationDomains;
@@ -38,7 +39,13 @@ pub fn main() {
     let witness = env.get_witness();
 
     println!("Generating the proof");
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, witness);
+    let constraints = vec![];
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+        domain,
+        &srs,
+        witness,
+        constraints,
+    );
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);

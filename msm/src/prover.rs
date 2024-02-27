@@ -2,6 +2,7 @@ use ark_ff::Zero;
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::circuits::expr::{ConstantExpr, Expr};
 use kimchi::plonk_sponge::FrSponge;
 use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_poseidon::sponge::ScalarChallenge;
@@ -22,10 +23,12 @@ pub fn prove<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    Column,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     inputs: Witness<G>,
+    _constraints: Vec<Expr<ConstantExpr<G::ScalarField>, Column>>,
 ) -> Proof<G, OpeningProof>
 where
     OpeningProof::SRS: Sync,
