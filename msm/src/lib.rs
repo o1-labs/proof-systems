@@ -45,7 +45,6 @@ mod tests {
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
-    use rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     use crate::{
         columns::Column, mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify,
@@ -54,13 +53,15 @@ mod tests {
 
     #[test]
     fn test_completeness() {
+        let mut rng = o1_utils::tests::make_test_rng();
+
         // Include tests for completeness for MVLookup as the random witness
         // includes all arguments
         let domain_size = 1 << 8;
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
         // Trusted setup toxic waste
-        let x = Fp::rand(&mut rand::rngs::OsRng);
+        let x = Fp::rand(&mut rng);
 
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
@@ -69,11 +70,12 @@ mod tests {
         let constraints: Vec<_> = vec![];
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
             witness,
             constraints,
+            &mut rng,
         );
 
         // verify the proof
@@ -83,12 +85,14 @@ mod tests {
 
     #[test]
     fn test_soundness() {
+        let mut rng = o1_utils::tests::make_test_rng();
+
         // We generate two different witness and two different proofs.
         let domain_size = 1 << 8;
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
         // Trusted setup toxic waste
-        let x = Fp::rand(&mut rand::rngs::OsRng);
+        let x = Fp::rand(&mut rng);
 
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
@@ -96,19 +100,21 @@ mod tests {
         let witness = Witness::random(domain);
         let constraints = vec![];
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
             witness,
             constraints.clone(),
+            &mut rng,
         );
 
         let witness_prime = Witness::random(domain);
-        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
             witness_prime,
             constraints,
+            &mut rng,
         );
 
         // Swap the opening proof. The verification should fail.
@@ -147,9 +153,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_soundness_mvlookup() {
-        let seed: [u8; 32] = thread_rng().gen();
-        eprintln!("Seed: {:?}", seed);
-        let mut rng = StdRng::from_seed(seed);
+        let mut rng = o1_utils::tests::make_test_rng();
 
         // We generate two different witness and two different proofs.
         let domain_size = 1 << 8;
@@ -174,11 +178,12 @@ mod tests {
         // Overwriting the first looked up value
         witness.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
             witness,
             constraints,
+            &mut rng,
         );
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
