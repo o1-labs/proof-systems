@@ -165,6 +165,28 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -215,8 +237,8 @@
     <span class="kw">use </span>rand::{rngs::StdRng, thread_rng, Rng, SeedableRng};
 
     <span class="kw">use crate</span>::{
-        mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify, BaseSponge, Fp,
-        OpeningProof, ScalarSponge, BN254,
+        columns::Column, mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify,
+        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
     };
 
     <span class="attr">#[test]
@@ -233,9 +255,15 @@
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         <span class="kw">let </span>witness = Witness::random(domain);
+        <span class="kw">let </span>constraints: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, witness);
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            witness,
+            constraints,
+        );
 
         <span class="comment">// verify the proof
         </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
@@ -255,12 +283,22 @@
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         <span class="kw">let </span>witness = Witness::random(domain);
+        <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, witness);
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            witness,
+            constraints.clone(),
+        );
 
         <span class="kw">let </span>witness_prime = Witness::random(domain);
-        <span class="kw">let </span>proof_prime =
-            prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, witness_prime);
+        <span class="kw">let </span>proof_prime = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            witness_prime,
+            constraints,
+        );
 
         <span class="comment">// Swap the opening proof. The verification should fail.
         </span>{
@@ -313,6 +351,7 @@
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         <span class="kw">let </span><span class="kw-2">mut </span>witness = Witness::random(domain);
+        <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
         <span class="comment">// Take one random f_i (FIXME: taking first one for now)
         </span><span class="kw">let </span>looked_up_values = witness.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>].clone();
         <span class="comment">// We change a random looked up element (FIXME: first one for now)
@@ -324,7 +363,12 @@
         <span class="comment">// Overwriting the first looked up value
         </span>witness.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, witness);
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            witness,
+            constraints,
+        );
         <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
         <span class="comment">// FIXME: At the moment, it does verify. It should not. We are missing constraints.
         </span><span class="macro">assert!</span>(!verifies);
