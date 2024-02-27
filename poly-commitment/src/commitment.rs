@@ -1037,6 +1037,8 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::pairing_proof::PairingProof;
+    use ark_ec::PairingEngine;
 
     // polynomial commitment
 
@@ -1155,6 +1157,42 @@ pub mod caml {
                 z1: caml.z1.into(),
                 z2: caml.z2.into(),
                 sg: caml.sg.into(),
+            }
+        }
+    }
+
+    // proving proof
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlPairingProof<G, F> {
+        pub quotient: G,
+        pub blinding: F,
+    }
+
+    impl<CamlG, CamlF, Pair> From<PairingProof<Pair>> for CamlPairingProof<CamlG, CamlF>
+    where
+        Pair: PairingEngine,
+        CamlG: From<Pair::G1Affine>,
+        CamlF: From<<Pair::G1Affine as AffineCurve>::ScalarField>,
+    {
+        fn from(pairing_proof: PairingProof<Pair>) -> Self {
+            Self {
+                quotient: pairing_proof.quotient.into(),
+                blinding: pairing_proof.blinding.into(),
+            }
+        }
+    }
+
+    impl<CamlG, CamlF, Pair> From<CamlPairingProof<CamlG, CamlF>> for PairingProof<Pair>
+    where
+        Pair: PairingEngine,
+        CamlG: Into<Pair::G1Affine>,
+        CamlF: Into<<Pair::G1Affine as AffineCurve>::ScalarField>,
+    {
+        fn from(caml: CamlPairingProof<CamlG, CamlF>) -> Self {
+            Self {
+                quotient: caml.quotient.into(),
+                blinding: caml.blinding.into(),
             }
         }
     }
