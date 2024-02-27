@@ -1,3 +1,5 @@
+use kimchi::folding::expressions::FoldingColumnTrait;
+
 use crate::witness::Witness;
 
 use super::witness::SCRATCH_SIZE;
@@ -18,6 +20,13 @@ pub enum Column {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     InstructionCounter,
+}
+
+impl FoldingColumnTrait for Column {
+    fn is_witness(&self) -> bool {
+        // All MIPS columns are witness columns
+        true
+    }
 }
 
 /// Represents one line of the execution trace of the virtual machine
