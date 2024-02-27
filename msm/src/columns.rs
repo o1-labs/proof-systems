@@ -1,3 +1,5 @@
+use kimchi::circuits::expr::{Domain, GenericColumn};
+
 use crate::LIMBS_NUM;
 
 // @volhovm: maybe this needs to be a trait
@@ -5,6 +7,12 @@ use crate::LIMBS_NUM;
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Column {
     X(usize),
+}
+
+impl GenericColumn for Column {
+    fn domain(&self) -> Domain {
+        Domain::D1 // TODO check
+    }
 }
 
 /// A datatype expressing a generalized column, but with potentially

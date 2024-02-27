@@ -1,10 +1,12 @@
-use kimchi::circuits::expr::{ConstantExpr, Expr};
-use kimchi::circuits::expr::{ConstantExprInner, Operations};
-use kimchi::circuits::expr::{ExprInner, Variable};
-use kimchi::circuits::gate::CurrOrNext;
-use kimchi::curve::KimchiCurve;
+use ark_poly::Radix2EvaluationDomain;
 use num_bigint::BigUint;
 
+use kimchi::circuits::expr::{
+    Challenges, ColumnEvaluations, ConstantExpr, ConstantExprInner, Constants, Expr, ExprError,
+    ExprInner, Operations, Variable,
+};
+use kimchi::circuits::gate::CurrOrNext;
+use kimchi::curve::KimchiCurve;
 use o1_utils::field_helpers::FieldHelpers;
 use o1_utils::foreign_field::ForeignElement;
 
@@ -63,19 +65,15 @@ pub struct WitnessColumnsIndexer<T> {
 
 #[allow(dead_code)]
 /// Builder environment for a native group `G`.
-pub struct BuilderEnv<G: KimchiCurve> {
-    // TODO something like a running list of constraints
-    /// Aggregated constraints.
-    pub(crate) constraints: Vec<MSMExpr<G::ScalarField>>,
+pub struct MSMCircuitEnv<G: KimchiCurve> {
     /// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    pub(crate) witness_raw: Vec<WitnessColumnsIndexer<G::ScalarField>>,
+    witness_raw: Vec<WitnessColumnsIndexer<G::ScalarField>>,
 }
 
-impl BuilderEnv<BN254G1Affine> {
+impl MSMCircuitEnv<BN254G1Affine> {
     pub fn empty() -> Self {
-        BuilderEnv {
-            constraints: vec![],
+        MSMCircuitEnv {
             witness_raw: vec![],
         }
     }
@@ -105,8 +103,9 @@ impl BuilderEnv<BN254G1Affine> {
         }
     }
 
-    pub fn add_test_addition(&mut self, a: Ff1, b: Ff1) {
-        let mut limb_constraints: Vec<_> = vec![];
+    /// Access exprs generated in the environment so far.
+    pub fn get_exprs(&self) -> Vec<MSMExpr<Fp>> {
+        let mut limb_exprs: Vec<_> = vec![];
         for i in 0..LIMBS_NUM {
             let limb_constraint = {
                 let a_i = MSMExpr::Atom(
@@ -125,12 +124,26 @@ impl BuilderEnv<BN254G1Affine> {
                 }));
                 a_i + b_i - c_i
             };
-            limb_constraints.push(limb_constraint);
+            limb_exprs.push(limb_constraint);
         }
-        let combined_constraint =
-            Expr::combine_constraints(0..(limb_constraints.len() as u32), limb_constraints);
-        self.constraints.push(combined_constraint);
+        limb_exprs
+    }
 
+    pub fn eval_expressions<Evaluations: ColumnEvaluations<Fp, Column = crate::columns::Column>>(
+        &self,
+        d: Radix2EvaluationDomain<Fp>,
+        pt: Fp,
+        evals: &Evaluations,
+        c: &Constants<Fp>,
+        chals: &Challenges<Fp>,
+    ) -> Result<Vec<Fp>, ExprError<Column>> {
+        self.get_exprs()
+            .iter()
+            .map(|expr| expr.evaluate_(d, pt, evals, c, chals))
+            .collect()
+    }
+
+    pub fn add_test_addition(&mut self, a: Ff1, b: Ff1) {
         let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
         let b_limbs: [Fp; LIMBS_NUM] = limb_decompose(&b);
         let c_limbs_vec: Vec<Fp> = a_limbs
