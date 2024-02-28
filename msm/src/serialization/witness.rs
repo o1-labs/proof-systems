@@ -25,8 +25,6 @@ impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
     // values. Let's see later
     type Variable = u128;
 
-    fn deserialize_field_element(&mut self) {
-        // TODO
     fn constant(value: u128) -> Self::Variable {
         value
     }
