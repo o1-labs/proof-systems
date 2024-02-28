@@ -31,6 +31,10 @@ impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
         value
     }
 
+    fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
+        assert!(j < 19);
+        Column::X(3 + LIMBS_NUM + j)
+        Column::X(3 + j)
     }
 
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
