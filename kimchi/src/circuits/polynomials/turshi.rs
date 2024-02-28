@@ -92,6 +92,7 @@ use crate::{
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, Field, PrimeField, SquareRootField};
+use log::error;
 use rand::{prelude::StdRng, SeedableRng};
 use std::array;
 use std::marker::PhantomData;
@@ -247,7 +248,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 }
             }
             Err(x) => {
-                println!("{x:?}");
+                error!("{x:?}");
                 Err(format!("Failed to evaluate {:?} constraint", self.typ))
             }
         }
