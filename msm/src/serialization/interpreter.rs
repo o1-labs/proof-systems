@@ -30,7 +30,8 @@ pub trait InterpreterEnv {
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
     /// `lowest_bit` becomes the least-significant bit of the resulting value.
-    fn bitmask(
+    /// The value `x` is expected to be encoded in big-endian
+    fn bitmask_be(
         &mut self,
         x: &Self::Variable,
         highest_bit: u32,
