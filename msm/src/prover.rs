@@ -114,15 +114,11 @@ where
 
     // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
     // FIXME: remove clone
-    let mvlookup_comms = if let Some(ref lookup_env) = lookup_env {
-        Some(LookupProof {
-            m: lookup_env.lookup_counters_comm_d1.clone(),
-            h: lookup_env.lookup_terms_comms_d1.clone(),
-            sum: lookup_env.lookup_aggregation_comm_d1.clone(),
-        })
-    } else {
-        None
-    };
+    let mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+        m: lookup_env.lookup_counters_comm_d1.clone(),
+        h: lookup_env.lookup_terms_comms_d1.clone(),
+        sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+    });
 
     // -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
@@ -196,6 +192,9 @@ where
 
         println!("Combined expression: {:?}", combined_expr);
 
+        // An evaluation of our expression E(vec X) on witness columns
+        // Every witness column w_i(X) is evaluated first at D1, so we get E(vec w_i(X)) = 0?
+        // E(w(X)) = 0 but only over H, so it's 0 evaluated at every {w^i}_{i=1}^N
         let expr_evaluation: Evaluations<G::ScalarField, D<G::ScalarField>> =
             combined_expr.evaluations(&column_env);
         println!("expr_evaluations: {:?}", expr_evaluation);
@@ -248,12 +247,6 @@ where
     let zeta = zeta_chal.to_field(endo_r);
 
     let omega = domain.d1.group_gen; // index.cs.domain.d1.group_gen;
-    let zeta_omega = zeta * omega;
-
-    // We start the evaluations.
-    let zeta_chal = ScalarChallenge(fq_sponge.challenge());
-    let zeta = zeta_chal.to_field(endo_r);
-    let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at zeta and zeta * omega -- Columns
@@ -419,7 +412,7 @@ where
 
     let proof_evals: ProofEvaluations<G::ScalarField> = {
         ProofEvaluations {
-            public_evals: None,
+            _public_evals: None,
             witness_evals,
             mvlookup_evals,
             ft_eval1,

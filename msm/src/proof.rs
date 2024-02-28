@@ -120,7 +120,7 @@ impl<G: KimchiCurve> Witness<G> {
 #[derive(Debug, Clone)]
 pub struct ProofEvaluations<F> {
     /// public input polynomials
-    pub(crate) public_evals: Option<PointEvaluations<F>>,
+    pub(crate) _public_evals: Option<PointEvaluations<F>>,
     /// witness polynomials
     pub(crate) witness_evals: WitnessColumns<PointEvaluations<F>>,
     /// MVLookup argument
