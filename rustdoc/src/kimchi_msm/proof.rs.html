@@ -211,8 +211,8 @@
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>Witness&lt;G: KimchiCurve&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) evaluations: WitnessColumns&lt;Vec&lt;G::ScalarField&gt;&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) mvlookups: Vec&lt;LookupWitness&lt;G::ScalarField&gt;&gt;,
+    <span class="kw">pub </span>evaluations: WitnessColumns&lt;Vec&lt;G::ScalarField&gt;&gt;,
+    <span class="kw">pub </span>mvlookups: Vec&lt;LookupWitness&lt;G::ScalarField&gt;&gt;,
 }
 
 <span class="comment">// This should be used only for testing purposes.
