@@ -25,6 +25,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         value
     }
 
+    fn get_column_for_kimchi_limb(j: usize) -> Self::Position {
+        assert!(j < 3);
+        Column::X(j)
+    }
+
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
         assert!(j < 19);
         Column::X(3 + LIMBS_NUM + j)
