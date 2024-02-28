@@ -18,6 +18,7 @@ use crate::{
 
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
+use log::debug;
 use poly_commitment::{commitment::CommitmentCurve, OpenProof, SRS};
 
 use super::{errors::SnarkyResult, runner::RunState, snarky_type::SnarkyType};
@@ -132,11 +133,10 @@ where
         let public_output =
             Circuit::PublicOutput::value_of_field_elements(public_output_values, aux);
 
-        witness.debug();
-
         // verify the witness
         // TODO: return error instead of panicking
         if debug {
+            witness.debug();
             self.index
                 .verify(&witness.0, &public_input_and_output)
                 .unwrap();
@@ -318,7 +318,7 @@ pub trait SnarkyCircuit: Sized {
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = std::sync::Arc::new(srs);
 
-        println!("using an SRS of size {}", srs.size());
+        debug!("using an SRS of size {}", srs.size());
 
         // create indexes
         let endo_q = <<Self as SnarkyCircuit>::Curve as KimchiCurve>::other_curve_endo();
