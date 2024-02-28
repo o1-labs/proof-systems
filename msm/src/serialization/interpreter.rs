@@ -23,8 +23,8 @@ pub trait InterpreterEnv {
     fn bitmask(
         &mut self,
         x: &Self::Variable,
-        highest_bit: u128,
-        lowest_bit: u128,
+        highest_bit: u32,
+        lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable;
 
