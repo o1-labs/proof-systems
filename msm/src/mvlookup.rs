@@ -10,7 +10,7 @@ use ark_ff::Field;
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct MVLookup<F, ID: LookupTableID> {
+pub struct MVLookup<F, ID: LookupTableID + Sized> {
     pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
@@ -24,7 +24,7 @@ pub trait LookupTableID {
 
 /// Represents a witness of one instance of the lookup argument
 #[derive(Debug)]
-pub struct LookupWitness<F, ID: LookupTableID> {
+pub struct LookupWitness<F, ID: LookupTableID + Sized> {
     /// A list of functions/looked-up values.
     /// The values are represented as:
     /// [ [f_{1}(1), ..., f_{1}(\omega^n)],

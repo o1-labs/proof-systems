@@ -15,8 +15,6 @@ pub mod proof;
 pub mod prover;
 pub mod verifier;
 
-pub use lookups::{MSMLookup as Lookup, MSMLookupWitness as LookupWitness};
-
 /// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
@@ -46,10 +44,12 @@ pub type OpeningProof = PairingProof<BN254>;
 
 #[cfg(test)]
 mod tests {
-    use super::Lookup;
     use crate::{
-        lookups::MSMLookupTableIDs, proof::Witness, prover::prove, verifier::verify, BaseSponge,
-        Fp, OpeningProof, ScalarSponge, BN254,
+        lookups::{MSMLookup, MSMLookupTableIDs},
+        proof::Witness,
+        prover::prove,
+        verifier::verify,
+        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
@@ -160,7 +160,7 @@ mod tests {
         // Take one random f_i (FIXME: taking first one for now)
         let looked_up_values = witness.mvlookups[0].f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
-        let wrong_looked_up_value = Lookup {
+        let wrong_looked_up_value = MSMLookup {
             table_id: looked_up_values[0].table_id,
             numerator: looked_up_values[0].numerator,
             value: vec![Fp::rand(&mut rng)],
