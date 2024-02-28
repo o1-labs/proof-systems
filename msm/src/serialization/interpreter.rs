@@ -1,7 +1,11 @@
 pub trait InterpreterEnv {
     type Position;
 
-    type Variable;
+    type Variable: Clone
+        + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Sub<Self::Variable, Output = Self::Variable>
+        + std::ops::Mul<Self::Variable, Output = Self::Variable>
+        + std::fmt::Debug;
 
     /// Check that the value is in the range [0, 2^15-1]
     fn range_check15(&mut self, _value: &Self::Variable) {
