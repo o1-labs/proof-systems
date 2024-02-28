@@ -44,44 +44,44 @@ pub fn main() {
     });
 
     // b_{0} + b_{1} 2^88 + b_{2, 0} * 2^{88 * 2} - \sum_{j = 0}^{11} c_{j} 2^{15 j} = 0
-    let b0 = {
-        let col = DecompositionColumnIndexer::KimchiLimbs(0).ix_to_column();
-        Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }))
+    let first_180bits = {
+        let b0 = {
+            let col = DecompositionColumnIndexer::KimchiLimbs(0).ix_to_column();
+            Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }))
+        };
+        let b1 = {
+            let col = DecompositionColumnIndexer::KimchiLimbs(1).ix_to_column();
+            Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }))
+        };
+        let b2_0 = {
+            let col = DecompositionColumnIndexer::IntermediateKimchiLimbs(0).ix_to_column();
+            Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }))
+        };
+        // res = b0 + b1 * 2^88 + b2_0 * 2^{88 * 2}
+        let res = b0
+            + b1 * Expr::<ConstantExpr<Fp>, Column>::literal(Fp::from(2u64.pow(88)))
+            + b2_0 * Expr::<ConstantExpr<Fp>, Column>::literal(Fp::from(2u64.pow(88 * 2)));
+        // res - \sum_{j = 0}^{11} c_{j} 2^{15 j}
+        (0..11u32).fold(res, |cs, i| {
+            let col = DecompositionColumnIndexer::MSMLimbs(i as usize).ix_to_column();
+            let chunk = Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
+                col,
+                row: CurrOrNext::Curr,
+            }));
+            let exp = Expr::<ConstantExpr<Fp>, Column>::literal(Fp::from(2u64.pow(15 * i)));
+            let chunk = chunk * exp;
+            cs - chunk
+        })
     };
-    let b1 = {
-        let col = DecompositionColumnIndexer::KimchiLimbs(1).ix_to_column();
-        Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }))
-    };
-    let b2_0 = {
-        let col = DecompositionColumnIndexer::IntermediateKimchiLimbs(0).ix_to_column();
-        Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }))
-    };
-
-    // res = b0 + b1 * 2^88 + b2_0 * 2^{88 * 2}
-    let res = b0
-        + b1 * Expr::<ConstantExpr<Fp>, Column>::literal(Fp::from(2u64.pow(88)))
-        + b2_0 * Expr::<ConstantExpr<Fp>, Column>::literal(Fp::from(2u64.pow(88 * 2)));
-
-    // res - \sum_{j = 0}^{11} c_{j} 2^{15 j}
-    let first_180bits = (0..11u32).fold(res, |cs, i| {
-        let col = DecompositionColumnIndexer::MSMLimbs(i as usize).ix_to_column();
-        let chunk = Expr::<ConstantExpr<Fp>, Column>::Atom(ExprInner::Cell(Variable {
-            col,
-            row: CurrOrNext::Curr,
-        }));
-        let exp = Expr::<ConstantExpr<Fp>, Column>::literal(Fp::from(2u64.pow(15 * i)));
-        let chunk = chunk * exp;
-        cs - chunk
-    });
 
     let witness = Witness {
         evaluations: WitnessColumns {
