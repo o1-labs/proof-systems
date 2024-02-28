@@ -9,6 +9,8 @@ pub trait InterpreterEnv {
 
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position;
 
+    fn get_column_for_msm_limb(j: usize) -> Self::Position;
+
     /// Check that the value is in the range [0, 2^15-1]
     fn range_check15(&mut self, _value: &Self::Variable) {
         // TODO

@@ -28,6 +28,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
         assert!(j < 19);
         Column::X(3 + LIMBS_NUM + j)
+    }
+
+    fn get_column_for_msm_limb(j: usize) -> Self::Position {
+        assert!(j < LIMBS_NUM);
         Column::X(3 + j)
     }
 
