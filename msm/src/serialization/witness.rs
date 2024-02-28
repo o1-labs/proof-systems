@@ -28,6 +28,21 @@ impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
     fn deserialize_field_element(&mut self) {
         // TODO
     }
+
+    /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
+    /// and copy the result in the column `position`.
+    fn bitmask(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u128,
+        lowest_bit: u128,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u128 = *x;
+        let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
+        self.write_column(position, res);
+        res
+    }
 }
 
 impl<const N: usize, Fp: Field> Env<N, Fp> {

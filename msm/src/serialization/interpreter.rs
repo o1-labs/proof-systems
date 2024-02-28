@@ -13,6 +13,17 @@ pub trait InterpreterEnv {
         // TODO
     }
 
+    /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
+    /// the result in `position`.
+    /// `lowest_bit` becomes the least-significant bit of the resulting value.
+    fn bitmask(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u128,
+        lowest_bit: u128,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     /// Deserialize the next field element given as input
     fn deserialize_field_element(&mut self);
 
