@@ -27,6 +27,10 @@ impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
 
     fn deserialize_field_element(&mut self) {
         // TODO
+    fn constant(value: u128) -> Self::Variable {
+        value
+    }
+
     }
 
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
