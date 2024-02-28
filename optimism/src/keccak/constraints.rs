@@ -5,7 +5,7 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         KeccakColumn, {ArithOps, BoolOps, E, WORDS_IN_HASH},
     },
-    ramlookup::Lookups,
+    lookup::Lookups,
 };
 use ark_ff::Field;
 use kimchi::circuits::{

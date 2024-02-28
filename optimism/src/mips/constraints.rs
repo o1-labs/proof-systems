@@ -1,4 +1,5 @@
 use crate::{
+    lookup::{Lookup, LookupTableIDs},
     mips::{
         column::{
             Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
@@ -9,7 +10,6 @@ use crate::{
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
         E,
     },
-    ramlookup::{LookupTableIDs, RAMLookup},
 };
 use ark_ff::Field;
 use kimchi::circuits::{
@@ -24,7 +24,7 @@ pub struct Env<Fp> {
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
     pub constraints: Vec<E<Fp>>,
-    pub lookups: Vec<RAMLookup<E<Fp>>>,
+    pub lookups: Vec<Lookup<E<Fp>>>,
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
@@ -64,7 +64,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // No-op, witness only
     }
 
-    fn add_lookup(&mut self, lookup: RAMLookup<Self::Variable>) {
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         self.lookups.push(lookup);
     }
 
@@ -600,7 +600,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
-            self.add_lookup(RAMLookup::write_if(
+            self.add_lookup(Lookup::write_if(
                 reading_preimage.clone() * has_n_bytes[i].clone(),
                 LookupTableIDs::SyscallLookup,
                 vec![
@@ -627,7 +627,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             row: CurrOrNext::Curr,
         }));
         let end_of_preimage = is_syscall * reading_preimage * preimage_left;
-        self.add_lookup(RAMLookup::read_if(
+        self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,
             vec![hash_counter, preimage_key],
