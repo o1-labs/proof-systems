@@ -35,6 +35,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         Column::X(3 + LIMBS_NUM + j)
     }
 
+    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
+        self.write_column(position, *x);
+        *x
+    }
+
     fn get_column_for_msm_limb(j: usize) -> Self::Position {
         assert!(j < LIMBS_NUM);
         Column::X(3 + j)
