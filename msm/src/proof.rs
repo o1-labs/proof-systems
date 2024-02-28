@@ -85,7 +85,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct Witness<G: KimchiCurve, ID: LookupTableID> {
+pub struct Witness<G: KimchiCurve, ID: LookupTableID + Send + Sync + Copy> {
     pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
     pub(crate) mvlookups: Vec<LookupWitness<G::ScalarField, ID>>,
 }

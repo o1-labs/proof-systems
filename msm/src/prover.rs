@@ -21,7 +21,7 @@ pub fn prove<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
-    ID: LookupTableID,
+    ID: LookupTableID + Send + Sync + Copy,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
