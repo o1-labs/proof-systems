@@ -43,64 +43,6 @@ pub struct LookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
 }
-/*
-impl<F, ID: LookupTableID> IntoParallelIterator for LookupWitness<F, ID>
-where
-    Vec<F>: IntoParallelIterator,
-{
-    type Iter = <Vec<F> as IntoParallelIterator>::Iter;
-    type Item = <Vec<F> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let mut iter_contents = Vec::new();
-        iter_contents.extend(self.cols);
-        iter_contents.into_par_iter()
-    }
-}
-
-impl<const N: usize, G: Send + std::fmt::Debug> FromParallelIterator<G> for Witness<N, G> {
-    fn from_par_iter<I>(par_iter: I) -> Self
-    where
-        I: IntoParallelIterator<Item = G>,
-    {
-        let mut iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
-        let cols = iter_contents
-            .drain(..N)
-            .collect::<Vec<G>>()
-            .try_into()
-            .unwrap();
-        Witness { cols }
-    }
-}
-
-impl<'data, const N: usize, G> IntoParallelIterator for &'data Witness<N, G>
-where
-    Vec<&'data G>: IntoParallelIterator,
-{
-    type Iter = <Vec<&'data G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<&'data G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&self.cols);
-        iter_contents.into_par_iter()
-    }
-}
-
-impl<'data, const N: usize, G> IntoParallelIterator for &'data mut Witness<N, G>
-where
-    Vec<&'data mut G>: IntoParallelIterator,
-{
-    type Iter = <Vec<&'data mut G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<&'data mut G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&mut self.cols);
-        iter_contents.into_par_iter()
-    }
-}
-*/
 
 /// Represents the proof of the lookup argument
 /// It is parametrized by the type `T` which can be either:
