@@ -16,14 +16,20 @@ pub struct Env<const N: usize, Fp> {
 impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
     type Position = Column;
 
-    // FIXME: is u128 ok? I think so, we only have 15 bits, 88 bits and 4 bits values
+    // FIXME: is u128 ok? I think so, we only have 15 bits, 88 bits and 4 bits
+    // values
     type Variable = u128;
 
     unsafe fn write_column(&mut self, position: Self::Position, value: Self::Variable) {
-        // FIXME: different variable here
         match position {
             Column::X(i) => {
-                self.current_kimchi_limbs[i] = Fp::from(value);
+                if i < 3 {
+                    self.current_kimchi_limbs[i] = Fp::from(value);
+                } else if i < 3 + LIMBS_NUM {
+                    self.msm_limbs[i - 3] = Fp::from(value);
+                } else {
+                    self.intermediate_limbs[i - 3 - LIMBS_NUM] = Fp::from(value);
+                }
             }
         }
     }
@@ -44,9 +50,18 @@ impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
         res
     }
 
+    fn load_kimchi_limbs(&mut self) {
+        for i in 0..3 {
+            self.current_kimchi_limbs[i] = self.kimchi_limbs[self.step][i]
+        }
+    }
     fn deserialize_field_element(&mut self) {
         for i in 0..3 {
             self.current_kimchi_limbs[i] = self.kimchi_limbs[self.step][i]
+        }
+        for j in 0..LIMBS_NUM {
+            self.bitmask(self.current_kimchi_limbs.)
+            self.msm_limbs[j] = Fp::zero();
         }
 
     }

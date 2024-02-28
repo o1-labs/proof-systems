@@ -15,4 +15,9 @@ pub trait InterpreterEnv {
 
     /// Deserialize the next field element given as input
     fn deserialize_field_element(&mut self);
+
+    /// Copy the value `value` in the column `position`
+    fn copy(&mut self, _position: Self::Position, _value: Self::Variable) {
+        // TODO
+    }
 }
