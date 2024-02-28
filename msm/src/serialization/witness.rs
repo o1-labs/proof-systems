@@ -1,5 +1,7 @@
 use ark_ff::Field;
 
+use crate::columns::Column;
+use crate::serialization::interpreter::InterpreterEnv;
 use crate::LIMBS_NUM;
 
 /// Environment for the serializer interpreter
@@ -14,6 +16,18 @@ pub struct Env<const N: usize, Fp> {
     /// Used for the decomposition in base 4 of the last limb of the foreign
     /// field Kimchi gate
     pub intermediate_limbs: [Fp; 19],
+}
+
+impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
+    type Position = Column;
+
+    // FIXME: is u128 ok? I think so, we only have 15 bits, 88 bits and 4 bits
+    // values. Let's see later
+    type Variable = u128;
+
+    fn deserialize_field_element(&mut self) {
+        // TODO
+    }
 }
 
 impl<const N: usize, Fp: Field> Env<N, Fp> {
