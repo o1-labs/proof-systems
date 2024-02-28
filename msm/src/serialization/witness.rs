@@ -31,6 +31,24 @@ impl<const N: usize, Fp: Field> InterpreterEnv for Env<N, Fp> {
 }
 
 impl<const N: usize, Fp: Field> Env<N, Fp> {
+    pub fn write_column(&mut self, position: Column, value: u128) {
+        match position {
+            Column::X(i) => {
+                if i < 3 {
+                    self.current_kimchi_limbs[i] = Fp::from(value);
+                } else if i < 3 + LIMBS_NUM {
+                    self.msm_limbs[i - 3] = Fp::from(value);
+                } else if i < 3 + LIMBS_NUM + 19 {
+                    self.intermediate_limbs[i - 3 - LIMBS_NUM] = Fp::from(value);
+                } else {
+                    panic!("Invalid column index")
+                }
+            }
+        }
+    }
+}
+
+impl<const N: usize, Fp: Field> Env<N, Fp> {
     pub fn create(kimchi_limbs: [[Fp; 3]; N]) -> Self {
         Self {
             step: 0,
