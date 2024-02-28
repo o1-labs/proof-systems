@@ -1,11 +1,10 @@
-//! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
+//! Instantiate the MVLookup protocol for the MSM project.
 
+use crate::mvlookup::{Lookup, LookupTableID, LookupWitness};
 use ark_ff::{FftField, Field};
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use std::iter;
-
-use crate::mvlookup::{LookupTableID, LookupWitness, MVLookup};
 
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
@@ -28,7 +27,7 @@ impl LookupTableID for MSMLookupTableIDs {
 }
 
 /// Additive lookups used in the MSM project
-pub type MSMLookup<F> = MVLookup<F, MSMLookupTableIDs>;
+pub type MSMLookup<F> = Lookup<F, MSMLookupTableIDs>;
 
 /// Represents a witness of one instance of the lookup argument of the MSM project
 pub type MSMLookupWitness<F> = LookupWitness<F, MSMLookupTableIDs>;

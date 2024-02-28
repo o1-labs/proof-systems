@@ -4,6 +4,11 @@ use mina_poseidon::{
 };
 use poly_commitment::pairing_proof::PairingProof;
 
+pub use mvlookup::{
+    Lookup as MVLookup, LookupProof as MVLookupProof, LookupTableID as MVLookupTableID,
+    LookupWitness as MVLookupWitness,
+};
+
 pub mod columns;
 pub mod constraint;
 /// Instantiations of MVLookups for the MSM project

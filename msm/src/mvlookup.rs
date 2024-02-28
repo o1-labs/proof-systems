@@ -10,7 +10,7 @@ use ark_ff::Field;
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct MVLookup<F, ID: LookupTableID + Send + Sync + Copy> {
+pub struct Lookup<F, ID: LookupTableID + Send + Sync + Copy> {
     pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
@@ -37,9 +37,9 @@ pub struct LookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
     /// change this structure.
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
-    pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
+    pub(crate) f: Vec<Vec<Lookup<F, ID>>>,
     /// The table the lookup is performed on.
-    pub(crate) t: Vec<MVLookup<F, ID>>,
+    pub(crate) t: Vec<Lookup<F, ID>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
 }
@@ -78,7 +78,7 @@ impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
 }
 
 pub mod prover {
-    use crate::mvlookup::{LookupTableID, LookupWitness, MVLookup};
+    use crate::mvlookup::{Lookup, LookupTableID, LookupWitness};
     use ark_ff::Zero;
     use ark_poly::Evaluations;
     use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -173,7 +173,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
                         for f_i in f.iter() {
-                            let MVLookup {
+                            let Lookup {
                                 numerator: _,
                                 table_id,
                                 value,
@@ -191,7 +191,7 @@ pub mod prover {
                         }
 
                         // We process t now
-                        let MVLookup {
+                        let Lookup {
                             numerator: _,
                             table_id,
                             value,
@@ -216,7 +216,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         let mut row_acc = G::ScalarField::zero();
                         for f_i in f.iter() {
-                            let MVLookup {
+                            let Lookup {
                                 numerator,
                                 table_id: _,
                                 value: _,
@@ -225,7 +225,7 @@ pub mod prover {
                             denominator_index += 1;
                         }
                         // We process t now
-                        let MVLookup {
+                        let Lookup {
                             numerator,
                             table_id: _,
                             value: _,
