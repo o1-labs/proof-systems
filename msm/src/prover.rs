@@ -1,9 +1,6 @@
 use ark_ff::{Field, One, Zero};
 use ark_poly::Evaluations;
-use ark_poly::{
-    univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    Polynomial, Radix2EvaluationDomain as D,
-};
+use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
@@ -74,17 +71,6 @@ where
             .collect::<WitnessColumns<_>>()
     };
 
-    println!(
-        "witness_polys: len {:?},\n [0] elem: degree {:?}, {:?},\n [1] elem: degree {:?}, {:?},\n [2] elem: degree {:?} {:?}",
-        witness_polys.x.len(),
-        witness_polys.x[0].degree(),
-        witness_polys.x[0].coeffs,
-        witness_polys.x[1].degree(),
-        witness_polys.x[1].coeffs,
-        witness_polys.x[2].degree(),
-        witness_polys.x[2].coeffs,
-    );
-
     let witness_comms: WitnessColumns<PolyComm<G>> = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         (&witness_polys)
@@ -130,15 +116,6 @@ where
         witness_evals_8.push(eval);
     }
 
-    //let mut witness_evals_1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> = vec![];
-    //for witness_poly in witness_polys.x.iter() {
-    //    let eval = witness_poly.evaluate_over_domain_by_ref(domain.d1);
-    //    witness_evals_1.push(eval);
-    //}
-
-    //println!("Witness_evals_8: {:?}", witness_evals_8);
-    //println!("Witness_evals_1: {:?}", witness_evals_1);
-
     ////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
     ////////////////////////////////////////////////////////////////////////////
@@ -150,8 +127,6 @@ where
 
     //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
-
-    println!("Alpha: {:?}", alpha);
 
     // TODO These should be evaluations of fixed coefficient polys
     let coefficient_evals_8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> = vec![];
@@ -190,22 +165,14 @@ where
 
         let combined_expr = Expr::combine_constraints(0..(constraints.len() as u32), constraints);
 
-        println!("Combined expression: {:?}", combined_expr);
-
         // An evaluation of our expression E(vec X) on witness columns
         // Every witness column w_i(X) is evaluated first at D1, so we get E(vec w_i(X)) = 0?
         // E(w(X)) = 0 but only over H, so it's 0 evaluated at every {w^i}_{i=1}^N
         let expr_evaluation: Evaluations<G::ScalarField, D<G::ScalarField>> =
             combined_expr.evaluations(&column_env);
-        println!("expr_evaluations: {:?}", expr_evaluation);
 
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
 
-        println!(
-            "expr_evaluations_interpolated: is_zero? {:?}, {:?}",
-            DenseOrSparsePolynomial::from(expr_evaluation_interpolated.clone()).is_zero(),
-            expr_evaluation_interpolated.clone()
-        );
         // divide contributions with vanishing polynomial
         let (quotient, res) = expr_evaluation_interpolated
             .divide_by_vanishing_poly(domain.d1)

@@ -38,17 +38,13 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for MSMColumnEnvironment<'a, F> {
         let coefficients_columns_n: usize = self.coefficients.len();
         let crate::columns::Column::X(i) = col;
         let i = *i;
-        println!("ColumnEnv::get_column called on column {:?}", i);
         if i < witness_columns_n {
             let res = &self.witness[i];
-            println!("Returning result: {:?}", res);
             Some(res)
         } else if i < witness_columns_n + coefficients_columns_n {
-            panic!("We don't have constant columns")
-            //Some(&self.coefficients[i])
+            Some(&self.coefficients[i])
         } else {
-            panic!("Column index too big")
-            //None
+            None
         }
     }
 
