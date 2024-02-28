@@ -133,7 +133,7 @@ where
         }
     };
     let commitments = {
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
+        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         let comm_array = |polys: &[DensePolynomial<G::ScalarField>]| {
             polys.into_par_iter().map(comm).collect::<Vec<_>>()
         };
@@ -171,10 +171,8 @@ where
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                None,
                 PolyComm {
-                    unshifted: vec![G::ScalarField::zero()],
-                    shifted: None,
+                    elems: vec![G::ScalarField::zero()],
                 },
             )
         })
@@ -257,7 +255,7 @@ pub fn verify<
             .into_iter()
             .zip(zeta_omega_evaluations.clone().into_iter())
         {
-            evals.push((vec![vec![zeta], vec![zeta_omega]], None));
+            evals.push(vec![vec![zeta], vec![zeta_omega]]);
         }
         evals
     };
@@ -273,7 +271,6 @@ pub fn verify<
             evals.push(Evaluation {
                 commitment: commitment.clone(),
                 evaluations: vec![vec![zeta_eval], vec![zeta_omega_eval]],
-                degree_bound: None,
             });
         }
         evals
@@ -293,8 +290,7 @@ pub fn verify<
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
 
-    let combined_inner_product =
-        combined_inner_product(&[zeta, zeta_omega], &v, &u, es.as_slice(), 1 << 15);
+    let combined_inner_product = combined_inner_product(&v, &u, es.as_slice());
 
     let batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,

@@ -4,6 +4,7 @@ use ark_ff::Zero;
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::circuits::expr::{ConstantExpr, Expr};
 use kimchi::plonk_sponge::FrSponge;
 use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_poseidon::sponge::ScalarChallenge;
@@ -13,6 +14,7 @@ use poly_commitment::{
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
+use rand::{CryptoRng, RngCore};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
@@ -21,30 +23,40 @@ pub fn prove<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    Column,
+    RNG,
     ID: LookupTableID + Send + Sync + Copy,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     inputs: Witness<G, ID>,
+    _constraints: Vec<Expr<ConstantExpr<G::ScalarField>, Column>>,
+    rng: &mut RNG,
 ) -> Proof<G, OpeningProof>
 where
     OpeningProof::SRS: Sync,
+    RNG: RngCore + CryptoRng,
 {
     // Interpolate all columns on d1, using trait Into.
-    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
-        let eval_col = |evals: Vec<G::ScalarField>| {
+    let evaluations: WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>> = inputs
+        .evaluations
+        .into_par_iter()
+        .map(|evals| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
-                .interpolate()
-        };
-        inputs
-            .evaluations
+        })
+        .collect::<WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
+
+    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
+        let interpolate =
+            |evals: Evaluations<G::ScalarField, D<G::ScalarField>>| evals.interpolate();
+        evaluations
             .into_par_iter()
-            .map(eval_col)
+            .map(interpolate)
             .collect::<WitnessColumns<_>>()
     };
 
     let commitments: WitnessColumns<PolyComm<G>> = {
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1, None);
+        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         (&polys)
             .into_par_iter()
             .map(comm)
@@ -123,10 +135,8 @@ where
         .map(|poly| {
             (
                 DensePolynomialOrEvaluations::DensePolynomial(poly),
-                None,
                 PolyComm {
-                    unshifted: vec![G::ScalarField::zero()],
-                    shifted: None,
+                    elems: vec![G::ScalarField::zero()],
                 },
             )
         })
@@ -140,10 +150,8 @@ where
                 .map(|poly| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        None,
                         PolyComm {
-                            unshifted: vec![G::ScalarField::zero()],
-                            shifted: None,
+                            elems: vec![G::ScalarField::zero()],
                         },
                     )
                 })
@@ -156,10 +164,8 @@ where
                 .map(|poly| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        None,
                         PolyComm {
-                            unshifted: vec![G::ScalarField::zero()],
-                            shifted: None,
+                            elems: vec![G::ScalarField::zero()],
                         },
                     )
                 })
@@ -168,10 +174,8 @@ where
         // -- after that the running sum
         polynomials.push((
             DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_aggregation_poly_d1),
-            None,
             PolyComm {
-                unshifted: vec![G::ScalarField::zero()],
-                shifted: None,
+                elems: vec![G::ScalarField::zero()],
             },
         ));
     }
@@ -216,7 +220,7 @@ where
         v,
         u,
         fq_sponge_before_evaluations,
-        &mut rand::rngs::OsRng,
+        rng,
     );
     // -- End opening proof - Preparing the structures
 

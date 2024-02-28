@@ -1,5 +1,6 @@
 //! This module implements the [`ProverError`] type.
 
+use crate::circuits::lookup::index::LookupError; // not sure about hierarchy
 use poly_commitment::error::CommitmentError;
 use thiserror::Error;
 
@@ -100,6 +101,9 @@ pub enum SetupError {
 
     #[error("the domain could not be constructed: {0}")]
     DomainCreation(DomainCreationError),
+
+    #[error("the lookup constraint system cannot not be constructed: {0}")]
+    LookupCreation(LookupError),
 }
 
 /// Errors that can arise when creating a verifier index

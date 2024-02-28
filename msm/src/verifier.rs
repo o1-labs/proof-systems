@@ -53,7 +53,7 @@ pub fn verify<
     let mut es: Vec<_> = zeta_evaluations
         .into_iter()
         .zip(zeta_omega_evaluations)
-        .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
+        .map(|(zeta, zeta_omega)| vec![vec![*zeta], vec![*zeta_omega]])
         .collect();
 
     if mvlookup_commitments.is_some() {
@@ -63,7 +63,7 @@ pub fn verify<
                 .unwrap()
                 .into_iter()
                 .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
-                .map(|(zeta, zeta_omega)| (vec![vec![*zeta], vec![*zeta_omega]], None))
+                .map(|(zeta, zeta_omega)| vec![vec![*zeta], vec![*zeta_omega]])
                 .collect::<Vec<_>>(),
         );
     }
@@ -74,7 +74,6 @@ pub fn verify<
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
             commitment: commitment.clone(),
             evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
-            degree_bound: None,
         })
         .collect();
 
@@ -92,7 +91,6 @@ pub fn verify<
                 .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
                     commitment: commitment.clone(),
                     evaluations: vec![vec![*zeta_eval], vec![*zeta_omega_eval]],
-                    degree_bound: None,
                 })
                 .collect::<Vec<_>>(),
         );
@@ -128,13 +126,7 @@ pub fn verify<
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
 
-    let combined_inner_product = combined_inner_product(
-        &[zeta, zeta_omega],
-        &v,
-        &u,
-        es.as_slice(),
-        domain.d1.size as usize,
-    );
+    let combined_inner_product = combined_inner_product(&v, &u, es.as_slice());
 
     let batch = BatchEvaluationProof {
         sponge: fq_sponge_before_evaluations,

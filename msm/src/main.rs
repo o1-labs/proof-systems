@@ -1,4 +1,5 @@
 use ark_ff::UniformRand;
+use kimchi_msm::columns::Column;
 use kimchi_msm::lookups::MSMLookupTableIDs;
 use rand::thread_rng;
 
@@ -30,6 +31,9 @@ pub fn generate_random_msm_witness() -> BuilderEnv<BN254G1Affine> {
 }
 
 pub fn main() {
+    // FIXME: use a proper RNG
+    let mut rng = o1_utils::tests::make_test_rng();
+
     println!("Creating the domain and SRS");
     let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
@@ -39,8 +43,13 @@ pub fn main() {
     let witness = env.get_witness();
 
     println!("Generating the proof");
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, MSMLookupTableIDs>(
-        domain, &srs, witness,
+    let constraints = vec![];
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSMLookupTableIDs>(
+        domain,
+        &srs,
+        witness,
+        constraints,
+        &mut rng,
     );
 
     println!("Verifying the proof");
