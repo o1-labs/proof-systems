@@ -45,8 +45,10 @@ impl LookupTableID for LookupTableIDs {
     }
 }
 
+/// The lookups struct based on RAMLookups for the VM table IDs
 pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
 
+/// The lookup table struct based on MVLookupTable for the VM table IDs
 pub(crate) type LookupTable<F> = MVLookupTable<F, LookupTableIDs>;
 
 /// This trait adds basic methods to deal with lookups inside an environment
