@@ -1,7 +1,7 @@
 use ark_ff::Field;
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, Expr, ExprInner};
 
-use crate::columns::Column;
+use crate::{columns::Column, LIMBS_NUM};
 
 use super::interpreter::InterpreterEnv;
 
@@ -22,20 +22,25 @@ impl<F: Field> InterpreterEnv for Env<F> {
         unimplemented!()
     }
 
-    fn get_column_for_kimchi_limb(_j: usize) -> Self::Position {
-        unimplemented!()
+    fn get_column_for_kimchi_limb(j: usize) -> Self::Position {
+        assert!(j < 3);
+        Column::X(j)
     }
 
-    fn get_column_for_intermediate_limb(_j: usize) -> Self::Position {
-        unimplemented!()
+    fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
+        assert!(j < 19);
+        Column::X(3 + LIMBS_NUM + j)
     }
 
-    fn get_column_for_msm_limb(_j: usize) -> Self::Position {
-        unimplemented!()
+    fn get_column_for_msm_limb(j: usize) -> Self::Position {
+        assert!(j < LIMBS_NUM);
+        Column::X(3 + j)
     }
 
-    fn constant(_value: u128) -> Self::Variable {
-        unimplemented!()
+    fn constant(value: u128) -> Self::Variable {
+        let value = F::from(value);
+        let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
+        Expr::Atom(ExprInner::Constant(cst_expr_inner))
     }
 
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
