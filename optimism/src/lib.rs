@@ -11,6 +11,9 @@ pub mod cannon_cli;
 /// Implementation of Keccak used by the zkVM.
 pub mod keccak;
 
+/// Instantiation of the lookups for the VM project.
+pub mod lookups;
+
 /// MIPS interpreter.
 pub mod mips;
 
@@ -25,3 +28,5 @@ pub mod ramlookup;
 
 /// Generic definition of a zkvm witness.
 pub mod witness;
+
+pub use ramlookup::{Lookup as RAMLookup, LookupMode as RAMLookupMode};

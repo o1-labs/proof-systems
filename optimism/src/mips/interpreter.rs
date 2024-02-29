@@ -1,12 +1,13 @@
 use crate::{
     cannon::PAGE_ADDRESS_SIZE,
+    lookups::VMLookupTableIDs,
     mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
-    ramlookup::{LookupTableIDs, RAMLookup},
+    ramlookup::Lookup,
 };
-use ark_ff::One;
+use ark_ff::{One, Zero};
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -134,6 +135,7 @@ pub trait InterpreterEnv {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug
+        + Zero
         + One;
 
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
@@ -167,7 +169,7 @@ pub trait InterpreterEnv {
         self.add_constraint(x.clone() * x.clone() - x);
     }
 
-    fn add_lookup(&mut self, lookup: RAMLookup<Self::Variable>);
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable, VMLookupTableIDs>);
 
     fn instruction_counter(&self) -> Self::Variable;
 
@@ -275,14 +277,14 @@ pub trait InterpreterEnv {
             instruction_counter + Self::constant(1)
         };
         unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
-        self.add_lookup(RAMLookup::write_if(
+        self.add_lookup(Lookup::write_if(
             if_is_true.clone(),
-            LookupTableIDs::RegisterLookup,
+            VMLookupTableIDs::RegisterLookup,
             vec![idx.clone(), last_accessed, old_value.clone()],
         ));
-        self.add_lookup(RAMLookup::read_if(
+        self.add_lookup(Lookup::read_if(
             if_is_true.clone(),
-            LookupTableIDs::RegisterLookup,
+            VMLookupTableIDs::RegisterLookup,
             vec![idx.clone(), new_accessed, new_value.clone()],
         ));
         self.range_check64(&elapsed_time);
@@ -410,12 +412,12 @@ pub trait InterpreterEnv {
             instruction_counter + Self::constant(1)
         };
         unsafe { self.push_memory_access(addr, new_accessed.clone()) };
-        self.add_lookup(RAMLookup::write_one(
-            LookupTableIDs::MemoryLookup,
+        self.add_lookup(Lookup::write_one(
+            VMLookupTableIDs::MemoryLookup,
             vec![addr.clone(), last_accessed, old_value.clone()],
         ));
-        self.add_lookup(RAMLookup::read_one(
-            LookupTableIDs::MemoryLookup,
+        self.add_lookup(Lookup::read_one(
+            VMLookupTableIDs::MemoryLookup,
             vec![addr.clone(), new_accessed, new_value.clone()],
         ));
         self.range_check64(&elapsed_time);
@@ -458,8 +460,8 @@ pub trait InterpreterEnv {
         unsafe {
             self.push_register(&idx, ip.clone());
         }
-        self.add_lookup(RAMLookup::read_one(
-            LookupTableIDs::RegisterLookup,
+        self.add_lookup(Lookup::read_one(
+            VMLookupTableIDs::RegisterLookup,
             vec![idx, new_accessed, ip],
         ));
     }
@@ -470,8 +472,8 @@ pub trait InterpreterEnv {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_register(&idx, value_location) }
         };
-        self.add_lookup(RAMLookup::write_one(
-            LookupTableIDs::RegisterLookup,
+        self.add_lookup(Lookup::write_one(
+            VMLookupTableIDs::RegisterLookup,
             vec![idx, self.instruction_counter(), ip.clone()],
         ));
         ip
@@ -486,8 +488,8 @@ pub trait InterpreterEnv {
         unsafe {
             self.push_register(&idx, ip.clone());
         }
-        self.add_lookup(RAMLookup::read_one(
-            LookupTableIDs::RegisterLookup,
+        self.add_lookup(Lookup::read_one(
+            VMLookupTableIDs::RegisterLookup,
             vec![idx, new_accessed, ip],
         ));
     }
@@ -498,8 +500,8 @@ pub trait InterpreterEnv {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_register(&idx, value_location) }
         };
-        self.add_lookup(RAMLookup::write_one(
-            LookupTableIDs::RegisterLookup,
+        self.add_lookup(Lookup::write_one(
+            VMLookupTableIDs::RegisterLookup,
             vec![idx, self.instruction_counter(), ip.clone()],
         ));
         ip
