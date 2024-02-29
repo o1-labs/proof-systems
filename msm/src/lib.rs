@@ -29,6 +29,11 @@ pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
 pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
 pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
 
+/// Number of columns
+/// FIXME: we must move it into the subdirectory of the
+/// foreign field addition circuit
+pub const N: usize = 3 * LIMBS_NUM;
+
 /// The native field we are working with.
 pub type Fp = ark_bn254::Fr;
 
@@ -48,9 +53,12 @@ mod tests {
     use poly_commitment::pairing_proof::PairingSRS;
 
     use crate::{
-        columns::Column, mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify,
+        columns::Column, mvlookup::Lookup, proof::ProofInputs, prover::prove, verifier::verify,
         BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
     };
+
+    // Number of columns
+    const N: usize = 10;
 
     #[test]
     fn test_completeness() {
@@ -67,20 +75,20 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let witness = Witness::random(domain);
+        let inputs = ProofInputs::random(domain);
         let constraints: Vec<_> = vec![];
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
             domain,
             &srs,
-            witness,
+            inputs,
             constraints,
             &mut rng,
         );
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof);
         assert!(verifies);
     }
 
@@ -98,22 +106,22 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let witness = Witness::random(domain);
+        let inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
             domain,
             &srs,
-            witness,
+            inputs,
             constraints.clone(),
             &mut rng,
         );
 
-        let witness_prime = Witness::random(domain);
-        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
+        let inputs_prime = ProofInputs::random(domain);
+        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
             domain,
             &srs,
-            witness_prime,
+            inputs_prime,
             constraints,
             &mut rng,
         );
@@ -123,7 +131,7 @@ mod tests {
             let mut proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
             let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
+                verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof_clone);
             assert!(!verifies);
         }
 
@@ -134,7 +142,7 @@ mod tests {
             let mut proof_clone = proof.clone();
             proof_clone.commitments = proof_prime.commitments;
             let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
+                verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof_clone);
             assert!(!verifies);
         }
 
@@ -146,7 +154,7 @@ mod tests {
             let mut proof_clone = proof.clone();
             proof_clone.zeta_evaluations = proof_prime.zeta_evaluations;
             let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
+                verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof_clone);
             assert!(!verifies);
         }
     }
@@ -166,10 +174,10 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let mut witness = Witness::random(domain);
+        let mut inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // Take one random f_i (FIXME: taking first one for now)
-        let looked_up_values = witness.mvlookups[0].f[0].clone();
+        let looked_up_values = inputs.mvlookups[0].f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
         let wrong_looked_up_value = Lookup {
             table_id: looked_up_values[0].table_id,
@@ -177,16 +185,16 @@ mod tests {
             value: vec![Fp::rand(&mut rng)],
         };
         // Overwriting the first looked up value
-        witness.mvlookups[0].f[0][0] = wrong_looked_up_value;
+        inputs.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
             domain,
             &srs,
-            witness,
+            inputs,
             constraints,
             &mut rng,
         );
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof);
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
         assert!(!verifies);
     }

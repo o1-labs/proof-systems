@@ -16,10 +16,11 @@ pub fn verify<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    const N: usize,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    proof: &Proof<G, OpeningProof>,
+    proof: &Proof<N, G, OpeningProof>,
 ) -> bool {
     let Proof {
         commitments,
@@ -50,25 +51,24 @@ pub fn verify<
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
-    let mut es: Vec<_> = zeta_evaluations
+    let mut es: Vec<Vec<Vec<G::ScalarField>>> = zeta_evaluations
         .into_iter()
         .zip(zeta_omega_evaluations)
         .map(|(zeta, zeta_omega)| vec![vec![*zeta], vec![*zeta_omega]])
-        .collect();
+        .collect::<Vec<Vec<Vec<G::ScalarField>>>>();
 
     if mvlookup_commitments.is_some() {
-        es.extend(
-            mvlookup_zeta_evaluations
-                .as_ref()
-                .unwrap()
-                .into_iter()
-                .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
-                .map(|(zeta, zeta_omega)| vec![vec![*zeta], vec![*zeta_omega]])
-                .collect::<Vec<_>>(),
-        );
+        let mvlookup_evals = mvlookup_zeta_evaluations
+            .as_ref()
+            .unwrap()
+            .into_iter()
+            .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
+            .map(|(zeta, zeta_omega)| vec![vec![*zeta], vec![*zeta_omega]])
+            .collect::<Vec<Vec<Vec<G::ScalarField>>>>();
+        es.extend(mvlookup_evals);
     }
 
-    let mut evaluations: Vec<_> = commitments
+    let mut evaluations: Vec<Evaluation<_>> = commitments
         .into_iter()
         .zip(zeta_evaluations.into_iter().zip(zeta_omega_evaluations))
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {

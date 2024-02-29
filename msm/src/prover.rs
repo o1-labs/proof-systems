@@ -17,7 +17,8 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
 use crate::mvlookup::{self, LookupProof};
-use crate::proof::{Proof, Witness, WitnessColumns};
+use crate::proof::{Proof, ProofInputs};
+use crate::witness::Witness;
 
 pub fn prove<
     G: KimchiCurve,
@@ -26,47 +27,48 @@ pub fn prove<
     EFrSponge: FrSponge<G::ScalarField>,
     Column,
     RNG,
+    const N: usize,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    inputs: Witness<G>,
+    inputs: ProofInputs<N, G>,
     _constraints: Vec<Expr<ConstantExpr<G::ScalarField>, Column>>,
     rng: &mut RNG,
-) -> Proof<G, OpeningProof>
+) -> Proof<N, G, OpeningProof>
 where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
 {
     // Interpolate all columns on d1, using trait Into.
-    let evaluations: WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>> = inputs
+    let evaluations: Witness<N, Evaluations<G::ScalarField, D<G::ScalarField>>> = inputs
         .evaluations
         .into_par_iter()
         .map(|evals| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
         })
-        .collect::<WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
+        .collect::<Witness<N, Evaluations<G::ScalarField, D<G::ScalarField>>>>();
 
-    let polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
+    let polys: Witness<N, DensePolynomial<G::ScalarField>> = {
         let interpolate =
             |evals: Evaluations<G::ScalarField, D<G::ScalarField>>| evals.interpolate();
         evaluations
             .into_par_iter()
             .map(interpolate)
-            .collect::<WitnessColumns<_>>()
+            .collect::<Witness<N, DensePolynomial<G::ScalarField>>>()
     };
 
-    let commitments: WitnessColumns<PolyComm<G>> = {
+    let commitments: Witness<N, PolyComm<G>> = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         (&polys)
             .into_par_iter()
             .map(comm)
-            .collect::<WitnessColumns<_>>()
+            .collect::<Witness<N, PolyComm<G>>>()
     };
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     // Do not use parallelism
-    commitments
+    (&commitments)
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
@@ -97,10 +99,12 @@ where
     // TODO: Parallelize
     let (zeta_evaluations, zeta_omega_evaluations) = {
         let evals = |point| {
-            let WitnessColumns { x } = &polys;
-            let comm = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-            let x = x.iter().map(comm).collect::<Vec<_>>();
-            WitnessColumns { x }
+            let Witness { cols: polys } = &polys;
+            let mut evals: [G::ScalarField; N] = [G::ScalarField::zero(); N];
+            for (i, poly) in polys.iter().enumerate() {
+                evals[i] = poly.evaluate(point)
+            }
+            Witness { cols: evals }
         };
         (evals(&zeta), evals(&zeta_omega))
     };
@@ -185,9 +189,9 @@ where
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    for (zeta_eval, zeta_omega_eval) in zeta_evaluations
+    for (zeta_eval, zeta_omega_eval) in (&zeta_evaluations)
         .into_iter()
-        .zip(zeta_omega_evaluations.into_iter())
+        .zip((&zeta_omega_evaluations).into_iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
