@@ -21,6 +21,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     // values. Let's see later
     type Variable = u128;
 
+    fn add_constraint(&mut self, cst: Self::Variable) {
+        assert_eq!(cst, 0);
+    }
+
     fn constant(value: u128) -> Self::Variable {
         value
     }
