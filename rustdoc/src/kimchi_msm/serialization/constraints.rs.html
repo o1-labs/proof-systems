@@ -54,10 +54,15 @@
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, ConstantTerm, Expr, ExprInner};
 
-<span class="kw">use </span><span class="kw">crate</span>::columns::Column;
+<span class="kw">use crate</span>::{columns::Column, LIMBS_NUM};
 
 <span class="kw">use </span><span class="kw">super</span>::interpreter::InterpreterEnv;
 
@@ -78,20 +83,25 @@
         <span class="macro">unimplemented!</span>()
     }
 
-    <span class="kw">fn </span>get_column_for_kimchi_limb(_j: usize) -&gt; <span class="self">Self</span>::Position {
-        <span class="macro">unimplemented!</span>()
+    <span class="kw">fn </span>get_column_for_kimchi_limb(j: usize) -&gt; <span class="self">Self</span>::Position {
+        <span class="macro">assert!</span>(j &lt; <span class="number">3</span>);
+        Column::X(j)
     }
 
-    <span class="kw">fn </span>get_column_for_intermediate_limb(_j: usize) -&gt; <span class="self">Self</span>::Position {
-        <span class="macro">unimplemented!</span>()
+    <span class="kw">fn </span>get_column_for_intermediate_limb(j: usize) -&gt; <span class="self">Self</span>::Position {
+        <span class="macro">assert!</span>(j &lt; <span class="number">19</span>);
+        Column::X(<span class="number">3 </span>+ LIMBS_NUM + j)
     }
 
-    <span class="kw">fn </span>get_column_for_msm_limb(_j: usize) -&gt; <span class="self">Self</span>::Position {
-        <span class="macro">unimplemented!</span>()
+    <span class="kw">fn </span>get_column_for_msm_limb(j: usize) -&gt; <span class="self">Self</span>::Position {
+        <span class="macro">assert!</span>(j &lt; LIMBS_NUM);
+        Column::X(<span class="number">3 </span>+ j)
     }
 
-    <span class="kw">fn </span>constant(_value: u128) -&gt; <span class="self">Self</span>::Variable {
-        <span class="macro">unimplemented!</span>()
+    <span class="kw">fn </span>constant(value: u128) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>value = F::from(value);
+        <span class="kw">let </span>cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
+        Expr::Atom(ExprInner::Constant(cst_expr_inner))
     }
 
     <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
