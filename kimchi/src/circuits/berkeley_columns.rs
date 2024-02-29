@@ -26,7 +26,7 @@ pub enum Column {
 }
 
 impl GenericColumn for Column {
-    fn domain(&self) -> Domain {
+    fn column_domain(&self) -> Domain {
         match self {
             Column::Index(GateType::Generic) => Domain::D4,
             Column::Index(GateType::CompleteAdd) => Domain::D4,

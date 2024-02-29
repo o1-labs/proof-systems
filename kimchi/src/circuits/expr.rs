@@ -213,7 +213,10 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
 }
 
 pub trait GenericColumn {
-    fn domain(&self) -> Domain;
+    // TODO These two traits must work together but it is NOT obvious. Change interface.
+    /// Defines the domain over which the column is evaluated, as
+    /// contained in the `ColumnEnvironment`.
+    fn column_domain(&self) -> Domain;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1841,8 +1844,11 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
     ) -> Evaluations<F, D<F>> {
         let d1_size = env.get_domain(Domain::D1).size;
         let deg = self.degree(d1_size, env.get_constants().zk_rows);
+        // TODO @volhovm I'm not sure about this change, but otherwise we get a trivial polynomial.
         let d = if deg <= d1_size {
             Domain::D1
+        //let d = if deg <=  * d1_size {
+        //    Domain::D2
         } else if deg <= 4 * d1_size {
             Domain::D4
         } else if deg <= 8 * d1_size {
@@ -1981,7 +1987,7 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: col.domain(),
+                    domain: col.column_domain(),
                     shift: row.shift(),
                     evals,
                 }

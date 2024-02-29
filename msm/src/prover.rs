@@ -187,11 +187,25 @@ where
                 expr,
                 expr.degree(1, 0)
             ); // otherwise we need different t_size
+
+            println!("Degree of expression {:?} is {:?}", expr, expr.degree(1, 0));
+
+            // Check this expression are witness satisfied
+            let (_, res) = expr
+                .evaluations(&column_env)
+                .interpolate_by_ref()
+                .divide_by_vanishing_poly(domain.d1)
+                .unwrap();
+            if !res.is_zero() {
+                panic!(
+                    "couldn't divide by vanishing polynomial: expression not satisfied: {:?}",
+                    expr
+                );
+            }
+            // TODO assert none of expressions contain alpha
         }
-        // TODO assert none of expressions contain alpha
 
         let combined_expr = Expr::combine_constraints(0..(constraints.len() as u32), constraints);
-
         println!("Combined expression: {:?}", combined_expr);
 
         // An evaluation of our expression E(vec X) on witness columns
@@ -216,8 +230,6 @@ where
             panic!("rest of division by vanishing polynomial");
         }
 
-        // TODO Check that expressions are witness-satisfied by using check_constraint!(...)
-
         quotient
     };
 
@@ -228,8 +240,9 @@ where
     let t_comm = {
         let num_chunks = 1;
         let mut t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
-        let dummies = expected_t_size - t_comm.elems.len();
-        for _ in 0..dummies {
+        let dummies_n = expected_t_size - t_comm.elems.len();
+        println!("Adding {:?} dummies to t_comm", dummies_n);
+        for _ in 0..dummies_n {
             t_comm.elems.push(G::zero());
         }
         t_comm

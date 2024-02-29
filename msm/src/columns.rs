@@ -10,8 +10,8 @@ pub enum Column {
 }
 
 impl GenericColumn for Column {
-    fn domain(&self) -> Domain {
-        Domain::D1 // TODO check
+    fn column_domain(&self) -> Domain {
+        Domain::D8 // TODO FIXME check
     }
 }
 
@@ -27,6 +27,7 @@ pub enum MSMColumnIndexer {
     A(usize),
     B(usize),
     C(usize),
+    D(usize),
 }
 
 impl ColumnIndexer for MSMColumnIndexer {
@@ -39,6 +40,7 @@ impl ColumnIndexer for MSMColumnIndexer {
             MSMColumnIndexer::A(i) => to_column_inner(0, i),
             MSMColumnIndexer::B(i) => to_column_inner(1, i),
             MSMColumnIndexer::C(i) => to_column_inner(2, i),
+            MSMColumnIndexer::D(i) => to_column_inner(3, i),
         }
     }
 }

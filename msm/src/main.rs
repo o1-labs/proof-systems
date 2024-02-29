@@ -36,7 +36,7 @@ pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
         };
         //let a: Ff1 = Ff1::rand(&mut rng);
         //let b: Ff1 = Ff1::rand(&mut rng);
-        circuit_env.add_test_addition(a, b);
+        circuit_env.add_test_multiplication(a, b);
     }
 
     circuit_env
@@ -53,7 +53,7 @@ pub fn main() {
 
     let circuit_env = generate_random_msm_witness();
     let witness = circuit_env.get_witness();
-    let constraint_exprs = circuit_env.get_exprs();
+    let constraint_exprs = circuit_env.get_exprs_mul();
 
     println!("Witness: {:?}", witness);
     println!("Constraints: {:?}", constraint_exprs);
