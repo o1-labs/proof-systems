@@ -7,6 +7,8 @@ pub trait InterpreterEnv {
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
+    fn add_constraint(&mut self, cst: Self::Variable);
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     fn get_column_for_kimchi_limb(j: usize) -> Self::Position;
