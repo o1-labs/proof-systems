@@ -23,10 +23,40 @@
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="kw">pub trait </span>InterpreterEnv {
     <span class="kw">type </span>Position;
 
-    <span class="kw">type </span>Variable;
+    <span class="kw">type </span>Variable: Clone
+        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::fmt::Debug;
+
+    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>get_column_for_kimchi_limb(j: usize) -&gt; <span class="self">Self</span>::Position;
+
+    <span class="kw">fn </span>get_column_for_intermediate_limb(j: usize) -&gt; <span class="self">Self</span>::Position;
+
+    <span class="kw">fn </span>get_column_for_msm_limb(j: usize) -&gt; <span class="self">Self</span>::Position;
 
     <span class="doccomment">/// Check that the value is in the range [0, 2^15-1]
     </span><span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
@@ -38,12 +68,18 @@
         <span class="comment">// TODO
     </span>}
 
-    <span class="doccomment">/// Deserialize the next field element given as input
-    </span><span class="kw">fn </span>deserialize_field_element(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    <span class="kw">fn </span>constant(value: u128) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Copy the value `value` in the column `position`
-    </span><span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _position: <span class="self">Self</span>::Position, _value: <span class="self">Self</span>::Variable) {
-        <span class="comment">// TODO
-    </span>}
+    <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
+    /// the result in `position`.
+    /// `lowest_bit` becomes the least-significant bit of the resulting value.
+    /// The value `x` is expected to be encoded in big-endian
+    </span><span class="kw">fn </span>bitmask_be(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
 }
 </code></pre></div></section></main></body></html>

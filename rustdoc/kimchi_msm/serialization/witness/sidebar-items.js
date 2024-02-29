@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Env"]};
+window.SIDEBAR_ITEMS = {"fn":["deserialize_field_element"],"struct":["Env"]};
