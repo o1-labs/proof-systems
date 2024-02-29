@@ -64,21 +64,24 @@ pub fn verify<
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
-    let mut evaluations: Vec<Evaluation<_>> = proof_comms
-        .witness_comms
-        .into_iter()
-        .zip(proof_evals.witness_evals.into_iter())
-        .map(|(commitment, point_eval)| Evaluation {
-            commitment: commitment.clone(),
-            evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
-        })
-        .collect();
+    let mut coms_and_evaluations: Vec<Evaluation<_>> = vec![];
+
+    coms_and_evaluations.extend(
+        proof_comms
+            .witness_comms
+            .into_iter()
+            .zip(proof_evals.witness_evals.into_iter())
+            .map(|(commitment, point_eval)| Evaluation {
+                commitment: commitment.clone(),
+                evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
+            }),
+    );
 
     if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
-        evaluations.extend(
+        coms_and_evaluations.extend(
             mvlookup_comms
                 .into_iter()
-                .zip(proof_evals.mvlookup_evals.as_ref().unwrap().into_iter())
+                .zip(proof_evals.mvlookup_evals.as_ref().unwrap())
                 .map(|(commitment, point_eval)| Evaluation {
                     commitment: commitment.clone(),
                     evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
@@ -87,8 +90,8 @@ pub fn verify<
         );
     }
 
-    // -- Absorb all evaluations
-    let fq_sponge_before_evaluations = fq_sponge.clone();
+    // -- Absorb all coms_and_evaluations
+    let fq_sponge_before_coms_and_evaluations = fq_sponge.clone();
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
@@ -130,6 +133,7 @@ pub fn verify<
 
     let combined_expr =
         Expr::combine_constraints(0..(constraint_exprs.len() as u32), constraint_exprs);
+    println!("Verification, combined_expr: {:?}", combined_expr);
     let ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,
@@ -140,13 +144,15 @@ pub fn verify<
     )
     .unwrap();
 
-    evaluations.push(Evaluation {
+    println!("ft_eval0: {:?}", ft_eval0);
+
+    coms_and_evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: vec![vec![ft_eval0], vec![proof_evals.ft_eval1]],
     });
 
     fr_sponge.absorb(&proof_evals.ft_eval1);
-    // -- End absorb all evaluations
+    // -- End absorb all coms_and_evaluations
 
     let v_chal = fr_sponge.challenge();
     let v = v_chal.to_field(endo_r);
@@ -154,16 +160,18 @@ pub fn verify<
     let u = u_chal.to_field(endo_r);
     println!("v/u: {:?}, {:?}", v, u);
 
-    let es: Vec<_> = evaluations
-        .iter()
-        .map(|Evaluation { evaluations, .. }| evaluations.clone())
-        .collect();
+    let combined_inner_product = {
+        let es: Vec<_> = coms_and_evaluations
+            .iter()
+            .map(|Evaluation { evaluations, .. }| evaluations.clone())
+            .collect();
 
-    let combined_inner_product = combined_inner_product(&v, &u, es.as_slice());
+        combined_inner_product(&v, &u, es.as_slice())
+    };
 
     let batch = BatchEvaluationProof {
-        sponge: fq_sponge_before_evaluations,
-        evaluations,
+        sponge: fq_sponge_before_coms_and_evaluations,
+        evaluations: coms_and_evaluations,
         evaluation_points: vec![zeta, zeta_omega],
         polyscale: v,
         evalscale: u,

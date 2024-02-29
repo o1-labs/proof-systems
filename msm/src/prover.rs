@@ -160,14 +160,14 @@ where
 
     let column_env = MSMColumnEnvironment {
         constants: Constants {
-            endo_coefficient: G::ScalarField::one(),
+            endo_coefficient: *endo_r,
             mds: &G::sponge_params().mds,
             zk_rows: 0,
         },
         challenges: Challenges {
             alpha,
-            beta: G::ScalarField::one(),
-            gamma: G::ScalarField::one(),
+            beta: G::ScalarField::zero(),
+            gamma: G::ScalarField::zero(),
             joint_combiner: None,
         },
         witness: &witness_evals_env,
@@ -369,17 +369,16 @@ where
 
     println!("v/u: {:?}, {:?}", v, u);
 
+    let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
+    let _evaluation_form = |e| DensePolynomialOrEvaluations::Evaluations(e, domain.d1);
+    let non_hiding = |d1_size| PolyComm {
+        elems: vec![G::ScalarField::zero(); d1_size],
+    };
+
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = witness_polys
         .into_iter()
-        .map(|poly| {
-            (
-                DensePolynomialOrEvaluations::DensePolynomial(poly),
-                PolyComm {
-                    elems: vec![G::ScalarField::zero()],
-                },
-            )
-        })
+        .map(|poly| (coefficients_form(poly), non_hiding(1)))
         .collect();
 
     // Adding MVLookup
@@ -388,38 +387,23 @@ where
         polynomials.extend(
             (&lookup_env.lookup_counters_poly_d1)
                 .into_par_iter()
-                .map(|poly| {
-                    (
-                        DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        PolyComm {
-                            elems: vec![G::ScalarField::zero()],
-                        },
-                    )
-                })
+                .map(|poly| (coefficients_form(poly), non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
         // -- after that f_i and t
         polynomials.extend(
             (&lookup_env.lookup_terms_poly_d1)
                 .into_par_iter()
-                .map(|poly| {
-                    (
-                        DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        PolyComm {
-                            elems: vec![G::ScalarField::zero()],
-                        },
-                    )
-                })
+                .map(|poly| (coefficients_form(poly), non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
         // -- after that the running sum
         polynomials.push((
-            DensePolynomialOrEvaluations::DensePolynomial(&lookup_env.lookup_aggregation_poly_d1),
-            PolyComm {
-                elems: vec![G::ScalarField::zero()],
-            },
+            coefficients_form(&lookup_env.lookup_aggregation_poly_d1),
+            non_hiding(1),
         ));
     }
+    polynomials.push((coefficients_form(&ft), non_hiding(1)));
 
     let opening_proof = OpenProof::open::<_, _, R2D<G::ScalarField>>(
         srs,
