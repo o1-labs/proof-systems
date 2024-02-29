@@ -1844,8 +1844,13 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
     ) -> Evaluations<F, D<F>> {
         let d1_size = env.get_domain(Domain::D1).size;
         let deg = self.degree(d1_size, env.get_constants().zk_rows);
-        let d = if deg <= d1_size {
-            Domain::D1
+        // TODO @volhovm I'm not sure about this change, but otherwise we get a trivial polynomial.
+        // It never makes sense to evaluate expression over D1, since then we just get zero.
+        let d = if deg <= 2 * d1_size {
+            Domain::D2
+        //let d = Domain::D4;
+        //        let d = if deg <= 2 * d1_size {
+        //            Domain::D2
         } else if deg <= 4 * d1_size {
             Domain::D4
         } else if deg <= 8 * d1_size {
