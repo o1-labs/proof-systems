@@ -69,7 +69,7 @@
 <span class="kw">use </span>kimchi_msm::prover::prove;
 <span class="kw">use </span>kimchi_msm::verifier::verify;
 <span class="kw">use </span>kimchi_msm::{
-    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
+    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N,
 };
 
 <span class="kw">pub fn </span>generate_random_msm_witness() -&gt; BuilderEnv&lt;BN254G1Affine&gt; {
@@ -102,7 +102,7 @@
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
     <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
-    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
+    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N&gt;(
         domain,
         <span class="kw-2">&amp;</span>srs,
         witness,
@@ -111,7 +111,7 @@
     );
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
-    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)
 }
 </code></pre></div></section></main></body></html>

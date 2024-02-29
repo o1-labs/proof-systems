@@ -193,6 +193,14 @@
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
 <a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -224,6 +232,11 @@
 <span class="kw">pub type </span>BN254G1Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G1Affine;
 <span class="kw">pub type </span>BN254G2Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G2Affine;
 
+<span class="doccomment">/// Number of columns
+/// FIXME: we must move it into the subdirectory of the
+/// foreign field addition circuit
+</span><span class="kw">pub const </span>N: usize = <span class="number">3 </span>* LIMBS_NUM;
+
 <span class="doccomment">/// The native field we are working with.
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
 
@@ -243,9 +256,12 @@
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
 
     <span class="kw">use crate</span>::{
-        columns::Column, mvlookup::Lookup, proof::Witness, prover::prove, verifier::verify,
+        columns::Column, mvlookup::Lookup, proof::ProofInputs, prover::prove, verifier::verify,
         BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
     };
+
+    <span class="comment">// Number of columns
+    </span><span class="kw">const </span>N: usize = <span class="number">10</span>;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
@@ -262,20 +278,20 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span>witness = Witness::random(domain);
+        <span class="kw">let </span>inputs = ProofInputs::random(domain);
         <span class="kw">let </span>constraints: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
 
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
-            witness,
+            inputs,
             constraints,
             <span class="kw-2">&amp;mut </span>rng,
         );
 
         <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
         <span class="macro">assert!</span>(verifies);
     }
 
@@ -293,22 +309,22 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span>witness = Witness::random(domain);
+        <span class="kw">let </span>inputs = ProofInputs::random(domain);
         <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
-            witness,
+            inputs,
             constraints.clone(),
             <span class="kw-2">&amp;mut </span>rng,
         );
 
-        <span class="kw">let </span>witness_prime = Witness::random(domain);
-        <span class="kw">let </span>proof_prime = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
+        <span class="kw">let </span>inputs_prime = ProofInputs::random(domain);
+        <span class="kw">let </span>proof_prime = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
-            witness_prime,
+            inputs_prime,
             constraints,
             <span class="kw-2">&amp;mut </span>rng,
         );
@@ -318,7 +334,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
             <span class="kw">let </span>verifies =
-                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
+                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
             <span class="macro">assert!</span>(!verifies);
         }
 
@@ -329,7 +345,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.commitments = proof_prime.commitments;
             <span class="kw">let </span>verifies =
-                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
+                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
             <span class="macro">assert!</span>(!verifies);
         }
 
@@ -341,7 +357,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.zeta_evaluations = proof_prime.zeta_evaluations;
             <span class="kw">let </span>verifies =
-                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
+                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
             <span class="macro">assert!</span>(!verifies);
         }
     }
@@ -361,10 +377,10 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness = Witness::random(domain);
+        <span class="kw">let </span><span class="kw-2">mut </span>inputs = ProofInputs::random(domain);
         <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
         <span class="comment">// Take one random f_i (FIXME: taking first one for now)
-        </span><span class="kw">let </span>looked_up_values = witness.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>].clone();
+        </span><span class="kw">let </span>looked_up_values = inputs.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>].clone();
         <span class="comment">// We change a random looked up element (FIXME: first one for now)
         </span><span class="kw">let </span>wrong_looked_up_value = Lookup {
             table_id: looked_up_values[<span class="number">0</span>].table_id,
@@ -372,16 +388,16 @@
             value: <span class="macro">vec!</span>[Fp::rand(<span class="kw-2">&amp;mut </span>rng)],
         };
         <span class="comment">// Overwriting the first looked up value
-        </span>witness.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
+        </span>inputs.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>&gt;(
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
-            witness,
+            inputs,
             constraints,
             <span class="kw-2">&amp;mut </span>rng,
         );
-        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
         <span class="comment">// FIXME: At the moment, it does verify. It should not. We are missing constraints.
         </span><span class="macro">assert!</span>(!verifies);
     }

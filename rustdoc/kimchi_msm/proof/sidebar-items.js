@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Proof","Witness","WitnessColumns"]};
+window.SIDEBAR_ITEMS = {"struct":["Proof","ProofInputs"]};

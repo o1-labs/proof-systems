@@ -161,10 +161,11 @@
     OpeningProof: OpenProof&lt;G&gt;,
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
     EFrSponge: FrSponge&lt;G::ScalarField&gt;,
+    <span class="kw">const </span>N: usize,
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    proof: <span class="kw-2">&amp;</span>Proof&lt;G, OpeningProof&gt;,
+    proof: <span class="kw-2">&amp;</span>Proof&lt;N, G, OpeningProof&gt;,
 ) -&gt; bool {
     <span class="kw">let </span>Proof {
         commitments,
@@ -195,25 +196,24 @@
     <span class="kw">let </span>omega = domain.d1.group_gen;
     <span class="kw">let </span>zeta_omega = zeta * omega;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;<span class="kw">_</span>&gt; = zeta_evaluations
+    <span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; = zeta_evaluations
         .into_iter()
         .zip(zeta_omega_evaluations)
         .map(|(zeta, zeta_omega)| <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]])
-        .collect();
+        .collect::&lt;Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt;&gt;();
 
     <span class="kw">if </span>mvlookup_commitments.is_some() {
-        es.extend(
-            mvlookup_zeta_evaluations
-                .as_ref()
-                .unwrap()
-                .into_iter()
-                .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
-                .map(|(zeta, zeta_omega)| <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]])
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-        );
+        <span class="kw">let </span>mvlookup_evals = mvlookup_zeta_evaluations
+            .as_ref()
+            .unwrap()
+            .into_iter()
+            .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
+            .map(|(zeta, zeta_omega)| <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]])
+            .collect::&lt;Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt;&gt;();
+        es.extend(mvlookup_evals);
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>evaluations: Vec&lt;<span class="kw">_</span>&gt; = commitments
+    <span class="kw">let </span><span class="kw-2">mut </span>evaluations: Vec&lt;Evaluation&lt;<span class="kw">_</span>&gt;&gt; = commitments
         .into_iter()
         .zip(zeta_evaluations.into_iter().zip(zeta_omega_evaluations))
         .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {

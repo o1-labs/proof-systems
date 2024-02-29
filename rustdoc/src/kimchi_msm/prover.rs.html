@@ -247,6 +247,10 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -266,7 +270,8 @@
 <span class="kw">use </span>rayon::iter::ParallelIterator;
 
 <span class="kw">use </span><span class="kw">crate</span>::mvlookup::{<span class="self">self</span>, LookupProof};
-<span class="kw">use </span><span class="kw">crate</span>::proof::{Proof, Witness, WitnessColumns};
+<span class="kw">use </span><span class="kw">crate</span>::proof::{Proof, ProofInputs};
+<span class="kw">use </span><span class="kw">crate</span>::witness::Witness;
 
 <span class="kw">pub fn </span>prove&lt;
     G: KimchiCurve,
@@ -275,47 +280,48 @@
     EFrSponge: FrSponge&lt;G::ScalarField&gt;,
     Column,
     RNG,
+    <span class="kw">const </span>N: usize,
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    inputs: Witness&lt;G&gt;,
+    inputs: ProofInputs&lt;N, G&gt;,
     _constraints: Vec&lt;Expr&lt;ConstantExpr&lt;G::ScalarField&gt;, Column&gt;&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
-) -&gt; Proof&lt;G, OpeningProof&gt;
+) -&gt; Proof&lt;N, G, OpeningProof&gt;
 <span class="kw">where
     </span>OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
 {
     <span class="comment">// Interpolate all columns on d1, using trait Into.
-    </span><span class="kw">let </span>evaluations: WitnessColumns&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; = inputs
+    </span><span class="kw">let </span>evaluations: Witness&lt;N, Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; = inputs
         .evaluations
         .into_par_iter()
         .map(|evals| {
             Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(evals, domain.d1)
         })
-        .collect::&lt;WitnessColumns&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;();
+        .collect::&lt;Witness&lt;N, Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;();
 
-    <span class="kw">let </span>polys: WitnessColumns&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = {
+    <span class="kw">let </span>polys: Witness&lt;N, DensePolynomial&lt;G::ScalarField&gt;&gt; = {
         <span class="kw">let </span>interpolate =
             |evals: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;| evals.interpolate();
         evaluations
             .into_par_iter()
             .map(interpolate)
-            .collect::&lt;WitnessColumns&lt;<span class="kw">_</span>&gt;&gt;()
+            .collect::&lt;Witness&lt;N, DensePolynomial&lt;G::ScalarField&gt;&gt;&gt;()
     };
 
-    <span class="kw">let </span>commitments: WitnessColumns&lt;PolyComm&lt;G&gt;&gt; = {
+    <span class="kw">let </span>commitments: Witness&lt;N, PolyComm&lt;G&gt;&gt; = {
         <span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| srs.commit_non_hiding(poly, <span class="number">1</span>);
         (<span class="kw-2">&amp;</span>polys)
             .into_par_iter()
             .map(comm)
-            .collect::&lt;WitnessColumns&lt;<span class="kw">_</span>&gt;&gt;()
+            .collect::&lt;Witness&lt;N, PolyComm&lt;G&gt;&gt;&gt;()
     };
 
     <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     <span class="comment">// Do not use parallelism
-    </span>commitments
+    </span>(<span class="kw-2">&amp;</span>commitments)
         .into_iter()
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
@@ -346,10 +352,12 @@
     // TODO: Parallelize
     </span><span class="kw">let </span>(zeta_evaluations, zeta_omega_evaluations) = {
         <span class="kw">let </span>evals = |point| {
-            <span class="kw">let </span>WitnessColumns { x } = <span class="kw-2">&amp;</span>polys;
-            <span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate(point);
-            <span class="kw">let </span>x = x.iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-            WitnessColumns { x }
+            <span class="kw">let </span>Witness { cols: polys } = <span class="kw-2">&amp;</span>polys;
+            <span class="kw">let </span><span class="kw-2">mut </span>evals: [G::ScalarField; N] = [G::ScalarField::zero(); N];
+            <span class="kw">for </span>(i, poly) <span class="kw">in </span>polys.iter().enumerate() {
+                evals[i] = poly.evaluate(point)
+            }
+            Witness { cols: evals }
         };
         (evals(<span class="kw-2">&amp;</span>zeta), evals(<span class="kw-2">&amp;</span>zeta_omega))
     };
@@ -434,9 +442,9 @@
     <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
 
-    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations
+    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>(<span class="kw-2">&amp;</span>zeta_evaluations)
         .into_iter()
-        .zip(zeta_omega_evaluations.into_iter())
+        .zip((<span class="kw-2">&amp;</span>zeta_omega_evaluations).into_iter())
     {
         fr_sponge.absorb(zeta_eval);
         fr_sponge.absorb(zeta_omega_eval);
