@@ -21,6 +21,17 @@ impl<const N: usize, T: Zero + Clone> Default for Witness<N, T> {
 
 // IMPLEMENTATION OF ITERATORS FOR THE WITNESS STRUCTURE
 
+impl<'lt, const N: usize, G> IntoIterator for &'lt Witness<N, G> {
+    type Item = &'lt G;
+    type IntoIter = std::vec::IntoIter<&'lt G>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut iter_contents = Vec::with_capacity(N);
+        iter_contents.extend(&self.cols);
+        iter_contents.into_iter()
+    }
+}
+
 impl<const N: usize, F: Clone> IntoIterator for Witness<N, F> {
     type Item = F;
     type IntoIter = std::vec::IntoIter<F>;
