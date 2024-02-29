@@ -94,6 +94,7 @@ impl<Fp: Field> Env<Fp> {
 /// a sequence of 3 limbs of 88 bits.
 /// It will deserialize into limbs of 15 bits.
 /// Given a scalar field element of Vesta or Pallas, here the decomposition:
+/// ```text
 /// limbs = [limbs0, limbs1, limbs2]
 /// |  limbs0  |   limbs1   |   limbs2   |
 /// | 0 ... 87 | 88 ... 175 | 176 .. 264 |
@@ -105,7 +106,8 @@ impl<Fp: Field> Env<Fp> {
 /// (2): c6 = 2...16, c7 = 17..31, c8 = 32..46, c9 = 47..61, c10 = 62..76
 /// (2) and (3): c11 = limbs1[77]..limbs1[87] || limbs2[0]..limbs2[3]
 /// (3) c12 = 4...18, c13 = 19..33, c14 = 34..48, c15 = 49..63, c16 = 64..78
-/// And we can ignore the last 10 bits (i.e. limbs2[78..87]) as a field element
+/// ```
+/// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
 pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u128; 3]) {
     // Use this to constrain later
