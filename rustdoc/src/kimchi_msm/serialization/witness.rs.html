@@ -330,6 +330,10 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 
 <span class="kw">use </span><span class="kw">crate</span>::columns::Column;
@@ -451,8 +455,12 @@
     <span class="kw">let </span>input_limb1 = Env::constant(limbs[<span class="number">1</span>]);
     <span class="kw">let </span>input_limb2 = Env::constant(limbs[<span class="number">2</span>]);
 
-    <span class="comment">// TODO: Do we need to check it is only 88 bits?
-    </span>env.copy(<span class="kw-2">&amp;</span>input_limb0, kimchi_limbs0);
+    <span class="comment">// FIXME: should we assert this in the circuit?
+    </span><span class="macro">assert!</span>(limbs[<span class="number">0</span>] &lt; <span class="number">2u128</span>.pow(<span class="number">88</span>));
+    <span class="macro">assert!</span>(limbs[<span class="number">1</span>] &lt; <span class="number">2u128</span>.pow(<span class="number">88</span>));
+    <span class="macro">assert!</span>(limbs[<span class="number">2</span>] &lt; <span class="number">2u128</span>.pow(<span class="number">79</span>));
+
+    env.copy(<span class="kw-2">&amp;</span>input_limb0, kimchi_limbs0);
     env.copy(<span class="kw-2">&amp;</span>input_limb1, kimchi_limbs1);
     env.copy(<span class="kw-2">&amp;</span>input_limb2, kimchi_limbs2);
 
