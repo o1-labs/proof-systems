@@ -1,10 +1,13 @@
-use kimchi::circuits::expr::{ConstantExpr, Expr};
-use kimchi::circuits::expr::{ConstantExprInner, Operations};
-use kimchi::circuits::expr::{ExprInner, Variable};
-use kimchi::circuits::gate::CurrOrNext;
-use kimchi::curve::KimchiCurve;
+use ark_ff::Zero;
+use ark_poly::Radix2EvaluationDomain;
 use num_bigint::BigUint;
 
+use kimchi::circuits::expr::{
+    Challenges, ColumnEvaluations, ConstantExpr, ConstantExprInner, Constants, Expr, ExprError,
+    ExprInner, Operations, Variable,
+};
+use kimchi::circuits::gate::CurrOrNext;
+use kimchi::curve::KimchiCurve;
 use o1_utils::field_helpers::FieldHelpers;
 use o1_utils::foreign_field::ForeignElement;
 
@@ -59,6 +62,7 @@ pub struct WitnessColumnsIndexer<T> {
     pub(crate) a: [T; LIMBS_NUM],
     pub(crate) b: [T; LIMBS_NUM],
     pub(crate) c: [T; LIMBS_NUM],
+    pub(crate) d: [T; LIMBS_NUM],
 }
 
 #[allow(dead_code)]
@@ -84,18 +88,20 @@ impl BuilderEnv<BN254G1Affine> {
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
     pub fn get_witness(&self) -> Witness<BN254G1Affine> {
-        let mut x: Vec<Vec<Fp>> = vec![vec![]; 3 * LIMBS_NUM];
+        let mut x: Vec<Vec<Fp>> = vec![vec![]; 4 * LIMBS_NUM];
 
         for wc in &self.witness_raw {
             let WitnessColumnsIndexer {
                 a: wc_a,
                 b: wc_b,
                 c: wc_c,
+                d: wc_d,
             } = wc;
             for i in 0..LIMBS_NUM {
                 x[i].push(wc_a[i]);
                 x[LIMBS_NUM + i].push(wc_b[i]);
                 x[2 * LIMBS_NUM + i].push(wc_c[i]);
+                x[3 * LIMBS_NUM + i].push(wc_d[i]);
             }
         }
 
@@ -105,8 +111,9 @@ impl BuilderEnv<BN254G1Affine> {
         }
     }
 
-    pub fn add_test_addition(&mut self, a: Ff1, b: Ff1) {
-        let mut limb_constraints: Vec<_> = vec![];
+    /// Access exprs generated in the environment so far.
+    pub fn get_exprs_add(&self) -> Vec<MSMExpr<Fp>> {
+        let mut limb_exprs: Vec<_> = vec![];
         for i in 0..LIMBS_NUM {
             let limb_constraint = {
                 let a_i = MSMExpr::Atom(
@@ -125,12 +132,52 @@ impl BuilderEnv<BN254G1Affine> {
                 }));
                 a_i + b_i - c_i
             };
-            limb_constraints.push(limb_constraint);
+            limb_exprs.push(limb_constraint);
         }
-        let combined_constraint =
-            Expr::combine_constraints(0..(limb_constraints.len() as u32), limb_constraints);
-        self.constraints.push(combined_constraint);
+        limb_exprs
+    }
 
+    // TEST
+    pub fn get_exprs_mul(&self) -> Vec<MSMExpr<Fp>> {
+        let mut limb_exprs: Vec<_> = vec![];
+        for i in 0..LIMBS_NUM {
+            let limb_constraint = {
+                let a_i = MSMExpr::Atom(
+                    ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
+                        col: MSMColumnIndexer::A(i).ix_to_column(),
+                        row: CurrOrNext::Curr,
+                    }),
+                );
+                let b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
+                    col: MSMColumnIndexer::B(i).ix_to_column(),
+                    row: CurrOrNext::Curr,
+                }));
+                let d_i = MSMExpr::Atom(ExprInner::Cell(Variable {
+                    col: MSMColumnIndexer::D(i).ix_to_column(),
+                    row: CurrOrNext::Curr,
+                }));
+                a_i * b_i - d_i
+            };
+            limb_exprs.push(limb_constraint);
+        }
+        limb_exprs
+    }
+
+    pub fn eval_expressions<Evaluations: ColumnEvaluations<Fp, Column = crate::columns::Column>>(
+        &self,
+        d: Radix2EvaluationDomain<Fp>,
+        pt: Fp,
+        evals: &Evaluations,
+        c: &Constants<Fp>,
+        chals: &Challenges<Fp>,
+    ) -> Result<Vec<Fp>, ExprError<Column>> {
+        self.get_exprs_add()
+            .iter()
+            .map(|expr| expr.evaluate_(d, pt, evals, c, chals))
+            .collect()
+    }
+
+    pub fn add_test_addition(&mut self, a: Ff1, b: Ff1) {
         let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
         let b_limbs: [Fp; LIMBS_NUM] = limb_decompose(&b);
         let c_limbs_vec: Vec<Fp> = a_limbs
@@ -141,11 +188,35 @@ impl BuilderEnv<BN254G1Affine> {
         let c_limbs: [Fp; LIMBS_NUM] = c_limbs_vec
             .try_into()
             .unwrap_or_else(|_| panic!("Length mismatch"));
+        let d_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
 
         self.witness_raw.push(WitnessColumnsIndexer {
             a: a_limbs,
             b: b_limbs,
             c: c_limbs,
+            d: d_limbs,
+        });
+    }
+
+    pub fn add_test_multiplication(&mut self, a: Ff1, b: Ff1) {
+        let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
+        let b_limbs: [Fp; LIMBS_NUM] = limb_decompose(&b);
+        let d_limbs_vec: Vec<Fp> = a_limbs
+            .iter()
+            .zip(b_limbs.iter())
+            .map(|(ai, bi)| *ai * *bi)
+            .collect();
+        let d_limbs: [Fp; LIMBS_NUM] = d_limbs_vec
+            .try_into()
+            .unwrap_or_else(|_| panic!("Length mismatch"));
+
+        let c_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
+
+        self.witness_raw.push(WitnessColumnsIndexer {
+            a: a_limbs,
+            b: b_limbs,
+            c: c_limbs,
+            d: d_limbs,
         });
     }
 }
