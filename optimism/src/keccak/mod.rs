@@ -8,6 +8,7 @@ use self::column::Column as KeccakColumn;
 pub mod column;
 pub mod constraints;
 pub mod environment;
+pub mod folding;
 pub mod interpreter;
 pub mod lookups;
 pub mod witness;

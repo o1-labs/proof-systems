@@ -12,8 +12,10 @@ use crate::{
 use ark_ff::{Field, One};
 use kimchi::{
     auto_clone_array,
-    circuits::expr::ConstantTerm::Literal,
-    circuits::{expr::Operations, polynomials::keccak::constants::*, polynomials::keccak::Keccak},
+    circuits::{
+        expr::{ConstantTerm::Literal, Operations},
+        polynomials::keccak::{constants::*, Keccak},
+    },
     grid,
     o1_utils::Two,
 };
