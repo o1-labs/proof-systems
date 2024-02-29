@@ -4,6 +4,8 @@ use crate::columns::Column;
 use crate::serialization::interpreter::InterpreterEnv;
 use crate::LIMBS_NUM;
 
+use super::N_INTERMEDIATE_LIMBS;
+
 /// Environment for the serializer interpreter
 pub struct Env<Fp> {
     pub current_kimchi_limbs: [Fp; 3],
@@ -11,7 +13,7 @@ pub struct Env<Fp> {
     pub msm_limbs: [Fp; LIMBS_NUM],
     /// Used for the decomposition in base 4 of the last limb of the foreign
     /// field Kimchi gate
-    pub intermediate_limbs: [Fp; 19],
+    pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
@@ -35,7 +37,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
-        assert!(j < 19);
+        assert!(j < N_INTERMEDIATE_LIMBS);
         Column::X(3 + LIMBS_NUM + j)
     }
 
@@ -74,7 +76,7 @@ impl<Fp: Field> Env<Fp> {
                     self.current_kimchi_limbs[i] = Fp::from(value);
                 } else if i < 3 + LIMBS_NUM {
                     self.msm_limbs[i - 3] = Fp::from(value);
-                } else if i < 3 + LIMBS_NUM + 19 {
+                } else if i < 3 + LIMBS_NUM + N_INTERMEDIATE_LIMBS {
                     self.intermediate_limbs[i - 3 - LIMBS_NUM] = Fp::from(value);
                 } else {
                     panic!("Invalid column index")
@@ -89,7 +91,7 @@ impl<Fp: Field> Env<Fp> {
         Self {
             current_kimchi_limbs: [Fp::zero(); 3],
             msm_limbs: [Fp::zero(); LIMBS_NUM],
-            intermediate_limbs: [Fp::zero(); 19],
+            intermediate_limbs: [Fp::zero(); N_INTERMEDIATE_LIMBS],
         }
     }
 }
@@ -133,7 +135,7 @@ pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u12
     env.copy(&input_limb2, kimchi_limbs2);
 
     // Compute individual 4 bits limbs of b2
-    for j in 0..19 {
+    for j in 0..N_INTERMEDIATE_LIMBS {
         let position = Env::get_column_for_intermediate_limb(j);
         env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
     }
@@ -195,6 +197,7 @@ pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u12
 mod tests {
     use std::str::FromStr;
 
+    use crate::serialization::N_INTERMEDIATE_LIMBS;
     use crate::{LIMBS_NUM, LIMB_BITSIZE};
 
     use super::deserialize_field_element;
@@ -246,7 +249,7 @@ mod tests {
         // Check intermediate limbs
         {
             let bits = Fp::from(limb2).to_bits();
-            for j in 0..19 {
+            for j in 0..N_INTERMEDIATE_LIMBS {
                 let le_bits: &[bool] = &bits
                     .clone()
                     .into_iter()
