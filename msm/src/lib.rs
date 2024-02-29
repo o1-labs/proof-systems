@@ -4,6 +4,7 @@ use mina_poseidon::{
 };
 use poly_commitment::pairing_proof::PairingProof;
 
+pub mod column_env;
 pub mod columns;
 pub mod constraint;
 pub mod mvlookup;
