@@ -1,5 +1,5 @@
 use ark_ff::{Field, One, Zero};
-use kimchi_msm::{MVLookup, MVLookupTableID};
+use kimchi_msm::{LookupTableID, MVLookup};
 
 /// Enum representing the two different modes of a RAMLookup
 #[derive(Copy, Clone, Debug)]
@@ -10,7 +10,7 @@ pub enum LookupMode {
 
 /// Struct containing a RAMLookup
 #[derive(Clone, Debug)]
-pub struct Lookup<T, ID: MVLookupTableID + Send + Sync + Copy> {
+pub struct RAMLookup<T, ID: LookupTableID + Send + Sync + Copy> {
     /// The table ID corresponding to this lookup
     pub(crate) table_id: ID,
     /// Whether it is a read or write lookup
@@ -21,7 +21,7 @@ pub struct Lookup<T, ID: MVLookupTableID + Send + Sync + Copy> {
     pub(crate) value: Vec<T>,
 }
 
-impl<T, ID> Lookup<T, ID>
+impl<T, ID> RAMLookup<T, ID>
 where
     T: Clone
         + std::ops::Add<T, Output = T>
@@ -30,7 +30,7 @@ where
         + std::fmt::Debug
         + One
         + Zero,
-    ID: MVLookupTableID + Send + Sync + Copy,
+    ID: LookupTableID + Send + Sync + Copy,
 {
     /// Creates a new RAMLookup from a mode, a table ID, a magnitude, and a value
     pub fn new(mode: LookupMode, table_id: ID, magnitude: T, value: &[T]) -> Self {
@@ -96,8 +96,8 @@ where
     }
 }
 
-impl<F: std::fmt::Display + Field, ID: MVLookupTableID + Send + Sync + Copy> std::fmt::Display
-    for Lookup<F, ID>
+impl<F: std::fmt::Display + Field, ID: LookupTableID + Send + Sync + Copy> std::fmt::Display
+    for RAMLookup<F, ID>
 {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let numerator = match self.mode {
@@ -116,15 +116,4 @@ impl<F: std::fmt::Display + Field, ID: MVLookupTableID + Send + Sync + Copy> std
         write!(formatter, "]")?;
         Ok(())
     }
-}
-
-/// A table of values that can be used for a lookup, along with the ID for the table.
-#[derive(Debug, Clone)]
-pub struct LookupTable<F, ID: MVLookupTableID + Send + Sync + Copy> {
-    /// Table ID corresponding to this table
-    #[allow(dead_code)]
-    pub table_id: ID,
-    /// Vector of values inside each entry of the table
-    #[allow(dead_code)]
-    pub entries: Vec<Vec<F>>,
 }

@@ -5,7 +5,7 @@ use mina_poseidon::{
 use poly_commitment::pairing_proof::PairingProof;
 
 pub use mvlookup::{
-    Lookup as MVLookup, LookupProof as MVLookupProof, LookupTableID as MVLookupTableID,
+    Lookup as MVLookup, LookupProof as MVLookupProof, LookupTable as MVLookupTable, LookupTableID,
     LookupWitness as MVLookupWitness,
 };
 

@@ -1,9 +1,6 @@
 //! Instantiation of the lookups for the VM project.
 
-use crate::{
-    keccak::witness::pad_blocks,
-    ramlookup::{Lookup, LookupTable},
-};
+use crate::{keccak::witness::pad_blocks, ramlookup::RAMLookup};
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
@@ -12,12 +9,13 @@ use kimchi::{
     },
     o1_utils::Two,
 };
-use kimchi_msm::MVLookupTableID;
+use kimchi_msm::{LookupTableID, MVLookupTable};
 
 pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
+/// All of the possible lookup table IDs used in the zkVM
 #[derive(Copy, Clone, Debug)]
-pub enum VMLookupTableIDs {
+pub enum LookupTableIDs {
     // RAM Tables
     MemoryLookup = 0,
     RegisterLookup = 1,
@@ -41,15 +39,15 @@ pub enum VMLookupTableIDs {
     ByteLookup = 9,
 }
 
-impl MVLookupTableID for VMLookupTableIDs {
+impl LookupTableID for LookupTableIDs {
     fn into_field<F: Field>(self) -> F {
         F::from(self as u32)
     }
 }
 
-pub(crate) type VMLookup<F> = Lookup<F, VMLookupTableIDs>;
+pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
 
-pub(crate) type VMLookupTable<F> = LookupTable<F, VMLookupTableIDs>;
+pub(crate) type LookupTable<F> = MVLookupTable<F, LookupTableIDs>;
 
 /// This trait adds basic methods to deal with lookups inside an environment
 pub(crate) trait Lookups {
@@ -61,17 +59,27 @@ pub(crate) trait Lookups {
         + Clone;
 
     /// Adds a given Lookup to the environment
-    fn add_lookup(&mut self, lookup: VMLookup<Self::Variable>);
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     /// Adds all lookups of Self to the environment
     fn lookups(&mut self);
 }
 
-impl<F: Field> VMLookupTable<F> {
+/// Trait that creates all the fixed lookup tables used in the VM
+pub(crate) trait FixedLookupTables<F> {
+    fn table_range_check_16() -> LookupTable<F>;
+    fn table_sparse() -> LookupTable<F>;
+    fn table_reset() -> LookupTable<F>;
+    fn table_round_constants() -> LookupTable<F>;
+    fn table_pad() -> LookupTable<F>;
+    fn table_byte() -> LookupTable<F>;
+}
+
+impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     #[allow(dead_code)]
     fn table_range_check_16() -> Self {
         Self {
-            table_id: VMLookupTableIDs::RangeCheck16Lookup,
+            table_id: LookupTableIDs::RangeCheck16Lookup,
             entries: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| vec![F::from(i)])
                 .collect(),
@@ -81,7 +89,7 @@ impl<F: Field> VMLookupTable<F> {
     #[allow(dead_code)]
     fn table_sparse() -> Self {
         Self {
-            table_id: VMLookupTableIDs::SparseLookup,
+            table_id: LookupTableIDs::SparseLookup,
             entries: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| {
                     vec![F::from(
@@ -95,7 +103,7 @@ impl<F: Field> VMLookupTable<F> {
     #[allow(dead_code)]
     fn table_reset() -> Self {
         Self {
-            table_id: VMLookupTableIDs::ResetLookup,
+            table_id: LookupTableIDs::ResetLookup,
             entries: (0..TWO_TO_16_UPPERBOUND)
                 .map(|i| {
                     vec![
@@ -110,7 +118,7 @@ impl<F: Field> VMLookupTable<F> {
     #[allow(dead_code)]
     fn table_round_constants() -> Self {
         Self {
-            table_id: VMLookupTableIDs::RoundConstantsLookup,
+            table_id: LookupTableIDs::RoundConstantsLookup,
             entries: (0..=ROUNDS)
                 .map(|i| {
                     vec![
@@ -128,7 +136,7 @@ impl<F: Field> VMLookupTable<F> {
     #[allow(dead_code)]
     fn table_pad() -> Self {
         Self {
-            table_id: VMLookupTableIDs::PadLookup,
+            table_id: LookupTableIDs::PadLookup,
             entries: (1..=RATE_IN_BYTES)
                 .map(|i| {
                     let suffix = pad_blocks(i);
@@ -149,7 +157,7 @@ impl<F: Field> VMLookupTable<F> {
     #[allow(dead_code)]
     fn table_byte() -> Self {
         Self {
-            table_id: VMLookupTableIDs::ByteLookup,
+            table_id: LookupTableIDs::ByteLookup,
             entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
         }
     }

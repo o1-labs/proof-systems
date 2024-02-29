@@ -38,6 +38,17 @@ pub trait LookupTableID {
     fn into_field<F: Field>(self) -> F;
 }
 
+/// A table of values that can be used for a lookup, along with the ID for the table.
+#[derive(Debug, Clone)]
+pub struct LookupTable<F, ID: LookupTableID + Send + Sync + Copy> {
+    /// Table ID corresponding to this table
+    #[allow(dead_code)]
+    pub table_id: ID,
+    /// Vector of values inside each entry of the table
+    #[allow(dead_code)]
+    pub entries: Vec<Vec<F>>,
+}
+
 /// Represents a witness of one instance of the lookup argument
 #[derive(Debug)]
 pub struct LookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {

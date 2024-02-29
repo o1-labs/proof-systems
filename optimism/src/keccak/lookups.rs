@@ -4,8 +4,7 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, KeccakColumn, E,
     },
-    lookups::{Lookups, VMLookup, VMLookupTableIDs},
-    ramlookup::Lookup,
+    lookups::{Lookup, LookupTableIDs, Lookups},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
@@ -16,7 +15,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
 
-    fn add_lookup(&mut self, lookup: VMLookup<Self::Variable>) {
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         self.lookups.push(lookup);
     }
 
@@ -108,7 +107,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         for i in 0..RATE_IN_BYTES {
             self.add_lookup(Lookup::read_if(
                 self.is_absorb(),
-                VMLookupTableIDs::SyscallLookup,
+                LookupTableIDs::SyscallLookup,
                 vec![
                     self.hash_index(),
                     Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
@@ -124,7 +123,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         });
         self.add_lookup(Lookup::write_if(
             self.is_squeeze(),
-            VMLookupTableIDs::SyscallLookup,
+            LookupTableIDs::SyscallLookup,
             vec![self.hash_index(), bytes31],
         ));
     }
@@ -133,13 +132,13 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         // (if not a root) Output of previous step is input of current step
         self.add_lookup(Lookup::read_if(
             Self::not(self.is_root()),
-            VMLookupTableIDs::KeccakStepLookup,
+            LookupTableIDs::KeccakStepLookup,
             self.input_of_step(),
         ));
         // (if not a squeeze) Input for next step is output of current step
         self.add_lookup(Lookup::write_if(
             Self::not(self.is_squeeze()),
-            VMLookupTableIDs::KeccakStepLookup,
+            LookupTableIDs::KeccakStepLookup,
             self.output_of_step(),
         ));
     }
@@ -147,7 +146,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(
             flag,
-            VMLookupTableIDs::RangeCheck16Lookup,
+            LookupTableIDs::RangeCheck16Lookup,
             vec![value],
         ));
     }
@@ -160,7 +159,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     ) {
         self.add_lookup(Lookup::read_if(
             flag,
-            VMLookupTableIDs::ResetLookup,
+            LookupTableIDs::ResetLookup,
             vec![dense, sparse],
         ));
     }
@@ -168,7 +167,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(
             flag,
-            VMLookupTableIDs::SparseLookup,
+            LookupTableIDs::SparseLookup,
             vec![value],
         ));
     }
@@ -176,7 +175,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
         self.add_lookup(Lookup::read_if(
             flag,
-            VMLookupTableIDs::ByteLookup,
+            LookupTableIDs::ByteLookup,
             vec![value],
         ));
     }
@@ -187,7 +186,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         // Pad suffixes correspond to 10*1 rule
         self.add_lookup(Lookup::read_if(
             self.is_pad(),
-            VMLookupTableIDs::PadLookup,
+            LookupTableIDs::PadLookup,
             vec![
                 self.pad_length(),
                 self.two_to_pad(),
@@ -276,7 +275,7 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         // Check round constants correspond with the current round
         self.add_lookup(Lookup::read_if(
             self.is_round(),
-            VMLookupTableIDs::RoundConstantsLookup,
+            LookupTableIDs::RoundConstantsLookup,
             vec![
                 self.round(),
                 self.round_constants()[3].clone(),
