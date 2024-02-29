@@ -192,6 +192,7 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -206,6 +207,7 @@
 <span class="kw">pub mod </span>prover;
 <span class="kw">pub mod </span>serialization;
 <span class="kw">pub mod </span>verifier;
+<span class="kw">pub mod </span>witness;
 
 <span class="doccomment">/// Domain size for the MSM project, equal to the BN254 SRS size.
 </span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
