@@ -119,7 +119,11 @@ pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u12
     let input_limb1 = Env::constant(limbs[1]);
     let input_limb2 = Env::constant(limbs[2]);
 
-    // TODO: Do we need to check it is only 88 bits?
+    // FIXME: should we assert this in the circuit?
+    assert!(limbs[0] < 2u128.pow(88));
+    assert!(limbs[1] < 2u128.pow(88));
+    assert!(limbs[2] < 2u128.pow(79));
+
     env.copy(&input_limb0, kimchi_limbs0);
     env.copy(&input_limb1, kimchi_limbs1);
     env.copy(&input_limb2, kimchi_limbs2);
