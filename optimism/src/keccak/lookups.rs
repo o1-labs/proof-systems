@@ -4,7 +4,7 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, KeccakColumn, E,
     },
-    lookups::{Lookups, VMLookupTableIDs},
+    lookups::{Lookups, VMLookup, VMLookupTableIDs},
     ramlookup::Lookup,
 };
 use ark_ff::Field;
@@ -15,9 +15,8 @@ use kimchi::circuits::polynomials::keccak::constants::{
 impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
-    type Table = VMLookupTableIDs;
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable, Self::Table>) {
+    fn add_lookup(&mut self, lookup: VMLookup<Self::Variable>) {
         self.lookups.push(lookup);
     }
 

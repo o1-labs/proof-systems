@@ -59,10 +59,9 @@ pub(crate) trait Lookups {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Neg<Output = Self::Variable>
         + Clone;
-    type Table: MVLookupTableID + Send + Sync + Copy;
 
     /// Adds a given Lookup to the environment
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable, Self::Table>);
+    fn add_lookup(&mut self, lookup: VMLookup<Self::Variable>);
 
     /// Adds all lookups of Self to the environment
     fn lookups(&mut self);

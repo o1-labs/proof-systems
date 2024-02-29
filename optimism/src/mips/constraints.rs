@@ -1,5 +1,4 @@
 use crate::{
-    cannon::VmConfiguration,
     lookups::VMLookupTableIDs,
     mips::{
         column::{
