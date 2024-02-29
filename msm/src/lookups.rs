@@ -1,6 +1,6 @@
 //! Instantiate the MVLookup protocol for the MSM project.
 
-use crate::mvlookup::{Lookup, LookupTableID, LookupWitness};
+use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
 use ark_ff::{FftField, Field};
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
@@ -9,7 +9,7 @@ use std::iter;
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
 #[derive(Copy, Clone, Debug)]
-pub enum MSMLookupTableIDs {
+pub enum LookupTableIDs {
     RangeCheck16,
     /// Custom lookup table
     /// The index of the table is used as the ID, padded with the number of
@@ -17,26 +17,26 @@ pub enum MSMLookupTableIDs {
     Custom(usize),
 }
 
-impl LookupTableID for MSMLookupTableIDs {
+impl LookupTableID for LookupTableIDs {
     fn into_field<F: Field>(self) -> F {
         match self {
-            MSMLookupTableIDs::RangeCheck16 => F::one(),
-            MSMLookupTableIDs::Custom(id) => F::from(id as u64) + F::one(),
+            LookupTableIDs::RangeCheck16 => F::one(),
+            LookupTableIDs::Custom(id) => F::from(id as u64) + F::one(),
         }
     }
 }
 
-/// Additive lookups used in the MSM project
-pub type MSMLookup<F> = Lookup<F, MSMLookupTableIDs>;
+/// Additive lookups used in the MSM project based on MVLookup
+pub type Lookup<F> = MVLookup<F, LookupTableIDs>;
 
 /// Represents a witness of one instance of the lookup argument of the MSM project
-pub type MSMLookupWitness<F> = LookupWitness<F, MSMLookupTableIDs>;
+pub type LookupWitness<F> = MVLookupWitness<F, LookupTableIDs>;
 
 // This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the
 // main.rs. It should be moved to the test API when main.rs is replaced with
 // real production code.
-impl<F: FftField> MSMLookupWitness<F> {
+impl<F: FftField> LookupWitness<F> {
     /// Generate a random number of correct lookups in the table RangeCheck16
     pub fn random(domain: EvaluationDomains<F>) -> Self {
         let mut rng = thread_rng();
@@ -66,39 +66,39 @@ impl<F: FftField> MSMLookupWitness<F> {
         };
         let t_evals = {
             let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(t.iter().map(|v| MSMLookup {
-                table_id: MSMLookupTableIDs::Custom(table_id),
+            table.extend(t.iter().map(|v| Lookup {
+                table_id: LookupTableIDs::Custom(table_id),
                 numerator: -F::one(),
                 value: vec![F::from(*v)],
             }));
             table.extend(
                 repeated_dummy_value
                     .iter()
-                    .map(|v| MSMLookup {
-                        table_id: MSMLookupTableIDs::Custom(table_id),
+                    .map(|v| Lookup {
+                        table_id: LookupTableIDs::Custom(table_id),
                         numerator: -F::one(),
                         value: vec![*v],
                     })
-                    .collect::<Vec<MSMLookup<F>>>(),
+                    .collect::<Vec<Lookup<F>>>(),
             );
             table
         };
-        let f_evals: Vec<MSMLookup<F>> = {
+        let f_evals: Vec<Lookup<F>> = {
             let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(f.iter().map(|v| MSMLookup {
-                table_id: MSMLookupTableIDs::Custom(table_id),
+            table.extend(f.iter().map(|v| Lookup {
+                table_id: LookupTableIDs::Custom(table_id),
                 numerator: F::one(),
                 value: vec![F::from(*v)],
             }));
             table.extend(
                 repeated_dummy_value
                     .iter()
-                    .map(|v| MSMLookup {
-                        table_id: MSMLookupTableIDs::Custom(table_id),
+                    .map(|v| Lookup {
+                        table_id: LookupTableIDs::Custom(table_id),
                         numerator: F::one(),
                         value: vec![*v],
                     })
-                    .collect::<Vec<MSMLookup<F>>>(),
+                    .collect::<Vec<Lookup<F>>>(),
             );
             table
         };

@@ -10,7 +10,7 @@ use ark_ff::Field;
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct Lookup<F, ID: LookupTableID + Send + Sync + Copy> {
+pub struct MVLookup<F, ID: LookupTableID + Send + Sync + Copy> {
     pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
@@ -24,7 +24,7 @@ pub trait LookupTableID {
 
 /// Represents a witness of one instance of the lookup argument
 #[derive(Debug)]
-pub struct LookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
+pub struct MVLookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
     /// A list of functions/looked-up values.
     /// The values are represented as:
     /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
@@ -37,9 +37,9 @@ pub struct LookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
     /// change this structure.
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
-    pub(crate) f: Vec<Vec<Lookup<F, ID>>>,
+    pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
     /// The table the lookup is performed on.
-    pub(crate) t: Vec<Lookup<F, ID>>,
+    pub(crate) t: Vec<MVLookup<F, ID>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
 }
@@ -78,7 +78,7 @@ impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
 }
 
 pub mod prover {
-    use crate::mvlookup::{Lookup, LookupTableID, LookupWitness};
+    use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
     use ark_ff::Zero;
     use ark_poly::Evaluations;
     use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -115,7 +115,7 @@ pub mod prover {
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
             ID: LookupTableID + Send + Sync + Copy,
         >(
-            lookups: Vec<LookupWitness<G::ScalarField, ID>>,
+            lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -163,7 +163,7 @@ pub mod prover {
             let lookup_terms_evals: Vec<Vec<G::ScalarField>> = lookups
                 .into_iter()
                 .map(|lookup| {
-                    let LookupWitness { f, t, m: _ } = lookup;
+                    let MVLookupWitness { f, t, m: _ } = lookup;
                     let n = f.len();
                     // We compute first the denominators of all f_i and t. We gather them in
                     // a vector to perform a batch inversion.
@@ -173,7 +173,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
                         for f_i in f.iter() {
-                            let Lookup {
+                            let MVLookup {
                                 numerator: _,
                                 table_id,
                                 value,
@@ -191,7 +191,7 @@ pub mod prover {
                         }
 
                         // We process t now
-                        let Lookup {
+                        let MVLookup {
                             numerator: _,
                             table_id,
                             value,
@@ -216,7 +216,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         let mut row_acc = G::ScalarField::zero();
                         for f_i in f.iter() {
-                            let Lookup {
+                            let MVLookup {
                                 numerator,
                                 table_id: _,
                                 value: _,
@@ -225,7 +225,7 @@ pub mod prover {
                             denominator_index += 1;
                         }
                         // We process t now
-                        let Lookup {
+                        let MVLookup {
                             numerator,
                             table_id: _,
                             value: _,

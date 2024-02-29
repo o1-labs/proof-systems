@@ -5,8 +5,7 @@ use mina_poseidon::{
 use poly_commitment::pairing_proof::PairingProof;
 
 pub use mvlookup::{
-    Lookup as MVLookup, LookupProof as MVLookupProof, LookupTableID as MVLookupTableID,
-    LookupWitness as MVLookupWitness,
+    LookupProof as MVLookupProof, LookupTableID as MVLookupTableID, MVLookup, MVLookupWitness,
 };
 
 pub mod columns;
@@ -52,7 +51,7 @@ pub type OpeningProof = PairingProof<BN254>;
 mod tests {
     use crate::{
         columns::Column,
-        lookups::{MSMLookup, MSMLookupTableIDs},
+        lookups::{Lookup, LookupTableIDs},
         proof::Witness,
         prover::prove,
         verifier::verify,
@@ -81,7 +80,7 @@ mod tests {
         let constraints: Vec<_> = vec![];
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSMLookupTableIDs>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, LookupTableIDs>(
             domain,
             &srs,
             witness,
@@ -111,7 +110,7 @@ mod tests {
         let witness = Witness::random(domain);
         let constraints = vec![];
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSMLookupTableIDs>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, LookupTableIDs>(
             domain,
             &srs,
             witness,
@@ -121,7 +120,7 @@ mod tests {
 
         let witness_prime = Witness::random(domain);
         let proof_prime =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSMLookupTableIDs>(
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, LookupTableIDs>(
                 domain,
                 &srs,
                 witness_prime,
@@ -182,7 +181,7 @@ mod tests {
         // Take one random f_i (FIXME: taking first one for now)
         let looked_up_values = witness.mvlookups[0].f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
-        let wrong_looked_up_value = MSMLookup {
+        let wrong_looked_up_value = Lookup {
             table_id: looked_up_values[0].table_id,
             numerator: looked_up_values[0].numerator,
             value: vec![Fp::rand(&mut rng)],
@@ -190,7 +189,7 @@ mod tests {
         // Overwriting the first looked up value
         witness.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSMLookupTableIDs>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, LookupTableIDs>(
             domain,
             &srs,
             witness,
