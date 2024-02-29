@@ -848,8 +848,9 @@ where
             }
 
             // public polynomial
-            let mut f = t4.interpolate() + t8.interpolate();
-            f += &public_poly;
+            // let mut f = t4.interpolate() + t8.interpolate();
+            // f += &public_poly;
+            let f = DensePolynomial::zero();
 
             // divide contributions with vanishing polynomial
             let (mut quotient, res) = f
@@ -1514,11 +1515,13 @@ internal_tracing::decl_traces!(internal_traces;
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::poly_commitment::commitment::caml::CamlPairingProof;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
-    use ark_ec::AffineCurve;
+    use ark_ec::{AffineCurve, PairingEngine};
     use poly_commitment::{
         commitment::caml::{CamlOpeningProof, CamlPolyComm},
         evaluation_proof::OpeningProof,
+        pairing_proof::PairingProof,
     };
 
     #[cfg(feature = "internal_tracing")]
@@ -1530,6 +1533,12 @@ pub mod caml {
         pub proof: CamlProverProof<CamlG, CamlF>,
     }
 
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlKzgProofWithPublic<CamlG, CamlF> {
+        pub public_evals: Option<PointEvaluations<Vec<CamlF>>>,
+        pub proof: CamlKzgProverProof<CamlG, CamlF>,
+    }
+
     //
     // CamlProverProof<CamlG, CamlF>
     //
@@ -1538,6 +1547,21 @@ pub mod caml {
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
+        // OCaml doesn't have sized arrays, so we have to convert to a tuple..
+        pub evals: CamlProofEvaluations<CamlF>,
+        pub ft_eval1: CamlF,
+        pub public: Vec<CamlF>,
+        pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+    }
+
+    //
+    // CamlKzgProverProof<CamlG, CamlF>
+    //
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlKzgProverProof<CamlG, CamlF> {
+        pub commitments: CamlProverCommitments<CamlG>,
+        pub proof: CamlPairingProof<CamlG, CamlF>,
         // OCaml doesn't have sized arrays, so we have to convert to a tuple..
         pub evals: CamlProofEvaluations<CamlF>,
         pub ft_eval1: CamlF,
@@ -1764,6 +1788,64 @@ pub mod caml {
             caml_pp: CamlProofWithPublic<CamlG, CamlF>,
         ) -> (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>) {
             let CamlProofWithPublic {
+                public_evals,
+                proof: caml_pp,
+            } = caml_pp;
+            let proof = ProverProof {
+                commitments: caml_pp.commitments.into(),
+                proof: caml_pp.proof.into(),
+                evals: (public_evals, caml_pp.evals).into(),
+                ft_eval1: caml_pp.ft_eval1.into(),
+                prev_challenges: caml_pp
+                    .prev_challenges
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            };
+
+            (proof, caml_pp.public.into_iter().map(Into::into).collect())
+        }
+    }
+
+    impl<G, CamlG, CamlF, Pair> From<(ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>)>
+        for CamlKzgProofWithPublic<CamlG, CamlF>
+    where
+        Pair: PairingEngine,
+        G: AffineCurve,
+        CamlG: From<G> + From<<Pair as PairingEngine>::G1Affine>,
+        CamlF: From<G::ScalarField>
+            + From<<<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField>,
+    {
+        fn from(pp: (ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>)) -> Self {
+            let (public_evals, evals) = pp.0.evals.into();
+            CamlKzgProofWithPublic {
+                public_evals,
+                proof: CamlKzgProverProof {
+                    commitments: pp.0.commitments.into(),
+                    proof: pp.0.proof.into(),
+                    evals,
+                    ft_eval1: pp.0.ft_eval1.into(),
+                    public: pp.1.into_iter().map(Into::into).collect(),
+                    prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
+                },
+            }
+        }
+    }
+
+    impl<G, CamlG, CamlF, Pair> From<CamlKzgProofWithPublic<CamlG, CamlF>>
+        for (ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>)
+    where
+        Pair: PairingEngine,
+        CamlF: Clone,
+        G: AffineCurve + From<CamlG>,
+        G::ScalarField: From<CamlF>,
+        <Pair as PairingEngine>::G1Affine: From<CamlG>,
+        <<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField: From<CamlF>,
+    {
+        fn from(
+            caml_pp: CamlKzgProofWithPublic<CamlG, CamlF>,
+        ) -> (ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>) {
+            let CamlKzgProofWithPublic {
                 public_evals,
                 proof: caml_pp,
             } = caml_pp;

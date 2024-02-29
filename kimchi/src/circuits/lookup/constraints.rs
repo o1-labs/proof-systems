@@ -12,7 +12,7 @@ use crate::{
 };
 use ark_ff::{FftField, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-use o1_utils::adjacent_pairs::AdjacentPairs;
+use o1_utils::{adjacent_pairs::AdjacentPairs, FieldHelpers};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
