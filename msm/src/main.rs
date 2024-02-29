@@ -1,6 +1,6 @@
 use ark_ff::UniformRand;
 use kimchi_msm::columns::Column;
-use kimchi_msm::lookups::MSMLookupTableIDs;
+use kimchi_msm::lookups::LookupTableIDs;
 use rand::thread_rng;
 
 use kimchi::circuits::domains::EvaluationDomains;
@@ -44,7 +44,7 @@ pub fn main() {
 
     println!("Generating the proof");
     let constraints = vec![];
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSMLookupTableIDs>(
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, LookupTableIDs>(
         domain,
         &srs,
         witness,

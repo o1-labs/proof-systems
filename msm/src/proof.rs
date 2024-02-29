@@ -1,6 +1,6 @@
 use crate::{
-    lookups::MSMLookupTableIDs,
-    mvlookup::{LookupProof, LookupTableID, LookupWitness},
+    lookups::{LookupTableIDs, LookupWitness},
+    mvlookup::{LookupProof, LookupTableID, MVLookupWitness},
 };
 use ark_ff::UniformRand;
 use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
@@ -87,14 +87,14 @@ where
 #[derive(Debug)]
 pub struct Witness<G: KimchiCurve, ID: LookupTableID + Send + Sync + Copy> {
     pub evaluations: WitnessColumns<Vec<G::ScalarField>>,
-    pub mvlookups: Vec<LookupWitness<G::ScalarField, ID>>,
+    pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
 }
 
 // This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the
 // main.rs. It should be moved to the test API when main.rs is replaced with
 // real production code.
-impl<G: KimchiCurve> Witness<G, MSMLookupTableIDs> {
+impl<G: KimchiCurve> Witness<G, LookupTableIDs> {
     pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
         let mut rng = thread_rng();
         let random_n = rng.gen_range(1..1000);
@@ -108,9 +108,7 @@ impl<G: KimchiCurve> Witness<G, MSMLookupTableIDs> {
                     })
                     .collect::<Vec<_>>(),
             },
-            mvlookups: vec![LookupWitness::<G::ScalarField, MSMLookupTableIDs>::random(
-                domain,
-            )],
+            mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
         }
     }
 }
