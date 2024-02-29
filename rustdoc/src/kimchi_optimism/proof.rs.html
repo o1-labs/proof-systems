@@ -418,6 +418,7 @@
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{witness::Witness, DOMAIN_SIZE};
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -500,9 +501,10 @@
     };
     <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
-    <span class="kw">for </span>column <span class="kw">in </span>commitments.into_iter() {
-        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>column);
-    }
+    commitments.into_iter().for_each(|comm| {
+        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>comm);
+    });
+
     <span class="kw">let </span>scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
     <span class="kw">let </span>scaling_challenge = scaling_challenge.to_field(endo_r);
@@ -655,9 +657,9 @@
     } = proof;
 
     <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    <span class="kw">for </span>column <span class="kw">in </span>commitments.clone().into_iter() {
-        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>column);
-    }
+    commitments.into_iter().for_each(|comm| {
+        absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm);
+    });
     <span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
     <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
     <span class="kw">let </span>zeta: G::ScalarField = zeta_chal.to_field(endo_r);

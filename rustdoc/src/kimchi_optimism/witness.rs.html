@@ -91,6 +91,17 @@
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
@@ -113,7 +124,7 @@
 
 <span class="comment">// IMPLEMENTATION OF ITERATORS FOR THE WITNESS STRUCTURE
 
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, F: Clone&gt; IntoIterator <span class="kw">for </span>Witness&lt;N, F&gt; {
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, F&gt; IntoIterator <span class="kw">for </span>Witness&lt;N, F&gt; {
     <span class="kw">type </span>Item = F;
     <span class="kw">type </span>IntoIter = std::vec::IntoIter&lt;F&gt;;
 
@@ -121,6 +132,17 @@
     </span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(N);
         iter_contents.extend(<span class="self">self</span>.cols);
+        iter_contents.into_iter()
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">'lt</span>, <span class="kw">const </span>N: usize, G&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'lt </span>Witness&lt;N, G&gt; {
+    <span class="kw">type </span>Item = <span class="kw-2">&amp;</span><span class="lifetime">'lt </span>G;
+    <span class="kw">type </span>IntoIter = std::vec::IntoIter&lt;<span class="kw-2">&amp;</span><span class="lifetime">'lt </span>G&gt;;
+
+    <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+        <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(N);
+        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.cols);
         iter_contents.into_iter()
     }
 }
