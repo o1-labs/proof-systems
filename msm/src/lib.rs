@@ -15,7 +15,7 @@ pub mod serialization;
 pub mod verifier;
 
 /// Domain size for the MSM project, equal to the BN254 SRS size.
-pub const DOMAIN_SIZE: usize = 1 << 3;
+pub const DOMAIN_SIZE: usize = 1 << 4;
 
 // @volhovm: maybe move these to the FF circuits module later.
 /// Bitsize of the foreign field limb representation.

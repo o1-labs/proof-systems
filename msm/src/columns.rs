@@ -11,7 +11,11 @@ pub enum Column {
 
 impl GenericColumn for Column {
     fn column_domain(&self) -> Domain {
-        Domain::D8 // TODO FIXME check
+        // TODO FIXME check this is a tricky variable it should match the evalution in column
+        // this must be bigger or equal than degree chosen in runtime inside evaluations() for
+        // evaluating an expression = degree of expression that is evaluated
+        // And also ... in some cases... bigger than the witness column size? Equal?
+        Domain::D4
     }
 }
 

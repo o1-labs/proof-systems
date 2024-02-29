@@ -76,16 +76,14 @@ where
             .collect::<WitnessColumns<_>>()
     };
 
-    println!(
-        "witness_polys: len {:?},\n [0] elem: degree {:?}, {:?},\n [1] elem: degree {:?}, {:?},\n [2] elem: degree {:?} {:?}",
-        witness_polys.x.len(),
-        witness_polys.x[0].degree(),
-        witness_polys.x[0].coeffs,
-        witness_polys.x[1].degree(),
-        witness_polys.x[1].coeffs,
-        witness_polys.x[2].degree(),
-        witness_polys.x[2].coeffs,
-    );
+    println!("witness_polys: len {:?}", witness_polys.x.len(),);
+    for wit_col in witness_polys.x.iter() {
+        println!(
+            "  - elem of degree {:?}: {:?}",
+            wit_col.degree(),
+            wit_col.coeffs
+        );
+    }
 
     let witness_comms: WitnessColumns<PolyComm<G>> = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
@@ -125,11 +123,13 @@ where
     // -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
 
+    // TODO rename this
+    // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
-    let mut witness_evals_8: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
+    let mut witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
     for witness_poly in witness_polys.x.iter() {
-        let eval = witness_poly.evaluate_over_domain_by_ref(domain.d8);
-        witness_evals_8.push(eval);
+        let eval = witness_poly.evaluate_over_domain_by_ref(domain.d4);
+        witness_evals_env.push(eval);
     }
 
     //let mut witness_evals_1: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
@@ -156,7 +156,7 @@ where
     println!("Alpha: {:?}", alpha);
 
     // TODO These should be evaluations of fixed coefficient polys
-    let coefficient_evals_8: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
+    let coefficient_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
 
     let column_env = MSMColumnEnvironment {
         constants: Constants {
@@ -170,8 +170,8 @@ where
             gamma: G::ScalarField::one(),
             joint_combiner: None,
         },
-        witness: &witness_evals_8,
-        coefficients: &coefficient_evals_8,
+        witness: &witness_evals_env,
+        coefficients: &coefficient_evals_env,
         l0_1: l0_1(domain.d1),
         lookup: None,
         domain,
@@ -230,12 +230,16 @@ where
             panic!("rest of division by vanishing polynomial");
         }
 
+        println!("quotient: {:?}", quotient);
+
         quotient
     };
 
-    //~ 1. commit (hiding) to the quotient polynomial $t$
-    // TODO check that the degree of expressions is actually <= 2
-    let expected_t_size = 2;
+    //~ 1. commit (hiding) to the quotient polynomial $t$.
+    //
+    // Our constraints are at most degree d2. When divided by
+    // vanishing polynomial, we obtain t(X) of degree d1.
+    let expected_t_size = 1;
     // Quotient commitment
     let t_comm = {
         let num_chunks = 1;
