@@ -972,7 +972,7 @@ impl<C, Column> Expr<C, Column> {
         Expr::Atom(ExprInner::Constant(c))
     }
 
-    fn degree(&self, d1_size: u64, zk_rows: u64) -> u64 {
+    pub fn degree(&self, d1_size: u64, zk_rows: u64) -> u64 {
         use ExprInner::*;
         use Operations::*;
         match self {
