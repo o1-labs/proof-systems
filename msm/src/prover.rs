@@ -2,7 +2,7 @@ use ark_ff::{Field, One, Zero};
 use ark_poly::Evaluations;
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    Polynomial, Radix2EvaluationDomain as D,
+    Polynomial, Radix2EvaluationDomain as R2D,
 };
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
@@ -57,17 +57,19 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     // Interpolate all columns on d1, using trait Into.
-    let witness_evals: WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>> = witness
+    let witness_evals: WitnessColumns<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = witness
         .evaluations
         .into_par_iter()
         .map(|evals| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(evals, domain.d1)
+            Evaluations::<G::ScalarField, R2D<G::ScalarField>>::from_vec_and_domain(
+                evals, domain.d1,
+            )
         })
-        .collect::<WitnessColumns<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
+        .collect::<WitnessColumns<Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
 
     let witness_polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
         let interpolate =
-            |evals: Evaluations<G::ScalarField, D<G::ScalarField>>| evals.interpolate();
+            |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
         witness_evals
             .into_par_iter()
             .map(interpolate)
@@ -124,13 +126,13 @@ where
     // -- End of MVLookup
 
     // Maybe we can only use d4, we don't have degree-7 gates anyway
-    let mut witness_evals_8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> = vec![];
+    let mut witness_evals_8: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
     for witness_poly in witness_polys.x.iter() {
         let eval = witness_poly.evaluate_over_domain_by_ref(domain.d8);
         witness_evals_8.push(eval);
     }
 
-    //let mut witness_evals_1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> = vec![];
+    //let mut witness_evals_1: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
     //for witness_poly in witness_polys.x.iter() {
     //    let eval = witness_poly.evaluate_over_domain_by_ref(domain.d1);
     //    witness_evals_1.push(eval);
@@ -154,7 +156,7 @@ where
     println!("Alpha: {:?}", alpha);
 
     // TODO These should be evaluations of fixed coefficient polys
-    let coefficient_evals_8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> = vec![];
+    let coefficient_evals_8: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
 
     let column_env = MSMColumnEnvironment {
         constants: Constants {
@@ -195,7 +197,7 @@ where
         // An evaluation of our expression E(vec X) on witness columns
         // Every witness column w_i(X) is evaluated first at D1, so we get E(vec w_i(X)) = 0?
         // E(w(X)) = 0 but only over H, so it's 0 evaluated at every {w^i}_{i=1}^N
-        let expr_evaluation: Evaluations<G::ScalarField, D<G::ScalarField>> =
+        let expr_evaluation: Evaluations<G::ScalarField, R2D<G::ScalarField>> =
             combined_expr.evaluations(&column_env);
         println!("expr_evaluations: {:?}", expr_evaluation);
 
@@ -271,12 +273,12 @@ where
             Some(LookupProof {
                 m: m_zeta
                     .into_iter()
-                    .zip(m_zeta_omega.into_iter())
+                    .zip(m_zeta_omega)
                     .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
                     .collect(),
                 h: h_zeta
                     .into_iter()
-                    .zip(h_zeta_omega.into_iter())
+                    .zip(h_zeta_omega)
                     .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
                     .collect(),
                 sum: PointEvaluations {
@@ -399,7 +401,7 @@ where
         ));
     }
 
-    let opening_proof = OpenProof::open::<_, _, D<G::ScalarField>>(
+    let opening_proof = OpenProof::open::<_, _, R2D<G::ScalarField>>(
         srs,
         &group_map,
         polynomials.as_slice(),

@@ -27,10 +27,10 @@ pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
     // For now the verification only works if degree of each column as
     // a polynomial is zero (constant). Apparently.
     for row_i in 0..row_num {
-        let (a, b) = match row_i % 1 {
+        let (a, b) = match row_i % 3 {
             0 => (three, zero),
-            //            1 => (one, one),
-            //            2 => (two, one),
+            1 => (one, one),
+            2 => (two, one),
             //            3 => (one, three),
             _ => panic!("not possible"),
         };
