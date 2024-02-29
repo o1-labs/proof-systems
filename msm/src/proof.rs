@@ -1,8 +1,12 @@
 use ark_ff::UniformRand;
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
-use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::{prelude::*, thread_rng};
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+
+use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::circuits::expr::{ColumnEvaluations, ExprError};
+use kimchi::curve::KimchiCurve;
+use kimchi::proof::PointEvaluations;
+use poly_commitment::{commitment::PolyComm, OpenProof};
 
 use crate::mvlookup::{LookupProof, LookupWitness};
 
@@ -84,6 +88,8 @@ where
 
 #[derive(Debug)]
 pub struct Witness<G: KimchiCurve> {
+    /// Actual values w_i of the witness columns. "Evaluations" as in
+    /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: WitnessColumns<Vec<G::ScalarField>>,
     pub mvlookups: Vec<LookupWitness<G::ScalarField>>,
 }
@@ -112,14 +118,39 @@ impl<G: KimchiCurve> Witness<G> {
 }
 
 #[derive(Debug, Clone)]
+pub struct ProofEvaluations<F> {
+    /// public input polynomials
+    pub(crate) _public_evals: Option<PointEvaluations<F>>,
+    /// witness polynomials
+    pub(crate) witness_evals: WitnessColumns<PointEvaluations<F>>,
+    /// MVLookup argument
+    pub(crate) mvlookup_evals: Option<LookupProof<PointEvaluations<F>>>,
+    /// Evaluation of Z_H(xi) (t_0(X) + xi^n t_1(X) + ...) at xi.
+    pub(crate) ft_eval1: F,
+}
+
+impl<F: Clone> ColumnEvaluations<F> for ProofEvaluations<F> {
+    type Column = crate::columns::Column;
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
+        let crate::columns::Column::X(i) = col;
+        if i < self.witness_evals.x.len() {
+            Ok(self.witness_evals.x[i].clone())
+        } else {
+            panic!("No such column index")
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProofCommitments<G: KimchiCurve> {
+    pub(crate) witness_comms: WitnessColumns<PolyComm<G>>,
+    pub(crate) mvlookup_comms: Option<LookupProof<PolyComm<G>>>,
+    pub(crate) t_comm: PolyComm<G>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    // Columns/PlonK argument
-    pub(crate) commitments: WitnessColumns<PolyComm<G>>,
-    pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
-    pub(crate) zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
-    // MVLookup argument
-    pub(crate) mvlookup_commitments: Option<LookupProof<PolyComm<G>>>,
-    pub(crate) mvlookup_zeta_evaluations: Option<LookupProof<G::ScalarField>>,
-    pub(crate) mvlookup_zeta_omega_evaluations: Option<LookupProof<G::ScalarField>>,
+    pub(crate) proof_comms: ProofCommitments<G>,
+    pub(crate) proof_evals: ProofEvaluations<G::ScalarField>,
     pub(crate) opening_proof: OpeningProof,
 }

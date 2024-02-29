@@ -74,13 +74,14 @@ mod tests {
         let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
+            &constraints,
             witness,
-            constraints,
             &mut rng,
         );
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+        let verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &constraints, &proof);
         assert!(verifies);
     }
 
@@ -104,8 +105,8 @@ mod tests {
         let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
+            &constraints,
             witness,
-            constraints.clone(),
             &mut rng,
         );
 
@@ -113,8 +114,8 @@ mod tests {
         let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
+            &constraints,
             witness_prime,
-            constraints,
             &mut rng,
         );
 
@@ -122,8 +123,12 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(
+                domain,
+                &srs,
+                &constraints,
+                &proof_clone,
+            );
             assert!(!verifies);
         }
 
@@ -132,9 +137,13 @@ mod tests {
         // easier when an index trait is implemented.
         {
             let mut proof_clone = proof.clone();
-            proof_clone.commitments = proof_prime.commitments;
-            let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
+            proof_clone.proof_comms.witness_comms = proof_prime.proof_comms.witness_comms;
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(
+                domain,
+                &srs,
+                &constraints,
+                &proof_clone,
+            );
             assert!(!verifies);
         }
 
@@ -144,9 +153,13 @@ mod tests {
         // easier when an index trait is implemented.
         {
             let mut proof_clone = proof.clone();
-            proof_clone.zeta_evaluations = proof_prime.zeta_evaluations;
-            let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof_clone);
+            proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(
+                domain,
+                &srs,
+                &constraints,
+                &proof_clone,
+            );
             assert!(!verifies);
         }
     }
@@ -182,11 +195,12 @@ mod tests {
         let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
             domain,
             &srs,
+            &constraints,
             witness,
-            constraints,
             &mut rng,
         );
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+        let verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &constraints, &proof);
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
         assert!(!verifies);
     }

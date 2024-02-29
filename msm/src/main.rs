@@ -48,12 +48,17 @@ pub fn main() {
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
         domain,
         &srs,
+        &constraint_exprs,
         witness,
-        constraint_exprs.clone(),
         &mut rng,
     );
 
     println!("Verifying the proof");
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(
+        domain,
+        &srs,
+        &constraint_exprs,
+        &proof,
+    );
     println!("=================\n   Proof verification result: {verifies}")
 }
