@@ -1,5 +1,5 @@
-use ark_ff::{One, Zero};
-use rand::thread_rng;
+use ark_ff::{One, UniformRand, Zero};
+use rand::{thread_rng, Rng};
 
 use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
@@ -11,11 +11,12 @@ use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{
     BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
+    LIMB_BITSIZE,
 };
 
 pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
     let mut circuit_env = MSMCircuitEnv::<BN254G1Affine>::empty();
-    let mut _rng = thread_rng();
+    let mut rng = thread_rng();
 
     let row_num = DOMAIN_SIZE;
     assert!(row_num <= DOMAIN_SIZE);
@@ -27,15 +28,15 @@ pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
     // For now the verification only works if degree of each column as
     // a polynomial is zero (constant). Apparently.
     for row_i in 0..row_num {
-        let (a, b) = match row_i % 2 {
-            0 => (zero, one),
-            1 => (one, one),
-            2 => (two, one),
-            3 => (one, three),
-            _ => panic!("not possible"),
-        };
-        //let a: Ff1 = Ff1::rand(&mut rng);
-        //let b: Ff1 = Ff1::rand(&mut rng);
+        //let (a, b) = match row_i % 2 {
+        //    0 => (zero, one),
+        //    1 => (one, one),
+        //    2 => (two, one),
+        //    3 => (one, three),
+        //    _ => panic!("not possible"),
+        //};
+        let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+        let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
         circuit_env.add_test_multiplication(a, b);
     }
 

@@ -267,6 +267,7 @@ where
 
     let omega = domain.d1.group_gen; // index.cs.domain.d1.group_gen;
     let zeta_omega = zeta * omega;
+    println!("Zeta: {:?}", zeta);
 
     // Evaluate the polynomials at zeta and zeta * omega -- Columns
 
@@ -365,6 +366,8 @@ where
     let v = v_chal.to_field(endo_r);
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
+
+    println!("v/u: {:?}, {:?}", v, u);
 
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = witness_polys

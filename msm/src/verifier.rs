@@ -50,6 +50,7 @@ pub fn verify<
     let alpha_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
+    println!("Alpha: {:?}", alpha);
 
     absorb_commitment(&mut fq_sponge, &proof_comms.t_comm);
 
@@ -59,6 +60,7 @@ pub fn verify<
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);
+    println!("Zeta: {:?}", zeta);
     let omega = domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
@@ -150,6 +152,7 @@ pub fn verify<
     let v = v_chal.to_field(endo_r);
     let u_chal = fr_sponge.challenge();
     let u = u_chal.to_field(endo_r);
+    println!("v/u: {:?}, {:?}", v, u);
 
     let es: Vec<_> = evaluations
         .iter()

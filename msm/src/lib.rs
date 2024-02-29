@@ -19,7 +19,7 @@ pub const DOMAIN_SIZE: usize = 1 << 4;
 
 // @volhovm: maybe move these to the FF circuits module later.
 /// Bitsize of the foreign field limb representation.
-pub const LIMB_BITSIZE: usize = 15;
+pub const LIMB_BITSIZE: usize = 32;
 
 /// Number of limbs representing one foreign field element (either
 /// [`Ff1`] or [`Ff2`]).
