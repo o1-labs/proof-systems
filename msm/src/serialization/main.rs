@@ -3,21 +3,27 @@ use kimchi_msm::serialization::witness;
 use kimchi_msm::witness::Witness;
 use poly_commitment::pairing_proof::PairingSRS;
 
+use kimchi_msm::columns::Column;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
+use kimchi_msm::proof::ProofInputs;
+use kimchi_msm::prover::prove;
 use kimchi_msm::serialization::witness::deserialize_field_element;
-use kimchi_msm::{Fp, BN254, DOMAIN_SIZE, LIMBS_NUM};
+use kimchi_msm::verifier::verify;
+use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
+
+const N: usize = 3 + 19 + LIMBS_NUM;
 
 pub fn main() {
     // FIXME: use a proper RNG
-    let mut _rng = o1_utils::tests::make_test_rng();
+    let mut rng = o1_utils::tests::make_test_rng();
 
     println!("Creating the domain and SRS");
     let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
-    let _srs: PairingSRS<BN254> = get_bn254_srs(domain);
+    let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
     let mut env = witness::Env::<Fp>::create();
-    let mut witness: Witness<DOMAIN_SIZE, Vec<Fp>> = Witness {
+    let mut witness: Witness<N, Vec<Fp>> = Witness {
         cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
     };
 
@@ -36,16 +42,22 @@ pub fn main() {
         }
     }
 
-    // println!("Generating the proof");
-    // let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
-    //     domain,
-    //     &srs,
-    //     witness,
-    //     constraints,
-    //     &mut rng,
-    // );
+    let _constraints = vec![];
+    let proof_inputs = ProofInputs {
+        evaluations: witness,
+        mvlookups: vec![],
+    };
 
-    // println!("Verifying the proof");
-    // let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
-    // println!("Proof verification result: {verifies}")
+    println!("Generating the proof");
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
+        domain,
+        &srs,
+        proof_inputs,
+        _constraints,
+        &mut rng,
+    );
+
+    println!("Verifying the proof");
+    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof);
+    println!("Proof verification result: {verifies}")
 }

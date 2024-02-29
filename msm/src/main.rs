@@ -10,7 +10,7 @@ use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{
-    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
+    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N,
 };
 
 pub fn generate_random_msm_witness() -> BuilderEnv<BN254G1Affine> {
@@ -43,7 +43,7 @@ pub fn main() {
 
     println!("Generating the proof");
     let constraints = vec![];
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
         domain,
         &srs,
         witness,
@@ -52,6 +52,6 @@ pub fn main() {
     );
 
     println!("Verifying the proof");
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof);
     println!("Proof verification result: {verifies}")
 }

@@ -9,8 +9,9 @@ use o1_utils::field_helpers::FieldHelpers;
 use o1_utils::foreign_field::ForeignElement;
 
 use crate::columns::{Column, ColumnIndexer, MSMColumnIndexer};
-use crate::proof::{Witness, WitnessColumns};
-use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM};
+use crate::proof::ProofInputs;
+use crate::witness::Witness;
+use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM, N};
 
 /// Used to represent constraints as multi variate polynomials. The variables
 /// are over the columns.
@@ -83,8 +84,8 @@ impl BuilderEnv<BN254G1Affine> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
-    pub fn get_witness(&self) -> Witness<BN254G1Affine> {
-        let mut x: Vec<Vec<Fp>> = vec![vec![]; 3 * LIMBS_NUM];
+    pub fn get_witness(&self) -> ProofInputs<N, BN254G1Affine> {
+        let mut cols: [Vec<Fp>; N] = std::array::from_fn(|_| vec![]);
 
         for wc in &self.witness_raw {
             let WitnessColumnsIndexer {
@@ -93,14 +94,14 @@ impl BuilderEnv<BN254G1Affine> {
                 c: wc_c,
             } = wc;
             for i in 0..LIMBS_NUM {
-                x[i].push(wc_a[i]);
-                x[LIMBS_NUM + i].push(wc_b[i]);
-                x[2 * LIMBS_NUM + i].push(wc_c[i]);
+                cols[i].push(wc_a[i]);
+                cols[LIMBS_NUM + i].push(wc_b[i]);
+                cols[2 * LIMBS_NUM + i].push(wc_c[i]);
             }
         }
 
-        Witness {
-            evaluations: WitnessColumns { x },
+        ProofInputs {
+            evaluations: Witness { cols },
             mvlookups: vec![],
         }
     }
