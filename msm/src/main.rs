@@ -4,7 +4,7 @@ use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
 
 use kimchi_msm::columns::Column;
-use kimchi_msm::constraint::BuilderEnv;
+use kimchi_msm::constraint::MSMCircuitEnv;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
@@ -12,8 +12,8 @@ use kimchi_msm::{
     BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
 };
 
-pub fn generate_random_msm_witness() -> BuilderEnv<BN254G1Affine> {
-    let mut env = BuilderEnv::<BN254G1Affine>::empty();
+pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
+    let mut circuit_env = MSMCircuitEnv::<BN254G1Affine>::empty();
     let mut rng = thread_rng();
 
     let row_num = DOMAIN_SIZE;
@@ -22,10 +22,10 @@ pub fn generate_random_msm_witness() -> BuilderEnv<BN254G1Affine> {
     for _row_i in 0..row_num {
         let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
         let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-        env.add_test_addition(a, b);
+        circuit_env.add_test_addition(a, b);
     }
 
-    env
+    circuit_env
 }
 
 pub fn main() {
@@ -37,9 +37,9 @@ pub fn main() {
 
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-    let env = generate_random_msm_witness();
-    let witness = env.get_witness();
-    let constraint_exprs = env.get_exprs_add();
+    let circuit_env = generate_random_msm_witness();
+    let witness = circuit_env.get_witness();
+    let constraint_exprs = circuit_env.get_exprs_add();
 
     println!("Witness: {:?}", witness);
     println!("Constraints: {:?}", constraint_exprs);

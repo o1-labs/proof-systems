@@ -67,19 +67,15 @@ pub struct WitnessColumnsIndexer<T> {
 
 #[allow(dead_code)]
 /// Builder environment for a native group `G`.
-pub struct BuilderEnv<G: KimchiCurve> {
-    // TODO something like a running list of constraints
-    /// Aggregated constraints.
-    pub(crate) constraints: Vec<MSMExpr<G::ScalarField>>,
+pub struct MSMCircuitEnv<G: KimchiCurve> {
     /// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    pub(crate) witness_raw: Vec<WitnessColumnsIndexer<G::ScalarField>>,
+    witness_raw: Vec<WitnessColumnsIndexer<G::ScalarField>>,
 }
 
-impl BuilderEnv<BN254G1Affine> {
+impl MSMCircuitEnv<BN254G1Affine> {
     pub fn empty() -> Self {
-        BuilderEnv {
-            constraints: vec![],
+        MSMCircuitEnv {
             witness_raw: vec![],
         }
     }
