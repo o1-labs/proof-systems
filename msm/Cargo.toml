@@ -16,6 +16,9 @@ path = "src/lib.rs"
 name = "main"
 path = "src/main.rs"
 
+[[bin]]
+name = "serialization"
+path = "src/serialization/main.rs"
 
 [dependencies]
 ark-bn254 = { version = "0.3.0" }

@@ -1,0 +1,51 @@
+use kimchi::circuits::domains::EvaluationDomains;
+use kimchi_msm::serialization::witness;
+use kimchi_msm::witness::Witness;
+use poly_commitment::pairing_proof::PairingSRS;
+
+use kimchi_msm::precomputed_srs::get_bn254_srs;
+use kimchi_msm::serialization::witness::deserialize_field_element;
+use kimchi_msm::{Fp, BN254, DOMAIN_SIZE, LIMBS_NUM};
+
+pub fn main() {
+    // FIXME: use a proper RNG
+    let mut _rng = o1_utils::tests::make_test_rng();
+
+    println!("Creating the domain and SRS");
+    let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
+
+    let _srs: PairingSRS<BN254> = get_bn254_srs(domain);
+
+    let mut env = witness::Env::<Fp>::create();
+    let mut witness: Witness<DOMAIN_SIZE, Vec<Fp>> = Witness {
+        cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
+    };
+
+    // FIXME: this could be read from a file or a CLI argument
+    let field_elements = [[0, 0, 0]];
+    for limbs in field_elements {
+        deserialize_field_element(&mut env, limbs);
+        for i in 0..3 {
+            witness.cols[i].push(env.current_kimchi_limbs[i]);
+        }
+        for i in 0..LIMBS_NUM {
+            witness.cols[3 + i].push(env.msm_limbs[i]);
+        }
+        for i in 0..19 {
+            witness.cols[3 + LIMBS_NUM + i].push(env.intermediate_limbs[i]);
+        }
+    }
+
+    // println!("Generating the proof");
+    // let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
+    //     domain,
+    //     &srs,
+    //     witness,
+    //     constraints,
+    //     &mut rng,
+    // );
+
+    // println!("Verifying the proof");
+    // let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+    // println!("Proof verification result: {verifies}")
+}
