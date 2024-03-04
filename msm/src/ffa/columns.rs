@@ -3,6 +3,9 @@ use crate::columns::ColumnIndexer;
 
 use crate::LIMBS_NUM;
 
+/// Number of columns in the FFA circuits.
+pub const FFA_N_COLUMNS: usize = 4 * LIMBS_NUM;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// Column indexer for MSM columns
 pub enum FFAColumnIndexer {
