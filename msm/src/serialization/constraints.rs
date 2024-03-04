@@ -1,5 +1,8 @@
 use ark_ff::Field;
-use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, Expr, ExprInner};
+use kimchi::circuits::{
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
+    gate::CurrOrNext,
+};
 
 use crate::{columns::Column, LIMBS_NUM};
 
@@ -18,8 +21,13 @@ impl<F: Field> InterpreterEnv for Env<F> {
         self.constraints.push(cst)
     }
 
-    fn copy(&mut self, _x: &Self::Variable, _position: Self::Position) -> Self::Variable {
-        unimplemented!()
+    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
+        let y = Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }));
+        self.constraints.push(y.clone() - x.clone());
+        y
     }
 
     fn get_column_for_kimchi_limb(j: usize) -> Self::Position {
