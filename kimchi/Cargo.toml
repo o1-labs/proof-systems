@@ -52,6 +52,7 @@ ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { version = "0.1.5", optional = true }
 
 wasm-bindgen = { version = "=0.2.87", optional = true }
+web-sys = { version = "0.3.36", features = ["Window", "Document", "HtmlElement", "Text", "Node", "Element", "console" ] }
 
 internal-tracing = { path = "../internal-tracing", version = "0.1.0" }
 
@@ -87,3 +88,6 @@ bn254 = [ "ark-bn254" ]
 keccak-sponges = [ "tiny-keccak" ]
 wasm_types = [ "wasm-bindgen" ]
 check_feature_flags = []
+
+[patch.crates-io]
+bumpalo = { git = 'https://github.com/lambdaclass/bumpalo.git', branch = 'downgrade_rust_version' }
