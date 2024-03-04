@@ -26,7 +26,4 @@ pub mod proof;
 /// The RAM lookup argument.
 pub mod ramlookup;
 
-/// Generic definition of a zkvm witness.
-pub mod witness;
-
 pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};

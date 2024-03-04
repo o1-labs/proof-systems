@@ -1,9 +1,6 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
-use crate::{
-    keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
-    witness::Witness,
-};
+use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::{
     circuits::polynomials::keccak::constants::{
         CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF,
@@ -14,6 +11,7 @@ use kimchi::{
     },
     folding::expressions::FoldingColumnTrait,
 };
+use kimchi_msm::witness::Witness;
 use std::ops::{Index, IndexMut};
 
 /// The total number of witness columns used by the Keccak circuit.

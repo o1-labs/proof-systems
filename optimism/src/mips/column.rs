@@ -1,6 +1,6 @@
 use kimchi::folding::expressions::FoldingColumnTrait;
 
-use crate::witness::Witness;
+use kimchi_msm::witness::Witness;
 
 use super::witness::SCRATCH_SIZE;
 
