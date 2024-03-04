@@ -45,25 +45,31 @@
 <a href="#43" id="43">43</a>
 <a href="#44" id="44">44</a>
 <a href="#45" id="45">45</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::witness::Witness;
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    lookups::{LookupTableIDs, LookupWitness},
+    mvlookup::{LookupProof, LookupTableID},
+    witness::Witness,
+    MVLookupWitness,
+};
 <span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 <span class="kw">use </span>poly_commitment::{commitment::PolyComm, OpenProof};
 <span class="kw">use </span>rand::thread_rng;
 
-<span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupProof, LookupWitness};
-
 <span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; {
+</span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID + Send + Sync + Copy&gt; {
     <span class="kw">pub </span>evaluations: Witness&lt;N, Vec&lt;G::ScalarField&gt;&gt;,
-    <span class="kw">pub </span>mvlookups: Vec&lt;LookupWitness&lt;G::ScalarField&gt;&gt;,
+    <span class="kw">pub </span>mvlookups: Vec&lt;MVLookupWitness&lt;G::ScalarField, ID&gt;&gt;,
 }
 
 <span class="comment">// This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the
 // main.rs. It should be moved to the test API when main.rs is replaced with
 // real production code.
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; ProofInputs&lt;N, G&gt; {
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; ProofInputs&lt;N, G, LookupTableIDs&gt; {
     <span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;G::ScalarField&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
         <span class="kw">let </span>cols: [Vec&lt;G::ScalarField&gt;; N] = std::array::from_fn(|<span class="kw">_</span>| {

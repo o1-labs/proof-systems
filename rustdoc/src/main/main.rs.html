@@ -60,14 +60,13 @@
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
-<span class="kw">use </span>kimchi_msm::columns::Column;
-<span class="kw">use </span>rand::thread_rng;
-
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-<span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
-
+<span class="kw">use </span>kimchi_msm::columns::Column;
 <span class="kw">use </span>kimchi_msm::constraint::BuilderEnv;
+<span class="kw">use </span>kimchi_msm::lookups::LookupTableIDs;
 <span class="kw">use </span>kimchi_msm::precomputed_srs::get_bn254_srs;
 <span class="kw">use </span>kimchi_msm::prover::prove;
 <span class="kw">use </span>kimchi_msm::verifier::verify;
@@ -75,6 +74,8 @@
     BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
     MSM_FFADD_N_COLUMNS,
 };
+<span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
+<span class="kw">use </span>rand::thread_rng;
 
 <span class="kw">pub fn </span>generate_random_msm_witness() -&gt; BuilderEnv&lt;BN254G1Affine&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>env = BuilderEnv::&lt;BN254G1Affine&gt;::empty();
@@ -106,13 +107,16 @@
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
     <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
-    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, MSM_FFADD_N_COLUMNS&gt;(
-        domain,
-        <span class="kw-2">&amp;</span>srs,
-        witness,
-        constraints,
-        <span class="kw-2">&amp;mut </span>rng,
-    );
+    <span class="kw">let </span>proof = prove::&lt;
+        <span class="kw">_</span>,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        Column,
+        <span class="kw">_</span>,
+        MSM_FFADD_N_COLUMNS,
+        LookupTableIDs,
+    &gt;(domain, <span class="kw-2">&amp;</span>srs, witness, constraints, <span class="kw-2">&amp;mut </span>rng);
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
     <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS&gt;(

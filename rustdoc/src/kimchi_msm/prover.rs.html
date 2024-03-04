@@ -251,7 +251,10 @@
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup::{prover::Env, LookupProof, LookupTableID};
+<span class="kw">use </span><span class="kw">crate</span>::proof::{Proof, ProofInputs};
+<span class="kw">use </span><span class="kw">crate</span>::witness::Witness;
+<span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -269,10 +272,6 @@
 <span class="kw">use </span>rayon::iter::IntoParallelIterator;
 <span class="kw">use </span>rayon::iter::ParallelIterator;
 
-<span class="kw">use </span><span class="kw">crate</span>::mvlookup::{<span class="self">self</span>, LookupProof};
-<span class="kw">use </span><span class="kw">crate</span>::proof::{Proof, ProofInputs};
-<span class="kw">use </span><span class="kw">crate</span>::witness::Witness;
-
 <span class="kw">pub fn </span>prove&lt;
     G: KimchiCurve,
     OpeningProof: OpenProof&lt;G&gt;,
@@ -281,10 +280,11 @@
     Column,
     RNG,
     <span class="kw">const </span>N: usize,
+    ID: LookupTableID + Send + Sync + Copy,
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    inputs: ProofInputs&lt;N, G&gt;,
+    inputs: ProofInputs&lt;N, G, ID&gt;,
     _constraints: Vec&lt;Expr&lt;ConstantExpr&lt;G::ScalarField&gt;, Column&gt;&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
 ) -&gt; Proof&lt;N, G, OpeningProof&gt;
@@ -327,7 +327,7 @@
 
     <span class="comment">// -- Start MVLookup
     </span><span class="kw">let </span>lookup_env = <span class="kw">if </span>!inputs.mvlookups.is_empty() {
-        <span class="prelude-val">Some</span>(mvlookup::prover::Env::create::&lt;OpeningProof, EFqSponge&gt;(
+        <span class="prelude-val">Some</span>(Env::create::&lt;OpeningProof, EFqSponge, ID&gt;(
             inputs.mvlookups,
             domain,
             <span class="kw-2">&amp;mut </span>fq_sponge,

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LookupTable"],"mod":["prover"],"struct":["Lookup","LookupProof","LookupWitness"]};
+window.SIDEBAR_ITEMS = {"mod":["prover"],"struct":["LookupProof","MVLookup","MVLookupWitness"],"trait":["LookupTableID"]};

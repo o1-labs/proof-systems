@@ -152,20 +152,24 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
-<span class="kw">use </span>kimchi::circuits::expr::{ConstantExprInner, Operations};
-<span class="kw">use </span>kimchi::circuits::expr::{ExprInner, Variable};
-<span class="kw">use </span>kimchi::circuits::gate::CurrOrNext;
-<span class="kw">use </span>kimchi::curve::KimchiCurve;
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    columns::{Column, ColumnIndexer, MSMColumnIndexer},
+    lookups::LookupTableIDs,
+    proof::ProofInputs,
+    witness::Witness,
+    {BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS},
+};
+<span class="kw">use </span>kimchi::{
+    circuits::{
+        expr::{ConstantExpr, ConstantExprInner, Expr, ExprInner, Operations, Variable},
+        gate::CurrOrNext,
+    },
+    curve::KimchiCurve,
+};
 <span class="kw">use </span>num_bigint::BigUint;
-
-<span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
-<span class="kw">use </span>o1_utils::foreign_field::ForeignElement;
-
-<span class="kw">use </span><span class="kw">crate</span>::columns::{Column, ColumnIndexer, MSMColumnIndexer};
-<span class="kw">use </span><span class="kw">crate</span>::proof::ProofInputs;
-<span class="kw">use </span><span class="kw">crate</span>::witness::Witness;
-<span class="kw">use crate</span>::{BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS};
+<span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 <span class="doccomment">/// Used to represent constraints as multi variate polynomials. The variables
 /// are over the columns.
@@ -238,7 +242,7 @@
     <span class="doccomment">/// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
-    </span><span class="kw">pub fn </span>get_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProofInputs&lt;MSM_FFADD_N_COLUMNS, BN254G1Affine&gt; {
+    </span><span class="kw">pub fn </span>get_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProofInputs&lt;MSM_FFADD_N_COLUMNS, BN254G1Affine, LookupTableIDs&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>cols: [Vec&lt;Fp&gt;; MSM_FFADD_N_COLUMNS] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
         <span class="kw">for </span>wc <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.witness_raw {

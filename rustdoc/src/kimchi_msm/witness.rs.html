@@ -103,11 +103,17 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
 <span class="doccomment">/// The witness columns used by a gate of the MSM circuits.
 /// It is generic over the number of columns, N, and the type of the witness, T.
+/// It is parametrized by a type `T` which can be either:
+/// - `Vec&lt;G::ScalarField&gt;` for the evaluations
+/// - `PolyComm&lt;G&gt;` for the commitments
 /// It can be used to represent the different subcircuits used by the project.
 </span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>Witness&lt;<span class="kw">const </span>N: usize, T&gt; {
