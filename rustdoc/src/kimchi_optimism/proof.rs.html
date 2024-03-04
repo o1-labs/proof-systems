@@ -419,13 +419,15 @@
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{witness::Witness, DOMAIN_SIZE};
+<a href="#420" id="420">420</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>kimchi::{
     circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
+<span class="kw">use </span>kimchi_msm::witness::Witness;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>poly_commitment::{
     commitment::{
