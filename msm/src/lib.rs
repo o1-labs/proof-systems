@@ -4,8 +4,15 @@ use mina_poseidon::{
 };
 use poly_commitment::pairing_proof::PairingProof;
 
+pub use mvlookup::{
+    LookupProof as MVLookupProof, LookupTableID as MVLookupTableID, MVLookup, MVLookupWitness,
+};
+
 pub mod columns;
 pub mod constraint;
+/// Instantiations of MVLookups for the MSM project
+pub mod lookups;
+/// Generic definitions of MVLookups
 pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
@@ -48,14 +55,17 @@ pub type OpeningProof = PairingProof<BN254>;
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        columns::Column,
+        lookups::{Lookup, LookupTableIDs},
+        proof::ProofInputs,
+        prover::prove,
+        verifier::verify,
+        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
+    };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
-
-    use crate::{
-        columns::Column, mvlookup::Lookup, proof::ProofInputs, prover::prove, verifier::verify,
-        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
-    };
 
     // Number of columns
     const N: usize = 10;
@@ -79,7 +89,7 @@ mod tests {
         let constraints: Vec<_> = vec![];
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
             domain,
             &srs,
             inputs,
@@ -109,7 +119,7 @@ mod tests {
         let inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
             domain,
             &srs,
             inputs,
@@ -118,13 +128,14 @@ mod tests {
         );
 
         let inputs_prime = ProofInputs::random(domain);
-        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
-            domain,
-            &srs,
-            inputs_prime,
-            constraints,
-            &mut rng,
-        );
+        let proof_prime =
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
+                domain,
+                &srs,
+                inputs_prime,
+                constraints,
+                &mut rng,
+            );
 
         // Swap the opening proof. The verification should fail.
         {
@@ -187,7 +198,7 @@ mod tests {
         // Overwriting the first looked up value
         inputs.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
             domain,
             &srs,
             inputs,

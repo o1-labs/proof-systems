@@ -1,17 +1,19 @@
-use kimchi::circuits::expr::{ConstantExpr, Expr};
-use kimchi::circuits::expr::{ConstantExprInner, Operations};
-use kimchi::circuits::expr::{ExprInner, Variable};
-use kimchi::circuits::gate::CurrOrNext;
-use kimchi::curve::KimchiCurve;
+use crate::{
+    columns::{Column, ColumnIndexer, MSMColumnIndexer},
+    lookups::LookupTableIDs,
+    proof::ProofInputs,
+    witness::Witness,
+    {BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS},
+};
+use kimchi::{
+    circuits::{
+        expr::{ConstantExpr, ConstantExprInner, Expr, ExprInner, Operations, Variable},
+        gate::CurrOrNext,
+    },
+    curve::KimchiCurve,
+};
 use num_bigint::BigUint;
-
-use o1_utils::field_helpers::FieldHelpers;
-use o1_utils::foreign_field::ForeignElement;
-
-use crate::columns::{Column, ColumnIndexer, MSMColumnIndexer};
-use crate::proof::ProofInputs;
-use crate::witness::Witness;
-use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS};
+use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 /// Used to represent constraints as multi variate polynomials. The variables
 /// are over the columns.
@@ -84,7 +86,7 @@ impl BuilderEnv<BN254G1Affine> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
-    pub fn get_witness(&self) -> ProofInputs<MSM_FFADD_N_COLUMNS, BN254G1Affine> {
+    pub fn get_witness(&self) -> ProofInputs<MSM_FFADD_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
         let mut cols: [Vec<Fp>; MSM_FFADD_N_COLUMNS] = std::array::from_fn(|_| vec![]);
 
         for wc in &self.witness_raw {

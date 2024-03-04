@@ -1,4 +1,5 @@
 use kimchi::circuits::domains::EvaluationDomains;
+use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::serialization::{witness, N_INTERMEDIATE_LIMBS};
 use kimchi_msm::witness::Witness;
 use poly_commitment::pairing_proof::PairingSRS;
@@ -49,14 +50,16 @@ pub fn main() {
     };
 
     println!("Generating the proof");
-    let proof =
-        prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, SERIALIZATION_N_COLUMNS>(
-            domain,
-            &srs,
-            proof_inputs,
-            _constraints,
-            &mut rng,
-        );
+    let proof = prove::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        Column,
+        _,
+        SERIALIZATION_N_COLUMNS,
+        LookupTableIDs,
+    >(domain, &srs, proof_inputs, _constraints, &mut rng);
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS>(

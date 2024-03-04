@@ -1,3 +1,6 @@
+use crate::mvlookup::{prover::Env, LookupProof, LookupTableID};
+use crate::proof::{Proof, ProofInputs};
+use crate::witness::Witness;
 use ark_ff::Zero;
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as D};
@@ -16,10 +19,6 @@ use rand::{CryptoRng, RngCore};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
-use crate::mvlookup::{self, LookupProof};
-use crate::proof::{Proof, ProofInputs};
-use crate::witness::Witness;
-
 pub fn prove<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -28,10 +27,11 @@ pub fn prove<
     Column,
     RNG,
     const N: usize,
+    ID: LookupTableID + Send + Sync + Copy,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    inputs: ProofInputs<N, G>,
+    inputs: ProofInputs<N, G, ID>,
     _constraints: Vec<Expr<ConstantExpr<G::ScalarField>, Column>>,
     rng: &mut RNG,
 ) -> Proof<N, G, OpeningProof>
@@ -74,7 +74,7 @@ where
 
     // -- Start MVLookup
     let lookup_env = if !inputs.mvlookups.is_empty() {
-        Some(mvlookup::prover::Env::create::<OpeningProof, EFqSponge>(
+        Some(Env::create::<OpeningProof, EFqSponge, ID>(
             inputs.mvlookups,
             domain,
             &mut fq_sponge,
