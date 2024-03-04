@@ -11,7 +11,7 @@ use kimchi_msm::serialization::witness::deserialize_field_element;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
 
-const N: usize = 3 + 19 + LIMBS_NUM;
+const SERIALIZATION_N_COLUMNS: usize = 3 + 19 + LIMBS_NUM;
 
 pub fn main() {
     // FIXME: use a proper RNG
@@ -23,7 +23,7 @@ pub fn main() {
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
     let mut env = witness::Env::<Fp>::create();
-    let mut witness: Witness<N, Vec<Fp>> = Witness {
+    let mut witness: Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>> = Witness {
         cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
     };
 
@@ -49,15 +49,18 @@ pub fn main() {
     };
 
     println!("Generating the proof");
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
-        domain,
-        &srs,
-        proof_inputs,
-        _constraints,
-        &mut rng,
-    );
+    let proof =
+        prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, SERIALIZATION_N_COLUMNS>(
+            domain,
+            &srs,
+            proof_inputs,
+            _constraints,
+            &mut rng,
+        );
 
     println!("Verifying the proof");
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof);
+    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS>(
+        domain, &srs, &proof,
+    );
     println!("Proof verification result: {verifies}")
 }

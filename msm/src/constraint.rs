@@ -11,7 +11,7 @@ use o1_utils::foreign_field::ForeignElement;
 use crate::columns::{Column, ColumnIndexer, MSMColumnIndexer};
 use crate::proof::ProofInputs;
 use crate::witness::Witness;
-use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM, N};
+use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS};
 
 /// Used to represent constraints as multi variate polynomials. The variables
 /// are over the columns.
@@ -84,8 +84,8 @@ impl BuilderEnv<BN254G1Affine> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
-    pub fn get_witness(&self) -> ProofInputs<N, BN254G1Affine> {
-        let mut cols: [Vec<Fp>; N] = std::array::from_fn(|_| vec![]);
+    pub fn get_witness(&self) -> ProofInputs<MSM_FFADD_N_COLUMNS, BN254G1Affine> {
+        let mut cols: [Vec<Fp>; MSM_FFADD_N_COLUMNS] = std::array::from_fn(|_| vec![]);
 
         for wc in &self.witness_raw {
             let WitnessColumnsIndexer {

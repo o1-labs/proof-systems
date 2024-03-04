@@ -32,7 +32,7 @@ pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
 /// Number of columns
 /// FIXME: we must move it into the subdirectory of the
 /// foreign field addition circuit
-pub const N: usize = 3 * LIMBS_NUM;
+pub const MSM_FFADD_N_COLUMNS: usize = 3 * LIMBS_NUM;
 
 /// The native field we are working with.
 pub type Fp = ark_bn254::Fr;
