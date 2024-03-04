@@ -1,10 +1,11 @@
-use crate::{witness::Witness, DOMAIN_SIZE};
+use crate::DOMAIN_SIZE;
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
     circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
+use kimchi_msm::witness::Witness;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{

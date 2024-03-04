@@ -1,9 +1,6 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
-use crate::{
-    keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
-    witness::Witness,
-};
+use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::{
     circuits::polynomials::keccak::constants::{
         CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF,
@@ -14,6 +11,7 @@ use kimchi::{
     },
     folding::expressions::FoldingColumnTrait,
 };
+use kimchi_msm::witness::Witness;
 use std::ops::{Index, IndexMut};
 
 /// The total number of witness columns used by the Keccak circuit.
@@ -106,14 +104,26 @@ impl FoldingColumnTrait for Column {
 /// - next: Contains the Output
 pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS, T>;
 
-impl<T: Clone> KeccakWitness<T> {
+pub trait KeccakWitnessTrait<T> {
+    fn hash_index(&self) -> &T;
+    fn step_index(&self) -> &T;
+    fn mode_flags(&self) -> &[T];
+    fn mode_flags_mut(&mut self) -> &mut [T];
+    fn curr(&self) -> &[T];
+    fn curr_mut(&mut self) -> &mut [T];
+    fn next(&self) -> &[T];
+    fn next_mut(&mut self) -> &mut [T];
+    fn chunk(&self, offset: usize, length: usize) -> &[T];
+}
+
+impl<T: Clone> KeccakWitnessTrait<T> for KeccakWitness<T> {
     // Returns the hash index
     fn hash_index(&self) -> &T {
         &self.cols[0]
     }
 
     // Returns the step index
-    pub fn step_index(&self) -> &T {
+    fn step_index(&self) -> &T {
         &self.cols[1]
     }
 
@@ -148,7 +158,7 @@ impl<T: Clone> KeccakWitness<T> {
     }
 
     /// Returns a chunk of the `curr` witness columns
-    pub fn chunk(&self, offset: usize, length: usize) -> &[T] {
+    fn chunk(&self, offset: usize, length: usize) -> &[T] {
         &self.curr()[offset..offset + length]
     }
 }
