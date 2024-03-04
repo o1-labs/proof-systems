@@ -11,7 +11,7 @@ use o1_utils::foreign_field::ForeignElement;
 use crate::columns::{Column, ColumnIndexer, MSMColumnIndexer};
 use crate::proof::ProofInputs;
 use crate::witness::Witness;
-use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS};
+use crate::{BN254G1Affine, Ff1, Fp, MSM_FFADD_N_COLUMNS, N_LIMBS};
 
 /// Used to represent constraints as multi variate polynomials. The variables
 /// are over the columns.
@@ -50,16 +50,16 @@ use crate::{BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS};
 pub type MSMExpr<F> = Expr<ConstantExpr<F>, Column>;
 
 // TODO use more foreign_field.rs with from/to bigint conversion
-fn limb_decompose(input: &Ff1) -> [Fp; LIMBS_NUM] {
+fn limb_decompose(input: &Ff1) -> [Fp; N_LIMBS] {
     let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    let ff_el: ForeignElement<Fp, LIMBS_NUM> = ForeignElement::from_biguint(input_bi);
+    let ff_el: ForeignElement<Fp, N_LIMBS> = ForeignElement::from_biguint(input_bi);
     ff_el.limbs
 }
 
 pub struct WitnessColumnsIndexer<T> {
-    pub(crate) a: [T; LIMBS_NUM],
-    pub(crate) b: [T; LIMBS_NUM],
-    pub(crate) c: [T; LIMBS_NUM],
+    pub(crate) a: [T; N_LIMBS],
+    pub(crate) b: [T; N_LIMBS],
+    pub(crate) c: [T; N_LIMBS],
 }
 
 #[allow(dead_code)]
@@ -93,10 +93,10 @@ impl BuilderEnv<BN254G1Affine> {
                 b: wc_b,
                 c: wc_c,
             } = wc;
-            for i in 0..LIMBS_NUM {
+            for i in 0..N_LIMBS {
                 cols[i].push(wc_a[i]);
-                cols[LIMBS_NUM + i].push(wc_b[i]);
-                cols[2 * LIMBS_NUM + i].push(wc_c[i]);
+                cols[N_LIMBS + i].push(wc_b[i]);
+                cols[2 * N_LIMBS + i].push(wc_c[i]);
             }
         }
 
@@ -108,7 +108,7 @@ impl BuilderEnv<BN254G1Affine> {
 
     pub fn add_test_addition(&mut self, a: Ff1, b: Ff1) {
         let mut limb_constraints: Vec<_> = vec![];
-        for i in 0..LIMBS_NUM {
+        for i in 0..N_LIMBS {
             let limb_constraint = {
                 let a_i = MSMExpr::Atom(
                     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
@@ -132,14 +132,14 @@ impl BuilderEnv<BN254G1Affine> {
             Expr::combine_constraints(0..(limb_constraints.len() as u32), limb_constraints);
         self.constraints.push(combined_constraint);
 
-        let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
-        let b_limbs: [Fp; LIMBS_NUM] = limb_decompose(&b);
+        let a_limbs: [Fp; N_LIMBS] = limb_decompose(&a);
+        let b_limbs: [Fp; N_LIMBS] = limb_decompose(&b);
         let c_limbs_vec: Vec<Fp> = a_limbs
             .iter()
             .zip(b_limbs.iter())
             .map(|(ai, bi)| *ai + *bi)
             .collect();
-        let c_limbs: [Fp; LIMBS_NUM] = c_limbs_vec
+        let c_limbs: [Fp; N_LIMBS] = c_limbs_vec
             .try_into()
             .unwrap_or_else(|_| panic!("Length mismatch"));
 

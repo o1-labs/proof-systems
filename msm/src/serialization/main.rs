@@ -9,9 +9,9 @@ use kimchi_msm::proof::ProofInputs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::serialization::interpreter::deserialize_field_element;
 use kimchi_msm::verifier::verify;
-use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
+use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N_LIMBS};
 
-const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + LIMBS_NUM;
+const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + N_LIMBS;
 
 pub fn main() {
     // FIXME: use a proper RNG
@@ -34,11 +34,11 @@ pub fn main() {
         for i in 0..3 {
             witness.cols[i].push(env.current_kimchi_limbs[i]);
         }
-        for i in 0..LIMBS_NUM {
+        for i in 0..N_LIMBS {
             witness.cols[3 + i].push(env.msm_limbs[i]);
         }
         for i in 0..N_INTERMEDIATE_LIMBS {
-            witness.cols[3 + LIMBS_NUM + i].push(env.intermediate_limbs[i]);
+            witness.cols[3 + N_LIMBS + i].push(env.intermediate_limbs[i]);
         }
     }
 

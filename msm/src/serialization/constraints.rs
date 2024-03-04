@@ -4,7 +4,7 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
-use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, LIMBS_NUM};
+use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
 use super::interpreter::InterpreterEnv;
 
@@ -37,11 +37,11 @@ impl<F: Field> InterpreterEnv<F> for Env<F> {
 
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
         assert!(j < N_INTERMEDIATE_LIMBS);
-        Column::X(3 + LIMBS_NUM + j)
+        Column::X(3 + N_LIMBS + j)
     }
 
     fn get_column_for_msm_limb(j: usize) -> Self::Position {
-        assert!(j < LIMBS_NUM);
+        assert!(j < N_LIMBS);
         Column::X(3 + j)
     }
 

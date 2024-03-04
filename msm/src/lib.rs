@@ -23,7 +23,7 @@ pub const LIMB_BITSIZE: usize = 15;
 
 /// Number of limbs representing one foreign field element (either
 /// [`Ff1`] or [`Ff2`]).
-pub const LIMBS_NUM: usize = 17;
+pub const N_LIMBS: usize = 17;
 
 pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
 pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
@@ -32,7 +32,7 @@ pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
 /// Number of columns
 /// FIXME: we must move it into the subdirectory of the
 /// foreign field addition circuit
-pub const MSM_FFADD_N_COLUMNS: usize = 3 * LIMBS_NUM;
+pub const MSM_FFADD_N_COLUMNS: usize = 3 * N_LIMBS;
 
 /// The native field we are working with.
 pub type Fp = ark_bn254::Fr;
