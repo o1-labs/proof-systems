@@ -67,6 +67,11 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -129,9 +134,14 @@
         _x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         _highest_bit: u32,
         _lowest_bit: u32,
-        _position: <span class="self">Self</span>::Position,
+        position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="macro">unimplemented!</span>()
+        <span class="comment">// No constraint added. It is supposed that the caller will constraint
+        // later the returned variable and/or do a range check.
+        </span>Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }))
     }
 }
 </code></pre></div></section></main></body></html>
