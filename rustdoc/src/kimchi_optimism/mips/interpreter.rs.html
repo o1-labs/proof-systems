@@ -2533,15 +2533,16 @@
 <a href="#2531" id="2531">2531</a>
 <a href="#2532" id="2532">2532</a>
 <a href="#2533" id="2533">2533</a>
+<a href="#2534" id="2534">2534</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
-    lookup::{Lookup, LookupTableIDs},
+    lookups::{Lookup, LookupTableIDs},
     mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
 };
-<span class="kw">use </span>ark_ff::One;
+<span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
 
 <span class="kw">pub const </span>FD_STDIN: u32 = <span class="number">0</span>;
@@ -2669,6 +2670,7 @@
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::fmt::Debug
+        + Zero
         + One;
 
     <span class="doccomment">/// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.

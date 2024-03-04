@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["prover"],"struct":["LookupProof","MVLookup","MVLookupWitness"],"trait":["LookupTableID"]};
+window.SIDEBAR_ITEMS = {"mod":["prover"],"struct":["LookupProof","LookupTable","MVLookup","MVLookupWitness"],"trait":["LookupTableID"]};

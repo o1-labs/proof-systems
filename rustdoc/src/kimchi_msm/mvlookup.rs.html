@@ -314,6 +314,33 @@
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -332,10 +359,37 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) value: Vec&lt;F&gt;,
 }
 
+<span class="doccomment">/// Basic trait for MVLookups
+</span><span class="kw">impl</span>&lt;F, ID&gt; MVLookup&lt;F, ID&gt;
+<span class="kw">where
+    </span>F: Clone,
+    ID: LookupTableID + Send + Sync + Copy,
+{
+    <span class="doccomment">/// Creates a new MVLookup
+    </span><span class="kw">pub fn </span>new(table_id: ID, numerator: F, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id,
+            numerator,
+            value: value.to_vec(),
+        }
+    }
+}
+
 <span class="doccomment">/// Trait for lookup table variants
 </span><span class="kw">pub trait </span>LookupTableID {
     <span class="doccomment">/// Assign a unique ID to the lookup tables.
     </span><span class="kw">fn </span>into_field&lt;F: Field&gt;(<span class="self">self</span>) -&gt; F;
+}
+
+<span class="doccomment">/// A table of values that can be used for a lookup, along with the ID for the table.
+</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="kw">pub struct </span>LookupTable&lt;F, ID: LookupTableID + Send + Sync + Copy&gt; {
+    <span class="doccomment">/// Table ID corresponding to this table
+    </span><span class="attr">#[allow(dead_code)]
+    </span><span class="kw">pub </span>table_id: ID,
+    <span class="doccomment">/// Vector of values inside each entry of the table
+    </span><span class="attr">#[allow(dead_code)]
+    </span><span class="kw">pub </span>entries: Vec&lt;Vec&lt;F&gt;&gt;,
 }
 
 <span class="doccomment">/// Represents a witness of one instance of the lookup argument

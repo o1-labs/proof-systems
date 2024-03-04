@@ -212,6 +212,7 @@
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -219,7 +220,8 @@
 <span class="kw">use </span>poly_commitment::pairing_proof::PairingProof;
 
 <span class="kw">pub use </span>mvlookup::{
-    LookupProof <span class="kw">as </span>MVLookupProof, LookupTableID <span class="kw">as </span>MVLookupTableID, MVLookup, MVLookupWitness,
+    LookupProof <span class="kw">as </span>MVLookupProof, LookupTable <span class="kw">as </span>MVLookupTable, LookupTableID <span class="kw">as </span>MVLookupTableID,
+    LookupTableID, MVLookup, MVLookupWitness,
 };
 
 <span class="kw">pub mod </span>columns;

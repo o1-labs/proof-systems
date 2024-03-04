@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["LookupMode","LookupTableIDs"],"struct":["Lookup","LookupTable"],"trait":["Lookups"]};
