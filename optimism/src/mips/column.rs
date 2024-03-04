@@ -55,16 +55,22 @@ pub type MIPSWitness<T> = Witness<MIPS_COLUMNS, T>;
 
 pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + 2;
 
-impl<T: Clone> MIPSWitness<T> {
-    pub fn scratch(&self) -> &[T] {
+pub trait MIPSWitnessTrait<T> {
+    fn scratch(&self) -> &[T];
+    fn instruction_counter(&self) -> &T;
+    fn error(&mut self) -> &T;
+}
+
+impl<T: Clone> MIPSWitnessTrait<T> for MIPSWitness<T> {
+    fn scratch(&self) -> &[T] {
         &self.cols[..SCRATCH_SIZE]
     }
 
-    pub fn instruction_counter(&self) -> &T {
+    fn instruction_counter(&self) -> &T {
         &self.cols[SCRATCH_SIZE]
     }
 
-    pub fn error(&mut self) -> &T {
+    fn error(&mut self) -> &T {
         &self.cols[SCRATCH_SIZE + 1]
     }
 }
