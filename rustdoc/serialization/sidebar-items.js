@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["N"],"fn":["main"]};
+window.SIDEBAR_ITEMS = {"constant":["SERIALIZATION_N_COLUMNS"],"fn":["main"]};

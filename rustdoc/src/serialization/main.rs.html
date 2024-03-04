@@ -63,6 +63,9 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi_msm::serialization::witness;
 <span class="kw">use </span>kimchi_msm::witness::Witness;
@@ -76,7 +79,7 @@
 <span class="kw">use </span>kimchi_msm::verifier::verify;
 <span class="kw">use </span>kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
 
-<span class="kw">const </span>N: usize = <span class="number">3 </span>+ <span class="number">19 </span>+ LIMBS_NUM;
+<span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ <span class="number">19 </span>+ LIMBS_NUM;
 
 <span class="kw">pub fn </span>main() {
     <span class="comment">// FIXME: use a proper RNG
@@ -88,7 +91,7 @@
     <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
     <span class="kw">let </span><span class="kw-2">mut </span>env = witness::Env::&lt;Fp&gt;::create();
-    <span class="kw">let </span><span class="kw-2">mut </span>witness: Witness&lt;N, Vec&lt;Fp&gt;&gt; = Witness {
+    <span class="kw">let </span><span class="kw-2">mut </span>witness: Witness&lt;SERIALIZATION_N_COLUMNS, Vec&lt;Fp&gt;&gt; = Witness {
         cols: std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(DOMAIN_SIZE)),
     };
 
@@ -114,16 +117,19 @@
     };
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
-    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N&gt;(
-        domain,
-        <span class="kw-2">&amp;</span>srs,
-        proof_inputs,
-        _constraints,
-        <span class="kw-2">&amp;mut </span>rng,
-    );
+    <span class="kw">let </span>proof =
+        prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, SERIALIZATION_N_COLUMNS&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            proof_inputs,
+            _constraints,
+            <span class="kw-2">&amp;mut </span>rng,
+        );
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
-    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS&gt;(
+        domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof,
+    );
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)
 }
 </code></pre></div></section></main></body></html>

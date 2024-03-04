@@ -57,6 +57,9 @@
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>kimchi_msm::columns::Column;
 <span class="kw">use </span>rand::thread_rng;
@@ -69,7 +72,8 @@
 <span class="kw">use </span>kimchi_msm::prover::prove;
 <span class="kw">use </span>kimchi_msm::verifier::verify;
 <span class="kw">use </span>kimchi_msm::{
-    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N,
+    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
+    MSM_FFADD_N_COLUMNS,
 };
 
 <span class="kw">pub fn </span>generate_random_msm_witness() -&gt; BuilderEnv&lt;BN254G1Affine&gt; {
@@ -102,7 +106,7 @@
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
     <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
-    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N&gt;(
+    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, MSM_FFADD_N_COLUMNS&gt;(
         domain,
         <span class="kw-2">&amp;</span>srs,
         witness,
@@ -111,7 +115,9 @@
     );
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
-    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS&gt;(
+        domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof,
+    );
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)
 }
 </code></pre></div></section></main></body></html>
