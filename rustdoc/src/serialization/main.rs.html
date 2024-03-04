@@ -67,7 +67,7 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-<span class="kw">use </span>kimchi_msm::serialization::witness;
+<span class="kw">use </span>kimchi_msm::serialization::{witness, N_INTERMEDIATE_LIMBS};
 <span class="kw">use </span>kimchi_msm::witness::Witness;
 <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
 
@@ -79,7 +79,7 @@
 <span class="kw">use </span>kimchi_msm::verifier::verify;
 <span class="kw">use </span>kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
 
-<span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ <span class="number">19 </span>+ LIMBS_NUM;
+<span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ N_INTERMEDIATE_LIMBS + LIMBS_NUM;
 
 <span class="kw">pub fn </span>main() {
     <span class="comment">// FIXME: use a proper RNG
@@ -105,7 +105,7 @@
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
             witness.cols[<span class="number">3 </span>+ i].push(env.msm_limbs[i]);
         }
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">19 </span>{
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_INTERMEDIATE_LIMBS {
             witness.cols[<span class="number">3 </span>+ LIMBS_NUM + i].push(env.intermediate_limbs[i]);
         }
     }
