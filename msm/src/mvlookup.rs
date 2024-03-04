@@ -16,10 +16,37 @@ pub struct MVLookup<F, ID: LookupTableID + Send + Sync + Copy> {
     pub(crate) value: Vec<F>,
 }
 
+/// Basic trait for MVLookups
+impl<F, ID> MVLookup<F, ID>
+where
+    F: Clone,
+    ID: LookupTableID + Send + Sync + Copy,
+{
+    /// Creates a new MVLookup
+    pub fn new(table_id: ID, numerator: F, value: &[F]) -> Self {
+        Self {
+            table_id,
+            numerator,
+            value: value.to_vec(),
+        }
+    }
+}
+
 /// Trait for lookup table variants
 pub trait LookupTableID {
     /// Assign a unique ID to the lookup tables.
     fn into_field<F: Field>(self) -> F;
+}
+
+/// A table of values that can be used for a lookup, along with the ID for the table.
+#[derive(Debug, Clone)]
+pub struct LookupTable<F, ID: LookupTableID + Send + Sync + Copy> {
+    /// Table ID corresponding to this table
+    #[allow(dead_code)]
+    pub table_id: ID,
+    /// Vector of values inside each entry of the table
+    #[allow(dead_code)]
+    pub entries: Vec<Vec<F>>,
 }
 
 /// Represents a witness of one instance of the lookup argument

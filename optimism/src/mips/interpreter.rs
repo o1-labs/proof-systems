@@ -1,12 +1,12 @@
 use crate::{
     cannon::PAGE_ADDRESS_SIZE,
-    lookup::{Lookup, LookupTableIDs},
+    lookups::{Lookup, LookupTableIDs},
     mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
         REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
 };
-use ark_ff::One;
+use ark_ff::{One, Zero};
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -134,6 +134,7 @@ pub trait InterpreterEnv {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug
+        + Zero
         + One;
 
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.

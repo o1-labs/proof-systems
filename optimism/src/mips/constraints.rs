@@ -1,5 +1,5 @@
 use crate::{
-    lookup::{Lookup, LookupTableIDs},
+    lookups::{Lookup, LookupTableIDs},
     mips::{
         column::{
             Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,

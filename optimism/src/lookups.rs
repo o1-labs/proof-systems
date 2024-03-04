@@ -1,4 +1,7 @@
-use ark_ff::{Field, One};
+//! Instantiation of the lookups for the VM project.
+
+use crate::{keccak::witness::pad_blocks, ramlookup::RAMLookup};
+use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{
         constants::{RATE_IN_BYTES, ROUNDS},
@@ -6,17 +9,11 @@ use kimchi::{
     },
     o1_utils::Two,
 };
-
-use crate::keccak::witness::pad_blocks;
+use kimchi_msm::{LookupTableID, MVLookupTable};
 
 pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
 
-#[derive(Copy, Clone, Debug)]
-pub enum LookupMode {
-    Read,
-    Write,
-}
-
+/// All of the possible lookup table IDs used in the zkVM
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTableIDs {
     // RAM Tables
@@ -42,82 +39,25 @@ pub enum LookupTableIDs {
     ByteLookup = 9,
 }
 
-#[derive(Clone, Debug)]
-pub struct Lookup<T> {
-    pub mode: LookupMode,
-    /// The number of times that this lookup value should be added to / subtracted from the lookup accumulator.
-    pub magnitude: T,
-    pub table_id: LookupTableIDs,
-    pub value: Vec<T>,
-}
-
-impl<F: std::fmt::Display + Field> std::fmt::Display for Lookup<F> {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let numerator = match self.mode {
-            LookupMode::Read => self.magnitude,
-            LookupMode::Write => -self.magnitude,
-        };
-        write!(
-            formatter,
-            "numerator: {}\ntable_id: {:?}\nvalue:\n[\n",
-            numerator, self.table_id
-        )?;
-        for value in self.value.iter() {
-            writeln!(formatter, "\t{}", value)?;
-        }
-        write!(formatter, "]")?;
-        Ok(())
+impl LookupTableID for LookupTableIDs {
+    fn into_field<F: Field>(self) -> F {
+        F::from(self as u32)
     }
 }
 
-impl<T: One> Lookup<T> {
-    /// Reads one value when `if_is_true` is 1.
-    pub fn read_if(if_is_true: T, table_id: LookupTableIDs, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Read,
-            magnitude: if_is_true,
-            table_id,
-            value,
-        }
-    }
+/// The lookups struct based on RAMLookups for the VM table IDs
+pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
 
-    /// Writes one value when `if_is_true` is 1.
-    pub fn write_if(if_is_true: T, table_id: LookupTableIDs, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Write,
-            magnitude: if_is_true,
-            table_id,
-            value,
-        }
-    }
-
-    /// Reads one value from a table.
-    pub fn read_one(table_id: LookupTableIDs, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Read,
-            magnitude: T::one(),
-            table_id,
-            value,
-        }
-    }
-
-    /// Writes one value to a table.
-    pub fn write_one(table_id: LookupTableIDs, value: Vec<T>) -> Self {
-        Self {
-            mode: LookupMode::Write,
-            magnitude: T::one(),
-            table_id,
-            value,
-        }
-    }
-}
+/// The lookup table struct based on MVLookupTable for the VM table IDs
+pub(crate) type LookupTable<F> = MVLookupTable<F, LookupTableIDs>;
 
 /// This trait adds basic methods to deal with lookups inside an environment
-pub trait Lookups {
+pub(crate) trait Lookups {
     type Column;
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
+        + std::ops::Neg<Output = Self::Variable>
         + Clone;
 
     /// Adds a given Lookup to the environment
@@ -127,32 +67,17 @@ pub trait Lookups {
     fn lookups(&mut self);
 }
 
-/// A table of values that can be used for a lookup, along with the ID for the table.
-#[derive(Debug, Clone)]
-pub struct LookupTable<F> {
-    /// Table ID corresponding to this table
-    #[allow(dead_code)]
-    table_id: LookupTableIDs,
-    /// Vector of values inside each entry of the table
-    #[allow(dead_code)]
-    entries: Vec<Vec<F>>,
+/// Trait that creates all the fixed lookup tables used in the VM
+pub(crate) trait FixedLookupTables<F> {
+    fn table_range_check_16() -> LookupTable<F>;
+    fn table_sparse() -> LookupTable<F>;
+    fn table_reset() -> LookupTable<F>;
+    fn table_round_constants() -> LookupTable<F>;
+    fn table_pad() -> LookupTable<F>;
+    fn table_byte() -> LookupTable<F>;
 }
 
-impl<F: Field> LookupTable<F> {
-    #[allow(dead_code)]
-    fn table_terms(&self, mixer: F) -> Vec<F> {
-        self.entries
-            .iter()
-            .map(|entry| {
-                entry
-                    .iter()
-                    .fold(F::from(self.table_id as u32), |acc, value| {
-                        acc + *value * mixer
-                    })
-            })
-            .collect()
-    }
-
+impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     #[allow(dead_code)]
     fn table_range_check_16() -> Self {
         Self {
