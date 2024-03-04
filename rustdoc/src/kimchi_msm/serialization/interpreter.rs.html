@@ -43,7 +43,7 @@
 <a href="#41" id="41">41</a>
 <a href="#42" id="42">42</a>
 <a href="#43" id="43">43</a>
-</pre></div><pre class="rust"><code><span class="kw">pub trait </span>InterpreterEnv&lt;Fp&gt; {
+</pre></div><pre class="rust"><code><span class="kw">pub trait </span>InterpreterEnv {
     <span class="kw">type </span>Position;
 
     <span class="kw">type </span>Variable: Clone
@@ -72,7 +72,7 @@
         <span class="comment">// TODO
     </span>}
 
-    <span class="kw">fn </span>constant(value: Fp) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>constant(value: u128) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
