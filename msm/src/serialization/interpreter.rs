@@ -87,6 +87,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     let limb2_0_var = {
         let limb2_0 = Env::get_column_for_intermediate_limb(0);
         let limb2_0_var = env.bitmask_be(&input_limb2, 4, 0, limb2_0);
+        env.range_check4(&limb2_0_var);
         limb2_vars.push(limb2_0_var.clone());
         limb2_0_var
     };
@@ -96,6 +97,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
         for j in 1..N_INTERMEDIATE_LIMBS {
             let position = Env::get_column_for_intermediate_limb(j);
             let var = env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
+            env.range_check4(&var);
             limb2_vars.push(var.clone());
             let pow: u128 = 1 << (4 * j);
             let pow = Env::constant(pow.into());
@@ -104,27 +106,36 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
         env.add_constraint(constraint)
     }
 
-    // FIXME: range check
     let c0_var = {
         let c0 = Env::get_column_for_msm_limb(0);
         env.bitmask_be(&input_limb0, 15, 0, c0)
     };
+    env.range_check15(&c0_var);
+
     let c1_var = {
         let c1 = Env::get_column_for_msm_limb(1);
         env.bitmask_be(&input_limb0, 30, 15, c1)
     };
+    env.range_check15(&c1_var);
+
     let c2_var = {
         let c2 = Env::get_column_for_msm_limb(2);
         env.bitmask_be(&input_limb0, 45, 30, c2)
     };
+    env.range_check15(&c2_var);
+
     let c3_var = {
         let c3 = Env::get_column_for_msm_limb(3);
         env.bitmask_be(&input_limb0, 60, 45, c3)
     };
+    env.range_check15(&c3_var);
+
     let c4_var = {
         let c4 = Env::get_column_for_msm_limb(4);
         env.bitmask_be(&input_limb0, 75, 60, c4)
     };
+    env.range_check15(&c4_var);
+
     let c5_var = {
         let c5 = Env::get_column_for_msm_limb(5);
         let res = (limbs[0] >> 75) & ((1 << (88 - 75)) - 1);
@@ -133,29 +144,39 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
         let res = Env::constant(Fp::from(res));
         env.copy(&res, c5)
     };
+    env.range_check15(&c5_var);
 
     // Processing limbs1
-    // FIXME: range check
     let c6_var = {
         let c6 = Env::get_column_for_msm_limb(6);
         env.bitmask_be(&input_limb1, 17, 2, c6)
     };
+    env.range_check15(&c6_var);
+
     let c7_var = {
         let c7 = Env::get_column_for_msm_limb(7);
         env.bitmask_be(&input_limb1, 32, 17, c7)
     };
+    env.range_check15(&c7_var);
+
     let c8_var = {
         let c8 = Env::get_column_for_msm_limb(8);
         env.bitmask_be(&input_limb1, 47, 32, c8)
     };
+    env.range_check15(&c8_var);
+
     let c9_var = {
         let c9 = Env::get_column_for_msm_limb(9);
         env.bitmask_be(&input_limb1, 62, 47, c9)
     };
+    env.range_check15(&c9_var);
+
     let c10_var = {
         let c10 = Env::get_column_for_msm_limb(10);
         env.bitmask_be(&input_limb1, 77, 62, c10)
     };
+    env.range_check15(&c10_var);
+
     let c11_var = {
         let c11 = Env::get_column_for_msm_limb(11);
         let res = (limbs[1] >> 77) & ((1 << (88 - 77)) - 1);
@@ -164,6 +185,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
         let res = Env::constant(res.into());
         env.copy(&res, c11)
     };
+    env.range_check15(&c11_var);
 
     // Unfolding for readability.
     // IMPROVEME using fold later.
@@ -220,29 +242,34 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     env.add_constraint(constraint);
 
     // -- Start third constraint
-    // FIXME: range check
     let c12_var = {
         let c12 = Env::get_column_for_msm_limb(12);
         env.bitmask_be(&input_limb2, 19, 4, c12)
     };
+    env.range_check15(&c12_var);
     let c13_var = {
         let c13 = Env::get_column_for_msm_limb(13);
         env.bitmask_be(&input_limb2, 34, 19, c13)
     };
+    env.range_check15(&c13_var);
 
     let c14_var = {
         let c14 = Env::get_column_for_msm_limb(14);
         env.bitmask_be(&input_limb2, 49, 34, c14)
     };
+    env.range_check15(&c14_var);
 
     let c15_var = {
         let c15 = Env::get_column_for_msm_limb(15);
         env.bitmask_be(&input_limb2, 64, 49, c15)
     };
+    env.range_check15(&c15_var);
+
     let c16_var = {
         let c16 = Env::get_column_for_msm_limb(16);
         env.bitmask_be(&input_limb2, 79, 64, c16)
     };
+    env.range_check15(&c16_var);
 
     // Unfolding for readability.
     let shl_15 = Fp::from(1u128 << 15u128);
