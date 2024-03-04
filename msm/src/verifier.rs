@@ -40,7 +40,7 @@ pub fn verify<
         .witness_comms
         .cols
         .iter()
-        .for_each(|comm| absorb_commitment(&mut fq_sponge, &comm));
+        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
         mvlookup_comms
@@ -97,8 +97,8 @@ pub fn verify<
     fr_sponge.absorb(&fq_sponge.digest());
 
     for PointEvaluations { zeta, zeta_omega } in proof_evals.witness_evals.cols.iter() {
-        fr_sponge.absorb(&zeta);
-        fr_sponge.absorb(&zeta_omega);
+        fr_sponge.absorb(zeta);
+        fr_sponge.absorb(zeta_omega);
     }
     if proof_comms.mvlookup_comms.is_some() {
         // MVLookup FS

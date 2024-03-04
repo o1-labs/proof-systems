@@ -90,7 +90,7 @@ where
     witness_comms
         .cols
         .iter()
-        .for_each(|comm| absorb_commitment(&mut fq_sponge, &comm));
+        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     // -- Start MVLookup
     let lookup_env = if !inputs.mvlookups.is_empty() {
@@ -353,7 +353,7 @@ where
     let mut polynomials: Vec<_> = witness_polys
         .cols
         .iter()
-        .map(|poly| (coefficients_form(&poly), non_hiding(1)))
+        .map(|poly| (coefficients_form(poly), non_hiding(1)))
         .collect();
 
     // Adding MVLookup
