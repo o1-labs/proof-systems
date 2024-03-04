@@ -1,4 +1,5 @@
 use ark_ff::PrimeField;
+use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
 use crate::columns::Column;
@@ -40,6 +41,18 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
         assert!(j < N_INTERMEDIATE_LIMBS);
         Column::X(3 + N_LIMBS + j)
+    }
+
+    fn range_check15(&mut self, value: &Self::Variable) {
+        // FIXME: this is not the full intended implementation
+        let value_biguint = value.to_biguint();
+        assert!(value_biguint < BigUint::from(2u128.pow(15)));
+    }
+
+    fn range_check4(&mut self, value: &Self::Variable) {
+        // FIXME: this is not the full intended implementation
+        let value_biguint = value.to_biguint();
+        assert!(value_biguint < BigUint::from(2u128.pow(4)));
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
