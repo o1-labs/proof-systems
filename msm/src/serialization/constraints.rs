@@ -60,8 +60,13 @@ impl<F: Field> InterpreterEnv for Env<F> {
         _x: &Self::Variable,
         _highest_bit: u32,
         _lowest_bit: u32,
-        _position: Self::Position,
+        position: Self::Position,
     ) -> Self::Variable {
-        unimplemented!()
+        // No constraint added. It is supposed that the caller will constraint
+        // later the returned variable and/or do a range check.
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }))
     }
 }
