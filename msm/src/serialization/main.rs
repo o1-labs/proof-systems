@@ -1,6 +1,6 @@
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi_msm::lookups::LookupTableIDs;
-use kimchi_msm::serialization::witness;
+use kimchi_msm::serialization::{witness, N_INTERMEDIATE_LIMBS};
 use kimchi_msm::witness::Witness;
 use poly_commitment::pairing_proof::PairingSRS;
 
@@ -12,7 +12,7 @@ use kimchi_msm::serialization::witness::deserialize_field_element;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
 
-const SERIALIZATION_N_COLUMNS: usize = 3 + 19 + LIMBS_NUM;
+const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + LIMBS_NUM;
 
 pub fn main() {
     // FIXME: use a proper RNG
@@ -38,7 +38,7 @@ pub fn main() {
         for i in 0..LIMBS_NUM {
             witness.cols[3 + i].push(env.msm_limbs[i]);
         }
-        for i in 0..19 {
+        for i in 0..N_INTERMEDIATE_LIMBS {
             witness.cols[3 + LIMBS_NUM + i].push(env.intermediate_limbs[i]);
         }
     }

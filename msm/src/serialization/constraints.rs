@@ -4,7 +4,7 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
-use crate::{columns::Column, LIMBS_NUM};
+use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, LIMBS_NUM};
 
 use super::interpreter::InterpreterEnv;
 
@@ -12,7 +12,7 @@ pub struct Env<Fp> {
     pub constraints: Vec<Expr<ConstantExpr<Fp>, Column>>,
 }
 
-impl<F: Field> InterpreterEnv for Env<F> {
+impl<F: Field> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
     type Variable = Expr<ConstantExpr<F>, Column>;
@@ -36,7 +36,7 @@ impl<F: Field> InterpreterEnv for Env<F> {
     }
 
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
-        assert!(j < 19);
+        assert!(j < N_INTERMEDIATE_LIMBS);
         Column::X(3 + LIMBS_NUM + j)
     }
 
@@ -45,8 +45,7 @@ impl<F: Field> InterpreterEnv for Env<F> {
         Column::X(3 + j)
     }
 
-    fn constant(value: u128) -> Self::Variable {
-        let value = F::from(value);
+    fn constant(value: F) -> Self::Variable {
         let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
         Expr::Atom(ExprInner::Constant(cst_expr_inner))
     }
@@ -60,8 +59,13 @@ impl<F: Field> InterpreterEnv for Env<F> {
         _x: &Self::Variable,
         _highest_bit: u32,
         _lowest_bit: u32,
-        _position: Self::Position,
+        position: Self::Position,
     ) -> Self::Variable {
-        unimplemented!()
+        // No constraint added. It is supposed that the caller will constraint
+        // later the returned variable and/or do a range check.
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }))
     }
 }
