@@ -1,4 +1,5 @@
 use ark_ff::Field;
+use o1_utils::FieldHelpers;
 
 use crate::columns::Column;
 use crate::serialization::interpreter::InterpreterEnv;
@@ -16,18 +17,18 @@ pub struct Env<Fp> {
     pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
 }
 
-impl<Fp: Field> InterpreterEnv for Env<Fp> {
+impl<Fp: Field> InterpreterEnv<Fp> for Env<Fp> {
     type Position = Column;
 
-    // FIXME: is u128 ok? I think so, we only have 15 bits, 88 bits and 4 bits
-    // values. Let's see later
-    type Variable = u128;
+    // Requiring an Fp element as we would need to compute values up to 180 bits
+    // in the 15 bits decomposition.
+    type Variable = Fp;
 
     fn add_constraint(&mut self, cst: Self::Variable) {
-        assert_eq!(cst, 0);
+        assert_eq!(cst, Fp::zero());
     }
 
-    fn constant(value: u128) -> Self::Variable {
+    fn constant(value: Fp) -> Self::Variable {
         value
     }
 
@@ -61,23 +62,27 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
-        let x: u128 = *x;
-        let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
-        self.write_column(position, res);
-        res
+        // FIXME: we can assume bitmask_be will be called only on value with
+        // maximum 128 bits. We use bitmask_be only for the limbs
+        let x_bytes_u8 = &x.to_bytes()[0..16];
+        let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
+        let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
+        let res_fp: Fp = res.into();
+        self.write_column(position, res_fp);
+        res_fp
     }
 }
 
 impl<Fp: Field> Env<Fp> {
-    pub fn write_column(&mut self, position: Column, value: u128) {
+    pub fn write_column(&mut self, position: Column, value: Fp) {
         match position {
             Column::X(i) => {
                 if i < 3 {
-                    self.current_kimchi_limbs[i] = Fp::from(value);
+                    self.current_kimchi_limbs[i] = value
                 } else if i < 3 + LIMBS_NUM {
-                    self.msm_limbs[i - 3] = Fp::from(value);
+                    self.msm_limbs[i - 3] = value;
                 } else if i < 3 + LIMBS_NUM + N_INTERMEDIATE_LIMBS {
-                    self.intermediate_limbs[i - 3 - LIMBS_NUM] = Fp::from(value);
+                    self.intermediate_limbs[i - 3 - LIMBS_NUM] = value;
                 } else {
                     panic!("Invalid column index")
                 }
@@ -115,15 +120,18 @@ impl<Fp: Field> Env<Fp> {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u128; 3]) {
+pub fn deserialize_field_element<Fp: Field, Env: InterpreterEnv<Fp>>(
+    env: &mut Env,
+    limbs: [u128; 3],
+) {
     // Use this to constrain later
     let kimchi_limbs0 = Env::get_column_for_kimchi_limb(0);
     let kimchi_limbs1 = Env::get_column_for_kimchi_limb(1);
     let kimchi_limbs2 = Env::get_column_for_kimchi_limb(2);
 
-    let input_limb0 = Env::constant(limbs[0]);
-    let input_limb1 = Env::constant(limbs[1]);
-    let input_limb2 = Env::constant(limbs[2]);
+    let input_limb0 = Env::constant(limbs[0].into());
+    let input_limb1 = Env::constant(limbs[1].into());
+    let input_limb2 = Env::constant(limbs[2].into());
 
     // FIXME: should we assert this in the circuit?
     assert!(limbs[0] < 2u128.pow(88));
@@ -140,7 +148,8 @@ pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u12
         for j in 0..N_INTERMEDIATE_LIMBS {
             let position = Env::get_column_for_intermediate_limb(j);
             let var = env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
-            let pow = Env::constant(1 << (4 * j));
+            let pow: u128 = 1 << (4 * j);
+            let pow = Env::constant(pow.into());
             constraint = constraint - var * pow;
         }
         env.add_constraint(constraint)
@@ -162,7 +171,8 @@ pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u12
     {
         let res = (limbs[0] >> 75) & ((1 << (88 - 75)) - 1);
         let res_prime = limbs[1] & ((1 << 2) - 1);
-        let res = Env::constant(res + (res_prime << (15 - 2)));
+        let res = res + (res_prime << (15 - 2));
+        let res = Env::constant(res.into());
         env.copy(&res, c5);
     }
 
@@ -182,7 +192,8 @@ pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u12
     {
         let res = (limbs[1] >> 77) & ((1 << (88 - 77)) - 1);
         let res_prime = limbs[2] & ((1 << 4) - 1);
-        let res = Env::constant(res + (res_prime << (15 - 4)));
+        let res = res + (res_prime << (15 - 4));
+        let res = Env::constant(res.into());
         env.copy(&res, c11);
     }
 

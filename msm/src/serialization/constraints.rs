@@ -12,7 +12,7 @@ pub struct Env<Fp> {
     pub constraints: Vec<Expr<ConstantExpr<Fp>, Column>>,
 }
 
-impl<F: Field> InterpreterEnv for Env<F> {
+impl<F: Field> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
     type Variable = Expr<ConstantExpr<F>, Column>;
@@ -45,8 +45,7 @@ impl<F: Field> InterpreterEnv for Env<F> {
         Column::X(3 + j)
     }
 
-    fn constant(value: u128) -> Self::Variable {
-        let value = F::from(value);
+    fn constant(value: F) -> Self::Variable {
         let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
         Expr::Atom(ExprInner::Constant(cst_expr_inner))
     }

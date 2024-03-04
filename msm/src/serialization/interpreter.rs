@@ -1,4 +1,4 @@
-pub trait InterpreterEnv {
+pub trait InterpreterEnv<Fp> {
     type Position;
 
     type Variable: Clone
@@ -27,7 +27,7 @@ pub trait InterpreterEnv {
         // TODO
     }
 
-    fn constant(value: u128) -> Self::Variable;
+    fn constant(value: Fp) -> Self::Variable;
 
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
