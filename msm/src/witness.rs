@@ -1,8 +1,12 @@
 use ark_ff::Zero;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 
-/// The witness columns used by a gate of the zkVM circuit.
+/// The witness columns used by a gate of the MSM circuits.
 /// It is generic over the number of columns, N, and the type of the witness, T.
+/// It is parametrized by a type `T` which can be either:
+/// - `Vec<G::ScalarField>` for the evaluations
+/// - `PolyComm<G>` for the commitments
+/// It can be used to represent the different subcircuits used by the project.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Witness<const N: usize, T> {
     /// A witness row is represented by an array of N witness columns
@@ -20,18 +24,6 @@ impl<const N: usize, T: Zero + Clone> Default for Witness<N, T> {
 
 // IMPLEMENTATION OF ITERATORS FOR THE WITNESS STRUCTURE
 
-impl<const N: usize, F> IntoIterator for Witness<N, F> {
-    type Item = F;
-    type IntoIter = std::vec::IntoIter<F>;
-
-    /// Iterate over the columns in the circuit.
-    fn into_iter(self) -> Self::IntoIter {
-        let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(self.cols);
-        iter_contents.into_iter()
-    }
-}
-
 impl<'lt, const N: usize, G> IntoIterator for &'lt Witness<N, G> {
     type Item = &'lt G;
     type IntoIter = std::vec::IntoIter<&'lt G>;
@@ -39,6 +31,18 @@ impl<'lt, const N: usize, G> IntoIterator for &'lt Witness<N, G> {
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = Vec::with_capacity(N);
         iter_contents.extend(&self.cols);
+        iter_contents.into_iter()
+    }
+}
+
+impl<const N: usize, F: Clone> IntoIterator for Witness<N, F> {
+    type Item = F;
+    type IntoIter = std::vec::IntoIter<F>;
+
+    /// Iterate over the columns in the circuit.
+    fn into_iter(self) -> Self::IntoIter {
+        let mut iter_contents = Vec::with_capacity(N);
+        iter_contents.extend(self.cols);
         iter_contents.into_iter()
     }
 }

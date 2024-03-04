@@ -1,7 +1,21 @@
 pub trait InterpreterEnv {
     type Position;
 
-    type Variable;
+    type Variable: Clone
+        + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Sub<Self::Variable, Output = Self::Variable>
+        + std::ops::Mul<Self::Variable, Output = Self::Variable>
+        + std::fmt::Debug;
+
+    fn add_constraint(&mut self, cst: Self::Variable);
+
+    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
+
+    fn get_column_for_kimchi_limb(j: usize) -> Self::Position;
+
+    fn get_column_for_intermediate_limb(j: usize) -> Self::Position;
+
+    fn get_column_for_msm_limb(j: usize) -> Self::Position;
 
     /// Check that the value is in the range [0, 2^15-1]
     fn range_check15(&mut self, _value: &Self::Variable) {
@@ -13,22 +27,17 @@ pub trait InterpreterEnv {
         // TODO
     }
 
+    fn constant(value: u128) -> Self::Variable;
+
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
     /// `lowest_bit` becomes the least-significant bit of the resulting value.
-    fn bitmask(
+    /// The value `x` is expected to be encoded in big-endian
+    fn bitmask_be(
         &mut self,
         x: &Self::Variable,
-        highest_bit: u128,
-        lowest_bit: u128,
+        highest_bit: u32,
+        lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable;
-
-    /// Deserialize the next field element given as input
-    fn deserialize_field_element(&mut self);
-
-    /// Copy the value `value` in the column `position`
-    fn copy(&mut self, _position: Self::Position, _value: Self::Variable) {
-        // TODO
-    }
 }

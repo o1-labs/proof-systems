@@ -1,18 +1,17 @@
 use ark_ff::UniformRand;
-use kimchi_msm::columns::Column;
-use kimchi_msm::lookups::LookupTableIDs;
-use rand::thread_rng;
-
 use kimchi::circuits::domains::EvaluationDomains;
-use poly_commitment::pairing_proof::PairingSRS;
-
+use kimchi_msm::columns::Column;
 use kimchi_msm::constraint::BuilderEnv;
+use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{
     BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
+    MSM_FFADD_N_COLUMNS,
 };
+use poly_commitment::pairing_proof::PairingSRS;
+use rand::thread_rng;
 
 pub fn generate_random_msm_witness() -> BuilderEnv<BN254G1Affine> {
     let mut env = BuilderEnv::<BN254G1Affine>::empty();
@@ -44,15 +43,20 @@ pub fn main() {
 
     println!("Generating the proof");
     let constraints = vec![];
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, LookupTableIDs>(
-        domain,
-        &srs,
-        witness,
-        constraints,
-        &mut rng,
-    );
+    let proof = prove::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        Column,
+        _,
+        MSM_FFADD_N_COLUMNS,
+        LookupTableIDs,
+    >(domain, &srs, witness, constraints, &mut rng);
 
     println!("Verifying the proof");
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(domain, &srs, &proof);
+    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
+        domain, &srs, &proof,
+    );
     println!("Proof verification result: {verifies}")
 }
