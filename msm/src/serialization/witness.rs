@@ -16,6 +16,9 @@ pub struct Env<Fp> {
     /// Used for the decomposition in base 4 of the last limb of the foreign
     /// field Kimchi gate
     pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
+
+    pub lookup_multiplicities_rangecheck4: [Fp; 1 << 4],
+    pub lookup_multiplicities_rangecheck15: [Fp; 1 << 15],
 }
 
 impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
@@ -47,12 +50,18 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         // FIXME: this is not the full intended implementation
         let value_biguint = value.to_biguint();
         assert!(value_biguint < BigUint::from(2u128.pow(15)));
+        // Adding multiplicities
+        let value_usize: usize = value_biguint.clone().try_into().unwrap();
+        self.lookup_multiplicities_rangecheck15[value_usize] += Fp::one();
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
         // FIXME: this is not the full intended implementation
         let value_biguint = value.to_biguint();
         assert!(value_biguint < BigUint::from(2u128.pow(4)));
+        // Adding multiplicities
+        let value_usize: usize = value_biguint.clone().try_into().unwrap();
+        self.lookup_multiplicities_rangecheck4[value_usize] += Fp::one();
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -110,6 +119,8 @@ impl<Fp: PrimeField> Env<Fp> {
             current_kimchi_limbs: [Fp::zero(); 3],
             msm_limbs: [Fp::zero(); N_LIMBS],
             intermediate_limbs: [Fp::zero(); N_INTERMEDIATE_LIMBS],
+            lookup_multiplicities_rangecheck4: [Fp::zero(); 1 << 4],
+            lookup_multiplicities_rangecheck15: [Fp::zero(); 1 << 15],
         }
     }
 }
