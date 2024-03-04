@@ -307,9 +307,12 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
 #[cfg(test)]
 mod tests {
     use ark_poly::Evaluations;
-    use mina_poseidon::FqSponge;
+    use mina_poseidon::{constants::SpongeConstants, sponge::ScalarChallenge, FqSponge};
 
-    use crate::folding::{FoldingConfig, FoldingEnv, Instance, Sponge, Witness};
+    use crate::{
+        curve::KimchiCurve,
+        folding::{error_term::Side, FoldingConfig, FoldingEnv, Instance, Sponge, Witness},
+    };
 
     use super::expressions::FoldingColumnTrait;
 
@@ -333,17 +336,22 @@ mod tests {
         /// X(1) = x
         /// X(2) = y
         /// X(3) = w
-        use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
-        use kimchi::circuits::gate::CurrOrNext;
-        use mina_poseidon::{
-            constants::PlonkSpongeConstantsKimchi,
-            sponge::{DefaultFqSponge, DefaultFrSponge},
+        use crate::circuits::expr::{
+            ConstantExpr, ConstantExprInner, Expr, ExprInner, Operations, Variable,
         };
+        use crate::circuits::gate::CurrOrNext;
+        use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
         use poly_commitment::PolyComm;
 
-        #[derive(Debug, Eq, Hash, Clone)]
+        #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
         pub enum Column {
             X(usize),
+        }
+
+        impl FoldingColumnTrait for Column {
+            fn is_witness(&self) -> bool {
+                true
+            }
         }
 
         type Fp = ark_bn254::Fr;
@@ -355,9 +363,20 @@ mod tests {
         impl Sponge<Curve> for BaseSponge {
             fn challenge(absorbe: &[PolyComm<Curve>; 2]) -> Fp {
                 // FIXME: we should have a self maybe?
-                let mut s = BaseSponge::new(SpongeParams::new());
-                s.absorb_fq(absorbe[0].unshifted.clone());
-                s.absorb_fq(absorbe[1].unshifted.clone());
+                let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
+                let unshifted = |x: &PolyComm<Curve>| {
+                    x.elems
+                        .into_iter()
+                        .map(Into::into)
+                        .collect::<Vec<BaseSponge>>()
+                        .clone()
+                };
+                s.absorb_fq(unshifted(&absorbe[0]));
+                s.absorb_fq(unshifted(&absorbe[1]));
+                // Squeeze sponge
+                let chal = ScalarChallenge(s.challenge());
+                let (_, endo_r) = Curve::endos();
+                chal.to_field(endo_r)
             }
         }
 
@@ -409,21 +428,42 @@ mod tests {
                             .map(|x1, x2| x1 + challenge * x2)
                             .collect::<Vec<Fp>>()
                     })
-                    .collect::<Vec<_>>().try_into().unwrap()
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap()
             }
         }
 
         struct SFoldingEnv;
-        impl FoldingEnv for SFoldingEnv {
+        impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for SFoldingEnv {
             type Structure = ();
-            type Column = Column;
-            type Challenge = ();
-            type Curve = Curve;
-            type Instance = ();
-            type Witness = ();
-            type Env = ();
+
+            fn zero_vec(&self) -> Vec<F> {
+                todo!()
+            }
+
+            fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: Side) -> &Vec<F> {
+                todo!()
+            }
+
+            fn challenge(&self, _challenge: Chal, _side: Side) -> F {
+                todo!()
+            }
+
+            fn new(_structure: &Self::Structure, _instances: [&I; 2], _witnesses: [&W; 2]) -> Self {
+                todo!()
+            }
+
+            fn lagrange_basis(&self, _i: usize) -> &Vec<F> {
+                todo!()
+            }
+
+            fn alpha(&self, _i: usize, _side: Side) -> F {
+                todo!()
+            }
         }
 
+        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         struct SFoldingConfig;
 
         impl FoldingConfig for SFoldingConfig {
@@ -434,21 +474,16 @@ mod tests {
             type Curve = Curve;
             type Srs = poly_commitment::srs::SRS<Curve>;
             type Sponge = BaseSponge;
-
-            // FIXME
-            type Instance = Witness<Curve>;
-
-            type Witness = Witness<Curve>;
+            type Instance = SInstance;
+            type Witness = SWitness;
 
             // FIXME
             type Structure = ();
 
-            // FIXME
-            type Env = ();
+            type Env = SFoldingEnv;
 
             fn rows() -> usize {
-                // FIXME: this is the domain size. Atm, let's have only one
-                // column
+                // FIXME: this is the domain size. Atm, let's have only one row
                 1
             }
         }
