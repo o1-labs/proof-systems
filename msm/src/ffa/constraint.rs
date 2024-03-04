@@ -5,7 +5,7 @@ use num_bigint::BigUint;
 use crate::{
     columns::{Column, ColumnIndexer},
     expr::MSMExpr,
-    ffa::columns::MSMColumnIndexer,
+    ffa::columns::FFAColumnIndexer,
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
@@ -86,16 +86,16 @@ impl MSMCircuitEnv<BN254G1Affine> {
             let limb_constraint = {
                 let a_i = MSMExpr::Atom(
                     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-                        col: MSMColumnIndexer::A(i).ix_to_column(),
+                        col: FFAColumnIndexer::A(i).ix_to_column(),
                         row: CurrOrNext::Curr,
                     }),
                 );
                 let b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                    col: MSMColumnIndexer::B(i).ix_to_column(),
+                    col: FFAColumnIndexer::B(i).ix_to_column(),
                     row: CurrOrNext::Curr,
                 }));
                 let c_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                    col: MSMColumnIndexer::C(i).ix_to_column(),
+                    col: FFAColumnIndexer::C(i).ix_to_column(),
                     row: CurrOrNext::Curr,
                 }));
                 a_i + b_i - c_i
@@ -112,16 +112,16 @@ impl MSMCircuitEnv<BN254G1Affine> {
             let limb_constraint = {
                 let a_i = MSMExpr::Atom(
                     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-                        col: MSMColumnIndexer::A(i).ix_to_column(),
+                        col: FFAColumnIndexer::A(i).ix_to_column(),
                         row: CurrOrNext::Curr,
                     }),
                 );
                 let b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                    col: MSMColumnIndexer::B(i).ix_to_column(),
+                    col: FFAColumnIndexer::B(i).ix_to_column(),
                     row: CurrOrNext::Curr,
                 }));
                 let d_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                    col: MSMColumnIndexer::D(i).ix_to_column(),
+                    col: FFAColumnIndexer::D(i).ix_to_column(),
                     row: CurrOrNext::Curr,
                 }));
                 a_i * b_i - d_i
