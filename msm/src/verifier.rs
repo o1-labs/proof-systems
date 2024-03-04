@@ -21,11 +21,12 @@ pub fn verify<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    const N: usize,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraint_exprs: &Vec<MSMExpr<G::ScalarField>>,
-    proof: &Proof<G, OpeningProof>,
+    proof: &Proof<N, G, OpeningProof>,
 ) -> bool {
     let Proof {
         proof_comms,
@@ -37,8 +38,9 @@ pub fn verify<
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     proof_comms
         .witness_comms
-        .into_iter()
-        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+        .cols
+        .iter()
+        .for_each(|comm| absorb_commitment(&mut fq_sponge, &comm));
 
     if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
         mvlookup_comms
@@ -67,8 +69,9 @@ pub fn verify<
     coms_and_evaluations.extend(
         proof_comms
             .witness_comms
-            .into_iter()
-            .zip(&proof_evals.witness_evals)
+            .cols
+            .iter()
+            .zip(proof_evals.witness_evals.cols.iter())
             .map(|(commitment, point_eval)| Evaluation {
                 commitment: commitment.clone(),
                 evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
@@ -93,9 +96,9 @@ pub fn verify<
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    for PointEvaluations { zeta, zeta_omega } in proof_evals.witness_evals.into_iter() {
-        fr_sponge.absorb(zeta);
-        fr_sponge.absorb(zeta_omega);
+    for PointEvaluations { zeta, zeta_omega } in proof_evals.witness_evals.cols.iter() {
+        fr_sponge.absorb(&zeta);
+        fr_sponge.absorb(&zeta_omega);
     }
     if proof_comms.mvlookup_comms.is_some() {
         // MVLookup FS

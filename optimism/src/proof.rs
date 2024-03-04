@@ -80,9 +80,10 @@ pub fn fold<
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
-    for column in commitments.into_iter() {
-        absorb_commitment(&mut fq_sponge, &column);
-    }
+    commitments.into_iter().for_each(|comm| {
+        absorb_commitment(&mut fq_sponge, &comm);
+    });
+
     let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let scaling_challenge = scaling_challenge.to_field(endo_r);
@@ -235,9 +236,9 @@ pub fn verify<
     } = proof;
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for column in commitments.clone().into_iter() {
-        absorb_commitment(&mut fq_sponge, &column);
-    }
+    commitments.into_iter().for_each(|comm| {
+        absorb_commitment(&mut fq_sponge, comm);
+    });
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);

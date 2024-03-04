@@ -10,6 +10,7 @@ use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{
     BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
+    MSM_FFADD_N_COLUMNS,
 };
 
 pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
@@ -38,23 +39,23 @@ pub fn main() {
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
     let circuit_env = generate_random_msm_witness();
-    let witness = circuit_env.get_witness();
+    let proof_inputs = circuit_env.get_witness();
     let constraint_exprs = circuit_env.get_exprs_add();
 
-    println!("Witness: {:?}", witness);
+    println!("Proof inputs: {:?}", proof_inputs);
     println!("Constraints: {:?}", constraint_exprs);
 
     println!("Generating the proof");
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _>(
+    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSM_FFADD_N_COLUMNS>(
         domain,
         &srs,
         &constraint_exprs,
-        witness,
+        proof_inputs,
         &mut rng,
     );
 
     println!("Verifying the proof");
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge>(
+    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
         domain,
         &srs,
         &constraint_exprs,

@@ -1,6 +1,7 @@
 use ark_ff::{Field, One, Zero};
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as R2D};
+use rand::{CryptoRng, RngCore};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 
@@ -17,12 +18,12 @@ use poly_commitment::{
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
-use rand::{CryptoRng, RngCore};
 
 use crate::column_env::MSMColumnEnvironment;
 use crate::constraint::MSMExpr;
 use crate::mvlookup::{self, LookupProof};
-use crate::proof::{Proof, ProofCommitments, ProofEvaluations, Witness, WitnessColumns};
+use crate::proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs};
+use crate::witness::Witness;
 
 #[allow(unreachable_code)]
 pub fn prove<
@@ -32,13 +33,14 @@ pub fn prove<
     EFrSponge: FrSponge<G::ScalarField>,
     Column,
     RNG,
+    const N: usize,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraints: &Vec<MSMExpr<G::ScalarField>>,
-    witness: Witness<G>,
+    inputs: ProofInputs<N, G>,
     rng: &mut RNG,
-) -> Proof<G, OpeningProof>
+) -> Proof<N, G, OpeningProof>
 where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
@@ -54,7 +56,7 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     // Interpolate all columns on d1, using trait Into.
-    let witness_evals: WitnessColumns<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = witness
+    let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = inputs
         .evaluations
         .into_par_iter()
         .map(|evals| {
@@ -62,36 +64,37 @@ where
                 evals, domain.d1,
             )
         })
-        .collect::<WitnessColumns<Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
+        .collect::<Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
 
-    let witness_polys: WitnessColumns<DensePolynomial<G::ScalarField>> = {
+    let witness_polys: Witness<N, DensePolynomial<G::ScalarField>> = {
         let interpolate =
             |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
         witness_evals
             .into_par_iter()
             .map(interpolate)
-            .collect::<WitnessColumns<_>>()
+            .collect::<Witness<N, DensePolynomial<G::ScalarField>>>()
     };
 
-    let witness_comms: WitnessColumns<PolyComm<G>> = {
+    let witness_comms: Witness<N, PolyComm<G>> = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         (&witness_polys)
             .into_par_iter()
             .map(comm)
-            .collect::<WitnessColumns<_>>()
+            .collect::<Witness<N, PolyComm<G>>>()
     };
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     // Do not use parallelism
     witness_comms
-        .into_iter()
-        .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+        .cols
+        .iter()
+        .for_each(|comm| absorb_commitment(&mut fq_sponge, &comm));
 
     // -- Start MVLookup
-    let lookup_env = if !witness.mvlookups.is_empty() {
+    let lookup_env = if !inputs.mvlookups.is_empty() {
         Some(mvlookup::prover::Env::create::<OpeningProof, EFqSponge>(
-            witness.mvlookups,
+            inputs.mvlookups,
             domain,
             &mut fq_sponge,
             srs,
@@ -115,7 +118,7 @@ where
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
     let mut witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
-    for witness_poly in witness_polys.x.iter() {
+    for witness_poly in witness_polys.cols.iter() {
         let eval = witness_poly.evaluate_over_domain_by_ref(domain.d4);
         witness_evals_env.push(eval);
     }
@@ -236,6 +239,25 @@ where
 
     // Evaluate the polynomials at zeta and zeta * omega -- Columns
 
+    // For initializitg arrays. Use MaybeUnitit instead:
+    // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
+    let stub_zero_eval: PointEvaluations<G::ScalarField> = PointEvaluations {
+        zeta: G::ScalarField::zero(),
+        zeta_omega: G::ScalarField::zero(),
+    };
+    let witness_evals = {
+        let Witness { cols } = &witness_polys;
+        let eval_foo = |point, poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+        let mut new_cols: [_; N] = [stub_zero_eval; N];
+        for i in 0..N {
+            new_cols[i] = PointEvaluations {
+                zeta: eval_foo(&zeta, &cols[i]),
+                zeta_omega: eval_foo(&zeta_omega, &cols[i]),
+            };
+        }
+        Witness { cols: new_cols }
+    };
+
     let mvlookup_evals = {
         if let Some(ref lookup_env) = lookup_env {
             let evals = |point| {
@@ -274,18 +296,6 @@ where
         }
     };
 
-    let witness_evals = {
-        let WitnessColumns { x } = &witness_polys;
-        let eval_foo = |point| move |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-        WitnessColumns {
-            x: x.iter()
-                .map(eval_foo(&zeta))
-                .zip(x.iter().map(eval_foo(&zeta_omega)))
-                .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
-                .collect::<Vec<_>>(),
-        }
-    };
-
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
     ////////////////////////////////////////////////////////////////////////////
@@ -295,7 +305,7 @@ where
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    for PointEvaluations { zeta, zeta_omega } in witness_evals.into_iter() {
+    for PointEvaluations { zeta, zeta_omega } in witness_evals.cols.iter() {
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
@@ -340,8 +350,9 @@ where
 
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = witness_polys
-        .into_iter()
-        .map(|poly| (coefficients_form(poly), non_hiding(1)))
+        .cols
+        .iter()
+        .map(|poly| (coefficients_form(&poly), non_hiding(1)))
         .collect();
 
     // Adding MVLookup
@@ -379,7 +390,7 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<G::ScalarField> = {
+    let proof_evals: ProofEvaluations<N, G::ScalarField> = {
         ProofEvaluations {
             _public_evals: None,
             witness_evals,
