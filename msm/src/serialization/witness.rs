@@ -132,12 +132,18 @@ pub fn deserialize_field_element<Env: InterpreterEnv>(env: &mut Env, limbs: [u12
 
     env.copy(&input_limb0, kimchi_limbs0);
     env.copy(&input_limb1, kimchi_limbs1);
-    env.copy(&input_limb2, kimchi_limbs2);
+    let limb2_var = env.copy(&input_limb2, kimchi_limbs2);
 
     // Compute individual 4 bits limbs of b2
-    for j in 0..N_INTERMEDIATE_LIMBS {
-        let position = Env::get_column_for_intermediate_limb(j);
-        env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
+    {
+        let mut constraint = limb2_var.clone();
+        for j in 0..N_INTERMEDIATE_LIMBS {
+            let position = Env::get_column_for_intermediate_limb(j);
+            let var = env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
+            let pow = Env::constant(1 << (4 * j));
+            constraint = constraint - var * pow;
+        }
+        env.add_constraint(constraint)
     }
 
     // FIXME: range check
