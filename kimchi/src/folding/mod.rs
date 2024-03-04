@@ -186,22 +186,32 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
 pub trait FoldingEnv<F, I, W, Col, Chal> {
-    /// Equivalent to a polynomial that
+    /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
-    /// A vec of zeros of the same length as other columns
+    /// Creates a new environment storing the structure, instances and witnesses.
+    fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
+
+    // TODO: move into `FoldingConfig`
+    // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
+    // vec![F::zero(); Self::rows()]
+    /// Returns a vector of zeros with the same length as the number of rows in the circuit.
     fn zero_vec(&self) -> Vec<F>;
 
-    /// ??
+    /// Returns the evaluations of a given column witness at omega or zeta*omega.
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
+    // TODO: could be shared across circuits of the same type
+    /// Returns the evaluations of the i-th lagrangian term.
     fn lagrange_basis(&self, i: usize) -> &Vec<F>;
 
+    /// Obtains a given challenge from the expanded instance for one side.
+    /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
 
+    /// Computes the i-th power of alpha for a given side.
+    /// Folding itself will provide us with the alpha value.
     fn alpha(&self, i: usize, side: Side) -> F;
-
-    fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 }
 
 /// TODO: Use Sponge trait from kimchi
