@@ -4,7 +4,7 @@ use crate::{
         environment::{KeccakEnv, KeccakEnvironment},
         ArithOps, BoolOps, KeccakColumn, E,
     },
-    lookup::{Lookup, LookupTableIDs, Lookups},
+    lookups::{Lookup, LookupTableIDs, Lookups},
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{

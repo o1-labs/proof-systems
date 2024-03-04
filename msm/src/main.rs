@@ -5,6 +5,7 @@ use poly_commitment::pairing_proof::PairingSRS;
 
 use kimchi_msm::columns::Column;
 use kimchi_msm::constraint::MSMCircuitEnv;
+use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
@@ -46,13 +47,16 @@ pub fn main() {
     println!("Constraints: {:?}", constraint_exprs);
 
     println!("Generating the proof");
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSM_FFADD_N_COLUMNS>(
-        domain,
-        &srs,
-        &constraint_exprs,
-        proof_inputs,
-        &mut rng,
-    );
+    let proof = prove::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        Column,
+        _,
+        MSM_FFADD_N_COLUMNS,
+        LookupTableIDs,
+    >(domain, &srs, &constraint_exprs, proof_inputs, &mut rng);
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(

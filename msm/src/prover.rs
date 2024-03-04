@@ -1,10 +1,13 @@
+use crate::{
+    column_env::MSMColumnEnvironment,
+    constraint::MSMExpr,
+    mvlookup::{prover::Env, LookupProof, LookupTableID},
+    proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
+    witness::Witness,
+};
 use ark_ff::{Field, One, Zero};
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as R2D};
-use rand::{CryptoRng, RngCore};
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
-
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::circuits::expr::{l0_1, Challenges, Constants, Expr};
 use kimchi::plonk_sponge::FrSponge;
@@ -18,12 +21,9 @@ use poly_commitment::{
     evaluation_proof::DensePolynomialOrEvaluations,
     OpenProof, SRS,
 };
-
-use crate::column_env::MSMColumnEnvironment;
-use crate::constraint::MSMExpr;
-use crate::mvlookup::{self, LookupProof};
-use crate::proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs};
-use crate::witness::Witness;
+use rand::{CryptoRng, RngCore};
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 
 #[allow(unreachable_code)]
 pub fn prove<
@@ -34,11 +34,12 @@ pub fn prove<
     Column,
     RNG,
     const N: usize,
+    ID: LookupTableID + Send + Sync + Copy,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraints: &Vec<MSMExpr<G::ScalarField>>,
-    inputs: ProofInputs<N, G>,
+    inputs: ProofInputs<N, G, ID>,
     rng: &mut RNG,
 ) -> Proof<N, G, OpeningProof>
 where
@@ -93,7 +94,7 @@ where
 
     // -- Start MVLookup
     let lookup_env = if !inputs.mvlookups.is_empty() {
-        Some(mvlookup::prover::Env::create::<OpeningProof, EFqSponge>(
+        Some(Env::create::<OpeningProof, EFqSponge, ID>(
             inputs.mvlookups,
             domain,
             &mut fq_sponge,
