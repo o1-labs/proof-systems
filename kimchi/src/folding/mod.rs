@@ -306,6 +306,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
 
 #[cfg(test)]
 mod tests {
+    use ark_ec::{AffineCurve, ProjectiveCurve};
     use ark_poly::Evaluations;
     use mina_poseidon::{constants::SpongeConstants, sponge::ScalarChallenge, FqSponge};
 
@@ -313,6 +314,7 @@ mod tests {
         curve::KimchiCurve,
         folding::{error_term::Side, FoldingConfig, FoldingEnv, Instance, Sponge, Witness},
     };
+    use ark_bn254;
 
     use super::expressions::FoldingColumnTrait;
 
@@ -332,6 +334,7 @@ mod tests {
     /// B = (0, 0, 0)
     /// C = (1 1 -1)
 
+    #[test]
     fn test_folding_instance() {
         /// X(1) = x
         /// X(2) = y
@@ -406,9 +409,9 @@ mod tests {
         impl Instance<Curve> for SInstance {
             fn combine(a: Self, b: Self, challenge: Fp) -> Self {
                 [
-                    a[0] + challenge * b[0],
-                    a[1] + challenge * b[1],
-                    a[2] + challenge * b[2],
+                    a[0] + b[0].mul(challenge).into_affine(),
+                    a[1] + b[1].mul(challenge).into_affine(),
+                    a[2] + b[2].mul(challenge).into_affine(),
                 ]
             }
         }
@@ -425,7 +428,7 @@ mod tests {
                     .map(|(p1, p2)| {
                         p1.iter()
                             .zip(p2)
-                            .map(|x1, x2| x1 + challenge * x2)
+                            .map(|(x1, x2)| *x1 + challenge * x2)
                             .collect::<Vec<Fp>>()
                     })
                     .collect::<Vec<_>>()
@@ -466,10 +469,16 @@ mod tests {
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
         struct SFoldingConfig;
 
+        enum MyChallenge {
+            Beta,
+            Gamma,
+            JointCombiner,
+        }
+
         impl FoldingConfig for SFoldingConfig {
             type Column = Column;
             // FIXME
-            type Challenge = ();
+            type Challenge = MyChallenge;
 
             type Curve = Curve;
             type Srs = poly_commitment::srs::SRS<Curve>;
