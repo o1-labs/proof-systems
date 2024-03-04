@@ -19,3 +19,9 @@ pub mod mips;
 
 /// Preimage oracle interface used by the zkVM.
 pub mod preimage_oracle;
+
+/// Proof system of the zkVM.
+pub mod proof;
+
+/// Generic definition of a zkvm witness.
+pub mod witness;

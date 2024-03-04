@@ -8,6 +8,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -177,11 +178,11 @@ impl<G: CommitmentCurve> SRS<G> {
         // By computing each of these, and recollecting the terms as a vector of polynomial
         // commitments, we obtain a chunked commitment to the L_i polynomials.
         let srs_size = self.g.len();
-        let num_unshifteds = (n + srs_size - 1) / srs_size;
-        let mut unshifted = Vec::with_capacity(num_unshifteds);
+        let num_elems = (n + srs_size - 1) / srs_size;
+        let mut elems = Vec::with_capacity(num_elems);
 
         // For each chunk
-        for i in 0..num_unshifteds {
+        for i in 0..num_elems {
             // Initialize the vector with zero curve points
             let mut lg: Vec<<G as AffineCurve>::Projective> =
                 vec![<G as AffineCurve>::Projective::zero(); n];
@@ -194,36 +195,13 @@ impl<G: CommitmentCurve> SRS<G> {
             // Apply the IFFT
             domain.ifft_in_place(&mut lg);
             <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-            // Append the 'partial Langrange polynomials' to the vector of unshifted chunks
-            unshifted.push(lg)
+            // Append the 'partial Langrange polynomials' to the vector of elems chunks
+            elems.push(lg)
         }
-
-        // If the srs size does not exactly divide the domain size
-        let shifted: Option<Vec<<G as AffineCurve>::Projective>> =
-            if n < srs_size || num_unshifteds * srs_size == n {
-                None
-            } else {
-                // Initialize the vector to zero
-                let mut lg: Vec<<G as AffineCurve>::Projective> =
-                    vec![<G as AffineCurve>::Projective::zero(); n];
-                // Overwrite the terms corresponding to the final chunk with the SRS curve points
-                // shifted to the right
-                let start_offset = (num_unshifteds - 1) * srs_size;
-                let num_terms = n - start_offset;
-                let srs_start_offset = srs_size - num_terms;
-                for j in 0..num_terms {
-                    lg[start_offset + j] = self.g[srs_start_offset + j].into_projective()
-                }
-                // Apply the IFFT
-                domain.ifft_in_place(&mut lg);
-                <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-                Some(lg)
-            };
 
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
-                unshifted: unshifted.iter().map(|v| v[i].into_affine()).collect(),
-                shifted: shifted.as_ref().map(|v| v[i].into_affine()),
+                elems: elems.iter().map(|v| v[i].into_affine()).collect(),
             })
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
@@ -264,6 +242,40 @@ impl<G: CommitmentCurve> SRS<G> {
         let m = G::Map::setup();
 
         let g: Vec<_> = (0..depth)
+            .map(|i| {
+                let mut h = Blake2b512::new();
+                h.update((i as u32).to_be_bytes());
+                point_of_random_bytes(&m, &h.finalize())
+            })
+            .collect();
+
+        const MISC: usize = 1;
+        let [h]: [G; MISC] = array::from_fn(|i| {
+            let mut h = Blake2b512::new();
+            h.update("srs_misc".as_bytes());
+            h.update((i as u32).to_be_bytes());
+            point_of_random_bytes(&m, &h.finalize())
+        });
+
+        SRS {
+            g,
+            h,
+            lagrange_bases: HashMap::new(),
+        }
+    }
+}
+
+impl<G: CommitmentCurve> SRS<G>
+where
+    <G as CommitmentCurve>::Map: Sync,
+    G::BaseField: PrimeField,
+{
+    /// This function creates SRS instance for circuits with number of rows up to `depth`.
+    pub fn create_parallel(depth: usize) -> Self {
+        let m = G::Map::setup();
+
+        let g: Vec<_> = (0..depth)
+            .into_par_iter()
             .map(|i| {
                 let mut h = Blake2b512::new();
                 h.update((i as u32).to_be_bytes());

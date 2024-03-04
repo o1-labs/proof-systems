@@ -12,7 +12,7 @@ use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 
 mod error_term;
-mod expressions;
+pub mod expressions;
 mod instance_witness;
 mod quadraticization;
 #[cfg(test)]

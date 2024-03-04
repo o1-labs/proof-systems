@@ -1,9 +1,8 @@
 //! This module includes the lookups of the Keccak circuit
 use crate::{
     keccak::{
-        column::KeccakColumn,
         environment::{KeccakEnv, KeccakEnvironment},
-        ArithOps, BoolOps, E,
+        ArithOps, BoolOps, KeccakColumn, E,
     },
     lookup::{Lookup, LookupTableIDs, Lookups},
 };

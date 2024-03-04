@@ -3,14 +3,13 @@ use kimchi::circuits::{
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
 };
 
-use self::column::KeccakColumn;
+use self::column::Column as KeccakColumn;
 
 pub mod column;
 pub mod constraints;
 pub mod environment;
 pub mod interpreter;
 pub mod lookups;
-pub mod proof;
 pub mod witness;
 
 /// Desired output length of the hash in bits

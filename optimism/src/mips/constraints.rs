@@ -2,9 +2,9 @@ use crate::{
     lookup::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            Column as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
-            MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
-            MIPS_PREIMAGE_LEFT_OFFSET,
+            Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
+            MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET,
+            MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::InterpreterEnv,
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
@@ -31,7 +31,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// In the concrete implementation for the constraints, the interpreter will
     /// work over columns. The position in this case can be seen as a new
     /// variable/input of our circuit.
-    type Position = MIPSColumn;
+    type Position = Column;
 
     // Use one of the available columns. It won't
     // create a new column every time this function is called. The number
@@ -43,10 +43,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
-        MIPSColumn::ScratchState(scratch_idx)
+        Column::ScratchState(scratch_idx)
     }
 
-    type Variable = Expr<ConstantExpr<Fp>, MIPSColumn>;
+    type Variable = Expr<ConstantExpr<Fp>, Column>;
 
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable) {
         self.constraints.push(assert_equals_zero)
@@ -70,7 +70,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn instruction_counter(&self) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: MIPSColumn::InstructionCounter,
+            col: Column::InstructionCounter,
             row: CurrOrNext::Curr,
         }))
     }
@@ -465,6 +465,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 row: CurrOrNext::Curr,
             }))
         });
+        // Whether this step has read any bytes of the preimage or not (bytelength otherwise)
+        let reading_preimage = Expr::Atom(ExprInner::Cell(Variable {
+            col: Self::Position::ScratchState(MIPS_READING_PREIMAGE_OFFSET),
+            row: CurrOrNext::Curr,
+        }));
         // How many hashes have been performed so far in the circuit
         let hash_counter = Expr::Atom(ExprInner::Cell(Variable {
             col: Self::Position::ScratchState(MIPS_HASH_COUNTER_OFFSET),
@@ -512,17 +517,22 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 // Constrain the byte decomposition of the preimage chunk
                 // TODO: smaller degree?
                 // When only 1 byte is read, the chunk is equal to the byte[0]
-                self.constraints
-                    .push(read_1.clone() * (this_chunk.clone() - bytes[0].clone()));
+                self.constraints.push(
+                    reading_preimage.clone()
+                        * read_1.clone()
+                        * (this_chunk.clone() - bytes[0].clone()),
+                );
                 // When 2 bytes are read, the chunk is equal to the byte[0] * 2^8 + byte[1]
                 self.constraints.push(
-                    read_2.clone()
+                    reading_preimage.clone()
+                        * read_2.clone()
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(8)) + bytes[1].clone())),
                 );
                 // When 3 bytes are read, the chunk is equal to the byte[0] * 2^16 + byte[1] * 2^8 + byte[2]
                 self.constraints.push(
-                    read_3.clone()
+                    reading_preimage.clone()
+                        * read_3.clone()
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(16))
                                 + bytes[1].clone() * Expr::from(2u64.pow(8))
@@ -530,7 +540,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 );
                 // When all 4 bytes are read, the chunk is equal to the byte[0] * 2^24 + byte[1] * 2^16 + byte[2] * 2^8 + byte[3]
                 self.constraints.push(
-                    read_4.clone()
+                    reading_preimage.clone()
+                        * read_4.clone()
                         * (this_chunk.clone()
                             - (bytes[0].clone() * Expr::from(2u64.pow(24))
                                 + bytes[1].clone() * Expr::from(2u64.pow(16))
@@ -543,10 +554,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // TODO: could it read 0 bytes?
             {
                 self.constraints
-                    .push(has_n_bytes[0].clone() - Expr::from(1));
+                    .push(reading_preimage.clone() * (has_n_bytes[0].clone() - Expr::from(1)));
                 for flag in &has_n_bytes[1..] {
-                    self.constraints
-                        .push(flag.clone() * (flag.clone() - Expr::from(1)));
+                    self.constraints.push(
+                        reading_preimage.clone() * flag.clone() * (flag.clone() - Expr::from(1)),
+                    );
                 }
             }
 
@@ -555,7 +567,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
                 // When at least has_1_byte, then any number of bytes can be read
                 // <=> Check that you can only read 1, 2, 3 or 4 bytes
                 self.constraints.push(
-                    (row_bytes.clone() - Expr::from(1))
+                    reading_preimage.clone()
+                        * (row_bytes.clone() - Expr::from(1))
                         * (row_bytes.clone() - Expr::from(2))
                         * (row_bytes.clone() - Expr::from(3))
                         * (row_bytes.clone() - Expr::from(4)),
@@ -563,27 +576,32 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
                 // When at least has_2_byte, then any number of bytes can be read except 1
                 self.constraints.push(
-                    has_n_bytes[1].clone()
+                    reading_preimage.clone()
+                        * has_n_bytes[1].clone()
                         * (row_bytes.clone() - Expr::from(2))
                         * (row_bytes.clone() - Expr::from(3))
                         * (row_bytes.clone() - Expr::from(4)),
                 );
                 // When at least has_3_byte, then any number of bytes can be read except 1 nor 2
                 self.constraints.push(
-                    has_n_bytes[2].clone()
+                    reading_preimage.clone()
+                        * has_n_bytes[2].clone()
                         * (row_bytes.clone() - Expr::from(3))
                         * (row_bytes.clone() - Expr::from(4)),
                 );
                 // When has_4_byte, then only can read 4
-                self.constraints
-                    .push(has_n_bytes[3].clone() * (row_bytes.clone() - Expr::from(4)));
+                self.constraints.push(
+                    reading_preimage.clone()
+                        * has_n_bytes[3].clone()
+                        * (row_bytes.clone() - Expr::from(4)),
+                );
             }
         }
 
         // COMMUNICATION CHANNEL: Write preimage chunk (1, 2, 3, or 4 bytes)
         for i in 0..MIPS_CHUNK_BYTES_LENGTH {
             self.add_lookup(Lookup::write_if(
-                has_n_bytes[i].clone(),
+                reading_preimage.clone() * has_n_bytes[i].clone(),
                 LookupTableIDs::SyscallLookup,
                 vec![
                     hash_counter.clone(),
@@ -603,12 +621,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
         // If no more bytes left to be read, and syscall row, then the end of the preimage is true
         // Otherwise, there was no a syscall in this row or there is still more to read
-        // FIXME: can the condition be a degree-2 variable?
+        // FIXME: can the condition be a degree-3 variable?
         let is_syscall = Expr::Atom(ExprInner::Cell(Variable {
             col: Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET),
             row: CurrOrNext::Curr,
         }));
-        let end_of_preimage = is_syscall * (Expr::from(1) - preimage_left);
+        let end_of_preimage = is_syscall * reading_preimage * preimage_left;
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
             LookupTableIDs::SyscallLookup,
