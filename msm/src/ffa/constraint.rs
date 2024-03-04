@@ -5,11 +5,11 @@ use num_bigint::BigUint;
 use crate::{
     columns::{Column, ColumnIndexer},
     expr::MSMExpr,
-    ffa::columns::FFAColumnIndexer,
+    ffa::columns::{FFAColumnIndexer, FFA_N_COLUMNS},
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS},
+    {BN254G1Affine, Ff1, Fp, LIMBS_NUM},
 };
 use kimchi::{
     circuits::{
@@ -30,19 +30,12 @@ fn limb_decompose(input: &Ff1) -> [Fp; LIMBS_NUM] {
     ff_el.limbs
 }
 
-pub struct WitnessColumnsIndexer<T> {
-    pub(crate) a: [T; LIMBS_NUM],
-    pub(crate) b: [T; LIMBS_NUM],
-    pub(crate) c: [T; LIMBS_NUM],
-    pub(crate) d: [T; LIMBS_NUM],
-}
-
 #[allow(dead_code)]
 /// Builder environment for a native group `G`.
 pub struct MSMCircuitEnv<G: KimchiCurve> {
     /// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    witness_raw: Vec<WitnessColumnsIndexer<G::ScalarField>>,
+    witness_raw: Vec<Witness<FFA_N_COLUMNS, G::ScalarField>>,
 }
 
 impl MSMCircuitEnv<BN254G1Affine> {
@@ -55,21 +48,13 @@ impl MSMCircuitEnv<BN254G1Affine> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
-    pub fn get_witness(&self) -> ProofInputs<MSM_FFADD_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
-        let mut cols: [Vec<Fp>; MSM_FFADD_N_COLUMNS] = std::array::from_fn(|_| vec![]);
+    pub fn get_witness(&self) -> ProofInputs<FFA_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
+        let mut cols: [Vec<Fp>; FFA_N_COLUMNS] = std::array::from_fn(|_| vec![]);
 
-        for wc in &self.witness_raw {
-            let WitnessColumnsIndexer {
-                a: wc_a,
-                b: wc_b,
-                c: wc_c,
-                d: wc_d,
-            } = wc;
-            for i in 0..LIMBS_NUM {
-                cols[i].push(wc_a[i]);
-                cols[LIMBS_NUM + i].push(wc_b[i]);
-                cols[2 * LIMBS_NUM + i].push(wc_c[i]);
-                cols[3 * LIMBS_NUM + i].push(wc_d[i]);
+        for w in &self.witness_raw {
+            let Witness { cols: witness_row } = w;
+            for i in 0..4 * LIMBS_NUM {
+                cols[i].push(witness_row[i]);
             }
         }
 
@@ -158,12 +143,12 @@ impl MSMCircuitEnv<BN254G1Affine> {
             .unwrap_or_else(|_| panic!("Length mismatch"));
         let d_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
 
-        self.witness_raw.push(WitnessColumnsIndexer {
-            a: a_limbs,
-            b: b_limbs,
-            c: c_limbs,
-            d: d_limbs,
-        });
+        let witness_row: [Fp; 4 * LIMBS_NUM] = [a_limbs, b_limbs, c_limbs, d_limbs]
+            .concat()
+            .try_into()
+            .unwrap();
+
+        self.witness_raw.push(Witness { cols: witness_row });
     }
 
     pub fn add_test_multiplication(&mut self, a: Ff1, b: Ff1) {
@@ -180,11 +165,11 @@ impl MSMCircuitEnv<BN254G1Affine> {
 
         let c_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
 
-        self.witness_raw.push(WitnessColumnsIndexer {
-            a: a_limbs,
-            b: b_limbs,
-            c: c_limbs,
-            d: d_limbs,
-        });
+        let witness_row: [Fp; 4 * LIMBS_NUM] = [a_limbs, b_limbs, c_limbs, d_limbs]
+            .concat()
+            .try_into()
+            .unwrap();
+
+        self.witness_raw.push(Witness { cols: witness_row });
     }
 }

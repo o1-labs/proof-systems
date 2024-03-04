@@ -4,14 +4,13 @@ use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
 
 use kimchi_msm::columns::Column;
-use kimchi_msm::ffa::constraint::MSMCircuitEnv;
+use kimchi_msm::ffa::{columns::FFA_N_COLUMNS, constraint::MSMCircuitEnv};
 use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{
     BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
-    MSM_FFADD_N_COLUMNS,
 };
 
 pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
@@ -54,12 +53,12 @@ pub fn main() {
         ScalarSponge,
         Column,
         _,
-        MSM_FFADD_N_COLUMNS,
+        FFA_N_COLUMNS,
         LookupTableIDs,
     >(domain, &srs, &constraint_exprs, proof_inputs, &mut rng);
 
     println!("Verifying the proof");
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
+    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
         domain,
         &srs,
         &constraint_exprs,
