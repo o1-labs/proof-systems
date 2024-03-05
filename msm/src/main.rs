@@ -65,5 +65,5 @@ pub fn main() {
         &constraint_exprs,
         &proof,
     );
-    println!("=================\n   Proof verification result: {verifies}")
+    println!("Proof verification result: {verifies}")
 }

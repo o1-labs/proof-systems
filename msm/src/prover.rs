@@ -248,12 +248,11 @@ where
     };
     let witness_evals = {
         let Witness { cols } = &witness_polys;
-        let eval_foo = |point, poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
         let mut new_cols: [_; N] = [stub_zero_eval; N];
         for i in 0..N {
             new_cols[i] = PointEvaluations {
-                zeta: eval_foo(&zeta, &cols[i]),
-                zeta_omega: eval_foo(&zeta_omega, &cols[i]),
+                zeta: cols[i].evaluate(&zeta),
+                zeta_omega: cols[i].evaluate(&zeta_omega),
             };
         }
         Witness { cols: new_cols }
