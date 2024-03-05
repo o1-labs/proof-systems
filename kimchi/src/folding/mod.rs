@@ -463,7 +463,11 @@ mod tests {
         struct TestFoldingEnv {
             structure: TestStructure,
             instances: [TestInstance; 2],
-            witnesses: [TestWitness; 2],
+            // Corresponds to the omega evaluations, for both sides
+            curr_witnesses: [TestWitness; 2],
+            // Corresponds to the zeta*omega evaluations, for both sides
+            // This is curr_witness but left shifted by 1
+            next_witnesses: [TestWitness; 2],
         }
 
         impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for TestFoldingEnv {
@@ -474,10 +478,18 @@ mod tests {
                 instances: [&TestInstance; 2],
                 witnesses: [&TestWitness; 2],
             ) -> Self {
+                let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
+                let mut next_witnesses = curr_witnesses.clone();
+                for side in next_witnesses.iter_mut() {
+                    for col in side.iter_mut() {
+                        col.rotate_left(1);
+                    }
+                }
                 TestFoldingEnv {
                     structure: *structure,
                     instances: [instances[0].clone(), instances[1].clone()],
-                    witnesses: [witnesses[0].clone(), witnesses[1].clone()],
+                    curr_witnesses,
+                    next_witnesses,
                 }
             }
 
@@ -486,21 +498,16 @@ mod tests {
             }
 
             fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
-                let wit = match col {
-                    TestColumn::X(1) => &self.witnesses[side as usize][0],
-                    TestColumn::X(2) => &self.witnesses[side as usize][1],
-                    TestColumn::X(3) => &self.witnesses[side as usize][2],
+                let idx = match col {
+                    TestColumn::X(1) => 0,
+                    TestColumn::X(2) => 1,
+                    TestColumn::X(3) => 2,
                     TestColumn::X(_) => panic!("Invalid column"),
                 };
-                let mut wit = wit.clone();
-                let evals = match curr_or_next {
-                    CurrOrNext::Curr => wit,
-                    CurrOrNext::Next => {
-                        wit.rotate_left(1);
-                        wit
-                    }
-                };
-                &evals
+                match curr_or_next {
+                    CurrOrNext::Curr => &self.curr_witnesses[side as usize][idx],
+                    CurrOrNext::Next => &self.next_witnesses[side as usize][idx],
+                }
             }
 
             fn challenge(&self, challenge: TestChallenge, side: Side) -> Fp {
