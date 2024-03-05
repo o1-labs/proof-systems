@@ -3,7 +3,7 @@ use o1_utils::FieldHelpers;
 
 use crate::columns::Column;
 use crate::serialization::interpreter::InterpreterEnv;
-use crate::LIMBS_NUM;
+use crate::N_LIMBS;
 
 use super::N_INTERMEDIATE_LIMBS;
 
@@ -11,7 +11,7 @@ use super::N_INTERMEDIATE_LIMBS;
 pub struct Env<Fp> {
     pub current_kimchi_limbs: [Fp; 3],
     /// The LIMB_NUM limbs that is used to encode a field element for the MSM
-    pub msm_limbs: [Fp; LIMBS_NUM],
+    pub msm_limbs: [Fp; N_LIMBS],
     /// Used for the decomposition in base 4 of the last limb of the foreign
     /// field Kimchi gate
     pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
@@ -39,7 +39,7 @@ impl<Fp: Field> InterpreterEnv<Fp> for Env<Fp> {
 
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
         assert!(j < N_INTERMEDIATE_LIMBS);
-        Column::X(3 + LIMBS_NUM + j)
+        Column::X(3 + N_LIMBS + j)
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -48,7 +48,7 @@ impl<Fp: Field> InterpreterEnv<Fp> for Env<Fp> {
     }
 
     fn get_column_for_msm_limb(j: usize) -> Self::Position {
-        assert!(j < LIMBS_NUM);
+        assert!(j < N_LIMBS);
         Column::X(3 + j)
     }
 
@@ -79,10 +79,10 @@ impl<Fp: Field> Env<Fp> {
             Column::X(i) => {
                 if i < 3 {
                     self.current_kimchi_limbs[i] = value
-                } else if i < 3 + LIMBS_NUM {
+                } else if i < 3 + N_LIMBS {
                     self.msm_limbs[i - 3] = value;
-                } else if i < 3 + LIMBS_NUM + N_INTERMEDIATE_LIMBS {
-                    self.intermediate_limbs[i - 3 - LIMBS_NUM] = value;
+                } else if i < 3 + N_LIMBS + N_INTERMEDIATE_LIMBS {
+                    self.intermediate_limbs[i - 3 - N_LIMBS] = value;
                 } else {
                     panic!("Invalid column index")
                 }
@@ -95,7 +95,7 @@ impl<Fp: Field> Env<Fp> {
     pub fn create() -> Self {
         Self {
             current_kimchi_limbs: [Fp::zero(); 3],
-            msm_limbs: [Fp::zero(); LIMBS_NUM],
+            msm_limbs: [Fp::zero(); N_LIMBS],
             intermediate_limbs: [Fp::zero(); N_INTERMEDIATE_LIMBS],
         }
     }
@@ -106,7 +106,7 @@ mod tests {
     use std::str::FromStr;
 
     use crate::serialization::N_INTERMEDIATE_LIMBS;
-    use crate::{LIMBS_NUM, LIMB_BITSIZE};
+    use crate::{LIMB_BITSIZE, N_LIMBS};
 
     use super::Env;
     use crate::serialization::interpreter::deserialize_field_element;
@@ -179,7 +179,7 @@ mod tests {
         }
 
         // Checking msm limbs
-        for i in 0..LIMBS_NUM {
+        for i in 0..N_LIMBS {
             let le_bits: &[bool] = &bits
                 .clone()
                 .into_iter()

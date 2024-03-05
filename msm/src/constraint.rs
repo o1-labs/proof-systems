@@ -7,7 +7,7 @@ use crate::{
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS},
+    {BN254G1Affine, Ff1, Fp, MSM_FFADD_N_COLUMNS, N_LIMBS},
 };
 use kimchi::{
     circuits::{
@@ -58,17 +58,17 @@ use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 pub type MSMExpr<F> = Expr<ConstantExpr<F>, Column>;
 
 // TODO use more foreign_field.rs with from/to bigint conversion
-fn limb_decompose(input: &Ff1) -> [Fp; LIMBS_NUM] {
+fn limb_decompose(input: &Ff1) -> [Fp; N_LIMBS] {
     let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    let ff_el: ForeignElement<Fp, LIMBS_NUM> = ForeignElement::from_biguint(input_bi);
+    let ff_el: ForeignElement<Fp, N_LIMBS> = ForeignElement::from_biguint(input_bi);
     ff_el.limbs
 }
 
 pub struct WitnessColumnsIndexer<T> {
-    pub(crate) a: [T; LIMBS_NUM],
-    pub(crate) b: [T; LIMBS_NUM],
-    pub(crate) c: [T; LIMBS_NUM],
-    pub(crate) d: [T; LIMBS_NUM],
+    pub(crate) a: [T; N_LIMBS],
+    pub(crate) b: [T; N_LIMBS],
+    pub(crate) c: [T; N_LIMBS],
+    pub(crate) d: [T; N_LIMBS],
 }
 
 #[allow(dead_code)]
@@ -99,11 +99,11 @@ impl MSMCircuitEnv<BN254G1Affine> {
                 c: wc_c,
                 d: wc_d,
             } = wc;
-            for i in 0..LIMBS_NUM {
+            for i in 0..N_LIMBS {
                 cols[i].push(wc_a[i]);
-                cols[LIMBS_NUM + i].push(wc_b[i]);
-                cols[2 * LIMBS_NUM + i].push(wc_c[i]);
-                cols[3 * LIMBS_NUM + i].push(wc_d[i]);
+                cols[N_LIMBS + i].push(wc_b[i]);
+                cols[2 * N_LIMBS + i].push(wc_c[i]);
+                cols[3 * N_LIMBS + i].push(wc_d[i]);
             }
         }
 
@@ -116,7 +116,7 @@ impl MSMCircuitEnv<BN254G1Affine> {
     /// Access exprs generated in the environment so far.
     pub fn get_exprs_add(&self) -> Vec<MSMExpr<Fp>> {
         let mut limb_exprs: Vec<_> = vec![];
-        for i in 0..LIMBS_NUM {
+        for i in 0..N_LIMBS {
             let limb_constraint = {
                 let a_i = MSMExpr::Atom(
                     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
@@ -142,7 +142,7 @@ impl MSMCircuitEnv<BN254G1Affine> {
     // TEST
     pub fn get_exprs_mul(&self) -> Vec<MSMExpr<Fp>> {
         let mut limb_exprs: Vec<_> = vec![];
-        for i in 0..LIMBS_NUM {
+        for i in 0..N_LIMBS {
             let limb_constraint = {
                 let a_i = MSMExpr::Atom(
                     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
@@ -180,17 +180,17 @@ impl MSMCircuitEnv<BN254G1Affine> {
     }
 
     pub fn add_test_addition(&mut self, a: Ff1, b: Ff1) {
-        let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
-        let b_limbs: [Fp; LIMBS_NUM] = limb_decompose(&b);
+        let a_limbs: [Fp; N_LIMBS] = limb_decompose(&a);
+        let b_limbs: [Fp; N_LIMBS] = limb_decompose(&b);
         let c_limbs_vec: Vec<Fp> = a_limbs
             .iter()
             .zip(b_limbs.iter())
             .map(|(ai, bi)| *ai + *bi)
             .collect();
-        let c_limbs: [Fp; LIMBS_NUM] = c_limbs_vec
+        let c_limbs: [Fp; N_LIMBS] = c_limbs_vec
             .try_into()
             .unwrap_or_else(|_| panic!("Length mismatch"));
-        let d_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
+        let d_limbs: [Fp; N_LIMBS] = [Zero::zero(); N_LIMBS];
 
         self.witness_raw.push(WitnessColumnsIndexer {
             a: a_limbs,
@@ -201,18 +201,18 @@ impl MSMCircuitEnv<BN254G1Affine> {
     }
 
     pub fn add_test_multiplication(&mut self, a: Ff1, b: Ff1) {
-        let a_limbs: [Fp; LIMBS_NUM] = limb_decompose(&a);
-        let b_limbs: [Fp; LIMBS_NUM] = limb_decompose(&b);
+        let a_limbs: [Fp; N_LIMBS] = limb_decompose(&a);
+        let b_limbs: [Fp; N_LIMBS] = limb_decompose(&b);
         let d_limbs_vec: Vec<Fp> = a_limbs
             .iter()
             .zip(b_limbs.iter())
             .map(|(ai, bi)| *ai * *bi)
             .collect();
-        let d_limbs: [Fp; LIMBS_NUM] = d_limbs_vec
+        let d_limbs: [Fp; N_LIMBS] = d_limbs_vec
             .try_into()
             .unwrap_or_else(|_| panic!("Length mismatch"));
 
-        let c_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
+        let c_limbs: [Fp; N_LIMBS] = [Zero::zero(); N_LIMBS];
 
         self.witness_raw.push(WitnessColumnsIndexer {
             a: a_limbs,

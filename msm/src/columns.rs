@@ -1,6 +1,5 @@
+use crate::N_LIMBS;
 use kimchi::circuits::expr::{Domain, GenericColumn};
-
-use crate::LIMBS_NUM;
 
 // @volhovm: maybe this needs to be a trait
 /// Describe a generic indexed variable X_{i}.
@@ -37,8 +36,8 @@ pub enum MSMColumnIndexer {
 impl ColumnIndexer for MSMColumnIndexer {
     fn ix_to_column(self) -> Column {
         let to_column_inner = |offset, i| {
-            assert!(i < LIMBS_NUM);
-            Column::X(LIMBS_NUM * offset + i)
+            assert!(i < N_LIMBS);
+            Column::X(N_LIMBS * offset + i)
         };
         match self {
             MSMColumnIndexer::A(i) => to_column_inner(0, i),
