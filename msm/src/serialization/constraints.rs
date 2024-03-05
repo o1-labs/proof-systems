@@ -45,6 +45,14 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         Column::X(3 + j)
     }
 
+    fn range_check15(&mut self, _value: &Self::Variable) {
+        unimplemented!()
+    }
+
+    fn range_check4(&mut self, _value: &Self::Variable) {
+        unimplemented!()
+    }
+
     fn constant(value: F) -> Self::Variable {
         let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
         Expr::Atom(ExprInner::Constant(cst_expr_inner))
