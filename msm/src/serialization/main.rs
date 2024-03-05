@@ -59,11 +59,14 @@ pub fn main() {
         _,
         SERIALIZATION_N_COLUMNS,
         LookupTableIDs,
-    >(domain, &srs, proof_inputs, _constraints, &mut rng);
+    >(domain, &srs, &_constraints, proof_inputs, &mut rng);
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS>(
-        domain, &srs, &proof,
+        domain,
+        &srs,
+        &_constraints,
+        &proof,
     );
     println!("Proof verification result: {verifies}")
 }
