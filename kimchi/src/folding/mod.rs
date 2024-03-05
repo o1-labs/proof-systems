@@ -379,15 +379,8 @@ mod tests {
             fn challenge(absorbe: &[PolyComm<Curve>; 2]) -> Fp {
                 // This function does not have a &self because it is meant to absorb and squeeze only once
                 let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
-                let unshifted = |x: &PolyComm<Curve>| {
-                    x.elems
-                        .into_iter()
-                        .map(Into::into)
-                        .collect::<Vec<BaseSponge>>()
-                        .clone()
-                };
-                s.absorb_fq(unshifted(&absorbe[0]));
-                s.absorb_fq(unshifted(&absorbe[1]));
+                s.absorb_g(&absorbe[0].elems);
+                s.absorb_g(&absorbe[1].elems);
                 // Squeeze sponge
                 let chal = ScalarChallenge(s.challenge());
                 let (_, endo_r) = Curve::endos();
