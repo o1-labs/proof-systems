@@ -23,7 +23,8 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
 
-    /// The type of challenge that the Sponge returns
+    /// The type of an abstract challenge that can be found in the expressions
+    /// provided as constraints.
     type Challenge: Clone + Copy + Debug + Eq + Hash;
 
     /// The target curve used by the polynomial commitment
@@ -35,10 +36,10 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     /// The sponge used to create challenges
     type Sponge: Sponge<Self::Curve>;
 
-    /// FIXME: ??
+    /// For Plonk, it will be the commitments to the polynomials and the challenges
     type Instance: Instance<Self::Curve>;
 
-    /// For PlonK, it will be the polynomials we commit to, i.e. the columns.
+    /// For PlonK, it will be the polynomials in evaluation form that we commit to, i.e. the columns.
     /// In the generic prover/verifier, it would be WitnessColumns.
     type Witness: Witness<Self::Curve>;
 
