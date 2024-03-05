@@ -13,8 +13,8 @@ use poly_commitment::SRS;
 
 #[derive(Clone, Copy)]
 pub enum Side {
-    Left,
-    Right,
+    Left = 0,
+    Right = 1,
 }
 
 impl Side {

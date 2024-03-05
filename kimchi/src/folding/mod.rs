@@ -319,6 +319,7 @@ mod tests {
     use ark_ec::{AffineCurve, ProjectiveCurve};
     use ark_poly::Evaluations;
     use mina_poseidon::{constants::SpongeConstants, sponge::ScalarChallenge, FqSponge};
+    use poly_commitment::commitment::CommitmentCurve;
 
     use crate::{
         curve::KimchiCurve,
@@ -353,15 +354,16 @@ mod tests {
             ConstantExpr, ConstantExprInner, Expr, ExprInner, Operations, Variable,
         };
         use crate::circuits::gate::CurrOrNext;
+        use ark_ff::Field;
         use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
         use poly_commitment::PolyComm;
 
         #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-        pub enum Column {
+        pub enum TestColumn {
             X(usize),
         }
 
-        impl FoldingColumnTrait for Column {
+        impl FoldingColumnTrait for TestColumn {
             fn is_witness(&self) -> bool {
                 true
             }
@@ -375,7 +377,7 @@ mod tests {
         // TODO: get rid of trait Sponge in folding, and use the one from kimchi
         impl Sponge<Curve> for BaseSponge {
             fn challenge(absorbe: &[PolyComm<Curve>; 2]) -> Fp {
-                // FIXME: we should have a self maybe?
+                // This function does not have a &self because it is meant to absorb and squeeze only once
                 let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
                 let unshifted = |x: &PolyComm<Curve>| {
                     x.elems
@@ -393,45 +395,56 @@ mod tests {
             }
         }
 
-        type E<F> = Expr<ConstantExpr<F>, Column>;
+        type E<F> = Expr<ConstantExpr<F>, TestColumn>;
         let x1 = E::<Fp>::Atom(
-            ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-                col: Column::X(1),
+            ExprInner::<Operations<ConstantExprInner<Fp>>, TestColumn>::Cell(Variable {
+                col: TestColumn::X(1),
                 row: CurrOrNext::Curr,
             }),
         );
         let x2 = E::<Fp>::Atom(
-            ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-                col: Column::X(2),
+            ExprInner::<Operations<ConstantExprInner<Fp>>, TestColumn>::Cell(Variable {
+                col: TestColumn::X(2),
                 row: CurrOrNext::Curr,
             }),
         );
         let x3 = E::<Fp>::Atom(
-            ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-                col: Column::X(3),
+            ExprInner::<Operations<ConstantExprInner<Fp>>, TestColumn>::Cell(Variable {
+                col: TestColumn::X(3),
                 row: CurrOrNext::Curr,
             }),
         );
         let constraint = x3 - x1 - x2;
 
-        /// The instance is the commitments to the polynomials.
-        type SInstance = [Curve; 3];
-        impl Instance<Curve> for SInstance {
+        /// The instance is the commitments to the polynomials and the challenges
+        struct TestInstance {
+            commitments: [Curve; 3],
+            challenges: [Fp; 3],
+        }
+
+        impl Instance<Curve> for TestInstance {
             fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-                [
-                    a[0] + b[0].mul(challenge).into_affine(),
-                    a[1] + b[1].mul(challenge).into_affine(),
-                    a[2] + b[2].mul(challenge).into_affine(),
-                ]
+                TestInstance {
+                    commitments: [
+                        a.commitments[0] + b.commitments[0].mul(challenge).into_affine(),
+                        a.commitments[1] + b.commitments[1].mul(challenge).into_affine(),
+                        a.commitments[2] + b.commitments[2].mul(challenge).into_affine(),
+                    ],
+                    challenges: [
+                        a.challenges[0] + challenge * b.challenges[0],
+                        a.challenges[1] + challenge * b.challenges[1],
+                        a.challenges[2] + challenge * b.challenges[2],
+                    ],
+                }
             }
         }
 
         /// Our witness is going to be the polynomials that we will commit too.
         /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
-        /// FIXME: use evaluations
-        type SWitness = [Vec<Fp>; 3];
+        // FIXME: use evaluations
+        type TestWitness = [Vec<Fp>; 3];
 
-        impl Witness<Curve> for SWitness {
+        impl Witness<Curve> for TestWitness {
             fn combine(a: Self, b: Self, challenge: Fp) -> Self {
                 a.into_iter()
                     .zip(b)
@@ -447,24 +460,59 @@ mod tests {
             }
         }
 
-        struct SFoldingEnv;
-        impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for SFoldingEnv {
-            type Structure = ();
+        struct TestStructure {
+            column_type: TestColumn,
+            challenge_type: TestChallenge,
+        }
+
+        struct TestFoldingEnv {
+            structure: TestStructure,
+            instances: [TestInstance; 2],
+            witnesses: [TestWitness; 2],
+        }
+
+        // FIXME: shouldn't the generic be a group instead of a field?
+        impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for TestFoldingEnv
+        /*where
+        F: Field,
+        I: Instance<Curve>,
+        W: Witness<Curve>,
+        Col: FoldingColumnTrait,
+        Chal: Clone,
+        */
+        {
+            type Structure = TestStructure;
+
+            fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self {
+                TestFoldingEnv {
+                    structure: *structure,
+                    instances: [*instances[0], *instances[1]],
+                    witnesses: [*witnesses[0], *witnesses[1]],
+                }
+            }
 
             fn zero_vec(&self) -> Vec<F> {
-                todo!()
+                vec![F::zero(); 1]
             }
 
-            fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: Side) -> &Vec<F> {
-                todo!()
+            fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F> {
+                let wit = match col {
+                    TestColumn::X(1) => &self.witnesses[side as usize][0],
+                    TestColumn::X(2) => &self.witnesses[side as usize][1],
+                    TestColumn::X(3) => &self.witnesses[side as usize][2],
+                };
+                match curr_or_next {
+                    CurrOrNext::Curr => wit,
+                    CurrOrNext::Next => wit.rotate_left(1),
+                }
             }
 
-            fn challenge(&self, _challenge: Chal, _side: Side) -> F {
-                todo!()
-            }
-
-            fn new(_structure: &Self::Structure, _instances: [&I; 2], _witnesses: [&W; 2]) -> Self {
-                todo!()
+            fn challenge(&self, challenge: Chal, side: Side) -> F {
+                match challenge {
+                    TestChallenge::Beta => self.instances[side as usize].challenges[0],
+                    TestChallenge::Gamma => self.instances[side as usize].challenges[1],
+                    TestChallenge::JointCombiner => self.instances[side as usize].challenges[2],
+                }
             }
 
             fn lagrange_basis(&self, _i: usize) -> &Vec<F> {
@@ -477,29 +525,26 @@ mod tests {
         }
 
         #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        struct SFoldingConfig;
+        struct TestFoldingConfig;
 
-        enum MyChallenge {
+        // Does not contain alpha because this one should be provided by folding itself
+        #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+        enum TestChallenge {
             Beta,
             Gamma,
             JointCombiner,
         }
 
-        impl FoldingConfig for SFoldingConfig {
-            type Column = Column;
-            // FIXME
-            type Challenge = MyChallenge;
-
+        impl FoldingConfig for TestFoldingConfig {
+            type Structure = TestStructure;
+            type Column = TestColumn;
+            type Challenge = TestChallenge;
             type Curve = Curve;
             type Srs = poly_commitment::srs::SRS<Curve>;
             type Sponge = BaseSponge;
-            type Instance = SInstance;
-            type Witness = SWitness;
-
-            // FIXME
-            type Structure = ();
-
-            type Env = SFoldingEnv;
+            type Instance = TestInstance;
+            type Witness = TestWitness;
+            type Env = TestFoldingEnv;
 
             fn rows() -> usize {
                 // FIXME: this is the domain size. Atm, let's have only one row
