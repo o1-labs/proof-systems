@@ -8,7 +8,7 @@ use kimchi_msm::columns::Column;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::proof::ProofInputs;
 use kimchi_msm::prover::prove;
-use kimchi_msm::serialization::witness::deserialize_field_element;
+use kimchi_msm::serialization::interpreter::deserialize_field_element;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
 
