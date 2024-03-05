@@ -1,8 +1,8 @@
-use ark_ff::Field;
+use ark_ff::PrimeField;
 
 use crate::serialization::N_INTERMEDIATE_LIMBS;
 
-pub trait InterpreterEnv<Fp> {
+pub trait InterpreterEnv<Fp: PrimeField> {
     type Position;
 
     type Variable: Clone
@@ -65,7 +65,7 @@ pub trait InterpreterEnv<Fp> {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<Fp: Field, Env: InterpreterEnv<Fp>>(
+pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     env: &mut Env,
     limbs: [u128; 3],
 ) {

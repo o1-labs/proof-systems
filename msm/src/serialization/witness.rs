@@ -1,4 +1,4 @@
-use ark_ff::Field;
+use ark_ff::PrimeField;
 use o1_utils::FieldHelpers;
 
 use crate::columns::Column;
@@ -17,7 +17,7 @@ pub struct Env<Fp> {
     pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
 }
 
-impl<Fp: Field> InterpreterEnv<Fp> for Env<Fp> {
+impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
     type Position = Column;
 
     // Requiring an Fp element as we would need to compute values up to 180 bits
@@ -73,7 +73,7 @@ impl<Fp: Field> InterpreterEnv<Fp> for Env<Fp> {
     }
 }
 
-impl<Fp: Field> Env<Fp> {
+impl<Fp: PrimeField> Env<Fp> {
     pub fn write_column(&mut self, position: Column, value: Fp) {
         match position {
             Column::X(i) => {
@@ -91,7 +91,7 @@ impl<Fp: Field> Env<Fp> {
     }
 }
 
-impl<Fp: Field> Env<Fp> {
+impl<Fp: PrimeField> Env<Fp> {
     pub fn create() -> Self {
         Self {
             current_kimchi_limbs: [Fp::zero(); 3],

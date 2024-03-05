@@ -1,4 +1,4 @@
-use ark_ff::Field;
+use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
@@ -12,7 +12,7 @@ pub struct Env<Fp> {
     pub constraints: Vec<Expr<ConstantExpr<Fp>, Column>>,
 }
 
-impl<F: Field> InterpreterEnv<F> for Env<F> {
+impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
     type Variable = Expr<ConstantExpr<F>, Column>;
