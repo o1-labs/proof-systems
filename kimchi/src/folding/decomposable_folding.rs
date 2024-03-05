@@ -1,7 +1,7 @@
-//! This variant of folding is designed the efficiently handle cases where
+//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
-//! Specifically, an alternative scheme is provided that is created not from a list of constraints,
-//! but from a set of list of constraints, each set associated with a particular selector
+//! Specifically, an alternative is provided such that the scheme is created
+//! from a set of list of constraints, each set associated with a particular selector, as opposed to a single list of constraints.
 
 use super::FoldingScheme;
 use super::{
