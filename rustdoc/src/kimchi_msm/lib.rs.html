@@ -271,7 +271,7 @@
 
 <span class="doccomment">/// Number of limbs representing one foreign field element (either
 /// [`Ff1`] or [`Ff2`]).
-</span><span class="kw">pub const </span>LIMBS_NUM: usize = <span class="number">17</span>;
+</span><span class="kw">pub const </span>N_LIMBS: usize = <span class="number">17</span>;
 
 <span class="kw">pub type </span>BN254 = ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;;
 <span class="kw">pub type </span>BN254G1Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G1Affine;
@@ -280,7 +280,7 @@
 <span class="doccomment">/// Number of columns
 /// FIXME: we must move it into the subdirectory of the
 /// foreign field addition circuit
-</span><span class="kw">pub const </span>MSM_FFADD_N_COLUMNS: usize = <span class="number">4 </span>* LIMBS_NUM;
+</span><span class="kw">pub const </span>MSM_FFADD_N_COLUMNS: usize = <span class="number">4 </span>* N_LIMBS;
 
 <span class="doccomment">/// The native field we are working with.
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;

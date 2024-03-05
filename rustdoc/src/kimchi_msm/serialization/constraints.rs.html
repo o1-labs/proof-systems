@@ -78,7 +78,7 @@
     gate::CurrOrNext,
 };
 
-<span class="kw">use crate</span>::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, LIMBS_NUM};
+<span class="kw">use crate</span>::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
 <span class="kw">use </span><span class="kw">super</span>::interpreter::InterpreterEnv;
 
@@ -111,11 +111,11 @@
 
     <span class="kw">fn </span>get_column_for_intermediate_limb(j: usize) -&gt; <span class="self">Self</span>::Position {
         <span class="macro">assert!</span>(j &lt; N_INTERMEDIATE_LIMBS);
-        Column::X(<span class="number">3 </span>+ LIMBS_NUM + j)
+        Column::X(<span class="number">3 </span>+ N_LIMBS + j)
     }
 
     <span class="kw">fn </span>get_column_for_msm_limb(j: usize) -&gt; <span class="self">Self</span>::Position {
-        <span class="macro">assert!</span>(j &lt; LIMBS_NUM);
+        <span class="macro">assert!</span>(j &lt; N_LIMBS);
         Column::X(<span class="number">3 </span>+ j)
     }
 

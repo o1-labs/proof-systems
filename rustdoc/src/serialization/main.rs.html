@@ -84,9 +84,9 @@
 <span class="kw">use </span>kimchi_msm::prover::prove;
 <span class="kw">use </span>kimchi_msm::serialization::interpreter::deserialize_field_element;
 <span class="kw">use </span>kimchi_msm::verifier::verify;
-<span class="kw">use </span>kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, LIMBS_NUM};
+<span class="kw">use </span>kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N_LIMBS};
 
-<span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ N_INTERMEDIATE_LIMBS + LIMBS_NUM;
+<span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ N_INTERMEDIATE_LIMBS + N_LIMBS;
 
 <span class="kw">pub fn </span>main() {
     <span class="comment">// FIXME: use a proper RNG
@@ -109,11 +109,11 @@
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">3 </span>{
             witness.cols[i].push(env.current_kimchi_limbs[i]);
         }
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
             witness.cols[<span class="number">3 </span>+ i].push(env.msm_limbs[i]);
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_INTERMEDIATE_LIMBS {
-            witness.cols[<span class="number">3 </span>+ LIMBS_NUM + i].push(env.intermediate_limbs[i]);
+            witness.cols[<span class="number">3 </span>+ N_LIMBS + i].push(env.intermediate_limbs[i]);
         }
     }
 

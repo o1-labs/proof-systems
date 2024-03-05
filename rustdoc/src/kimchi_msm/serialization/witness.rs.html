@@ -254,7 +254,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::columns::Column;
 <span class="kw">use </span><span class="kw">crate</span>::serialization::interpreter::InterpreterEnv;
-<span class="kw">use </span><span class="kw">crate</span>::LIMBS_NUM;
+<span class="kw">use </span><span class="kw">crate</span>::N_LIMBS;
 
 <span class="kw">use </span><span class="kw">super</span>::N_INTERMEDIATE_LIMBS;
 
@@ -262,7 +262,7 @@
 </span><span class="kw">pub struct </span>Env&lt;Fp&gt; {
     <span class="kw">pub </span>current_kimchi_limbs: [Fp; <span class="number">3</span>],
     <span class="doccomment">/// The LIMB_NUM limbs that is used to encode a field element for the MSM
-    </span><span class="kw">pub </span>msm_limbs: [Fp; LIMBS_NUM],
+    </span><span class="kw">pub </span>msm_limbs: [Fp; N_LIMBS],
     <span class="doccomment">/// Used for the decomposition in base 4 of the last limb of the foreign
     /// field Kimchi gate
     </span><span class="kw">pub </span>intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
@@ -290,7 +290,7 @@
 
     <span class="kw">fn </span>get_column_for_intermediate_limb(j: usize) -&gt; <span class="self">Self</span>::Position {
         <span class="macro">assert!</span>(j &lt; N_INTERMEDIATE_LIMBS);
-        Column::X(<span class="number">3 </span>+ LIMBS_NUM + j)
+        Column::X(<span class="number">3 </span>+ N_LIMBS + j)
     }
 
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
@@ -299,7 +299,7 @@
     }
 
     <span class="kw">fn </span>get_column_for_msm_limb(j: usize) -&gt; <span class="self">Self</span>::Position {
-        <span class="macro">assert!</span>(j &lt; LIMBS_NUM);
+        <span class="macro">assert!</span>(j &lt; N_LIMBS);
         Column::X(<span class="number">3 </span>+ j)
     }
 
@@ -330,10 +330,10 @@
             Column::X(i) =&gt; {
                 <span class="kw">if </span>i &lt; <span class="number">3 </span>{
                     <span class="self">self</span>.current_kimchi_limbs[i] = value
-                } <span class="kw">else if </span>i &lt; <span class="number">3 </span>+ LIMBS_NUM {
+                } <span class="kw">else if </span>i &lt; <span class="number">3 </span>+ N_LIMBS {
                     <span class="self">self</span>.msm_limbs[i - <span class="number">3</span>] = value;
-                } <span class="kw">else if </span>i &lt; <span class="number">3 </span>+ LIMBS_NUM + N_INTERMEDIATE_LIMBS {
-                    <span class="self">self</span>.intermediate_limbs[i - <span class="number">3 </span>- LIMBS_NUM] = value;
+                } <span class="kw">else if </span>i &lt; <span class="number">3 </span>+ N_LIMBS + N_INTERMEDIATE_LIMBS {
+                    <span class="self">self</span>.intermediate_limbs[i - <span class="number">3 </span>- N_LIMBS] = value;
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"Invalid column index"</span>)
                 }
@@ -346,7 +346,7 @@
     <span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             current_kimchi_limbs: [Fp::zero(); <span class="number">3</span>],
-            msm_limbs: [Fp::zero(); LIMBS_NUM],
+            msm_limbs: [Fp::zero(); N_LIMBS],
             intermediate_limbs: [Fp::zero(); N_INTERMEDIATE_LIMBS],
         }
     }
@@ -357,7 +357,7 @@
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span><span class="kw">crate</span>::serialization::N_INTERMEDIATE_LIMBS;
-    <span class="kw">use crate</span>::{LIMBS_NUM, LIMB_BITSIZE};
+    <span class="kw">use crate</span>::{LIMB_BITSIZE, N_LIMBS};
 
     <span class="kw">use </span><span class="kw">super</span>::Env;
     <span class="kw">use </span><span class="kw">crate</span>::serialization::interpreter::deserialize_field_element;
@@ -430,7 +430,7 @@
         }
 
         <span class="comment">// Checking msm limbs
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
             <span class="kw">let </span>le_bits: <span class="kw-2">&amp;</span>[bool] = <span class="kw-2">&amp;</span>bits
                 .clone()
                 .into_iter()

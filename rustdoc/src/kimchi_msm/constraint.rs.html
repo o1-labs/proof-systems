@@ -233,7 +233,7 @@
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Ff1, Fp, LIMBS_NUM, MSM_FFADD_N_COLUMNS},
+    {BN254G1Affine, Ff1, Fp, MSM_FFADD_N_COLUMNS, N_LIMBS},
 };
 <span class="kw">use </span>kimchi::{
     circuits::{
@@ -284,17 +284,17 @@
 </span><span class="kw">pub type </span>MSMExpr&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
 
 <span class="comment">// TODO use more foreign_field.rs with from/to bigint conversion
-</span><span class="kw">fn </span>limb_decompose(input: <span class="kw-2">&amp;</span>Ff1) -&gt; [Fp; LIMBS_NUM] {
+</span><span class="kw">fn </span>limb_decompose(input: <span class="kw-2">&amp;</span>Ff1) -&gt; [Fp; N_LIMBS] {
     <span class="kw">let </span>input_bi: BigUint = FieldHelpers::to_biguint(input);
-    <span class="kw">let </span>ff_el: ForeignElement&lt;Fp, LIMBS_NUM&gt; = ForeignElement::from_biguint(input_bi);
+    <span class="kw">let </span>ff_el: ForeignElement&lt;Fp, N_LIMBS&gt; = ForeignElement::from_biguint(input_bi);
     ff_el.limbs
 }
 
 <span class="kw">pub struct </span>WitnessColumnsIndexer&lt;T&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) a: [T; LIMBS_NUM],
-    <span class="kw">pub</span>(<span class="kw">crate</span>) b: [T; LIMBS_NUM],
-    <span class="kw">pub</span>(<span class="kw">crate</span>) c: [T; LIMBS_NUM],
-    <span class="kw">pub</span>(<span class="kw">crate</span>) d: [T; LIMBS_NUM],
+    <span class="kw">pub</span>(<span class="kw">crate</span>) a: [T; N_LIMBS],
+    <span class="kw">pub</span>(<span class="kw">crate</span>) b: [T; N_LIMBS],
+    <span class="kw">pub</span>(<span class="kw">crate</span>) c: [T; N_LIMBS],
+    <span class="kw">pub</span>(<span class="kw">crate</span>) d: [T; N_LIMBS],
 }
 
 <span class="attr">#[allow(dead_code)]
@@ -325,11 +325,11 @@
                 c: wc_c,
                 d: wc_d,
             } = wc;
-            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
                 cols[i].push(wc_a[i]);
-                cols[LIMBS_NUM + i].push(wc_b[i]);
-                cols[<span class="number">2 </span>* LIMBS_NUM + i].push(wc_c[i]);
-                cols[<span class="number">3 </span>* LIMBS_NUM + i].push(wc_d[i]);
+                cols[N_LIMBS + i].push(wc_b[i]);
+                cols[<span class="number">2 </span>* N_LIMBS + i].push(wc_c[i]);
+                cols[<span class="number">3 </span>* N_LIMBS + i].push(wc_d[i]);
             }
         }
 
@@ -342,7 +342,7 @@
     <span class="doccomment">/// Access exprs generated in the environment so far.
     </span><span class="kw">pub fn </span>get_exprs_add(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;MSMExpr&lt;Fp&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>limb_exprs: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
             <span class="kw">let </span>limb_constraint = {
                 <span class="kw">let </span>a_i = MSMExpr::Atom(
                     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
@@ -368,7 +368,7 @@
     <span class="comment">// TEST
     </span><span class="kw">pub fn </span>get_exprs_mul(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;MSMExpr&lt;Fp&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>limb_exprs: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
             <span class="kw">let </span>limb_constraint = {
                 <span class="kw">let </span>a_i = MSMExpr::Atom(
                     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
@@ -406,17 +406,17 @@
     }
 
     <span class="kw">pub fn </span>add_test_addition(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: Ff1, b: Ff1) {
-        <span class="kw">let </span>a_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>a);
-        <span class="kw">let </span>b_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>b);
+        <span class="kw">let </span>a_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>a);
+        <span class="kw">let </span>b_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>b);
         <span class="kw">let </span>c_limbs_vec: Vec&lt;Fp&gt; = a_limbs
             .iter()
             .zip(b_limbs.iter())
             .map(|(ai, bi)| <span class="kw-2">*</span>ai + <span class="kw-2">*</span>bi)
             .collect();
-        <span class="kw">let </span>c_limbs: [Fp; LIMBS_NUM] = c_limbs_vec
+        <span class="kw">let </span>c_limbs: [Fp; N_LIMBS] = c_limbs_vec
             .try_into()
             .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"Length mismatch"</span>));
-        <span class="kw">let </span>d_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
+        <span class="kw">let </span>d_limbs: [Fp; N_LIMBS] = [Zero::zero(); N_LIMBS];
 
         <span class="self">self</span>.witness_raw.push(WitnessColumnsIndexer {
             a: a_limbs,
@@ -427,18 +427,18 @@
     }
 
     <span class="kw">pub fn </span>add_test_multiplication(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: Ff1, b: Ff1) {
-        <span class="kw">let </span>a_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>a);
-        <span class="kw">let </span>b_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>b);
+        <span class="kw">let </span>a_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>a);
+        <span class="kw">let </span>b_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>b);
         <span class="kw">let </span>d_limbs_vec: Vec&lt;Fp&gt; = a_limbs
             .iter()
             .zip(b_limbs.iter())
             .map(|(ai, bi)| <span class="kw-2">*</span>ai * <span class="kw-2">*</span>bi)
             .collect();
-        <span class="kw">let </span>d_limbs: [Fp; LIMBS_NUM] = d_limbs_vec
+        <span class="kw">let </span>d_limbs: [Fp; N_LIMBS] = d_limbs_vec
             .try_into()
             .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"Length mismatch"</span>));
 
-        <span class="kw">let </span>c_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
+        <span class="kw">let </span>c_limbs: [Fp; N_LIMBS] = [Zero::zero(); N_LIMBS];
 
         <span class="self">self</span>.witness_raw.push(WitnessColumnsIndexer {
             a: a_limbs,
