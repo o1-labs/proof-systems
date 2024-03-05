@@ -1,10 +1,10 @@
-use ark_ff::Field;
+use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
-use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, LIMBS_NUM};
+use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
 use super::interpreter::InterpreterEnv;
 
@@ -12,7 +12,7 @@ pub struct Env<Fp> {
     pub constraints: Vec<Expr<ConstantExpr<Fp>, Column>>,
 }
 
-impl<F: Field> InterpreterEnv<F> for Env<F> {
+impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
     type Variable = Expr<ConstantExpr<F>, Column>;
@@ -37,12 +37,20 @@ impl<F: Field> InterpreterEnv<F> for Env<F> {
 
     fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
         assert!(j < N_INTERMEDIATE_LIMBS);
-        Column::X(3 + LIMBS_NUM + j)
+        Column::X(3 + N_LIMBS + j)
     }
 
     fn get_column_for_msm_limb(j: usize) -> Self::Position {
-        assert!(j < LIMBS_NUM);
+        assert!(j < N_LIMBS);
         Column::X(3 + j)
+    }
+
+    fn range_check15(&mut self, _value: &Self::Variable) {
+        unimplemented!()
+    }
+
+    fn range_check4(&mut self, _value: &Self::Variable) {
+        unimplemented!()
     }
 
     fn constant(value: F) -> Self::Variable {

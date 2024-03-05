@@ -2,7 +2,7 @@ use crate::{
     columns::{Column, ColumnIndexer},
     expr::MSMExpr,
     ffa::columns::FFAColumnIndexer,
-    {Fp, LIMBS_NUM},
+    {Fp, N_LIMBS},
 };
 use kimchi::circuits::{
     expr::{ConstantExprInner, ExprInner, Operations, Variable},
@@ -12,7 +12,7 @@ use kimchi::circuits::{
 /// Access exprs for addition
 pub fn get_exprs_add() -> Vec<MSMExpr<Fp>> {
     let mut limb_exprs: Vec<_> = vec![];
-    for i in 0..LIMBS_NUM {
+    for i in 0..N_LIMBS {
         let limb_constraint = {
             let a_i = MSMExpr::Atom(
                 ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
@@ -38,7 +38,7 @@ pub fn get_exprs_add() -> Vec<MSMExpr<Fp>> {
 /// Get expressions for multiplication
 pub fn get_exprs_mul() -> Vec<MSMExpr<Fp>> {
     let mut limb_exprs: Vec<_> = vec![];
-    for i in 0..LIMBS_NUM {
+    for i in 0..N_LIMBS {
         let limb_constraint = {
             let a_i = MSMExpr::Atom(
                 ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {

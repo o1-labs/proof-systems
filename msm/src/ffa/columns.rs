@@ -1,10 +1,10 @@
 use crate::columns::Column;
 use crate::columns::ColumnIndexer;
 
-use crate::LIMBS_NUM;
+use crate::N_LIMBS;
 
 /// Number of columns in the FFA circuits.
-pub const FFA_N_COLUMNS: usize = 4 * LIMBS_NUM;
+pub const FFA_N_COLUMNS: usize = 4 * N_LIMBS;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// Column indexer for MSM columns
@@ -18,8 +18,8 @@ pub enum FFAColumnIndexer {
 impl ColumnIndexer for FFAColumnIndexer {
     fn ix_to_column(self) -> Column {
         let to_column_inner = |offset, i| {
-            assert!(i < LIMBS_NUM);
-            Column::X(LIMBS_NUM * offset + i)
+            assert!(i < N_LIMBS);
+            Column::X(N_LIMBS * offset + i)
         };
         match self {
             FFAColumnIndexer::A(i) => to_column_inner(0, i),
