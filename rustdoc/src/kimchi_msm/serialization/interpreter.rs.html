@@ -265,10 +265,6 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 
 <span class="kw">use </span><span class="kw">crate</span>::serialization::N_INTERMEDIATE_LIMBS;
@@ -293,14 +289,10 @@
     <span class="kw">fn </span>get_column_for_msm_limb(j: usize) -&gt; <span class="self">Self</span>::Position;
 
     <span class="doccomment">/// Check that the value is in the range [0, 2^15-1]
-    </span><span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="comment">// TODO
-    </span>}
+    </span><span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Check that the value is in the range [0, 2^4-1]
-    </span><span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="comment">// TODO
-    </span>}
+    </span><span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>constant(value: Fp) -&gt; <span class="self">Self</span>::Variable;
 
