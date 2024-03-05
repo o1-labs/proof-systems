@@ -87,9 +87,8 @@ where
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     // Do not use parallelism
-    witness_comms
-        .cols
-        .iter()
+    (&witness_comms)
+        .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     // -- Start MVLookup
@@ -119,7 +118,7 @@ where
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
     let mut witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
-    for witness_poly in witness_polys.cols.iter() {
+    for witness_poly in (&witness_polys).into_iter() {
         let eval = witness_poly.evaluate_over_domain_by_ref(domain.d4);
         witness_evals_env.push(eval);
     }
@@ -305,7 +304,7 @@ where
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    for PointEvaluations { zeta, zeta_omega } in witness_evals.cols.iter() {
+    for PointEvaluations { zeta, zeta_omega } in (&witness_evals).into_iter() {
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
@@ -349,9 +348,8 @@ where
     };
 
     // Gathering all polynomials to use in the opening proof
-    let mut polynomials: Vec<_> = witness_polys
-        .cols
-        .iter()
+    let mut polynomials: Vec<_> = (&witness_polys)
+        .into_iter()
         .map(|poly| (coefficients_form(poly), non_hiding(1)))
         .collect();
 
