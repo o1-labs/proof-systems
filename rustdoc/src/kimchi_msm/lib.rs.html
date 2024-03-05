@@ -234,9 +234,6 @@
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
 <a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -250,7 +247,7 @@
 
 <span class="kw">pub mod </span>column_env;
 <span class="kw">pub mod </span>columns;
-<span class="kw">pub mod </span>constraint;
+<span class="kw">pub mod </span>expr;
 <span class="doccomment">/// Instantiations of MVLookups for the MSM project
 </span><span class="kw">pub mod </span>lookups;
 <span class="doccomment">/// Generic definitions of MVLookups
@@ -258,9 +255,11 @@
 <span class="kw">pub mod </span>precomputed_srs;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
-<span class="kw">pub mod </span>serialization;
 <span class="kw">pub mod </span>verifier;
 <span class="kw">pub mod </span>witness;
+
+<span class="kw">pub mod </span>ffa;
+<span class="kw">pub mod </span>serialization;
 
 <span class="doccomment">/// Domain size for the MSM project, equal to the BN254 SRS size.
 </span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
@@ -276,11 +275,6 @@
 <span class="kw">pub type </span>BN254 = ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;;
 <span class="kw">pub type </span>BN254G1Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G1Affine;
 <span class="kw">pub type </span>BN254G2Affine = &lt;BN254 <span class="kw">as </span>ark_ec::PairingEngine&gt;::G2Affine;
-
-<span class="doccomment">/// Number of columns
-/// FIXME: we must move it into the subdirectory of the
-/// foreign field addition circuit
-</span><span class="kw">pub const </span>MSM_FFADD_N_COLUMNS: usize = <span class="number">4 </span>* N_LIMBS;
 
 <span class="doccomment">/// The native field we are working with.
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;

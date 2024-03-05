@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FFA_N_COLUMNS"],"enum":["FFAColumnIndexer"]};
