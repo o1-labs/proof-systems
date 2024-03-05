@@ -1,5 +1,5 @@
 use kimchi::circuits::domains::EvaluationDomains;
-use kimchi_msm::serialization::{witness, N_INTERMEDIATE_LIMBS};
+use kimchi_msm::serialization::{constraints, witness, N_INTERMEDIATE_LIMBS};
 use kimchi_msm::witness::Witness;
 use poly_commitment::pairing_proof::PairingSRS;
 
@@ -22,7 +22,8 @@ pub fn main() {
 
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-    let mut env = witness::Env::<Fp>::create();
+    let mut witness_env = witness::Env::<Fp>::create();
+    let mut constraint_env = constraints::Env::<Fp>::create();
     let mut witness: Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>> = Witness {
         cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
     };
@@ -30,16 +31,20 @@ pub fn main() {
     // FIXME: this could be read from a file or a CLI argument
     let field_elements = [[0, 0, 0]];
     for limbs in field_elements {
-        deserialize_field_element(&mut env, limbs);
+        // Witness
+        deserialize_field_element(&mut witness_env, limbs);
         for i in 0..3 {
-            witness.cols[i].push(env.current_kimchi_limbs[i]);
+            witness.cols[i].push(witness_env.current_kimchi_limbs[i]);
         }
         for i in 0..N_LIMBS {
-            witness.cols[3 + i].push(env.msm_limbs[i]);
+            witness.cols[3 + i].push(witness_env.msm_limbs[i]);
         }
         for i in 0..N_INTERMEDIATE_LIMBS {
-            witness.cols[3 + N_LIMBS + i].push(env.intermediate_limbs[i]);
+            witness.cols[3 + N_LIMBS + i].push(witness_env.intermediate_limbs[i]);
         }
+
+        // Constraints
+        deserialize_field_element(&mut constraint_env, limbs);
     }
 
     let _constraints = vec![];

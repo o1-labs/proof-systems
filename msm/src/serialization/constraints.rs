@@ -12,6 +12,14 @@ pub struct Env<Fp> {
     pub constraints: Vec<Expr<ConstantExpr<Fp>, Column>>,
 }
 
+impl<Fp: PrimeField> Env<Fp> {
+    pub fn create() -> Self {
+        Self {
+            constraints: vec![],
+        }
+    }
+}
+
 impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
