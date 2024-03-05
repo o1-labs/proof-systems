@@ -4,8 +4,17 @@ use mina_poseidon::{
 };
 use poly_commitment::pairing_proof::PairingProof;
 
+pub use mvlookup::{
+    LookupProof as MVLookupProof, LookupTable as MVLookupTable, LookupTableID as MVLookupTableID,
+    LookupTableID, MVLookup, MVLookupWitness,
+};
+
+pub mod column_env;
 pub mod columns;
 pub mod constraint;
+/// Instantiations of MVLookups for the MSM project
+pub mod lookups;
+/// Generic definitions of MVLookups
 pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
@@ -32,7 +41,7 @@ pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
 /// Number of columns
 /// FIXME: we must move it into the subdirectory of the
 /// foreign field addition circuit
-pub const MSM_FFADD_N_COLUMNS: usize = 3 * N_LIMBS;
+pub const MSM_FFADD_N_COLUMNS: usize = 4 * N_LIMBS;
 
 /// The native field we are working with.
 pub type Fp = ark_bn254::Fr;
@@ -48,14 +57,17 @@ pub type OpeningProof = PairingProof<BN254>;
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        columns::Column,
+        lookups::{Lookup, LookupTableIDs},
+        proof::ProofInputs,
+        prover::prove,
+        verifier::verify,
+        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
+    };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
-
-    use crate::{
-        columns::Column, mvlookup::Lookup, proof::ProofInputs, prover::prove, verifier::verify,
-        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
-    };
 
     // Number of columns
     const N: usize = 10;
@@ -79,16 +91,22 @@ mod tests {
         let constraints: Vec<_> = vec![];
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
             domain,
             &srs,
+            &constraints,
             inputs,
-            constraints,
             &mut rng,
         );
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof);
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+        );
+
         assert!(verifies);
     }
 
@@ -109,29 +127,34 @@ mod tests {
         let inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
             domain,
             &srs,
+            &constraints,
             inputs,
-            constraints.clone(),
             &mut rng,
         );
 
         let inputs_prime = ProofInputs::random(domain);
-        let proof_prime = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
-            domain,
-            &srs,
-            inputs_prime,
-            constraints,
-            &mut rng,
-        );
+        let proof_prime =
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
+                domain,
+                &srs,
+                &constraints,
+                inputs_prime,
+                &mut rng,
+            );
 
         // Swap the opening proof. The verification should fail.
         {
             let mut proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof_clone);
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+                domain,
+                &srs,
+                &constraints,
+                &proof_clone,
+            );
             assert!(!verifies);
         }
 
@@ -140,9 +163,13 @@ mod tests {
         // easier when an index trait is implemented.
         {
             let mut proof_clone = proof.clone();
-            proof_clone.commitments = proof_prime.commitments;
-            let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof_clone);
+            proof_clone.proof_comms = proof_prime.proof_comms;
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+                domain,
+                &srs,
+                &constraints,
+                &proof_clone,
+            );
             assert!(!verifies);
         }
 
@@ -152,9 +179,13 @@ mod tests {
         // easier when an index trait is implemented.
         {
             let mut proof_clone = proof.clone();
-            proof_clone.zeta_evaluations = proof_prime.zeta_evaluations;
-            let verifies =
-                verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof_clone);
+            proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+                domain,
+                &srs,
+                &constraints,
+                &proof_clone,
+            );
             assert!(!verifies);
         }
     }
@@ -187,14 +218,19 @@ mod tests {
         // Overwriting the first looked up value
         inputs.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N>(
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
             domain,
             &srs,
+            &constraints,
             inputs,
-            constraints,
             &mut rng,
         );
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(domain, &srs, &proof);
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+        );
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
         assert!(!verifies);
     }

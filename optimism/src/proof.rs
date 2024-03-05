@@ -1,10 +1,11 @@
-use crate::{witness::Witness, DOMAIN_SIZE};
+use crate::DOMAIN_SIZE;
 use ark_ff::Zero;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
 use kimchi::{
     circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
     plonk_sponge::FrSponge,
 };
+use kimchi_msm::witness::Witness;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{
@@ -80,9 +81,10 @@ pub fn fold<
     };
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
-    for column in commitments.into_iter() {
-        absorb_commitment(&mut fq_sponge, &column);
-    }
+    commitments.into_iter().for_each(|comm| {
+        absorb_commitment(&mut fq_sponge, &comm);
+    });
+
     let scaling_challenge = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let scaling_challenge = scaling_challenge.to_field(endo_r);
@@ -235,9 +237,9 @@ pub fn verify<
     } = proof;
 
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    for column in commitments.clone().into_iter() {
-        absorb_commitment(&mut fq_sponge, &column);
-    }
+    commitments.into_iter().for_each(|comm| {
+        absorb_commitment(&mut fq_sponge, comm);
+    });
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let zeta: G::ScalarField = zeta_chal.to_field(endo_r);

@@ -1,11 +1,11 @@
-use ark_ff::UniformRand;
-use kimchi_msm::columns::Column;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 
 use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
 
-use kimchi_msm::constraint::BuilderEnv;
+use kimchi_msm::columns::Column;
+use kimchi_msm::constraint::MSMCircuitEnv;
+use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
@@ -14,20 +14,20 @@ use kimchi_msm::{
     MSM_FFADD_N_COLUMNS,
 };
 
-pub fn generate_random_msm_witness() -> BuilderEnv<BN254G1Affine> {
-    let mut env = BuilderEnv::<BN254G1Affine>::empty();
+pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
+    let mut circuit_env = MSMCircuitEnv::<BN254G1Affine>::empty();
     let mut rng = thread_rng();
 
-    let row_num = 5;
-    assert!(row_num < DOMAIN_SIZE);
+    let row_num = DOMAIN_SIZE;
+    assert!(row_num <= DOMAIN_SIZE);
 
     for _row_i in 0..row_num {
-        let a: Ff1 = Ff1::rand(&mut rng);
-        let b: Ff1 = Ff1::rand(&mut rng);
-        env.add_test_addition(a, b);
+        let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+        let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+        circuit_env.add_test_addition(a, b);
     }
 
-    env
+    circuit_env
 }
 
 pub fn main() {
@@ -39,22 +39,31 @@ pub fn main() {
 
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-    let env = generate_random_msm_witness();
-    let witness = env.get_witness();
+    let circuit_env = generate_random_msm_witness();
+    let proof_inputs = circuit_env.get_witness();
+    let constraint_exprs = circuit_env.get_exprs_add();
+
+    println!("Proof inputs: {:?}", proof_inputs);
+    println!("Constraints: {:?}", constraint_exprs);
 
     println!("Generating the proof");
-    let constraints = vec![];
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, MSM_FFADD_N_COLUMNS>(
-        domain,
-        &srs,
-        witness,
-        constraints,
-        &mut rng,
-    );
+    let proof = prove::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        Column,
+        _,
+        MSM_FFADD_N_COLUMNS,
+        LookupTableIDs,
+    >(domain, &srs, &constraint_exprs, proof_inputs, &mut rng);
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
-        domain, &srs, &proof,
+        domain,
+        &srs,
+        &constraint_exprs,
+        &proof,
     );
     println!("Proof verification result: {verifies}")
 }

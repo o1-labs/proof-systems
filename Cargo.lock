@@ -1451,6 +1451,7 @@ dependencies = [
  "groupmap",
  "hex",
  "kimchi",
+ "kimchi_msm",
  "libc",
  "libflate",
  "log",

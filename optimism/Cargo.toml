@@ -19,6 +19,7 @@ path = "src/test_preimage_read.rs"
 [dependencies]
 ark-bn254.workspace = true
 kimchi = { workspace = true, features = [ "bn254" ] }
+kimchi_msm = { path = "../msm", version = "0.1.0" }
 poly-commitment.workspace = true
 groupmap.workspace = true
 mina-curves.workspace = true

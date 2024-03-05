@@ -5,24 +5,22 @@ use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::{
-        column::{KeccakWitness, ZKVM_KECCAK_COLS},
+        column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
         interpreter::KeccakInterpreter,
     },
     mips::{
-        column::{MIPSWitness, MIPS_COLUMNS},
+        column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
         witness::{self as mips_witness, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
-    proof,
+    proof, DOMAIN_SIZE,
 };
-use poly_commitment::pairing_proof::PairingProof;
-use std::{fs::File, io::BufReader, process::ExitCode};
-
-use kimchi_optimism::DOMAIN_SIZE;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use poly_commitment::pairing_proof::PairingProof;
+use std::{fs::File, io::BufReader, process::ExitCode};
 
 type Fp = ark_bn254::Fr;
 type SpongeParams = PlonkSpongeConstantsKimchi;
