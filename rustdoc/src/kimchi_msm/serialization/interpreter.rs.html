@@ -265,6 +265,33 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 
 <span class="kw">use </span><span class="kw">crate</span>::serialization::N_INTERMEDIATE_LIMBS;
@@ -354,6 +381,7 @@
     <span class="kw">let </span>limb2_0_var = {
         <span class="kw">let </span>limb2_0 = Env::get_column_for_intermediate_limb(<span class="number">0</span>);
         <span class="kw">let </span>limb2_0_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">4</span>, <span class="number">0</span>, limb2_0);
+        env.range_check4(<span class="kw-2">&amp;</span>limb2_0_var);
         limb2_vars.push(limb2_0_var.clone());
         limb2_0_var
     };
@@ -363,6 +391,7 @@
         <span class="kw">for </span>j <span class="kw">in </span><span class="number">1</span>..N_INTERMEDIATE_LIMBS {
             <span class="kw">let </span>position = Env::get_column_for_intermediate_limb(j);
             <span class="kw">let </span>var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">4 </span>* (j + <span class="number">1</span>) <span class="kw">as </span>u32, <span class="number">4 </span>* j <span class="kw">as </span>u32, position);
+            env.range_check4(<span class="kw-2">&amp;</span>var);
             limb2_vars.push(var.clone());
             <span class="kw">let </span>pow: u128 = <span class="number">1 </span>&lt;&lt; (<span class="number">4 </span>* j);
             <span class="kw">let </span>pow = Env::constant(pow.into());
@@ -371,27 +400,36 @@
         env.add_constraint(constraint)
     }
 
-    <span class="comment">// FIXME: range check
-    </span><span class="kw">let </span>c0_var = {
+    <span class="kw">let </span>c0_var = {
         <span class="kw">let </span>c0 = Env::get_column_for_msm_limb(<span class="number">0</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">15</span>, <span class="number">0</span>, c0)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c0_var);
+
     <span class="kw">let </span>c1_var = {
         <span class="kw">let </span>c1 = Env::get_column_for_msm_limb(<span class="number">1</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">30</span>, <span class="number">15</span>, c1)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c1_var);
+
     <span class="kw">let </span>c2_var = {
         <span class="kw">let </span>c2 = Env::get_column_for_msm_limb(<span class="number">2</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">45</span>, <span class="number">30</span>, c2)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c2_var);
+
     <span class="kw">let </span>c3_var = {
         <span class="kw">let </span>c3 = Env::get_column_for_msm_limb(<span class="number">3</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">60</span>, <span class="number">45</span>, c3)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c3_var);
+
     <span class="kw">let </span>c4_var = {
         <span class="kw">let </span>c4 = Env::get_column_for_msm_limb(<span class="number">4</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">75</span>, <span class="number">60</span>, c4)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c4_var);
+
     <span class="kw">let </span>c5_var = {
         <span class="kw">let </span>c5 = Env::get_column_for_msm_limb(<span class="number">5</span>);
         <span class="kw">let </span>res = (limbs[<span class="number">0</span>] &gt;&gt; <span class="number">75</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">88 </span>- <span class="number">75</span>)) - <span class="number">1</span>);
@@ -400,29 +438,39 @@
         <span class="kw">let </span>res = Env::constant(Fp::from(res));
         env.copy(<span class="kw-2">&amp;</span>res, c5)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c5_var);
 
     <span class="comment">// Processing limbs1
-    // FIXME: range check
     </span><span class="kw">let </span>c6_var = {
         <span class="kw">let </span>c6 = Env::get_column_for_msm_limb(<span class="number">6</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">17</span>, <span class="number">2</span>, c6)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c6_var);
+
     <span class="kw">let </span>c7_var = {
         <span class="kw">let </span>c7 = Env::get_column_for_msm_limb(<span class="number">7</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">32</span>, <span class="number">17</span>, c7)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c7_var);
+
     <span class="kw">let </span>c8_var = {
         <span class="kw">let </span>c8 = Env::get_column_for_msm_limb(<span class="number">8</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">47</span>, <span class="number">32</span>, c8)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c8_var);
+
     <span class="kw">let </span>c9_var = {
         <span class="kw">let </span>c9 = Env::get_column_for_msm_limb(<span class="number">9</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">62</span>, <span class="number">47</span>, c9)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c9_var);
+
     <span class="kw">let </span>c10_var = {
         <span class="kw">let </span>c10 = Env::get_column_for_msm_limb(<span class="number">10</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">77</span>, <span class="number">62</span>, c10)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c10_var);
+
     <span class="kw">let </span>c11_var = {
         <span class="kw">let </span>c11 = Env::get_column_for_msm_limb(<span class="number">11</span>);
         <span class="kw">let </span>res = (limbs[<span class="number">1</span>] &gt;&gt; <span class="number">77</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">88 </span>- <span class="number">77</span>)) - <span class="number">1</span>);
@@ -431,6 +479,7 @@
         <span class="kw">let </span>res = Env::constant(res.into());
         env.copy(<span class="kw-2">&amp;</span>res, c11)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c11_var);
 
     <span class="comment">// Unfolding for readability.
     // IMPROVEME using fold later.
@@ -487,29 +536,34 @@
     env.add_constraint(constraint);
 
     <span class="comment">// -- Start third constraint
-    // FIXME: range check
     </span><span class="kw">let </span>c12_var = {
         <span class="kw">let </span>c12 = Env::get_column_for_msm_limb(<span class="number">12</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">19</span>, <span class="number">4</span>, c12)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c12_var);
     <span class="kw">let </span>c13_var = {
         <span class="kw">let </span>c13 = Env::get_column_for_msm_limb(<span class="number">13</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">34</span>, <span class="number">19</span>, c13)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c13_var);
 
     <span class="kw">let </span>c14_var = {
         <span class="kw">let </span>c14 = Env::get_column_for_msm_limb(<span class="number">14</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">49</span>, <span class="number">34</span>, c14)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c14_var);
 
     <span class="kw">let </span>c15_var = {
         <span class="kw">let </span>c15 = Env::get_column_for_msm_limb(<span class="number">15</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">64</span>, <span class="number">49</span>, c15)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c15_var);
+
     <span class="kw">let </span>c16_var = {
         <span class="kw">let </span>c16 = Env::get_column_for_msm_limb(<span class="number">16</span>);
         env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">79</span>, <span class="number">64</span>, c16)
     };
+    env.range_check15(<span class="kw-2">&amp;</span>c16_var);
 
     <span class="comment">// Unfolding for readability.
     </span><span class="kw">let </span>shl_15 = Fp::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">15u128</span>);
