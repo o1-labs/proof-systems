@@ -71,6 +71,7 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -123,7 +124,8 @@
         Expr::Atom(ExprInner::Constant(cst_expr_inner))
     }
 
-    <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
+    <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` (excluded)
+    /// and `lowest_bit` (included), and store
     /// the result in `position`.
     /// `lowest_bit` becomes the least-significant bit of the resulting value.
     /// The value `x` is expected to be encoded in big-endian
