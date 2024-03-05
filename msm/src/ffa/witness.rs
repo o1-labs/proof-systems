@@ -1,14 +1,18 @@
+use ark_ff::PrimeField;
 use ark_ff::Zero;
 use num_bigint::BigUint;
 
 use crate::{
-    ffa::columns::FFA_N_COLUMNS,
+    columns::Column,
+    ffa::{
+        columns::{FFAColumnIndexer, FFA_N_COLUMNS},
+        interpreter::FFAInterpreterEnv,
+    },
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
     {BN254G1Affine, Ff1, Fp, N_LIMBS},
 };
-use kimchi::curve::KimchiCurve;
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 // TODO use more foreign_field.rs with from/to bigint conversion
@@ -20,19 +24,49 @@ fn limb_decompose(input: &Ff1) -> [Fp; N_LIMBS] {
 
 #[allow(dead_code)]
 /// Builder environment for a native group `G`.
-pub struct WitnessBuilder<G: KimchiCurve> {
+pub struct WitnessBuilder<F: PrimeField> {
     /// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    witness_raw: Vec<Witness<FFA_N_COLUMNS, G::ScalarField>>,
+    witness_raw: Vec<Witness<FFA_N_COLUMNS, F>>,
 }
 
-impl WitnessBuilder<BN254G1Affine> {
+impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilder<F> {
+    type Position = Column;
+
+    type Variable = F;
+
+    fn add_constraint(&mut self, cst: Self::Variable) {
+        assert_eq!(cst, F::zero());
+    }
+
+    fn constant(value: F) -> Self::Variable {
+        value
+    }
+
+    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
+        self.write_column(position, *x);
+        *x
+    }
+}
+
+impl<F: PrimeField> WitnessBuilder<F> {
+    pub fn write_column(&mut self, column: Column, _value: F) {
+        match FFAColumnIndexer::column_to_ix(column) {
+            FFAColumnIndexer::A(_i) => unimplemented!(),
+            FFAColumnIndexer::B(_i) => unimplemented!(),
+            FFAColumnIndexer::C(_i) => unimplemented!(),
+            FFAColumnIndexer::D(_i) => unimplemented!(),
+        }
+    }
+
     pub fn empty() -> Self {
         WitnessBuilder {
             witness_raw: vec![],
         }
     }
+}
 
+impl WitnessBuilder<Fp> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).

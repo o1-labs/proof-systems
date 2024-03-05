@@ -11,12 +11,10 @@ use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
-use kimchi_msm::{
-    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
-};
+use kimchi_msm::{BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE};
 
-pub fn generate_random_msm_witness() -> FFAWitnessBuilder<BN254G1Affine> {
-    let mut circuit_env = FFAWitnessBuilder::<BN254G1Affine>::empty();
+pub fn generate_random_msm_witness() -> FFAWitnessBuilder<Fp> {
+    let mut circuit_env = FFAWitnessBuilder::<Fp>::empty();
     let mut rng = thread_rng();
 
     let row_num = DOMAIN_SIZE;

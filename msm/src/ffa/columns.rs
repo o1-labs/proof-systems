@@ -29,3 +29,22 @@ impl ColumnIndexer for FFAColumnIndexer {
         }
     }
 }
+
+impl FFAColumnIndexer {
+    pub fn column_to_ix(col: Column) -> Self {
+        let Column::X(pos) = col;
+        let upper_bound = |i: usize| (i + 1) * N_LIMBS;
+        let pos_map = |i: usize| pos - upper_bound(i - 1);
+        if pos < upper_bound(0) {
+            FFAColumnIndexer::A(pos_map(0))
+        } else if pos < upper_bound(1) {
+            FFAColumnIndexer::B(pos_map(1))
+        } else if pos < upper_bound(2) {
+            FFAColumnIndexer::C(pos_map(2))
+        } else if pos < upper_bound(3) {
+            FFAColumnIndexer::D(pos_map(3))
+        } else {
+            panic!("column_to_ix: Invalid column index")
+        }
+    }
+}
