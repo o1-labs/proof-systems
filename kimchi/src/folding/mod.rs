@@ -354,7 +354,7 @@ mod tests {
             ConstantExpr, ConstantExprInner, Expr, ExprInner, Operations, Variable,
         };
         use crate::circuits::gate::CurrOrNext;
-        use ark_ff::Field;
+        use ark_ff::Zero;
         use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
         use poly_commitment::PolyComm;
 
@@ -410,6 +410,7 @@ mod tests {
         let constraint = x3 - x1 - x2;
 
         /// The instance is the commitments to the polynomials and the challenges
+        #[derive(Clone, Debug, PartialEq, Eq)]
         struct TestInstance {
             commitments: [Curve; 3],
             challenges: [Fp; 3],
@@ -453,6 +454,7 @@ mod tests {
             }
         }
 
+        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         struct TestStructure {
             column_type: TestColumn,
             challenge_type: TestChallenge,
@@ -464,43 +466,44 @@ mod tests {
             witnesses: [TestWitness; 2],
         }
 
-        // FIXME: shouldn't the generic be a group instead of a field?
-        impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for TestFoldingEnv
-        /*where
-        F: Field,
-        I: Instance<Curve>,
-        W: Witness<Curve>,
-        Col: FoldingColumnTrait,
-        Chal: Clone,
-        */
-        {
+        impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for TestFoldingEnv {
             type Structure = TestStructure;
 
-            fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self {
+            fn new(
+                structure: &Self::Structure,
+                instances: [&TestInstance; 2],
+                witnesses: [&TestWitness; 2],
+            ) -> Self {
                 TestFoldingEnv {
                     structure: *structure,
-                    instances: [*instances[0], *instances[1]],
-                    witnesses: [*witnesses[0], *witnesses[1]],
+                    instances: [instances[0].clone(), instances[1].clone()],
+                    witnesses: [witnesses[0].clone(), witnesses[1].clone()],
                 }
             }
 
-            fn zero_vec(&self) -> Vec<F> {
-                vec![F::zero(); 1]
+            fn zero_vec(&self) -> Vec<Fp> {
+                vec![Fp::zero(); 1]
             }
 
-            fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F> {
+            fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
                 let wit = match col {
                     TestColumn::X(1) => &self.witnesses[side as usize][0],
                     TestColumn::X(2) => &self.witnesses[side as usize][1],
                     TestColumn::X(3) => &self.witnesses[side as usize][2],
+                    TestColumn::X(_) => panic!("Invalid column"),
                 };
-                match curr_or_next {
+                let mut wit = wit.clone();
+                let evals = match curr_or_next {
                     CurrOrNext::Curr => wit,
-                    CurrOrNext::Next => wit.rotate_left(1),
-                }
+                    CurrOrNext::Next => {
+                        wit.rotate_left(1);
+                        wit
+                    }
+                };
+                &evals
             }
 
-            fn challenge(&self, challenge: Chal, side: Side) -> F {
+            fn challenge(&self, challenge: TestChallenge, side: Side) -> Fp {
                 match challenge {
                     TestChallenge::Beta => self.instances[side as usize].challenges[0],
                     TestChallenge::Gamma => self.instances[side as usize].challenges[1],
@@ -508,11 +511,11 @@ mod tests {
                 }
             }
 
-            fn lagrange_basis(&self, _i: usize) -> &Vec<F> {
+            fn lagrange_basis(&self, _i: usize) -> &Vec<Fp> {
                 todo!()
             }
 
-            fn alpha(&self, _i: usize, _side: Side) -> F {
+            fn alpha(&self, _i: usize, _side: Side) -> Fp {
                 todo!()
             }
         }
