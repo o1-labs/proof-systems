@@ -11,7 +11,7 @@ pub use mvlookup::{
 
 pub mod column_env;
 pub mod columns;
-pub mod constraint;
+pub mod expr;
 /// Instantiations of MVLookups for the MSM project
 pub mod lookups;
 /// Generic definitions of MVLookups
@@ -19,9 +19,11 @@ pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
-pub mod serialization;
 pub mod verifier;
 pub mod witness;
+
+pub mod ffa;
+pub mod serialization;
 
 /// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;

@@ -4,7 +4,7 @@ use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
 
 use kimchi_msm::columns::Column;
-use kimchi_msm::constraint::MSMCircuitEnv;
+use kimchi_msm::ffa::constraint::MSMCircuitEnv;
 use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
