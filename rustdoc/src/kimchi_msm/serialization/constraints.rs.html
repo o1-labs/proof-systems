@@ -72,7 +72,7 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
@@ -86,7 +86,7 @@
     <span class="kw">pub </span>constraints: Vec&lt;Expr&lt;ConstantExpr&lt;Fp&gt;, Column&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;F: Field&gt; InterpreterEnv&lt;F&gt; <span class="kw">for </span>Env&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; InterpreterEnv&lt;F&gt; <span class="kw">for </span>Env&lt;F&gt; {
     <span class="kw">type </span>Position = Column;
 
     <span class="kw">type </span>Variable = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;

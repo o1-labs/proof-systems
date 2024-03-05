@@ -269,11 +269,11 @@
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 
 <span class="kw">use </span><span class="kw">crate</span>::serialization::N_INTERMEDIATE_LIMBS;
 
-<span class="kw">pub trait </span>InterpreterEnv&lt;Fp&gt; {
+<span class="kw">pub trait </span>InterpreterEnv&lt;Fp: PrimeField&gt; {
     <span class="kw">type </span>Position;
 
     <span class="kw">type </span>Variable: Clone
@@ -336,7 +336,7 @@
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-</span><span class="kw">pub fn </span>deserialize_field_element&lt;Fp: Field, Env: InterpreterEnv&lt;Fp&gt;&gt;(
+</span><span class="kw">pub fn </span>deserialize_field_element&lt;Fp: PrimeField, Env: InterpreterEnv&lt;Fp&gt;&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     limbs: [u128; <span class="number">3</span>],
 ) {
