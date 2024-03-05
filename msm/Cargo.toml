@@ -13,8 +13,8 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [[bin]]
-name = "main"
-path = "src/main.rs"
+name = "ffa"
+path = "src/ffa/main.rs"
 
 [[bin]]
 name = "serialization"

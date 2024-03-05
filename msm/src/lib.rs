@@ -11,7 +11,7 @@ pub use mvlookup::{
 
 pub mod column_env;
 pub mod columns;
-pub mod constraint;
+pub mod expr;
 /// Instantiations of MVLookups for the MSM project
 pub mod lookups;
 /// Generic definitions of MVLookups
@@ -19,9 +19,11 @@ pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
-pub mod serialization;
 pub mod verifier;
 pub mod witness;
+
+pub mod ffa;
+pub mod serialization;
 
 /// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;
@@ -37,11 +39,6 @@ pub const N_LIMBS: usize = 17;
 pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
 pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
 pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
-
-/// Number of columns
-/// FIXME: we must move it into the subdirectory of the
-/// foreign field addition circuit
-pub const MSM_FFADD_N_COLUMNS: usize = 4 * N_LIMBS;
 
 /// The native field we are working with.
 pub type Fp = ark_bn254::Fr;

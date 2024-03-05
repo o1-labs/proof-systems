@@ -1,4 +1,3 @@
-use crate::N_LIMBS;
 use kimchi::circuits::expr::{Domain, GenericColumn};
 
 // @volhovm: maybe this needs to be a trait
@@ -22,28 +21,4 @@ impl GenericColumn for Column {
 /// more convenient interface than a bare column.
 pub trait ColumnIndexer {
     fn ix_to_column(self) -> Column;
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-/// Column indexer for MSM columns
-pub enum MSMColumnIndexer {
-    A(usize),
-    B(usize),
-    C(usize),
-    D(usize),
-}
-
-impl ColumnIndexer for MSMColumnIndexer {
-    fn ix_to_column(self) -> Column {
-        let to_column_inner = |offset, i| {
-            assert!(i < N_LIMBS);
-            Column::X(N_LIMBS * offset + i)
-        };
-        match self {
-            MSMColumnIndexer::A(i) => to_column_inner(0, i),
-            MSMColumnIndexer::B(i) => to_column_inner(1, i),
-            MSMColumnIndexer::C(i) => to_column_inner(2, i),
-            MSMColumnIndexer::D(i) => to_column_inner(3, i),
-        }
-    }
 }
