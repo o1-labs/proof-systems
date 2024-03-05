@@ -314,16 +314,19 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
     }
 }
 
+#[allow(dead_code)]
 #[cfg(test)]
-mod tests {
-    use super::expressions::FoldingColumnTrait;
+mod example {
     use crate::{
         circuits::{
             expr::{ConstantExpr, Expr},
             gate::CurrOrNext,
         },
         curve::KimchiCurve,
-        folding::{error_term::Side, FoldingConfig, FoldingEnv, Instance, Sponge, Witness},
+        folding::{
+            error_term::Side, expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, Instance,
+            Sponge, Witness,
+        },
     };
     use ark_bn254;
     use ark_ec::{AffineCurve, ProjectiveCurve};
@@ -527,6 +530,7 @@ mod tests {
 
     type E<F> = Expr<ConstantExpr<F>, TestColumn>;
 
+    /*
     #[test]
     fn test_folding_instance() {
         /// X(1) = x
@@ -534,6 +538,8 @@ mod tests {
         /// X(3) = w
         use crate::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
         use crate::circuits::gate::CurrOrNext;
+        use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
+        use mina_poseidon::poseidon::Sponge;
 
         let x1 = E::<Fp>::Atom(
             ExprInner::<Operations<ConstantExprInner<Fp>>, TestColumn>::Cell(Variable {
@@ -553,19 +559,68 @@ mod tests {
                 row: CurrOrNext::Curr,
             }),
         );
-        let constraint = x3 - x1 - x2;
+        let _constraint = x3 - x1 - x2;
+
+        // Circuits only have 1 row in this example
 
         // Left: 1 + 2 - 3 = 0
-        let left_witness: TestWitness = [
+        let _left_witness: TestWitness = [
             vec![Fp::from(1u32); 1],
             vec![Fp::from(2u32); 1],
             vec![Fp::from(3u32); 1],
         ];
         // Right: 4 + 5 - 9 = 0
-        let right_witness: TestWitness = [
+        let _right_witness: TestWitness = [
             vec![Fp::from(4u32); 1],
             vec![Fp::from(5u32); 1],
             vec![Fp::from(9u32); 1],
         ];
+
+        let srs = poly_commitment::srs::SRS::<Curve>::create(1);
+        let domain = EvaluationDomains::<Fp>::create(1);
+        // Obtain challenges for the left and right instances
+        let mut sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+        // FIXME: is this creating the same challenges always?
+        let challenges = (0..6)
+            .map(|_| {
+                let chal = ScalarChallenge(sponge.challenge());
+                let (_, endo_r) = Curve::endos();
+                let chal = chal.to_field(endo_r);
+                chal
+            })
+            .collect::<Vec<Fp>>();
+
+        let left_evaluations = left_witness
+            .into_iter()
+            .map(|evals| Evaluations::<Fp, D<Fp>>::from_vec_and_domain(evals, domain))
+            .collect::<Witness<N, Evaluations<Fp, D<Fp>>>>();
+
+        let polys: Witness<N, DensePolynomial<G::ScalarField>> = {
+            let interpolate =
+                |evals: Evaluations<G::ScalarField, D<G::ScalarField>>| evals.interpolate();
+            evaluations
+                .into_par_iter()
+                .map(interpolate)
+                .collect::<Witness<N, DensePolynomial<G::ScalarField>>>()
+        };
+
+        let commitments: Witness<N, PolyComm<G>> = {
+            let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+            (&polys)
+                .into_par_iter()
+                .map(comm)
+                .collect::<Witness<N, PolyComm<G>>>()
+        };
+
+        let left_instance = TestInstance {
+            commitments: [],
+            challenges: challenges[0..3].try_into().unwrap(),
+        };
+
+        let right_instance = TestInstance {
+            commitments: [],
+            challenges: challenges[3..6].try_into().unwrap(),
+        };
     }
+    */
 }
