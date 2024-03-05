@@ -13,7 +13,7 @@ use poly_commitment::{
 };
 use rand::thread_rng;
 
-use crate::constraint::MSMExpr;
+use crate::expr::MSMExpr;
 use crate::proof::Proof;
 
 pub fn verify<

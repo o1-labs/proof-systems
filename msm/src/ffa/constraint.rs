@@ -3,7 +3,9 @@ use ark_poly::Radix2EvaluationDomain;
 use num_bigint::BigUint;
 
 use crate::{
-    columns::{Column, ColumnIndexer, MSMColumnIndexer},
+    columns::{Column, ColumnIndexer},
+    expr::MSMExpr,
+    ffa::columns::MSMColumnIndexer,
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
@@ -12,50 +14,14 @@ use crate::{
 use kimchi::{
     circuits::{
         expr::{
-            Challenges, ColumnEvaluations, ConstantExpr, ConstantExprInner, Constants, Expr,
-            ExprError, ExprInner, Operations, Variable,
+            Challenges, ColumnEvaluations, ConstantExprInner, Constants, ExprError, ExprInner,
+            Operations, Variable,
         },
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
-
-/// Used to represent constraints as multi variate polynomials. The variables
-/// are over the columns.
-/// For instance, if there are 3 columns X1, X2, X3, then to constraint X3 to be
-/// equals to sum of the X1 and X2 on a row, we would use the multivariate
-/// polynomial `X3 - X1 - X2 = 0`.
-/// Using the expression framework, this constraint would be
-/// ```
-/// use kimchi::circuits::expr::{ConstantExprInner, ExprInner, Operations, Variable};
-/// use kimchi::circuits::gate::CurrOrNext;
-/// use kimchi_msm::columns::Column;
-/// use kimchi_msm::constraint::MSMExpr;
-/// pub type Fp = ark_bn254::Fr;
-/// let x1 = MSMExpr::<Fp>::Atom(
-///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
-///         row: CurrOrNext::Curr,
-///     }),
-/// );
-/// let x2 = MSMExpr::<Fp>::Atom(
-///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
-///         row: CurrOrNext::Curr,
-///     }),
-/// );
-/// let x3 = MSMExpr::<Fp>::Atom(
-///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
-///         row: CurrOrNext::Curr,
-///     }),
-/// );
-/// let constraint = x3 - x1 - x2;
-/// ```
-/// A list of such constraints is used to represent the entire circuit and will
-/// be used to build the quotient polynomial.
-pub type MSMExpr<F> = Expr<ConstantExpr<F>, Column>;
 
 // TODO use more foreign_field.rs with from/to bigint conversion
 fn limb_decompose(input: &Ff1) -> [Fp; LIMBS_NUM] {

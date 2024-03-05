@@ -1,6 +1,6 @@
 use crate::{
     column_env::MSMColumnEnvironment,
-    constraint::MSMExpr,
+    expr::MSMExpr,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
