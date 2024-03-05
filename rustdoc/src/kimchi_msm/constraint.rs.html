@@ -154,7 +154,81 @@
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
+<span class="kw">use </span>ark_poly::Radix2EvaluationDomain;
+<span class="kw">use </span>num_bigint::BigUint;
+
+<span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer, MSMColumnIndexer},
     lookups::LookupTableIDs,
     proof::ProofInputs,
@@ -163,12 +237,14 @@
 };
 <span class="kw">use </span>kimchi::{
     circuits::{
-        expr::{ConstantExpr, ConstantExprInner, Expr, ExprInner, Operations, Variable},
+        expr::{
+            Challenges, ColumnEvaluations, ConstantExpr, ConstantExprInner, Constants, Expr,
+            ExprError, ExprInner, Operations, Variable,
+        },
         gate::CurrOrNext,
     },
     curve::KimchiCurve,
 };
-<span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 <span class="doccomment">/// Used to represent constraints as multi variate polynomials. The variables
@@ -218,23 +294,20 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) a: [T; LIMBS_NUM],
     <span class="kw">pub</span>(<span class="kw">crate</span>) b: [T; LIMBS_NUM],
     <span class="kw">pub</span>(<span class="kw">crate</span>) c: [T; LIMBS_NUM],
+    <span class="kw">pub</span>(<span class="kw">crate</span>) d: [T; LIMBS_NUM],
 }
 
 <span class="attr">#[allow(dead_code)]
 </span><span class="doccomment">/// Builder environment for a native group `G`.
-</span><span class="kw">pub struct </span>BuilderEnv&lt;G: KimchiCurve&gt; {
-    <span class="comment">// TODO something like a running list of constraints
-    </span><span class="doccomment">/// Aggregated constraints.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) constraints: Vec&lt;MSMExpr&lt;G::ScalarField&gt;&gt;,
+</span><span class="kw">pub struct </span>MSMCircuitEnv&lt;G: KimchiCurve&gt; {
     <span class="doccomment">/// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) witness_raw: Vec&lt;WitnessColumnsIndexer&lt;G::ScalarField&gt;&gt;,
+    </span>witness_raw: Vec&lt;WitnessColumnsIndexer&lt;G::ScalarField&gt;&gt;,
 }
 
-<span class="kw">impl </span>BuilderEnv&lt;BN254G1Affine&gt; {
+<span class="kw">impl </span>MSMCircuitEnv&lt;BN254G1Affine&gt; {
     <span class="kw">pub fn </span>empty() -&gt; <span class="self">Self </span>{
-        BuilderEnv {
-            constraints: <span class="macro">vec!</span>[],
+        MSMCircuitEnv {
             witness_raw: <span class="macro">vec!</span>[],
         }
     }
@@ -250,11 +323,13 @@
                 a: wc_a,
                 b: wc_b,
                 c: wc_c,
+                d: wc_d,
             } = wc;
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
                 cols[i].push(wc_a[i]);
                 cols[LIMBS_NUM + i].push(wc_b[i]);
                 cols[<span class="number">2 </span>* LIMBS_NUM + i].push(wc_c[i]);
+                cols[<span class="number">3 </span>* LIMBS_NUM + i].push(wc_d[i]);
             }
         }
 
@@ -264,8 +339,9 @@
         }
     }
 
-    <span class="kw">pub fn </span>add_test_addition(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: Ff1, b: Ff1) {
-        <span class="kw">let </span><span class="kw-2">mut </span>limb_constraints: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
+    <span class="doccomment">/// Access exprs generated in the environment so far.
+    </span><span class="kw">pub fn </span>get_exprs_add(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;MSMExpr&lt;Fp&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>limb_exprs: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
             <span class="kw">let </span>limb_constraint = {
                 <span class="kw">let </span>a_i = MSMExpr::Atom(
@@ -284,12 +360,52 @@
                 }));
                 a_i + b_i - c_i
             };
-            limb_constraints.push(limb_constraint);
+            limb_exprs.push(limb_constraint);
         }
-        <span class="kw">let </span>combined_constraint =
-            Expr::combine_constraints(<span class="number">0</span>..(limb_constraints.len() <span class="kw">as </span>u32), limb_constraints);
-        <span class="self">self</span>.constraints.push(combined_constraint);
+        limb_exprs
+    }
 
+    <span class="comment">// TEST
+    </span><span class="kw">pub fn </span>get_exprs_mul(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;MSMExpr&lt;Fp&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>limb_exprs: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..LIMBS_NUM {
+            <span class="kw">let </span>limb_constraint = {
+                <span class="kw">let </span>a_i = MSMExpr::Atom(
+                    ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
+                        col: MSMColumnIndexer::A(i).ix_to_column(),
+                        row: CurrOrNext::Curr,
+                    }),
+                );
+                <span class="kw">let </span>b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
+                    col: MSMColumnIndexer::B(i).ix_to_column(),
+                    row: CurrOrNext::Curr,
+                }));
+                <span class="kw">let </span>d_i = MSMExpr::Atom(ExprInner::Cell(Variable {
+                    col: MSMColumnIndexer::D(i).ix_to_column(),
+                    row: CurrOrNext::Curr,
+                }));
+                a_i * b_i - d_i
+            };
+            limb_exprs.push(limb_constraint);
+        }
+        limb_exprs
+    }
+
+    <span class="kw">pub fn </span>eval_expressions&lt;Evaluations: ColumnEvaluations&lt;Fp, Column = <span class="kw">crate</span>::columns::Column&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        d: Radix2EvaluationDomain&lt;Fp&gt;,
+        pt: Fp,
+        evals: <span class="kw-2">&amp;</span>Evaluations,
+        c: <span class="kw-2">&amp;</span>Constants&lt;Fp&gt;,
+        chals: <span class="kw-2">&amp;</span>Challenges&lt;Fp&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Fp&gt;, ExprError&lt;Column&gt;&gt; {
+        <span class="self">self</span>.get_exprs_add()
+            .iter()
+            .map(|expr| expr.evaluate_(d, pt, evals, c, chals))
+            .collect()
+    }
+
+    <span class="kw">pub fn </span>add_test_addition(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: Ff1, b: Ff1) {
         <span class="kw">let </span>a_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>a);
         <span class="kw">let </span>b_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>b);
         <span class="kw">let </span>c_limbs_vec: Vec&lt;Fp&gt; = a_limbs
@@ -300,11 +416,35 @@
         <span class="kw">let </span>c_limbs: [Fp; LIMBS_NUM] = c_limbs_vec
             .try_into()
             .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"Length mismatch"</span>));
+        <span class="kw">let </span>d_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
 
         <span class="self">self</span>.witness_raw.push(WitnessColumnsIndexer {
             a: a_limbs,
             b: b_limbs,
             c: c_limbs,
+            d: d_limbs,
+        });
+    }
+
+    <span class="kw">pub fn </span>add_test_multiplication(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: Ff1, b: Ff1) {
+        <span class="kw">let </span>a_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>a);
+        <span class="kw">let </span>b_limbs: [Fp; LIMBS_NUM] = limb_decompose(<span class="kw-2">&amp;</span>b);
+        <span class="kw">let </span>d_limbs_vec: Vec&lt;Fp&gt; = a_limbs
+            .iter()
+            .zip(b_limbs.iter())
+            .map(|(ai, bi)| <span class="kw-2">*</span>ai * <span class="kw-2">*</span>bi)
+            .collect();
+        <span class="kw">let </span>d_limbs: [Fp; LIMBS_NUM] = d_limbs_vec
+            .try_into()
+            .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"Length mismatch"</span>));
+
+        <span class="kw">let </span>c_limbs: [Fp; LIMBS_NUM] = [Zero::zero(); LIMBS_NUM];
+
+        <span class="self">self</span>.witness_raw.push(WitnessColumnsIndexer {
+            a: a_limbs,
+            b: b_limbs,
+            c: c_limbs,
+            d: d_limbs,
         });
     }
 }

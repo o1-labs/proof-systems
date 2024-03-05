@@ -3483,6 +3483,9 @@
 <a href="#3481" id="3481">3481</a>
 <a href="#3482" id="3482">3482</a>
 <a href="#3483" id="3483">3483</a>
+<a href="#3484" id="3484">3484</a>
+<a href="#3485" id="3485">3485</a>
+<a href="#3486" id="3486">3486</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3698,7 +3701,10 @@
 }
 
 <span class="kw">pub trait </span>GenericColumn {
-    <span class="kw">fn </span>domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain;
+    <span class="comment">// TODO These two traits must work together but it is NOT obvious. Change interface.
+    </span><span class="doccomment">/// Defines the domain over which the column is evaluated, as
+    /// contained in the `ColumnEnvironment`.
+    </span><span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain;
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -4454,7 +4460,7 @@
         Expr::Atom(ExprInner::Constant(c))
     }
 
-    <span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>, d1_size: u64, zk_rows: u64) -&gt; u64 {
+    <span class="kw">pub fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>, d1_size: u64, zk_rows: u64) -&gt; u64 {
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
@@ -5466,7 +5472,7 @@
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: col.domain(),
+                    domain: col.column_domain(),
                     shift: row.shift(),
                     evals,
                 }

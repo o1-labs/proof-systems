@@ -62,10 +62,20 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>rand::{thread_rng, Rng};
+
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
+
 <span class="kw">use </span>kimchi_msm::columns::Column;
-<span class="kw">use </span>kimchi_msm::constraint::BuilderEnv;
+<span class="kw">use </span>kimchi_msm::constraint::MSMCircuitEnv;
 <span class="kw">use </span>kimchi_msm::lookups::LookupTableIDs;
 <span class="kw">use </span>kimchi_msm::precomputed_srs::get_bn254_srs;
 <span class="kw">use </span>kimchi_msm::prover::prove;
@@ -74,23 +84,21 @@
     BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
     MSM_FFADD_N_COLUMNS,
 };
-<span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
-<span class="kw">use </span>rand::thread_rng;
 
-<span class="kw">pub fn </span>generate_random_msm_witness() -&gt; BuilderEnv&lt;BN254G1Affine&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>env = BuilderEnv::&lt;BN254G1Affine&gt;::empty();
+<span class="kw">pub fn </span>generate_random_msm_witness() -&gt; MSMCircuitEnv&lt;BN254G1Affine&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>circuit_env = MSMCircuitEnv::&lt;BN254G1Affine&gt;::empty();
     <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
 
-    <span class="kw">let </span>row_num = <span class="number">5</span>;
-    <span class="macro">assert!</span>(row_num &lt; DOMAIN_SIZE);
+    <span class="kw">let </span>row_num = DOMAIN_SIZE;
+    <span class="macro">assert!</span>(row_num &lt;= DOMAIN_SIZE);
 
     <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..row_num {
-        <span class="kw">let </span>a: Ff1 = Ff1::rand(<span class="kw-2">&amp;mut </span>rng);
-        <span class="kw">let </span>b: Ff1 = Ff1::rand(<span class="kw-2">&amp;mut </span>rng);
-        env.add_test_addition(a, b);
+        <span class="kw">let </span>a: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
+        <span class="kw">let </span>b: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
+        circuit_env.add_test_addition(a, b);
     }
 
-    env
+    circuit_env
 }
 
 <span class="kw">pub fn </span>main() {
@@ -102,11 +110,14 @@
 
     <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
-    <span class="kw">let </span>env = generate_random_msm_witness();
-    <span class="kw">let </span>witness = env.get_witness();
+    <span class="kw">let </span>circuit_env = generate_random_msm_witness();
+    <span class="kw">let </span>proof_inputs = circuit_env.get_witness();
+    <span class="kw">let </span>constraint_exprs = circuit_env.get_exprs_add();
+
+    <span class="macro">println!</span>(<span class="string">"Proof inputs: {:?}"</span>, proof_inputs);
+    <span class="macro">println!</span>(<span class="string">"Constraints: {:?}"</span>, constraint_exprs);
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
-    <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
     <span class="kw">let </span>proof = prove::&lt;
         <span class="kw">_</span>,
         OpeningProof,
@@ -116,11 +127,14 @@
         <span class="kw">_</span>,
         MSM_FFADD_N_COLUMNS,
         LookupTableIDs,
-    &gt;(domain, <span class="kw-2">&amp;</span>srs, witness, constraints, <span class="kw-2">&amp;mut </span>rng);
+    &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraint_exprs, proof_inputs, <span class="kw-2">&amp;mut </span>rng);
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
     <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS&gt;(
-        domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof,
+        domain,
+        <span class="kw-2">&amp;</span>srs,
+        <span class="kw-2">&amp;</span>constraint_exprs,
+        <span class="kw-2">&amp;</span>proof,
     );
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)
 }

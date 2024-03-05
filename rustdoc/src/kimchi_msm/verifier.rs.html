@@ -143,8 +143,50 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One, Zero};
+
+<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>kimchi::circuits::expr::{Challenges, Constants, Expr, PolishToken};
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
+<span class="kw">use </span>kimchi::proof::PointEvaluations;
 <span class="kw">use </span>kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 <span class="kw">use </span>mina_poseidon::sponge::ScalarChallenge;
 <span class="kw">use </span>mina_poseidon::FqSponge;
@@ -154,6 +196,7 @@
 };
 <span class="kw">use </span>rand::thread_rng;
 
+<span class="kw">use </span><span class="kw">crate</span>::constraint::MSMExpr;
 <span class="kw">use </span><span class="kw">crate</span>::proof::Proof;
 
 <span class="kw">pub fn </span>verify&lt;
@@ -165,28 +208,36 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
+    constraint_exprs: <span class="kw-2">&amp;</span>Vec&lt;MSMExpr&lt;G::ScalarField&gt;&gt;,
     proof: <span class="kw-2">&amp;</span>Proof&lt;N, G, OpeningProof&gt;,
 ) -&gt; bool {
     <span class="kw">let </span>Proof {
-        commitments,
-        zeta_evaluations,
-        zeta_omega_evaluations,
-        mvlookup_commitments,
-        mvlookup_zeta_evaluations,
-        mvlookup_zeta_omega_evaluations,
+        proof_comms,
+        proof_evals,
         opening_proof,
     } = proof;
 
     <span class="comment">// -- Absorbing the commitments
     </span><span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    commitments
-        .into_iter()
+    proof_comms
+        .witness_comms
+        .cols
+        .iter()
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_commitments) = mvlookup_commitments {
-        mvlookup_commitments
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_comms) = <span class="kw-2">&amp;</span>proof_comms.mvlookup_comms {
+        mvlookup_comms
             .into_iter()
             .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
     }
+
+    <span class="comment">//~ 1. Sample $\alpha'$ with the Fq-Sponge.
+    </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
+    <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
+    <span class="kw">let </span>alpha: G::ScalarField = alpha_chal.to_field(endo_r);
+
+    absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>proof_comms.t_comm);
+
     <span class="comment">// -- Finish absorbing the commitments
 
     // -- Preparing for opening proof verification
@@ -196,86 +247,111 @@
     <span class="kw">let </span>omega = domain.d1.group_gen;
     <span class="kw">let </span>zeta_omega = zeta * omega;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>es: Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; = zeta_evaluations
-        .into_iter()
-        .zip(zeta_omega_evaluations)
-        .map(|(zeta, zeta_omega)| <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]])
-        .collect::&lt;Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt;&gt;();
+    <span class="kw">let </span><span class="kw-2">mut </span>coms_and_evaluations: Vec&lt;Evaluation&lt;<span class="kw">_</span>&gt;&gt; = <span class="macro">vec!</span>[];
 
-    <span class="kw">if </span>mvlookup_commitments.is_some() {
-        <span class="kw">let </span>mvlookup_evals = mvlookup_zeta_evaluations
-            .as_ref()
-            .unwrap()
-            .into_iter()
-            .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap())
-            .map(|(zeta, zeta_omega)| <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega]])
-            .collect::&lt;Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt;&gt;();
-        es.extend(mvlookup_evals);
-    }
+    coms_and_evaluations.extend(
+        proof_comms
+            .witness_comms
+            .cols
+            .iter()
+            .zip(proof_evals.witness_evals.cols.iter())
+            .map(|(commitment, point_eval)| Evaluation {
+                commitment: commitment.clone(),
+                evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[point_eval.zeta], <span class="macro">vec!</span>[point_eval.zeta_omega]],
+            }),
+    );
 
-    <span class="kw">let </span><span class="kw-2">mut </span>evaluations: Vec&lt;Evaluation&lt;<span class="kw">_</span>&gt;&gt; = commitments
-        .into_iter()
-        .zip(zeta_evaluations.into_iter().zip(zeta_omega_evaluations))
-        .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
-            commitment: commitment.clone(),
-            evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_eval], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega_eval]],
-        })
-        .collect();
-
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_commitments) = mvlookup_commitments {
-        evaluations.extend(
-            mvlookup_commitments
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_comms) = <span class="kw-2">&amp;</span>proof_comms.mvlookup_comms {
+        coms_and_evaluations.extend(
+            mvlookup_comms
                 .into_iter()
-                .zip(
-                    mvlookup_zeta_evaluations
-                        .as_ref()
-                        .unwrap()
-                        .into_iter()
-                        .zip(mvlookup_zeta_omega_evaluations.as_ref().unwrap()),
-                )
-                .map(|(commitment, (zeta_eval, zeta_omega_eval))| Evaluation {
+                .zip(proof_evals.mvlookup_evals.as_ref().unwrap())
+                .map(|(commitment, point_eval)| Evaluation {
                     commitment: commitment.clone(),
-                    evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_eval], <span class="macro">vec!</span>[<span class="kw-2">*</span>zeta_omega_eval]],
+                    evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[point_eval.zeta], <span class="macro">vec!</span>[point_eval.zeta_omega]],
                 })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
     }
 
-    <span class="comment">// -- Absorb all evaluations
-    </span><span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
+    <span class="comment">// -- Absorb all coms_and_evaluations
+    </span><span class="kw">let </span>fq_sponge_before_coms_and_evaluations = fq_sponge.clone();
     <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
 
-    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>zeta_evaluations.into_iter().zip(zeta_omega_evaluations) {
-        fr_sponge.absorb(zeta_eval);
-        fr_sponge.absorb(zeta_omega_eval);
+    <span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in </span>proof_evals.witness_evals.cols.iter() {
+        fr_sponge.absorb(zeta);
+        fr_sponge.absorb(zeta_omega);
     }
-    <span class="kw">if </span>mvlookup_commitments.is_some() {
+    <span class="kw">if </span>proof_comms.mvlookup_comms.is_some() {
         <span class="comment">// MVLookup FS
-        </span><span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in
-            </span>mvlookup_zeta_evaluations.as_ref().unwrap().into_iter().zip(
-                mvlookup_zeta_omega_evaluations
-                    .as_ref()
-                    .unwrap()
-                    .into_iter(),
-            )
+        </span><span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in
+            </span>proof_evals.mvlookup_evals.as_ref().unwrap().into_iter()
         {
-            fr_sponge.absorb(zeta_eval);
-            fr_sponge.absorb(zeta_omega_eval);
+            fr_sponge.absorb(zeta);
+            fr_sponge.absorb(zeta_omega);
         }
     };
-    <span class="comment">// -- End absorb all evaluations
+
+    <span class="kw">let </span>ft_comm = {
+        <span class="comment">// TODO zeta or zeta*omega?
+        </span><span class="kw">let </span>evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
+        <span class="kw">let </span>chunked_t_comm = proof_comms
+            .t_comm
+            .chunk_commitment(evaluation_point_to_domain_size);
+        chunked_t_comm.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+    };
+
+    <span class="kw">let </span>challenges = Challenges {
+        alpha,
+        beta: G::ScalarField::zero(),
+        gamma: G::ScalarField::zero(),
+        joint_combiner: <span class="prelude-val">None</span>,
+    };
+
+    <span class="kw">let </span>constants = Constants {
+        endo_coefficient: <span class="kw-2">*</span>endo_r,
+        mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+        zk_rows: <span class="number">0</span>,
+    };
+
+    <span class="kw">let </span>combined_expr =
+        Expr::combine_constraints(<span class="number">0</span>..(constraint_exprs.len() <span class="kw">as </span>u32), constraint_exprs.clone());
+    <span class="kw">let </span>ft_eval0 = -PolishToken::evaluate(
+        combined_expr.to_polish().as_slice(),
+        domain.d1,
+        zeta,
+        proof_evals,
+        <span class="kw-2">&amp;</span>constants,
+        <span class="kw-2">&amp;</span>challenges,
+    )
+    .unwrap();
+
+    coms_and_evaluations.push(Evaluation {
+        commitment: ft_comm,
+        evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[ft_eval0], <span class="macro">vec!</span>[proof_evals.ft_eval1]],
+    });
+
+    fr_sponge.absorb(<span class="kw-2">&amp;</span>proof_evals.ft_eval1);
+    <span class="comment">// -- End absorb all coms_and_evaluations
 
     </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
     <span class="kw">let </span>v = v_chal.to_field(endo_r);
     <span class="kw">let </span>u_chal = fr_sponge.challenge();
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
-    <span class="kw">let </span>combined_inner_product = combined_inner_product(<span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice());
+    <span class="kw">let </span>combined_inner_product = {
+        <span class="kw">let </span>es: Vec&lt;<span class="kw">_</span>&gt; = coms_and_evaluations
+            .iter()
+            .map(|Evaluation { evaluations, .. }| evaluations.clone())
+            .collect();
+
+        combined_inner_product(<span class="kw-2">&amp;</span>v, <span class="kw-2">&amp;</span>u, es.as_slice())
+    };
 
     <span class="kw">let </span>batch = BatchEvaluationProof {
-        sponge: fq_sponge_before_evaluations,
-        evaluations,
+        sponge: fq_sponge_before_coms_and_evaluations,
+        evaluations: coms_and_evaluations,
         evaluation_points: <span class="macro">vec!</span>[zeta, zeta_omega],
         polyscale: v,
         evalscale: u,

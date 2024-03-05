@@ -213,6 +213,30 @@
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -224,6 +248,7 @@
     LookupTableID, MVLookup, MVLookupWitness,
 };
 
+<span class="kw">pub mod </span>column_env;
 <span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraint;
 <span class="doccomment">/// Instantiations of MVLookups for the MSM project
@@ -255,7 +280,7 @@
 <span class="doccomment">/// Number of columns
 /// FIXME: we must move it into the subdirectory of the
 /// foreign field addition circuit
-</span><span class="kw">pub const </span>MSM_FFADD_N_COLUMNS: usize = <span class="number">3 </span>* LIMBS_NUM;
+</span><span class="kw">pub const </span>MSM_FFADD_N_COLUMNS: usize = <span class="number">4 </span>* LIMBS_NUM;
 
 <span class="doccomment">/// The native field we are working with.
 </span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
@@ -308,13 +333,19 @@
         </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
             inputs,
-            constraints,
             <span class="kw-2">&amp;mut </span>rng,
         );
 
         <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            <span class="kw-2">&amp;</span>proof,
+        );
+
         <span class="macro">assert!</span>(verifies);
     }
 
@@ -338,8 +369,8 @@
         </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
             inputs,
-            constraints.clone(),
             <span class="kw-2">&amp;mut </span>rng,
         );
 
@@ -348,8 +379,8 @@
             prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
                 inputs_prime,
-                constraints,
                 <span class="kw-2">&amp;mut </span>rng,
             );
 
@@ -357,8 +388,12 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            <span class="kw">let </span>verifies =
-                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+                domain,
+                <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
+                <span class="kw-2">&amp;</span>proof_clone,
+            );
             <span class="macro">assert!</span>(!verifies);
         }
 
@@ -367,9 +402,13 @@
         // easier when an index trait is implemented.
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
-            proof_clone.commitments = proof_prime.commitments;
-            <span class="kw">let </span>verifies =
-                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
+            proof_clone.proof_comms = proof_prime.proof_comms;
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+                domain,
+                <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
+                <span class="kw-2">&amp;</span>proof_clone,
+            );
             <span class="macro">assert!</span>(!verifies);
         }
 
@@ -379,9 +418,13 @@
         // easier when an index trait is implemented.
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
-            proof_clone.zeta_evaluations = proof_prime.zeta_evaluations;
-            <span class="kw">let </span>verifies =
-                verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof_clone);
+            proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+                domain,
+                <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
+                <span class="kw-2">&amp;</span>proof_clone,
+            );
             <span class="macro">assert!</span>(!verifies);
         }
     }
@@ -417,11 +460,16 @@
         </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
             inputs,
-            constraints,
             <span class="kw-2">&amp;mut </span>rng,
         );
-        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof);
+        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            <span class="kw-2">&amp;</span>proof,
+        );
         <span class="comment">// FIXME: At the moment, it does verify. It should not. We are missing constraints.
         </span><span class="macro">assert!</span>(!verifies);
     }

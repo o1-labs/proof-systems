@@ -187,7 +187,7 @@
 }
 
 <span class="kw">impl </span>GenericColumn <span class="kw">for </span>Column {
-    <span class="kw">fn </span>domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain {
+    <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain {
         <span class="kw">match </span><span class="self">self </span>{
             Column::Index(GateType::Generic) =&gt; Domain::D4,
             Column::Index(GateType::CompleteAdd) =&gt; Domain::D4,

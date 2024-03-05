@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BuilderEnv","WitnessColumnsIndexer"],"type":["MSMExpr"]};
+window.SIDEBAR_ITEMS = {"struct":["MSMCircuitEnv","WitnessColumnsIndexer"],"type":["MSMExpr"]};

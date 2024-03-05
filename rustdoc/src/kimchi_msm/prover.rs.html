@@ -251,18 +251,182 @@
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
 <a href="#251" id="251">251</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup::{prover::Env, LookupProof, LookupTableID};
-<span class="kw">use </span><span class="kw">crate</span>::proof::{Proof, ProofInputs};
-<span class="kw">use </span><span class="kw">crate</span>::witness::Witness;
-<span class="kw">use </span>ark_ff::Zero;
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    column_env::MSMColumnEnvironment,
+    constraint::MSMExpr,
+    mvlookup::{prover::Env, LookupProof, LookupTableID},
+    proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
+    witness::Witness,
+};
+<span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::Evaluations;
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-<span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
+<span class="kw">use </span>kimchi::circuits::expr::{l0_1, Challenges, Constants, Expr};
 <span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
+<span class="kw">use </span>kimchi::proof::PointEvaluations;
 <span class="kw">use </span>kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 <span class="kw">use </span>mina_poseidon::sponge::ScalarChallenge;
 <span class="kw">use </span>mina_poseidon::FqSponge;
+<span class="kw">use </span>o1_utils::ExtendedDensePolynomial;
 <span class="kw">use </span>poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
@@ -272,7 +436,8 @@
 <span class="kw">use </span>rayon::iter::IntoParallelIterator;
 <span class="kw">use </span>rayon::iter::ParallelIterator;
 
-<span class="kw">pub fn </span>prove&lt;
+<span class="attr">#[allow(unreachable_code)]
+</span><span class="kw">pub fn </span>prove&lt;
     G: KimchiCurve,
     OpeningProof: OpenProof&lt;G&gt;,
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
@@ -284,35 +449,47 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
+    constraints: <span class="kw-2">&amp;</span>Vec&lt;MSMExpr&lt;G::ScalarField&gt;&gt;,
     inputs: ProofInputs&lt;N, G, ID&gt;,
-    _constraints: Vec&lt;Expr&lt;ConstantExpr&lt;G::ScalarField&gt;, Column&gt;&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
 ) -&gt; Proof&lt;N, G, OpeningProof&gt;
 <span class="kw">where
     </span>OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
 {
-    <span class="comment">// Interpolate all columns on d1, using trait Into.
-    </span><span class="kw">let </span>evaluations: Witness&lt;N, Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; = inputs
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // Setting up the protocol
+    ////////////////////////////////////////////////////////////////////////////
+
+    </span><span class="kw">let </span>group_map = G::Map::setup();
+
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // Round 1: Creating and absorbing column commitments
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Interpolate all columns on d1, using trait Into.
+    </span><span class="kw">let </span>witness_evals: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = inputs
         .evaluations
         .into_par_iter()
         .map(|evals| {
-            Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(evals, domain.d1)
+            Evaluations::&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
+                evals, domain.d1,
+            )
         })
-        .collect::&lt;Witness&lt;N, Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;();
+        .collect::&lt;Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt;&gt;();
 
-    <span class="kw">let </span>polys: Witness&lt;N, DensePolynomial&lt;G::ScalarField&gt;&gt; = {
+    <span class="kw">let </span>witness_polys: Witness&lt;N, DensePolynomial&lt;G::ScalarField&gt;&gt; = {
         <span class="kw">let </span>interpolate =
-            |evals: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;| evals.interpolate();
-        evaluations
+            |evals: Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;| evals.interpolate();
+        witness_evals
             .into_par_iter()
             .map(interpolate)
             .collect::&lt;Witness&lt;N, DensePolynomial&lt;G::ScalarField&gt;&gt;&gt;()
     };
 
-    <span class="kw">let </span>commitments: Witness&lt;N, PolyComm&lt;G&gt;&gt; = {
+    <span class="kw">let </span>witness_comms: Witness&lt;N, PolyComm&lt;G&gt;&gt; = {
         <span class="kw">let </span>comm = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| srs.commit_non_hiding(poly, <span class="number">1</span>);
-        (<span class="kw-2">&amp;</span>polys)
+        (<span class="kw-2">&amp;</span>witness_polys)
             .into_par_iter()
             .map(comm)
             .collect::&lt;Witness&lt;N, PolyComm&lt;G&gt;&gt;&gt;()
@@ -321,7 +498,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     <span class="comment">// Do not use parallelism
-    </span>(<span class="kw-2">&amp;</span>commitments)
+    </span>(<span class="kw-2">&amp;</span>witness_comms)
         .into_iter()
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
@@ -336,32 +513,162 @@
     } <span class="kw">else </span>{
         <span class="prelude-val">None
     </span>};
+
+    <span class="comment">// Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
+    // FIXME: remove clone
+    </span><span class="kw">let </span>mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+        m: lookup_env.lookup_counters_comm_d1.clone(),
+        h: lookup_env.lookup_terms_comms_d1.clone(),
+        sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+    });
+
     <span class="comment">// -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
 
-    // TODO: add quotient polynomial (based on constraints and expresion framework)
+    // TODO rename this
+    // The evaluations should be at least the degree of our expressions. Higher?
+    // Maybe we can only use d4, we don't have degree-7 gates anyway
+    </span><span class="kw">let </span><span class="kw-2">mut </span>witness_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = <span class="macro">vec!</span>[];
+    <span class="kw">for </span>witness_poly <span class="kw">in </span>(<span class="kw-2">&amp;</span>witness_polys).into_iter() {
+        <span class="kw">let </span>eval = witness_poly.evaluate_over_domain_by_ref(domain.d4);
+        witness_evals_env.push(eval);
+    }
 
-    // We start the evaluations.
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // Round 2: Creating and committing to the quotient polynomial
+    ////////////////////////////////////////////////////////////////////////////
+
+    </span><span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
+
+    <span class="comment">//~ 1. Sample $\alpha'$ with the Fq-Sponge.
+    </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
+
+    <span class="comment">//~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
+    </span><span class="kw">let </span>alpha: G::ScalarField = alpha_chal.to_field(endo_r);
+
+    <span class="comment">// TODO These should be evaluations of fixed coefficient polys
+    </span><span class="kw">let </span>coefficient_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = <span class="macro">vec!</span>[];
+
+    <span class="kw">let </span>column_env = MSMColumnEnvironment {
+        constants: Constants {
+            endo_coefficient: <span class="kw-2">*</span>endo_r,
+            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            zk_rows: <span class="number">0</span>,
+        },
+        challenges: Challenges {
+            alpha,
+            beta: G::ScalarField::zero(),
+            gamma: G::ScalarField::zero(),
+            joint_combiner: <span class="prelude-val">None</span>,
+        },
+        witness: <span class="kw-2">&amp;</span>witness_evals_env,
+        coefficients: <span class="kw-2">&amp;</span>coefficient_evals_env,
+        l0_1: l0_1(domain.d1),
+        lookup: <span class="prelude-val">None</span>,
+        domain,
+    };
+
+    <span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
+        <span class="comment">// TODO FIXME This is only sound if powers of alpha are not used to combine constraints internally!
+        // And they are, so we need to take extra care.
+        </span><span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
+            <span class="macro">assert!</span>(
+                expr.degree(<span class="number">1</span>, <span class="number">0</span>) &lt;= <span class="number">2</span>,
+                <span class="string">"Bad expression of high degree: {:?}, degree={:?}"</span>,
+                expr,
+                expr.degree(<span class="number">1</span>, <span class="number">0</span>)
+            ); <span class="comment">// otherwise we need different t_size
+
+            // Check this expression are witness satisfied
+            </span><span class="kw">let </span>(<span class="kw">_</span>, res) = expr
+                .evaluations(<span class="kw-2">&amp;</span>column_env)
+                .interpolate_by_ref()
+                .divide_by_vanishing_poly(domain.d1)
+                .unwrap();
+            <span class="kw">if </span>!res.is_zero() {
+                <span class="macro">panic!</span>(
+                    <span class="string">"couldn't divide by vanishing polynomial: expression not satisfied: {:?}"</span>,
+                    expr
+                );
+            }
+            <span class="comment">// TODO assert none of expressions contain alpha
+        </span>}
+
+        <span class="kw">let </span>combined_expr =
+            Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
+
+        <span class="comment">// An evaluation of our expression E(vec X) on witness columns
+        // Every witness column w_i(X) is evaluated first at D1, so we get E(vec w_i(X)) = 0?
+        // E(w(X)) = 0 but only over H, so it's 0 evaluated at every {w^i}_{i=1}^N
+        </span><span class="kw">let </span>expr_evaluation: Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt; =
+            combined_expr.evaluations(<span class="kw-2">&amp;</span>column_env);
+
+        <span class="kw">let </span>expr_evaluation_interpolated = expr_evaluation.interpolate();
+
+        <span class="comment">// divide contributions with vanishing polynomial
+        </span><span class="kw">let </span>(quotient, res) = expr_evaluation_interpolated
+            .divide_by_vanishing_poly(domain.d1)
+            .unwrap();
+        <span class="kw">if </span>!res.is_zero() {
+            <span class="macro">panic!</span>(<span class="string">"rest of division by vanishing polynomial"</span>);
+        }
+
+        quotient
+    };
+
+    <span class="comment">//~ 1. commit (hiding) to the quotient polynomial $t$.
+    //
+    // Our constraints are at most degree d2. When divided by
+    // vanishing polynomial, we obtain t(X) of degree d1.
+    </span><span class="kw">let </span>expected_t_size = <span class="number">1</span>;
+    <span class="comment">// Quotient commitment
+    </span><span class="kw">let </span>t_comm = {
+        <span class="kw">let </span>num_chunks = <span class="number">1</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks);
+        <span class="kw">let </span>dummies_n = expected_t_size - t_comm.elems.len();
+        <span class="kw">for _ in </span><span class="number">0</span>..dummies_n {
+            t_comm.elems.push(G::zero());
+        }
+        t_comm
+    };
+
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // Round 3: Evaluations at zeta and zeta_omega
+    ////////////////////////////////////////////////////////////////////////////
+
+    //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+    </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>t_comm);
+
+    <span class="comment">//~ 1. Sample $\zeta'$ with the Fq-Sponge.
     </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
-    <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
-    <span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
-    <span class="kw">let </span>omega = domain.d1.group_gen;
-    <span class="kw">let </span>zeta_omega = zeta * omega;
+
+    <span class="comment">//~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
+    </span><span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
+
+    <span class="kw">let </span>omega = domain.d1.group_gen; <span class="comment">// index.cs.domain.d1.group_gen;
+    </span><span class="kw">let </span>zeta_omega = zeta * omega;
 
     <span class="comment">// Evaluate the polynomials at zeta and zeta * omega -- Columns
-    // TODO: Parallelize
-    </span><span class="kw">let </span>(zeta_evaluations, zeta_omega_evaluations) = {
-        <span class="kw">let </span>evals = |point| {
-            <span class="kw">let </span>Witness { cols: polys } = <span class="kw-2">&amp;</span>polys;
-            <span class="kw">let </span><span class="kw-2">mut </span>evals: [G::ScalarField; N] = [G::ScalarField::zero(); N];
-            <span class="kw">for </span>(i, poly) <span class="kw">in </span>polys.iter().enumerate() {
-                evals[i] = poly.evaluate(point)
-            }
-            Witness { cols: evals }
-        };
-        (evals(<span class="kw-2">&amp;</span>zeta), evals(<span class="kw-2">&amp;</span>zeta_omega))
+
+    // For initializitg arrays. Use MaybeUnitit instead:
+    // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
+    </span><span class="kw">let </span>stub_zero_eval: PointEvaluations&lt;G::ScalarField&gt; = PointEvaluations {
+        zeta: G::ScalarField::zero(),
+        zeta_omega: G::ScalarField::zero(),
     };
-    <span class="kw">let </span>(mvlookup_zeta_evaluations, mvlookup_zeta_omega_evaluations) = {
+    <span class="kw">let </span>witness_evals = {
+        <span class="kw">let </span>Witness { cols } = <span class="kw-2">&amp;</span>witness_polys;
+        <span class="kw">let </span><span class="kw-2">mut </span>new_cols: [<span class="kw">_</span>; N] = [stub_zero_eval; N];
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
+            new_cols[i] = PointEvaluations {
+                zeta: cols[i].evaluate(<span class="kw-2">&amp;</span>zeta),
+                zeta_omega: cols[i].evaluate(<span class="kw-2">&amp;</span>zeta_omega),
+            };
+        }
+        Witness { cols: new_cols }
+    };
+
+    <span class="kw">let </span>mvlookup_evals = {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup_env) = lookup_env {
             <span class="kw">let </span>evals = |point| {
                 <span class="kw">let </span>eval = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate(point);
@@ -374,102 +681,114 @@
                     .map(eval)
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
                 <span class="kw">let </span>sum = eval(<span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_poly_d1);
-                LookupProof { m, h, sum }
+                (m, h, sum)
             };
-            (<span class="prelude-val">Some</span>(evals(<span class="kw-2">&amp;</span>zeta)), <span class="prelude-val">Some</span>(evals(<span class="kw-2">&amp;</span>zeta_omega)))
-        } <span class="kw">else </span>{
-            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
-        }
-    };
-    <span class="comment">// -- Start opening proof - Preparing the Rust structures
-    </span><span class="kw">let </span>group_map = G::Map::setup();
-
-    <span class="comment">// Gathering all polynomials to use in the opening proof
-    </span><span class="kw">let </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polys.into_iter().collect();
-
-    <span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = polynomials
-        .iter()
-        .map(|poly| {
-            (
-                DensePolynomialOrEvaluations::DensePolynomial(poly),
-                PolyComm {
-                    elems: <span class="macro">vec!</span>[G::ScalarField::zero()],
+            <span class="kw">let </span>(m_zeta, h_zeta, sum_zeta) = evals(<span class="kw-2">&amp;</span>zeta);
+            <span class="kw">let </span>(m_zeta_omega, h_zeta_omega, sum_zeta_omega) = evals(<span class="kw-2">&amp;</span>zeta_omega);
+            <span class="prelude-val">Some</span>(LookupProof {
+                m: m_zeta
+                    .into_iter()
+                    .zip(m_zeta_omega)
+                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
+                    .collect(),
+                h: h_zeta
+                    .into_iter()
+                    .zip(h_zeta_omega)
+                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
+                    .collect(),
+                sum: PointEvaluations {
+                    zeta: sum_zeta,
+                    zeta_omega: sum_zeta_omega,
                 },
-            )
-        })
-        .collect();
-    <span class="comment">// Adding MVLookup
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup_env) = lookup_env {
-        <span class="comment">// -- first m(X)
-        </span>polynomials.extend(
-            (<span class="kw-2">&amp;</span>lookup_env.lookup_counters_poly_d1)
-                .into_par_iter()
-                .map(|poly| {
-                    (
-                        DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        PolyComm {
-                            elems: <span class="macro">vec!</span>[G::ScalarField::zero()],
-                        },
-                    )
-                })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-        );
-        <span class="comment">// -- after that f_i and t
-        </span>polynomials.extend(
-            (<span class="kw-2">&amp;</span>lookup_env.lookup_terms_poly_d1)
-                .into_par_iter()
-                .map(|poly| {
-                    (
-                        DensePolynomialOrEvaluations::DensePolynomial(poly),
-                        PolyComm {
-                            elems: <span class="macro">vec!</span>[G::ScalarField::zero()],
-                        },
-                    )
-                })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-        );
-        <span class="comment">// -- after that the running sum
-        </span>polynomials.push((
-            DensePolynomialOrEvaluations::DensePolynomial(<span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_poly_d1),
-            PolyComm {
-                elems: <span class="macro">vec!</span>[G::ScalarField::zero()],
-            },
-        ));
-    }
+            })
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>}
+    };
 
-    <span class="comment">// Fiat Shamir - absorbing evaluations
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // Round 4: Opening proof w/o linearization polynomial
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Fiat Shamir - absorbing evaluations
     </span><span class="kw">let </span>fq_sponge_before_evaluations = fq_sponge.clone();
     <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
 
-    <span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in </span>(<span class="kw-2">&amp;</span>zeta_evaluations)
-        .into_iter()
-        .zip((<span class="kw-2">&amp;</span>zeta_omega_evaluations).into_iter())
-    {
-        fr_sponge.absorb(zeta_eval);
-        fr_sponge.absorb(zeta_omega_eval);
+    <span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in </span>(<span class="kw-2">&amp;</span>witness_evals).into_iter() {
+        fr_sponge.absorb(zeta);
+        fr_sponge.absorb(zeta_omega);
     }
+
     <span class="kw">if </span>lookup_env.is_some() {
-        <span class="comment">// MVLookup FS
-        </span><span class="kw">for </span>(zeta_eval, zeta_omega_eval) <span class="kw">in
-            </span>mvlookup_zeta_evaluations.as_ref().unwrap().into_iter().zip(
-                mvlookup_zeta_omega_evaluations
-                    .as_ref()
-                    .unwrap()
-                    .into_iter(),
-            )
-        {
-            fr_sponge.absorb(zeta_eval);
-            fr_sponge.absorb(zeta_omega_eval);
+        <span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in </span>mvlookup_evals.as_ref().unwrap().into_iter() {
+            fr_sponge.absorb(zeta);
+            fr_sponge.absorb(zeta_omega);
         }
     }
+
+    <span class="comment">// TODO @volhovm I'm suspecting that due to the fact we don't use linearisation polynomial, we
+    // need to evaluate t directly.
+    // ft = (1 - xi^n) (t_0(X) + \xi^n t_1(X))
+    </span><span class="kw">let </span>ft: DensePolynomial&lt;G::ScalarField&gt; = {
+        <span class="kw">let </span>evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
+        <span class="comment">// TODO FIXME a wild guess. The second parameter should be chunk size, so srs size = domain.
+        // t_chunked is t_0(X) + \xi^n t_1(X)
+        // that is of degree n, but recombined.
+        </span><span class="kw">let </span>t_chunked = quotient_poly
+            .to_chunked_polynomial(<span class="number">1</span>, domain.d1.size <span class="kw">as </span>usize)
+            .linearize(evaluation_point_to_domain_size);
+        t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+    };
+
+    <span class="comment">// TODO Maybe we also need to evaluate on zeta? why only zeta omega?
+    </span><span class="kw">let </span>ft_eval1 = ft.evaluate(<span class="kw-2">&amp;</span>zeta_omega);
+
+    <span class="comment">// Absorb ft/t
+    </span>fr_sponge.absorb(<span class="kw-2">&amp;</span>ft_eval1);
 
     <span class="kw">let </span>v_chal = fr_sponge.challenge();
     <span class="kw">let </span>v = v_chal.to_field(endo_r);
     <span class="kw">let </span>u_chal = fr_sponge.challenge();
     <span class="kw">let </span>u = u_chal.to_field(endo_r);
 
-    <span class="kw">let </span>opening_proof = OpenProof::open::&lt;<span class="kw">_</span>, <span class="kw">_</span>, D&lt;G::ScalarField&gt;&gt;(
+    <span class="kw">let </span>coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
+    <span class="kw">let </span>_evaluation_form = |e| DensePolynomialOrEvaluations::Evaluations(e, domain.d1);
+    <span class="kw">let </span>non_hiding = |d1_size| PolyComm {
+        elems: <span class="macro">vec!</span>[G::ScalarField::zero(); d1_size],
+    };
+
+    <span class="comment">// Gathering all polynomials to use in the opening proof
+    </span><span class="kw">let </span><span class="kw-2">mut </span>polynomials: Vec&lt;<span class="kw">_</span>&gt; = (<span class="kw-2">&amp;</span>witness_polys)
+        .into_iter()
+        .map(|poly| (coefficients_form(poly), non_hiding(<span class="number">1</span>)))
+        .collect();
+
+    <span class="comment">// Adding MVLookup
+    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup_env) = lookup_env {
+        <span class="comment">// -- first m(X)
+        </span>polynomials.extend(
+            (<span class="kw-2">&amp;</span>lookup_env.lookup_counters_poly_d1)
+                .into_par_iter()
+                .map(|poly| (coefficients_form(poly), non_hiding(<span class="number">1</span>)))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        );
+        <span class="comment">// -- after that f_i and t
+        </span>polynomials.extend(
+            (<span class="kw-2">&amp;</span>lookup_env.lookup_terms_poly_d1)
+                .into_par_iter()
+                .map(|poly| (coefficients_form(poly), non_hiding(<span class="number">1</span>)))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        );
+        <span class="comment">// -- after that the running sum
+        </span>polynomials.push((
+            coefficients_form(<span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_poly_d1),
+            non_hiding(<span class="number">1</span>),
+        ));
+    }
+    polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>ft), non_hiding(<span class="number">1</span>)));
+
+    <span class="kw">let </span>opening_proof = OpenProof::open::&lt;<span class="kw">_</span>, <span class="kw">_</span>, R2D&lt;G::ScalarField&gt;&gt;(
         srs,
         <span class="kw-2">&amp;</span>group_map,
         polynomials.as_slice(),
@@ -479,26 +798,23 @@
         fq_sponge_before_evaluations,
         rng,
     );
-    <span class="comment">// -- End opening proof - Preparing the structures
 
-    // FIXME: remove clone
-    </span><span class="kw">let </span>mvlookup_commitments = <span class="kw">if let </span><span class="prelude-val">Some</span>(lookup_env) = lookup_env {
-        <span class="prelude-val">Some</span>(LookupProof {
-            m: lookup_env.lookup_counters_comm_d1.clone(),
-            h: lookup_env.lookup_terms_comms_d1.clone(),
-            sum: lookup_env.lookup_aggregation_comm_d1.clone(),
-        })
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
+    <span class="kw">let </span>proof_evals: ProofEvaluations&lt;N, G::ScalarField&gt; = {
+        ProofEvaluations {
+            _public_evals: <span class="prelude-val">None</span>,
+            witness_evals,
+            mvlookup_evals,
+            ft_eval1,
+        }
+    };
 
     Proof {
-        commitments,
-        zeta_evaluations,
-        zeta_omega_evaluations,
-        mvlookup_commitments,
-        mvlookup_zeta_evaluations,
-        mvlookup_zeta_omega_evaluations,
+        proof_comms: ProofCommitments {
+            witness_comms,
+            mvlookup_comms,
+            t_comm,
+        },
+        proof_evals,
         opening_proof,
     }
 }

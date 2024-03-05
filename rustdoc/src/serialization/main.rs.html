@@ -69,6 +69,9 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi_msm::lookups::LookupTableIDs;
 <span class="kw">use </span>kimchi_msm::serialization::{witness, N_INTERMEDIATE_LIMBS};
@@ -130,11 +133,14 @@
         <span class="kw">_</span>,
         SERIALIZATION_N_COLUMNS,
         LookupTableIDs,
-    &gt;(domain, <span class="kw-2">&amp;</span>srs, proof_inputs, _constraints, <span class="kw-2">&amp;mut </span>rng);
+    &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>_constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng);
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
     <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS&gt;(
-        domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>proof,
+        domain,
+        <span class="kw-2">&amp;</span>srs,
+        <span class="kw-2">&amp;</span>_constraints,
+        <span class="kw-2">&amp;</span>proof,
     );
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)
 }
