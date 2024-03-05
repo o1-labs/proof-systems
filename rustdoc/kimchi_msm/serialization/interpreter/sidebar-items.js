@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["InterpreterEnv"]};
+window.SIDEBAR_ITEMS = {"fn":["deserialize_field_element"],"trait":["InterpreterEnv"]};
