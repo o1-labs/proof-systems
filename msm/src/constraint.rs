@@ -7,7 +7,7 @@ use crate::{
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Ff1, Fp, N_LIMBS, MSM_FFADD_N_COLUMNS},
+    {BN254G1Affine, Ff1, Fp, MSM_FFADD_N_COLUMNS, N_LIMBS},
 };
 use kimchi::{
     circuits::{
