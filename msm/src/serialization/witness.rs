@@ -138,14 +138,18 @@ pub fn deserialize_field_element<Fp: Field, Env: InterpreterEnv<Fp>>(
     assert!(limbs[1] < 2u128.pow(88));
     assert!(limbs[2] < 2u128.pow(79));
 
-    env.copy(&input_limb0, kimchi_limbs0);
-    env.copy(&input_limb1, kimchi_limbs1);
+    let limb0_var = env.copy(&input_limb0, kimchi_limbs0);
+    let limb1_var = env.copy(&input_limb1, kimchi_limbs1);
     let limb2_var = env.copy(&input_limb2, kimchi_limbs2);
 
+    let limb2_0_var = {
+        let limb2_0 = Env::get_column_for_intermediate_limb(0);
+        env.bitmask_be(&input_limb2, 4, 0, limb2_0)
+    };
     // Compute individual 4 bits limbs of b2
     {
-        let mut constraint = limb2_var.clone();
-        for j in 0..N_INTERMEDIATE_LIMBS {
+        let mut constraint = limb2_var.clone() - limb2_0_var.clone();
+        for j in 1..N_INTERMEDIATE_LIMBS {
             let position = Env::get_column_for_intermediate_limb(j);
             let var = env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
             let pow: u128 = 1 << (4 * j);
@@ -156,46 +160,119 @@ pub fn deserialize_field_element<Fp: Field, Env: InterpreterEnv<Fp>>(
     }
 
     // FIXME: range check
-    let c0 = Env::get_column_for_msm_limb(0);
-    let c1 = Env::get_column_for_msm_limb(1);
-    let c2 = Env::get_column_for_msm_limb(2);
-    let c3 = Env::get_column_for_msm_limb(3);
-    let c4 = Env::get_column_for_msm_limb(4);
-    let c5 = Env::get_column_for_msm_limb(5);
-
-    env.bitmask_be(&input_limb0, 15, 0, c0);
-    env.bitmask_be(&input_limb0, 30, 15, c1);
-    env.bitmask_be(&input_limb0, 45, 30, c2);
-    env.bitmask_be(&input_limb0, 60, 45, c3);
-    env.bitmask_be(&input_limb0, 75, 60, c4);
-    {
+    let c0_var = {
+        let c0 = Env::get_column_for_msm_limb(0);
+        env.bitmask_be(&input_limb0, 15, 0, c0)
+    };
+    let c1_var = {
+        let c1 = Env::get_column_for_msm_limb(1);
+        env.bitmask_be(&input_limb0, 30, 15, c1)
+    };
+    let c2_var = {
+        let c2 = Env::get_column_for_msm_limb(2);
+        env.bitmask_be(&input_limb0, 45, 30, c2)
+    };
+    let c3_var = {
+        let c3 = Env::get_column_for_msm_limb(3);
+        env.bitmask_be(&input_limb0, 60, 45, c3)
+    };
+    let c4_var = {
+        let c4 = Env::get_column_for_msm_limb(4);
+        env.bitmask_be(&input_limb0, 75, 60, c4)
+    };
+    let c5_var = {
+        let c5 = Env::get_column_for_msm_limb(5);
         let res = (limbs[0] >> 75) & ((1 << (88 - 75)) - 1);
         let res_prime = limbs[1] & ((1 << 2) - 1);
         let res = res + (res_prime << (15 - 2));
-        let res = Env::constant(res.into());
-        env.copy(&res, c5);
-    }
+        let res = Env::constant(Fp::from(res));
+        env.copy(&res, c5)
+    };
 
     // Processing limbs1
     // FIXME: range check
-    let c6 = Env::get_column_for_msm_limb(6);
-    let c7 = Env::get_column_for_msm_limb(7);
-    let c8 = Env::get_column_for_msm_limb(8);
-    let c9 = Env::get_column_for_msm_limb(9);
-    let c10 = Env::get_column_for_msm_limb(10);
-    let c11 = Env::get_column_for_msm_limb(11);
-    env.bitmask_be(&input_limb1, 17, 2, c6);
-    env.bitmask_be(&input_limb1, 32, 17, c7);
-    env.bitmask_be(&input_limb1, 47, 32, c8);
-    env.bitmask_be(&input_limb1, 62, 47, c9);
-    env.bitmask_be(&input_limb1, 77, 62, c10);
-    {
+    let c6_var = {
+        let c6 = Env::get_column_for_msm_limb(6);
+        env.bitmask_be(&input_limb1, 17, 2, c6)
+    };
+    let c7_var = {
+        let c7 = Env::get_column_for_msm_limb(7);
+        env.bitmask_be(&input_limb1, 32, 17, c7)
+    };
+    let c8_var = {
+        let c8 = Env::get_column_for_msm_limb(8);
+        env.bitmask_be(&input_limb1, 47, 32, c8)
+    };
+    let c9_var = {
+        let c9 = Env::get_column_for_msm_limb(9);
+        env.bitmask_be(&input_limb1, 62, 47, c9)
+    };
+    let c10_var = {
+        let c10 = Env::get_column_for_msm_limb(10);
+        env.bitmask_be(&input_limb1, 77, 62, c10)
+    };
+    let c11_var = {
+        let c11 = Env::get_column_for_msm_limb(11);
         let res = (limbs[1] >> 77) & ((1 << (88 - 77)) - 1);
         let res_prime = limbs[2] & ((1 << 4) - 1);
         let res = res + (res_prime << (15 - 4));
         let res = Env::constant(res.into());
-        env.copy(&res, c11);
-    }
+        env.copy(&res, c11)
+    };
+
+    // Unfolding for readability.
+    // IMPROVEME using fold later.
+    // Shift left by 88
+    let shl_88 = Fp::from(1u128 << 88u128);
+    let mut shl_88_var = Env::constant(shl_88);
+
+    // b0 + b1 * 2^88
+    let mut constraint = limb0_var + limb1_var * shl_88_var.clone();
+    // Compute shift by 176
+    shl_88_var = shl_88_var * Env::constant(shl_88);
+
+    // b0 + b1 * 2^88 + b2 * 2^176
+    constraint = constraint + limb2_0_var * shl_88_var;
+
+    // Substract first 15 bit limb
+    // b0 + b1 * 2^88 + b2 * 2^176 - c0
+    constraint = constraint - c0_var;
+
+    // Substract the other decompositions in base 15
+    let mut cst = Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint.clone() - c1_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c2_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c3_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c4_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c5_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c6_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c7_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c8_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c9_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c10_var * cst.clone();
+
+    cst = cst * Env::constant(Fp::from((1 << 15) as u64));
+    constraint = constraint - c11_var * cst.clone();
+
+    env.add_constraint(constraint);
 
     // FIXME: range check
     let c12 = Env::get_column_for_msm_limb(12);

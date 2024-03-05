@@ -50,7 +50,8 @@ impl<F: Field> InterpreterEnv<F> for Env<F> {
         Expr::Atom(ExprInner::Constant(cst_expr_inner))
     }
 
-    /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
+    /// Extract the bits from the variable `x` between `highest_bit` (excluded)
+    /// and `lowest_bit` (included), and store
     /// the result in `position`.
     /// `lowest_bit` becomes the least-significant bit of the resulting value.
     /// The value `x` is expected to be encoded in big-endian
