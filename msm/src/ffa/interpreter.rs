@@ -1,3 +1,4 @@
+use crate::ffa::columns::FFAColumnIndexer;
 use ark_ff::PrimeField;
 
 pub trait FFAInterpreterEnv<Fp: PrimeField> {
@@ -14,4 +15,6 @@ pub trait FFAInterpreterEnv<Fp: PrimeField> {
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     fn constant(value: Fp) -> Self::Variable;
+
+    fn get_column(ix: FFAColumnIndexer) -> Self::Position;
 }

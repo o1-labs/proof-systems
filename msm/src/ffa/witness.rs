@@ -3,7 +3,7 @@ use ark_ff::Zero;
 use num_bigint::BigUint;
 
 use crate::{
-    columns::Column,
+    columns::{Column, ColumnIndexer},
     ffa::{
         columns::{FFAColumnIndexer, FFA_N_COLUMNS},
         interpreter::FFAInterpreterEnv,
@@ -46,6 +46,10 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilder<F> {
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, *x);
         *x
+    }
+
+    fn get_column(ix: FFAColumnIndexer) -> Self::Position {
+        ix.ix_to_column()
     }
 }
 
