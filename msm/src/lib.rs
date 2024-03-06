@@ -56,36 +56,38 @@ pub type OpeningProof = PairingProof<BN254>;
 mod tests {
     use crate::{
         columns::Column,
-        ffa::{columns::FFA_N_COLUMNS, constraint::get_exprs_mul, witness::WitnessBuilder},
+        ffa::{
+            columns::FFA_N_COLUMNS,
+            constraint::ConstraintBuilder as FFAConstraintBuilder,
+            interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
+            witness::WitnessBuilder as FFAWitnessBuilder,
+        },
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
         verifier::verify,
-        BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
-    use rand::{thread_rng, Rng};
+    use rand::{CryptoRng, Rng, RngCore};
 
     // Number of columns
     const N: usize = 10;
 
     // Creates a test witness for a * b = c constraint.
-    fn gen_random_mul_witness(domain_size: usize) -> WitnessBuilder<BN254G1Affine> {
-        let mut witness_builder = WitnessBuilder::<BN254G1Affine>::empty();
-        let mut rng = thread_rng();
-
-        let row_num = domain_size; // Should be perhaps random
-        assert!(row_num <= domain_size);
-
+    fn gen_random_mul_witness<RNG: RngCore + CryptoRng>(
+        witness_env: &mut FFAWitnessBuilder<Fp>,
+        rng: &mut RNG,
+    ) {
+        let row_num = 10;
         for _row_i in 0..row_num {
             let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
             let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-            witness_builder.add_test_multiplication(a, b);
+            ffa_interpreter::test_multiplication(witness_env, a, b);
+            witness_env.next_row();
         }
-
-        witness_builder
     }
 
     #[test]
@@ -103,9 +105,14 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let witness_builder = gen_random_mul_witness(domain_size);
-        let inputs = witness_builder.get_witness();
-        let constraints = get_exprs_mul();
+        let mut witness_env = FFAWitnessBuilder::<Fp>::empty();
+        let mut constraint_env = FFAConstraintBuilder::<Fp>::empty();
+
+        ffa_interpreter::constrain_multiplication(&mut constraint_env);
+        gen_random_mul_witness(&mut witness_env, &mut rng);
+
+        let inputs = witness_env.get_witness(domain_size);
+        let constraints = constraint_env.constraints;
 
         // generate the proof
         let proof = prove::<
@@ -145,9 +152,13 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let witness_builder = gen_random_mul_witness(domain_size);
-        let inputs = witness_builder.get_witness();
-        let constraints = get_exprs_mul();
+        let mut constraint_env = FFAConstraintBuilder::<Fp>::empty();
+        ffa_interpreter::constrain_multiplication(&mut constraint_env);
+        let constraints = constraint_env.constraints;
+
+        let mut witness_env = FFAWitnessBuilder::<Fp>::empty();
+        gen_random_mul_witness(&mut witness_env, &mut rng);
+        let inputs = witness_env.get_witness(domain_size);
 
         // generate the proof
         let proof = prove::<
@@ -162,8 +173,11 @@ mod tests {
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
 
-        let witness_builder_prime = gen_random_mul_witness(domain_size);
-        let inputs_prime = witness_builder_prime.get_witness();
+        let mut witness_env_prime = FFAWitnessBuilder::<Fp>::empty();
+        gen_random_mul_witness(&mut witness_env_prime, &mut rng);
+        let inputs_prime = witness_env_prime.get_witness(domain_size);
+
+        // generate another (prime) proof
         let proof_prime = prove::<
             _,
             OpeningProof,
