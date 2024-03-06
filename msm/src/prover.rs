@@ -131,11 +131,10 @@ where
     // TODO rename this
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
-    let mut witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
-    for witness_poly in (&witness_polys).into_iter() {
-        let eval = witness_poly.evaluate_over_domain_by_ref(domain.d4);
-        witness_evals_env.push(eval);
-    }
+    let witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = (&witness_polys)
+        .into_iter()
+        .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
+        .collect();
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
