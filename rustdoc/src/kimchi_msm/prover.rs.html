@@ -419,15 +419,6 @@
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::MSMColumnEnvironment,
     expr::MSMExpr,
@@ -561,11 +552,10 @@
     // TODO rename this
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
-    </span><span class="kw">let </span><span class="kw-2">mut </span>witness_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = <span class="macro">vec!</span>[];
-    <span class="kw">for </span>witness_poly <span class="kw">in </span>(<span class="kw-2">&amp;</span>witness_polys).into_iter() {
-        <span class="kw">let </span>eval = witness_poly.evaluate_over_domain_by_ref(domain.d4);
-        witness_evals_env.push(eval);
-    }
+    </span><span class="kw">let </span>witness_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = (<span class="kw-2">&amp;</span>witness_polys)
+        .into_iter()
+        .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
+        .collect();
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
@@ -687,23 +677,15 @@
     </span><span class="kw">let </span>zeta_omega = zeta * omega;
 
     <span class="comment">// Evaluate the polynomials at zeta and zeta * omega -- Columns
-
-    // For initializitg arrays. Use MaybeUnitit instead:
-    // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
-    </span><span class="kw">let </span>stub_zero_eval: PointEvaluations&lt;G::ScalarField&gt; = PointEvaluations {
-        zeta: G::ScalarField::zero(),
-        zeta_omega: G::ScalarField::zero(),
-    };
-    <span class="kw">let </span>witness_evals = {
-        <span class="kw">let </span>Witness { cols } = <span class="kw-2">&amp;</span>witness_polys;
-        <span class="kw">let </span><span class="kw-2">mut </span>new_cols: [<span class="kw">_</span>; N] = [stub_zero_eval; N];
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
-            new_cols[i] = PointEvaluations {
-                zeta: cols[i].evaluate(<span class="kw-2">&amp;</span>zeta),
-                zeta_omega: cols[i].evaluate(<span class="kw-2">&amp;</span>zeta_omega),
-            };
-        }
-        Witness { cols: new_cols }
+    </span><span class="kw">let </span>witness_evals: Witness&lt;N, PointEvaluations&lt;<span class="kw">_</span>&gt;&gt; = {
+        <span class="kw">let </span>eval = |p: <span class="kw-2">&amp;</span>DensePolynomial&lt;<span class="kw">_</span>&gt;| PointEvaluations {
+            zeta: p.evaluate(<span class="kw-2">&amp;</span>zeta),
+            zeta_omega: p.evaluate(<span class="kw-2">&amp;</span>zeta_omega),
+        };
+        (<span class="kw-2">&amp;</span>witness_polys)
+            .into_par_iter()
+            .map(eval)
+            .collect::&lt;Witness&lt;N, PointEvaluations&lt;<span class="kw">_</span>&gt;&gt;&gt;()
     };
 
     <span class="kw">let </span>mvlookup_evals = {
