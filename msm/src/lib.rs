@@ -117,7 +117,8 @@ mod tests {
             _,
             FFA_N_COLUMNS,
             LookupTableIDs,
-        >(domain, &srs, &constraints, inputs, &mut rng);
+        >(domain, &srs, &constraints, inputs, &mut rng)
+        .unwrap();
 
         // verify the proof
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
@@ -158,7 +159,8 @@ mod tests {
             _,
             FFA_N_COLUMNS,
             LookupTableIDs,
-        >(domain, &srs, &constraints, inputs, &mut rng);
+        >(domain, &srs, &constraints, inputs, &mut rng)
+        .unwrap();
 
         let witness_builder_prime = gen_random_mul_witness(domain_size);
         let inputs_prime = witness_builder_prime.get_witness();
@@ -171,7 +173,8 @@ mod tests {
             _,
             FFA_N_COLUMNS,
             LookupTableIDs,
-        >(domain, &srs, &constraints, inputs_prime, &mut rng);
+        >(domain, &srs, &constraints, inputs_prime, &mut rng)
+        .unwrap();
 
         // Swap the opening proof. The verification should fail.
         {
@@ -246,13 +249,15 @@ mod tests {
         // Overwriting the first looked up value
         inputs.mvlookups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
-            domain,
-            &srs,
-            &constraints,
-            inputs,
-            &mut rng,
-        );
+        let proof =
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
+                domain,
+                &srs,
+                &constraints,
+                inputs,
+                &mut rng,
+            )
+            .unwrap();
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
             domain,
             &srs,

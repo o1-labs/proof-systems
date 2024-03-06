@@ -9,7 +9,21 @@ use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 use super::interpreter::InterpreterEnv;
 
 pub struct Env<Fp> {
-    pub constraints: Vec<Expr<ConstantExpr<Fp>, Column>>,
+    /// An indexed set of constraints.
+    /// The index can be used to differentiate the constraints used by different
+    /// calls to the interpreter function, and let the callers ordered them for
+    /// folding for instance.
+    pub constraints: Vec<(usize, Expr<ConstantExpr<Fp>, Column>)>,
+    pub constrain_index: usize,
+}
+
+impl<Fp: PrimeField> Env<Fp> {
+    pub fn create() -> Self {
+        Self {
+            constraints: vec![],
+            constrain_index: 0,
+        }
+    }
 }
 
 impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
@@ -18,7 +32,11 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Variable = Expr<ConstantExpr<F>, Column>;
 
     fn add_constraint(&mut self, cst: Self::Variable) {
-        self.constraints.push(cst)
+        // FIXME: We should enforce that we add the same expression
+        // Maybe we could have a digest of the expression
+        let index = self.constrain_index;
+        self.constraints.push((index, cst));
+        self.constrain_index += 1;
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -26,7 +44,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
             col: position,
             row: CurrOrNext::Curr,
         }));
-        self.constraints.push(y.clone() - x.clone());
+        self.add_constraint(y.clone() - x.clone());
         y
     }
 
@@ -46,11 +64,11 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 
     fn range_check15(&mut self, _value: &Self::Variable) {
-        unimplemented!()
+        // TODO
     }
 
     fn range_check4(&mut self, _value: &Self::Variable) {
-        unimplemented!()
+        // TODO
     }
 
     fn constant(value: F) -> Self::Variable {

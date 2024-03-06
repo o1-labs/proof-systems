@@ -54,7 +54,8 @@ pub fn main() {
         _,
         FFA_N_COLUMNS,
         LookupTableIDs,
-    >(domain, &srs, &constraint_exprs, proof_inputs, &mut rng);
+    >(domain, &srs, &constraint_exprs, proof_inputs, &mut rng)
+    .unwrap();
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(

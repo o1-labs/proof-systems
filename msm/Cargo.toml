@@ -39,3 +39,4 @@ ark-ff.workspace = true
 ark-ec.workspace = true
 rand.workspace = true
 rayon.workspace = true
+thiserror.workspace = true

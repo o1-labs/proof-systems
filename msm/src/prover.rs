@@ -24,6 +24,20 @@ use poly_commitment::{
 use rand::{CryptoRng, RngCore};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
+use thiserror::Error;
+
+/// Errors that can arise when creating a proof
+#[derive(Error, Debug, Clone)]
+pub enum ProverError {
+    #[error("the proof could not be constructed: {0}")]
+    Generic(&'static str),
+
+    #[error("the provided (witness) constraints was not satisfied: {0}")]
+    ConstraintNotSatisfied(String),
+
+    #[error("the provided (witness) constraint has degree {0} > allowed {1}; expr: {2}")]
+    ConstraintDegreeTooHigh(u64, u64, String),
+}
 
 #[allow(unreachable_code)]
 pub fn prove<
@@ -41,7 +55,7 @@ pub fn prove<
     constraints: &Vec<MSMExpr<G::ScalarField>>,
     inputs: ProofInputs<N, G, ID>,
     rng: &mut RNG,
-) -> Proof<N, G, OpeningProof>
+) -> Result<Proof<N, G, OpeningProof>, ProverError>
 where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
@@ -117,11 +131,10 @@ where
     // TODO rename this
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
-    let mut witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
-    for witness_poly in (&witness_polys).into_iter() {
-        let eval = witness_poly.evaluate_over_domain_by_ref(domain.d4);
-        witness_evals_env.push(eval);
-    }
+    let witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = (&witness_polys)
+        .into_iter()
+        .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
+        .collect();
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
@@ -161,24 +174,26 @@ where
         // TODO FIXME This is only sound if powers of alpha are not used to combine constraints internally!
         // And they are, so we need to take extra care.
         for expr in constraints.iter() {
-            assert!(
-                expr.degree(1, 0) <= 2,
-                "Bad expression of high degree: {:?}, degree={:?}",
-                expr,
-                expr.degree(1, 0)
-            ); // otherwise we need different t_size
+            // otherwise we need different t_size
+            let expr_degree = expr.degree(1, 0);
+            if expr_degree > 2 {
+                return Err(ProverError::ConstraintDegreeTooHigh(
+                    expr_degree,
+                    2,
+                    format!("{:?}", expr),
+                ));
+            }
 
+            let fail_q_division =
+                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
             // Check this expression are witness satisfied
             let (_, res) = expr
                 .evaluations(&column_env)
                 .interpolate_by_ref()
                 .divide_by_vanishing_poly(domain.d1)
-                .unwrap();
+                .ok_or(fail_q_division.clone())?;
             if !res.is_zero() {
-                panic!(
-                    "couldn't divide by vanishing polynomial: expression not satisfied: {:?}",
-                    expr
-                );
+                return Err(fail_q_division);
             }
             // TODO assert none of expressions contain alpha
         }
@@ -195,11 +210,14 @@ where
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
 
         // divide contributions with vanishing polynomial
+        let fail_final_q_division = || {
+            panic!("Division by vanishing poly must not fail at this point, we checked it before")
+        };
         let (quotient, res) = expr_evaluation_interpolated
             .divide_by_vanishing_poly(domain.d1)
-            .unwrap();
+            .unwrap_or_else(fail_final_q_division);
         if !res.is_zero() {
-            panic!("rest of division by vanishing polynomial");
+            fail_final_q_division();
         }
 
         quotient
@@ -238,23 +256,15 @@ where
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at zeta and zeta * omega -- Columns
-
-    // For initializitg arrays. Use MaybeUnitit instead:
-    // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
-    let stub_zero_eval: PointEvaluations<G::ScalarField> = PointEvaluations {
-        zeta: G::ScalarField::zero(),
-        zeta_omega: G::ScalarField::zero(),
-    };
-    let witness_evals = {
-        let Witness { cols } = &witness_polys;
-        let mut new_cols: [_; N] = [stub_zero_eval; N];
-        for i in 0..N {
-            new_cols[i] = PointEvaluations {
-                zeta: cols[i].evaluate(&zeta),
-                zeta_omega: cols[i].evaluate(&zeta_omega),
-            };
-        }
-        Witness { cols: new_cols }
+    let witness_evals: Witness<N, PointEvaluations<_>> = {
+        let eval = |p: &DensePolynomial<_>| PointEvaluations {
+            zeta: p.evaluate(&zeta),
+            zeta_omega: p.evaluate(&zeta_omega),
+        };
+        (&witness_polys)
+            .into_par_iter()
+            .map(eval)
+            .collect::<Witness<N, PointEvaluations<_>>>()
     };
 
     let mvlookup_evals = {
@@ -397,7 +407,7 @@ where
         }
     };
 
-    Proof {
+    Ok(Proof {
         proof_comms: ProofCommitments {
             witness_comms,
             mvlookup_comms,
@@ -405,5 +415,5 @@ where
         },
         proof_evals,
         opening_proof,
-    }
+    })
 }
