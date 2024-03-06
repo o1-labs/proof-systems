@@ -67,9 +67,6 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>rand::{thread_rng, Rng};
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -115,9 +112,6 @@
     <span class="kw">let </span>circuit_env = generate_random_msm_witness();
     <span class="kw">let </span>proof_inputs = circuit_env.get_witness();
     <span class="kw">let </span>constraint_exprs = get_exprs_add();
-
-    <span class="macro">println!</span>(<span class="string">"Proof inputs: {:?}"</span>, proof_inputs);
-    <span class="macro">println!</span>(<span class="string">"Constraints: {:?}"</span>, constraint_exprs);
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
     <span class="kw">let </span>proof = prove::&lt;
