@@ -265,6 +265,11 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -384,7 +389,8 @@
             <span class="kw">_</span>,
             FFA_N_COLUMNS,
             LookupTableIDs,
-        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng);
+        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng)
+        .unwrap();
 
         <span class="comment">// verify the proof
         </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
@@ -425,7 +431,8 @@
             <span class="kw">_</span>,
             FFA_N_COLUMNS,
             LookupTableIDs,
-        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng);
+        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng)
+        .unwrap();
 
         <span class="kw">let </span>witness_builder_prime = gen_random_mul_witness(domain_size);
         <span class="kw">let </span>inputs_prime = witness_builder_prime.get_witness();
@@ -438,7 +445,8 @@
             <span class="kw">_</span>,
             FFA_N_COLUMNS,
             LookupTableIDs,
-        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs_prime, <span class="kw-2">&amp;mut </span>rng);
+        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs_prime, <span class="kw-2">&amp;mut </span>rng)
+        .unwrap();
 
         <span class="comment">// Swap the opening proof. The verification should fail.
         </span>{
@@ -513,13 +521,15 @@
         <span class="comment">// Overwriting the first looked up value
         </span>inputs.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
-            domain,
-            <span class="kw-2">&amp;</span>srs,
-            <span class="kw-2">&amp;</span>constraints,
-            inputs,
-            <span class="kw-2">&amp;mut </span>rng,
-        );
+        </span><span class="kw">let </span>proof =
+            prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
+                domain,
+                <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
+                inputs,
+                <span class="kw-2">&amp;mut </span>rng,
+            )
+            .unwrap();
         <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,

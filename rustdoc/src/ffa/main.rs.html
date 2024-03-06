@@ -67,6 +67,7 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>rand::{thread_rng, Rng};
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -123,7 +124,8 @@
         <span class="kw">_</span>,
         FFA_N_COLUMNS,
         LookupTableIDs,
-    &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraint_exprs, proof_inputs, <span class="kw-2">&amp;mut </span>rng);
+    &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraint_exprs, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
+    .unwrap();
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
     <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
