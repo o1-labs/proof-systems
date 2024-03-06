@@ -44,9 +44,6 @@ pub fn main() {
     let proof_inputs = circuit_env.get_witness();
     let constraint_exprs = get_exprs_add();
 
-    println!("Proof inputs: {:?}", proof_inputs);
-    println!("Constraints: {:?}", constraint_exprs);
-
     println!("Generating the proof");
     let proof = prove::<
         _,

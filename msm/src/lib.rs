@@ -56,18 +56,37 @@ pub type OpeningProof = PairingProof<BN254>;
 mod tests {
     use crate::{
         columns::Column,
+        ffa::{columns::FFA_N_COLUMNS, constraint::get_exprs_mul, witness::WitnessBuilder},
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
         verifier::verify,
-        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
+        BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
+    use rand::{thread_rng, Rng};
 
     // Number of columns
     const N: usize = 10;
+
+    // Creates a test witness for a * b = c constraint.
+    fn gen_random_mul_witness(domain_size: usize) -> WitnessBuilder<BN254G1Affine> {
+        let mut witness_builder = WitnessBuilder::<BN254G1Affine>::empty();
+        let mut rng = thread_rng();
+
+        let row_num = domain_size; // Should be perhaps random
+        assert!(row_num <= domain_size);
+
+        for _row_i in 0..row_num {
+            let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+            let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+            witness_builder.add_test_multiplication(a, b);
+        }
+
+        witness_builder
+    }
 
     #[test]
     fn test_completeness() {
@@ -84,20 +103,24 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let inputs = ProofInputs::random(domain);
-        let constraints: Vec<_> = vec![];
+        let witness_builder = gen_random_mul_witness(domain_size);
+        let inputs = witness_builder.get_witness();
+        let constraints = get_exprs_mul();
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
-            domain,
-            &srs,
-            &constraints,
-            inputs,
-            &mut rng,
-        );
+        let proof = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            FFA_N_COLUMNS,
+            LookupTableIDs,
+        >(domain, &srs, &constraints, inputs, &mut rng);
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
             domain,
             &srs,
             &constraints,
@@ -121,32 +144,40 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let inputs = ProofInputs::random(domain);
-        let constraints = vec![];
-        // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
-            domain,
-            &srs,
-            &constraints,
-            inputs,
-            &mut rng,
-        );
+        let witness_builder = gen_random_mul_witness(domain_size);
+        let inputs = witness_builder.get_witness();
+        let constraints = get_exprs_mul();
 
-        let inputs_prime = ProofInputs::random(domain);
-        let proof_prime =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
-                domain,
-                &srs,
-                &constraints,
-                inputs_prime,
-                &mut rng,
-            );
+        // generate the proof
+        let proof = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            FFA_N_COLUMNS,
+            LookupTableIDs,
+        >(domain, &srs, &constraints, inputs, &mut rng);
+
+        let witness_builder_prime = gen_random_mul_witness(domain_size);
+        let inputs_prime = witness_builder_prime.get_witness();
+        let proof_prime = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            FFA_N_COLUMNS,
+            LookupTableIDs,
+        >(domain, &srs, &constraints, inputs_prime, &mut rng);
 
         // Swap the opening proof. The verification should fail.
         {
             let mut proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
@@ -161,7 +192,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_comms = proof_prime.proof_comms;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
@@ -177,7 +208,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
