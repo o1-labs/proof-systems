@@ -8,6 +8,7 @@ use kimchi_msm::columns::Column;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::proof::ProofInputs;
 use kimchi_msm::prover::prove;
+use kimchi_msm::serialization::constraints;
 use kimchi_msm::serialization::interpreter::deserialize_field_element;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N_LIMBS};
@@ -31,6 +32,7 @@ pub fn main() {
 
     // FIXME: this could be read from a file or a CLI argument
     let field_elements = [[0, 0, 0]];
+    let mut constraints = vec![];
     for limbs in field_elements {
         // Witness
         deserialize_field_element(&mut witness_env, limbs);
@@ -46,13 +48,23 @@ pub fn main() {
 
         // Constraints
         deserialize_field_element(&mut constraint_env, limbs);
+        // FIXME: do not use clone.
+        // FIXME: this is ugly, but only to make it work for now.
+        // It does suppose the same constraint aalways have the same index.
+        // Totally wrong assumption according to the current env implementation.
+        for (idx, cst) in constraint_env.constraints.iter() {
+            if *idx >= constraints.len() {
+                constraints.push(cst.clone())
+            }
+        }
     }
 
-    let _constraints = vec![];
     let proof_inputs = ProofInputs {
         evaluations: witness,
         mvlookups: vec![],
     };
+
+    println!("Number of constraints: {}", constraints.len());
 
     println!("Generating the proof");
     let proof = prove::<
@@ -64,13 +76,13 @@ pub fn main() {
         _,
         SERIALIZATION_N_COLUMNS,
         LookupTableIDs,
-    >(domain, &srs, &_constraints, proof_inputs, &mut rng);
+    >(domain, &srs, &constraints, proof_inputs, &mut rng);
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS>(
         domain,
         &srs,
-        &_constraints,
+        &constraints,
         &proof,
     );
     println!("Proof verification result: {verifies}")
