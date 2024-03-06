@@ -559,7 +559,7 @@ fn test_public_input_only_prover() {
     type ScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
     let seed: [u8; 32] = thread_rng().gen();
-    eprintln!("Seed: {:?}", seed);
+    eprintln!("Seed: {seed:?}");
     let mut rng = StdRng::from_seed(seed);
 
     let start = Instant::now();
@@ -588,10 +588,10 @@ fn test_public_input_only_prover() {
     );
 
     let public_inputs = vec![
-        Fq::from(5u64),
-        Fq::from(10u64),
-        Fq::from(15u64),
-        Fq::from(20u64),
+        From::from(rng.gen_range(0..(1 << 4))),
+        From::from(rng.gen_range(0..(1 << 4))),
+        From::from(rng.gen_range(0..(1 << 4))),
+        From::from(rng.gen_range(0..(1 << 4))),
     ];
 
     let start = Instant::now();
