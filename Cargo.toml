@@ -79,6 +79,7 @@ groupmap = { path = "./groupmap", version = "0.1.0" }
 internal-tracing = { path = "./internal-tracing", version = "0.1.0" }
 kimchi = { path = "./kimchi", version = "0.1.0", features = ["bn254"] }
 kimchi-visu = { path = "./tools/kimchi-visu", version = "0.1.0" }
+kimchi-msm = { path = "./msm", version = "0.1.0" }
 mina-curves = { path = "./curves", version = "0.1.0" }
 mina-hasher = { path = "./hasher", version = "0.1.0" }
 mina-poseidon = { path = "./poseidon", version = "0.1.0" }
