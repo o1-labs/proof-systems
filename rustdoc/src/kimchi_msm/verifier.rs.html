@@ -177,10 +177,6 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One, Zero};
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -219,10 +215,8 @@
 
     <span class="comment">// -- Absorbing the commitments
     </span><span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    proof_comms
-        .witness_comms
-        .cols
-        .iter()
+    (<span class="kw-2">&amp;</span>proof_comms.witness_comms)
+        .into_iter()
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_comms) = <span class="kw-2">&amp;</span>proof_comms.mvlookup_comms {
@@ -250,11 +244,9 @@
     <span class="kw">let </span><span class="kw-2">mut </span>coms_and_evaluations: Vec&lt;Evaluation&lt;<span class="kw">_</span>&gt;&gt; = <span class="macro">vec!</span>[];
 
     coms_and_evaluations.extend(
-        proof_comms
-            .witness_comms
-            .cols
-            .iter()
-            .zip(proof_evals.witness_evals.cols.iter())
+        (<span class="kw-2">&amp;</span>proof_comms.witness_comms)
+            .into_iter()
+            .zip(<span class="kw-2">&amp;</span>proof_evals.witness_evals)
             .map(|(commitment, point_eval)| Evaluation {
                 commitment: commitment.clone(),
                 evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[point_eval.zeta], <span class="macro">vec!</span>[point_eval.zeta_omega]],
@@ -279,7 +271,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(<span class="kw-2">&amp;</span>fq_sponge.digest());
 
-    <span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in </span>proof_evals.witness_evals.cols.iter() {
+    <span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in </span>(<span class="kw-2">&amp;</span>proof_evals.witness_evals).into_iter() {
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
