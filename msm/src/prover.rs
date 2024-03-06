@@ -256,23 +256,15 @@ where
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at zeta and zeta * omega -- Columns
-
-    // For initializitg arrays. Use MaybeUnitit instead:
-    // https://doc.rust-lang.org/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element
-    let stub_zero_eval: PointEvaluations<G::ScalarField> = PointEvaluations {
-        zeta: G::ScalarField::zero(),
-        zeta_omega: G::ScalarField::zero(),
-    };
-    let witness_evals = {
-        let Witness { cols } = &witness_polys;
-        let mut new_cols: [_; N] = [stub_zero_eval; N];
-        for i in 0..N {
-            new_cols[i] = PointEvaluations {
-                zeta: cols[i].evaluate(&zeta),
-                zeta_omega: cols[i].evaluate(&zeta_omega),
-            };
-        }
-        Witness { cols: new_cols }
+    let witness_evals: Witness<N, PointEvaluations<_>> = {
+        let eval = |p: &DensePolynomial<_>| PointEvaluations {
+            zeta: p.evaluate(&zeta),
+            zeta_omega: p.evaluate(&zeta_omega),
+        };
+        (&witness_polys)
+            .into_par_iter()
+            .map(eval)
+            .collect::<Witness<N, PointEvaluations<_>>>()
     };
 
     let mvlookup_evals = {
