@@ -12,6 +12,7 @@ use kimchi_msm::serialization::constraints;
 use kimchi_msm::serialization::interpreter::deserialize_field_element;
 use kimchi_msm::verifier::verify;
 use kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N_LIMBS};
+use rand::Rng as _;
 
 const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + N_LIMBS;
 
@@ -31,7 +32,12 @@ pub fn main() {
     };
 
     // FIXME: this could be read from a file or a CLI argument
-    let field_elements = [[0, 0, 0]];
+    let field_elements = [[
+        rng.gen_range(0..1000),
+        rng.gen_range(0..1000),
+        rng.gen_range(0..1000),
+    ]];
+
     let mut constraints = vec![];
     for limbs in field_elements {
         // Witness
