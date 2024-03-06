@@ -11,7 +11,7 @@ pub use mvlookup::{
 
 pub mod column_env;
 pub mod columns;
-pub mod constraint;
+pub mod expr;
 /// Instantiations of MVLookups for the MSM project
 pub mod lookups;
 /// Generic definitions of MVLookups
@@ -19,9 +19,11 @@ pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
-pub mod serialization;
 pub mod verifier;
 pub mod witness;
+
+pub mod ffa;
+pub mod serialization;
 
 /// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;
@@ -32,16 +34,11 @@ pub const LIMB_BITSIZE: usize = 15;
 
 /// Number of limbs representing one foreign field element (either
 /// [`Ff1`] or [`Ff2`]).
-pub const LIMBS_NUM: usize = 17;
+pub const N_LIMBS: usize = 17;
 
 pub type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
 pub type BN254G1Affine = <BN254 as ark_ec::PairingEngine>::G1Affine;
 pub type BN254G2Affine = <BN254 as ark_ec::PairingEngine>::G2Affine;
-
-/// Number of columns
-/// FIXME: we must move it into the subdirectory of the
-/// foreign field addition circuit
-pub const MSM_FFADD_N_COLUMNS: usize = 4 * LIMBS_NUM;
 
 /// The native field we are working with.
 pub type Fp = ark_bn254::Fr;
@@ -59,12 +56,12 @@ pub type OpeningProof = PairingProof<BN254>;
 mod tests {
     use crate::{
         columns::Column,
-        constraint::MSMCircuitEnv,
+        ffa::{columns::FFA_N_COLUMNS, constraint::get_exprs_mul, witness::WitnessBuilder},
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
         verifier::verify,
-        BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, MSM_FFADD_N_COLUMNS,
+        BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
@@ -75,8 +72,8 @@ mod tests {
     const N: usize = 10;
 
     // Creates a test witness for a * b = c constraint.
-    fn gen_random_mul_witness(domain_size: usize) -> MSMCircuitEnv<BN254G1Affine> {
-        let mut circuit_env = MSMCircuitEnv::<BN254G1Affine>::empty();
+    fn gen_random_mul_witness(domain_size: usize) -> WitnessBuilder<BN254G1Affine> {
+        let mut witness_builder = WitnessBuilder::<BN254G1Affine>::empty();
         let mut rng = thread_rng();
 
         let row_num = domain_size; // Should be perhaps random
@@ -85,10 +82,10 @@ mod tests {
         for _row_i in 0..row_num {
             let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
             let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-            circuit_env.add_test_multiplication(a, b);
+            witness_builder.add_test_multiplication(a, b);
         }
 
-        circuit_env
+        witness_builder
     }
 
     #[test]
@@ -106,9 +103,9 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let circuit_env = gen_random_mul_witness(domain_size);
-        let inputs = circuit_env.get_witness();
-        let constraints = circuit_env.get_exprs_mul();
+        let witness_builder = gen_random_mul_witness(domain_size);
+        let inputs = witness_builder.get_witness();
+        let constraints = get_exprs_mul();
 
         // generate the proof
         let proof = prove::<
@@ -118,12 +115,12 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            MSM_FFADD_N_COLUMNS,
+            FFA_N_COLUMNS,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs, &mut rng);
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
             domain,
             &srs,
             &constraints,
@@ -147,9 +144,9 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let circuit_env = gen_random_mul_witness(domain_size);
-        let inputs = circuit_env.get_witness();
-        let constraints = circuit_env.get_exprs_mul();
+        let witness_builder = gen_random_mul_witness(domain_size);
+        let inputs = witness_builder.get_witness();
+        let constraints = get_exprs_mul();
 
         // generate the proof
         let proof = prove::<
@@ -159,12 +156,12 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            MSM_FFADD_N_COLUMNS,
+            FFA_N_COLUMNS,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs, &mut rng);
 
-        let circuit_env_prime = gen_random_mul_witness(domain_size);
-        let inputs_prime = circuit_env_prime.get_witness();
+        let witness_builder_prime = gen_random_mul_witness(domain_size);
+        let inputs_prime = witness_builder_prime.get_witness();
         let proof_prime = prove::<
             _,
             OpeningProof,
@@ -172,7 +169,7 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            MSM_FFADD_N_COLUMNS,
+            FFA_N_COLUMNS,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs_prime, &mut rng);
 
@@ -180,7 +177,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
@@ -195,7 +192,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_comms = proof_prime.proof_comms;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
@@ -211,7 +208,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, MSM_FFADD_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
