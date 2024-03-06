@@ -76,7 +76,8 @@ pub fn main() {
         _,
         SERIALIZATION_N_COLUMNS,
         LookupTableIDs,
-    >(domain, &srs, &constraints, proof_inputs, &mut rng);
+    >(domain, &srs, &constraints, proof_inputs, &mut rng)
+    .unwrap();
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS>(
