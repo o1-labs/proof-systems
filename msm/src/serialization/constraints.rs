@@ -44,7 +44,10 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
             col: position,
             row: CurrOrNext::Curr,
         }));
-        self.add_constraint(y.clone() - x.clone());
+        let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(F::from(42 as u32)));
+        let f = Expr::Atom(ExprInner::Constant(cst_expr_inner));
+        self.add_constraint(y.clone() - f * x.clone());
+        // self.add_constraint(y.clone() - x.clone());
         y
     }
 
