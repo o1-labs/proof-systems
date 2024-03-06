@@ -58,9 +58,9 @@ mod tests {
         columns::Column,
         ffa::{
             columns::FFA_N_COLUMNS,
-            constraint::ConstraintBuilder as FFAConstraintBuilder,
+            constraint::ConstraintBuilderEnv as FFAConstraintBuilderEnv,
             interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
-            witness::WitnessBuilder as FFAWitnessBuilder,
+            witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
         },
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
@@ -78,7 +78,7 @@ mod tests {
 
     // Creates a test witness for a * b = c constraint.
     fn gen_random_mul_witness<RNG: RngCore + CryptoRng>(
-        witness_env: &mut FFAWitnessBuilder<Fp>,
+        witness_env: &mut FFAWitnessBuilderEnv<Fp>,
         rng: &mut RNG,
     ) {
         let row_num = 10;
@@ -105,8 +105,8 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let mut witness_env = FFAWitnessBuilder::<Fp>::empty();
-        let mut constraint_env = FFAConstraintBuilder::<Fp>::empty();
+        let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
+        let mut constraint_env = FFAConstraintBuilderEnv::<Fp>::empty();
 
         ffa_interpreter::constrain_multiplication(&mut constraint_env);
         gen_random_mul_witness(&mut witness_env, &mut rng);
@@ -152,11 +152,11 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let mut constraint_env = FFAConstraintBuilder::<Fp>::empty();
+        let mut constraint_env = FFAConstraintBuilderEnv::<Fp>::empty();
         ffa_interpreter::constrain_multiplication(&mut constraint_env);
         let constraints = constraint_env.constraints;
 
-        let mut witness_env = FFAWitnessBuilder::<Fp>::empty();
+        let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
         gen_random_mul_witness(&mut witness_env, &mut rng);
         let inputs = witness_env.get_witness(domain_size);
 
@@ -173,7 +173,7 @@ mod tests {
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
 
-        let mut witness_env_prime = FFAWitnessBuilder::<Fp>::empty();
+        let mut witness_env_prime = FFAWitnessBuilderEnv::<Fp>::empty();
         gen_random_mul_witness(&mut witness_env_prime, &mut rng);
         let inputs_prime = witness_env_prime.get_witness(domain_size);
 

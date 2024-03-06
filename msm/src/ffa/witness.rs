@@ -15,19 +15,19 @@ use crate::{
 
 #[allow(dead_code)]
 /// Builder environment for a native group `G`.
-pub struct WitnessBuilder<F: PrimeField> {
+pub struct WitnessBuilderEnv<F: PrimeField> {
     /// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
     witness: Vec<Witness<FFA_N_COLUMNS, F>>,
 }
 
-impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilder<F> {
+impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
     type Position = Column;
 
     type Variable = F;
 
     fn empty() -> Self {
-        WitnessBuilder {
+        WitnessBuilderEnv {
             witness: vec![Witness {
                 cols: [Zero::zero(); FFA_N_COLUMNS],
             }],
@@ -65,7 +65,7 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilder<F> {
     }
 }
 
-impl WitnessBuilder<Fp> {
+impl WitnessBuilderEnv<Fp> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).

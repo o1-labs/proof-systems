@@ -10,17 +10,17 @@ use kimchi::circuits::{
 };
 
 /// Contains constraints for just one row.
-pub struct ConstraintBuilder<F> {
+pub struct ConstraintBuilderEnv<F> {
     pub constraints: Vec<MSMExpr<F>>,
 }
 
-impl<F: PrimeField> FFAInterpreterEnv<F> for ConstraintBuilder<F> {
+impl<F: PrimeField> FFAInterpreterEnv<F> for ConstraintBuilderEnv<F> {
     type Position = Column;
 
     type Variable = MSMExpr<F>;
 
     fn empty() -> Self {
-        ConstraintBuilder {
+        ConstraintBuilderEnv {
             constraints: vec![],
         }
     }

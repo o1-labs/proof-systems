@@ -6,9 +6,9 @@ use poly_commitment::pairing_proof::PairingSRS;
 use kimchi_msm::columns::Column;
 use kimchi_msm::ffa::{
     columns::FFA_N_COLUMNS,
-    constraint::ConstraintBuilder as FFAConstraintBuilder,
+    constraint::ConstraintBuilderEnv as FFAConstraintBuilderEnv,
     interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
-    witness::WitnessBuilder as FFAWitnessBuilder,
+    witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
 };
 use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
@@ -26,8 +26,8 @@ pub fn main() {
 
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-    let mut witness_env = FFAWitnessBuilder::<Fp>::empty();
-    let mut constraint_env = FFAConstraintBuilder::<Fp>::empty();
+    let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
+    let mut constraint_env = FFAConstraintBuilderEnv::<Fp>::empty();
 
     ffa_interpreter::constrain_multiplication(&mut constraint_env);
 
