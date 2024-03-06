@@ -11,6 +11,7 @@ use ark_ff::{Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use poly_commitment::SRS;
 
+/// This type refers to the two instances to be folded
 #[derive(Clone, Copy)]
 pub enum Side {
     Left = 0,
