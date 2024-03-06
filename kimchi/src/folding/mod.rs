@@ -203,7 +203,7 @@ pub trait FoldingEnv<F, I, W, Col, Chal> {
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
     // TODO: could be shared across circuits of the same type
-    /// Returns the evaluations of the i-th lagrangian term.
+    /// Returns the evaluations of the i-th Lagrangian term.
     fn lagrange_basis(&self, i: usize) -> &Vec<F>;
 
     /// Obtains a given challenge from the expanded instance for one side.
