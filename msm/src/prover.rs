@@ -132,7 +132,7 @@ where
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
     let witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = (&witness_polys)
-        .into_iter()
+        .into_par_iter()
         .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
         .collect();
 
@@ -359,7 +359,7 @@ where
 
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = (&witness_polys)
-        .into_iter()
+        .into_par_iter()
         .map(|poly| (coefficients_form(poly), non_hiding(1)))
         .collect();
 
