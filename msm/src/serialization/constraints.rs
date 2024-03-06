@@ -64,11 +64,11 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 
     fn range_check15(&mut self, _value: &Self::Variable) {
-        unimplemented!()
+        // TODO
     }
 
     fn range_check4(&mut self, _value: &Self::Variable) {
-        unimplemented!()
+        // TODO
     }
 
     fn constant(value: F) -> Self::Variable {
