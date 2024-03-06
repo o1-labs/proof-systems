@@ -90,6 +90,12 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi_msm::lookups::LookupTableIDs;
 <span class="kw">use </span>kimchi_msm::serialization::{witness, N_INTERMEDIATE_LIMBS};
@@ -104,6 +110,7 @@
 <span class="kw">use </span>kimchi_msm::serialization::interpreter::deserialize_field_element;
 <span class="kw">use </span>kimchi_msm::verifier::verify;
 <span class="kw">use </span>kimchi_msm::{BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE, N_LIMBS};
+<span class="kw">use </span>rand::Rng <span class="kw">as _</span>;
 
 <span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ N_INTERMEDIATE_LIMBS + N_LIMBS;
 
@@ -123,7 +130,12 @@
     };
 
     <span class="comment">// FIXME: this could be read from a file or a CLI argument
-    </span><span class="kw">let </span>field_elements = [[<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]];
+    </span><span class="kw">let </span>field_elements = [[
+        rng.gen_range(<span class="number">0</span>..<span class="number">1000</span>),
+        rng.gen_range(<span class="number">0</span>..<span class="number">1000</span>),
+        rng.gen_range(<span class="number">0</span>..<span class="number">1000</span>),
+    ]];
+
     <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
     <span class="kw">for </span>limbs <span class="kw">in </span>field_elements {
         <span class="comment">// Witness
