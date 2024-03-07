@@ -16,10 +16,6 @@ path = "src/lib.rs"
 name = "ffa"
 path = "src/ffa/main.rs"
 
-[[bin]]
-name = "serialization"
-path = "src/serialization/main.rs"
-
 [dependencies]
 ark-bn254.workspace = true
 ark-serialize.workspace = true
