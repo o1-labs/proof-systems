@@ -63,6 +63,14 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
             cols: [Zero::zero(); FFA_N_COLUMNS],
         });
     }
+
+    fn range_check_abs1(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
+
+    fn range_check_15bit(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
 }
 
 impl WitnessBuilderEnv<Fp> {

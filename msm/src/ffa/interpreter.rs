@@ -24,6 +24,12 @@ pub trait FFAInterpreterEnv<F: PrimeField> {
 
     fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable;
 
+    /// Checks |x| = 1, that is x ∈ {-1,0,1}
+    fn range_check_abs1(&mut self, value: &Self::Variable);
+
+    /// Checks input x ∈ [0,2^15)
+    fn range_check_15bit(&mut self, value: &Self::Variable);
+
     /// In constraint environment does nothing (?). In witness environment progresses to the next row.
     fn next_row(&mut self);
 }
@@ -117,10 +123,14 @@ pub fn test_addition<F: PrimeField, Env: FFAInterpreterEnv<F>>(env: &mut Env, a:
 }
 
 // For now this function does not /compute/ anything, although it could.
-/// Constraint for one row of FF addition.
+/// Constraint for one row of FF addition:
+///
 /// - First:        a_0 + b_0 - q * f_0 - r_0 - c_0 * 2^{15} = 0
 /// - Intermediate: a_i + b_i - q * f_i - r_i - c_i * 2^{15} + c_{i-1} = 0
 /// - Last (n=16):  a_n + b_n - q * f_n - r_n                + c_{n-1} = 0
+///
+/// q, c_i ∈ {-1,0,1}
+/// a_i, b_i, f_i, r_i ∈ [0,2^15)
 pub fn constrain_ff_addition_row<F: PrimeField, Env: FFAInterpreterEnv<F>>(
     env: &mut Env,
     limb_num: usize,
@@ -128,19 +138,28 @@ pub fn constrain_ff_addition_row<F: PrimeField, Env: FFAInterpreterEnv<F>>(
     let a: Env::Variable = Env::read_column(env, FFAColumnIndexer::InputA(limb_num));
     let b: Env::Variable = Env::read_column(env, FFAColumnIndexer::InputB(limb_num));
     let f: Env::Variable = Env::read_column(env, FFAColumnIndexer::ModulusF(limb_num));
-    let q: Env::Variable = Env::read_column(env, FFAColumnIndexer::Quotient);
     let r: Env::Variable = Env::read_column(env, FFAColumnIndexer::Remainder(limb_num));
+    let q: Env::Variable = Env::read_column(env, FFAColumnIndexer::Quotient);
+    env.range_check_15bit(&a);
+    env.range_check_15bit(&b);
+    env.range_check_15bit(&f);
+    env.range_check_15bit(&r);
+    env.range_check_abs1(&q);
     let constraint = if limb_num == 0 {
         let limb_size = Env::constant(From::from((1 << LIMB_BITSIZE) as u64));
         let c0: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num));
+        env.range_check_abs1(&c0);
         a + b - q * f - r - c0 * limb_size
     } else if limb_num < N_LIMBS - 1 {
+        let limb_size = Env::constant(From::from((1 << LIMB_BITSIZE) as u64));
         let c_prev: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num - 1));
         let c_cur: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num));
-        let limb_size = Env::constant(From::from((1 << LIMB_BITSIZE) as u64));
+        env.range_check_abs1(&c_prev);
+        env.range_check_abs1(&c_cur);
         a + b - q * f - r - c_cur * limb_size + c_prev
     } else {
         let c_prev: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num - 1));
+        env.range_check_abs1(&c_prev);
         a + b - q * f - r + c_prev
     };
     env.assert_zero(constraint);

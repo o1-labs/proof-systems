@@ -58,4 +58,12 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for ConstraintBuilderEnv<F> {
     fn next_row(&mut self) {
         panic!("Please don't call this");
     }
+
+    fn range_check_abs1(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
+
+    fn range_check_15bit(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
 }
