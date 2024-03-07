@@ -46,10 +46,6 @@ fn limb_decompose_ff<F: PrimeField, Ff: PrimeField>(input: &Ff) -> [F; N_LIMBS] 
     limb_decompose_bui(input_bi)
 }
 
-fn limb_decompose_ff_modulus<F: PrimeField, Ff: PrimeField<BigInt = BigUint>>() -> [F; N_LIMBS] {
-    limb_decompose_bui(Ff::Params::MODULUS)
-}
-
 /// Reads values from limbs A and B, returns resulting value in C.
 pub fn constrain_multiplication<F: PrimeField, Env: FFAInterpreterEnv<F>>(
     env: &mut Env,
@@ -167,46 +163,90 @@ pub fn constrain_ff_addition_row<F: PrimeField, Env: FFAInterpreterEnv<F>>(
     env.assert_zero(constraint);
 }
 
-pub fn ff_addition_circuit<
-    F: PrimeField,
-    Ff: PrimeField<BigInt = BigUint>,
-    Env: FFAInterpreterEnv<F>,
->(
+pub fn constrain_ff_addition<F: PrimeField, Env: FFAInterpreterEnv<F>>(env: &mut Env) {
+    for limb_i in 0..N_LIMBS {
+        constrain_ff_addition_row(env, limb_i);
+    }
+}
+
+pub fn ff_addition_circuit<F: PrimeField, Ff: PrimeField, Env: FFAInterpreterEnv<F>>(
     env: &mut Env,
     a: Ff,
     b: Ff,
 ) {
-    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&a).map(Env::constant);
-    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&b).map(Env::constant);
-    let f_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff_modulus::<F, Ff>().map(Env::constant);
+    let f_bigint: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+
+    let a_limbs: [F; N_LIMBS] = limb_decompose_ff(&a);
+    let b_limbs: [F; N_LIMBS] = limb_decompose_ff(&b);
+    let f_limbs: [F; N_LIMBS] = limb_decompose_bui(f_bigint.clone());
     a_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::InputA(i)));
+        env.copy(
+            &Env::constant(*var),
+            Env::column_pos(FFAColumnIndexer::InputA(i)),
+        );
     });
     b_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::InputB(i)));
+        env.copy(
+            &Env::constant(*var),
+            Env::column_pos(FFAColumnIndexer::InputB(i)),
+        );
     });
     f_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::ModulusF(i)));
+        env.copy(
+            &Env::constant(*var),
+            Env::column_pos(FFAColumnIndexer::ModulusF(i)),
+        );
     });
 
     let a_bigint = FieldHelpers::to_biguint(&a);
     let b_bigint = FieldHelpers::to_biguint(&b);
-    let f_bigint = Ff::Params::MODULUS;
 
     // TODO FIXME this computation must be done over BigInts, not BigUInts
     // q can be -1! But only in subtraction, so for now we don't care.
     // for now with addition only q ∈ {0,1}
     let (q_bigint, r_bigint) = (a_bigint + b_bigint).div_rem(&f_bigint);
-    let r_limbs: [Env::Variable; N_LIMBS] = limb_decompose_bui::<F>(r_bigint).map(Env::constant);
-    let q_f: Env::Variable = Env::constant(limb_decompose_bui::<F>(q_bigint)[0]);
+    let r_limbs: [F; N_LIMBS] = limb_decompose_bui(r_bigint);
+    // We expect just one limb.
+    let q: F = limb_decompose_bui(q_bigint)[0];
 
-    env.copy(&q_f, Env::column_pos(FFAColumnIndexer::Quotient));
+    env.copy(
+        &Env::constant(q),
+        Env::column_pos(FFAColumnIndexer::Quotient),
+    );
     r_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::Remainder(i)));
+        env.copy(
+            &Env::constant(*var),
+            Env::column_pos(FFAColumnIndexer::Remainder(i)),
+        );
     });
 
+    let limb_size: F = From::from((1 << LIMB_BITSIZE) as u64);
+    let mut carry: F = From::from(0u64);
     for limb_i in 0..N_LIMBS {
-        // TODO Insert computations of q / r / c
+        let res = a_limbs[limb_i] + b_limbs[limb_i] - q * f_limbs[limb_i] - r_limbs[limb_i] + carry;
+        let newcarry: F = if res == limb_size {
+            // Overflow
+            F::one()
+        } else if res == -limb_size {
+            // Underflow
+            F::zero() - F::one()
+        } else if res.is_zero() {
+            // Neither overflow nor overflow, the transcendent way of being
+            F::zero()
+        } else {
+            panic!("Computed carry is not -1,0,1, impossible: limb number {limb_i:?}")
+        };
+        // Last carry should be zero, otherwise we record it
+        if limb_i < N_LIMBS - 1 {
+            env.copy(
+                &Env::constant(newcarry),
+                Env::column_pos(FFAColumnIndexer::Carry(limb_i)),
+            );
+            carry = newcarry;
+        } else {
+            // should this be in circiut?
+            assert!(newcarry.is_zero());
+        }
         constrain_ff_addition_row(env, limb_i);
     }
 }
