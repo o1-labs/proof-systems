@@ -152,23 +152,37 @@ where
     let coefficient_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
 
     let zk_rows = 0;
-    let column_env = MSMColumnEnvironment {
-        constants: Constants {
-            endo_coefficient: *endo_r,
-            mds: &G::sponge_params().mds,
-            zk_rows,
-        },
-        challenges: Challenges {
-            alpha,
-            beta: G::ScalarField::zero(),
-            gamma: G::ScalarField::zero(),
-            joint_combiner: None,
-        },
-        witness: &witness_evals_env,
-        coefficients: &coefficient_evals_env,
-        l0_1: l0_1(domain.d1),
-        lookup: None,
-        domain,
+    let column_env = {
+        let challenges = if let Some(lookup_env) = lookup_env.as_ref() {
+            Challenges {
+                alpha,
+                // NB: as there is on permutation argument, we do use the beta
+                // field instead of a new one for the evaluation point.
+                beta: lookup_env.beta,
+                gamma: G::ScalarField::zero(),
+                joint_combiner: Some(lookup_env.joint_combiner),
+            }
+        } else {
+            Challenges {
+                alpha,
+                beta: G::ScalarField::zero(),
+                gamma: G::ScalarField::zero(),
+                joint_combiner: None,
+            }
+        };
+        MSMColumnEnvironment {
+            constants: Constants {
+                endo_coefficient: *endo_r,
+                mds: &G::sponge_params().mds,
+                zk_rows,
+            },
+            challenges,
+            witness: &witness_evals_env,
+            coefficients: &coefficient_evals_env,
+            l0_1: l0_1(domain.d1),
+            lookup: None,
+            domain,
+        }
     };
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
