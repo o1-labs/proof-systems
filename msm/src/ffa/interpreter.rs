@@ -1,6 +1,7 @@
 use crate::{ffa::columns::FFAColumnIndexer, Ff1, LIMB_BITSIZE, N_LIMBS};
 use ark_ff::{FpParameters, PrimeField, Zero};
 use num_bigint::BigUint;
+use num_integer::Integer;
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 pub trait FFAInterpreterEnv<F: PrimeField> {
@@ -34,18 +35,19 @@ pub trait FFAInterpreterEnv<F: PrimeField> {
     fn next_row(&mut self);
 }
 
-// TODO use more foreign_field.rs with from/to bigint conversion
-fn limb_decompose<F: PrimeField>(input: &Ff1) -> [F; N_LIMBS] {
-    let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    let ff_el: ForeignElement<F, LIMB_BITSIZE, N_LIMBS> = ForeignElement::from_biguint(input_bi);
+fn limb_decompose_bui<F: PrimeField>(input: BigUint) -> [F; N_LIMBS] {
+    let ff_el: ForeignElement<F, LIMB_BITSIZE, N_LIMBS> = ForeignElement::from_biguint(input);
     ff_el.limbs
 }
 
-fn limb_decompose_ff_modulus<F: PrimeField<BigInt = BigUint>, Ff: PrimeField>() -> [F; N_LIMBS] {
-    let input_modulus_bi: BigUint = F::Params::MODULUS;
-    let ff_el: ForeignElement<F, LIMB_BITSIZE, N_LIMBS> =
-        ForeignElement::from_biguint(input_modulus_bi);
-    ff_el.limbs
+// TODO use more foreign_field.rs with from/to bigint conversion
+fn limb_decompose_ff<F: PrimeField, Ff: PrimeField>(input: &Ff) -> [F; N_LIMBS] {
+    let input_bi: BigUint = FieldHelpers::to_biguint(input);
+    limb_decompose_bui(input_bi)
+}
+
+fn limb_decompose_ff_modulus<F: PrimeField, Ff: PrimeField<BigInt = BigUint>>() -> [F; N_LIMBS] {
+    limb_decompose_bui(Ff::Params::MODULUS)
 }
 
 /// Reads values from limbs A and B, returns resulting value in C.
@@ -70,8 +72,8 @@ pub fn test_multiplication<F: PrimeField, Env: FFAInterpreterEnv<F>>(
     a: Ff1,
     b: Ff1,
 ) {
-    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose(&a).map(Env::constant);
-    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose(&b).map(Env::constant);
+    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&a).map(Env::constant);
+    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&b).map(Env::constant);
     a_limbs.iter().enumerate().for_each(|(i, var)| {
         env.copy(var, Env::column_pos(FFAColumnIndexer::A(i)));
     });
@@ -105,8 +107,8 @@ pub fn constrain_addition<F: PrimeField, Env: FFAInterpreterEnv<F>>(
 }
 
 pub fn test_addition<F: PrimeField, Env: FFAInterpreterEnv<F>>(env: &mut Env, a: Ff1, b: Ff1) {
-    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose(&a).map(Env::constant);
-    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose(&b).map(Env::constant);
+    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&a).map(Env::constant);
+    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&b).map(Env::constant);
     a_limbs.iter().enumerate().for_each(|(i, var)| {
         env.copy(var, Env::column_pos(FFAColumnIndexer::A(i)));
     });
@@ -165,15 +167,18 @@ pub fn constrain_ff_addition_row<F: PrimeField, Env: FFAInterpreterEnv<F>>(
     env.assert_zero(constraint);
 }
 
-pub fn ff_addition_circuit<F: PrimeField<BigInt = BigUint>, Env: FFAInterpreterEnv<F>>(
+pub fn ff_addition_circuit<
+    F: PrimeField,
+    Ff: PrimeField<BigInt = BigUint>,
+    Env: FFAInterpreterEnv<F>,
+>(
     env: &mut Env,
-    a: Ff1,
-    b: Ff1,
+    a: Ff,
+    b: Ff,
 ) {
-    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose(&a).map(Env::constant);
-    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose(&b).map(Env::constant);
-    let f_limbs: [Env::Variable; N_LIMBS] =
-        limb_decompose_ff_modulus::<F, Ff1>().map(Env::constant);
+    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&a).map(Env::constant);
+    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&b).map(Env::constant);
+    let f_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff_modulus::<F, Ff>().map(Env::constant);
     a_limbs.iter().enumerate().for_each(|(i, var)| {
         env.copy(var, Env::column_pos(FFAColumnIndexer::InputA(i)));
     });
@@ -182,6 +187,22 @@ pub fn ff_addition_circuit<F: PrimeField<BigInt = BigUint>, Env: FFAInterpreterE
     });
     f_limbs.iter().enumerate().for_each(|(i, var)| {
         env.copy(var, Env::column_pos(FFAColumnIndexer::ModulusF(i)));
+    });
+
+    let a_bigint = FieldHelpers::to_biguint(&a);
+    let b_bigint = FieldHelpers::to_biguint(&b);
+    let f_bigint = Ff::Params::MODULUS;
+
+    // TODO FIXME this computation must be done over BigInts, not BigUInts
+    // q can be -1! But only in subtraction, so for now we don't care.
+    // for now with addition only q ∈ {0,1}
+    let (q_bigint, r_bigint) = (a_bigint + b_bigint).div_rem(&f_bigint);
+    let r_limbs: [Env::Variable; N_LIMBS] = limb_decompose_bui::<F>(r_bigint).map(Env::constant);
+    let q_f: Env::Variable = Env::constant(limb_decompose_bui::<F>(q_bigint)[0]);
+
+    env.copy(&q_f, Env::column_pos(FFAColumnIndexer::Quotient));
+    r_limbs.iter().enumerate().for_each(|(i, var)| {
+        env.copy(var, Env::column_pos(FFAColumnIndexer::Remainder(i)));
     });
 
     for limb_i in 0..N_LIMBS {

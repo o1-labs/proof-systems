@@ -26,6 +26,7 @@ groupmap.workspace = true
 mina-curves.workspace = true
 mina-poseidon.workspace = true
 num-bigint.workspace = true
+num-integer.workspace = true
 rmp-serde.workspace = true
 serde_json.workspace = true
 serde.workspace = true
