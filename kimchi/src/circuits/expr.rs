@@ -1172,7 +1172,18 @@ fn unnormalized_lagrange_evals<'a, F: FftField, Environment: ColumnEnvironment<'
     Evaluations::<F, D<F>>::from_vec_and_domain(evals, res_domain)
 }
 
+/// Implement algebraic methods like `add`, `sub`, `mul`, `square`, etc to use
+/// algebra on the type `EvalResult`.
 impl<'a, F: FftField> EvalResult<'a, F> {
+    /// Create an evaluation over the domain `res_domain`.
+    /// The second parameter, `g`, is a function used to define the
+    /// evaluations at a given point of the domain.
+    /// For instance, the second parameter `g` can simply be the identity
+    /// functions over a set of field elements.
+    /// It can also be used to define polynomials like `x^2` when we only have the
+    /// value of `x`. It can be used in particular to evaluate an expression (a
+    /// multi-variate polynomial) when we only do have access to the evaluations
+    /// of the individual variables.
     fn init_<G: Sync + Send + Fn(usize) -> F>(
         res_domain: (Domain, D<F>),
         g: G,
@@ -1184,6 +1195,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         )
     }
 
+    /// Call the internal function `init_` and return the computed evaluation as
+    /// a value `Evals`.
     fn init<G: Sync + Send + Fn(usize) -> F>(res_domain: (Domain, D<F>), g: G) -> Self {
         Self::Evals {
             domain: res_domain.0,
