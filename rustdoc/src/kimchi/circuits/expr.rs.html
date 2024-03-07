@@ -3517,6 +3517,22 @@
 <a href="#3515" id="3515">3515</a>
 <a href="#3516" id="3516">3516</a>
 <a href="#3517" id="3517">3517</a>
+<a href="#3518" id="3518">3518</a>
+<a href="#3519" id="3519">3519</a>
+<a href="#3520" id="3520">3520</a>
+<a href="#3521" id="3521">3521</a>
+<a href="#3522" id="3522">3522</a>
+<a href="#3523" id="3523">3523</a>
+<a href="#3524" id="3524">3524</a>
+<a href="#3525" id="3525">3525</a>
+<a href="#3526" id="3526">3526</a>
+<a href="#3527" id="3527">3527</a>
+<a href="#3528" id="3528">3528</a>
+<a href="#3529" id="3529">3529</a>
+<a href="#3530" id="3530">3530</a>
+<a href="#3531" id="3531">3531</a>
+<a href="#3532" id="3532">3532</a>
+<a href="#3533" id="3533">3533</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -4691,8 +4707,19 @@
     Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(evals, res_domain)
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: FftField&gt; EvalResult&lt;<span class="lifetime">'a</span>, F&gt; {
-    <span class="kw">fn </span>init_&lt;G: Sync + Send + Fn(usize) -&gt; F&gt;(
+<span class="doccomment">/// Implement algebraic methods like `add`, `sub`, `mul`, `square`, etc to use
+/// algebra on the type `EvalResult`.
+</span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: FftField&gt; EvalResult&lt;<span class="lifetime">'a</span>, F&gt; {
+    <span class="doccomment">/// Create an evaluation over the domain `res_domain`.
+    /// The second parameter, `g`, is a function used to define the
+    /// evaluations at a given point of the domain.
+    /// For instance, the second parameter `g` can simply be the identity
+    /// functions over a set of field elements.
+    /// It can also be used to define polynomials like `x^2` when we only have the
+    /// value of `x`. It can be used in particular to evaluate an expression (a
+    /// multi-variate polynomial) when we only do have access to the evaluations
+    /// of the individual variables.
+    </span><span class="kw">fn </span>init_&lt;G: Sync + Send + Fn(usize) -&gt; F&gt;(
         res_domain: (Domain, D&lt;F&gt;),
         g: G,
     ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
@@ -4703,7 +4730,9 @@
         )
     }
 
-    <span class="kw">fn </span>init&lt;G: Sync + Send + Fn(usize) -&gt; F&gt;(res_domain: (Domain, D&lt;F&gt;), g: G) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Call the internal function `init_` and return the computed evaluation as
+    /// a value `Evals`.
+    </span><span class="kw">fn </span>init&lt;G: Sync + Send + Fn(usize) -&gt; F&gt;(res_domain: (Domain, D&lt;F&gt;), g: G) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::Evals {
             domain: res_domain.<span class="number">0</span>,
             evals: <span class="self">Self</span>::init_(res_domain, g),
@@ -5328,7 +5357,10 @@
     }
 }
 
-<span class="kw">enum </span>Either&lt;A, B&gt; {
+<span class="doccomment">/// Use as a result of the expression evaluations routine.
+/// For now, the left branch is the result of an evaluation and the right branch
+/// is the ID of an element in the cache
+</span><span class="kw">enum </span>Either&lt;A, B&gt; {
     Left(A),
     Right(B),
 }
