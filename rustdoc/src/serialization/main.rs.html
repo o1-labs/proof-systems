@@ -96,6 +96,7 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>kimchi_msm::lookups::LookupTableIDs;
 <span class="kw">use </span>kimchi_msm::serialization::{witness, N_INTERMEDIATE_LIMBS};
@@ -166,6 +167,7 @@
     <span class="kw">let </span>proof_inputs = ProofInputs {
         evaluations: witness,
         mvlookups: <span class="macro">vec!</span>[],
+        public_input_size: <span class="number">0</span>,
     };
 
     <span class="macro">println!</span>(<span class="string">"Number of constraints: {}"</span>, constraints.len());

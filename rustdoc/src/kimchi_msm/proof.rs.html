@@ -80,6 +80,10 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{LookupTableIDs, LookupWitness},
     mvlookup::{LookupProof, LookupTableID},
@@ -102,6 +106,9 @@
     /// evaluations of polynomial P_w that interpolates w_i.
     </span><span class="kw">pub </span>evaluations: Witness&lt;N, Vec&lt;G::ScalarField&gt;&gt;,
     <span class="kw">pub </span>mvlookups: Vec&lt;MVLookupWitness&lt;G::ScalarField, ID&gt;&gt;,
+    <span class="doccomment">/// The number of public inputs. It is supposed that the first
+    /// `public_input_size` columns of the witness represent the public values
+    </span><span class="kw">pub </span>public_input_size: usize,
 }
 
 <span class="comment">// This should be used only for testing purposes.
@@ -119,6 +126,7 @@
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: <span class="macro">vec!</span>[LookupWitness::&lt;G::ScalarField&gt;::random(domain)],
+            public_input_size: <span class="number">0</span>,
         }
     }
 }
