@@ -37,7 +37,12 @@ impl ColumnIndexer for FFAColumnIndexer {
             FFAColumnIndexer::B(i) => to_column_inner(1, i),
             FFAColumnIndexer::C(i) => to_column_inner(2, i),
             FFAColumnIndexer::D(i) => to_column_inner(3, i),
-            _ => unimplemented!(),
+            FFAColumnIndexer::InputA(i) => to_column_inner(4, i),
+            FFAColumnIndexer::InputB(i) => to_column_inner(5, i),
+            FFAColumnIndexer::ModulusF(i) => to_column_inner(6, i),
+            FFAColumnIndexer::Carry(i) => to_column_inner(7, i),
+            FFAColumnIndexer::Remainder(i) => to_column_inner(8, i),
+            FFAColumnIndexer::Quotient => to_column_inner(9, 0),
         }
     }
 }
