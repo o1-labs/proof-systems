@@ -266,6 +266,15 @@ pub enum ChallengeTerm {
     JointCombiner,
 }
 
+/// Define the constant terms an expression can use.
+/// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
+/// permutation used by Poseidon for instance), or endomorphism coefficients
+/// (`EndoCoefficient` - used as an optimisation).
+/// As for `challengeTerm`, it has been used initially to implement the PLONK
+/// IOP, with the custom gate Poseidon. However, the terms have no built-in
+/// semantic in the expression framework.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstantTerm<F> {
     EndoCoefficient,
