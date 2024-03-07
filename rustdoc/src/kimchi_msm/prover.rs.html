@@ -419,6 +419,7 @@
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::MSMColumnEnvironment,
     expr::MSMExpr,
@@ -572,11 +573,12 @@
     <span class="comment">// TODO These should be evaluations of fixed coefficient polys
     </span><span class="kw">let </span>coefficient_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = <span class="macro">vec!</span>[];
 
+    <span class="kw">let </span>zk_rows = <span class="number">0</span>;
     <span class="kw">let </span>column_env = MSMColumnEnvironment {
         constants: Constants {
             endo_coefficient: <span class="kw-2">*</span>endo_r,
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-            zk_rows: <span class="number">0</span>,
+            zk_rows,
         },
         challenges: Challenges {
             alpha,
@@ -596,7 +598,7 @@
         // And they are, so we need to take extra care.
         </span><span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
             <span class="comment">// otherwise we need different t_size
-            </span><span class="kw">let </span>expr_degree = expr.degree(<span class="number">1</span>, <span class="number">0</span>);
+            </span><span class="kw">let </span>expr_degree = expr.degree(<span class="number">1</span>, zk_rows);
             <span class="kw">if </span>expr_degree &gt; <span class="number">2 </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::ConstraintDegreeTooHigh(
                     expr_degree,

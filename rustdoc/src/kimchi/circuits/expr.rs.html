@@ -3486,6 +3486,14 @@
 <a href="#3484" id="3484">3484</a>
 <a href="#3485" id="3485">3485</a>
 <a href="#3486" id="3486">3486</a>
+<a href="#3487" id="3487">3487</a>
+<a href="#3488" id="3488">3488</a>
+<a href="#3489" id="3489">3489</a>
+<a href="#3490" id="3490">3490</a>
+<a href="#3491" id="3491">3491</a>
+<a href="#3492" id="3492">3492</a>
+<a href="#3493" id="3493">3493</a>
+<a href="#3494" id="3494">3494</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -4460,7 +4468,15 @@
         Expr::Atom(ExprInner::Constant(c))
     }
 
-    <span class="kw">pub fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>, d1_size: u64, zk_rows: u64) -&gt; u64 {
+    <span class="doccomment">/// Return the degree of the expression.
+    /// The degree of a cell is defined by the first argument `d1_size`, a
+    /// constant being of degree zero. The degree of the expression is defined
+    /// recursively using the definition of the degree of a multivariate
+    /// polynomial. The function can be (and is) used to compute the domain
+    /// size, hence the name of the first argument `d1_size`.
+    /// The second parameter `zk_rows` is used to define the degree of the
+    /// constructor `VanishesOnZeroKnowledgeAndPreviousRows`.
+    </span><span class="kw">pub fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>, d1_size: u64, zk_rows: u64) -&gt; u64 {
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
