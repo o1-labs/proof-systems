@@ -11,6 +11,7 @@ use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 
+pub mod decomposable_folding;
 mod error_term;
 pub mod expressions;
 mod instance_witness;
@@ -22,6 +23,8 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
+    //in case of using docomposable folding, if not it can be just ()
+    type S: Clone;
     type Challenge: Clone + Copy + Debug + Eq + Hash;
     type Curve: CommitmentCurve;
     type Srs: SRS<Self::Curve>;
