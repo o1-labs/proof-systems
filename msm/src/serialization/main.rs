@@ -36,7 +36,7 @@ pub fn main() {
         rng.gen_range(0..1000),
         rng.gen_range(0..1000),
         rng.gen_range(0..1000),
-    ]];
+    ]; DOMAIN_SIZE];
 
     let mut constraints = vec![];
     for limbs in field_elements {
