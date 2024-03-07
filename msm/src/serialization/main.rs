@@ -68,6 +68,7 @@ pub fn main() {
     let proof_inputs = ProofInputs {
         evaluations: witness,
         mvlookups: vec![],
+        public_input_size: 0,
     };
 
     println!("Number of constraints: {}", constraints.len());

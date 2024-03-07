@@ -49,6 +49,7 @@ impl WitnessBuilder<BN254G1Affine> {
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: vec![],
+            public_input_size: 0,
         }
     }
 
