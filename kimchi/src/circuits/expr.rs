@@ -972,6 +972,14 @@ impl<C, Column> Expr<C, Column> {
         Expr::Atom(ExprInner::Constant(c))
     }
 
+    /// Return the degree of the expression.
+    /// The degree of a cell is defined by the first argument `d1_size`, a
+    /// constant being of degree zero. The degree of the expression is defined
+    /// recursively using the definition of the degree of a multivariate
+    /// polynomial. The function can be (and is) used to compute the domain
+    /// size, hence the name of the first argument `d1_size`.
+    /// The second parameter `zk_rows` is used to define the degree of the
+    /// constructor `VanishesOnZeroKnowledgeAndPreviousRows`.
     pub fn degree(&self, d1_size: u64, zk_rows: u64) -> u64 {
         use ExprInner::*;
         use Operations::*;
