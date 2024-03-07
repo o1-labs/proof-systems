@@ -249,6 +249,7 @@ pub enum KimchiConstraint<Var, Field> {
     EcScale(Vec<ScaleRound<Var>>),
     EcEndoscale(EcEndoscaleInput<Var>),
     EcEndoscalar(Vec<EndoscaleScalarRound<Var>>),
+    RangeCheck([[Var; 15]; 4]),
 }
 
 /* TODO: This is a Unique_id in OCaml. */
@@ -1649,6 +1650,19 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     self.add_row(labels, loc, vars, GateType::EndoMulScalar, vec![]);
                 }
             }
+            KimchiConstraint::RangeCheck(rows) => {
+                let vars = |cvars: [Cvar; 15]| {
+                    cvars
+                        .map(|v| self.reduce_to_var(labels, loc, v))
+                        .map(Some)
+                        .to_vec()
+                };
+                let [r0, r1, r2, r3] = rows.map(vars);
+                self.add_row(labels, loc, r0, GateType::RangeCheck0, vec![Field::zero()]);
+                self.add_row(labels, loc, r1, GateType::RangeCheck0, vec![Field::zero()]);
+                self.add_row(labels, loc, r2, GateType::RangeCheck1, vec![]);
+                self.add_row(labels, loc, r3, GateType::Zero, vec![]);
+            }
         }
     }
     pub(crate) fn sponge_params(&self) -> mina_poseidon::poseidon::ArithmeticSpongeParams<Field> {
@@ -1774,7 +1788,8 @@ where
             | KimchiConstraint::EcAddComplete { .. }
             | KimchiConstraint::EcScale { .. }
             | KimchiConstraint::EcEndoscale { .. }
-            | KimchiConstraint::EcEndoscalar { .. } => (),
+            | KimchiConstraint::EcEndoscalar { .. }
+            | KimchiConstraint::RangeCheck { .. } => (),
         };
         Ok(())
     }
