@@ -3494,6 +3494,29 @@
 <a href="#3492" id="3492">3492</a>
 <a href="#3493" id="3493">3493</a>
 <a href="#3494" id="3494">3494</a>
+<a href="#3495" id="3495">3495</a>
+<a href="#3496" id="3496">3496</a>
+<a href="#3497" id="3497">3497</a>
+<a href="#3498" id="3498">3498</a>
+<a href="#3499" id="3499">3499</a>
+<a href="#3500" id="3500">3500</a>
+<a href="#3501" id="3501">3501</a>
+<a href="#3502" id="3502">3502</a>
+<a href="#3503" id="3503">3503</a>
+<a href="#3504" id="3504">3504</a>
+<a href="#3505" id="3505">3505</a>
+<a href="#3506" id="3506">3506</a>
+<a href="#3507" id="3507">3507</a>
+<a href="#3508" id="3508">3508</a>
+<a href="#3509" id="3509">3509</a>
+<a href="#3510" id="3510">3510</a>
+<a href="#3511" id="3511">3511</a>
+<a href="#3512" id="3512">3512</a>
+<a href="#3513" id="3513">3513</a>
+<a href="#3514" id="3514">3514</a>
+<a href="#3515" id="3515">3515</a>
+<a href="#3516" id="3516">3516</a>
+<a href="#3517" id="3517">3517</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3621,13 +3644,31 @@
 }
 
 <span class="kw">pub trait </span>ColumnEnvironment&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
-    <span class="kw">type </span>Column;
-    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;;
+    <span class="doccomment">/// The generic type of column the environment can use.
+    /// In other words, with the multi-variate polynomial analogy, it is the
+    /// variables the multi-variate polynomials are defined upon.
+    /// i.e. for a polynomial `P(X, Y, Z)`, the type will represent the variable
+    /// `X`, `Y` and `Z`.
+    </span><span class="kw">type </span>Column;
+
+    <span class="doccomment">/// Return the evaluation of the given column, over the domain.
+    </span><span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;;
+
     <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; D&lt;F&gt;;
-    <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt;;
-    <span class="kw">fn </span>get_challenges(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Challenges&lt;F&gt;;
+
+    <span class="doccomment">/// Return the constants parameters that the expression might use.
+    /// For instance, it can be the matrix used by the linear layer in the
+    /// permutation.
+    </span><span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt;;
+
+    <span class="doccomment">/// Return the challenges, coined by the verifier.
+    </span><span class="kw">fn </span>get_challenges(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Challenges&lt;F&gt;;
+
     <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;;
-    <span class="kw">fn </span>l0_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
+
+    <span class="doccomment">/// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
+    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
+    </span><span class="kw">fn </span>l0_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: FftField&gt; ColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt; <span class="kw">for </span>Environment&lt;<span class="lifetime">'a</span>, F&gt; {
@@ -5274,6 +5315,11 @@
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
+    /// The routine will first replace the constants (verifier challenges and
+    /// constants like the matrix used by `Poseidon`) in the expression with their
+    /// respective values using `evaluate_constants` and will after evaluate the
+    /// monomials with the corresponding column values using the method
+    /// `evaluations`.
     </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">'a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         env: <span class="kw-2">&amp;</span>Environment,
