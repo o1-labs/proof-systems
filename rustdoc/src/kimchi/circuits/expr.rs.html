@@ -3533,6 +3533,26 @@
 <a href="#3531" id="3531">3531</a>
 <a href="#3532" id="3532">3532</a>
 <a href="#3533" id="3533">3533</a>
+<a href="#3534" id="3534">3534</a>
+<a href="#3535" id="3535">3535</a>
+<a href="#3536" id="3536">3536</a>
+<a href="#3537" id="3537">3537</a>
+<a href="#3538" id="3538">3538</a>
+<a href="#3539" id="3539">3539</a>
+<a href="#3540" id="3540">3540</a>
+<a href="#3541" id="3541">3541</a>
+<a href="#3542" id="3542">3542</a>
+<a href="#3543" id="3543">3543</a>
+<a href="#3544" id="3544">3544</a>
+<a href="#3545" id="3545">3545</a>
+<a href="#3546" id="3546">3546</a>
+<a href="#3547" id="3547">3547</a>
+<a href="#3548" id="3548">3548</a>
+<a href="#3549" id="3549">3549</a>
+<a href="#3550" id="3550">3550</a>
+<a href="#3551" id="3551">3551</a>
+<a href="#3552" id="3552">3552</a>
+<a href="#3553" id="3553">3553</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3782,7 +3802,18 @@
     </span><span class="kw">pub </span>row: CurrOrNext,
 }
 
-<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+<span class="doccomment">/// Define challenges the verifier coins during the interactive protocol.
+/// It has been defined initially to handle the PLONK IOP, hence:
+/// - `alpha` for the quotient polynomial
+/// - `beta` and `gamma` for the permutation challenges.
+/// The joint combiner is to handle vector lookups, initially designed to be
+/// used with PLOOKUP.
+/// The terms have no built-in semantic in the expression framework, and can be
+/// used for any other four challenges the verifier coins in other polynomial
+/// interactive protocol.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See &lt;https://github.com/MinaProtocol/mina/issues/15287&gt;
+</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>ChallengeTerm {
     Alpha,
     Beta,
@@ -3790,7 +3821,16 @@
     JointCombiner,
 }
 
-<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+<span class="doccomment">/// Define the constant terms an expression can use.
+/// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
+/// permutation used by Poseidon for instance), or endomorphism coefficients
+/// (`EndoCoefficient` - used as an optimisation).
+/// As for `challengeTerm`, it has been used initially to implement the PLONK
+/// IOP, with the custom gate Poseidon. However, the terms have no built-in
+/// semantic in the expression framework.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See &lt;https://github.com/MinaProtocol/mina/issues/15287&gt;
+</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>ConstantTerm&lt;F&gt; {
     EndoCoefficient,
     Mds { row: usize, col: usize },
