@@ -25,7 +25,9 @@ use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
 use o1_utils::tests::make_test_rng;
 use o1_utils::{
-    foreign_field::{BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB},
+    foreign_field::{
+        BigUintForeignFieldHelpers, ForeignElement, HI, LIMB_BITS, LO, MI, TWO_TO_LIMB,
+    },
     FieldHelpers, Two,
 };
 use poly_commitment::{
@@ -365,7 +367,10 @@ fn test_ffadd(
 }
 
 // checks that the result cells of the witness are computed as expected
-fn check_result(witness: [Vec<PallasField>; COLUMNS], result: Vec<ForeignElement<PallasField, 3>>) {
+fn check_result(
+    witness: [Vec<PallasField>; COLUMNS],
+    result: Vec<ForeignElement<PallasField, LIMB_BITS, 3>>,
+) {
     for (i, res) in result.iter().enumerate() {
         assert_eq!(witness[0][i + 2], res[LO]);
         assert_eq!(witness[1][i + 2], res[MI]);
@@ -463,7 +468,7 @@ fn test_zero_sum_native() {
     );
 
     // Check result is the native modulus
-    let native_limbs = ForeignElement::<PallasField, 3>::from_biguint(native_modulus);
+    let native_limbs = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(native_modulus);
     check_result(witness, vec![native_limbs]);
 }
 
@@ -493,7 +498,7 @@ fn test_max_number() {
     // compute result in the foreign field after taking care of the exceeding bits
     let sum = secp256k1_max() + secp256k1_max();
     let sum_mod = sum - secp256k1_modulus();
-    let sum_mod_limbs = ForeignElement::<PallasField, 3>::from_biguint(sum_mod);
+    let sum_mod_limbs = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(sum_mod);
     check_ovf(witness.clone(), PallasField::one());
     check_result(witness, vec![sum_mod_limbs]);
 }
@@ -505,10 +510,10 @@ fn test_max_number() {
 // and it is checked that in both cases the result is the same
 fn test_zero_minus_one() {
     // FIRST AS NEG
-    let right_be_neg = ForeignElement::<PallasField, 3>::from_biguint(One::one())
+    let right_be_neg = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
         .neg(&secp256k1_modulus())
         .to_biguint();
-    let right_for_neg: ForeignElement<PallasField, 3> =
+    let right_for_neg: ForeignElement<PallasField, LIMB_BITS, 3> =
         ForeignElement::from_biguint(right_be_neg.clone());
     let (witness_neg, _index) = test_ffadd(
         secp256k1_modulus(),
@@ -532,7 +537,7 @@ fn test_zero_minus_one() {
 // test 1 - 1 + 1 where (-1) is in the foreign field
 // the first check is done with sub(1, 1) and then with add(neg(neg(1)))
 fn test_one_minus_one_plus_one() {
-    let neg_neg_one = ForeignElement::<PallasField, 3>::from_biguint(One::one())
+    let neg_neg_one = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
         .neg(&secp256k1_modulus())
         .neg(&secp256k1_modulus())
         .to_biguint();
@@ -559,11 +564,12 @@ fn test_one_minus_one_plus_one() {
 // then tested as 0 - 1 - 1 )
 // TODO: tested as 0 - ( 1 + 1) -> put sign in front of left instead (perhaps in the future we want this)
 fn test_minus_minus() {
-    let neg_one_for =
-        ForeignElement::<PallasField, 3>::from_biguint(One::one()).neg(&secp256k1_modulus());
-    let neg_one = neg_one_for.to_biguint();
-    let neg_two = ForeignElement::<PallasField, 3>::from_biguint(BigUint::from_u32(2).unwrap())
+    let neg_one_for = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(One::one())
         .neg(&secp256k1_modulus());
+    let neg_one = neg_one_for.to_biguint();
+    let neg_two =
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(BigUint::from_u32(2).unwrap())
+            .neg(&secp256k1_modulus());
     let (witness_neg, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![neg_one.clone(), neg_one],
@@ -811,8 +817,8 @@ fn test_zero_sub_fmax() {
         &[FFOps::Sub],
         false,
     );
-    let negated =
-        ForeignElement::<PallasField, 3>::from_biguint(secp256k1_max()).neg(&secp256k1_modulus());
+    let negated = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(secp256k1_max())
+        .neg(&secp256k1_modulus());
     check_result(witness, vec![negated]);
 }
 
@@ -831,7 +837,7 @@ fn test_pasta_add_max_vesta() {
         false,
     );
     let right = right_input % vesta_modulus;
-    let right_foreign = ForeignElement::<PallasField, 3>::from_biguint(right);
+    let right_foreign = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right);
     check_result(witness, vec![right_foreign]);
 }
 
@@ -847,7 +853,7 @@ fn test_pasta_sub_max_vesta() {
         false,
     );
     let neg_max_vesta =
-        ForeignElement::<PallasField, 3>::from_biguint(right_input).neg(&vesta_modulus);
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right_input).neg(&vesta_modulus);
     check_result(witness, vec![neg_max_vesta]);
 }
 
@@ -863,7 +869,7 @@ fn test_pasta_add_max_pallas() {
         false,
     );
     let right = right_input % vesta_modulus;
-    let foreign_right = ForeignElement::<PallasField, 3>::from_biguint(right);
+    let foreign_right = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right);
     check_result(witness, vec![foreign_right]);
 }
 
@@ -879,7 +885,7 @@ fn test_pasta_sub_max_pallas() {
         false,
     );
     let neg_max_pallas =
-        ForeignElement::<PallasField, 3>::from_biguint(right_input).neg(&vesta_modulus);
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(right_input).neg(&vesta_modulus);
     check_result(witness, vec![neg_max_pallas]);
 }
 
@@ -898,8 +904,9 @@ fn test_random_add() {
         &[FFOps::Add],
         false,
     );
-    let result =
-        ForeignElement::<PallasField, 3>::from_biguint((left_big + right_big) % foreign_mod);
+    let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
+        (left_big + right_big) % foreign_mod,
+    );
     check_result(witness, vec![result]);
 }
 
@@ -919,9 +926,11 @@ fn test_random_sub() {
         false,
     );
     let result = if left_big < right_big {
-        ForeignElement::<PallasField, 3>::from_biguint(left_big + foreign_mod - right_big)
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
+            left_big + foreign_mod - right_big,
+        )
     } else {
-        ForeignElement::<PallasField, 3>::from_biguint(left_big - right_big)
+        ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(left_big - right_big)
     };
     check_result(witness, vec![result]);
 }
@@ -944,12 +953,12 @@ fn test_foreign_is_native_add() {
     );
     // check result was computed correctly
     let sum_big = compute_sum(pallas, &left_input, &right_input);
-    let result = ForeignElement::<PallasField, 3>::from_biguint(sum_big.clone());
+    let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(sum_big.clone());
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
     let two_to_limb = PallasField::from(TWO_TO_LIMB);
-    let left = ForeignElement::<PallasField, 3>::from_be(&left_input);
-    let right = ForeignElement::<PallasField, 3>::from_be(&right_input);
+    let left = ForeignElement::<PallasField, LIMB_BITS, 3>::from_be(&left_input);
+    let right = ForeignElement::<PallasField, LIMB_BITS, 3>::from_be(&right_input);
     let left = (left[HI] * two_to_limb + left[MI]) * two_to_limb + left[LO];
     let right = (right[HI] * two_to_limb + right[MI]) * two_to_limb + right[LO];
     let sum = left + right;
@@ -977,12 +986,12 @@ fn test_foreign_is_native_sub() {
     );
     // check result was computed correctly
     let dif_big = compute_dif(pallas, &left_input, &right_input);
-    let result = ForeignElement::<PallasField, 3>::from_biguint(dif_big.clone());
+    let result = ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(dif_big.clone());
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
     let two_to_limb = PallasField::from(TWO_TO_LIMB);
-    let left = ForeignElement::<PallasField, 3>::from_be(&left_input);
-    let right = ForeignElement::<PallasField, 3>::from_be(&right_input);
+    let left = ForeignElement::<PallasField, LIMB_BITS, 3>::from_be(&left_input);
+    let right = ForeignElement::<PallasField, LIMB_BITS, 3>::from_be(&right_input);
     let left = (left[HI] * two_to_limb + left[MI]) * two_to_limb + left[LO];
     let right = (right[HI] * two_to_limb + right[MI]) * two_to_limb + right[LO];
     let dif = left - right;
@@ -1013,7 +1022,9 @@ fn test_random_small_add() {
     let result = compute_sum(foreign_mod, &left_input, &right_input);
     check_result(
         witness,
-        vec![ForeignElement::<PallasField, 3>::from_biguint(result)],
+        vec![ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
+            result,
+        )],
     );
 }
 
@@ -1039,7 +1050,9 @@ fn test_random_small_sub() {
     let result = compute_dif(foreign_mod, &left_input, &right_input);
     check_result(
         witness,
-        vec![ForeignElement::<PallasField, 3>::from_biguint(result)],
+        vec![ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(
+            result,
+        )],
     );
 }
 
@@ -1231,7 +1244,7 @@ fn test_random_chain() {
         .collect::<Vec<_>>();
     let (witness, _index) = test_ffadd(secp256k1_modulus(), big_inputs, &operations, true);
     let mut left = vec![inputs[0].clone()];
-    let results: Vec<ForeignElement<PallasField, 3>> = operations
+    let results: Vec<ForeignElement<PallasField, LIMB_BITS, 3>> = operations
         .iter()
         .enumerate()
         .map(|(i, op)| {
@@ -1240,7 +1253,7 @@ fn test_random_chain() {
                 FFOps::Sub => compute_dif(foreign_mod.clone(), &left[i], &inputs[i + 1]),
             };
             left.push(result.to_bytes_be());
-            ForeignElement::<PallasField, 3>::from_biguint(result)
+            ForeignElement::<PallasField, LIMB_BITS, 3>::from_biguint(result)
         })
         .collect();
     check_result(witness, results);

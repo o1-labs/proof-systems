@@ -12,7 +12,7 @@ use crate::{
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::foreign_field::{
-    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LO, MI,
+    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LIMB_BITS, LO, MI,
 };
 use std::array;
 
@@ -43,11 +43,11 @@ impl FFOps {
 // - the overflow flag
 // - the carry value
 fn compute_ffadd_values<F: PrimeField>(
-    left_input: &ForeignElement<F, 3>,
-    right_input: &ForeignElement<F, 4>,
+    left_input: &ForeignElement<F, LIMB_BITS, 3>,
+    right_input: &ForeignElement<F, LIMB_BITS, 4>,
     opcode: FFOps,
-    foreign_modulus: &ForeignElement<F, 3>,
-) -> (ForeignElement<F, 3>, F, F, F) {
+    foreign_modulus: &ForeignElement<F, LIMB_BITS, 3>,
+) -> (ForeignElement<F, LIMB_BITS, 3>, F, F, F) {
     // Compute bigint version of the inputs
     let left = left_input.to_biguint();
     let right = right_input.to_biguint();
@@ -275,8 +275,8 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     foreign_field_modulus: &[F; 3],
 ) {
     // Convert to types used by this module
-    let fe = ForeignElement::<F, 3>::new(*limbs);
-    let foreign_field_modulus = ForeignElement::<F, 3>::new(*foreign_field_modulus);
+    let fe = ForeignElement::<F, LIMB_BITS, 3>::new(*limbs);
+    let foreign_field_modulus = ForeignElement::<F, LIMB_BITS, 3>::new(*foreign_field_modulus);
     if foreign_field_modulus.to_biguint() > BigUint::max_foreign_field_modulus::<F>() {
         panic!(
             "foreign_field_modulus exceeds maximum: {} > {}",
@@ -286,7 +286,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     }
 
     // Compute values for final bound check, needs a 4 limb right input
-    let right_input = ForeignElement::<F, 4>::from_biguint(BigUint::binary_modulus());
+    let right_input = ForeignElement::<F, LIMB_BITS, 4>::from_biguint(BigUint::binary_modulus());
 
     // Compute the bound and related witness data
     let (bound_output, bound_sign, bound_ovf, bound_carry) =

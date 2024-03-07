@@ -6,7 +6,7 @@ use crate::{
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Ff1, Fp, N_LIMBS},
+    {BN254G1Affine, Ff1, Fp, LIMB_BITSIZE, N_LIMBS},
 };
 use kimchi::curve::KimchiCurve;
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
@@ -14,7 +14,7 @@ use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 // TODO use more foreign_field.rs with from/to bigint conversion
 fn limb_decompose(input: &Ff1) -> [Fp; N_LIMBS] {
     let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    let ff_el: ForeignElement<Fp, N_LIMBS> = ForeignElement::from_biguint(input_bi);
+    let ff_el: ForeignElement<Fp, LIMB_BITSIZE, N_LIMBS> = ForeignElement::from_biguint(input_bi);
     ff_el.limbs
 }
 
