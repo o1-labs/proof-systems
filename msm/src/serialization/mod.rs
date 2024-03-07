@@ -1,3 +1,7 @@
+use ark_ff::Field;
+
+use crate::mvlookup::LookupTableID;
+
 /// The number of intermediate limbs of 4 bits required for the circuit
 pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
@@ -5,6 +9,20 @@ pub mod column;
 pub mod constraints;
 pub mod interpreter;
 pub mod witness;
+
+pub enum LookupTable {
+    RangeCheck15,
+    RangeCheck4,
+}
+
+impl LookupTableID for LookupTable {
+    fn into_field<F: Field>(self) -> F {
+        match self {
+            Self::RangeCheck15 => F::one(),
+            Self::RangeCheck4 => F::one() + F::one(),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
