@@ -28,14 +28,24 @@
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::{Column, ColumnIndexer};
 <span class="kw">use </span><span class="kw">crate</span>::serialization::N_INTERMEDIATE_LIMBS;
 <span class="kw">use </span><span class="kw">crate</span>::N_LIMBS;
 
-<span class="kw">pub enum </span>SerializationColumn {
-    KimchiLimb(usize),
-    MSMLimb(usize),
-    IntermediateLimb(usize),
+<span class="doccomment">/// Column used by the serialization subcircuit
+/// It is not used yet.
+</span><span class="kw">pub enum </span>SerializationColumn {
+    <span class="doccomment">/// 3 88 bits inputs
+    </span>KimchiLimb(usize),
+    <span class="doccomment">/// N_LIMBS values, representing the limbs used by the MSM
+    </span>MSMLimb(usize),
+    <span class="doccomment">/// N_INTERMEDIATE_LIMBS intermediate values, 4 bits long.
+    </span>IntermediateLimb(usize),
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>SerializationColumn {

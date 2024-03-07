@@ -15,7 +15,6 @@ var srcIndex = new Map(JSON.parse('[\
 ["mina_signer",["",[],["keypair.rs","lib.rs","pubkey.rs","schnorr.rs","seckey.rs","signature.rs"]]],\
 ["o1_utils",["",[],["adjacent_pairs.rs","biguint_helpers.rs","bitwise_operations.rs","chunked_evaluations.rs","chunked_polynomial.rs","dense_polynomial.rs","evaluations.rs","field_helpers.rs","foreign_field.rs","hasher.rs","lib.rs","math.rs","serialization.rs"]]],\
 ["poly_commitment",["",[],["chunked.rs","combine.rs","commitment.rs","error.rs","evaluation_proof.rs","lib.rs","pairing_proof.rs","srs.rs"]]],\
-["serialization",["",[],["main.rs"]]],\
 ["snarky_deriver",["",[],["lib.rs"]]],\
 ["test_optimism_preimage_read",["",[],["test_preimage_read.rs"]]],\
 ["turshi",["",[],["flags.rs","helper.rs","lib.rs","memory.rs","runner.rs","word.rs"]]]\
