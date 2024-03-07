@@ -125,12 +125,30 @@ pub struct Environment<'a, F: FftField> {
 }
 
 pub trait ColumnEnvironment<'a, F: FftField> {
+    /// The generic type of column the environment can use.
+    /// In other words, with the multi-variate polynomial analogy, it is the
+    /// variables the multi-variate polynomials are defined upon.
+    /// i.e. for a polynomial `P(X, Y, Z)`, the type will represent the variable
+    /// `X`, `Y` and `Z`.
     type Column;
+
+    /// Return the evaluation of the given column, over the domain.
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
+
     fn get_domain(&self, d: Domain) -> D<F>;
+
+    /// Return the constants parameters that the expression might use.
+    /// For instance, it can be the matrix used by the linear layer in the
+    /// permutation.
     fn get_constants(&self) -> &Constants<F>;
+
+    /// Return the challenges, coined by the verifier.
     fn get_challenges(&self) -> &Challenges<F>;
+
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
+
+    /// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
+    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     fn l0_1(&self) -> F;
 }
 
@@ -1778,6 +1796,11 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
+    /// The routine will first replace the constants (verifier challenges and
+    /// constants like the matrix used by `Poseidon`) in the expression with their
+    /// respective values using `evaluate_constants` and will after evaluate the
+    /// monomials with the corresponding column values using the method
+    /// `evaluations`.
     pub fn evaluations<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
         &self,
         env: &Environment,
