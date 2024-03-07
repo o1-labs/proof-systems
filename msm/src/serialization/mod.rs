@@ -57,9 +57,10 @@ mod tests {
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let mut witness_env = witness::Env::<Fp>::create();
-        let mut witness: Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>> = Witness {
+        // Boxing to avoid stack overflow
+        let mut witness: Box<Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
-        };
+        });
 
         // Boxing to avoid stack overflow
         let field_elements = Box::new(
@@ -99,7 +100,7 @@ mod tests {
         }
 
         let proof_inputs = ProofInputs {
-            evaluations: witness,
+            evaluations: *witness,
             mvlookups: vec![],
             public_input_size: 0,
         };
