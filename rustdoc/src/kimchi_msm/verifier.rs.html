@@ -177,6 +177,33 @@
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One, Zero};
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -213,28 +240,55 @@
         opening_proof,
     } = proof;
 
-    <span class="comment">// -- Absorbing the commitments
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // Absorbing all the commitments to the columns
+    ////////////////////////////////////////////////////////////////////////////
+
     </span><span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     (<span class="kw-2">&amp;</span>proof_comms.witness_comms)
         .into_iter()
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_comms) = <span class="kw-2">&amp;</span>proof_comms.mvlookup_comms {
-        mvlookup_comms
-            .into_iter()
-            .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
-    }
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // MVLookup
+    ////////////////////////////////////////////////////////////////////////////
+
+    </span><span class="kw">let </span>(joint_combiner, beta) = {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_comms) = <span class="kw-2">&amp;</span>proof_comms.mvlookup_comms {
+            <span class="comment">// First, we absorb the multiplicity polynomials
+            </span>mvlookup_comms
+                .m
+                .iter()
+                .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
+
+            <span class="comment">// To generate the challenges
+            </span><span class="kw">let </span>joint_combiner = fq_sponge.challenge();
+            <span class="kw">let </span>beta = fq_sponge.challenge();
+
+            <span class="comment">// And now, we absorb the commitments to the other polynomials
+            </span>mvlookup_comms
+                .h
+                .iter()
+                .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
+            absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>mvlookup_comms.sum);
+            (<span class="prelude-val">Some</span>(joint_combiner), beta)
+        } <span class="kw">else </span>{
+            (<span class="prelude-val">None</span>, G::ScalarField::zero())
+        }
+    };
 
     <span class="comment">//~ 1. Sample $\alpha'$ with the Fq-Sponge.
     </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
     <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
     <span class="kw">let </span>alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
-    absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>proof_comms.t_comm);
+    <span class="comment">////////////////////////////////////////////////////////////////////////////
+    // Quotient polynomial
+    ////////////////////////////////////////////////////////////////////////////
 
-    <span class="comment">// -- Finish absorbing the commitments
+    </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>proof_comms.t_comm);
 
-    // -- Preparing for opening proof verification
+    <span class="comment">// -- Preparing for opening proof verification
     </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
     <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = G::endos();
     <span class="kw">let </span>zeta: G::ScalarField = zeta_chal.to_field(endo_r);
@@ -296,9 +350,9 @@
 
     <span class="kw">let </span>challenges = Challenges {
         alpha,
-        beta: G::ScalarField::zero(),
+        beta,
         gamma: G::ScalarField::zero(),
-        joint_combiner: <span class="prelude-val">None</span>,
+        joint_combiner,
     };
 
     <span class="kw">let </span>constants = Constants {

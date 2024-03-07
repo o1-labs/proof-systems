@@ -420,6 +420,11 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::MSMColumnEnvironment,
     expr::MSMExpr,
@@ -574,23 +579,28 @@
     </span><span class="kw">let </span>coefficient_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = <span class="macro">vec!</span>[];
 
     <span class="kw">let </span>zk_rows = <span class="number">0</span>;
-    <span class="kw">let </span>column_env = MSMColumnEnvironment {
-        constants: Constants {
-            endo_coefficient: <span class="kw-2">*</span>endo_r,
-            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-            zk_rows,
-        },
-        challenges: Challenges {
+    <span class="kw">let </span>column_env = {
+        <span class="kw">let </span>challenges = Challenges {
             alpha,
-            beta: G::ScalarField::zero(),
+            <span class="comment">// NB: as there is on permutation argument, we do use the beta
+            // field instead of a new one for the evaluation point.
+            </span>beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
             gamma: G::ScalarField::zero(),
-            joint_combiner: <span class="prelude-val">None</span>,
-        },
-        witness: <span class="kw-2">&amp;</span>witness_evals_env,
-        coefficients: <span class="kw-2">&amp;</span>coefficient_evals_env,
-        l0_1: l0_1(domain.d1),
-        lookup: <span class="prelude-val">None</span>,
-        domain,
+            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
+        };
+        MSMColumnEnvironment {
+            constants: Constants {
+                endo_coefficient: <span class="kw-2">*</span>endo_r,
+                mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+                zk_rows,
+            },
+            challenges,
+            witness: <span class="kw-2">&amp;</span>witness_evals_env,
+            coefficients: <span class="kw-2">&amp;</span>coefficient_evals_env,
+            l0_1: l0_1(domain.d1),
+            lookup: <span class="prelude-val">None</span>,
+            domain,
+        }
     };
 
     <span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
