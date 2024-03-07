@@ -47,7 +47,9 @@ mod tests {
     #[test]
     fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
-        const DOMAIN_SIZE: usize = 1 << 5;
+        // Must be at least 1 << 15 to support rangecheck15
+        const DOMAIN_SIZE: usize = 1 << 15;
+
         const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + N_LIMBS;
 
         let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
@@ -59,14 +61,17 @@ mod tests {
             cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
         };
 
-        let field_elements = [[
-            rng.gen_range(0..1000),
-            rng.gen_range(0..1000),
-            rng.gen_range(0..1000),
-        ]; DOMAIN_SIZE];
+        // Boxing to avoid stack overflow
+        let field_elements = Box::new(
+            [[
+                rng.gen_range(0..1000),
+                rng.gen_range(0..1000),
+                rng.gen_range(0..1000),
+            ]; DOMAIN_SIZE],
+        );
 
         let mut constraints = vec![];
-        for limbs in field_elements {
+        for limbs in *field_elements {
             let mut constraint_env = constraints::Env::<Fp>::create();
             // Witness
             deserialize_field_element(&mut witness_env, limbs);
