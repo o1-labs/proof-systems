@@ -247,6 +247,17 @@ pub struct Variable<Column> {
     pub row: CurrOrNext,
 }
 
+/// Define challenges the verifier coins during the interactive protocol.
+/// It has been defined initially to handle the PLONK IOP, hence:
+/// - `alpha` for the quotient polynomial
+/// - `beta` and `gamma` for the permutation challenges.
+/// The joint combiner is to handle vector lookups, initially designed to be
+/// used with PLOOKUP.
+/// The terms have no built-in semantic in the expression framework, and can be
+/// used for any other four challenges the verifier coins in other polynomial
+/// interactive protocol.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChallengeTerm {
     Alpha,
@@ -255,6 +266,15 @@ pub enum ChallengeTerm {
     JointCombiner,
 }
 
+/// Define the constant terms an expression can use.
+/// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
+/// permutation used by Poseidon for instance), or endomorphism coefficients
+/// (`EndoCoefficient` - used as an optimisation).
+/// As for `challengeTerm`, it has been used initially to implement the PLONK
+/// IOP, with the custom gate Poseidon. However, the terms have no built-in
+/// semantic in the expression framework.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstantTerm<F> {
     EndoCoefficient,
