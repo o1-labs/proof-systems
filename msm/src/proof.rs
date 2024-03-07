@@ -20,7 +20,7 @@ pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID + Send 
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N, Vec<G::ScalarField>>,
     pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
-    /// The number of public input. It is supposed that the first
+    /// The number of public inputs. It is supposed that the first
     /// `public_input_size` columns of the witness represent the public values
     pub public_input_size: usize,
 }
