@@ -1822,6 +1822,9 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
     }
 }
 
+/// Use as a result of the expression evaluations routine.
+/// For now, the left branch is the result of an evaluation and the right branch
+/// is the ID of an element in the cache
 enum Either<A, B> {
     Left(A),
     Right(B),
