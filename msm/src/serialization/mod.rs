@@ -101,6 +101,7 @@ mod tests {
         let proof_inputs = ProofInputs {
             evaluations: witness,
             mvlookups: vec![],
+            public_input_size: 0,
         };
 
         let proof = prove::<

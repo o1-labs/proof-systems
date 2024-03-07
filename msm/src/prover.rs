@@ -153,22 +153,13 @@ where
 
     let zk_rows = 0;
     let column_env = {
-        let challenges = if let Some(lookup_env) = lookup_env.as_ref() {
-            Challenges {
-                alpha,
-                // NB: as there is on permutation argument, we do use the beta
-                // field instead of a new one for the evaluation point.
-                beta: lookup_env.beta,
-                gamma: G::ScalarField::zero(),
-                joint_combiner: Some(lookup_env.joint_combiner),
-            }
-        } else {
-            Challenges {
-                alpha,
-                beta: G::ScalarField::zero(),
-                gamma: G::ScalarField::zero(),
-                joint_combiner: None,
-            }
+        let challenges = Challenges {
+            alpha,
+            // NB: as there is on permutation argument, we do use the beta
+            // field instead of a new one for the evaluation point.
+            beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
+            gamma: G::ScalarField::zero(),
+            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
         };
         MSMColumnEnvironment {
             constants: Constants {
