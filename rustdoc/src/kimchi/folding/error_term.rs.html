@@ -339,6 +339,7 @@
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::expr::{Operations, Variable},
     folding::{
@@ -352,10 +353,11 @@
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>poly_commitment::SRS;
 
-<span class="attr">#[derive(Clone, Copy)]
+<span class="doccomment">/// This type refers to the two instances to be folded
+</span><span class="attr">#[derive(Clone, Copy)]
 </span><span class="kw">pub enum </span>Side {
-    Left,
-    Right,
+    Left = <span class="number">0</span>,
+    Right = <span class="number">1</span>,
 }
 
 <span class="kw">impl </span>Side {
