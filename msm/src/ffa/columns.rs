@@ -7,12 +7,23 @@ use crate::N_LIMBS;
 pub const FFA_N_COLUMNS: usize = 4 * N_LIMBS;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-/// Column indexer for MSM columns
+/// Column indexer for MSM columns.
+///
+/// Columns A to D are used for testing right now and will be removed.
+///
+/// Other columns represent the equation
+///   `InputA(i) + InputB(i) = ModulusF(i) * Quotient + Carry(i) * 2^LIMB_SIZE - Carry(i-1)`
 pub enum FFAColumnIndexer {
     A(usize),
     B(usize),
     C(usize),
     D(usize),
+    InputA(usize),
+    InputB(usize),
+    ModulusF(usize),
+    Remainder(usize),
+    Carry(usize),
+    Quotient,
 }
 
 impl ColumnIndexer for FFAColumnIndexer {
@@ -26,6 +37,7 @@ impl ColumnIndexer for FFAColumnIndexer {
             FFAColumnIndexer::B(i) => to_column_inner(1, i),
             FFAColumnIndexer::C(i) => to_column_inner(2, i),
             FFAColumnIndexer::D(i) => to_column_inner(3, i),
+            _ => unimplemented!(),
         }
     }
 }
