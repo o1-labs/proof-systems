@@ -24,6 +24,7 @@
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{Domain, GenericColumn};
 
 <span class="comment">// @volhovm: maybe this needs to be a trait
@@ -46,6 +47,7 @@
 <span class="doccomment">/// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
 </span><span class="kw">pub trait </span>ColumnIndexer {
-    <span class="kw">fn </span>ix_to_column(<span class="self">self</span>) -&gt; Column;
+    <span class="comment">// TODO: rename it in to_column. It is not necessary to have ix_
+    </span><span class="kw">fn </span>ix_to_column(<span class="self">self</span>) -&gt; Column;
 }
 </code></pre></div></section></main></body></html>
