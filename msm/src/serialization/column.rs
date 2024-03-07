@@ -2,9 +2,14 @@ use crate::columns::{Column, ColumnIndexer};
 use crate::serialization::N_INTERMEDIATE_LIMBS;
 use crate::N_LIMBS;
 
+/// Column used by the serialization subcircuit
+/// It is not used yet.
 pub enum SerializationColumn {
+    /// 3 88 bits inputs
     KimchiLimb(usize),
+    /// N_LIMBS values, representing the limbs used by the MSM
     MSMLimb(usize),
+    /// N_INTERMEDIATE_LIMBS intermediate values, 4 bits long.
     IntermediateLimb(usize),
 }
 
