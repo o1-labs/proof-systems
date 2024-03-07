@@ -401,7 +401,7 @@
 
     <span class="kw">fn </span>from_cvars_unsafe(cvars: Vec&lt;FieldVar&lt;F&gt;&gt;, aux: <span class="self">Self</span>::Auxiliary) -&gt; <span class="self">Self </span>{
         <span class="macro">assert_eq!</span>(cvars.len(), <span class="self">Self</span>::SIZE_IN_FIELD_ELEMENTS);
-        <span class="kw">let </span>(cvars1, cvars2) = cvars.split_at(<span class="self">Self</span>::SIZE_IN_FIELD_ELEMENTS);
+        <span class="kw">let </span>(cvars1, cvars2) = cvars.split_at(T1::SIZE_IN_FIELD_ELEMENTS);
         <span class="kw">let </span>(aux1, aux2) = aux;
         (
             T1::from_cvars_unsafe(cvars1.to_vec(), aux1),
