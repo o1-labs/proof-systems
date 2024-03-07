@@ -151,11 +151,12 @@ where
     // TODO These should be evaluations of fixed coefficient polys
     let coefficient_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
 
+    let zk_rows = 0;
     let column_env = MSMColumnEnvironment {
         constants: Constants {
             endo_coefficient: *endo_r,
             mds: &G::sponge_params().mds,
-            zk_rows: 0,
+            zk_rows,
         },
         challenges: Challenges {
             alpha,
@@ -175,7 +176,7 @@ where
         // And they are, so we need to take extra care.
         for expr in constraints.iter() {
             // otherwise we need different t_size
-            let expr_degree = expr.degree(1, 0);
+            let expr_degree = expr.degree(1, zk_rows);
             if expr_degree > 2 {
                 return Err(ProverError::ConstraintDegreeTooHigh(
                     expr_degree,
