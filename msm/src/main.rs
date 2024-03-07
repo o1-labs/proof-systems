@@ -28,16 +28,16 @@ pub fn generate_random_msm_witness() -> MSMCircuitEnv<BN254G1Affine> {
     // For now the verification only works if degree of each column as
     // a polynomial is zero (constant). Apparently.
     for row_i in 0..row_num {
-        //let (a, b) = match row_i % 2 {
-        //    0 => (zero, one),
-        //    1 => (one, one),
-        //    2 => (two, one),
-        //    3 => (one, three),
-        //    _ => panic!("not possible"),
-        //};
-        let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-        let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-        circuit_env.add_test_multiplication(a, b);
+        let (a, b) = match row_i % 2 {
+            0 => (zero, two),
+            1 => (two, zero),
+            //2 => (two, one),
+            //3 => (one, three),
+            _ => panic!("not possible"),
+        };
+        //let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+        //let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+        circuit_env.add_test_addition(a, b);
     }
 
     circuit_env
@@ -54,7 +54,7 @@ pub fn main() {
 
     let circuit_env = generate_random_msm_witness();
     let witness = circuit_env.get_witness();
-    let constraint_exprs = circuit_env.get_exprs_mul();
+    let constraint_exprs = circuit_env.get_exprs_add();
 
     println!("Witness: {:?}", witness);
     println!("Constraints: {:?}", constraint_exprs);

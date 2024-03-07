@@ -80,7 +80,7 @@ where
     for wit_col in witness_polys.x.iter() {
         println!(
             "  - elem of degree {:?}: {:?}",
-            wit_col.degree(),
+            wit_col.degree(), // 3
             wit_col.coeffs
         );
     }
