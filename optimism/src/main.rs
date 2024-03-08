@@ -4,10 +4,7 @@ use ark_ff::{Fp256, UniformRand, Zero};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::{
-        column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
-        interpreter::KeccakInterpreter,
-    },
+    keccak::column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
     mips::{
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
         witness::{self as mips_witness, SCRATCH_SIZE},
