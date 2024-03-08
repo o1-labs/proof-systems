@@ -1,5 +1,5 @@
-use crate::{ffa::columns::FFAColumnIndexer, Ff1, LIMB_BITSIZE, N_LIMBS};
-use ark_ff::{FpParameters, PrimeField, Zero};
+use crate::{ffa::columns::FFAColumnIndexer, LIMB_BITSIZE, N_LIMBS};
+use ark_ff::{FpParameters, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
@@ -30,9 +30,6 @@ pub trait FFAInterpreterEnv<F: PrimeField> {
 
     /// Checks input x ∈ [0,2^15)
     fn range_check_15bit(&mut self, value: &Self::Variable);
-
-    /// In constraint environment does nothing (?). In witness environment progresses to the next row.
-    fn next_row(&mut self);
 }
 
 fn limb_decompose_biguint<F: PrimeField>(input: BigUint) -> [F; N_LIMBS] {
@@ -44,80 +41,6 @@ fn limb_decompose_biguint<F: PrimeField>(input: BigUint) -> [F; N_LIMBS] {
 fn limb_decompose_ff<F: PrimeField, Ff: PrimeField>(input: &Ff) -> [F; N_LIMBS] {
     let input_bi: BigUint = FieldHelpers::to_biguint(input);
     limb_decompose_biguint(input_bi)
-}
-
-/// Reads values from limbs A and B, returns resulting value in C.
-pub fn constrain_multiplication<F: PrimeField, Env: FFAInterpreterEnv<F>>(
-    env: &mut Env,
-) -> [Env::Variable; N_LIMBS] {
-    let a_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, FFAColumnIndexer::A(i)));
-    let b_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, FFAColumnIndexer::B(i)));
-    // fix cloning
-    let c_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| a_limbs[i].clone() * b_limbs[i].clone());
-    c_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::C(i)));
-    });
-    c_limbs
-}
-
-pub fn test_multiplication<F: PrimeField, Env: FFAInterpreterEnv<F>>(
-    env: &mut Env,
-    a: Ff1,
-    b: Ff1,
-) {
-    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&a).map(Env::constant);
-    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&b).map(Env::constant);
-    a_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::A(i)));
-    });
-    b_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::B(i)));
-    });
-
-    let _ = constrain_multiplication(env); // we don't do anything else further with c_limbs
-
-    let d_limbs: [Env::Variable; N_LIMBS] = [Zero::zero(); N_LIMBS].map(Env::constant);
-    d_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::D(i)));
-    });
-}
-
-/// Reads values from limbs A and B, returns resulting value in C.
-pub fn constrain_addition<F: PrimeField, Env: FFAInterpreterEnv<F>>(
-    env: &mut Env,
-) -> [Env::Variable; N_LIMBS] {
-    let a_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, FFAColumnIndexer::A(i)));
-    let b_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, FFAColumnIndexer::B(i)));
-    // fix cloning
-    let c_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| a_limbs[i].clone() + b_limbs[i].clone());
-    c_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::C(i)));
-    });
-    c_limbs
-}
-
-pub fn test_addition<F: PrimeField, Env: FFAInterpreterEnv<F>>(env: &mut Env, a: Ff1, b: Ff1) {
-    let a_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&a).map(Env::constant);
-    let b_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(&b).map(Env::constant);
-    a_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::A(i)));
-    });
-    b_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::B(i)));
-    });
-
-    let _ = constrain_addition(env); // we don't do anything else further with c_limbs
-
-    let d_limbs: [Env::Variable; N_LIMBS] = [Zero::zero(); N_LIMBS].map(Env::constant);
-    d_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(FFAColumnIndexer::D(i)));
-    });
 }
 
 // For now this function does not /compute/ anything, although it could.

@@ -1,7 +1,7 @@
 use crate::{
     columns::{Column, ColumnIndexer},
     expr::MSMExpr,
-    ffa::{columns::FFAColumnIndexer, interpreter::FFAInterpreterEnv},
+    test::{columns::TestColumnIndexer, interpreter::TestInterpreterEnv},
 };
 use ark_ff::PrimeField;
 use kimchi::circuits::{
@@ -14,7 +14,7 @@ pub struct ConstraintBuilderEnv<F> {
     pub constraints: Vec<MSMExpr<F>>,
 }
 
-impl<F: PrimeField> FFAInterpreterEnv<F> for ConstraintBuilderEnv<F> {
+impl<F: PrimeField> TestInterpreterEnv<F> for ConstraintBuilderEnv<F> {
     type Position = Column;
 
     type Variable = MSMExpr<F>;
@@ -44,22 +44,14 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for ConstraintBuilderEnv<F> {
     }
 
     // TODO deduplicate, remove this
-    fn column_pos(ix: FFAColumnIndexer) -> Self::Position {
+    fn column_pos(ix: TestColumnIndexer) -> Self::Position {
         ix.ix_to_column()
     }
 
-    fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable {
+    fn read_column(&self, ix: TestColumnIndexer) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: ix.ix_to_column(),
             row: CurrOrNext::Curr,
         }))
-    }
-
-    fn range_check_abs1(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
-    }
-
-    fn range_check_15bit(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
     }
 }

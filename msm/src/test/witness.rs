@@ -3,12 +3,12 @@ use ark_ff::Zero;
 
 use crate::{
     columns::{Column, ColumnIndexer},
-    ffa::{
-        columns::{FFAColumnIndexer, FFA_N_COLUMNS},
-        interpreter::FFAInterpreterEnv,
-    },
     lookups::LookupTableIDs,
     proof::ProofInputs,
+    test::{
+        columns::{TestColumnIndexer, TEST_N_COLUMNS},
+        interpreter::TestInterpreterEnv,
+    },
     witness::Witness,
     {BN254G1Affine, Fp},
 };
@@ -18,10 +18,10 @@ use crate::{
 pub struct WitnessBuilderEnv<F: PrimeField> {
     /// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    witness: Vec<Witness<FFA_N_COLUMNS, F>>,
+    witness: Vec<Witness<TEST_N_COLUMNS, F>>,
 }
 
-impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
+impl<F: PrimeField> TestInterpreterEnv<F> for WitnessBuilderEnv<F> {
     type Position = Column;
 
     type Variable = F;
@@ -29,7 +29,7 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
     fn empty() -> Self {
         WitnessBuilderEnv {
             witness: vec![Witness {
-                cols: [Zero::zero(); FFA_N_COLUMNS],
+                cols: [Zero::zero(); TEST_N_COLUMNS],
             }],
         }
     }
@@ -49,21 +49,13 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
     }
 
     // TODO deduplicate, remove this
-    fn column_pos(ix: FFAColumnIndexer) -> Self::Position {
+    fn column_pos(ix: TestColumnIndexer) -> Self::Position {
         ix.ix_to_column()
     }
 
-    fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable {
+    fn read_column(&self, ix: TestColumnIndexer) -> Self::Variable {
         let Column::X(i) = Self::column_pos(ix);
         self.witness.last().unwrap().cols[i]
-    }
-
-    fn range_check_abs1(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
-    }
-
-    fn range_check_15bit(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
     }
 }
 
@@ -74,8 +66,8 @@ impl WitnessBuilderEnv<Fp> {
     pub fn get_witness(
         &self,
         domain_size: usize,
-    ) -> ProofInputs<FFA_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
-        let mut cols: [Vec<Fp>; FFA_N_COLUMNS] = std::array::from_fn(|_| vec![]);
+    ) -> ProofInputs<TEST_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
+        let mut cols: [Vec<Fp>; TEST_N_COLUMNS] = std::array::from_fn(|_| vec![]);
 
         if self.witness.len() > domain_size {
             panic!("Too many witness rows added");
@@ -84,7 +76,7 @@ impl WitnessBuilderEnv<Fp> {
         // Filling actually used rows
         for w in &self.witness {
             let Witness { cols: witness_row } = w;
-            for i in 0..FFA_N_COLUMNS {
+            for i in 0..TEST_N_COLUMNS {
                 cols[i].push(witness_row[i]);
             }
         }
@@ -105,7 +97,7 @@ impl WitnessBuilderEnv<Fp> {
 
     pub fn next_row(&mut self) {
         self.witness.push(Witness {
-            cols: [Zero::zero(); FFA_N_COLUMNS],
+            cols: [Zero::zero(); TEST_N_COLUMNS],
         });
     }
 }
