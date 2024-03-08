@@ -125,8 +125,9 @@ impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
         BigUint::from_bytes_le(&bytes)
     }
 
-    /// Split a foreign field element into a vector of `B` bits field elements of type `F` in little-endian.
-    /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
+    /// Split a foreign field element into a vector of `B` (limb bitsize) bits field
+    /// elements of type `F` in little-endian. Right now it is written
+    /// so that it gives `N` (limb count) limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
         if B % 8 == 0 {
             let bytes = fe.to_bytes_le();
