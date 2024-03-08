@@ -138,7 +138,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
             }
             // Check that the padding is located at the end of the message
             let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
-                acc * Self::two() + self.sponge_byte(i)
+                acc * Self::two() + self.in_padding(i)
             });
             self.constrain(self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end));
             // Check that the padding value is correct
