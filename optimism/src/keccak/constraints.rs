@@ -1,20 +1,9 @@
 //! This module contains the constraints for one Keccak step.
-use crate::{
-    keccak::{
-        column::PAD_SUFFIX_LEN,
-        environment::{KeccakEnv, KeccakEnvironment},
-        BoolOps, KeccakColumn, E, WORDS_IN_HASH,
-    },
-    lookups::{Lookup, Lookups},
-};
+use crate::{keccak::E, lookups::Lookup};
 use ark_ff::Field;
-use kimchi::circuits::{
-    expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
-    gate::CurrOrNext,
-    polynomials::keccak::{
-        constants::{DIM, QUARTERS, RATE_IN_BYTES},
-        OFF,
-    },
+use kimchi::{
+    circuits::expr::{ConstantTerm::Literal, Operations},
+    o1_utils::Two,
 };
 
 use super::interpreter::KeccakInterpreter;
@@ -37,7 +26,7 @@ impl<F: Field> Default for Env<F> {
     }
 }
 
-impl<F> KeccakInterpreter<F> for Env<F> {
+impl<F: Field> KeccakInterpreter<F> for Env<F> {
     type Variable = E<F>;
 
     ///////////////////////////
@@ -57,6 +46,7 @@ impl<F> KeccakInterpreter<F> for Env<F> {
     }
 }
 
+/*
 /// This trait contains the constraints for one Keccak step.
 pub trait Constraints {
     type Column;
@@ -322,3 +312,5 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
         self.lookups();
     }
 }
+
+*/
