@@ -79,12 +79,6 @@ pub trait Constraints {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    /// Returns the variable corresponding to a given column alias.
-    fn variable(&self, column: Self::Column) -> Self::Variable;
-
-    /// Adds one constraint to the environment.
-    fn constrain(&mut self, x: Self::Variable);
-
     /// Adds all 887 constraints to the environment and triggers read lookups:
     /// - 143 constraints of degree 1
     /// - 739 constraints of degree 2
@@ -96,19 +90,6 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
     type Fp = Fp;
-
-    fn variable(&self, column: Self::Column) -> Self::Variable {
-        // Despite `KeccakWitness` containing both `curr` and `next` fields,
-        // the Keccak step spans across one row only.
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
-            row: CurrOrNext::Curr,
-        }))
-    }
-
-    fn constrain(&mut self, x: Self::Variable) {
-        self.constraints_env.constraints.push(x);
-    }
 
     fn constraints(&mut self) {
         // CORRECTNESS OF FLAGS: 144 CONSTRAINTS
