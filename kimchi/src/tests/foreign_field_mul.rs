@@ -3,7 +3,12 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::foreign_field_mul,
+        polynomials::{
+            foreign_field_common::{
+                BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose,
+            },
+            foreign_field_mul,
+        },
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -14,10 +19,7 @@ use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_traits::One;
-use o1_utils::{
-    foreign_field::{BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose},
-    FieldHelpers, Two,
-};
+use o1_utils::{FieldHelpers, Two};
 
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,

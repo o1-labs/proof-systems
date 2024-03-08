@@ -7,6 +7,7 @@ use crate::circuits::{
     polynomial::COLUMNS,
     polynomials::{
         foreign_field_add::witness::{self, FFOps},
+        foreign_field_common::{BigUintForeignFieldHelpers, HI, LIMB_BITS, LO, MI, TWO_TO_LIMB},
         range_check::{self, witness::extend_multi},
     },
     wires::Wire,
@@ -24,12 +25,7 @@ use mina_poseidon::{
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
 use o1_utils::tests::make_test_rng;
-use o1_utils::{
-    foreign_field::{
-        BigUintForeignFieldHelpers, ForeignElement, HI, LIMB_BITS, LO, MI, TWO_TO_LIMB,
-    },
-    FieldHelpers, Two,
-};
+use o1_utils::{foreign_field::ForeignElement, FieldHelpers, Two};
 use poly_commitment::{
     evaluation_proof::OpeningProof,
     srs::{endos, SRS},

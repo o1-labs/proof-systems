@@ -2,7 +2,7 @@
 
 use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
-use o1_utils::foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers};
+use o1_utils::foreign_field::ForeignFieldHelpers;
 
 use crate::{
     alphas::Alphas,
@@ -14,7 +14,10 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
-        polynomials::generic::GenericGateSpec,
+        polynomials::{
+            foreign_field_common::{BigUintForeignFieldHelpers, KimchiForeignElement},
+            generic::GenericGateSpec,
+        },
         wires::Wire,
     },
 };
@@ -76,7 +79,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ) {
         let r = gates.len();
         let hi_fmod = foreign_field_modulus.to_field_limbs::<F>()[2];
-        let hi_limb: F = F::two_to_limb() - hi_fmod - F::one();
+        let hi_limb: F = KimchiForeignElement::<F>::two_to_limb() - hi_fmod - F::one();
         let g = GenericGateSpec::Plus(hi_limb);
         CircuitGate::extend_generic(gates, curr_row, Wire::for_row(r), g.clone(), Some(g));
     }
