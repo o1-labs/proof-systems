@@ -1,48 +1,48 @@
-use rand::{thread_rng, Rng};
+use rand::Rng;
 
 use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
 
 use kimchi_msm::columns::Column;
 use kimchi_msm::ffa::{
-    columns::FFA_N_COLUMNS, constraint::get_exprs_add, witness::WitnessBuilder as FFAWitnessBuilder,
+    columns::FFA_N_COLUMNS,
+    constraint::ConstraintBuilderEnv as FFAConstraintBuilderEnv,
+    interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
+    witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
 };
 use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
-use kimchi_msm::{
-    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
-};
-
-pub fn generate_random_msm_witness() -> FFAWitnessBuilder<BN254G1Affine> {
-    let mut circuit_env = FFAWitnessBuilder::<BN254G1Affine>::empty();
-    let mut rng = thread_rng();
-
-    let row_num = DOMAIN_SIZE;
-    assert!(row_num <= DOMAIN_SIZE);
-
-    for _row_i in 0..row_num {
-        let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-        let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-        circuit_env.add_test_addition(a, b);
-    }
-
-    circuit_env
-}
+use kimchi_msm::{BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE};
 
 pub fn main() {
     // FIXME: use a proper RNG
     let mut rng = o1_utils::tests::make_test_rng();
 
     println!("Creating the domain and SRS");
-    let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
+    let domain_size = DOMAIN_SIZE;
+    let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-    let circuit_env = generate_random_msm_witness();
-    let proof_inputs = circuit_env.get_witness();
-    let constraint_exprs = get_exprs_add();
+    let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
+    let mut constraint_env = FFAConstraintBuilderEnv::<Fp>::empty();
+
+    ffa_interpreter::constrain_multiplication(&mut constraint_env);
+
+    let row_num = 10;
+    assert!(row_num <= DOMAIN_SIZE);
+
+    for _row_i in 0..row_num {
+        let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+        let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
+        ffa_interpreter::test_multiplication(&mut witness_env, a, b);
+        witness_env.next_row();
+    }
+
+    let inputs = witness_env.get_witness(domain_size);
+    let constraints = constraint_env.constraints;
 
     println!("Generating the proof");
     let proof = prove::<
@@ -54,14 +54,14 @@ pub fn main() {
         _,
         FFA_N_COLUMNS,
         LookupTableIDs,
-    >(domain, &srs, &constraint_exprs, proof_inputs, &mut rng)
+    >(domain, &srs, &constraints, inputs, &mut rng)
     .unwrap();
 
     println!("Verifying the proof");
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
         domain,
         &srs,
-        &constraint_exprs,
+        &constraints,
         &proof,
     );
     println!("Proof verification result: {verifies}")

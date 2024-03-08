@@ -129,6 +129,12 @@ pub mod prover {
         pub lookup_aggregation_evals_d1: Evaluations<G::ScalarField, D<G::ScalarField>>,
         pub lookup_aggregation_poly_d1: DensePolynomial<G::ScalarField>,
         pub lookup_aggregation_comm_d1: PolyComm<G>,
+
+        /// The combiner used for vector lookups
+        pub joint_combiner: G::ScalarField,
+
+        /// The evaluation point used for the lookup polynomials.
+        pub beta: G::ScalarField,
     }
 
     impl<G: KimchiCurve> Env<G> {
@@ -335,6 +341,9 @@ pub mod prover {
                 lookup_aggregation_evals_d1,
                 lookup_aggregation_poly_d1,
                 lookup_aggregation_comm_d1,
+
+                joint_combiner: vector_lookup_combiner,
+                beta,
             }
         }
     }

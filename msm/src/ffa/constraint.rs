@@ -1,62 +1,61 @@
 use crate::{
     columns::{Column, ColumnIndexer},
     expr::MSMExpr,
-    ffa::columns::FFAColumnIndexer,
-    {Fp, N_LIMBS},
+    ffa::{columns::FFAColumnIndexer, interpreter::FFAInterpreterEnv},
 };
+use ark_ff::PrimeField;
 use kimchi::circuits::{
-    expr::{ConstantExprInner, ExprInner, Operations, Variable},
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
-/// Access exprs for addition
-pub fn get_exprs_add() -> Vec<MSMExpr<Fp>> {
-    let mut limb_exprs: Vec<_> = vec![];
-    for i in 0..N_LIMBS {
-        let limb_constraint = {
-            let a_i = MSMExpr::Atom(
-                ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-                    col: FFAColumnIndexer::A(i).ix_to_column(),
-                    row: CurrOrNext::Curr,
-                }),
-            );
-            let b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::B(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            let c_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::C(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            a_i + b_i - c_i
-        };
-        limb_exprs.push(limb_constraint);
-    }
-    limb_exprs
+/// Contains constraints for just one row.
+pub struct ConstraintBuilderEnv<F> {
+    pub constraints: Vec<MSMExpr<F>>,
 }
 
-/// Get expressions for multiplication
-pub fn get_exprs_mul() -> Vec<MSMExpr<Fp>> {
-    let mut limb_exprs: Vec<_> = vec![];
-    for i in 0..N_LIMBS {
-        let limb_constraint = {
-            let a_i = MSMExpr::Atom(
-                ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-                    col: FFAColumnIndexer::A(i).ix_to_column(),
-                    row: CurrOrNext::Curr,
-                }),
-            );
-            let b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::B(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            let d_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::D(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            a_i * b_i - d_i
-        };
-        limb_exprs.push(limb_constraint);
+impl<F: PrimeField> FFAInterpreterEnv<F> for ConstraintBuilderEnv<F> {
+    type Position = Column;
+
+    type Variable = MSMExpr<F>;
+
+    fn empty() -> Self {
+        ConstraintBuilderEnv {
+            constraints: vec![],
+        }
     }
-    limb_exprs
+
+    fn assert_zero(&mut self, cst: Self::Variable) {
+        self.constraints.push(cst)
+    }
+
+    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
+        let y = Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }));
+        self.constraints.push(y.clone() - x.clone());
+        y
+    }
+
+    fn constant(value: F) -> Self::Variable {
+        let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
+        Expr::Atom(ExprInner::Constant(cst_expr_inner))
+    }
+
+    // TODO deduplicate, remove this
+    fn column_pos(ix: FFAColumnIndexer) -> Self::Position {
+        ix.ix_to_column()
+    }
+
+    fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: ix.ix_to_column(),
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn next_row(&mut self) {
+        panic!("Please don't call this");
+    }
 }

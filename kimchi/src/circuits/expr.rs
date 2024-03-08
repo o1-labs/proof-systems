@@ -125,12 +125,30 @@ pub struct Environment<'a, F: FftField> {
 }
 
 pub trait ColumnEnvironment<'a, F: FftField> {
+    /// The generic type of column the environment can use.
+    /// In other words, with the multi-variate polynomial analogy, it is the
+    /// variables the multi-variate polynomials are defined upon.
+    /// i.e. for a polynomial `P(X, Y, Z)`, the type will represent the variable
+    /// `X`, `Y` and `Z`.
     type Column;
+
+    /// Return the evaluation of the given column, over the domain.
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
+
     fn get_domain(&self, d: Domain) -> D<F>;
+
+    /// Return the constants parameters that the expression might use.
+    /// For instance, it can be the matrix used by the linear layer in the
+    /// permutation.
     fn get_constants(&self) -> &Constants<F>;
+
+    /// Return the challenges, coined by the verifier.
     fn get_challenges(&self) -> &Challenges<F>;
+
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
+
+    /// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
+    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     fn l0_1(&self) -> F;
 }
 
@@ -229,6 +247,17 @@ pub struct Variable<Column> {
     pub row: CurrOrNext,
 }
 
+/// Define challenges the verifier coins during the interactive protocol.
+/// It has been defined initially to handle the PLONK IOP, hence:
+/// - `alpha` for the quotient polynomial
+/// - `beta` and `gamma` for the permutation challenges.
+/// The joint combiner is to handle vector lookups, initially designed to be
+/// used with PLOOKUP.
+/// The terms have no built-in semantic in the expression framework, and can be
+/// used for any other four challenges the verifier coins in other polynomial
+/// interactive protocol.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChallengeTerm {
     Alpha,
@@ -237,6 +266,15 @@ pub enum ChallengeTerm {
     JointCombiner,
 }
 
+/// Define the constant terms an expression can use.
+/// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
+/// permutation used by Poseidon for instance), or endomorphism coefficients
+/// (`EndoCoefficient` - used as an optimisation).
+/// As for `challengeTerm`, it has been used initially to implement the PLONK
+/// IOP, with the custom gate Poseidon. However, the terms have no built-in
+/// semantic in the expression framework.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstantTerm<F> {
     EndoCoefficient,
@@ -972,6 +1010,14 @@ impl<C, Column> Expr<C, Column> {
         Expr::Atom(ExprInner::Constant(c))
     }
 
+    /// Return the degree of the expression.
+    /// The degree of a cell is defined by the first argument `d1_size`, a
+    /// constant being of degree zero. The degree of the expression is defined
+    /// recursively using the definition of the degree of a multivariate
+    /// polynomial. The function can be (and is) used to compute the domain
+    /// size, hence the name of the first argument `d1_size`.
+    /// The second parameter `zk_rows` is used to define the degree of the
+    /// constructor `VanishesOnZeroKnowledgeAndPreviousRows`.
     pub fn degree(&self, d1_size: u64, zk_rows: u64) -> u64 {
         use ExprInner::*;
         use Operations::*;
@@ -1146,7 +1192,18 @@ fn unnormalized_lagrange_evals<'a, F: FftField, Environment: ColumnEnvironment<'
     Evaluations::<F, D<F>>::from_vec_and_domain(evals, res_domain)
 }
 
+/// Implement algebraic methods like `add`, `sub`, `mul`, `square`, etc to use
+/// algebra on the type `EvalResult`.
 impl<'a, F: FftField> EvalResult<'a, F> {
+    /// Create an evaluation over the domain `res_domain`.
+    /// The second parameter, `g`, is a function used to define the
+    /// evaluations at a given point of the domain.
+    /// For instance, the second parameter `g` can simply be the identity
+    /// functions over a set of field elements.
+    /// It can also be used to define polynomials like `x^2` when we only have the
+    /// value of `x`. It can be used in particular to evaluate an expression (a
+    /// multi-variate polynomial) when we only do have access to the evaluations
+    /// of the individual variables.
     fn init_<G: Sync + Send + Fn(usize) -> F>(
         res_domain: (Domain, D<F>),
         g: G,
@@ -1158,6 +1215,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         )
     }
 
+    /// Call the internal function `init_` and return the computed evaluation as
+    /// a value `Evals`.
     fn init<G: Sync + Send + Fn(usize) -> F>(res_domain: (Domain, D<F>), g: G) -> Self {
         Self::Evals {
             domain: res_domain.0,
@@ -1770,6 +1829,11 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
+    /// The routine will first replace the constants (verifier challenges and
+    /// constants like the matrix used by `Poseidon`) in the expression with their
+    /// respective values using `evaluate_constants` and will after evaluate the
+    /// monomials with the corresponding column values using the method
+    /// `evaluations`.
     pub fn evaluations<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
         &self,
         env: &Environment,
@@ -1778,6 +1842,9 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
     }
 }
 
+/// Use as a result of the expression evaluations routine.
+/// For now, the left branch is the result of an evaluation and the right branch
+/// is the ID of an element in the cache
 enum Either<A, B> {
     Left(A),
     Right(B),

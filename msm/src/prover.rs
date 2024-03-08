@@ -132,7 +132,7 @@ where
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
     let witness_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = (&witness_polys)
-        .into_iter()
+        .into_par_iter()
         .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
         .collect();
 
@@ -151,23 +151,29 @@ where
     // TODO These should be evaluations of fixed coefficient polys
     let coefficient_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
 
-    let column_env = MSMColumnEnvironment {
-        constants: Constants {
-            endo_coefficient: *endo_r,
-            mds: &G::sponge_params().mds,
-            zk_rows: 0,
-        },
-        challenges: Challenges {
+    let zk_rows = 0;
+    let column_env = {
+        let challenges = Challenges {
             alpha,
-            beta: G::ScalarField::zero(),
+            // NB: as there is on permutation argument, we do use the beta
+            // field instead of a new one for the evaluation point.
+            beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
             gamma: G::ScalarField::zero(),
-            joint_combiner: None,
-        },
-        witness: &witness_evals_env,
-        coefficients: &coefficient_evals_env,
-        l0_1: l0_1(domain.d1),
-        lookup: None,
-        domain,
+            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
+        };
+        MSMColumnEnvironment {
+            constants: Constants {
+                endo_coefficient: *endo_r,
+                mds: &G::sponge_params().mds,
+                zk_rows,
+            },
+            challenges,
+            witness: &witness_evals_env,
+            coefficients: &coefficient_evals_env,
+            l0_1: l0_1(domain.d1),
+            lookup: None,
+            domain,
+        }
     };
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
@@ -175,7 +181,7 @@ where
         // And they are, so we need to take extra care.
         for expr in constraints.iter() {
             // otherwise we need different t_size
-            let expr_degree = expr.degree(1, 0);
+            let expr_degree = expr.degree(1, zk_rows);
             if expr_degree > 2 {
                 return Err(ProverError::ConstraintDegreeTooHigh(
                     expr_degree,
@@ -359,7 +365,7 @@ where
 
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = (&witness_polys)
-        .into_iter()
+        .into_par_iter()
         .map(|poly| (coefficients_form(poly), non_hiding(1)))
         .collect();
 

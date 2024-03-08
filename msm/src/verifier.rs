@@ -34,28 +34,53 @@ pub fn verify<
         opening_proof,
     } = proof;
 
-    // -- Absorbing the commitments
+    ////////////////////////////////////////////////////////////////////////////
+    // Absorbing all the commitments to the columns
+    ////////////////////////////////////////////////////////////////////////////
+
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
-    proof_comms
-        .witness_comms
-        .cols
-        .iter()
+    (&proof_comms.witness_comms)
+        .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
-    if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
-        mvlookup_comms
-            .into_iter()
-            .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
-    }
+    ////////////////////////////////////////////////////////////////////////////
+    // MVLookup
+    ////////////////////////////////////////////////////////////////////////////
+
+    let (joint_combiner, beta) = {
+        if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
+            // First, we absorb the multiplicity polynomials
+            mvlookup_comms
+                .m
+                .iter()
+                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+
+            // To generate the challenges
+            let joint_combiner = fq_sponge.challenge();
+            let beta = fq_sponge.challenge();
+
+            // And now, we absorb the commitments to the other polynomials
+            mvlookup_comms
+                .h
+                .iter()
+                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+            absorb_commitment(&mut fq_sponge, &mvlookup_comms.sum);
+            (Some(joint_combiner), beta)
+        } else {
+            (None, G::ScalarField::zero())
+        }
+    };
 
     //~ 1. Sample $\alpha'$ with the Fq-Sponge.
     let alpha_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
-    absorb_commitment(&mut fq_sponge, &proof_comms.t_comm);
+    ////////////////////////////////////////////////////////////////////////////
+    // Quotient polynomial
+    ////////////////////////////////////////////////////////////////////////////
 
-    // -- Finish absorbing the commitments
+    absorb_commitment(&mut fq_sponge, &proof_comms.t_comm);
 
     // -- Preparing for opening proof verification
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -67,11 +92,9 @@ pub fn verify<
     let mut coms_and_evaluations: Vec<Evaluation<_>> = vec![];
 
     coms_and_evaluations.extend(
-        proof_comms
-            .witness_comms
-            .cols
-            .iter()
-            .zip(proof_evals.witness_evals.cols.iter())
+        (&proof_comms.witness_comms)
+            .into_iter()
+            .zip(&proof_evals.witness_evals)
             .map(|(commitment, point_eval)| Evaluation {
                 commitment: commitment.clone(),
                 evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
@@ -96,7 +119,7 @@ pub fn verify<
     let mut fr_sponge = EFrSponge::new(G::sponge_params());
     fr_sponge.absorb(&fq_sponge.digest());
 
-    for PointEvaluations { zeta, zeta_omega } in proof_evals.witness_evals.cols.iter() {
+    for PointEvaluations { zeta, zeta_omega } in (&proof_evals.witness_evals).into_iter() {
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
@@ -121,9 +144,9 @@ pub fn verify<
 
     let challenges = Challenges {
         alpha,
-        beta: G::ScalarField::zero(),
+        beta,
         gamma: G::ScalarField::zero(),
-        joint_combiner: None,
+        joint_combiner,
     };
 
     let constants = Constants {
