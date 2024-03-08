@@ -479,10 +479,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_pad(&self) -> Self::Variable {
-        Self::not(Self::is_nonzero(
-            self.pad_length(),
-            self.variable(KeccakColumn::InvPadLength),
-        ))
+        self.pad_length() * self.variable(KeccakColumn::InvPadLength)
     }
 
     fn is_round(&self) -> Self::Variable {
