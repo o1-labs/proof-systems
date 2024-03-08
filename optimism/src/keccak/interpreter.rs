@@ -115,9 +115,9 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Adds one constraint to the environment.
     fn constrain(&mut self, x: Self::Variable);
 
-    /// Adds all 888 constraints to the environment and triggers read lookups:
+    /// Adds all 887 constraints to the environment and triggers read lookups:
     /// - 143 constraints of degree 1
-    /// - 740 constraints of degree 2
+    /// - 739 constraints of degree 2
     /// - 5 constraints of degree 5
     fn constraints(&mut self) {
         // CORRECTNESS OF FLAGS: 144 CONSTRAINTS
