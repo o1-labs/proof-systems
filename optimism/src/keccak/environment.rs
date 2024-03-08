@@ -6,7 +6,7 @@ use crate::keccak::{
     constraints::{Constraints, Env as ConstraintsEnv},
     grid_index, pad_blocks,
     witness::Env as WitnessEnv,
-    ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::{Field, One};
 use kimchi::{

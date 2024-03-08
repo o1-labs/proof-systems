@@ -2,7 +2,7 @@
 use crate::{
     keccak::{
         environment::{KeccakEnv, KeccakEnvironment},
-        ArithOps, BoolOps, KeccakColumn, E,
+        BoolOps, KeccakColumn, E,
     },
     lookups::{Lookup, LookupTableIDs, Lookups},
 };
