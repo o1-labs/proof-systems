@@ -1,15 +1,12 @@
 //! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
-use crate::{
-    keccak::{
-        column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
-        constraints::Constraints,
-        grid_index, pad_blocks,
-        witness::Env as WitnessEnv,
-        ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
-    },
-    lookups::Lookup,
+use crate::keccak::{
+    column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+    constraints::{Constraints, Env as ConstraintsEnv},
+    grid_index, pad_blocks,
+    witness::Env as WitnessEnv,
+    ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::{Field, One};
 use kimchi::{
@@ -30,10 +27,8 @@ use std::array;
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<F> {
-    /// Constraints that are added to the circuit
-    pub(crate) constraints: Vec<E<F>>,
-    /// Values that are looked up in the circuit
-    pub(crate) lookups: Vec<Lookup<E<F>>>,
+    /// Environment for the constraints (includes lookups)
+    pub constraints_env: ConstraintsEnv<F>,
     /// Environment for the witness (includes multiplicities)
     pub witness_env: WitnessEnv<F>,
 
@@ -84,8 +79,7 @@ impl<F: Field> KeccakEnv<F> {
     /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
     pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
         let mut env = Self {
-            constraints: vec![],
-            lookups: vec![],
+            constraints_env: ConstraintsEnv::default(),
             witness_env: WitnessEnv::default(),
             keccak_step: None,
             hash_idx,
