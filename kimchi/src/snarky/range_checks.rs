@@ -17,7 +17,7 @@ fn parse_limb<F: PrimeField, const B: usize>(bits: impl Iterator<Item = bool>) -
     for _ in 0..B {
         let b = bits.next().unwrap();
         let b = if b { 1 } else { 0 };
-        l += l + b;
+        l = l + l + b;
     }
     F::from(l)
 }
@@ -44,7 +44,7 @@ impl<F: PrimeField> RangeCheckLimbs1<F> {
         Self { crumbs, limbs }
     }
     ///produces limbs and crumbs with the expected endianess
-    fn to_repr(mut self) -> ([F; 6], [F; 8]) {
+    fn into_repr(mut self) -> ([F; 6], [F; 8]) {
         self.crumbs.reverse();
         self.limbs.reverse();
         let Self { crumbs, limbs } = self;
@@ -73,7 +73,7 @@ impl<F: PrimeField> RangeCheckLimbs2<F> {
         }
     }
     ///produces limbs and crumbs with the expected endianess
-    fn to_repr(mut self) -> ([F; 2], [F; 4], [F; 18]) {
+    fn into_repr(mut self) -> ([F; 2], [F; 4], [F; 18]) {
         self.crumbs_high.reverse();
         self.limbs.reverse();
         self.crumbs_low.reverse();
@@ -96,7 +96,7 @@ pub fn range_check<F: PrimeField>(
     let v0_limbs: ([FieldVar<F>; 6], [FieldVar<F>; 8]) = runner.compute(loc.clone(), |w| {
         let v = w.read_var(&v0);
         let limbs = RangeCheckLimbs1::parse(v);
-        limbs.to_repr()
+        limbs.into_repr()
     })?;
     let v0p0 = v0_limbs.0[0].clone();
     let v0p1 = v0_limbs.0[1].clone();
@@ -110,7 +110,7 @@ pub fn range_check<F: PrimeField>(
     let v1_limbs: ([FieldVar<F>; 6], [FieldVar<F>; 8]) = runner.compute(loc.clone(), |w| {
         let v = w.read_var(&v1);
         let limbs = RangeCheckLimbs1::parse(v);
-        limbs.to_repr()
+        limbs.into_repr()
     })?;
     let v1p0 = v1_limbs.0[0].clone();
     let v1p1 = v1_limbs.0[1].clone();
@@ -120,12 +120,13 @@ pub fn range_check<F: PrimeField>(
         .chain(v1_limbs.1)
         .collect_vec();
 
+    type Limbs<F, const N: usize> = [FieldVar<F>; N];
     let r1: [FieldVar<F>; 15] = r1.try_into().unwrap();
-    let v2_limbs: (([FieldVar<F>; 2], [FieldVar<F>; 4]), [FieldVar<F>; 18]) =
+    let v2_limbs: ((Limbs<F, 2>, Limbs<F, 4>), Limbs<F, 18>) =
         runner.compute(loc.clone(), |w| {
             let v = w.read_var(&v2);
             let limbs = RangeCheckLimbs2::parse(v);
-            let (a, b, c) = limbs.to_repr();
+            let (a, b, c) = limbs.into_repr();
             ((a, b), c)
         })?;
     let ((v2_crumb_high, v2_limb), v2_crumb_low) = v2_limbs;
