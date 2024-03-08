@@ -5,7 +5,7 @@
 //! to avoid code duplication and reduce error-proneness.
 //!
 //! For a pseudo code implementation of Keccap-f, see
-//! https://keccak.team/keccak_specs_summary.html
+//! <https://keccak.team/keccak_specs_summary.html>
 use crate::keccak::column::KeccakWitness;
 use ark_ff::Field;
 
