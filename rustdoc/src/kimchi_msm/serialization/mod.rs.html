@@ -122,6 +122,17 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 
 <span class="kw">use </span><span class="kw">crate</span>::mvlookup::LookupTableID;
@@ -171,7 +182,9 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
-        <span class="kw">const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">5</span>;
+        <span class="comment">// Must be at least 1 &lt;&lt; 15 to support rangecheck15
+        </span><span class="kw">const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
+
         <span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ N_INTERMEDIATE_LIMBS + N_LIMBS;
 
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
@@ -179,15 +192,24 @@
         <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = witness::Env::&lt;Fp&gt;::create();
-        <span class="kw">let </span><span class="kw-2">mut </span>witness: Witness&lt;SERIALIZATION_N_COLUMNS, Vec&lt;Fp&gt;&gt; = Witness {
+        <span class="comment">// Boxing to avoid stack overflow
+        </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;SERIALIZATION_N_COLUMNS, Vec&lt;Fp&gt;&gt;&gt; = Box::new(Witness {
             cols: std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(DOMAIN_SIZE)),
-        };
+        });
 
-        <span class="kw">let </span>field_elements = [[
-            rng.gen_range(<span class="number">0</span>..<span class="number">1000</span>),
-            rng.gen_range(<span class="number">0</span>..<span class="number">1000</span>),
-            rng.gen_range(<span class="number">0</span>..<span class="number">1000</span>),
-        ]; DOMAIN_SIZE];
+        <span class="comment">// Boxing to avoid stack overflow
+        </span><span class="kw">let </span><span class="kw-2">mut </span>field_elements = <span class="macro">vec!</span>[];
+        <span class="comment">// FIXME: we do use always the same values here, because we have a
+        // constant check (X - c), different for each row. And there is no
+        // constant support/public input yet in the quotient polynomial.
+        </span><span class="kw">let </span>(x, y, z) = (
+            rng.gen_range(<span class="number">0</span>..<span class="number">1000000</span>),
+            rng.gen_range(<span class="number">0</span>..<span class="number">1000000</span>),
+            rng.gen_range(<span class="number">0</span>..<span class="number">1000000</span>),
+        );
+        <span class="kw">for _ in </span><span class="number">0</span>..DOMAIN_SIZE {
+            field_elements.push([x, y, z])
+        }
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
         <span class="kw">for </span>limbs <span class="kw">in </span>field_elements {
@@ -218,7 +240,7 @@
         }
 
         <span class="kw">let </span>proof_inputs = ProofInputs {
-            evaluations: witness,
+            evaluations: <span class="kw-2">*</span>witness,
             mvlookups: <span class="macro">vec!</span>[],
             public_input_size: <span class="number">0</span>,
         };
