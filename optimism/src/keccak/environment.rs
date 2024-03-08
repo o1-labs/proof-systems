@@ -1,10 +1,13 @@
 //! This module contains the definition and implementation of the Keccak environment
+//! including the common functions between the witness and the constraints environments
+//! for arithmetic, boolean, and column operations.
 use crate::{
     keccak::{
         column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
         constraints::Constraints,
-        grid_index, pad_blocks, ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS,
-        WORDS_IN_HASH,
+        grid_index, pad_blocks,
+        witness::Env as WitnessEnv,
+        ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
     },
     lookups::Lookup,
 };
@@ -26,14 +29,14 @@ use std::array;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
-pub struct KeccakEnv<Fp> {
+pub struct KeccakEnv<F> {
     /// Constraints that are added to the circuit
-    pub(crate) constraints: Vec<E<Fp>>,
+    pub(crate) constraints: Vec<E<F>>,
     /// Values that are looked up in the circuit
-    pub(crate) lookups: Vec<Lookup<E<Fp>>>,
+    pub(crate) lookups: Vec<Lookup<E<F>>>,
+    /// Environment for the witness (includes multiplicities)
+    pub witness_env: WitnessEnv<F>,
 
-    /// The full state of the Keccak gate (witness)
-    pub keccak_witness: KeccakWitness<Fp>,
     /// What step of the hash is being executed (or None, if just ended)
     pub keccak_step: Option<KeccakStep>,
 
@@ -83,7 +86,7 @@ impl<F: Field> KeccakEnv<F> {
         let mut env = Self {
             constraints: vec![],
             lookups: vec![],
-            keccak_witness: KeccakWitness::default(),
+            witness_env: WitnessEnv::default(),
             keccak_step: None,
             hash_idx,
             step_idx: 0,
@@ -121,17 +124,18 @@ impl<F: Field> KeccakEnv<F> {
 
     /// Writes an integer value to a column of the Keccak witness
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
-        self.keccak_witness[column] = F::from(value);
+        self.witness_env.witness[column] = F::from(value);
     }
 
     /// Writes a field value to a column of the Keccak witness
     pub fn write_column_field(&mut self, column: KeccakColumn, value: F) {
-        self.keccak_witness[column] = value;
+        self.witness_env.witness[column] = value;
     }
 
     /// Nullifies the KeccakWitness of the environment by resetting it to default values
     pub fn null_state(&mut self) {
-        self.keccak_witness = KeccakWitness::default();
+        self.witness_env.witness = KeccakWitness::default();
+        self.witness_env.check_idx = 0; // Reset constraint count for debugging
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),

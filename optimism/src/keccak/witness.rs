@@ -6,9 +6,25 @@
 //!
 //! For a pseudo code implementation of Keccap-f, see
 //! https://keccak.team/keccak_specs_summary.html
-use crate::{
-    keccak::{column::KeccakWitness, interpreter::KeccakInterpreter, KeccakColumn},
-    lookups::Lookup,
-};
+use crate::keccak::column::KeccakWitness;
 use ark_ff::Field;
-use kimchi::o1_utils::Two;
+
+/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+#[derive(Clone, Debug)]
+pub struct Env<Fp> {
+    /// The full state of the Keccak gate (witness)
+    pub witness: KeccakWitness<Fp>,
+    // The multiplicities of each lookup table
+    // TODO
+    /// A counter of constraints to help with debugging, starts with 1
+    pub(crate) check_idx: usize,
+}
+
+impl<F: Field> Default for Env<F> {
+    fn default() -> Self {
+        Self {
+            witness: KeccakWitness::default(),
+            check_idx: 0,
+        }
+    }
+}
