@@ -51,22 +51,6 @@ pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
 /// The lookup table struct based on MVLookupTable for the VM table IDs
 pub(crate) type LookupTable<F> = MVLookupTable<F, LookupTableIDs>;
 
-/// This trait adds basic methods to deal with lookups inside an environment
-pub(crate) trait Lookups {
-    type Column;
-    type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Neg<Output = Self::Variable>
-        + Clone;
-
-    /// Adds a given Lookup to the environment
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
-
-    /// Adds all lookups of Self to the environment
-    fn lookups(&mut self);
-}
-
 /// Trait that creates all the fixed lookup tables used in the VM
 pub(crate) trait FixedLookupTables<F> {
     fn table_range_check_16() -> LookupTable<F>;
