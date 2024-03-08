@@ -96,9 +96,10 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
 
         // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         {
+            let sponge_zeros = self.sponge_zeros();
             for i in 0..SPONGE_ZEROS_LEN {
                 // Absorb phase pads with zeros the new state
-                self.constrain(self.is_absorb() * self.sponge_zeros()[i].clone());
+                self.constrain(self.is_absorb() * sponge_zeros[i].clone());
             }
             for i in 0..QUARTERS * DIM * DIM {
                 // In first absorb, root state is all zeros
