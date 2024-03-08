@@ -12,7 +12,7 @@ use kimchi::circuits::{
     expr::{Expr, ExprInner, Variable},
     gate::CurrOrNext,
     polynomials::keccak::{
-        constants::{DIM, QUARTERS, RATE_IN_BYTES, SPONGE_ZEROS_LEN},
+        constants::{DIM, QUARTERS, RATE_IN_BYTES},
         OFF,
     },
 };
@@ -97,9 +97,9 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
         // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         {
             let sponge_zeros = self.sponge_zeros();
-            for i in 0..SPONGE_ZEROS_LEN {
+            for zero in sponge_zeros {
                 // Absorb phase pads with zeros the new state
-                self.constrain(self.is_absorb() * sponge_zeros[i].clone());
+                self.constrain(self.is_absorb() * zero);
             }
             for i in 0..QUARTERS * DIM * DIM {
                 // In first absorb, root state is all zeros
