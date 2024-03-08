@@ -1,8 +1,14 @@
 //! This module contains the constraints for one Keccak step.
-use crate::{keccak::E, lookups::Lookup};
+use crate::{
+    keccak::{KeccakColumn, E},
+    lookups::Lookup,
+};
 use ark_ff::Field;
 use kimchi::{
-    circuits::expr::{ConstantTerm::Literal, Operations},
+    circuits::{
+        expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
+        gate::CurrOrNext,
+    },
     o1_utils::Two,
 };
 
@@ -43,6 +49,23 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
 
     fn two_pow(x: u64) -> Self::Variable {
         Self::constant_field(F::two_pow(x))
+    }
+
+    ////////////////////////////
+    // CONSTRAINTS OPERATIONS //
+    ////////////////////////////
+
+    fn variable(&self, column: KeccakColumn) -> Self::Variable {
+        // Despite `KeccakWitness` containing both `curr` and `next` fields,
+        // the Keccak step spans across one row only.
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn constrain(&mut self, x: Self::Variable) {
+        self.constraints.push(x);
     }
 }
 
