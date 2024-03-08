@@ -25,7 +25,6 @@ use poly_commitment::{
     evaluation_proof::OpeningProof,
     srs::{endos, SRS},
 };
-use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
 
@@ -38,11 +37,6 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const XOR: bool = true;
-
-const RNG_SEED: [u8; 32] = [
-    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
-    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
-];
 
 fn create_test_constraint_system_xor<G: KimchiCurve>(
     bits: usize,
@@ -110,7 +104,7 @@ fn setup_xor<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     // Initialize inputs
     // If some input was given then use that one, otherwise generate a random one with the given bits
     let input1 = rng.gen(in1, bits);
@@ -153,7 +147,7 @@ where
 #[test]
 // End-to-end test of XOR
 fn test_prove_and_verify_xor() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     let bits = 64;
     // Create
@@ -276,7 +270,7 @@ fn test_bad_xor_decompsition() {
 // Tests that the extend xor function works as expected
 fn test_extend_xor() {
     let bits = Some(16);
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let input1: PallasField = rng.gen(None, bits);
     let input2: PallasField = rng.gen(None, bits);
 
@@ -318,7 +312,7 @@ fn test_extend_xor() {
 #[test]
 fn test_bad_xor() {
     let bits = Some(16);
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let input1: PallasField = rng.gen(None, bits);
     let input2: PallasField = rng.gen(None, bits);
 
