@@ -13,13 +13,16 @@ use crate::keccak::{
     pad_blocks, KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{
-    constants::{
-        CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
-        STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
+use kimchi::{
+    circuits::polynomials::keccak::{
+        constants::{
+            CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
+            STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
+        },
+        witness::{Chi, Iota, PiRho, Theta},
+        Keccak,
     },
-    witness::{Chi, Iota, PiRho, Theta},
-    Keccak,
+    o1_utils::Two,
 };
 
 impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
@@ -50,6 +53,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakColumn::InvPadLength,
             Fp::inverse(&Fp::from(self.pad_len)).unwrap(),
         );
+        self.write_column_field(KeccakColumn::TwoToPad, Fp::two_pow(self.pad_len));
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
             self.write_column(KeccakColumn::PadBytesFlags(i), 1);
