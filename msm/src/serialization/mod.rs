@@ -47,7 +47,9 @@ mod tests {
     #[test]
     fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
-        const DOMAIN_SIZE: usize = 1 << 5;
+        // Must be at least 1 << 15 to support rangecheck15
+        const DOMAIN_SIZE: usize = 1 << 15;
+
         const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + N_LIMBS;
 
         let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
@@ -55,15 +57,24 @@ mod tests {
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let mut witness_env = witness::Env::<Fp>::create();
-        let mut witness: Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>> = Witness {
+        // Boxing to avoid stack overflow
+        let mut witness: Box<Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
-        };
+        });
 
-        let field_elements = [[
-            rng.gen_range(0..1000),
-            rng.gen_range(0..1000),
-            rng.gen_range(0..1000),
-        ]; DOMAIN_SIZE];
+        // Boxing to avoid stack overflow
+        let mut field_elements = vec![];
+        // FIXME: we do use always the same values here, because we have a
+        // constant check (X - c), different for each row. And there is no
+        // constant support/public input yet in the quotient polynomial.
+        let (x, y, z) = (
+            rng.gen_range(0..1000000),
+            rng.gen_range(0..1000000),
+            rng.gen_range(0..1000000),
+        );
+        for _ in 0..DOMAIN_SIZE {
+            field_elements.push([x, y, z])
+        }
 
         let mut constraints = vec![];
         for limbs in field_elements {
@@ -94,7 +105,7 @@ mod tests {
         }
 
         let proof_inputs = ProofInputs {
-            evaluations: witness,
+            evaluations: *witness,
             mvlookups: vec![],
             public_input_size: 0,
         };
