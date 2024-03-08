@@ -6,8 +6,9 @@
 //!
 //! For a pseudo code implementation of Keccap-f, see
 //! <https://keccak.team/keccak_specs_summary.html>
-use crate::keccak::column::KeccakWitness;
+use crate::keccak::{column::KeccakWitness, interpreter::KeccakInterpreter};
 use ark_ff::Field;
+use kimchi::o1_utils::Two;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
@@ -26,5 +27,24 @@ impl<F: Field> Default for Env<F> {
             witness: KeccakWitness::default(),
             check_idx: 0,
         }
+    }
+}
+
+impl<F: Field> KeccakInterpreter<F> for Env<F> {
+    type Variable = F;
+    ///////////////////////////
+    // ARITHMETIC OPERATIONS //
+    ///////////////////////////
+
+    fn constant(x: u64) -> Self::Variable {
+        Self::constant_field(F::from(x))
+    }
+
+    fn constant_field(x: F) -> Self::Variable {
+        x
+    }
+
+    fn two_pow(x: u64) -> Self::Variable {
+        Self::constant_field(F::two_pow(x))
     }
 }
