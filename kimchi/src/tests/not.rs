@@ -24,7 +24,6 @@ use mina_poseidon::{
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use poly_commitment::evaluation_proof::OpeningProof;
-use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
@@ -33,11 +32,6 @@ type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const NOT: bool = false;
-
-const RNG_SEED: [u8; 32] = [
-    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
-    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
-];
 
 // Creates as many negations as the number of inputs. The inputs must fit in the native field.
 // We start at the row 0 using generic gates to perform the negations.
@@ -122,7 +116,7 @@ fn setup_not_xor<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     let input = rng.gen(input, bits);
 
@@ -171,7 +165,7 @@ fn setup_not_gnrc<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     let inputs = if let Some(inps) = inputs {
         assert!(len.is_none());
@@ -256,7 +250,7 @@ fn check_not_gnrc<G: KimchiCurve>(
 // End-to-end test of NOT using XOR gadget
 fn test_prove_and_verify_not_xor() {
     let bits = 64;
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     // Create circuit
     let gates = {
@@ -289,7 +283,7 @@ fn test_prove_and_verify_not_xor() {
 // End-to-end test of NOT using generic gadget
 fn test_prove_and_verify_five_not_gnrc() {
     let bits = 64;
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     // Create circuit
     let gates = {
@@ -339,7 +333,7 @@ fn test_not_xor_all_crumb() {
 fn test_not_xor_crumbs_random() {
     for i in 2..=7 {
         let bits = 2u32.pow(i) as usize;
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let rng = &mut o1_utils::tests::make_test_rng();
         let input = rng.gen_field_with_bits(bits);
         test_not_xor::<Vesta>(Some(input), Some(bits));
         test_not_xor::<Vesta>(Some(input), None);
@@ -349,7 +343,7 @@ fn test_not_xor_crumbs_random() {
 #[test]
 // Tests a NOT for a random-length big input
 fn test_not_xor_big_random() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let input = rng.gen_field_with_bits(200);
     test_not_xor::<Vesta>(Some(input), None);
     let input = rng.gen_field_with_bits(200);
@@ -373,7 +367,7 @@ fn test_not_gnrc_single() {
 #[test]
 // Tests a chain of 5 NOTs with different lengths but padded to 254 bits with the generic builder
 fn test_not_gnrc_vector() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     // up to 2^16, 2^32, 2^64, 2^128, 2^254
     let inputs = (0..5)
         .map(|i| rng.gen_field_with_bits(4 + i))

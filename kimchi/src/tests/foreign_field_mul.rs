@@ -25,7 +25,6 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::RandBigInt;
-use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
@@ -35,11 +34,6 @@ type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
-
-const RNG_SEED: [u8; 32] = [
-    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
-    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
-];
 
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
@@ -290,7 +284,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     for _ in 0..3 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
@@ -639,7 +633,7 @@ fn test_max_foreign_multiplicands() {
 #[test]
 // Test with nonzero carry0 bits
 fn test_nonzero_carry0() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     for _ in 0..4 {
         let mut a = rng.gen_biguint_below(&secp256k1_modulus()).to_limbs();
@@ -805,7 +799,7 @@ fn test_nonzero_carry1_hi() {
 #[test]
 // Test with nonzero second bit of carry1_hi
 fn test_nonzero_second_bit_carry1_hi() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let a = rng.gen_biguint_range(
         &(secp256k1_modulus() - BigUint::two().pow(64)),
         &secp256k1_modulus(),
@@ -1062,7 +1056,7 @@ fn test_mul_invalid_remainder() {
 #[test]
 // Test multiplying some random values and invalidating carry1_lo
 fn test_random_multiplicands_carry1_lo() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     for _ in 0..10 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
@@ -1227,7 +1221,7 @@ fn test_random_multiplicands_carry1_lo() {
 #[test]
 // Test multiplying some random values with secp256k1 foreign modulus
 fn test_random_multiplicands_valid() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     for _ in 0..10 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
@@ -1255,7 +1249,7 @@ fn test_random_multiplicands_valid() {
 fn test_smaller_foreign_field_modulus() {
     let foreign_field_modulus = BigUint::two().pow(252u32) - BigUint::one();
 
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     for _ in 0..10 {
         let left_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
@@ -1342,7 +1336,7 @@ fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
 
 #[test]
 fn test_native_modulus_constraint() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let left_input = rng.gen_biguint_range(
         &(secp256k1_modulus() - BigUint::two().pow(96)),
         &secp256k1_modulus(),
