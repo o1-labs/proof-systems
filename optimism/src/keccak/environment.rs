@@ -476,30 +476,6 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     }
 }
 
-impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
-    type Column = KeccakColumn;
-    type Variable = E<Fp>;
-    type Fp = Fp;
-    fn constant(x: u64) -> Self::Variable {
-        Self::constant_field(Self::Fp::from(x))
-    }
-    fn constant_field(x: Self::Fp) -> Self::Variable {
-        Self::Variable::constant(Operations::from(Literal(x)))
-    }
-    fn zero() -> Self::Variable {
-        Self::constant(0)
-    }
-    fn one() -> Self::Variable {
-        Self::constant(1)
-    }
-    fn two() -> Self::Variable {
-        Self::constant(2)
-    }
-    fn two_pow(x: u64) -> Self::Variable {
-        Self::constant_field(Self::Fp::two_pow(x))
-    }
-}
-
 /// This trait includes functionalities needed to obtain the variables of the Keccak circuit needed for constraints
 pub(crate) trait KeccakEnvironment {
     type Column;
