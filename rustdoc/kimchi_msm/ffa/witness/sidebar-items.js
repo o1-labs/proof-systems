@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["WitnessBuilder"]};
+window.SIDEBAR_ITEMS = {"struct":["WitnessBuilderEnv"]};

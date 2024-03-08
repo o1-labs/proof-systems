@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["generate_random_msm_witness","main"]};
+window.SIDEBAR_ITEMS = {"fn":["main"]};

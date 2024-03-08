@@ -68,51 +68,51 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>rand::{thread_rng, Rng};
+</pre></div><pre class="rust"><code><span class="kw">use </span>rand::Rng;
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
 
 <span class="kw">use </span>kimchi_msm::columns::Column;
 <span class="kw">use </span>kimchi_msm::ffa::{
-    columns::FFA_N_COLUMNS, constraint::get_exprs_add, witness::WitnessBuilder <span class="kw">as </span>FFAWitnessBuilder,
+    columns::FFA_N_COLUMNS,
+    constraint::ConstraintBuilderEnv <span class="kw">as </span>FFAConstraintBuilderEnv,
+    interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, FFAInterpreterEnv},
+    witness::WitnessBuilderEnv <span class="kw">as </span>FFAWitnessBuilderEnv,
 };
 <span class="kw">use </span>kimchi_msm::lookups::LookupTableIDs;
 <span class="kw">use </span>kimchi_msm::precomputed_srs::get_bn254_srs;
 <span class="kw">use </span>kimchi_msm::prover::prove;
 <span class="kw">use </span>kimchi_msm::verifier::verify;
-<span class="kw">use </span>kimchi_msm::{
-    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE,
-};
-
-<span class="kw">pub fn </span>generate_random_msm_witness() -&gt; FFAWitnessBuilder&lt;BN254G1Affine&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>circuit_env = FFAWitnessBuilder::&lt;BN254G1Affine&gt;::empty();
-    <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
-
-    <span class="kw">let </span>row_num = DOMAIN_SIZE;
-    <span class="macro">assert!</span>(row_num &lt;= DOMAIN_SIZE);
-
-    <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..row_num {
-        <span class="kw">let </span>a: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
-        <span class="kw">let </span>b: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
-        circuit_env.add_test_addition(a, b);
-    }
-
-    circuit_env
-}
+<span class="kw">use </span>kimchi_msm::{BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE};
 
 <span class="kw">pub fn </span>main() {
     <span class="comment">// FIXME: use a proper RNG
     </span><span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
 
     <span class="macro">println!</span>(<span class="string">"Creating the domain and SRS"</span>);
-    <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
+    <span class="kw">let </span>domain_size = DOMAIN_SIZE;
+    <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
     <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
-    <span class="kw">let </span>circuit_env = generate_random_msm_witness();
-    <span class="kw">let </span>proof_inputs = circuit_env.get_witness();
-    <span class="kw">let </span>constraint_exprs = get_exprs_add();
+    <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
+    <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = FFAConstraintBuilderEnv::&lt;Fp&gt;::empty();
+
+    ffa_interpreter::constrain_multiplication(<span class="kw-2">&amp;mut </span>constraint_env);
+
+    <span class="kw">let </span>row_num = <span class="number">10</span>;
+    <span class="macro">assert!</span>(row_num &lt;= DOMAIN_SIZE);
+
+    <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..row_num {
+        <span class="kw">let </span>a: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
+        <span class="kw">let </span>b: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
+        ffa_interpreter::test_multiplication(<span class="kw-2">&amp;mut </span>witness_env, a, b);
+        witness_env.next_row();
+    }
+
+    <span class="kw">let </span>inputs = witness_env.get_witness(domain_size);
+    <span class="kw">let </span>constraints = constraint_env.constraints;
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
     <span class="kw">let </span>proof = prove::&lt;
@@ -124,14 +124,14 @@
         <span class="kw">_</span>,
         FFA_N_COLUMNS,
         LookupTableIDs,
-    &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraint_exprs, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
+    &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng)
     .unwrap();
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
     <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
         domain,
         <span class="kw-2">&amp;</span>srs,
-        <span class="kw-2">&amp;</span>constraint_exprs,
+        <span class="kw-2">&amp;</span>constraints,
         <span class="kw-2">&amp;</span>proof,
     );
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)

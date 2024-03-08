@@ -271,6 +271,20 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -330,36 +344,38 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
         columns::Column,
-        ffa::{columns::FFA_N_COLUMNS, constraint::get_exprs_mul, witness::WitnessBuilder},
+        ffa::{
+            columns::FFA_N_COLUMNS,
+            constraint::ConstraintBuilderEnv <span class="kw">as </span>FFAConstraintBuilderEnv,
+            interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, FFAInterpreterEnv},
+            witness::WitnessBuilderEnv <span class="kw">as </span>FFAWitnessBuilderEnv,
+        },
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
         verifier::verify,
-        BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
-    <span class="kw">use </span>rand::{thread_rng, Rng};
+    <span class="kw">use </span>rand::{CryptoRng, Rng, RngCore};
 
     <span class="comment">// Number of columns
     </span><span class="kw">const </span>N: usize = <span class="number">10</span>;
 
     <span class="comment">// Creates a test witness for a * b = c constraint.
-    </span><span class="kw">fn </span>gen_random_mul_witness(domain_size: usize) -&gt; WitnessBuilder&lt;BN254G1Affine&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_builder = WitnessBuilder::&lt;BN254G1Affine&gt;::empty();
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
-
-        <span class="kw">let </span>row_num = domain_size; <span class="comment">// Should be perhaps random
-        </span><span class="macro">assert!</span>(row_num &lt;= domain_size);
-
+    </span><span class="kw">fn </span>gen_random_mul_witness&lt;RNG: RngCore + CryptoRng&gt;(
+        witness_env: <span class="kw-2">&amp;mut </span>FFAWitnessBuilderEnv&lt;Fp&gt;,
+        rng: <span class="kw-2">&amp;mut </span>RNG,
+    ) {
+        <span class="kw">let </span>row_num = <span class="number">10</span>;
         <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..row_num {
             <span class="kw">let </span>a: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
             <span class="kw">let </span>b: Ff1 = From::from(rng.gen_range(<span class="number">0</span>..(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)));
-            witness_builder.add_test_multiplication(a, b);
+            ffa_interpreter::test_multiplication(witness_env, a, b);
+            witness_env.next_row();
         }
-
-        witness_builder
     }
 
     <span class="attr">#[test]
@@ -377,9 +393,14 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span>witness_builder = gen_random_mul_witness(domain_size);
-        <span class="kw">let </span>inputs = witness_builder.get_witness();
-        <span class="kw">let </span>constraints = get_exprs_mul();
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = FFAConstraintBuilderEnv::&lt;Fp&gt;::empty();
+
+        ffa_interpreter::constrain_multiplication(<span class="kw-2">&amp;mut </span>constraint_env);
+        gen_random_mul_witness(<span class="kw-2">&amp;mut </span>witness_env, <span class="kw-2">&amp;mut </span>rng);
+
+        <span class="kw">let </span>inputs = witness_env.get_witness(domain_size);
+        <span class="kw">let </span>constraints = constraint_env.constraints;
 
         <span class="comment">// generate the proof
         </span><span class="kw">let </span>proof = prove::&lt;
@@ -419,9 +440,13 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span>witness_builder = gen_random_mul_witness(domain_size);
-        <span class="kw">let </span>inputs = witness_builder.get_witness();
-        <span class="kw">let </span>constraints = get_exprs_mul();
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = FFAConstraintBuilderEnv::&lt;Fp&gt;::empty();
+        ffa_interpreter::constrain_multiplication(<span class="kw-2">&amp;mut </span>constraint_env);
+        <span class="kw">let </span>constraints = constraint_env.constraints;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
+        gen_random_mul_witness(<span class="kw-2">&amp;mut </span>witness_env, <span class="kw-2">&amp;mut </span>rng);
+        <span class="kw">let </span>inputs = witness_env.get_witness(domain_size);
 
         <span class="comment">// generate the proof
         </span><span class="kw">let </span>proof = prove::&lt;
@@ -436,9 +461,12 @@
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
 
-        <span class="kw">let </span>witness_builder_prime = gen_random_mul_witness(domain_size);
-        <span class="kw">let </span>inputs_prime = witness_builder_prime.get_witness();
-        <span class="kw">let </span>proof_prime = prove::&lt;
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env_prime = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
+        gen_random_mul_witness(<span class="kw-2">&amp;mut </span>witness_env_prime, <span class="kw-2">&amp;mut </span>rng);
+        <span class="kw">let </span>inputs_prime = witness_env_prime.get_witness(domain_size);
+
+        <span class="comment">// generate another (prime) proof
+        </span><span class="kw">let </span>proof_prime = prove::&lt;
             <span class="kw">_</span>,
             OpeningProof,
             BaseSponge,

@@ -98,51 +98,104 @@
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
-<span class="kw">use </span>num_bigint::BigUint;
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>ark_ff::Zero;
 
 <span class="kw">use crate</span>::{
-    ffa::columns::FFA_N_COLUMNS,
+    columns::{Column, ColumnIndexer},
+    ffa::{
+        columns::{FFAColumnIndexer, FFA_N_COLUMNS},
+        interpreter::FFAInterpreterEnv,
+    },
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Ff1, Fp, N_LIMBS},
+    {BN254G1Affine, Fp, N_LIMBS},
 };
-<span class="kw">use </span>kimchi::curve::KimchiCurve;
-<span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
-
-<span class="comment">// TODO use more foreign_field.rs with from/to bigint conversion
-</span><span class="kw">fn </span>limb_decompose(input: <span class="kw-2">&amp;</span>Ff1) -&gt; [Fp; N_LIMBS] {
-    <span class="kw">let </span>input_bi: BigUint = FieldHelpers::to_biguint(input);
-    <span class="kw">let </span>ff_el: ForeignElement&lt;Fp, N_LIMBS&gt; = ForeignElement::from_biguint(input_bi);
-    ff_el.limbs
-}
 
 <span class="attr">#[allow(dead_code)]
 </span><span class="doccomment">/// Builder environment for a native group `G`.
-</span><span class="kw">pub struct </span>WitnessBuilder&lt;G: KimchiCurve&gt; {
+</span><span class="kw">pub struct </span>WitnessBuilderEnv&lt;F: PrimeField&gt; {
     <span class="doccomment">/// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    </span>witness_raw: Vec&lt;Witness&lt;FFA_N_COLUMNS, G::ScalarField&gt;&gt;,
+    </span>witness: Vec&lt;Witness&lt;FFA_N_COLUMNS, F&gt;&gt;,
 }
 
-<span class="kw">impl </span>WitnessBuilder&lt;BN254G1Affine&gt; {
-    <span class="kw">pub fn </span>empty() -&gt; <span class="self">Self </span>{
-        WitnessBuilder {
-            witness_raw: <span class="macro">vec!</span>[],
+<span class="kw">impl</span>&lt;F: PrimeField&gt; FFAInterpreterEnv&lt;F&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F&gt; {
+    <span class="kw">type </span>Position = Column;
+
+    <span class="kw">type </span>Variable = F;
+
+    <span class="kw">fn </span>empty() -&gt; <span class="self">Self </span>{
+        WitnessBuilderEnv {
+            witness: <span class="macro">vec!</span>[Witness {
+                cols: [Zero::zero(); FFA_N_COLUMNS],
+            }],
         }
     }
 
+    <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable) {
+        <span class="macro">assert_eq!</span>(cst, F::zero());
+    }
+
+    <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable {
+        value
+    }
+
+    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>Column::X(i) = position;
+        <span class="self">self</span>.witness.last_mut().unwrap().cols[i] = <span class="kw-2">*</span>value;
+        <span class="kw-2">*</span>value
+    }
+
+    <span class="comment">// TODO deduplicate, remove this
+    </span><span class="kw">fn </span>column_pos(ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Position {
+        ix.ix_to_column()
+    }
+
+    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>Column::X(i) = <span class="self">Self</span>::column_pos(ix);
+        <span class="self">self</span>.witness.last().unwrap().cols[i]
+    }
+
+    <span class="kw">fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.witness.push(Witness {
+            cols: [Zero::zero(); FFA_N_COLUMNS],
+        });
+    }
+}
+
+<span class="kw">impl </span>WitnessBuilderEnv&lt;Fp&gt; {
     <span class="doccomment">/// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
-    </span><span class="kw">pub fn </span>get_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ProofInputs&lt;FFA_N_COLUMNS, BN254G1Affine, LookupTableIDs&gt; {
+    </span><span class="kw">pub fn </span>get_witness(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        domain_size: usize,
+    ) -&gt; ProofInputs&lt;FFA_N_COLUMNS, BN254G1Affine, LookupTableIDs&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>cols: [Vec&lt;Fp&gt;; FFA_N_COLUMNS] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
-        <span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.witness_raw {
+        <span class="kw">if </span><span class="self">self</span>.witness.len() &gt; domain_size {
+            <span class="macro">panic!</span>(<span class="string">"Too many witness rows added"</span>);
+        }
+
+        <span class="comment">// Filling actually used rows
+        </span><span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.witness {
             <span class="kw">let </span>Witness { cols: witness_row } = w;
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">4 </span>* N_LIMBS {
                 cols[i].push(witness_row[i]);
+            }
+        }
+
+        <span class="comment">// Filling ther rows up to the domain size
+        </span><span class="kw">for _ in </span><span class="self">self</span>.witness.len()..domain_size {
+            <span class="kw">for </span>col <span class="kw">in </span>cols.iter_mut() {
+                col.push(Zero::zero());
             }
         }
 
@@ -151,49 +204,6 @@
             mvlookups: <span class="macro">vec!</span>[],
             public_input_size: <span class="number">0</span>,
         }
-    }
-
-    <span class="kw">pub fn </span>add_test_addition(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: Ff1, b: Ff1) {
-        <span class="kw">let </span>a_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>a);
-        <span class="kw">let </span>b_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>b);
-        <span class="kw">let </span>c_limbs_vec: Vec&lt;Fp&gt; = a_limbs
-            .iter()
-            .zip(b_limbs.iter())
-            .map(|(ai, bi)| <span class="kw-2">*</span>ai + <span class="kw-2">*</span>bi)
-            .collect();
-        <span class="kw">let </span>c_limbs: [Fp; N_LIMBS] = c_limbs_vec
-            .try_into()
-            .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"Length mismatch"</span>));
-        <span class="kw">let </span>d_limbs: [Fp; N_LIMBS] = [Zero::zero(); N_LIMBS];
-
-        <span class="kw">let </span>witness_row: [Fp; <span class="number">4 </span>* N_LIMBS] = [a_limbs, b_limbs, c_limbs, d_limbs]
-            .concat()
-            .try_into()
-            .unwrap();
-
-        <span class="self">self</span>.witness_raw.push(Witness { cols: witness_row });
-    }
-
-    <span class="kw">pub fn </span>add_test_multiplication(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: Ff1, b: Ff1) {
-        <span class="kw">let </span>a_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>a);
-        <span class="kw">let </span>b_limbs: [Fp; N_LIMBS] = limb_decompose(<span class="kw-2">&amp;</span>b);
-        <span class="kw">let </span>d_limbs_vec: Vec&lt;Fp&gt; = a_limbs
-            .iter()
-            .zip(b_limbs.iter())
-            .map(|(ai, bi)| <span class="kw-2">*</span>ai * <span class="kw-2">*</span>bi)
-            .collect();
-        <span class="kw">let </span>d_limbs: [Fp; N_LIMBS] = d_limbs_vec
-            .try_into()
-            .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"Length mismatch"</span>));
-
-        <span class="kw">let </span>c_limbs: [Fp; N_LIMBS] = [Zero::zero(); N_LIMBS];
-
-        <span class="kw">let </span>witness_row: [Fp; <span class="number">4 </span>* N_LIMBS] = [a_limbs, b_limbs, c_limbs, d_limbs]
-            .concat()
-            .try_into()
-            .unwrap();
-
-        <span class="self">self</span>.witness_raw.push(Witness { cols: witness_row });
     }
 }
 </code></pre></div></section></main></body></html>

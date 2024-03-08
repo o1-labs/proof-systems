@@ -61,67 +61,65 @@
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     expr::MSMExpr,
-    ffa::columns::FFAColumnIndexer,
-    {Fp, N_LIMBS},
+    ffa::{columns::FFAColumnIndexer, interpreter::FFAInterpreterEnv},
 };
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{ConstantExprInner, ExprInner, Operations, Variable},
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
-<span class="doccomment">/// Access exprs for addition
-</span><span class="kw">pub fn </span>get_exprs_add() -&gt; Vec&lt;MSMExpr&lt;Fp&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>limb_exprs: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
-        <span class="kw">let </span>limb_constraint = {
-            <span class="kw">let </span>a_i = MSMExpr::Atom(
-                ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-                    col: FFAColumnIndexer::A(i).ix_to_column(),
-                    row: CurrOrNext::Curr,
-                }),
-            );
-            <span class="kw">let </span>b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::B(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            <span class="kw">let </span>c_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::C(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            a_i + b_i - c_i
-        };
-        limb_exprs.push(limb_constraint);
-    }
-    limb_exprs
+<span class="doccomment">/// Contains constraints for just one row.
+</span><span class="kw">pub struct </span>ConstraintBuilderEnv&lt;F&gt; {
+    <span class="kw">pub </span>constraints: Vec&lt;MSMExpr&lt;F&gt;&gt;,
 }
 
-<span class="doccomment">/// Get expressions for multiplication
-</span><span class="kw">pub fn </span>get_exprs_mul() -&gt; Vec&lt;MSMExpr&lt;Fp&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>limb_exprs: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[];
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
-        <span class="kw">let </span>limb_constraint = {
-            <span class="kw">let </span>a_i = MSMExpr::Atom(
-                ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-                    col: FFAColumnIndexer::A(i).ix_to_column(),
-                    row: CurrOrNext::Curr,
-                }),
-            );
-            <span class="kw">let </span>b_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::B(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            <span class="kw">let </span>d_i = MSMExpr::Atom(ExprInner::Cell(Variable {
-                col: FFAColumnIndexer::D(i).ix_to_column(),
-                row: CurrOrNext::Curr,
-            }));
-            a_i * b_i - d_i
-        };
-        limb_exprs.push(limb_constraint);
+<span class="kw">impl</span>&lt;F: PrimeField&gt; FFAInterpreterEnv&lt;F&gt; <span class="kw">for </span>ConstraintBuilderEnv&lt;F&gt; {
+    <span class="kw">type </span>Position = Column;
+
+    <span class="kw">type </span>Variable = MSMExpr&lt;F&gt;;
+
+    <span class="kw">fn </span>empty() -&gt; <span class="self">Self </span>{
+        ConstraintBuilderEnv {
+            constraints: <span class="macro">vec!</span>[],
+        }
     }
-    limb_exprs
+
+    <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.constraints.push(cst)
+    }
+
+    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>y = Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }));
+        <span class="self">self</span>.constraints.push(y.clone() - x.clone());
+        y
+    }
+
+    <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
+        Expr::Atom(ExprInner::Constant(cst_expr_inner))
+    }
+
+    <span class="comment">// TODO deduplicate, remove this
+    </span><span class="kw">fn </span>column_pos(ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Position {
+        ix.ix_to_column()
+    }
+
+    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: ix.ix_to_column(),
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    <span class="kw">fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="macro">panic!</span>(<span class="string">"Please don't call this"</span>);
+    }
 }
 </code></pre></div></section></main></body></html>

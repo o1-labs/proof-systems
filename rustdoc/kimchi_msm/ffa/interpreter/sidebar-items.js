@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["constrain_addition","constrain_multiplication","test_addition","test_multiplication"],"trait":["FFAInterpreterEnv"]};
