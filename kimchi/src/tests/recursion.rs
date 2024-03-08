@@ -15,7 +15,6 @@ use mina_poseidon::{
 };
 use o1_utils::math;
 use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
-use rand::prelude::*;
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -39,7 +38,7 @@ fn test_recursion() {
 
     // previous opening for recursion
     let index = test_runner.prover_index();
-    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let rng = &mut o1_utils::tests::make_test_rng(None);
     let prev_challenges = {
         let k = math::ceil_log2(index.srs.g.len());
         let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();

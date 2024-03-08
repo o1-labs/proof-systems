@@ -3,13 +3,12 @@
 use crate::{commitment::CommitmentCurve, srs::SRS, SRS as _};
 use ark_ff::UniformRand;
 use o1_utils::serialization::test_generic_serialization_regression_serde;
-use rand::{rngs::StdRng, SeedableRng};
 
 #[test]
 pub fn ser_regression_canonical_srs() {
     use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 
-    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
 
     let td1 = Fp::rand(rng);
     let data_expected = SRS::<Vesta>::create_trusted_setup(td1, 1 << 3);
@@ -67,7 +66,7 @@ pub fn ser_regression_canonical_polycomm() {
     use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
     use mina_curves::pasta::{Fp, Vesta};
 
-    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
 
     let srs = SRS::<Vesta>::create(1 << 7);
 
@@ -108,7 +107,7 @@ pub fn ser_regression_canonical_opening_proof() {
     use groupmap::GroupMap;
     use mina_curves::pasta::Vesta;
 
-    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let rng = &mut o1_utils::tests::make_test_rng(Some([0u8; 32]));
 
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
     let srs = SRS::<Vesta>::create(1 << 7);

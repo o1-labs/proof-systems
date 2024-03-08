@@ -2965,7 +2965,6 @@ pub mod test {
         evaluation_proof::OpeningProof,
         srs::{endos, SRS},
     };
-    use rand::{prelude::StdRng, SeedableRng};
     use std::{array, sync::Arc};
 
     #[test]
@@ -3052,7 +3051,7 @@ pub mod test {
         let zk_rows = 3;
         let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + zk_rows)
             .expect("failed to create evaluation domain");
-        let rng = &mut StdRng::from_seed([17u8; 32]);
+        let rng = &mut o1_utils::tests::make_test_rng(None);
 
         // Check that both ways of computing lagrange basis give the same result
         let d1_size: i32 = domain.d1.size().try_into().expect("domain size too big");

@@ -806,6 +806,7 @@ dependencies = [
  "mina-curves",
  "mina-poseidon",
  "num-bigint",
+ "o1-utils",
  "rand",
  "serde",
  "serde_json",

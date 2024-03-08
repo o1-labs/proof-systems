@@ -396,15 +396,9 @@ mod tests {
     use ark_ff::One;
     use mina_curves::pasta::Pallas as CurvePoint;
     use num_bigint::RandBigInt;
-    use rand::{rngs::StdRng, SeedableRng};
 
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
-
-    const RNG_SEED: [u8; 32] = [
-        12, 31, 143, 75, 29, 255, 206, 26, 67, 193, 86, 160, 1, 90, 131, 221, 86, 168, 4, 95, 50,
-        48, 89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
-    ];
 
     fn secp256k1_modulus() -> BigUint {
         BigUint::from_bytes_be(&secp256k1::constants::FIELD_SIZE)
@@ -479,7 +473,7 @@ mod tests {
 
     #[test]
     fn check_negation() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let rng = &mut crate::tests::make_test_rng(None);
         for _ in 0..10 {
             rng.gen_biguint(256).negate();
         }
@@ -487,7 +481,7 @@ mod tests {
 
     #[test]
     fn check_good_limbs() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let rng = &mut crate::tests::make_test_rng(None);
         for _ in 0..100 {
             let x = rng.gen_biguint(264);
             assert_eq!(x.to_limbs().len(), 3);
@@ -513,28 +507,28 @@ mod tests {
     #[test]
     #[should_panic]
     fn check_bad_limbs_1() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let rng = &mut crate::tests::make_test_rng(None);
         assert_ne!(rng.gen_biguint(265).to_limbs().len(), 3);
     }
 
     #[test]
     #[should_panic]
     fn check_bad_limbs_2() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let rng = &mut crate::tests::make_test_rng(None);
         assert_ne!(rng.gen_biguint(265).to_compact_limbs().len(), 2);
     }
 
     #[test]
     #[should_panic]
     fn check_bad_limbs_3() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let rng = &mut crate::tests::make_test_rng(None);
         assert_ne!(rng.gen_biguint(265).to_field_limbs::<BaseField>().len(), 3);
     }
 
     #[test]
     #[should_panic]
     fn check_bad_limbs_4() {
-        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let rng = &mut crate::tests::make_test_rng(None);
         assert_ne!(
             rng.gen_biguint(265)
                 .to_compact_field_limbs::<BaseField>()
