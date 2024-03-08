@@ -63,16 +63,21 @@ mod tests {
         });
 
         // Boxing to avoid stack overflow
-        let field_elements = Box::new(
-            [[
-                rng.gen_range(0..1000),
-                rng.gen_range(0..1000),
-                rng.gen_range(0..1000),
-            ]; DOMAIN_SIZE],
+        let mut field_elements = vec![];
+        // FIXME: we do use always the same values here, because we have a
+        // constant check (X - c), different for each row. And there is no
+        // constant support/public input yet in the quotient polynomial.
+        let (x, y, z) = (
+            rng.gen_range(0..1000000),
+            rng.gen_range(0..1000000),
+            rng.gen_range(0..1000000),
         );
+        for _ in 0..DOMAIN_SIZE {
+            field_elements.push([x, y, z])
+        }
 
         let mut constraints = vec![];
-        for limbs in *field_elements {
+        for limbs in field_elements {
             let mut constraint_env = constraints::Env::<Fp>::create();
             // Witness
             deserialize_field_element(&mut witness_env, limbs);
