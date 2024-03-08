@@ -3,9 +3,7 @@ use crate::{
     keccak::{
         column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
         constraints::Constraints,
-        grid_index,
-        interpreter::{Absorb, KeccakStep, Sponge},
-        ArithOps, BoolOps, KeccakColumn, DIM, E, QUARTERS,
+        grid_index, ArithOps, BoolOps, KeccakColumn, DIM, E, QUARTERS,
     },
     lookups::Lookup,
 };
@@ -47,6 +45,29 @@ pub struct KeccakEnv<Fp> {
     pub(crate) padded: Vec<u8>,
     /// Byte-length of the 10*1 pad (<=136)
     pub(crate) pad_len: u64,
+}
+
+/// Variants of Keccak steps available for the interpreter
+#[derive(Clone, Debug, PartialEq, Copy)]
+pub enum KeccakStep {
+    Sponge(Sponge),
+    Round(u64),
+}
+
+/// Variants of Keccak sponges
+#[derive(Clone, Debug, PartialEq, Copy)]
+pub enum Sponge {
+    Absorb(Absorb),
+    Squeeze,
+}
+
+/// Order of absorb steps in the computation depending on the number of blocks to absorb
+#[derive(Clone, Debug, PartialEq, Copy)]
+pub enum Absorb {
+    First,        // Also known as the root absorb
+    Middle,       // Any other absorb
+    Last,         // Also known as the padding absorb
+    FirstAndLast, // In case there is only one block to absorb (preimage data is less than 136 bytes)
 }
 
 impl<Fp: Field> KeccakEnv<Fp> {

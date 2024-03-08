@@ -1,32 +1,9 @@
 //! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
-/// Variants of Keccak steps available for the interpreter
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum KeccakStep {
-    Sponge(Sponge),
-    Round(u64),
-}
-
-/// Variants of Keccak sponges
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Sponge {
-    Absorb(Absorb),
-    Squeeze,
-}
-
-/// Order of absorb steps in the computation depending on the number of blocks to absorb
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Absorb {
-    First,        // Also known as the root absorb
-    Middle,       // Any other absorb
-    Last,         // Also known as the padding absorb
-    FirstAndLast, // In case there is only one block to absorb (preimage data is less than 136 bytes)
-}
+use crate::keccak::environment::{Absorb, Sponge};
 
 /// Interpreter for the Keccak hash function in charge of instantiating the Keccak environment.
 pub trait KeccakInterpreter {
-    type Position;
-
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>

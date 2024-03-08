@@ -8,8 +8,9 @@
 /// https://keccak.team/keccak_specs_summary.html
 use crate::keccak::{
     environment::KeccakEnv,
+    environment::{Absorb, KeccakStep, Sponge},
     grid_index,
-    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
+    interpreter::KeccakInterpreter,
     pad_blocks, KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
@@ -25,10 +26,8 @@ use kimchi::{
     o1_utils::Two,
 };
 
-impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
-    type Position = KeccakColumn;
-
-    type Variable = Fp;
+impl<F: Field> KeccakInterpreter for KeccakEnv<F> {
+    type Variable = F;
 
     fn step(&mut self) {
         // Reset columns to zeros to avoid conflicts between steps
@@ -51,14 +50,14 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         self.write_column(KeccakColumn::PadLength, self.pad_len);
         self.write_column_field(
             KeccakColumn::InvPadLength,
-            Fp::inverse(&Fp::from(self.pad_len)).unwrap(),
+            F::inverse(&F::from(self.pad_len)).unwrap(),
         );
-        self.write_column_field(KeccakColumn::TwoToPad, Fp::two_pow(self.pad_len));
+        self.write_column_field(KeccakColumn::TwoToPad, F::two_pow(self.pad_len));
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
             self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
-        let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
+        let pad_blocks = pad_blocks::<F>(self.pad_len as usize);
         for (idx, value) in pad_blocks.iter().enumerate() {
             self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
         }
