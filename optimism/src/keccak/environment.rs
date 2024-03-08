@@ -534,7 +534,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .iter()
             .zip(flags)
             .fold(Self::zero(), |acc, (byte, flag)| {
-                acc + byte.clone() * flag.clone() * Self::two_pow(8)
+                acc * Self::two_pow(8) + byte.clone() * flag.clone()
             });
 
         pad
