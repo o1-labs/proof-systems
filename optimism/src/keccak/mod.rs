@@ -101,28 +101,3 @@ pub(crate) trait BoolOps {
     /// Degree-2 variable encoding whether at least one of the two inputs is zero (0 = yes)
     fn either_zero(x: Self::Variable, y: Self::Variable) -> Self::Variable;
 }
-
-/// This trait defines common arithmetic operations used in the Keccak circuit
-pub(crate) trait ArithOps {
-    type Column;
-    type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + Clone;
-    type Fp: std::ops::Neg<Output = Self::Fp>;
-
-    /// Creates a variable from a constant integer
-    fn constant(x: u64) -> Self::Variable;
-    /// Creates a variable from a constant field element
-    fn constant_field(x: Self::Fp) -> Self::Variable;
-
-    /// Returns a variable representing the value zero
-    fn zero() -> Self::Variable;
-    /// Returns a variable representing the value one
-    fn one() -> Self::Variable;
-    /// Returns a variable representing the value two
-    fn two() -> Self::Variable;
-
-    /// Returns a variable representing the value 2^x
-    fn two_pow(x: u64) -> Self::Variable;
-}
