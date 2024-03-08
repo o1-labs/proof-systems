@@ -10,7 +10,7 @@ use crate::{
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Fp, N_LIMBS},
+    {BN254G1Affine, Fp},
 };
 
 #[allow(dead_code)]
@@ -82,7 +82,7 @@ impl WitnessBuilderEnv<Fp> {
         // Filling actually used rows
         for w in &self.witness {
             let Witness { cols: witness_row } = w;
-            for i in 0..4 * N_LIMBS {
+            for i in 0..FFA_N_COLUMNS {
                 cols[i].push(witness_row[i]);
             }
         }
