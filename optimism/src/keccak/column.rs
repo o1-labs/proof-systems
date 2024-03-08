@@ -16,8 +16,10 @@ use std::ops::{Index, IndexMut};
 
 /// The total number of witness columns used by the Keccak circuit.
 pub const ZKVM_KECCAK_COLS: usize =
-    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + 2;
+    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + STATUS_FLAGS_LEN;
 
+// The number of columns used by the Keccak circuit to represent the status flags.
+const STATUS_FLAGS_LEN: usize = 3;
 // The number of columns used by the Keccak circuit to represent the mode flags.
 const MODE_FLAGS_COLS_LEN: usize = 3;
 
@@ -51,6 +53,8 @@ pub(crate) const PAD_SUFFIX_LEN: usize = 5; // The padding suffix of 1088 bits i
 pub enum Column {
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
+    /// Block index inside the hash to enumerate preimage bytes
+    BlockIndex,
     /// Hash step identifier to distinguish inside interstep communication
     StepIndex,
     /// Coeff Round = [0..24)
@@ -105,59 +109,67 @@ impl FoldingColumnTrait for Column {
 pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS, T>;
 
 pub trait KeccakWitnessTrait<T> {
+    /// Returns the hash index
     fn hash_index(&self) -> &T;
+    /// Returns the block index
+    fn block_index(&self) -> &T;
+    /// Returns the step index
     fn step_index(&self) -> &T;
+    /// Returns the mode flags
     fn mode_flags(&self) -> &[T];
+    /// Returns the mode flags as a mutable reference
     fn mode_flags_mut(&mut self) -> &mut [T];
+    /// Returns the `curr` witness columns
     fn curr(&self) -> &[T];
+    /// Returns the `curr` witness columns as a mutable reference
     fn curr_mut(&mut self) -> &mut [T];
+    /// Returns the `next` witness columns
     fn next(&self) -> &[T];
+    /// Returns the `next` witness columns as a mutable reference
     fn next_mut(&mut self) -> &mut [T];
+    /// Returns a chunk of the `curr` witness columns
     fn chunk(&self, offset: usize, length: usize) -> &[T];
 }
 
 impl<T: Clone> KeccakWitnessTrait<T> for KeccakWitness<T> {
-    // Returns the hash index
     fn hash_index(&self) -> &T {
         &self.cols[0]
     }
 
-    // Returns the step index
-    fn step_index(&self) -> &T {
+    fn block_index(&self) -> &T {
         &self.cols[1]
     }
 
-    // Returns the mode flags
+    fn step_index(&self) -> &T {
+        &self.cols[2]
+    }
+
     fn mode_flags(&self) -> &[T] {
-        &self.cols[2..2 + MODE_FLAGS_COLS_LEN]
+        &self.cols[STATUS_FLAGS_LEN..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN]
     }
 
-    // Returns the mode flags as a mutable reference
     fn mode_flags_mut(&mut self) -> &mut [T] {
-        &mut self.cols[2..2 + MODE_FLAGS_COLS_LEN]
+        &mut self.cols[STATUS_FLAGS_LEN..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN]
     }
 
-    // Returns the `curr` witness columns
     fn curr(&self) -> &[T] {
-        &self.cols[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
+        &self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN
+            ..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
     }
 
-    // Returns the `curr` witness columns as a mutable reference
     fn curr_mut(&mut self) -> &mut [T] {
-        &mut self.cols[2 + MODE_FLAGS_COLS_LEN..2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
+        &mut self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN
+            ..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
     }
 
-    // Returns the `next` witness columns
     fn next(&self) -> &[T] {
-        &self.cols[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+        &self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
     }
 
-    // Returns the `next` witness columns as a mutable reference
     fn next_mut(&mut self) -> &mut [T] {
-        &mut self.cols[2 + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+        &mut self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
     }
 
-    /// Returns a chunk of the `curr` witness columns
     fn chunk(&self, offset: usize, length: usize) -> &[T] {
         &self.curr()[offset..offset + length]
     }
@@ -173,6 +185,7 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
     fn index(&self, index: Column) -> &Self::Output {
         match index {
             Column::HashIndex => self.hash_index(),
+            Column::BlockIndex => self.block_index(),
             Column::StepIndex => self.step_index(),
             Column::FlagRound => &self.mode_flags()[FLAG_ROUND_OFF],
             Column::FlagAbsorb => &self.mode_flags()[FLAG_ABSORB_OFF],
@@ -211,7 +224,8 @@ impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
     fn index_mut(&mut self, index: Column) -> &mut Self::Output {
         match index {
             Column::HashIndex => &mut self.cols[0],
-            Column::StepIndex => &mut self.cols[1],
+            Column::BlockIndex => &mut self.cols[1],
+            Column::StepIndex => &mut self.cols[2],
             Column::FlagRound => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
             Column::FlagAbsorb => &mut self.mode_flags_mut()[FLAG_ABSORB_OFF],
             Column::FlagSqueeze => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],

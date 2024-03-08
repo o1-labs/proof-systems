@@ -110,7 +110,8 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
                 LookupTableIDs::SyscallLookup,
                 vec![
                     self.hash_index(),
-                    Self::constant(self.block_idx * RATE_IN_BYTES as u64 + i as u64),
+                    self.block_index() * Self::constant(RATE_IN_BYTES as u64)
+                        + Self::constant(i as u64),
                     self.sponge_byte(i),
                 ],
             ));
