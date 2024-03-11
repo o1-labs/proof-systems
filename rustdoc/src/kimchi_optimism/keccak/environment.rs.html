@@ -1047,17 +1047,15 @@
 <a href="#1045" id="1045">1045</a>
 <a href="#1046" id="1046">1046</a>
 <a href="#1047" id="1047">1047</a>
-<a href="#1048" id="1048">1048</a>
-<a href="#1049" id="1049">1049</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the definition and implementation of the Keccak environment
-</span><span class="kw">use crate</span>::{
-    keccak::{
-        column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
-        constraints::Constraints,
-        grid_index, pad_blocks, ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS,
-        WORDS_IN_HASH,
-    },
-    lookups::Lookup,
+//! including the common functions between the witness and the constraints environments
+//! for arithmetic, boolean, and column operations.
+</span><span class="kw">use </span><span class="kw">crate</span>::keccak::{
+    column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+    constraints::{Constraints, Env <span class="kw">as </span>ConstraintsEnv},
+    grid_index, pad_blocks,
+    witness::Env <span class="kw">as </span>WitnessEnv,
+    ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 <span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>kimchi::{
@@ -1077,14 +1075,12 @@
 
 <span class="doccomment">/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 </span><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>KeccakEnv&lt;Fp&gt; {
-    <span class="doccomment">/// Constraints that are added to the circuit
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) constraints: Vec&lt;E&lt;Fp&gt;&gt;,
-    <span class="doccomment">/// Values that are looked up in the circuit
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
+</span><span class="kw">pub struct </span>KeccakEnv&lt;F&gt; {
+    <span class="doccomment">/// Environment for the constraints (includes lookups)
+    </span><span class="kw">pub </span>constraints_env: ConstraintsEnv&lt;F&gt;,
+    <span class="doccomment">/// Environment for the witness (includes multiplicities)
+    </span><span class="kw">pub </span>witness_env: WitnessEnv&lt;F&gt;,
 
-    <span class="doccomment">/// The full state of the Keccak gate (witness)
-    </span><span class="kw">pub </span>keccak_witness: KeccakWitness&lt;Fp&gt;,
     <span class="doccomment">/// What step of the hash is being executed (or None, if just ended)
     </span><span class="kw">pub </span>keccak_step: <span class="prelude-ty">Option</span>&lt;KeccakStep&gt;,
 
@@ -1132,9 +1128,8 @@
     <span class="doccomment">/// Starts a new Keccak environment for a given hash index and bytestring of preimage data
     </span><span class="kw">pub fn </span>new(hash_idx: u64, preimage: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>env = <span class="self">Self </span>{
-            constraints: <span class="macro">vec!</span>[],
-            lookups: <span class="macro">vec!</span>[],
-            keccak_witness: KeccakWitness::default(),
+            constraints_env: ConstraintsEnv::default(),
+            witness_env: WitnessEnv::default(),
             keccak_step: <span class="prelude-val">None</span>,
             hash_idx,
             step_idx: <span class="number">0</span>,
@@ -1172,18 +1167,19 @@
 
     <span class="doccomment">/// Writes an integer value to a column of the Keccak witness
     </span><span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: u64) {
-        <span class="self">self</span>.keccak_witness[column] = F::from(value);
+        <span class="self">self</span>.witness_env.witness[column] = F::from(value);
     }
 
     <span class="doccomment">/// Writes a field value to a column of the Keccak witness
     </span><span class="kw">pub fn </span>write_column_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: KeccakColumn, value: F) {
-        <span class="self">self</span>.keccak_witness[column] = value;
+        <span class="self">self</span>.witness_env.witness[column] = value;
     }
 
     <span class="doccomment">/// Nullifies the KeccakWitness of the environment by resetting it to default values
     </span><span class="kw">pub fn </span>null_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.keccak_witness = KeccakWitness::default();
-    }
+        <span class="self">self</span>.witness_env.witness = KeccakWitness::default();
+        <span class="self">self</span>.witness_env.check_idx = <span class="number">0</span>; <span class="comment">// Reset constraint count for debugging
+    </span>}
 
     <span class="doccomment">/// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
     /// and updates the environment accordingly (including the witness and inter-step lookups).

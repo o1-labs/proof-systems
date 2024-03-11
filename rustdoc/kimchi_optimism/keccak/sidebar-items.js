@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["pad_blocks"],"mod":["column","constraints","environment","interpreter","lookups"]};
+window.SIDEBAR_ITEMS = {"fn":["pad_blocks"],"mod":["column","constraints","environment","interpreter","lookups","witness"]};
