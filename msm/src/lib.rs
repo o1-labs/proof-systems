@@ -74,6 +74,7 @@ mod tests {
             witness::WitnessBuilderEnv as TestWitnessBuilderEnv,
         },
         verifier::verify,
+        witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     use ark_ff::UniformRand;
@@ -136,11 +137,12 @@ mod tests {
         .unwrap();
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, 0>(
             domain,
             &srs,
             &constraints,
             &proof,
+            Witness::zero_vec(domain_size),
         );
 
         assert!(verifies);
@@ -202,11 +204,12 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, 0>(
                 domain,
                 &srs,
                 &constraints,
                 &proof_clone,
+                Witness::zero_vec(domain_size),
             );
             assert!(!verifies);
         }
@@ -217,11 +220,12 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_comms = proof_prime.proof_comms;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, 0>(
                 domain,
                 &srs,
                 &constraints,
                 &proof_clone,
+                Witness::zero_vec(domain_size),
             );
             assert!(!verifies);
         }
@@ -233,11 +237,12 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, 0>(
                 domain,
                 &srs,
                 &constraints,
                 &proof_clone,
+                Witness::zero_vec(domain_size),
             );
             assert!(!verifies);
         }
@@ -280,11 +285,12 @@ mod tests {
                 &mut rng,
             )
             .unwrap();
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0>(
             domain,
             &srs,
             &constraints,
             &proof,
+            Witness::zero_vec(domain_size),
         );
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
         assert!(!verifies);

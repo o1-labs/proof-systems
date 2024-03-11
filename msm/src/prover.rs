@@ -71,6 +71,8 @@ where
     // Round 1: Creating and absorbing column commitments
     ////////////////////////////////////////////////////////////////////////////
 
+    let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
+
     // Interpolate all columns on d1, using trait Into.
     let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = inputs
         .evaluations
@@ -98,8 +100,6 @@ where
             .map(comm)
             .collect::<Witness<N, PolyComm<G>>>()
     };
-
-    let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     // Do not use parallelism
     (&witness_comms)
@@ -436,7 +436,6 @@ where
 
     let proof_evals: ProofEvaluations<N, G::ScalarField> = {
         ProofEvaluations {
-            _public_evals: None,
             witness_evals,
             mvlookup_evals,
             ft_eval1,

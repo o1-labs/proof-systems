@@ -1,4 +1,8 @@
 use ark_ff::{Field, One, Zero};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
+use rand::thread_rng;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::circuits::expr::{Challenges, Constants, Expr, PolishToken};
@@ -8,13 +12,14 @@ use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
 use poly_commitment::{
-    commitment::{absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation},
-    OpenProof,
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    OpenProof, SRS,
 };
-use rand::thread_rng;
 
 use crate::expr::E;
-use crate::proof::Proof;
+use crate::{proof::Proof, witness::Witness};
 
 pub fn verify<
     G: KimchiCurve,
@@ -22,17 +27,62 @@ pub fn verify<
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
     const N: usize,
+    const NPUB: usize,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraint_exprs: &Vec<E<G::ScalarField>>,
     proof: &Proof<N, G, OpeningProof>,
-) -> bool {
+    public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
+) -> bool
+where
+    OpeningProof::SRS: Sync,
+{
     let Proof {
         proof_comms,
         proof_evals,
         opening_proof,
     } = proof;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Re-evaluating public inputs
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Interpolate public input columns on d1, using trait Into.
+    let public_input_evals: Witness<NPUB, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
+        public_inputs
+            .into_par_iter()
+            .map(|evals| {
+                Evaluations::<G::ScalarField, R2D<G::ScalarField>>::from_vec_and_domain(
+                    evals, domain.d1,
+                )
+            })
+            .collect::<Witness<NPUB, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
+
+    let public_input_polys: Witness<NPUB, DensePolynomial<G::ScalarField>> = {
+        let interpolate =
+            |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
+        public_input_evals
+            .into_par_iter()
+            .map(interpolate)
+            .collect::<Witness<NPUB, DensePolynomial<G::ScalarField>>>()
+    };
+
+    let public_input_comms: Witness<NPUB, PolyComm<G>> = {
+        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+        (&public_input_polys)
+            .into_par_iter()
+            .map(comm)
+            .collect::<Witness<NPUB, PolyComm<G>>>()
+    };
+
+    assert!(
+        NPUB <= N,
+        "Number of public inputs exceeds number of witness columns"
+    );
+    for i in 0..NPUB {
+        assert!(public_input_comms.cols[i] == proof_comms.witness_comms.cols[i]);
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Absorbing all the commitments to the columns

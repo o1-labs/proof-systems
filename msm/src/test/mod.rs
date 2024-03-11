@@ -98,11 +98,12 @@ mod tests {
             }
         }
 
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0>(
             domain,
             &srs,
             &constraints,
             &proof,
+            Witness::zero_vec(domain_size),
         );
         assert!(verifies)
     }
@@ -147,11 +148,12 @@ mod tests {
                 rng,
             )
             .unwrap();
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0>(
             domain,
             &srs,
             &constraints,
             &proof,
+            Witness::zero_vec(domain_size),
         );
         assert!(!verifies)
     }

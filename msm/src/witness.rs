@@ -41,6 +41,24 @@ impl<const N: usize, T> Witness<N, T> {
     }
 }
 
+impl<const N: usize, T: Zero + Clone> Witness<N, Vec<T>> {
+    pub fn zero_vec(domain_size: usize) -> Self {
+        Witness {
+            // Ideally the vector should be of domain size, but
+            // one-element vector should be a reasonable default too.
+            cols: std::array::from_fn(|_| vec![T::zero(); domain_size]),
+        }
+    }
+
+    pub fn to_pub_columns<const NPUB: usize>(&self) -> Witness<NPUB, Vec<T>> {
+        let mut newcols: [Vec<T>; NPUB] = std::array::from_fn(|_| vec![]);
+        for (i, vec) in self.cols[0..NPUB].iter().enumerate() {
+            newcols[i] = vec.clone();
+        }
+        Witness { cols: newcols }
+    }
+}
+
 // IMPLEMENTATION OF ITERATORS FOR THE WITNESS STRUCTURE
 
 impl<'lt, const N: usize, G> IntoIterator for &'lt Witness<N, G> {

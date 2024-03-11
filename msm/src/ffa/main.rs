@@ -5,7 +5,7 @@ use poly_commitment::pairing_proof::PairingSRS;
 
 use kimchi_msm::columns::Column;
 use kimchi_msm::ffa::{
-    columns::FFA_N_COLUMNS,
+    columns::{FFA_NPUB_COLUMNS, FFA_N_COLUMNS},
     constraint::ConstraintBuilderEnv as FFAConstraintBuilderEnv,
     interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
     witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
@@ -47,6 +47,7 @@ pub fn main() {
     }
 
     let inputs = witness_env.get_witness(domain_size);
+    let pub_inputs = inputs.evaluations.to_pub_columns::<FFA_NPUB_COLUMNS>();
     let constraints = constraint_env.constraints;
 
     println!("Generating the proof");
@@ -63,11 +64,13 @@ pub fn main() {
     .unwrap();
 
     println!("Verifying the proof");
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
-        domain,
-        &srs,
-        &constraints,
-        &proof,
-    );
+    let verifies = verify::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        FFA_N_COLUMNS,
+        FFA_NPUB_COLUMNS,
+    >(domain, &srs, &constraints, &proof, pub_inputs);
     println!("Proof verification result: {verifies}")
 }
