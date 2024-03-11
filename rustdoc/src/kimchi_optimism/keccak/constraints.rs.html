@@ -316,11 +316,122 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
-</span><span class="kw">use crate</span>::{keccak::E, lookups::Lookup};
+</span><span class="kw">use crate</span>::{
+    keccak::{KeccakColumn, E},
+    lookups::{Lookup, LookupTableIDs},
+};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
-    circuits::expr::{ConstantTerm::Literal, Operations},
+    circuits::{
+        expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
+        gate::CurrOrNext,
+        polynomials::keccak::constants::RATE_IN_BYTES,
+    },
     o1_utils::Two,
 };
 
@@ -362,6 +473,122 @@
     <span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::constant_field(F::two_pow(x))
     }
+
+    <span class="comment">////////////////////////////
+    // CONSTRAINTS OPERATIONS //
+    ////////////////////////////
+
+    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: KeccakColumn) -&gt; <span class="self">Self</span>::Variable {
+        <span class="comment">// Despite `KeccakWitness` containing both `curr` and `next` fields,
+        // the Keccak step spans across one row only.
+        </span>Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.constraints.push(x);
+    }
+
+    <span class="comment">////////////////////////
+    // LOOKUPS OPERATIONS //
+    ////////////////////////
+
+    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.lookups.push(lookup);
+    }
+
+    <span class="comment">// TODO: optimize this by using a single lookup reusing PadSuffix
+    </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
+            <span class="self">self</span>.add_lookup(Lookup::read_if(
+                <span class="self">self</span>.is_absorb(),
+                LookupTableIDs::SyscallLookup,
+                <span class="macro">vec!</span>[
+                    <span class="self">self</span>.hash_index(),
+                    <span class="self">self</span>.block_index() * <span class="self">Self</span>::constant(RATE_IN_BYTES <span class="kw">as </span>u64)
+                        + <span class="self">Self</span>::constant(i <span class="kw">as </span>u64),
+                    <span class="self">self</span>.sponge_byte(i),
+                ],
+            ));
+        }
+    }
+
+    <span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(<span class="self">Self</span>::zero(), |acc, i| {
+            acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_byte(i)
+        });
+        <span class="self">self</span>.add_lookup(Lookup::write_if(
+            <span class="self">self</span>.is_squeeze(),
+            LookupTableIDs::SyscallLookup,
+            <span class="macro">vec!</span>[<span class="self">self</span>.hash_index(), bytes31],
+        ));
+    }
+
+    <span class="kw">fn </span>lookup_steps(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// (if not a root) Output of previous step is input of current step
+        </span><span class="self">self</span>.add_lookup(Lookup::read_if(
+            <span class="self">Self</span>::not(<span class="self">self</span>.is_root()),
+            LookupTableIDs::KeccakStepLookup,
+            <span class="self">self</span>.input_of_step(),
+        ));
+        <span class="comment">// (if not a squeeze) Input for next step is output of current step
+        </span><span class="self">self</span>.add_lookup(Lookup::write_if(
+            <span class="self">Self</span>::not(<span class="self">self</span>.is_squeeze()),
+            LookupTableIDs::KeccakStepLookup,
+            <span class="self">self</span>.output_of_step(),
+        ));
+    }
+
+    <span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(
+            flag,
+            LookupTableIDs::RangeCheck16Lookup,
+            <span class="macro">vec!</span>[value],
+        ));
+    }
+
+    <span class="kw">fn </span>lookup_reset(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        flag: <span class="self">Self</span>::Variable,
+        dense: <span class="self">Self</span>::Variable,
+        sparse: <span class="self">Self</span>::Variable,
+    ) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(
+            flag,
+            LookupTableIDs::ResetLookup,
+            <span class="macro">vec!</span>[dense, sparse],
+        ));
+    }
+
+    <span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(
+            flag,
+            LookupTableIDs::SparseLookup,
+            <span class="macro">vec!</span>[value],
+        ));
+    }
+
+    <span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(
+            flag,
+            LookupTableIDs::ByteLookup,
+            <span class="macro">vec!</span>[value],
+        ));
+    }
+
+    <span class="kw">fn </span>lookup_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(flag, LookupTableIDs::PadLookup, value));
+    }
+
+    <span class="kw">fn </span>lookup_round_constants(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(
+            flag,
+            LookupTableIDs::RoundConstantsLookup,
+            value,
+        ));
+    }
 }
 
 <span class="comment">/*
@@ -374,12 +601,6 @@ pub trait Constraints {
         + Clone;
     type Fp: std::ops::Neg&lt;Output = Self::Fp&gt;;
 
-    /// Returns the variable corresponding to a given column alias.
-    fn variable(&amp;self, column: Self::Column) -&gt; Self::Variable;
-
-    /// Adds one constraint to the environment.
-    fn constrain(&amp;mut self, x: Self::Variable);
-
     /// Adds all 887 constraints to the environment and triggers read lookups:
     /// - 143 constraints of degree 1
     /// - 739 constraints of degree 2
@@ -391,19 +612,6 @@ impl&lt;Fp: Field&gt; Constraints for KeccakEnv&lt;Fp&gt; {
     type Column = KeccakColumn;
     type Variable = E&lt;Fp&gt;;
     type Fp = Fp;
-
-    fn variable(&amp;self, column: Self::Column) -&gt; Self::Variable {
-        // Despite `KeccakWitness` containing both `curr` and `next` fields,
-        // the Keccak step spans across one row only.
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
-            row: CurrOrNext::Curr,
-        }))
-    }
-
-    fn constrain(&amp;mut self, x: Self::Variable) {
-        self.constraints_env.constraints.push(x);
-    }
 
     fn constraints(&amp;mut self) {
         // CORRECTNESS OF FLAGS: 144 CONSTRAINTS

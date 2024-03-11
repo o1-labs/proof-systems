@@ -150,22 +150,6 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use crate</span>::{keccak::pad_blocks, ramlookup::RAMLookup};
@@ -218,22 +202,6 @@
 
 <span class="doccomment">/// The lookup table struct based on MVLookupTable for the VM table IDs
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>LookupTable&lt;F&gt; = MVLookupTable&lt;F, LookupTableIDs&gt;;
-
-<span class="doccomment">/// This trait adds basic methods to deal with lookups inside an environment
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Lookups {
-    <span class="kw">type </span>Column;
-    <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Neg&lt;Output = <span class="self">Self</span>::Variable&gt;
-        + Clone;
-
-    <span class="doccomment">/// Adds a given Lookup to the environment
-    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
-
-    <span class="doccomment">/// Adds all lookups of Self to the environment
-    </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
-}
 
 <span class="doccomment">/// Trait that creates all the fixed lookup tables used in the VM
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>FixedLookupTables&lt;F&gt; {
