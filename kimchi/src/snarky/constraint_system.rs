@@ -249,7 +249,8 @@ pub enum KimchiConstraint<Var, Field> {
     EcScale(Vec<ScaleRound<Var>>),
     EcEndoscale(EcEndoscaleInput<Var>),
     EcEndoscalar(Vec<EndoscaleScalarRound<Var>>),
-    RangeCheck([[Var; 15]; 4]),
+    //[[Var; 15]; 4]
+    RangeCheck(Vec<Vec<Var>>),
 }
 
 /* TODO: This is a Unique_id in OCaml. */
@@ -1651,6 +1652,25 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 }
             }
             KimchiConstraint::RangeCheck(rows) => {
+                let rows: Result<[Vec<Cvar>; 4], _> = rows.try_into();
+                let rows: Result<[[Cvar; 15]; 4], _> = rows.map(|rows| {
+                    rows.map(|r| {
+                        let r = r.try_into();
+                        match r {
+                            Ok(r) => r,
+                            Err(_) => {
+                                panic!("size of row is != 15");
+                            }
+                        }
+                    })
+                });
+                let rows = match rows {
+                    Ok(rows) => rows,
+                    Err(_) => {
+                        panic!("wrong number of rows");
+                    }
+                };
+
                 let vars = |cvars: [Cvar; 15]| {
                     cvars
                         .map(|v| self.reduce_to_var(labels, loc, v))

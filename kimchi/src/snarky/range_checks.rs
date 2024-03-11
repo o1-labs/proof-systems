@@ -152,7 +152,9 @@ pub fn range_check<F: PrimeField>(
         .collect_vec();
     let r3: [FieldVar<F>; 15] = r3.try_into().unwrap();
 
-    let constraint = Constraint::KimchiConstraint(KimchiConstraint::RangeCheck([r0, r1, r2, r3]));
+    let rows = [r0, r1, r2, r3].map(|r| r.to_vec()).to_vec();
+
+    let constraint = Constraint::KimchiConstraint(KimchiConstraint::RangeCheck(rows));
     runner.add_constraint(constraint, Some("Range check".into()), loc)?;
     Ok(())
 }
