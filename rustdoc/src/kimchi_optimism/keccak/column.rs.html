@@ -259,7 +259,6 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 </span><span class="kw">use </span><span class="kw">crate</span>::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
@@ -283,11 +282,12 @@
 <span class="comment">// The number of columns used by the Keccak circuit to represent the status flags.
 </span><span class="kw">const </span>STATUS_FLAGS_LEN: usize = <span class="number">3</span>;
 <span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
-</span><span class="kw">const </span>MODE_FLAGS_COLS_LEN: usize = <span class="number">3</span>;
+</span><span class="kw">const </span>MODE_FLAGS_COLS_LEN: usize = <span class="number">4</span>;
 
 <span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>; <span class="comment">// Offset of the FlagRound column inside the mode flags
 </span><span class="kw">const </span>FLAG_ABSORB_OFF: usize = <span class="number">1</span>; <span class="comment">// Offset of the FlagAbsorb column inside the mode flags
 </span><span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = <span class="number">2</span>; <span class="comment">// Offset of the FlagSqueeze column inside the mode flags
+</span><span class="kw">const </span>FLAG_ROOT_OFF: usize = <span class="number">3</span>; <span class="comment">// Offset of the FlagRoot column inside the mode flags
 
 // The round constants are located after the witness columns used by the Keccak round.
 </span><span class="kw">const </span>ROUND_COEFFS_OFF: usize = KECCAK_COLS;
@@ -296,12 +296,10 @@
 
 <span class="comment">// The following elements do not increase the total column count
 // because they only appear in sponge rows, which only have 800 curr columns used.
-</span><span class="kw">const </span>SPONGE_COEFFS_OFF: usize = <span class="number">800</span>; <span class="comment">// The sponge coefficients start after the sponge columns
-</span><span class="kw">const </span>FLAG_ROOT_OFF: usize = SPONGE_COEFFS_OFF; <span class="comment">// Offset of the FlagRoot column inside the sponge coefficients
-</span><span class="kw">const </span>PAD_LEN_OFF: usize = <span class="number">801</span>; <span class="comment">// Offset of the PadLength column inside the sponge coefficients
-</span><span class="kw">const </span>PAD_INV_OFF: usize = <span class="number">802</span>; <span class="comment">// Offset of the InvPadLength column inside the sponge coefficients
-</span><span class="kw">const </span>PAD_TWO_OFF: usize = <span class="number">803</span>; <span class="comment">// Offset of the TwoToPad column inside the sponge coefficients
-</span><span class="kw">const </span>PAD_BYTES_OFF: usize = <span class="number">804</span>; <span class="comment">// Offset of the PadBytesFlags inside the sponge coefficients
+</span><span class="kw">const </span>PAD_LEN_OFF: usize = <span class="number">800</span>; <span class="comment">// Offset of the PadLength column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_INV_OFF: usize = <span class="number">801</span>; <span class="comment">// Offset of the InvPadLength column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_TWO_OFF: usize = <span class="number">802</span>; <span class="comment">// Offset of the TwoToPad column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_BYTES_OFF: usize = <span class="number">803</span>; <span class="comment">// Offset of the PadBytesFlags inside the sponge coefficients
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_BYTES_LEN: usize = RATE_IN_BYTES; <span class="comment">// The maximum number of padding bytes involved
 </span><span class="kw">const </span>PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES; <span class="comment">// Offset of the PadSuffix column inside the sponge coefficients
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_SUFFIX_LEN: usize = <span class="number">5</span>; <span class="comment">// The padding suffix of 1088 bits is stored as 5 field elements: 1x12 + 4x31 bytes
@@ -452,7 +450,7 @@
             Column::FlagRound =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags()[FLAG_ROUND_OFF],
             Column::FlagAbsorb =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags()[FLAG_ABSORB_OFF],
             Column::FlagSqueeze =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags()[FLAG_SQUEEZE_OFF],
-            Column::FlagRoot =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr()[FLAG_ROOT_OFF],
+            Column::FlagRoot =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags()[FLAG_ROOT_OFF],
             Column::PadLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr()[PAD_LEN_OFF],
             Column::InvPadLength =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr()[PAD_INV_OFF],
             Column::TwoToPad =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr()[PAD_TWO_OFF],
@@ -491,7 +489,7 @@
             Column::FlagRound =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags_mut()[FLAG_ROUND_OFF],
             Column::FlagAbsorb =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags_mut()[FLAG_ABSORB_OFF],
             Column::FlagSqueeze =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags_mut()[FLAG_SQUEEZE_OFF],
-            Column::FlagRoot =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr_mut()[FLAG_ROOT_OFF],
+            Column::FlagRoot =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags_mut()[FLAG_ROOT_OFF],
             Column::PadLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr_mut()[PAD_LEN_OFF],
             Column::InvPadLength =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr_mut()[PAD_INV_OFF],
             Column::TwoToPad =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.curr_mut()[PAD_TWO_OFF],
