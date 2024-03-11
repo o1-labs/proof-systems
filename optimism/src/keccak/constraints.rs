@@ -1,8 +1,14 @@
 //! This module contains the constraints for one Keccak step.
-use crate::{keccak::E, lookups::Lookup};
+use crate::{
+    keccak::{KeccakColumn, E},
+    lookups::Lookup,
+};
 use ark_ff::Field;
 use kimchi::{
-    circuits::expr::{ConstantTerm::Literal, Operations},
+    circuits::{
+        expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
+        gate::CurrOrNext,
+    },
     o1_utils::Two,
 };
 
@@ -44,6 +50,23 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     fn two_pow(x: u64) -> Self::Variable {
         Self::constant_field(F::two_pow(x))
     }
+
+    ////////////////////////////
+    // CONSTRAINTS OPERATIONS //
+    ////////////////////////////
+
+    fn variable(&self, column: KeccakColumn) -> Self::Variable {
+        // Despite `KeccakWitness` containing both `curr` and `next` fields,
+        // the Keccak step spans across one row only.
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn constrain(&mut self, x: Self::Variable) {
+        self.constraints.push(x);
+    }
 }
 
 /*
@@ -56,12 +79,6 @@ pub trait Constraints {
         + Clone;
     type Fp: std::ops::Neg<Output = Self::Fp>;
 
-    /// Returns the variable corresponding to a given column alias.
-    fn variable(&self, column: Self::Column) -> Self::Variable;
-
-    /// Adds one constraint to the environment.
-    fn constrain(&mut self, x: Self::Variable);
-
     /// Adds all 887 constraints to the environment and triggers read lookups:
     /// - 143 constraints of degree 1
     /// - 739 constraints of degree 2
@@ -73,19 +90,6 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
     type Fp = Fp;
-
-    fn variable(&self, column: Self::Column) -> Self::Variable {
-        // Despite `KeccakWitness` containing both `curr` and `next` fields,
-        // the Keccak step spans across one row only.
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
-            row: CurrOrNext::Curr,
-        }))
-    }
-
-    fn constrain(&mut self, x: Self::Variable) {
-        self.constraints_env.constraints.push(x);
-    }
 
     fn constraints(&mut self) {
         // CORRECTNESS OF FLAGS: 144 CONSTRAINTS

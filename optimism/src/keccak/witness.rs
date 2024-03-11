@@ -6,7 +6,7 @@
 //!
 //! For a pseudo code implementation of Keccap-f, see
 //! <https://keccak.team/keccak_specs_summary.html>
-use crate::keccak::{column::KeccakWitness, interpreter::KeccakInterpreter};
+use crate::keccak::{column::KeccakWitness, interpreter::KeccakInterpreter, KeccakColumn};
 use ark_ff::Field;
 use kimchi::o1_utils::Two;
 
@@ -46,5 +46,24 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
 
     fn two_pow(x: u64) -> Self::Variable {
         Self::constant_field(F::two_pow(x))
+    }
+
+    ////////////////////////////
+    // CONSTRAINTS OPERATIONS //
+    ////////////////////////////
+
+    fn variable(&self, column: KeccakColumn) -> Self::Variable {
+        self.witness[column]
+    }
+
+    /// Assert that the input is zero
+    fn constrain(&mut self, x: Self::Variable) {
+        self.check_idx += 1;
+        assert_eq!(
+            x,
+            F::zero(),
+            "Keccak witness failed at constraint index {}",
+            self.check_idx
+        );
     }
 }

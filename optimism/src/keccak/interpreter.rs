@@ -1,5 +1,6 @@
 //! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
+use crate::keccak::KeccakColumn;
 use ark_ff::{One, Zero};
 use std::fmt::Debug;
 
@@ -80,4 +81,14 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
     /// Returns a variable representing the value 2^x
     fn two_pow(x: u64) -> Self::Variable;
+
+    ////////////////////////////
+    // CONSTRAINTS OPERATIONS //
+    ////////////////////////////
+
+    /// Returns the variable corresponding to a given column alias.
+    fn variable(&self, column: KeccakColumn) -> Self::Variable;
+
+    /// Adds one constraint to the environment.
+    fn constrain(&mut self, x: Self::Variable);
 }
