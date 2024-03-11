@@ -383,6 +383,8 @@ pub(crate) trait KeccakEnvironment {
 
     /// Returns the hash index as a variable
     fn hash_index(&self) -> Self::Variable;
+    /// Returns the block index as a variable
+    fn block_index(&self) -> Self::Variable;
     /// Returns the step index as a variable
     fn step_index(&self) -> Self::Variable;
 
@@ -712,6 +714,9 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
 
     fn hash_index(&self) -> Self::Variable {
         self.variable(KeccakColumn::HashIndex)
+    }
+    fn block_index(&self) -> Self::Variable {
+        self.variable(KeccakColumn::BlockIndex)
     }
     fn step_index(&self) -> Self::Variable {
         self.variable(KeccakColumn::StepIndex)
