@@ -10,6 +10,8 @@ pub mod column;
 pub mod constraints;
 pub mod environment;
 pub mod interpreter;
+#[cfg(test)]
+pub mod tests;
 pub mod witness;
 
 /// Desired output length of the hash in bits

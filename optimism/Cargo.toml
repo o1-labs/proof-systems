@@ -46,3 +46,4 @@ os_pipe.workspace = true
 rand.workspace = true
 libc.workspace = true
 rayon.workspace = true
+sha3.workspace = true
