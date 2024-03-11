@@ -6,7 +6,10 @@
 //!
 //! For a pseudo code implementation of Keccap-f, see
 //! <https://keccak.team/keccak_specs_summary.html>
-use crate::keccak::{column::KeccakWitness, interpreter::KeccakInterpreter, KeccakColumn};
+use crate::{
+    keccak::{column::KeccakWitness, interpreter::KeccakInterpreter, KeccakColumn},
+    lookups::Lookup,
+};
 use ark_ff::Field;
 use kimchi::o1_utils::Two;
 
@@ -65,5 +68,73 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
             "Keccak witness failed at constraint index {}",
             self.check_idx
         );
+    }
+
+    ////////////////////////
+    // LOOKUPS OPERATIONS //
+    ////////////////////////
+
+    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
+        // Keep track of multiplicities for fixed lookups
+        todo!()
+    }
+
+    fn lookup_syscall_preimage(&mut self) {
+        // No-op for witness
+    }
+
+    fn lookup_syscall_hash(&mut self) {
+        // No-op for witness
+    }
+
+    fn lookup_steps(&mut self) {
+        // No-op for witness
+    }
+
+    fn lookup_rc16(&mut self, flag: Self::Variable, _value: Self::Variable) {
+        if flag == Self::one() {
+            // TODO: keep track of multiplicity of range check 16 entry
+            // TODO: check that [value] is in the RangeCheck16Lookup
+        }
+    }
+
+    fn lookup_reset(
+        &mut self,
+        flag: Self::Variable,
+        _dense: Self::Variable,
+        _sparse: Self::Variable,
+    ) {
+        if flag == Self::one() {
+            // TODO: keep track of multiplicity of range check 16 entry
+            // TODO: check that [dense, sparse] is in the ResetLookup
+        }
+    }
+
+    fn lookup_sparse(&mut self, flag: Self::Variable, _value: Self::Variable) {
+        if flag == Self::one() {
+            // TODO: keep track of multiplicity of range check 16 entry
+            // TODO: check that [value] is in the SparseLookup
+        }
+    }
+
+    fn lookup_byte(&mut self, flag: Self::Variable, _value: Self::Variable) {
+        if flag == Self::one() {
+            // TODO: keep track of multiplicity of range check 16 entry
+            // TODO: check that [value] is in the ByteLookup
+        }
+    }
+
+    fn lookup_pad(&mut self, flag: Self::Variable, _value: Vec<Self::Variable>) {
+        if flag == Self::one() {
+            // TODO: keep track of multiplicity of range check 16 entry
+            // TODO: check that [value] is in the PadLookup
+        }
+    }
+
+    fn lookup_round_constants(&mut self, flag: Self::Variable, _value: Vec<Self::Variable>) {
+        if flag == Self::one() {
+            // TODO: keep track of multiplicity of range check 16 entry
+            // TODO: check that [value] is in the RoundConstantsLookup
+        }
     }
 }

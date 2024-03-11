@@ -10,7 +10,6 @@ pub mod column;
 pub mod constraints;
 pub mod environment;
 pub mod interpreter;
-pub mod lookups;
 pub mod witness;
 
 /// Desired output length of the hash in bits

@@ -1,8 +1,11 @@
 //! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
-use crate::keccak::{
-    column::{PAD_BYTES_LEN, ROUND_COEFFS_LEN},
-    grid_index, KeccakColumn,
+use crate::{
+    keccak::{
+        column::{PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+        grid_index, KeccakColumn,
+    },
+    lookups::Lookup,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -10,9 +13,9 @@ use kimchi::{
     circuits::polynomials::keccak::constants::{
         CHI_SHIFTS_B_LEN, CHI_SHIFTS_SUM_LEN, DIM, PIRHO_DENSE_E_LEN, PIRHO_DENSE_ROT_E_LEN,
         PIRHO_EXPAND_ROT_E_LEN, PIRHO_QUOTIENT_E_LEN, PIRHO_REMAINDER_E_LEN, PIRHO_SHIFTS_E_LEN,
-        QUARTERS, SPONGE_BYTES_LEN, SPONGE_SHIFTS_LEN, SPONGE_ZEROS_LEN, STATE_LEN,
-        THETA_DENSE_C_LEN, THETA_DENSE_ROT_C_LEN, THETA_EXPAND_ROT_C_LEN, THETA_QUOTIENT_C_LEN,
-        THETA_REMAINDER_C_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
+        QUARTERS, SHIFTS, SHIFTS_LEN, SPONGE_BYTES_LEN, SPONGE_SHIFTS_LEN, SPONGE_ZEROS_LEN,
+        STATE_LEN, THETA_DENSE_C_LEN, THETA_DENSE_ROT_C_LEN, THETA_EXPAND_ROT_C_LEN,
+        THETA_QUOTIENT_C_LEN, THETA_REMAINDER_C_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
     },
     grid,
 };
@@ -105,6 +108,185 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
     /// Adds one constraint to the environment.
     fn constrain(&mut self, x: Self::Variable);
+
+    ////////////////////////
+    // LOOKUPS OPERATIONS //
+    ////////////////////////
+
+    /// Adds a given Lookup to the environment
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
+
+    /// Adds all 2481 lookups to the Keccak constraints environment:
+    /// - 2342 lookups for the step row
+    /// - 2 lookups for the inter-step channel
+    /// - 136 lookups for the syscall channel (preimage bytes)
+    /// - 1 lookups for the syscall channel (hash)
+    fn lookups(&mut self) {
+        // SPONGE LOOKUPS
+        self.lookups_sponge();
+
+        // ROUND LOOKUPS
+        {
+            // THETA LOOKUPS
+            self.lookups_round_theta();
+            // PIRHO LOOKUPS
+            self.lookups_round_pirho();
+            // CHI LOOKUPS
+            self.lookups_round_chi();
+            // IOTA LOOKUPS
+            self.lookups_round_iota();
+        }
+
+        // INTER-STEP CHANNEL
+        // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        self.lookup_steps();
+
+        // COMMUNICATION CHANNEL: read bytes of current block
+        self.lookup_syscall_preimage();
+
+        // COMMUNICATION CHANNEL: Write hash output
+        self.lookup_syscall_hash();
+    }
+
+    /// Reads Lookups containing the 136 bytes of the block of the preimage
+    fn lookup_syscall_preimage(&mut self);
+
+    /// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    fn lookup_syscall_hash(&mut self);
+
+    /// Reads a Lookup containing the input of a step
+    /// and writes a Lookup containing the output of the next step
+    fn lookup_steps(&mut self);
+
+    /// Adds a lookup to the RangeCheck16 table
+    fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable);
+
+    /// Adds a lookup to the Reset table
+    fn lookup_reset(&mut self, flag: Self::Variable, dense: Self::Variable, sparse: Self::Variable);
+
+    /// Adds a lookup to the Shift table
+    fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable);
+
+    /// Adds a lookup to the Byte table
+    fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable);
+
+    /// Adds a lookup to the Pad table
+    fn lookup_pad(&mut self, flag: Self::Variable, value: Vec<Self::Variable>);
+
+    /// Adds a lookup to the RoundConstants table
+    fn lookup_round_constants(&mut self, flag: Self::Variable, value: Vec<Self::Variable>);
+
+    /// Adds the 601 lookups required for the sponge
+    fn lookups_sponge(&mut self) {
+        // PADDING LOOKUPS
+        // Power of two corresponds to 2^pad_length
+        // Pad suffixes correspond to 10*1 rule
+        self.lookup_pad(
+            self.is_pad(),
+            vec![
+                self.pad_length(),
+                self.two_to_pad(),
+                self.pad_suffix(0),
+                self.pad_suffix(1),
+                self.pad_suffix(2),
+                self.pad_suffix(3),
+                self.pad_suffix(4),
+            ],
+        );
+        // BYTES LOOKUPS
+        for i in 0..200 {
+            // Bytes are <2^8
+            self.lookup_byte(self.is_sponge(), self.sponge_byte(i));
+        }
+        // SHIFTS LOOKUPS
+        for i in 100..SHIFTS_LEN {
+            // Shifts1, Shifts2, Shifts3 are in the Sparse table
+            self.lookup_sparse(self.is_sponge(), self.sponge_shifts(i));
+        }
+        for i in 0..STATE_LEN {
+            // Shifts0 together with Bits composition by pairs are in the Reset table
+            let dense = self.sponge_byte(2 * i) + self.sponge_byte(2 * i + 1) * Self::two_pow(8);
+            self.lookup_reset(self.is_sponge(), dense, self.sponge_shifts(i));
+        }
+    }
+
+    /// Adds the 140 lookups required for Theta in the round
+    fn lookups_round_theta(&mut self) {
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                // Check that ThetaRemainderC < 2^64
+                self.lookup_rc16(self.is_round(), self.remainder_c(x, q));
+                // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
+                self.lookup_reset(
+                    self.is_round(),
+                    self.dense_rot_c(x, q),
+                    self.expand_rot_c(x, q),
+                );
+                // Check ThetaShiftC0 is the expansion of ThetaDenseC
+                self.lookup_reset(self.is_round(), self.dense_c(x, q), self.shifts_c(0, x, q));
+                // Check that the rest of ThetaShiftsC are in the Sparse table
+                for i in 1..SHIFTS {
+                    self.lookup_sparse(self.is_round(), self.shifts_c(i, x, q));
+                }
+            }
+        }
+    }
+
+    /// Adds the 800 lookups required for PiRho in the round
+    fn lookups_round_pirho(&mut self) {
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                for y in 0..DIM {
+                    // Check that PiRhoRemainderE < 2^64 and PiRhoQuotientE < 2^64
+                    self.lookup_rc16(self.is_round(), self.remainder_e(y, x, q));
+                    self.lookup_rc16(self.is_round(), self.quotient_e(y, x, q));
+                    // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
+                    self.lookup_reset(
+                        self.is_round(),
+                        self.dense_rot_e(y, x, q),
+                        self.expand_rot_e(y, x, q),
+                    );
+                    // Check PiRhoShift0E is the expansion of PiRhoDenseE
+                    self.lookup_reset(
+                        self.is_round(),
+                        self.dense_e(y, x, q),
+                        self.shifts_e(0, y, x, q),
+                    );
+                    // Check that the rest of PiRhoShiftsE are in the Sparse table
+                    for i in 1..SHIFTS {
+                        self.lookup_sparse(self.is_round(), self.shifts_e(i, y, x, q));
+                    }
+                }
+            }
+        }
+    }
+
+    /// Adds the 800 lookups required for Chi in the round
+    fn lookups_round_chi(&mut self) {
+        let shifts_b = self.vec_shifts_b();
+        let shifts_sum = self.vec_shifts_sum();
+        for i in 0..SHIFTS_LEN {
+            // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
+            self.lookup_sparse(self.is_round(), shifts_b[i].clone());
+            self.lookup_sparse(self.is_round(), shifts_sum[i].clone());
+        }
+    }
+
+    /// Adds the 1 lookup required for Iota in the round
+    fn lookups_round_iota(&mut self) {
+        // Check round constants correspond with the current round
+        let round_constants = self.round_constants();
+        self.lookup_round_constants(
+            self.is_round(),
+            vec![
+                self.round(),
+                round_constants[3].clone(),
+                round_constants[2].clone(),
+                round_constants[1].clone(),
+                round_constants[0].clone(),
+            ],
+        );
+    }
 
     /////////////////////////
     /// COLUMN OPERATIONS ///
