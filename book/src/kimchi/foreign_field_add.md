@@ -5,15 +5,15 @@ This document is meant to explain the foreign field addition gate in Kimchi.
 ## Overview
 
 The goal of this gate is to perform the following operation between a left $a$ and a right $b$ input, to obtain a result $r$
-$$a + s * b = r \mod f$$
-where $a,b,r\in\mathbb{F}_f$ belong to the foreign field of modulus $f$ and we work over a native field $\mathbb{F}_n$ with modulus $n$, and $s$ is a flag that is either $-1$ or $1$ to indicate whether it is a subtraction or addition gate.
+$$a + s \cdot b = r \mod f$$
+where $a,b,r\in\mathbb{F}_f$ belong to the _foreign field_ $\mathbb{F}_f$ of modulus $f$ and we work over a native field $\mathbb{F}_n$ of modulus $n$, and $s \in \{-1, 1\}$ is a flag indicating whether it is a subtraction or addition gate.
 
-If $f < n$ then we can easily perform the above computation. But in this gate we are interested in the contrary case in which $f>n$. In order to deal with this, we will divide foreign field elements into limbs that fit in our native field. We want to be compatible with the foreign field multiplication gate, and thus the parameters we will be using are the following:
+If $f < 2 \cdot n$ then we can easily perform the above computation natively since no overflows happen. But in this gate we are interested in the contrary case in which $f>n$. In order to deal with this, we will divide foreign field elements into limbs that fit in our native field. We want to be compatible with the foreign field multiplication gate, and thus the parameters we will be using are the following:
 
 - 3 limbs of 88 bits each (for a total of 264 bits)
-- $2^{264} > f$
-- our foreign field will have 256-bit length
-- our native field has 255-bit length
+- So $f < 2^{264}$, concretely:
+    - The modulus $f$ of the foreign field $\mathbb{F}_f$ is 256 bit
+    - The modulus of our the native field $\mathbb{F}_n$ is 255 bit
 
 In other words, using 3 limbs of 88 bits each allows us to represent any foreign field element in the range $[0,2^{264})$ for foreign field addition, but only up to $2^{259}$ for foreign field multiplication. Thus, with the current configuration of our limbs, our foreign field must be smaller than $2^{259}$ (because $2^{264} \cdot 2^{255} > {2^{259}}^2 + 2^{259}$, more on this in [Foreign Field Multiplication](../kimchi/foreign_field_mul.md) or the original [FFmul RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 
@@ -30,11 +30,11 @@ b  =  (-------b0-------|-------b1-------|-------b2-------)
 =
 r  =  (-------r0-------|-------r1-------|-------r2-------)  mod(f)
 ```
-We will perform the addition in 3 steps, one per limb. Now, when we split long additions in this way, we must be careful with carry bits between limbs. Also, even if $a$ and $b$ are foreign field elements, it could be the case that $a + b$ is already larger than the modulus (such addition could be at most $2f - 2$). But it could also be the case that the subtraction produces an underflow because $a < b$ (with a difference of at most $1 - f$). Thus we will have to consider the more general case. That is,
+We will perform the addition in 3 steps, one per limb. Now, when we split long additions in this way, we must be careful with carry bits between limbs. Also, even if $a$ and $b$ are foreign field elements, it could be the case that $a + b$ is already larger than the modulus (in this case $a + b$ could be at most $2f - 2$). But it could also be the case that the subtraction produces an underflow because $a < b$ (with a difference of at most $1 - f$). Thus we will have to consider the more general case. That is,
 
 $$ a + s \cdot b = q \cdot f + r \mod 2^{264}$$
 
-with a field overflow term $q$ that will be either $0$ (if no underflow nor overflow is produced) or $1$ (if there is overflow with $s = 1$) or $-1$ (if there is underflow with $s = -1$). Looking at this in limb form, we have:
+with a field overflow term $q \in \{-1,0,1\}$ that will be either $0$ (if no underflow nor overflow is produced), $1$ (if there is overflow with $s = 1$) or $-1$ (if there is underflow with $s = -1$). Looking at this in limb form, we have:
 
 ```text
 bits  0..............87|88...........175|176...........263
@@ -52,7 +52,7 @@ f  =  (-------f0-------|-------f1-------|-------f2-------)
 r  =  (-------r0-------|-------r1-------|-------r2-------)
 ```
 
-First, if $a + b$ was larger than $f$, then we will have a field overflow (represented by $q = 1$) and we will have to subtract $f$ from the sum $a + b$ to obtain $r$. Whereas the foreign field overflow necessitates an overflow bit $q$ for the foreign field equation above, when $q = 1$ there is a corresponding subtraction that may introduce carries (or even borrows) between the limbs. This is because $r = a + b - q \cdot f \mod 2^{264}$.  Therefore, in the equations for the limbs we will use a carry flag $c_i$ for limb $i$ to represent both carries and borrows. The carry flags can be anything in $\{-1, 0, 1\}$, where $c_i = -1$ represents a borrow and $c_i = 1$ represents a carry.  Next we see more clearly how this works.
+First, if $a + b$ is larger than $f$, then we will have a field overflow (represented by $q = 1$) and thus will have to subtract $f$ from the sum $a + b$ to obtain $r$. Whereas the foreign field overflow necessitates an overflow bit $q$ for the foreign field equation above, when $q = 1$ there is a corresponding subtraction that may introduce carries (or even borrows) between the limbs. This is because $r = a + b - q \cdot f \mod 2^{264}$.  Therefore, in the equations for the limbs we will use a carry flag $c_i$ for limb $i$ to represent both carries and borrows. The carry flags $c_i$ are in $\{-1, 0, 1\}$, where $c_i = -1$ represents a borrow and $c_i = 1$ represents a carry.  Next we explain how this works.
 
 In order to perform this operation in parts, we first take a look at the least significant limb, which is the easiest part. This means we want to know how to compute $r_0$. First, if the addition of the bits in $a_0$ and $b_0$ produce a carry (or borrow) bit, then it should propagate to the second limb. That means one has to subtract $2^{88}$ from $a_0 + b_0$, add $1$ to $a_1 + b_1$ and set the low carry flag $c_0$ to 1 (otherwise it is zero).  Thus, the equation for the lowest bit is
 
@@ -60,7 +60,7 @@ $$a_0 + s \cdot b_0 = q \cdot f_0 + r_0 + c_0 \cdot 2^{88}$$
 
 Or put in another way, this is equivalent to saying that $a_0 + b_0 - q \cdot f_0 - r_0$ is a multiple of $2^{88}$ (or, the existence of the carry coefficient $c_0$).
 
-This kind of equation needs an additional check that the carry coefficient $c_0$ is a correct carry value (`0`, `1`, or `-1`). We will use this idea for the remaining limbs as well.
+This kind of equation needs an additional check that the carry coefficient $c_0$ is a correct carry value (belonging to $\{-1,0,1\}$). We will use this idea for the remaining limbs as well.
 
 Looking at the second limb, we first need to observe that the addition of $a_1$ and $b_1$ can, not only produce a carry bit $c_1$, but they may need to take into account the carry bit from the first limb; $c_0$. Similarly to the above,
 
@@ -85,7 +85,7 @@ s = 1 | -1
 b  =  (-------b0-------|-------b1-------|-------b2-------)
                        >                >                >
 =                     c_0              c_1              c_2
-q  =  -1 |0 | 1
+q  =  -1 | 0 | 1
 ·
 f  =  (-------f0-------|-------f1-------|-------f2-------)
 +
@@ -99,20 +99,22 @@ Our witness computation is currently using the `BigUint` library, which takes ca
 
 Last but not least, we should perform some range checks to make sure that the result $r$ is contained in $\mathbb{F}_f$. This is important because there could be other values of the result which still fit in $<2^{264}$ but are larger than $f$, and we must make sure that the final result is the minimum one (that we will be referring to as $r_{min}$ in the following).
 
-Ideally, we would like to reuse some gates that we already have. In particular, we can perform range checks for $0\leq X <2^{3\ell}=2^{3\cdot 88}$. But we want to check that $0 \leq r_{min} < f$. The way we can tweak this gate to behave as we want, is the following. First, the above inequality is equivalent to saying that $-f \leq r_{min} - f < 0$. Then we add $2^{264}$ on both sides to obtain $2^{264} - f \leq r_{min} - f + 2^{264} < 2^{264}$. Thus, all there is left to check is that a given bound value is indeed computed correctly. Meaning, that an upperbound term $u$ is correctly obtained as $r_{min} + 2^{264} - f$. Even if we could apply this check for all intermediate results of foreign field additions, it is sufficient to apply it only once at the end of the computations.
+Ideally, we would like to reuse some gates that we already have. In particular, we can perform range checks for $0\leq X <2^{3\ell}=2^{3\cdot 88}$. But we want to check that $0 \leq r_{min} < f$, which is a smaller range. The way we can tweak the existing range check gate to behave as we want, is as follows.
 
-This is very similar to a foreign field addition, but simpler: the field overflow bit will always be $1$, the sign is positive $1$, and the right input is formed by the limbs $(0, 0, 2^{88})$ standing for the number $2^{264}$.  There could be intermediate limb carry bits $k_0$ and $k_1$ as above. Observe that, because the sum is meant to be $<2^{264}$, then the carry bit for the most significant limb should always be zero $k_2 = 0$, so we do not use it. Happily, we can apply the addition gate again to perform the addition limb-wise, by selecting the following parameters:
+First, the above inequality is equivalent to $-f \leq r_{min} - f < 0$. Add $2^{264}$ on both sides to obtain $2^{264} - f \leq r_{min} - f + 2^{264} < 2^{264}$. Thus, all there is left to check is that a given bound value is indeed computed correctly. Meaning, that an upperbound term $u$ is correctly obtained as $u = r_{min} + 2^{264} - f$. Even if we could apply this check for all intermediate results of foreign field additions, it is sufficient to apply it only once at the end of the computations.
+
+The following computation is very similar to a foreign field addition ($r_{min} + 2^{264} = u \mod f$), but simpler. The field overflow bit will always be $1$, the main operation sign is positive $1$ (we are doing addition, not subtraction), and the right input $2^{264}$, call it $g$, is represented by the limbs $(0, 0, 2^{88})$.  There could be intermediate limb carry bits $k_0$ and $k_1$ as in the general case FF addition protocol. Observe that, because the sum is meant to be $<2^{264}$, the carry bit for the most significant limb should always be zero $k_2 = 0$, so this condition is enforced implicitly by omitting $k_2$ from the equations. Happily, we can apply the addition gate again to perform the addition limb-wise, by selecting the following parameters:
 
 $$
 \begin{aligned}
-a_0 &=& r_{min_{0}}, \\ a_1 &=& r_{min_{1}}, \\ a_2 &=& r_{min_{2}} , \\
-b_0 &=& 0, \\ b_1 &=& 0, \\ b_2 &=& 2^{88} , \\
+a_0 &=& r_{min_{0}} \\ a_1 &=& r_{min_{1}} \\ a_2 &=& r_{min_{2}}  \\
+b_0 &=& 0 \\ b_1 &=& 0 \\ b_2 &=& 2^{88}  \\
 s &=& 1 \\
 q &=& 1
 \end{aligned}
 $$
 
-Calling $u$ the upper bound term, the equation $r_{min} + 2^{264} - f $ can be expressed as $r_{min} + 2^{264} = 1 * f + u$. Finally, we perform a range check on the sum $u$, and we would know that $r_{min} < f$.
+Calling $u$ the upper bound term, the equation $r_{min} + 2^{264} - f $ can be expressed as $r_{min} + 2^{264} = 1 \cdot f + u$. Finally, we perform a range check on the sum $u$, and we would know that $r_{min} < f$.
 
 
 ```text
@@ -162,7 +164,7 @@ s = 1 | -1
 ·
 b  =  (-------b0-------|-------b1-------|-------b2-------)
 -
-q  =  -1 |0 | 1
+q  =  -1 | 0 | 1
 ·
 f  =  (-------f0-------|-------f1-------|-------f2-------)
                        >                >                >
@@ -181,11 +183,11 @@ s = 1 | -1
 ·
 b  =  (-------b0------- -------b1-------|-------b2-------)
 -
-q  =  -1 |0 | 1
+q  =  -1 | 0 | 1
 ·
 f  =  (-------f0------- -------f1-------|-------f2-------)
                                         >                >
-                                        c               0
+                                        c                0
 ```
 
  These are the new equations:
@@ -250,7 +252,7 @@ $$add(add(add(a,b),c),d)$$
 | 30..33 | `multi-range-check` | $a+b+c+d$     |
 | 34..37 | `multi-range-check` | bound         |
 
-Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8*n+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges):
+Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8\cdotn+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges):
 
 | Row(s)   | Gate type(s)                                          | Witness |
 | -------- | ----------------------------------------------------- | ------- |
