@@ -1,4 +1,4 @@
-use crate::{ffa::columns::FFAColumnIndexer, Ff1, N_LIMBS};
+use crate::{ffa::columns::FFAColumnIndexer, Ff1, LIMB_BITSIZE, N_LIMBS};
 use ark_ff::{PrimeField, Zero};
 use num_bigint::BigUint;
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
@@ -31,7 +31,7 @@ pub trait FFAInterpreterEnv<F: PrimeField> {
 // TODO use more foreign_field.rs with from/to bigint conversion
 fn limb_decompose<F: PrimeField>(input: &Ff1) -> [F; N_LIMBS] {
     let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    let ff_el: ForeignElement<F, N_LIMBS> = ForeignElement::from_biguint(input_bi);
+    let ff_el: ForeignElement<F, LIMB_BITSIZE, N_LIMBS> = ForeignElement::from_biguint(input_bi);
     ff_el.limbs
 }
 

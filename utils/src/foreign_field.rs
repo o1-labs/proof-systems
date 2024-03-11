@@ -35,14 +35,14 @@ pub fn two_to_limb() -> BigUint {
 /// Represents a foreign field element
 #[derive(Clone, PartialEq, Eq)]
 /// Represents a foreign field element
-pub struct ForeignElement<F: Field, const N: usize> {
+pub struct ForeignElement<F: Field, const B: usize, const N: usize> {
     /// limbs in little endian order
     pub limbs: [F; N],
     /// number of limbs used for the foreign field element
     len: usize,
 }
 
-impl<F: Field, const N: usize> ForeignElement<F, N> {
+impl<F: Field, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// Creates a new foreign element from an array containing N limbs
     pub fn new(limbs: [F; N]) -> Self {
         Self { limbs, len: N }
@@ -59,7 +59,7 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
     /// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
     pub fn from_biguint(big: BigUint) -> Self {
-        let vec = ForeignElement::<F, N>::big_to_vec(big);
+        let vec = ForeignElement::<F, B, N>::big_to_vec(big);
 
         // create an array of N native elements containing the limbs
         // until the array is full in big endian, so most significant
@@ -98,47 +98,84 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
     /// Obtains the big integer representation of the foreign field element
     pub fn to_biguint(&self) -> BigUint {
         let mut bytes = vec![];
-        // limbs are stored in little endian
-        for limb in self.limbs {
-            let crumb = &limb.to_bytes()[0..LIMB_BITS / 8];
-            bytes.extend_from_slice(crumb);
+        if B % 8 == 0 {
+            // limbs are stored in little endian
+            for limb in self.limbs {
+                let crumb = &limb.to_bytes()[0..B / 8];
+                bytes.extend_from_slice(crumb);
+            }
+        } else {
+            let mut bits: Vec<bool> = vec![];
+            for limb in self.limbs {
+                // Only take lower B bits, as there might be more (zeroes) in the high ones.
+                let f_bits_lower: Vec<bool> = limb.to_bits().into_iter().take(B).collect();
+                bits.extend(&f_bits_lower);
+            }
+
+            let bytes_len = if (B * N) % 8 == 0 {
+                (B * N) / 8
+            } else {
+                ((B * N) / 8) + 1
+            };
+            bytes = vec![0u8; bytes_len];
+            for i in 0..bits.len() {
+                bytes[i / 8] |= u8::from(bits[i]) << (i % 8);
+            }
         }
         BigUint::from_bytes_le(&bytes)
     }
 
-    /// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.
-    /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
+    /// Split a foreign field element into a vector of `B` (limb bitsize) bits field
+    /// elements of type `F` in little-endian. Right now it is written
+    /// so that it gives `N` (limb count) limbs, even if it fits in less bits.
     fn big_to_vec(fe: BigUint) -> Vec<F> {
-        let bytes = fe.to_bytes_le();
-        let chunks: Vec<&[u8]> = bytes.chunks(LIMB_BITS / 8).collect();
-        chunks
-            .iter()
-            .map(|chunk| F::from_random_bytes(chunk).expect("failed to deserialize"))
-            .collect()
+        if B % 8 == 0 {
+            let bytes = fe.to_bytes_le();
+            let chunks: Vec<&[u8]> = bytes.chunks(B / 8).collect();
+            chunks
+                .iter()
+                .map(|chunk| F::from_random_bytes(chunk).expect("failed to deserialize"))
+                .collect()
+        } else {
+            // Quite inefficient
+            let mut bits = vec![]; // can be slice not vec, but B*N is not const?
+            assert!(
+                fe.bits() <= (B * N) as u64,
+                "BigUint too big to be represented in B*N elements"
+            );
+            for i in 0..B * N {
+                bits.push(fe.bit(i as u64));
+            }
+            let chunks: Vec<_> = bits.chunks(B).collect();
+            chunks
+                .into_iter()
+                .map(|chunk| F::from_bits(chunk).expect("failed to deserialize"))
+                .collect()
+        }
     }
 }
 
-impl<F: PrimeField, const N: usize> ForeignElement<F, N> {
+impl<F: PrimeField, const B: usize, const N: usize> ForeignElement<F, B, N> {
     /// Initializes a new foreign element from an element in the native field
     pub fn from_field(field: F) -> Self {
         Self::from_biguint(field.into())
     }
 }
 
-impl<F: Field, const N: usize> Index<usize> for ForeignElement<F, N> {
+impl<F: Field, const B: usize, const N: usize> Index<usize> for ForeignElement<F, B, N> {
     type Output = F;
     fn index(&self, idx: usize) -> &Self::Output {
         &self.limbs[idx]
     }
 }
 
-impl<F: Field, const N: usize> IndexMut<usize> for ForeignElement<F, N> {
+impl<F: Field, const B: usize, const N: usize> IndexMut<usize> for ForeignElement<F, B, N> {
     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.limbs[idx]
     }
 }
 
-impl<F: Field, const N: usize> Debug for ForeignElement<F, N> {
+impl<F: Field, const B: usize, const N: usize> Debug for ForeignElement<F, B, N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "ForeignElement(")?;
         for i in 0..self.len {
@@ -182,10 +219,10 @@ pub trait BigUintForeignFieldHelpers {
     /// 2
     fn two() -> Self;
 
-    /// 2^{LIMB_SIZE}
+    /// 2^{LIMB_BITS}
     fn two_to_limb() -> Self;
 
-    /// 2^{2 * LIMB_SIZE}
+    /// 2^{2 * LIMB_BITS}
     fn two_to_2limb() -> Self;
 
     /// 2^t
@@ -407,8 +444,12 @@ mod tests {
         let big = secp256k1_modulus();
         let bytes = big.to_bytes_be();
         assert_eq!(
-            ForeignElement::<BaseField, 3>::from_be(&bytes),
-            ForeignElement::<BaseField, 3>::from_biguint(big)
+            ForeignElement::<BaseField, LIMB_BITS, 3>::from_be(&bytes),
+            ForeignElement::<BaseField, LIMB_BITS, 3>::from_biguint(big.clone())
+        );
+        assert_eq!(
+            ForeignElement::<BaseField, 15, 18>::from_be(&bytes),
+            ForeignElement::<BaseField, 15, 18>::from_biguint(big)
         );
     }
 
@@ -416,24 +457,42 @@ mod tests {
     fn test_to_biguint() {
         let big = secp256k1_modulus();
         let bytes = big.to_bytes_be();
-        let fe = ForeignElement::<BaseField, 3>::from_be(&bytes);
+        let fe = ForeignElement::<BaseField, LIMB_BITS, 3>::from_be(&bytes);
         assert_eq!(fe.to_biguint(), big);
+        let fe2 = ForeignElement::<BaseField, 15, 18>::from_be(&bytes);
+        assert_eq!(fe2.to_biguint(), big);
     }
 
     #[test]
     fn test_from_biguint() {
-        let one = ForeignElement::<BaseField, 3>::from_be(&[0x01]);
-        assert_eq!(
-            BaseField::from_biguint(&one.to_biguint()).unwrap(),
-            BaseField::one()
-        );
+        {
+            let one = ForeignElement::<BaseField, LIMB_BITS, 3>::from_be(&[0x01]);
+            assert_eq!(
+                BaseField::from_biguint(&one.to_biguint()).unwrap(),
+                BaseField::one()
+            );
 
-        let max_big = BaseField::modulus_biguint() - 1u32;
-        let max_fe = ForeignElement::<BaseField, 3>::from_biguint(max_big.clone());
-        assert_eq!(
-            BaseField::from_biguint(&max_fe.to_biguint()).unwrap(),
-            BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
-        );
+            let max_big = BaseField::modulus_biguint() - 1u32;
+            let max_fe = ForeignElement::<BaseField, LIMB_BITS, 3>::from_biguint(max_big.clone());
+            assert_eq!(
+                BaseField::from_biguint(&max_fe.to_biguint()).unwrap(),
+                BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
+            );
+        }
+        {
+            let one = ForeignElement::<BaseField, 15, 18>::from_be(&[0x01]);
+            assert_eq!(
+                BaseField::from_biguint(&one.to_biguint()).unwrap(),
+                BaseField::one()
+            );
+
+            let max_big = BaseField::modulus_biguint() - 1u32;
+            let max_fe = ForeignElement::<BaseField, 15, 18>::from_biguint(max_big.clone());
+            assert_eq!(
+                BaseField::from_biguint(&max_fe.to_biguint()).unwrap(),
+                BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
+            );
+        }
     }
 
     #[test]

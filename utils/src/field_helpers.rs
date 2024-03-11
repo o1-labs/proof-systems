@@ -136,6 +136,7 @@ impl<F: Field> FieldHelpers<F> for F {
         F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
+    /// Creates a field element from bits (little endian)
     fn from_bits(bits: &[bool]) -> Result<F> {
         let bytes = bits
             .iter()
@@ -160,6 +161,7 @@ impl<F: Field> FieldHelpers<F> for F {
         hex::encode(self.to_bytes())
     }
 
+    /// Converts a field element into bit representation (little endian)
     fn to_bits(&self) -> Vec<bool> {
         self.to_bytes().iter().fold(vec![], |mut bits, byte| {
             let mut byte = *byte;
