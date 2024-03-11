@@ -320,6 +320,7 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// This file contains the witness for the Keccak hash function for the zkVM project.
 /// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 ///
@@ -464,6 +465,7 @@
         <span class="comment">// Compute witness values
         </span><span class="kw">let </span>ini_idx = RATE_IN_BYTES * <span class="self">self</span>.block_idx <span class="kw">as </span>usize;
         <span class="kw">let </span><span class="kw-2">mut </span>block = <span class="self">self</span>.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
+        <span class="self">self</span>.write_column(KeccakColumn::BlockIndex, <span class="self">self</span>.block_idx);
 
         <span class="comment">// Pad with zeros
         </span>block.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[<span class="number">0</span>; CAPACITY_IN_BYTES]);

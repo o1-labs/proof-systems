@@ -246,6 +246,20 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 </span><span class="kw">use </span><span class="kw">crate</span>::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
@@ -264,8 +278,10 @@
 
 <span class="doccomment">/// The total number of witness columns used by the Keccak circuit.
 </span><span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize =
-    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + <span class="number">2</span>;
+    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + STATUS_FLAGS_LEN;
 
+<span class="comment">// The number of columns used by the Keccak circuit to represent the status flags.
+</span><span class="kw">const </span>STATUS_FLAGS_LEN: usize = <span class="number">3</span>;
 <span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
 </span><span class="kw">const </span>MODE_FLAGS_COLS_LEN: usize = <span class="number">3</span>;
 
@@ -299,6 +315,8 @@
 </span><span class="kw">pub enum </span>Column {
     <span class="doccomment">/// Hash identifier to distinguish inside the syscalls communication channel
     </span>HashIndex,
+    <span class="doccomment">/// Block index inside the hash to enumerate preimage bytes
+    </span>BlockIndex,
     <span class="doccomment">/// Hash step identifier to distinguish inside interstep communication
     </span>StepIndex,
     <span class="doccomment">/// Coeff Round = [0..24)
@@ -353,60 +371,68 @@
 </span><span class="kw">pub type </span>KeccakWitness&lt;T&gt; = Witness&lt;ZKVM_KECCAK_COLS, T&gt;;
 
 <span class="kw">pub trait </span>KeccakWitnessTrait&lt;T&gt; {
-    <span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T;
-    <span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T;
-    <span class="kw">fn </span>mode_flags(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T];
-    <span class="kw">fn </span>mode_flags_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T];
-    <span class="kw">fn </span>curr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T];
-    <span class="kw">fn </span>curr_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T];
-    <span class="kw">fn </span>next(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T];
-    <span class="kw">fn </span>next_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T];
-    <span class="kw">fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; <span class="kw-2">&amp;</span>[T];
+    <span class="doccomment">/// Returns the hash index
+    </span><span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T;
+    <span class="doccomment">/// Returns the block index
+    </span><span class="kw">fn </span>block_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T;
+    <span class="doccomment">/// Returns the step index
+    </span><span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T;
+    <span class="doccomment">/// Returns the mode flags
+    </span><span class="kw">fn </span>mode_flags(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T];
+    <span class="doccomment">/// Returns the mode flags as a mutable reference
+    </span><span class="kw">fn </span>mode_flags_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T];
+    <span class="doccomment">/// Returns the `curr` witness columns
+    </span><span class="kw">fn </span>curr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T];
+    <span class="doccomment">/// Returns the `curr` witness columns as a mutable reference
+    </span><span class="kw">fn </span>curr_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T];
+    <span class="doccomment">/// Returns the `next` witness columns
+    </span><span class="kw">fn </span>next(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T];
+    <span class="doccomment">/// Returns the `next` witness columns as a mutable reference
+    </span><span class="kw">fn </span>next_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T];
+    <span class="doccomment">/// Returns a chunk of the `curr` witness columns
+    </span><span class="kw">fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; <span class="kw-2">&amp;</span>[T];
 }
 
 <span class="kw">impl</span>&lt;T: Clone&gt; KeccakWitnessTrait&lt;T&gt; <span class="kw">for </span>KeccakWitness&lt;T&gt; {
-    <span class="comment">// Returns the hash index
-    </span><span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
+    <span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
         <span class="kw-2">&amp;</span><span class="self">self</span>.cols[<span class="number">0</span>]
     }
 
-    <span class="comment">// Returns the step index
-    </span><span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
+    <span class="kw">fn </span>block_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
         <span class="kw-2">&amp;</span><span class="self">self</span>.cols[<span class="number">1</span>]
     }
 
-    <span class="comment">// Returns the mode flags
-    </span><span class="kw">fn </span>mode_flags(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[<span class="number">2</span>..<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN]
+    <span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[<span class="number">2</span>]
     }
 
-    <span class="comment">// Returns the mode flags as a mutable reference
-    </span><span class="kw">fn </span>mode_flags_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T] {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[<span class="number">2</span>..<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN]
+    <span class="kw">fn </span>mode_flags(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[STATUS_FLAGS_LEN..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN]
     }
 
-    <span class="comment">// Returns the `curr` witness columns
-    </span><span class="kw">fn </span>curr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN..<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
+    <span class="kw">fn </span>mode_flags_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T] {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[STATUS_FLAGS_LEN..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN]
     }
 
-    <span class="comment">// Returns the `curr` witness columns as a mutable reference
-    </span><span class="kw">fn </span>curr_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T] {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN..<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
+    <span class="kw">fn </span>curr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN
+            ..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
     }
 
-    <span class="comment">// Returns the `next` witness columns
-    </span><span class="kw">fn </span>next(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+    <span class="kw">fn </span>curr_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T] {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN
+            ..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
     }
 
-    <span class="comment">// Returns the `next` witness columns as a mutable reference
-    </span><span class="kw">fn </span>next_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T] {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[<span class="number">2 </span>+ MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+    <span class="kw">fn </span>next(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
     }
 
-    <span class="doccomment">/// Returns a chunk of the `curr` witness columns
-    </span><span class="kw">fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; <span class="kw-2">&amp;</span>[T] {
+    <span class="kw">fn </span>next_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>[T] {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
+    }
+
+    <span class="kw">fn </span>chunk(<span class="kw-2">&amp;</span><span class="self">self</span>, offset: usize, length: usize) -&gt; <span class="kw-2">&amp;</span>[T] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.curr()[offset..offset + length]
     }
 }
@@ -421,6 +447,7 @@
     </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Column) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             Column::HashIndex =&gt; <span class="self">self</span>.hash_index(),
+            Column::BlockIndex =&gt; <span class="self">self</span>.block_index(),
             Column::StepIndex =&gt; <span class="self">self</span>.step_index(),
             Column::FlagRound =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags()[FLAG_ROUND_OFF],
             Column::FlagAbsorb =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.mode_flags()[FLAG_ABSORB_OFF],
@@ -459,7 +486,8 @@
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: Column) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             Column::HashIndex =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[<span class="number">0</span>],
-            Column::StepIndex =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[<span class="number">1</span>],
+            Column::BlockIndex =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[<span class="number">1</span>],
+            Column::StepIndex =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[<span class="number">2</span>],
             Column::FlagRound =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags_mut()[FLAG_ROUND_OFF],
             Column::FlagAbsorb =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags_mut()[FLAG_ABSORB_OFF],
             Column::FlagSqueeze =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.mode_flags_mut()[FLAG_SQUEEZE_OFF],

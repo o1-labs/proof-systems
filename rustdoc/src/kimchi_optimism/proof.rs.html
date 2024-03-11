@@ -822,7 +822,7 @@
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         <span class="kw">let </span>proof: Proof&lt;
-            <span class="number">2074</span>,
+            ZKVM_KECCAK_COLS,
             ark_ec::short_weierstrass_jacobian::GroupAffine&lt;ark_bn254::g1::Parameters&gt;,
             PairingProof&lt;ark_ec::bn::Bn&lt;ark_bn254::Parameters&gt;&gt;,
         &gt; = prove::&lt;ZKVM_KECCAK_COLS, <span class="kw">_</span>, PairingProof&lt;BN254Parameters&gt;, BaseSponge, ScalarSponge&gt;(

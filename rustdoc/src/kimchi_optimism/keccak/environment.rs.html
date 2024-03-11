@@ -743,6 +743,11 @@
 <a href="#741" id="741">741</a>
 <a href="#742" id="742">742</a>
 <a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the definition and implementation of the Keccak environment
 </span><span class="kw">use crate</span>::{
     keccak::{
@@ -1128,6 +1133,8 @@
 
     <span class="doccomment">/// Returns the hash index as a variable
     </span><span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Returns the block index as a variable
+    </span><span class="kw">fn </span>block_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
     <span class="doccomment">/// Returns the step index as a variable
     </span><span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
@@ -1457,6 +1464,9 @@
 
     <span class="kw">fn </span>hash_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::HashIndex)
+    }
+    <span class="kw">fn </span>block_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.variable(KeccakColumn::BlockIndex)
     }
     <span class="kw">fn </span>step_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.variable(KeccakColumn::StepIndex)
