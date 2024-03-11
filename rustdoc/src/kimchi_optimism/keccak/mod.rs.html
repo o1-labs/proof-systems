@@ -68,6 +68,8 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
@@ -80,6 +82,8 @@
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>environment;
 <span class="kw">pub mod </span>interpreter;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">pub mod </span>tests;
 <span class="kw">pub mod </span>witness;
 
 <span class="doccomment">/// Desired output length of the hash in bits
