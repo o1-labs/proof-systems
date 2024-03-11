@@ -3,9 +3,9 @@ use crate::{
     keccak::{
         column::PAD_SUFFIX_LEN,
         environment::{KeccakEnv, KeccakEnvironment},
-        KeccakColumn, {ArithOps, BoolOps, E, WORDS_IN_HASH},
+        ArithOps, BoolOps, KeccakColumn, E, WORDS_IN_HASH,
     },
-    lookups::Lookups,
+    lookups::{Lookup, Lookups},
 };
 use ark_ff::Field;
 use kimchi::circuits::{
@@ -16,6 +16,24 @@ use kimchi::circuits::{
         OFF,
     },
 };
+
+/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+#[derive(Clone, Debug)]
+pub struct Env<Fp> {
+    /// Constraints that are added to the circuit
+    pub constraints: Vec<E<Fp>>,
+    /// Variables that are looked up in the circuit
+    pub lookups: Vec<Lookup<E<Fp>>>,
+}
+
+impl<F: Field> Default for Env<F> {
+    fn default() -> Self {
+        Self {
+            constraints: Vec::new(),
+            lookups: Vec::new(),
+        }
+    }
+}
 
 /// This trait contains the constraints for one Keccak step.
 pub trait Constraints {
@@ -54,7 +72,7 @@ impl<Fp: Field> Constraints for KeccakEnv<Fp> {
     }
 
     fn constrain(&mut self, x: Self::Variable) {
-        self.constraints.push(x);
+        self.constraints_env.constraints.push(x);
     }
 
     fn constraints(&mut self) {

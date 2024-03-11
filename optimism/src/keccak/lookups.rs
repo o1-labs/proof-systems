@@ -16,7 +16,7 @@ impl<Fp: Field> Lookups for KeccakEnv<Fp> {
     type Variable = E<Fp>;
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        self.lookups.push(lookup);
+        self.constraints_env.lookups.push(lookup);
     }
 
     /// Adds all 2481 lookups to the Keccak environment:
