@@ -1304,7 +1304,7 @@
     }
 
     <span class="kw">fn </span>sponge_zeros(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; SPONGE_ZEROS_LEN] {
-        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::SpongeNewState(SPONGE_ZEROS_OFF + idx)))
+        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::SpongeZeros(idx)))
     }
 
     <span class="kw">fn </span>sponge_byte(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="self">Self</span>::Variable {

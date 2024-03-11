@@ -298,7 +298,7 @@
     expr::{Expr, ExprInner, Variable},
     gate::CurrOrNext,
     polynomials::keccak::{
-        constants::{DIM, QUARTERS, RATE_IN_BYTES, SPONGE_ZEROS_LEN},
+        constants::{DIM, QUARTERS, RATE_IN_BYTES},
         OFF,
     },
 };
@@ -382,9 +382,9 @@
 
         <span class="comment">// SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         </span>{
-            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SPONGE_ZEROS_LEN {
+            <span class="kw">for </span>zero <span class="kw">in </span><span class="self">self</span>.sponge_zeros() {
                 <span class="comment">// Absorb phase pads with zeros the new state
-                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_absorb() * <span class="self">self</span>.sponge_zeros()[i].clone());
+                </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_absorb() * zero);
             }
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
                 <span class="comment">// In first absorb, root state is all zeros
