@@ -557,7 +557,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn sponge_zeros(&self) -> [Self::Variable; SPONGE_ZEROS_LEN] {
-        array::from_fn(|idx| self.variable(KeccakColumn::SpongeNewState(SPONGE_ZEROS_OFF + idx)))
+        array::from_fn(|idx| self.variable(KeccakColumn::SpongeZeros(idx)))
     }
 
     fn sponge_byte(&self, idx: usize) -> Self::Variable {

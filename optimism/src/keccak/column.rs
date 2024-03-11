@@ -6,8 +6,8 @@ use kimchi::{
         CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
         PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
         QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
-        THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
-        THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
+        SPONGE_ZEROS_OFF, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF,
+        THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
     },
     folding::expressions::FoldingColumnTrait,
 };
@@ -76,6 +76,7 @@ pub enum Column {
     ChiShiftsB(usize),      // Round Curr[1165..1565)
     ChiShiftsSum(usize),    // Round Curr[1565..1965)
     SpongeNewState(usize),  // Sponge Curr[100..200)
+    SpongeZeros(usize),     // Sponge Curr[168..200)
     SpongeBytes(usize),     // Sponge Curr[200..400)
     SpongeShifts(usize),    // Sponge Curr[400..800)
     Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
@@ -205,6 +206,7 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
             Column::ChiShiftsB(idx) => &self.curr()[CHI_SHIFTS_B_OFF + idx],
             Column::ChiShiftsSum(idx) => &self.curr()[CHI_SHIFTS_SUM_OFF + idx],
             Column::SpongeNewState(idx) => &self.curr()[SPONGE_NEW_STATE_OFF + idx],
+            Column::SpongeZeros(idx) => &self.curr()[SPONGE_ZEROS_OFF + idx],
             Column::SpongeBytes(idx) => &self.curr()[SPONGE_BYTES_OFF + idx],
             Column::SpongeShifts(idx) => &self.curr()[SPONGE_SHIFTS_OFF + idx],
             Column::Output(idx) => &self.next()[idx],
@@ -244,6 +246,7 @@ impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
             Column::ChiShiftsB(idx) => &mut self.curr_mut()[CHI_SHIFTS_B_OFF + idx],
             Column::ChiShiftsSum(idx) => &mut self.curr_mut()[CHI_SHIFTS_SUM_OFF + idx],
             Column::SpongeNewState(idx) => &mut self.curr_mut()[SPONGE_NEW_STATE_OFF + idx],
+            Column::SpongeZeros(idx) => &mut self.curr_mut()[SPONGE_ZEROS_OFF + idx],
             Column::SpongeBytes(idx) => &mut self.curr_mut()[SPONGE_BYTES_OFF + idx],
             Column::SpongeShifts(idx) => &mut self.curr_mut()[SPONGE_SHIFTS_OFF + idx],
             Column::Output(idx) => &mut self.next_mut()[idx],
