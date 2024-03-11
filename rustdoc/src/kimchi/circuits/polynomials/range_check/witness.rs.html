@@ -242,6 +242,7 @@
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>o1_utils::field_helpers::BigUintFieldHelpers;
+<span class="kw">use </span>o1_utils::foreign_field::{BigUintForeignFieldHelpers, LIMB_BITS};
 <span class="kw">use </span>o1_utils::{FieldHelpers, ForeignElement};
 <span class="kw">use </span>std::array;
 
@@ -254,7 +255,6 @@
     },
     variables,
 };
-<span class="kw">use </span>o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 <span class="doccomment">/// Witness layout
 ///   * The values and cell contents are in little-endian order.
@@ -452,7 +452,7 @@
 <span class="doccomment">/// Extend an existing witness with a multi-range-check gadget for ForeignElement
 </span><span class="kw">pub fn </span>extend_multi_from_fe&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
-    fe: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">3</span>&gt;,
+    fe: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;,
 ) {
     extend_multi(witness, fe.limbs[<span class="number">0</span>], fe.limbs[<span class="number">1</span>], fe.limbs[<span class="number">2</span>]);
 }

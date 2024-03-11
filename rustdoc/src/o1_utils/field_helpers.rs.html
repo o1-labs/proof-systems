@@ -357,6 +357,8 @@
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
 <a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].
 
 </span><span class="kw">use </span>ark_ff::{BigInteger, Field, FpParameters, PrimeField};
@@ -495,7 +497,8 @@
         F::deserialize(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
-    <span class="kw">fn </span>from_bits(bits: <span class="kw-2">&amp;</span>[bool]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+    <span class="doccomment">/// Creates a field element from bits (little endian)
+    </span><span class="kw">fn </span>from_bits(bits: <span class="kw-2">&amp;</span>[bool]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
         <span class="kw">let </span>bytes = bits
             .iter()
             .enumerate()
@@ -519,7 +522,8 @@
         hex::encode(<span class="self">self</span>.to_bytes())
     }
 
-    <span class="kw">fn </span>to_bits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;bool&gt; {
+    <span class="doccomment">/// Converts a field element into bit representation (little endian)
+    </span><span class="kw">fn </span>to_bits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;bool&gt; {
         <span class="self">self</span>.to_bytes().iter().fold(<span class="macro">vec!</span>[], |<span class="kw-2">mut </span>bits, byte| {
             <span class="kw">let </span><span class="kw-2">mut </span>byte = <span class="kw-2">*</span>byte;
             <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">8 </span>{

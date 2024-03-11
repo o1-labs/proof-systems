@@ -537,6 +537,65 @@
 <a href="#535" id="535">535</a>
 <a href="#536" id="536">536</a>
 <a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Describes helpers for foreign field arithmetics
 
 </span><span class="kw">use </span><span class="kw">crate</span>::field_helpers::FieldHelpers;
@@ -574,14 +633,14 @@
 <span class="doccomment">/// Represents a foreign field element
 </span><span class="attr">#[derive(Clone, PartialEq, Eq)]
 </span><span class="doccomment">/// Represents a foreign field element
-</span><span class="kw">pub struct </span>ForeignElement&lt;F: Field, <span class="kw">const </span>N: usize&gt; {
+</span><span class="kw">pub struct </span>ForeignElement&lt;F: Field, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt; {
     <span class="doccomment">/// limbs in little endian order
     </span><span class="kw">pub </span>limbs: [F; N],
     <span class="doccomment">/// number of limbs used for the foreign field element
     </span>len: usize,
 }
 
-<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>N: usize&gt; ForeignElement&lt;F, N&gt; {
+<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt; ForeignElement&lt;F, B, N&gt; {
     <span class="doccomment">/// Creates a new foreign element from an array containing N limbs
     </span><span class="kw">pub fn </span>new(limbs: [F; N]) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ limbs, len: N }
@@ -598,7 +657,7 @@
     <span class="doccomment">/// Initializes a new foreign element from a big unsigned integer
     /// Panics if the BigUint is too large to fit in the `N` limbs
     </span><span class="kw">pub fn </span>from_biguint(big: BigUint) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>vec = ForeignElement::&lt;F, N&gt;::big_to_vec(big);
+        <span class="kw">let </span>vec = ForeignElement::&lt;F, B, N&gt;::big_to_vec(big);
 
         <span class="comment">// create an array of N native elements containing the limbs
         // until the array is full in big endian, so most significant
@@ -637,47 +696,84 @@
     <span class="doccomment">/// Obtains the big integer representation of the foreign field element
     </span><span class="kw">pub fn </span>to_biguint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BigUint {
         <span class="kw">let </span><span class="kw-2">mut </span>bytes = <span class="macro">vec!</span>[];
-        <span class="comment">// limbs are stored in little endian
-        </span><span class="kw">for </span>limb <span class="kw">in </span><span class="self">self</span>.limbs {
-            <span class="kw">let </span>crumb = <span class="kw-2">&amp;</span>limb.to_bytes()[<span class="number">0</span>..LIMB_BITS / <span class="number">8</span>];
-            bytes.extend_from_slice(crumb);
+        <span class="kw">if </span>B % <span class="number">8 </span>== <span class="number">0 </span>{
+            <span class="comment">// limbs are stored in little endian
+            </span><span class="kw">for </span>limb <span class="kw">in </span><span class="self">self</span>.limbs {
+                <span class="kw">let </span>crumb = <span class="kw-2">&amp;</span>limb.to_bytes()[<span class="number">0</span>..B / <span class="number">8</span>];
+                bytes.extend_from_slice(crumb);
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>bits: Vec&lt;bool&gt; = <span class="macro">vec!</span>[];
+            <span class="kw">for </span>limb <span class="kw">in </span><span class="self">self</span>.limbs {
+                <span class="comment">// Only take lower B bits, as there might be more (zeroes) in the high ones.
+                </span><span class="kw">let </span>f_bits_lower: Vec&lt;bool&gt; = limb.to_bits().into_iter().take(B).collect();
+                bits.extend(<span class="kw-2">&amp;</span>f_bits_lower);
+            }
+
+            <span class="kw">let </span>bytes_len = <span class="kw">if </span>(B * N) % <span class="number">8 </span>== <span class="number">0 </span>{
+                (B * N) / <span class="number">8
+            </span>} <span class="kw">else </span>{
+                ((B * N) / <span class="number">8</span>) + <span class="number">1
+            </span>};
+            bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; bytes_len];
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..bits.len() {
+                bytes[i / <span class="number">8</span>] |= u8::from(bits[i]) &lt;&lt; (i % <span class="number">8</span>);
+            }
         }
         BigUint::from_bytes_le(<span class="kw-2">&amp;</span>bytes)
     }
 
-    <span class="doccomment">/// Split a foreign field element into a vector of `LIMB_BITS` bits field elements of type `F` in little-endian.
-    /// Right now it is written so that it gives `LIMB_COUNT` limbs, even if it fits in less bits.
+    <span class="doccomment">/// Split a foreign field element into a vector of `B` (limb bitsize) bits field
+    /// elements of type `F` in little-endian. Right now it is written
+    /// so that it gives `N` (limb count) limbs, even if it fits in less bits.
     </span><span class="kw">fn </span>big_to_vec(fe: BigUint) -&gt; Vec&lt;F&gt; {
-        <span class="kw">let </span>bytes = fe.to_bytes_le();
-        <span class="kw">let </span>chunks: Vec&lt;<span class="kw-2">&amp;</span>[u8]&gt; = bytes.chunks(LIMB_BITS / <span class="number">8</span>).collect();
-        chunks
-            .iter()
-            .map(|chunk| F::from_random_bytes(chunk).expect(<span class="string">"failed to deserialize"</span>))
-            .collect()
+        <span class="kw">if </span>B % <span class="number">8 </span>== <span class="number">0 </span>{
+            <span class="kw">let </span>bytes = fe.to_bytes_le();
+            <span class="kw">let </span>chunks: Vec&lt;<span class="kw-2">&amp;</span>[u8]&gt; = bytes.chunks(B / <span class="number">8</span>).collect();
+            chunks
+                .iter()
+                .map(|chunk| F::from_random_bytes(chunk).expect(<span class="string">"failed to deserialize"</span>))
+                .collect()
+        } <span class="kw">else </span>{
+            <span class="comment">// Quite inefficient
+            </span><span class="kw">let </span><span class="kw-2">mut </span>bits = <span class="macro">vec!</span>[]; <span class="comment">// can be slice not vec, but B*N is not const?
+            </span><span class="macro">assert!</span>(
+                fe.bits() &lt;= (B * N) <span class="kw">as </span>u64,
+                <span class="string">"BigUint too big to be represented in B*N elements"
+            </span>);
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..B * N {
+                bits.push(fe.bit(i <span class="kw">as </span>u64));
+            }
+            <span class="kw">let </span>chunks: Vec&lt;<span class="kw">_</span>&gt; = bits.chunks(B).collect();
+            chunks
+                .into_iter()
+                .map(|chunk| F::from_bits(chunk).expect(<span class="string">"failed to deserialize"</span>))
+                .collect()
+        }
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>N: usize&gt; ForeignElement&lt;F, N&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt; ForeignElement&lt;F, B, N&gt; {
     <span class="doccomment">/// Initializes a new foreign element from an element in the native field
     </span><span class="kw">pub fn </span>from_field(field: F) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::from_biguint(field.into())
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>N: usize&gt; Index&lt;usize&gt; <span class="kw">for </span>ForeignElement&lt;F, N&gt; {
+<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt; Index&lt;usize&gt; <span class="kw">for </span>ForeignElement&lt;F, B, N&gt; {
     <span class="kw">type </span>Output = F;
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw-2">&amp;</span><span class="self">self</span>.limbs[idx]
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>N: usize&gt; IndexMut&lt;usize&gt; <span class="kw">for </span>ForeignElement&lt;F, N&gt; {
+<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt; IndexMut&lt;usize&gt; <span class="kw">for </span>ForeignElement&lt;F, B, N&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: usize) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
         <span class="kw-2">&amp;mut </span><span class="self">self</span>.limbs[idx]
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>N: usize&gt; Debug <span class="kw">for </span>ForeignElement&lt;F, N&gt; {
+<span class="kw">impl</span>&lt;F: Field, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt; Debug <span class="kw">for </span>ForeignElement&lt;F, B, N&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(f, <span class="string">"ForeignElement("</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="self">self</span>.len {
@@ -721,10 +817,10 @@
     <span class="doccomment">/// 2
     </span><span class="kw">fn </span>two() -&gt; <span class="self">Self</span>;
 
-    <span class="doccomment">/// 2^{LIMB_SIZE}
+    <span class="doccomment">/// 2^{LIMB_BITS}
     </span><span class="kw">fn </span>two_to_limb() -&gt; <span class="self">Self</span>;
 
-    <span class="doccomment">/// 2^{2 * LIMB_SIZE}
+    <span class="doccomment">/// 2^{2 * LIMB_BITS}
     </span><span class="kw">fn </span>two_to_2limb() -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// 2^t
@@ -946,8 +1042,12 @@
         <span class="kw">let </span>big = secp256k1_modulus();
         <span class="kw">let </span>bytes = big.to_bytes_be();
         <span class="macro">assert_eq!</span>(
-            ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::from_be(<span class="kw-2">&amp;</span>bytes),
-            ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::from_biguint(big)
+            ForeignElement::&lt;BaseField, LIMB_BITS, <span class="number">3</span>&gt;::from_be(<span class="kw-2">&amp;</span>bytes),
+            ForeignElement::&lt;BaseField, LIMB_BITS, <span class="number">3</span>&gt;::from_biguint(big.clone())
+        );
+        <span class="macro">assert_eq!</span>(
+            ForeignElement::&lt;BaseField, <span class="number">15</span>, <span class="number">18</span>&gt;::from_be(<span class="kw-2">&amp;</span>bytes),
+            ForeignElement::&lt;BaseField, <span class="number">15</span>, <span class="number">18</span>&gt;::from_biguint(big)
         );
     }
 
@@ -955,24 +1055,42 @@
     </span><span class="kw">fn </span>test_to_biguint() {
         <span class="kw">let </span>big = secp256k1_modulus();
         <span class="kw">let </span>bytes = big.to_bytes_be();
-        <span class="kw">let </span>fe = ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::from_be(<span class="kw-2">&amp;</span>bytes);
+        <span class="kw">let </span>fe = ForeignElement::&lt;BaseField, LIMB_BITS, <span class="number">3</span>&gt;::from_be(<span class="kw-2">&amp;</span>bytes);
         <span class="macro">assert_eq!</span>(fe.to_biguint(), big);
+        <span class="kw">let </span>fe2 = ForeignElement::&lt;BaseField, <span class="number">15</span>, <span class="number">18</span>&gt;::from_be(<span class="kw-2">&amp;</span>bytes);
+        <span class="macro">assert_eq!</span>(fe2.to_biguint(), big);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_from_biguint() {
-        <span class="kw">let </span>one = ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::from_be(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
-        <span class="macro">assert_eq!</span>(
-            BaseField::from_biguint(<span class="kw-2">&amp;</span>one.to_biguint()).unwrap(),
-            BaseField::one()
-        );
+        {
+            <span class="kw">let </span>one = ForeignElement::&lt;BaseField, LIMB_BITS, <span class="number">3</span>&gt;::from_be(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
+            <span class="macro">assert_eq!</span>(
+                BaseField::from_biguint(<span class="kw-2">&amp;</span>one.to_biguint()).unwrap(),
+                BaseField::one()
+            );
 
-        <span class="kw">let </span>max_big = BaseField::modulus_biguint() - <span class="number">1u32</span>;
-        <span class="kw">let </span>max_fe = ForeignElement::&lt;BaseField, <span class="number">3</span>&gt;::from_biguint(max_big.clone());
-        <span class="macro">assert_eq!</span>(
-            BaseField::from_biguint(<span class="kw-2">&amp;</span>max_fe.to_biguint()).unwrap(),
-            BaseField::from_bytes(<span class="kw-2">&amp;</span>max_big.to_bytes_le()).unwrap(),
-        );
+            <span class="kw">let </span>max_big = BaseField::modulus_biguint() - <span class="number">1u32</span>;
+            <span class="kw">let </span>max_fe = ForeignElement::&lt;BaseField, LIMB_BITS, <span class="number">3</span>&gt;::from_biguint(max_big.clone());
+            <span class="macro">assert_eq!</span>(
+                BaseField::from_biguint(<span class="kw-2">&amp;</span>max_fe.to_biguint()).unwrap(),
+                BaseField::from_bytes(<span class="kw-2">&amp;</span>max_big.to_bytes_le()).unwrap(),
+            );
+        }
+        {
+            <span class="kw">let </span>one = ForeignElement::&lt;BaseField, <span class="number">15</span>, <span class="number">18</span>&gt;::from_be(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
+            <span class="macro">assert_eq!</span>(
+                BaseField::from_biguint(<span class="kw-2">&amp;</span>one.to_biguint()).unwrap(),
+                BaseField::one()
+            );
+
+            <span class="kw">let </span>max_big = BaseField::modulus_biguint() - <span class="number">1u32</span>;
+            <span class="kw">let </span>max_fe = ForeignElement::&lt;BaseField, <span class="number">15</span>, <span class="number">18</span>&gt;::from_biguint(max_big.clone());
+            <span class="macro">assert_eq!</span>(
+                BaseField::from_biguint(<span class="kw-2">&amp;</span>max_fe.to_biguint()).unwrap(),
+                BaseField::from_bytes(<span class="kw-2">&amp;</span>max_big.to_bytes_le()).unwrap(),
+            );
+        }
     }
 
     <span class="attr">#[test]

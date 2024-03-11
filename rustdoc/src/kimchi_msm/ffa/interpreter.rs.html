@@ -110,7 +110,7 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ffa::columns::FFAColumnIndexer, Ff1, N_LIMBS};
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ffa::columns::FFAColumnIndexer, Ff1, LIMB_BITSIZE, N_LIMBS};
 <span class="kw">use </span>ark_ff::{PrimeField, Zero};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
@@ -143,7 +143,7 @@
 <span class="comment">// TODO use more foreign_field.rs with from/to bigint conversion
 </span><span class="kw">fn </span>limb_decompose&lt;F: PrimeField&gt;(input: <span class="kw-2">&amp;</span>Ff1) -&gt; [F; N_LIMBS] {
     <span class="kw">let </span>input_bi: BigUint = FieldHelpers::to_biguint(input);
-    <span class="kw">let </span>ff_el: ForeignElement&lt;F, N_LIMBS&gt; = ForeignElement::from_biguint(input_bi);
+    <span class="kw">let </span>ff_el: ForeignElement&lt;F, LIMB_BITSIZE, N_LIMBS&gt; = ForeignElement::from_biguint(input_bi);
     ff_el.limbs
 }
 

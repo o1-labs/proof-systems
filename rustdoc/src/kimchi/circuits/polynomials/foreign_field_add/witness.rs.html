@@ -325,7 +325,7 @@
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::foreign_field::{
-    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LO, MI,
+    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LIMB_BITS, LO, MI,
 };
 <span class="kw">use </span>std::array;
 
@@ -356,11 +356,11 @@
 // - the overflow flag
 // - the carry value
 </span><span class="kw">fn </span>compute_ffadd_values&lt;F: PrimeField&gt;(
-    left_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">3</span>&gt;,
-    right_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">4</span>&gt;,
+    left_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;,
+    right_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">4</span>&gt;,
     opcode: FFOps,
-    foreign_modulus: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">3</span>&gt;,
-) -&gt; (ForeignElement&lt;F, <span class="number">3</span>&gt;, F, F, F) {
+    foreign_modulus: <span class="kw-2">&amp;</span>ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;,
+) -&gt; (ForeignElement&lt;F, LIMB_BITS, <span class="number">3</span>&gt;, F, F, F) {
     <span class="comment">// Compute bigint version of the inputs
     </span><span class="kw">let </span>left = left_input.to_biguint();
     <span class="kw">let </span>right = right_input.to_biguint();
@@ -588,8 +588,8 @@
     foreign_field_modulus: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
 ) {
     <span class="comment">// Convert to types used by this module
-    </span><span class="kw">let </span>fe = ForeignElement::&lt;F, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>limbs);
-    <span class="kw">let </span>foreign_field_modulus = ForeignElement::&lt;F, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>foreign_field_modulus);
+    </span><span class="kw">let </span>fe = ForeignElement::&lt;F, LIMB_BITS, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>limbs);
+    <span class="kw">let </span>foreign_field_modulus = ForeignElement::&lt;F, LIMB_BITS, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>foreign_field_modulus);
     <span class="kw">if </span>foreign_field_modulus.to_biguint() &gt; BigUint::max_foreign_field_modulus::&lt;F&gt;() {
         <span class="macro">panic!</span>(
             <span class="string">"foreign_field_modulus exceeds maximum: {} &gt; {}"</span>,
@@ -599,7 +599,7 @@
     }
 
     <span class="comment">// Compute values for final bound check, needs a 4 limb right input
-    </span><span class="kw">let </span>right_input = ForeignElement::&lt;F, <span class="number">4</span>&gt;::from_biguint(BigUint::binary_modulus());
+    </span><span class="kw">let </span>right_input = ForeignElement::&lt;F, LIMB_BITS, <span class="number">4</span>&gt;::from_biguint(BigUint::binary_modulus());
 
     <span class="comment">// Compute the bound and related witness data
     </span><span class="kw">let </span>(bound_output, bound_sign, bound_ovf, bound_carry) =
