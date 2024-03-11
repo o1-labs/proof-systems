@@ -316,21 +316,11 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
-</span><span class="kw">use crate</span>::{
-    keccak::{KeccakColumn, E},
-    lookups::Lookup,
-};
+</span><span class="kw">use crate</span>::{keccak::E, lookups::Lookup};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
-    circuits::{
-        expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
-        gate::CurrOrNext,
-    },
+    circuits::expr::{ConstantTerm::Literal, Operations},
     o1_utils::Two,
 };
 
@@ -372,23 +362,6 @@
     <span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::constant_field(F::two_pow(x))
     }
-
-    <span class="comment">////////////////////////////
-    // CONSTRAINTS OPERATIONS //
-    ////////////////////////////
-
-    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: KeccakColumn) -&gt; <span class="self">Self</span>::Variable {
-        <span class="comment">// Despite `KeccakWitness` containing both `curr` and `next` fields,
-        // the Keccak step spans across one row only.
-        </span>Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
-            row: CurrOrNext::Curr,
-        }))
-    }
-
-    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.constraints.push(x);
-    }
 }
 
 <span class="comment">/*
@@ -401,6 +374,12 @@ pub trait Constraints {
         + Clone;
     type Fp: std::ops::Neg&lt;Output = Self::Fp&gt;;
 
+    /// Returns the variable corresponding to a given column alias.
+    fn variable(&amp;self, column: Self::Column) -&gt; Self::Variable;
+
+    /// Adds one constraint to the environment.
+    fn constrain(&amp;mut self, x: Self::Variable);
+
     /// Adds all 887 constraints to the environment and triggers read lookups:
     /// - 143 constraints of degree 1
     /// - 739 constraints of degree 2
@@ -412,6 +391,19 @@ impl&lt;Fp: Field&gt; Constraints for KeccakEnv&lt;Fp&gt; {
     type Column = KeccakColumn;
     type Variable = E&lt;Fp&gt;;
     type Fp = Fp;
+
+    fn variable(&amp;self, column: Self::Column) -&gt; Self::Variable {
+        // Despite `KeccakWitness` containing both `curr` and `next` fields,
+        // the Keccak step spans across one row only.
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn constrain(&amp;mut self, x: Self::Variable) {
+        self.constraints_env.constraints.push(x);
+    }
 
     fn constraints(&amp;mut self) {
         // CORRECTNESS OF FLAGS: 144 CONSTRAINTS

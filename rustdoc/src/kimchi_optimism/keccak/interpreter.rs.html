@@ -83,21 +83,9 @@
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
-</span><span class="kw">use </span><span class="kw">crate</span>::keccak::KeccakColumn;
-<span class="kw">use </span>ark_ff::{One, Zero};
+</span><span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>std::fmt::Debug;
 
 <span class="doccomment">/// This trait includes functionalities needed to obtain the variables of the Keccak circuit needed for constraints and witness
@@ -177,15 +165,5 @@
 
     <span class="doccomment">/// Returns a variable representing the value 2^x
     </span><span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="comment">////////////////////////////
-    // CONSTRAINTS OPERATIONS //
-    ////////////////////////////
-
-    </span><span class="doccomment">/// Returns the variable corresponding to a given column alias.
-    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: KeccakColumn) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Adds one constraint to the environment.
-    </span><span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable);
 }
 </code></pre></div></section></main></body></html>
