@@ -1047,15 +1047,24 @@
 <a href="#1045" id="1045">1045</a>
 <a href="#1046" id="1046">1046</a>
 <a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
-</span><span class="kw">use </span><span class="kw">crate</span>::keccak::{
-    column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
-    constraints::{Constraints, Env <span class="kw">as </span>ConstraintsEnv},
-    grid_index, pad_blocks,
-    witness::Env <span class="kw">as </span>WitnessEnv,
-    ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+</span><span class="kw">use crate</span>::{
+    keccak::{
+        column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+        constraints::Constraints,
+        grid_index, pad_blocks,
+        witness::Env <span class="kw">as </span>WitnessEnv,
+        ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    },
+    lookups::Lookup,
 };
 <span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>kimchi::{
@@ -1076,8 +1085,10 @@
 <span class="doccomment">/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>KeccakEnv&lt;F&gt; {
-    <span class="doccomment">/// Environment for the constraints (includes lookups)
-    </span><span class="kw">pub </span>constraints_env: ConstraintsEnv&lt;F&gt;,
+    <span class="doccomment">/// Constraints that are added to the circuit
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) constraints: Vec&lt;E&lt;F&gt;&gt;,
+    <span class="doccomment">/// Values that are looked up in the circuit
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) lookups: Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// Environment for the witness (includes multiplicities)
     </span><span class="kw">pub </span>witness_env: WitnessEnv&lt;F&gt;,
 
@@ -1128,7 +1139,8 @@
     <span class="doccomment">/// Starts a new Keccak environment for a given hash index and bytestring of preimage data
     </span><span class="kw">pub fn </span>new(hash_idx: u64, preimage: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>env = <span class="self">Self </span>{
-            constraints_env: ConstraintsEnv::default(),
+            constraints: <span class="macro">vec!</span>[],
+            lookups: <span class="macro">vec!</span>[],
             witness_env: WitnessEnv::default(),
             keccak_step: <span class="prelude-val">None</span>,
             hash_idx,

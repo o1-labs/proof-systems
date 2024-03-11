@@ -284,32 +284,14 @@
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
 </span><span class="kw">use crate</span>::{
     keccak::{
         column::PAD_SUFFIX_LEN,
         environment::{KeccakEnv, KeccakEnvironment},
-        ArithOps, BoolOps, KeccakColumn, E, WORDS_IN_HASH,
+        KeccakColumn, {ArithOps, BoolOps, E, WORDS_IN_HASH},
     },
-    lookups::{Lookup, Lookups},
+    lookups::Lookups,
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
@@ -320,24 +302,6 @@
         OFF,
     },
 };
-
-<span class="doccomment">/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
-</span><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>Env&lt;Fp&gt; {
-    <span class="doccomment">/// Constraints that are added to the circuit
-    </span><span class="kw">pub </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
-    <span class="doccomment">/// Variables that are looked up in the circuit
-    </span><span class="kw">pub </span>lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
-}
-
-<span class="kw">impl</span>&lt;F: Field&gt; Default <span class="kw">for </span>Env&lt;F&gt; {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            constraints: Vec::new(),
-            lookups: Vec::new(),
-        }
-    }
-}
 
 <span class="doccomment">/// This trait contains the constraints for one Keccak step.
 </span><span class="kw">pub trait </span>Constraints {
@@ -376,7 +340,7 @@
     }
 
     <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.constraints_env.constraints.push(x);
+        <span class="self">self</span>.constraints.push(x);
     }
 
     <span class="kw">fn </span>constraints(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {

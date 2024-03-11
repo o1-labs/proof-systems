@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Env"],"trait":["Constraints"]};
+window.SIDEBAR_ITEMS = {"trait":["Constraints"]};
