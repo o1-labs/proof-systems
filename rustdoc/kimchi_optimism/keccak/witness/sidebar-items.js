@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["pad_blocks"]};
+window.SIDEBAR_ITEMS = {};

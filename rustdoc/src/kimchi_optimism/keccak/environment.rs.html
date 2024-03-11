@@ -745,9 +745,6 @@
 <a href="#743" id="743">743</a>
 <a href="#744" id="744">744</a>
 <a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the definition and implementation of the Keccak environment
 </span><span class="kw">use crate</span>::{
     keccak::{
@@ -1229,10 +1226,7 @@
     }
 
     <span class="kw">fn </span>is_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::not(<span class="self">Self</span>::is_nonzero(
-            <span class="self">self</span>.pad_length(),
-            <span class="self">self</span>.variable(KeccakColumn::InvPadLength),
-        ))
+        <span class="self">self</span>.pad_length() * <span class="self">self</span>.variable(KeccakColumn::InvPadLength)
     }
 
     <span class="kw">fn </span>is_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
@@ -1287,7 +1281,7 @@
             .iter()
             .zip(flags)
             .fold(<span class="self">Self</span>::zero(), |acc, (byte, flag)| {
-                acc + byte.clone() * flag.clone() * <span class="self">Self</span>::two_pow(<span class="number">8</span>)
+                acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + byte.clone() * flag.clone()
             });
 
         pad

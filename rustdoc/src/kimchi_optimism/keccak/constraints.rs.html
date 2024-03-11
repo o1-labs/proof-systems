@@ -424,7 +424,7 @@
             }
             <span class="comment">// Check that the padding is located at the end of the message
             </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
-                acc * <span class="self">Self</span>::two() + <span class="self">self</span>.sponge_byte(i)
+                acc * <span class="self">Self</span>::two() + <span class="self">self</span>.in_padding(i)
             });
             <span class="self">self</span>.constrain(<span class="self">self</span>.is_pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
             <span class="comment">// Check that the padding value is correct
