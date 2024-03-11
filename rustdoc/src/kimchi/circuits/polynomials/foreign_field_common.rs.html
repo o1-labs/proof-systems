@@ -364,12 +364,6 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Common parameters and functions for kimchi's foreign field circuits.
 
 </span><span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
@@ -627,15 +621,9 @@
     <span class="kw">use </span>ark_ff::One;
     <span class="kw">use </span>mina_curves::pasta::Pallas <span class="kw">as </span>CurvePoint;
     <span class="kw">use </span>num_bigint::RandBigInt;
-    <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
 
     <span class="doccomment">/// Base field element type
     </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
-
-    <span class="kw">const </span>RNG_SEED: [u8; <span class="number">32</span>] = [
-        <span class="number">12</span>, <span class="number">31</span>, <span class="number">143</span>, <span class="number">75</span>, <span class="number">29</span>, <span class="number">255</span>, <span class="number">206</span>, <span class="number">26</span>, <span class="number">67</span>, <span class="number">193</span>, <span class="number">86</span>, <span class="number">160</span>, <span class="number">1</span>, <span class="number">90</span>, <span class="number">131</span>, <span class="number">221</span>, <span class="number">86</span>, <span class="number">168</span>, <span class="number">4</span>, <span class="number">95</span>, <span class="number">50</span>,
-        <span class="number">48</span>, <span class="number">89</span>, <span class="number">29</span>, <span class="number">13</span>, <span class="number">250</span>, <span class="number">215</span>, <span class="number">172</span>, <span class="number">130</span>, <span class="number">24</span>, <span class="number">164</span>, <span class="number">162</span>,
-    ];
 
     <span class="kw">fn </span>secp256k1_modulus() -&gt; BigUint {
         BigUint::from_bytes_be(<span class="kw-2">&amp;</span>secp256k1::constants::FIELD_SIZE)
@@ -676,7 +664,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>check_negation() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">10 </span>{
             rng.gen_biguint(<span class="number">256</span>).negate();
         }
@@ -684,7 +672,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>check_good_limbs() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">100 </span>{
             <span class="kw">let </span>x = rng.gen_biguint(<span class="number">264</span>);
             <span class="macro">assert_eq!</span>(x.to_limbs().len(), <span class="number">3</span>);
@@ -710,28 +698,28 @@
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_1() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="macro">assert_ne!</span>(rng.gen_biguint(<span class="number">265</span>).to_limbs().len(), <span class="number">3</span>);
     }
 
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_2() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="macro">assert_ne!</span>(rng.gen_biguint(<span class="number">265</span>).to_compact_limbs().len(), <span class="number">2</span>);
     }
 
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_3() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="macro">assert_ne!</span>(rng.gen_biguint(<span class="number">265</span>).to_field_limbs::&lt;BaseField&gt;().len(), <span class="number">3</span>);
     }
 
     <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>check_bad_limbs_4() {
-        <span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed(RNG_SEED);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="macro">assert_ne!</span>(
             rng.gen_biguint(<span class="number">265</span>)
                 .to_compact_field_limbs::&lt;BaseField&gt;()
