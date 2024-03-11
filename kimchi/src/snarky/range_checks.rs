@@ -224,33 +224,25 @@ mod test {
         {
             let private_input = Fp::from(2);
 
-            let public_input = ();
             let debug = true;
-            let (proof, public_output) = prover_index
-                .prove::<BaseSponge, ScalarSponge>(public_input, private_input, debug)
+            let (proof, _public_output) = prover_index
+                .prove::<BaseSponge, ScalarSponge>((), private_input, debug)
                 .unwrap();
 
-            let expected_public_output = ();
-            assert_eq!(*public_output, expected_public_output);
-
             // verify proof
-            verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, *public_output);
+            verifier_index.verify::<BaseSponge, ScalarSponge>(proof, (), ());
         }
 
         // prove a different execution
         {
             let private_input = Fp::from(2).pow(88) - Fp::from(1);
-            let public_input = ();
             let debug = true;
-            let (proof, public_output) = prover_index
-                .prove::<BaseSponge, ScalarSponge>(public_input, private_input, debug)
+            let (proof, _public_output) = prover_index
+                .prove::<BaseSponge, ScalarSponge>((), private_input, debug)
                 .unwrap();
 
-            let expected_public_output = ();
-            assert_eq!(*public_output, expected_public_output);
-
             // verify proof
-            verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, *public_output);
+            verifier_index.verify::<BaseSponge, ScalarSponge>(proof, (), ());
         }
     }
     #[test]
@@ -267,10 +259,9 @@ mod test {
         // prove a bad execution
         {
             let private_input = Fp::from(0) - Fp::from(1);
-            let public_input = ();
             let debug = true;
             let (_proof, _public_output) = prover_index
-                .prove::<BaseSponge, ScalarSponge>(public_input, private_input, debug)
+                .prove::<BaseSponge, ScalarSponge>((), private_input, debug)
                 .unwrap();
         }
     }
