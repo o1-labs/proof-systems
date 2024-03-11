@@ -433,39 +433,6 @@ impl<F: Field> KeccakEnv<F> {
     }
 }
 /*
-impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
-    type Column = KeccakColumn;
-    type Variable = E<Fp>;
-    type Fp = Fp;
-
-    fn is_boolean(x: Self::Variable) -> Self::Variable {
-        x.clone() * (x - Self::Variable::one())
-    }
-
-    fn not(x: Self::Variable) -> Self::Variable {
-        Self::Variable::one() - x
-    }
-
-    fn is_one(x: Self::Variable) -> Self::Variable {
-        Self::not(x)
-    }
-
-    fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable {
-        Self::is_one(x * x_inv)
-    }
-
-    fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        x.clone() + y.clone() - Self::constant(2) * x * y
-    }
-
-    fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        x.clone() + y.clone() - x * y
-    }
-
-    fn either_zero(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        x * y
-    }
-}
 
 /// This trait includes functionalities needed to obtain the variables of the Keccak circuit needed for constraints
 pub(crate) trait KeccakEnvironment {
