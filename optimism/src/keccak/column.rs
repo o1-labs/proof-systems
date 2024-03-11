@@ -3,11 +3,11 @@
 use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::{
     circuits::polynomials::keccak::constants::{
-        CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF,
-        PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF,
-        PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF,
-        SPONGE_SHIFTS_OFF, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF,
-        THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
+        CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
+        PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
+        QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
+        THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
+        THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
     },
     folding::expressions::FoldingColumnTrait,
 };
@@ -21,27 +21,20 @@ pub const ZKVM_KECCAK_COLS: usize =
 // The number of columns used by the Keccak circuit to represent the status flags.
 const STATUS_FLAGS_LEN: usize = 3;
 // The number of columns used by the Keccak circuit to represent the mode flags.
-const MODE_FLAGS_COLS_LEN: usize = 4;
-
+const MODE_FLAGS_COLS_LEN: usize = ROUND_COEFFS_OFF + ROUND_COEFFS_LEN;
 const FLAG_ROUND_OFF: usize = 0; // Offset of the FlagRound column inside the mode flags
 const FLAG_ABSORB_OFF: usize = 1; // Offset of the FlagAbsorb column inside the mode flags
 const FLAG_SQUEEZE_OFF: usize = 2; // Offset of the FlagSqueeze column inside the mode flags
 const FLAG_ROOT_OFF: usize = 3; // Offset of the FlagRoot column inside the mode flags
-
-// The round constants are located after the witness columns used by the Keccak round.
-const ROUND_COEFFS_OFF: usize = KECCAK_COLS;
-// The round constant of each round is stored in expanded form as quarters
-pub(crate) const ROUND_COEFFS_LEN: usize = QUARTERS;
-
-// The following elements do not increase the total column count
-// because they only appear in sponge rows, which only have 800 curr columns used.
-const PAD_LEN_OFF: usize = 800; // Offset of the PadLength column inside the sponge coefficients
-const PAD_INV_OFF: usize = 801; // Offset of the InvPadLength column inside the sponge coefficients
-const PAD_TWO_OFF: usize = 802; // Offset of the TwoToPad column inside the sponge coefficients
-const PAD_BYTES_OFF: usize = 803; // Offset of the PadBytesFlags inside the sponge coefficients
+const PAD_BYTES_OFF: usize = 4; // Offset of the PadBytesFlags inside the sponge coefficients
 pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES; // The maximum number of padding bytes involved
-const PAD_SUFFIX_OFF: usize = PAD_BYTES_OFF + RATE_IN_BYTES; // Offset of the PadSuffix column inside the sponge coefficients
+const PAD_LEN_OFF: usize = PAD_BYTES_OFF + PAD_BYTES_LEN; // Offset of the PadLength column inside the sponge coefficients
+const PAD_INV_OFF: usize = PAD_LEN_OFF + 1; // Offset of the InvPadLength column inside the sponge coefficients
+const PAD_TWO_OFF: usize = PAD_INV_OFF + 1; // Offset of the TwoToPad column inside the sponge coefficients
+const PAD_SUFFIX_OFF: usize = PAD_TWO_OFF + 1; // Offset of the PadSuffix column inside the sponge coefficients
 pub(crate) const PAD_SUFFIX_LEN: usize = 5; // The padding suffix of 1088 bits is stored as 5 field elements: 1x12 + 4x31 bytes
+const ROUND_COEFFS_OFF: usize = PAD_SUFFIX_OFF + PAD_SUFFIX_LEN; // The round constants are located after the witness columns used by the Keccak round.
+pub(crate) const ROUND_COEFFS_LEN: usize = QUARTERS; // The round constant of each round is stored in expanded form as quarters
 
 /// Column aliases used by the Keccak circuit.
 /// The number of aliases is not necessarily equal to the actual number of
@@ -190,12 +183,12 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
             Column::FlagAbsorb => &self.mode_flags()[FLAG_ABSORB_OFF],
             Column::FlagSqueeze => &self.mode_flags()[FLAG_SQUEEZE_OFF],
             Column::FlagRoot => &self.mode_flags()[FLAG_ROOT_OFF],
-            Column::PadLength => &self.curr()[PAD_LEN_OFF],
-            Column::InvPadLength => &self.curr()[PAD_INV_OFF],
-            Column::TwoToPad => &self.curr()[PAD_TWO_OFF],
-            Column::PadBytesFlags(idx) => &self.curr()[PAD_BYTES_OFF + idx],
-            Column::PadSuffix(idx) => &self.curr()[PAD_SUFFIX_OFF + idx],
-            Column::RoundConstants(idx) => &self.curr()[ROUND_COEFFS_OFF + idx],
+            Column::PadLength => &self.mode_flags()[PAD_LEN_OFF],
+            Column::InvPadLength => &self.mode_flags()[PAD_INV_OFF],
+            Column::TwoToPad => &self.mode_flags()[PAD_TWO_OFF],
+            Column::PadBytesFlags(idx) => &self.mode_flags()[PAD_BYTES_OFF + idx],
+            Column::PadSuffix(idx) => &self.mode_flags()[PAD_SUFFIX_OFF + idx],
+            Column::RoundConstants(idx) => &self.mode_flags()[ROUND_COEFFS_OFF + idx],
             Column::Input(idx) => &self.curr()[idx],
             Column::ThetaShiftsC(idx) => &self.curr()[THETA_SHIFTS_C_OFF + idx],
             Column::ThetaDenseC(idx) => &self.curr()[THETA_DENSE_C_OFF + idx],
@@ -229,12 +222,12 @@ impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
             Column::FlagAbsorb => &mut self.mode_flags_mut()[FLAG_ABSORB_OFF],
             Column::FlagSqueeze => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],
             Column::FlagRoot => &mut self.mode_flags_mut()[FLAG_ROOT_OFF],
-            Column::PadLength => &mut self.curr_mut()[PAD_LEN_OFF],
-            Column::InvPadLength => &mut self.curr_mut()[PAD_INV_OFF],
-            Column::TwoToPad => &mut self.curr_mut()[PAD_TWO_OFF],
-            Column::PadBytesFlags(idx) => &mut self.curr_mut()[PAD_BYTES_OFF + idx],
-            Column::PadSuffix(idx) => &mut self.curr_mut()[PAD_SUFFIX_OFF + idx],
-            Column::RoundConstants(idx) => &mut self.curr_mut()[ROUND_COEFFS_OFF + idx],
+            Column::PadLength => &mut self.mode_flags_mut()[PAD_LEN_OFF],
+            Column::InvPadLength => &mut self.mode_flags_mut()[PAD_INV_OFF],
+            Column::TwoToPad => &mut self.mode_flags_mut()[PAD_TWO_OFF],
+            Column::PadBytesFlags(idx) => &mut self.mode_flags_mut()[PAD_BYTES_OFF + idx],
+            Column::PadSuffix(idx) => &mut self.mode_flags_mut()[PAD_SUFFIX_OFF + idx],
+            Column::RoundConstants(idx) => &mut self.mode_flags_mut()[ROUND_COEFFS_OFF + idx],
             Column::Input(idx) => &mut self.curr_mut()[idx],
             Column::ThetaShiftsC(idx) => &mut self.curr_mut()[THETA_SHIFTS_C_OFF + idx],
             Column::ThetaDenseC(idx) => &mut self.curr_mut()[THETA_DENSE_C_OFF + idx],

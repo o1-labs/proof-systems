@@ -479,10 +479,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
     }
 
     fn is_pad(&self) -> Self::Variable {
-        Self::not(Self::is_nonzero(
-            self.pad_length(),
-            self.variable(KeccakColumn::InvPadLength),
-        ))
+        self.pad_length() * self.variable(KeccakColumn::InvPadLength)
     }
 
     fn is_round(&self) -> Self::Variable {
@@ -537,7 +534,7 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
             .iter()
             .zip(flags)
             .fold(Self::zero(), |acc, (byte, flag)| {
-                acc + byte.clone() * flag.clone() * Self::two_pow(8)
+                acc * Self::two_pow(8) + byte.clone() * flag.clone()
             });
 
         pad

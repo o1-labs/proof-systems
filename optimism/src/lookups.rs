@@ -1,6 +1,6 @@
 //! Instantiation of the lookups for the VM project.
 
-use crate::{keccak::witness::pad_blocks, ramlookup::RAMLookup};
+use crate::{keccak::pad_blocks, ramlookup::RAMLookup};
 use ark_ff::Field;
 use kimchi::{
     circuits::polynomials::keccak::{

@@ -10,41 +10,20 @@ use crate::keccak::{
     environment::KeccakEnv,
     grid_index,
     interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    pad_blocks, KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{
-    constants::{
-        CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
-        STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
+use kimchi::{
+    circuits::polynomials::keccak::{
+        constants::{
+            CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
+            STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
+        },
+        witness::{Chi, Iota, PiRho, Theta},
+        Keccak,
     },
-    witness::{Chi, Iota, PiRho, Theta},
-    Keccak,
+    o1_utils::Two,
 };
-
-/// This function returns a vector of field elements that represent the 5 padding suffixes.
-/// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-pub fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
-    // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-    let mut blocks = vec![Fp::zero(); 5];
-    let mut pad = [Fp::zero(); RATE_IN_BYTES];
-    pad[RATE_IN_BYTES - pad_bytelength] = Fp::one();
-    pad[RATE_IN_BYTES - 1] += Fp::from(0x80u8);
-    blocks[0] = pad
-        .iter()
-        .take(12)
-        .fold(Fp::zero(), |acc, x| acc * Fp::from(256u32) + *x);
-    for (i, block) in blocks.iter_mut().enumerate().take(5).skip(1) {
-        // take 31 elements from pad, starting at 12 + (i - 1) * 31 and fold them into a single Fp
-        *block = pad
-            .iter()
-            .skip(12 + (i - 1) * 31)
-            .take(31)
-            .fold(Fp::zero(), |acc, x| acc * Fp::from(256u32) + *x);
-    }
-
-    blocks
-}
 
 impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
     type Position = KeccakColumn;
@@ -74,6 +53,7 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
             KeccakColumn::InvPadLength,
             Fp::inverse(&Fp::from(self.pad_len)).unwrap(),
         );
+        self.write_column_field(KeccakColumn::TwoToPad, Fp::two_pow(self.pad_len));
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
             self.write_column(KeccakColumn::PadBytesFlags(i), 1);
