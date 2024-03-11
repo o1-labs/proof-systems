@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Absorb","KeccakStep","Sponge"],"trait":["KeccakInterpreter"]};
+window.SIDEBAR_ITEMS = {"trait":["KeccakInterpreter"]};
