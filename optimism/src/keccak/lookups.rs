@@ -1,9 +1,7 @@
 //! This module includes the lookups of the Keccak circuit
+/*
 use crate::{
-    keccak::{
-        environment::{KeccakEnv, KeccakEnvironment},
-        ArithOps, BoolOps, KeccakColumn, E,
-    },
+    keccak::{environment::KeccakEnv, BoolOps, KeccakColumn, E},
     lookups::{Lookup, LookupTableIDs, Lookups},
 };
 use ark_ff::Field;
@@ -287,3 +285,4 @@ impl<Fp: Field> KeccakLookups for KeccakEnv<Fp> {
         ));
     }
 }
+*/

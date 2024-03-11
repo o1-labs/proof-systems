@@ -2,27 +2,18 @@
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
 use crate::keccak::{
-    column::{KeccakWitness, PAD_BYTES_LEN, ROUND_COEFFS_LEN},
-    constraints::{Constraints, Env as ConstraintsEnv},
-    grid_index, pad_blocks,
-    witness::Env as WitnessEnv,
-    ArithOps, BoolOps, KeccakColumn, DIM, E, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    column::KeccakWitness, constraints::Env as ConstraintsEnv, grid_index, pad_blocks,
+    witness::Env as WitnessEnv, KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
-use ark_ff::{Field, One};
+use ark_ff::Field;
 use kimchi::{
-    auto_clone_array,
-    circuits::{
-        expr::{ConstantTerm::Literal, Operations},
-        polynomials::keccak::{
-            constants::*,
-            witness::{Chi, Iota, PiRho, Theta},
-            Keccak,
-        },
+    circuits::polynomials::keccak::{
+        constants::*,
+        witness::{Chi, Iota, PiRho, Theta},
+        Keccak,
     },
-    grid,
     o1_utils::Two,
 };
-use std::array;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
@@ -441,7 +432,7 @@ impl<F: Field> KeccakEnv<F> {
         state_g
     }
 }
-
+/*
 impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
     type Column = KeccakColumn;
     type Variable = E<Fp>;
@@ -473,30 +464,6 @@ impl<Fp: Field> BoolOps for KeccakEnv<Fp> {
 
     fn either_zero(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x * y
-    }
-}
-
-impl<Fp: Field> ArithOps for KeccakEnv<Fp> {
-    type Column = KeccakColumn;
-    type Variable = E<Fp>;
-    type Fp = Fp;
-    fn constant(x: u64) -> Self::Variable {
-        Self::constant_field(Self::Fp::from(x))
-    }
-    fn constant_field(x: Self::Fp) -> Self::Variable {
-        Self::Variable::constant(Operations::from(Literal(x)))
-    }
-    fn zero() -> Self::Variable {
-        Self::constant(0)
-    }
-    fn one() -> Self::Variable {
-        Self::constant(1)
-    }
-    fn two() -> Self::Variable {
-        Self::constant(2)
-    }
-    fn two_pow(x: u64) -> Self::Variable {
-        Self::constant_field(Self::Fp::two_pow(x))
     }
 }
 
@@ -1045,3 +1012,5 @@ impl<Fp: Field> KeccakEnvironment for KeccakEnv<Fp> {
         output_of_step
     }
 }
+
+*/

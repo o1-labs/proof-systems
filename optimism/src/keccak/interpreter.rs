@@ -12,4 +12,30 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         + Debug
         + One
         + Zero;
+
+    //////////////////////////
+    // ARITHMETIC OPERATIONS //
+    ///////////////////////////
+
+    /// Creates a variable from a constant integer
+    fn constant(x: u64) -> Self::Variable;
+
+    /// Creates a variable from a constant field element
+    fn constant_field(x: F) -> Self::Variable;
+
+    /// Returns a variable representing the value zero
+    fn zero() -> Self::Variable {
+        Self::constant(0)
+    }
+    /// Returns a variable representing the value one
+    fn one() -> Self::Variable {
+        Self::constant(1)
+    }
+    /// Returns a variable representing the value two
+    fn two() -> Self::Variable {
+        Self::constant(2)
+    }
+
+    /// Returns a variable representing the value 2^x
+    fn two_pow(x: u64) -> Self::Variable;
 }
