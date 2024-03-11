@@ -36,8 +36,8 @@ pub fn main() {
 
     for _row_i in 0..row_num {
         println!("processing row {_row_i:?}");
-        let a: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
-        let b: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+        let a: Ff1 = Ff1::rand(&mut rng);
+        let b: Ff1 = Ff1::rand(&mut rng);
 
         //use rand::Rng;
         //let a: Ff1 = From::from(rng.gen_range(0..(1 << 50)));

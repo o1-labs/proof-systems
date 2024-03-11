@@ -35,7 +35,7 @@ pub trait FFAInterpreterEnv<F: PrimeField> {
     fn next_row(&mut self);
 }
 
-fn limb_decompose_bui<F: PrimeField>(input: BigUint) -> [F; N_LIMBS] {
+fn limb_decompose_biguint<F: PrimeField>(input: BigUint) -> [F; N_LIMBS] {
     let ff_el: ForeignElement<F, LIMB_BITSIZE, N_LIMBS> = ForeignElement::from_biguint(input);
     ff_el.limbs
 }
@@ -43,7 +43,7 @@ fn limb_decompose_bui<F: PrimeField>(input: BigUint) -> [F; N_LIMBS] {
 // TODO use more foreign_field.rs with from/to bigint conversion
 fn limb_decompose_ff<F: PrimeField, Ff: PrimeField>(input: &Ff) -> [F; N_LIMBS] {
     let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    limb_decompose_bui(input_bi)
+    limb_decompose_biguint(input_bi)
 }
 
 /// Reads values from limbs A and B, returns resulting value in C.
@@ -178,7 +178,7 @@ pub fn ff_addition_circuit<F: PrimeField, Ff: PrimeField, Env: FFAInterpreterEnv
 
     let a_limbs: [F; N_LIMBS] = limb_decompose_ff(&a);
     let b_limbs: [F; N_LIMBS] = limb_decompose_ff(&b);
-    let f_limbs: [F; N_LIMBS] = limb_decompose_bui(f_bigint.clone());
+    let f_limbs: [F; N_LIMBS] = limb_decompose_biguint(f_bigint.clone());
     a_limbs.iter().enumerate().for_each(|(i, var)| {
         env.copy(
             &Env::constant(*var),
@@ -205,9 +205,9 @@ pub fn ff_addition_circuit<F: PrimeField, Ff: PrimeField, Env: FFAInterpreterEnv
     // q can be -1! But only in subtraction, so for now we don't care.
     // for now with addition only q ∈ {0,1}
     let (q_bigint, r_bigint) = (a_bigint + b_bigint).div_rem(&f_bigint);
-    let r_limbs: [F; N_LIMBS] = limb_decompose_bui(r_bigint);
+    let r_limbs: [F; N_LIMBS] = limb_decompose_biguint(r_bigint);
     // We expect just one limb.
-    let q: F = limb_decompose_bui(q_bigint)[0];
+    let q: F = limb_decompose_biguint(q_bigint)[0];
 
     env.copy(
         &Env::constant(q),
