@@ -109,8 +109,11 @@ impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
         for (idx, value) in bytes.iter().enumerate().take(HASH_BYTELENGTH) {
             self.write_column(KeccakColumn::SpongeBytes(idx), *value);
         }
-        for (idx, value) in shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
-            self.write_column(KeccakColumn::SpongeShifts(idx), *value);
+        for idx in 0..WORDS_IN_HASH * QUARTERS {
+            self.write_column(KeccakColumn::SpongeShifts(idx), shifts[idx]);
+            self.write_column(KeccakColumn::SpongeShifts(100 + idx), shifts[100 + idx]);
+            self.write_column(KeccakColumn::SpongeShifts(200 + idx), shifts[200 + idx]);
+            self.write_column(KeccakColumn::SpongeShifts(300 + idx), shifts[300 + idx]);
         }
 
         // Rest is zero thanks to null_state
