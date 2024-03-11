@@ -7,9 +7,9 @@ use crate::circuits::{
         Cache,
     },
     gate::GateType,
+    polynomials::foreign_field_common::LIMB_COUNT,
 };
 use ark_ff::PrimeField;
-use o1_utils::LIMB_COUNT;
 use std::{array, marker::PhantomData};
 
 //~ These circuit gates are used to constrain that

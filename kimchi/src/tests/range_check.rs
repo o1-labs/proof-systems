@@ -4,6 +4,10 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, GateType},
         polynomial::COLUMNS,
         polynomials::{
+            foreign_field_common::{
+                BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayCompact,
+                KimchiForeignElement,
+            },
             generic::GenericGateSpec,
             range_check::{self},
         },
@@ -18,13 +22,7 @@ use ark_ff::{Field, One, Zero};
 use ark_poly::EvaluationDomain;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{
-    foreign_field::{
-        BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayCompact,
-        ForeignFieldHelpers,
-    },
-    FieldHelpers,
-};
+use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 
 use std::array;
 use std::sync::Arc;
@@ -1035,7 +1033,7 @@ fn verify_range_check1_test_next_row_lookups() {
                 witness[col - 1][row] -= PallasField::one();
                 witness[col - 1 + 2 * row + 2][3] -= PallasField::one();
             } else {
-                witness[col - 1][row] += PallasField::two_to_limb();
+                witness[col - 1][row] += KimchiForeignElement::<PallasField>::two_to_limb();
             }
             witness[col - 1 + 2 * row + 3][3] += PallasField::from(2u64.pow(12));
 

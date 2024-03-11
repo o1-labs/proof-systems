@@ -5,15 +5,16 @@ use crate::circuits::witness::Variables;
 use crate::{
     circuits::{
         polynomial::COLUMNS,
+        polynomials::foreign_field_common::{
+            BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,
+        },
         witness::{self, ConstantCell, VariableCell, WitnessCell},
     },
     variable_map,
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
-use o1_utils::foreign_field::{
-    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LIMB_BITS, LO, MI,
-};
+use o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
 use std::array;
 
 /// All foreign field operations allowed
@@ -53,7 +54,7 @@ fn compute_ffadd_values<F: PrimeField>(
     let right = right_input.to_biguint();
 
     // Clarification:
-    let right_hi = right_input[3] * F::two_to_limb() + right_input[HI]; // This allows to store 2^88 in the high limb
+    let right_hi = right_input[3] * KimchiForeignElement::<F>::two_to_limb() + right_input[HI]; // This allows to store 2^88 in the high limb
 
     let modulus = foreign_modulus.to_biguint();
 
@@ -111,7 +112,7 @@ fn compute_ffadd_values<F: PrimeField>(
         + compact_limb(&right_input[LO], &right_input[MI]) * sign
         - compact_limb(&foreign_modulus[LO], &foreign_modulus[MI]) * field_overflow
         - compact_limb(&result[LO], &result[MI]))
-        / F::two_to_2limb();
+        / KimchiForeignElement::<F>::two_to_2limb();
 
     let carry_top: F =
         result[HI] - left_input[HI] - sign * right_hi + field_overflow * foreign_modulus[HI];
@@ -227,10 +228,10 @@ fn init_bound_rows<F: PrimeField>(
             VariableCell::create("result_lo"),
             VariableCell::create("result_mi"),
             VariableCell::create("result_hi"),
-            ConstantCell::create(F::zero()),        // 0
-            ConstantCell::create(F::zero()),        // 0
-            ConstantCell::create(F::two_to_limb()), // 2^88
-            ConstantCell::create(F::one()),         // field_overflow
+            ConstantCell::create(F::zero()), // 0
+            ConstantCell::create(F::zero()), // 0
+            ConstantCell::create(KimchiForeignElement::<F>::two_to_limb()), // 2^88
+            ConstantCell::create(F::one()),  // field_overflow
             VariableCell::create("carry"),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
