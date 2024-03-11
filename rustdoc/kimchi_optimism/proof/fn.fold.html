@@ -3,7 +3,7 @@
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: &amp;OpeningProof::SRS,
     accumulator: &amp;mut <a class="struct" href="struct.ProofInputs.html" title="struct kimchi_optimism::proof::ProofInputs">ProofInputs</a>&lt;N, G&gt;,
-    inputs: &amp;Witness&lt;N, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;G::ScalarField&gt;&gt;
+    inputs: &amp;<a class="struct" href="../../kimchi_msm/witness/struct.Witness.html" title="struct kimchi_msm::witness::Witness">Witness</a>&lt;N, <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;G::ScalarField&gt;&gt;
 )<div class="where">where
     &lt;OpeningProof as OpenProof&lt;G&gt;&gt;::SRS: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>,</div></code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This function folds the witness of the current circuit with the accumulated Keccak instance
 with a random combination using a scaling challenge</p>

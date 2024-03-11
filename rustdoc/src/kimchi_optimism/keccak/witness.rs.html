@@ -301,6 +301,9 @@
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// This file contains the witness for the Keccak hash function for the zkVM project.
 /// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 ///
@@ -412,8 +415,11 @@
         <span class="kw">for </span>(idx, value) <span class="kw">in </span>bytes.iter().enumerate().take(HASH_BYTELENGTH) {
             <span class="self">self</span>.write_column(KeccakColumn::SpongeBytes(idx), <span class="kw-2">*</span>value);
         }
-        <span class="kw">for </span>(idx, value) <span class="kw">in </span>shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
-            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(idx), <span class="kw-2">*</span>value);
+        <span class="kw">for </span>idx <span class="kw">in </span><span class="number">0</span>..WORDS_IN_HASH * QUARTERS {
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(idx), shifts[idx]);
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(<span class="number">100 </span>+ idx), shifts[<span class="number">100 </span>+ idx]);
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(<span class="number">200 </span>+ idx), shifts[<span class="number">200 </span>+ idx]);
+            <span class="self">self</span>.write_column(KeccakColumn::SpongeShifts(<span class="number">300 </span>+ idx), shifts[<span class="number">300 </span>+ idx]);
         }
 
         <span class="comment">// Rest is zero thanks to null_state
