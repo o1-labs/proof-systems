@@ -311,6 +311,7 @@
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module computes the witness of a foreign field addition circuit.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::expr::constraints::compact_limb;
@@ -318,15 +319,16 @@
 <span class="kw">use crate</span>::{
     circuits::{
         polynomial::COLUMNS,
+        polynomials::foreign_field_common::{
+            BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,
+        },
         witness::{<span class="self">self</span>, ConstantCell, VariableCell, WitnessCell},
     },
     variable_map,
 };
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>o1_utils::foreign_field::{
-    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LIMB_BITS, LO, MI,
-};
+<span class="kw">use </span>o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
 <span class="kw">use </span>std::array;
 
 <span class="doccomment">/// All foreign field operations allowed
@@ -366,7 +368,7 @@
     <span class="kw">let </span>right = right_input.to_biguint();
 
     <span class="comment">// Clarification:
-    </span><span class="kw">let </span>right_hi = right_input[<span class="number">3</span>] * F::two_to_limb() + right_input[HI]; <span class="comment">// This allows to store 2^88 in the high limb
+    </span><span class="kw">let </span>right_hi = right_input[<span class="number">3</span>] * KimchiForeignElement::&lt;F&gt;::two_to_limb() + right_input[HI]; <span class="comment">// This allows to store 2^88 in the high limb
 
     </span><span class="kw">let </span>modulus = foreign_modulus.to_biguint();
 
@@ -424,7 +426,7 @@
         + compact_limb(<span class="kw-2">&amp;</span>right_input[LO], <span class="kw-2">&amp;</span>right_input[MI]) * sign
         - compact_limb(<span class="kw-2">&amp;</span>foreign_modulus[LO], <span class="kw-2">&amp;</span>foreign_modulus[MI]) * field_overflow
         - compact_limb(<span class="kw-2">&amp;</span>result[LO], <span class="kw-2">&amp;</span>result[MI]))
-        / F::two_to_2limb();
+        / KimchiForeignElement::&lt;F&gt;::two_to_2limb();
 
     <span class="kw">let </span>carry_top: F =
         result[HI] - left_input[HI] - sign * right_hi + field_overflow * foreign_modulus[HI];
@@ -540,10 +542,10 @@
             </span>VariableCell::create(<span class="string">"result_lo"</span>),
             VariableCell::create(<span class="string">"result_mi"</span>),
             VariableCell::create(<span class="string">"result_hi"</span>),
-            ConstantCell::create(F::zero()),        <span class="comment">// 0
-            </span>ConstantCell::create(F::zero()),        <span class="comment">// 0
-            </span>ConstantCell::create(F::two_to_limb()), <span class="comment">// 2^88
-            </span>ConstantCell::create(F::one()),         <span class="comment">// field_overflow
+            ConstantCell::create(F::zero()), <span class="comment">// 0
+            </span>ConstantCell::create(F::zero()), <span class="comment">// 0
+            </span>ConstantCell::create(KimchiForeignElement::&lt;F&gt;::two_to_limb()), <span class="comment">// 2^88
+            </span>ConstantCell::create(F::one()),  <span class="comment">// field_overflow
             </span>VariableCell::create(<span class="string">"carry"</span>),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),

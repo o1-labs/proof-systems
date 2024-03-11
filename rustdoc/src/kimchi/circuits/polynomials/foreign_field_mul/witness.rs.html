@@ -348,12 +348,19 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication witness computation
 
 </span><span class="kw">use crate</span>::{
     auto_clone_array,
     circuits::{
         polynomial::COLUMNS,
+        polynomials::foreign_field_common::{
+            BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+            KimchiForeignElement,
+        },
         polynomials::{foreign_field_add, range_check},
         witness::{<span class="self">self</span>, ConstantCell, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
@@ -364,10 +371,7 @@
 <span class="kw">use </span>num_integer::Integer;
 
 <span class="kw">use </span>num_traits::One;
-<span class="kw">use </span>o1_utils::foreign_field::{
-    BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
-    ForeignFieldHelpers,
-};
+<span class="kw">use </span>o1_utils::foreign_field::ForeignFieldHelpers;
 <span class="kw">use </span>std::{array, ops::Div};
 
 <span class="kw">use </span><span class="kw">super</span>::circuitgates;
@@ -671,7 +675,9 @@
         witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
         foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
     ) {
-        <span class="kw">let </span>hi_limb = F::two_to_limb() - foreign_field_modulus.to_field_limbs::&lt;F&gt;()[<span class="number">2</span>] - F::one();
+        <span class="kw">let </span>hi_limb = KimchiForeignElement::&lt;F&gt;::two_to_limb()
+            - foreign_field_modulus.to_field_limbs::&lt;F&gt;()[<span class="number">2</span>]
+            - F::one();
         <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.high_bounds.clone().chunks(<span class="number">2</span>) {
             <span class="comment">// Extend the witness for the generic gate
             </span><span class="kw">for </span>col <span class="kw">in </span>witness.iter_mut().take(COLUMNS) {

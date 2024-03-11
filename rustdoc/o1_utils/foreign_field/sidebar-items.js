@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["BINARY_MODULUS_EXP","HI","LIMB_BITS","LIMB_COUNT","LO","MI","TWO_TO_LIMB"],"fn":["two_to_limb"],"struct":["ForeignElement"],"trait":["BigUintArrayCompose","BigUintArrayFieldHelpers","BigUintForeignFieldHelpers","FieldArrayBigUintHelpers","FieldArrayCompact","FieldArrayCompose","ForeignFieldHelpers"]};
+window.SIDEBAR_ITEMS = {"struct":["ForeignElement"],"trait":["ForeignFieldHelpers"]};

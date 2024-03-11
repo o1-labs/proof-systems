@@ -3552,7 +3552,6 @@
 <a href="#3550" id="3550">3550</a>
 <a href="#3551" id="3551">3551</a>
 <a href="#3552" id="3552">3552</a>
-<a href="#3553" id="3553">3553</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3563,7 +3562,9 @@
             index::LookupSelectors,
             lookups::{LookupPattern, LookupPatterns},
         },
-        polynomials::permutation::eval_vanishes_on_last_n_rows,
+        polynomials::{
+            foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
+        },
         wires::COLUMNS,
     },
     proof::PointEvaluations,
@@ -6738,24 +6739,21 @@
         }
 
         <span class="kw">fn </span>two_to_limb() -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;
-                F,
-            &gt;&gt;::two_to_limb(
-            ))
+            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(
+                KimchiForeignElement::&lt;F&gt;::two_to_limb(),
+            )
         }
 
         <span class="kw">fn </span>two_to_2limb() -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;
-                F,
-            &gt;&gt;::two_to_2limb(
-            ))
+            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(
+                KimchiForeignElement::&lt;F&gt;::two_to_2limb(),
+            )
         }
 
         <span class="kw">fn </span>two_to_3limb() -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;
-                F,
-            &gt;&gt;::two_to_3limb(
-            ))
+            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(
+                KimchiForeignElement::&lt;F&gt;::two_to_3limb(),
+            )
         }
 
         <span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
@@ -6805,15 +6803,15 @@
         }
 
         <span class="kw">fn </span>two_to_limb() -&gt; <span class="self">Self </span>{
-            &lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_limb()
+            KimchiForeignElement::&lt;F&gt;::two_to_limb()
         }
 
         <span class="kw">fn </span>two_to_2limb() -&gt; <span class="self">Self </span>{
-            &lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_2limb()
+            KimchiForeignElement::&lt;F&gt;::two_to_2limb()
         }
 
         <span class="kw">fn </span>two_to_3limb() -&gt; <span class="self">Self </span>{
-            &lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_3limb()
+            KimchiForeignElement::&lt;F&gt;::two_to_3limb()
         }
 
         <span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BINARY_MODULUS_EXP","HI","LIMB_BITS","LIMB_COUNT","LO","MI","TWO_TO_LIMB"],"trait":["BigUintArrayCompose","BigUintArrayFieldHelpers","BigUintForeignFieldHelpers","FieldArrayBigUintHelpers","FieldArrayCompact","FieldArrayCompose"],"type":["KimchiForeignElement"]};

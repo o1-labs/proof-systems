@@ -126,11 +126,14 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
 </span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
 <span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>o1_utils::foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers};
+<span class="kw">use </span>o1_utils::foreign_field::ForeignFieldHelpers;
 
 <span class="kw">use crate</span>::{
     alphas::Alphas,
@@ -142,7 +145,10 @@
             <span class="self">self</span>,
             tables::{GateLookupTable, LookupTable},
         },
-        polynomials::generic::GenericGateSpec,
+        polynomials::{
+            foreign_field_common::{BigUintForeignFieldHelpers, KimchiForeignElement},
+            generic::GenericGateSpec,
+        },
         wires::Wire,
     },
 };
@@ -204,7 +210,7 @@
     ) {
         <span class="kw">let </span>r = gates.len();
         <span class="kw">let </span>hi_fmod = foreign_field_modulus.to_field_limbs::&lt;F&gt;()[<span class="number">2</span>];
-        <span class="kw">let </span>hi_limb: F = F::two_to_limb() - hi_fmod - F::one();
+        <span class="kw">let </span>hi_limb: F = KimchiForeignElement::&lt;F&gt;::two_to_limb() - hi_fmod - F::one();
         <span class="kw">let </span>g = GenericGateSpec::Plus(hi_limb);
         CircuitGate::extend_generic(gates, curr_row, Wire::for_row(r), g.clone(), <span class="prelude-val">Some</span>(g));
     }

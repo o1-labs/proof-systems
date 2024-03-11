@@ -163,10 +163,10 @@
 
 </span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
 <span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     gate::{CircuitGate, Connect, GateType},
+    polynomials::foreign_field_common::BigUintForeignFieldHelpers,
     wires::Wire,
 };
 
