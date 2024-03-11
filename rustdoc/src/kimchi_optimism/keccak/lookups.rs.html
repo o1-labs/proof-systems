@@ -288,294 +288,292 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module includes the lookups of the Keccak circuit
-</span><span class="kw">use crate</span>::{
-    keccak::{
-        environment::{KeccakEnv, KeccakEnvironment},
-        ArithOps, BoolOps, KeccakColumn, E,
-    },
+</span><span class="comment">/*
+use crate::{
+    keccak::{environment::KeccakEnv, BoolOps, KeccakColumn, E},
     lookups::{Lookup, LookupTableIDs, Lookups},
 };
-<span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
+use ark_ff::Field;
+use kimchi::circuits::polynomials::keccak::constants::{
     DIM, QUARTERS, RATE_IN_BYTES, SHIFTS, SHIFTS_LEN, STATE_LEN,
 };
 
-<span class="kw">impl</span>&lt;Fp: Field&gt; Lookups <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
-    <span class="kw">type </span>Column = KeccakColumn;
-    <span class="kw">type </span>Variable = E&lt;Fp&gt;;
+impl&lt;Fp: Field&gt; Lookups for KeccakEnv&lt;Fp&gt; {
+    type Column = KeccakColumn;
+    type Variable = E&lt;Fp&gt;;
 
-    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="self">self</span>.lookups.push(lookup);
+    fn add_lookup(&amp;mut self, lookup: Lookup&lt;Self::Variable&gt;) {
+        self.constraints_env.lookups.push(lookup);
     }
 
-    <span class="doccomment">/// Adds all 2481 lookups to the Keccak environment:
+    /// Adds all 2481 lookups to the Keccak environment:
     /// - 2342 lookups for the step row
     /// - 2 lookups for the inter-step channel
     /// - 136 lookups for the syscall channel (preimage bytes)
     /// - 1 lookups for the syscall channel (hash)
-    </span><span class="kw">fn </span>lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// SPONGE LOOKUPS
-        </span><span class="self">self</span>.lookups_sponge();
+    fn lookups(&amp;mut self) {
+        // SPONGE LOOKUPS
+        self.lookups_sponge();
 
-        <span class="comment">// ROUND LOOKUPS
-        </span>{
-            <span class="comment">// THETA LOOKUPS
-            </span><span class="self">self</span>.lookups_round_theta();
-            <span class="comment">// PIRHO LOOKUPS
-            </span><span class="self">self</span>.lookups_round_pirho();
-            <span class="comment">// CHI LOOKUPS
-            </span><span class="self">self</span>.lookups_round_chi();
-            <span class="comment">// IOTA LOOKUPS
-            </span><span class="self">self</span>.lookups_round_iota();
+        // ROUND LOOKUPS
+        {
+            // THETA LOOKUPS
+            self.lookups_round_theta();
+            // PIRHO LOOKUPS
+            self.lookups_round_pirho();
+            // CHI LOOKUPS
+            self.lookups_round_chi();
+            // IOTA LOOKUPS
+            self.lookups_round_iota();
         }
 
-        <span class="comment">// INTER-STEP CHANNEL
+        // INTER-STEP CHANNEL
         // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
-        </span><span class="self">self</span>.lookup_steps();
+        self.lookup_steps();
 
-        <span class="comment">// COMMUNICATION CHANNEL: read bytes of current block
-        </span><span class="self">self</span>.lookup_syscall_preimage();
+        // COMMUNICATION CHANNEL: read bytes of current block
+        self.lookup_syscall_preimage();
 
-        <span class="comment">// COMMUNICATION CHANNEL: Write hash output
-        </span><span class="self">self</span>.lookup_syscall_hash();
+        // COMMUNICATION CHANNEL: Write hash output
+        self.lookup_syscall_hash();
     }
 }
 
-<span class="doccomment">/// This trait adds useful methods to deal with lookups in the Keccak environment
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>KeccakLookups {
-    <span class="kw">type </span>Column;
-    <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+/// This trait adds useful methods to deal with lookups in the Keccak environment
+pub(crate) trait KeccakLookups {
+    type Column;
+    type Variable: std::ops::Mul&lt;Self::Variable, Output = Self::Variable&gt;
+        + std::ops::Add&lt;Self::Variable, Output = Self::Variable&gt;
+        + std::ops::Sub&lt;Self::Variable, Output = Self::Variable&gt;
         + Clone;
 
-    <span class="doccomment">/// Reads Lookups containing the 136 bytes of the block of the preimage
-    </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    /// Reads Lookups containing the 136 bytes of the block of the preimage
+    fn lookup_syscall_preimage(&amp;mut self);
 
-    <span class="doccomment">/// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
-    </span><span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    /// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    fn lookup_syscall_hash(&amp;mut self);
 
-    <span class="doccomment">/// Reads a Lookup containing the input of a step
+    /// Reads a Lookup containing the input of a step
     /// and writes a Lookup containing the output of the next step
-    </span><span class="kw">fn </span>lookup_steps(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    fn lookup_steps(&amp;mut self);
 
-    <span class="doccomment">/// Adds a lookup to the RangeCheck16 table
-    </span><span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    /// Adds a lookup to the RangeCheck16 table
+    fn lookup_rc16(&amp;mut self, flag: Self::Variable, value: Self::Variable);
 
-    <span class="doccomment">/// Adds a lookup to the Reset table
-    </span><span class="kw">fn </span>lookup_reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, dense: <span class="self">Self</span>::Variable, sparse: <span class="self">Self</span>::Variable);
+    /// Adds a lookup to the Reset table
+    fn lookup_reset(&amp;mut self, flag: Self::Variable, dense: Self::Variable, sparse: Self::Variable);
 
-    <span class="doccomment">/// Adds a lookup to the Shift table
-    </span><span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    /// Adds a lookup to the Shift table
+    fn lookup_sparse(&amp;mut self, flag: Self::Variable, value: Self::Variable);
 
-    <span class="doccomment">/// Adds a lookup to the Byte table
-    </span><span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    /// Adds a lookup to the Byte table
+    fn lookup_byte(&amp;mut self, flag: Self::Variable, value: Self::Variable);
 
-    <span class="doccomment">/// Adds the 601 lookups required for the sponge
-    </span><span class="kw">fn </span>lookups_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    /// Adds the 601 lookups required for the sponge
+    fn lookups_sponge(&amp;mut self);
 
-    <span class="doccomment">/// Adds the 140 lookups required for Theta in the round
-    </span><span class="kw">fn </span>lookups_round_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    /// Adds the 140 lookups required for Theta in the round
+    fn lookups_round_theta(&amp;mut self);
 
-    <span class="doccomment">/// Adds the 800 lookups required for PiRho in the round
-    </span><span class="kw">fn </span>lookups_round_pirho(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    /// Adds the 800 lookups required for PiRho in the round
+    fn lookups_round_pirho(&amp;mut self);
 
-    <span class="doccomment">/// Adds the 800 lookups required for Chi in the round
-    </span><span class="kw">fn </span>lookups_round_chi(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    /// Adds the 800 lookups required for Chi in the round
+    fn lookups_round_chi(&amp;mut self);
 
-    <span class="doccomment">/// Adds the 1 lookup required for Iota in the round
-    </span><span class="kw">fn </span>lookups_round_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    /// Adds the 1 lookup required for Iota in the round
+    fn lookups_round_iota(&amp;mut self);
 }
 
-<span class="kw">impl</span>&lt;Fp: Field&gt; KeccakLookups <span class="kw">for </span>KeccakEnv&lt;Fp&gt; {
-    <span class="kw">type </span>Column = KeccakColumn;
-    <span class="kw">type </span>Variable = E&lt;Fp&gt;;
+impl&lt;Fp: Field&gt; KeccakLookups for KeccakEnv&lt;Fp&gt; {
+    type Column = KeccakColumn;
+    type Variable = E&lt;Fp&gt;;
 
-    <span class="comment">// TODO: optimize this by using a single lookup reusing PadSuffix
-    </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
-            <span class="self">self</span>.add_lookup(Lookup::read_if(
-                <span class="self">self</span>.is_absorb(),
+    // TODO: optimize this by using a single lookup reusing PadSuffix
+    fn lookup_syscall_preimage(&amp;mut self) {
+        for i in 0..RATE_IN_BYTES {
+            self.add_lookup(Lookup::read_if(
+                self.is_absorb(),
                 LookupTableIDs::SyscallLookup,
-                <span class="macro">vec!</span>[
-                    <span class="self">self</span>.hash_index(),
-                    <span class="self">self</span>.block_index() * <span class="self">Self</span>::constant(RATE_IN_BYTES <span class="kw">as </span>u64)
-                        + <span class="self">Self</span>::constant(i <span class="kw">as </span>u64),
-                    <span class="self">self</span>.sponge_byte(i),
+                vec![
+                    self.hash_index(),
+                    self.block_index() * Self::constant(RATE_IN_BYTES as u64)
+                        + Self::constant(i as u64),
+                    self.sponge_byte(i),
                 ],
             ));
         }
     }
 
-    <span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(<span class="self">Self</span>::zero(), |acc, i| {
-            acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_byte(i)
+    fn lookup_syscall_hash(&amp;mut self) {
+        let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
+            acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        <span class="self">self</span>.add_lookup(Lookup::write_if(
-            <span class="self">self</span>.is_squeeze(),
+        self.add_lookup(Lookup::write_if(
+            self.is_squeeze(),
             LookupTableIDs::SyscallLookup,
-            <span class="macro">vec!</span>[<span class="self">self</span>.hash_index(), bytes31],
+            vec![self.hash_index(), bytes31],
         ));
     }
 
-    <span class="kw">fn </span>lookup_steps(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// (if not a root) Output of previous step is input of current step
-        </span><span class="self">self</span>.add_lookup(Lookup::read_if(
-            <span class="self">Self</span>::not(<span class="self">self</span>.is_root()),
+    fn lookup_steps(&amp;mut self) {
+        // (if not a root) Output of previous step is input of current step
+        self.add_lookup(Lookup::read_if(
+            Self::not(self.is_root()),
             LookupTableIDs::KeccakStepLookup,
-            <span class="self">self</span>.input_of_step(),
+            self.input_of_step(),
         ));
-        <span class="comment">// (if not a squeeze) Input for next step is output of current step
-        </span><span class="self">self</span>.add_lookup(Lookup::write_if(
-            <span class="self">Self</span>::not(<span class="self">self</span>.is_squeeze()),
+        // (if not a squeeze) Input for next step is output of current step
+        self.add_lookup(Lookup::write_if(
+            Self::not(self.is_squeeze()),
             LookupTableIDs::KeccakStepLookup,
-            <span class="self">self</span>.output_of_step(),
+            self.output_of_step(),
         ));
     }
 
-    <span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(Lookup::read_if(
+    fn lookup_rc16(&amp;mut self, flag: Self::Variable, value: Self::Variable) {
+        self.add_lookup(Lookup::read_if(
             flag,
             LookupTableIDs::RangeCheck16Lookup,
-            <span class="macro">vec!</span>[value],
+            vec![value],
         ));
     }
 
-    <span class="kw">fn </span>lookup_reset(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        flag: <span class="self">Self</span>::Variable,
-        dense: <span class="self">Self</span>::Variable,
-        sparse: <span class="self">Self</span>::Variable,
+    fn lookup_reset(
+        &amp;mut self,
+        flag: Self::Variable,
+        dense: Self::Variable,
+        sparse: Self::Variable,
     ) {
-        <span class="self">self</span>.add_lookup(Lookup::read_if(
+        self.add_lookup(Lookup::read_if(
             flag,
             LookupTableIDs::ResetLookup,
-            <span class="macro">vec!</span>[dense, sparse],
+            vec![dense, sparse],
         ));
     }
 
-    <span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(Lookup::read_if(
+    fn lookup_sparse(&amp;mut self, flag: Self::Variable, value: Self::Variable) {
+        self.add_lookup(Lookup::read_if(
             flag,
             LookupTableIDs::SparseLookup,
-            <span class="macro">vec!</span>[value],
+            vec![value],
         ));
     }
 
-    <span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(Lookup::read_if(
+    fn lookup_byte(&amp;mut self, flag: Self::Variable, value: Self::Variable) {
+        self.add_lookup(Lookup::read_if(
             flag,
             LookupTableIDs::ByteLookup,
-            <span class="macro">vec!</span>[value],
+            vec![value],
         ));
     }
 
-    <span class="kw">fn </span>lookups_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// PADDING LOOKUPS
+    fn lookups_sponge(&amp;mut self) {
+        // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
         // Pad suffixes correspond to 10*1 rule
-        </span><span class="self">self</span>.add_lookup(Lookup::read_if(
-            <span class="self">self</span>.is_pad(),
+        self.add_lookup(Lookup::read_if(
+            self.is_pad(),
             LookupTableIDs::PadLookup,
-            <span class="macro">vec!</span>[
-                <span class="self">self</span>.pad_length(),
-                <span class="self">self</span>.two_to_pad(),
-                <span class="self">self</span>.pad_suffix(<span class="number">0</span>),
-                <span class="self">self</span>.pad_suffix(<span class="number">1</span>),
-                <span class="self">self</span>.pad_suffix(<span class="number">2</span>),
-                <span class="self">self</span>.pad_suffix(<span class="number">3</span>),
-                <span class="self">self</span>.pad_suffix(<span class="number">4</span>),
+            vec![
+                self.pad_length(),
+                self.two_to_pad(),
+                self.pad_suffix(0),
+                self.pad_suffix(1),
+                self.pad_suffix(2),
+                self.pad_suffix(3),
+                self.pad_suffix(4),
             ],
         ));
-        <span class="comment">// BYTES LOOKUPS
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">200 </span>{
-            <span class="comment">// Bytes are &lt;2^8
-            </span><span class="self">self</span>.lookup_byte(<span class="self">self</span>.is_sponge(), <span class="self">self</span>.sponge_byte(i));
+        // BYTES LOOKUPS
+        for i in 0..200 {
+            // Bytes are &lt;2^8
+            self.lookup_byte(self.is_sponge(), self.sponge_byte(i));
         }
-        <span class="comment">// SHIFTS LOOKUPS
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">100</span>..SHIFTS_LEN {
-            <span class="comment">// Shifts1, Shifts2, Shifts3 are in the Sparse table
-            </span><span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_sponge(), <span class="self">self</span>.sponge_shifts(i));
+        // SHIFTS LOOKUPS
+        for i in 100..SHIFTS_LEN {
+            // Shifts1, Shifts2, Shifts3 are in the Sparse table
+            self.lookup_sparse(self.is_sponge(), self.sponge_shifts(i));
         }
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..STATE_LEN {
-            <span class="comment">// Shifts0 together with Bits composition by pairs are in the Reset table
-            </span><span class="kw">let </span>dense = <span class="self">self</span>.sponge_byte(<span class="number">2 </span>* i) + <span class="self">self</span>.sponge_byte(<span class="number">2 </span>* i + <span class="number">1</span>) * <span class="self">Self</span>::two_pow(<span class="number">8</span>);
-            <span class="self">self</span>.lookup_reset(<span class="self">self</span>.is_sponge(), dense, <span class="self">self</span>.sponge_shifts(i));
+        for i in 0..STATE_LEN {
+            // Shifts0 together with Bits composition by pairs are in the Reset table
+            let dense = self.sponge_byte(2 * i) + self.sponge_byte(2 * i + 1) * Self::two_pow(8);
+            self.lookup_reset(self.is_sponge(), dense, self.sponge_shifts(i));
         }
     }
 
-    <span class="kw">fn </span>lookups_round_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-            <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
-                <span class="comment">// Check that ThetaRemainderC &lt; 2^64
-                </span><span class="self">self</span>.lookup_rc16(<span class="self">self</span>.is_round(), <span class="self">self</span>.remainder_c(x, q));
-                <span class="comment">// Check ThetaExpandRotC is the expansion of ThetaDenseRotC
-                </span><span class="self">self</span>.lookup_reset(
-                    <span class="self">self</span>.is_round(),
-                    <span class="self">self</span>.dense_rot_c(x, q),
-                    <span class="self">self</span>.expand_rot_c(x, q),
+    fn lookups_round_theta(&amp;mut self) {
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                // Check that ThetaRemainderC &lt; 2^64
+                self.lookup_rc16(self.is_round(), self.remainder_c(x, q));
+                // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
+                self.lookup_reset(
+                    self.is_round(),
+                    self.dense_rot_c(x, q),
+                    self.expand_rot_c(x, q),
                 );
-                <span class="comment">// Check ThetaShiftC0 is the expansion of ThetaDenseC
-                </span><span class="self">self</span>.lookup_reset(<span class="self">self</span>.is_round(), <span class="self">self</span>.dense_c(x, q), <span class="self">self</span>.shifts_c(<span class="number">0</span>, x, q));
-                <span class="comment">// Check that the rest of ThetaShiftsC are in the Sparse table
-                </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
-                    <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.shifts_c(i, x, q));
+                // Check ThetaShiftC0 is the expansion of ThetaDenseC
+                self.lookup_reset(self.is_round(), self.dense_c(x, q), self.shifts_c(0, x, q));
+                // Check that the rest of ThetaShiftsC are in the Sparse table
+                for i in 1..SHIFTS {
+                    self.lookup_sparse(self.is_round(), self.shifts_c(i, x, q));
                 }
             }
         }
     }
 
-    <span class="kw">fn </span>lookups_round_pirho(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
-            <span class="kw">for </span>x <span class="kw">in </span><span class="number">0</span>..DIM {
-                <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
-                    <span class="comment">// Check that PiRhoRemainderE &lt; 2^64 and PiRhoQuotientE &lt; 2^64
-                    </span><span class="self">self</span>.lookup_rc16(<span class="self">self</span>.is_round(), <span class="self">self</span>.remainder_e(y, x, q));
-                    <span class="self">self</span>.lookup_rc16(<span class="self">self</span>.is_round(), <span class="self">self</span>.quotient_e(y, x, q));
-                    <span class="comment">// Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
-                    </span><span class="self">self</span>.lookup_reset(
-                        <span class="self">self</span>.is_round(),
-                        <span class="self">self</span>.dense_rot_e(y, x, q),
-                        <span class="self">self</span>.expand_rot_e(y, x, q),
+    fn lookups_round_pirho(&amp;mut self) {
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                for y in 0..DIM {
+                    // Check that PiRhoRemainderE &lt; 2^64 and PiRhoQuotientE &lt; 2^64
+                    self.lookup_rc16(self.is_round(), self.remainder_e(y, x, q));
+                    self.lookup_rc16(self.is_round(), self.quotient_e(y, x, q));
+                    // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
+                    self.lookup_reset(
+                        self.is_round(),
+                        self.dense_rot_e(y, x, q),
+                        self.expand_rot_e(y, x, q),
                     );
-                    <span class="comment">// Check PiRhoShift0E is the expansion of PiRhoDenseE
-                    </span><span class="self">self</span>.lookup_reset(
-                        <span class="self">self</span>.is_round(),
-                        <span class="self">self</span>.dense_e(y, x, q),
-                        <span class="self">self</span>.shifts_e(<span class="number">0</span>, y, x, q),
+                    // Check PiRhoShift0E is the expansion of PiRhoDenseE
+                    self.lookup_reset(
+                        self.is_round(),
+                        self.dense_e(y, x, q),
+                        self.shifts_e(0, y, x, q),
                     );
-                    <span class="comment">// Check that the rest of PiRhoShiftsE are in the Sparse table
-                    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..SHIFTS {
-                        <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.shifts_e(i, y, x, q));
+                    // Check that the rest of PiRhoShiftsE are in the Sparse table
+                    for i in 1..SHIFTS {
+                        self.lookup_sparse(self.is_round(), self.shifts_e(i, y, x, q));
                     }
                 }
             }
         }
     }
 
-    <span class="kw">fn </span>lookups_round_chi(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..SHIFTS_LEN {
-            <span class="comment">// Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-            </span><span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_b()[i].clone());
-            <span class="self">self</span>.lookup_sparse(<span class="self">self</span>.is_round(), <span class="self">self</span>.vec_shifts_sum()[i].clone());
+    fn lookups_round_chi(&amp;mut self) {
+        for i in 0..SHIFTS_LEN {
+            // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
+            self.lookup_sparse(self.is_round(), self.vec_shifts_b()[i].clone());
+            self.lookup_sparse(self.is_round(), self.vec_shifts_sum()[i].clone());
         }
     }
 
-    <span class="kw">fn </span>lookups_round_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// Check round constants correspond with the current round
-        </span><span class="self">self</span>.add_lookup(Lookup::read_if(
-            <span class="self">self</span>.is_round(),
+    fn lookups_round_iota(&amp;mut self) {
+        // Check round constants correspond with the current round
+        self.add_lookup(Lookup::read_if(
+            self.is_round(),
             LookupTableIDs::RoundConstantsLookup,
-            <span class="macro">vec!</span>[
-                <span class="self">self</span>.round(),
-                <span class="self">self</span>.round_constants()[<span class="number">3</span>].clone(),
-                <span class="self">self</span>.round_constants()[<span class="number">2</span>].clone(),
-                <span class="self">self</span>.round_constants()[<span class="number">1</span>].clone(),
-                <span class="self">self</span>.round_constants()[<span class="number">0</span>].clone(),
+            vec![
+                self.round(),
+                self.round_constants()[3].clone(),
+                self.round_constants()[2].clone(),
+                self.round_constants()[1].clone(),
+                self.round_constants()[0].clone(),
             ],
         ));
     }
 }
-</code></pre></div></section></main></body></html>
+*/
+</span></code></pre></div></section></main></body></html>
