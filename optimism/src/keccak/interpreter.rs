@@ -115,7 +115,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Adds one constraint to the environment.
     fn constrain(&mut self, x: Self::Variable);
 
-    /// Adds all 887 constraints to the environment:
+    /// Adds all 887 constraints/checks to the environment:
     /// - 143 constraints of degree 1
     /// - 739 constraints of degree 2
     /// - 5 constraints of degree 5
@@ -127,13 +127,13 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
             self.constraints_flags();
         }
 
-        // Adds 354 constraints to check sponge steps
+        // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         // - 354 constraints of degree 2
         {
             self.constraints_sponge();
         }
 
-        // Adds 389 constraints to check round steps correctROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
+        // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
         // - 384 constraints of degree 2
         // - 5 constraints of degree 3
         {
@@ -141,7 +141,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         }
     }
 
-    /// Adds 144 constraints to check correctness of mode flags
+    /// Constrains 144 checks of correctness of mode flags
     /// - 143 constraints of degree 1
     /// - 1 constraint of degree 2
     /// Of which:
@@ -152,38 +152,58 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     fn constraints_flags(&mut self) {
         // Booleanity of sponge flags: 139 constraints of degree 1
         {
-            // Absorb is either true or false
-            self.constrain(Self::is_boolean(self.is_absorb()));
-            // Squeeze is either true or false
-            self.constrain(Self::is_boolean(self.is_squeeze()));
-            // Root is either true or false
-            self.constrain(Self::is_boolean(self.is_root()));
-            for i in 0..RATE_IN_BYTES {
-                // Bytes are either involved on padding or not
-                self.constrain(Self::is_boolean(self.in_padding(i)));
-            }
+            self.constraints_booleanity();
         }
         // Mutual exclusivity of flags: 5 constraints:
         // - 4 of degree 1
         // - 1 of degree 2
         {
-            // Squeeze and Root are not both true
-            self.constrain(Self::either_zero(self.is_squeeze(), self.is_root()));
-            // Squeeze and Pad are not both true
-            self.constrain(Self::either_zero(self.is_squeeze(), self.is_pad()));
-            // Round and Pad are not both true
-            self.constrain(Self::either_zero(self.is_round(), self.is_pad()));
-            // Round and Root are not both true
-            self.constrain(Self::either_zero(self.is_round(), self.is_root()));
-            // Absorb and Squeeze cannot happen at the same time.
-            // Equivalent to is_boolean(is_sponge())
-            self.constrain(Self::either_zero(self.is_absorb(), self.is_squeeze()));
-            // Trivially, is_sponge and is_round are mutually exclusive
+            self.constraints_mutex();
         }
     }
 
-    /// SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
-    fn constraints_sponge(&mut self) {
+    /// Constrains 139 checks of booleanity for some mode flags.
+    /// These involve sponge-only related variables.
+    fn constrain_booleanity(&mut self) {
+        // Absorb is either true or false
+        self.constrain(Self::is_boolean(self.is_absorb()));
+        // Squeeze is either true or false
+        self.constrain(Self::is_boolean(self.is_squeeze()));
+        // Root is either true or false
+        self.constrain(Self::is_boolean(self.is_root()));
+        for i in 0..RATE_IN_BYTES {
+            // Bytes are either involved on padding or not
+            self.constrain(Self::is_boolean(self.in_padding(i)));
+        }
+    }
+
+    /// Constrains 5 checks of mutual exclusivity between some mode flags.
+    /// - 4 involve sponge-only related variables
+    /// - 1 involves sponge+round  variables
+    fn constrain_mutex(&mut self) {
+        // Squeeze and Root are not both true
+        self.constrain(Self::either_zero(self.is_squeeze(), self.is_root()));
+        // Squeeze and Pad are not both true
+        self.constrain(Self::either_zero(self.is_squeeze(), self.is_pad()));
+        // Round and Pad are not both true
+        self.constrain(Self::either_zero(self.is_round(), self.is_pad()));
+        // Round and Root are not both true
+        self.constrain(Self::either_zero(self.is_round(), self.is_root()));
+        // Absorb and Squeeze cannot happen at the same time.
+        // Equivalent to is_boolean(is_sponge())
+        self.constrain(Self::either_zero(self.is_absorb(), self.is_squeeze()));
+        // Trivially, is_sponge and is_round are mutually exclusive
+    }
+
+    /// Constrains 354 checks of sponge steps
+    fn constrain_sponge(&mut self) {
+        self.constraints_absorb();
+        self.constraints_squeeze();
+        self.constraints_padding();
+    }
+
+    /// Constrains 332 checks of absorb sponges
+    fn constrain_absorb(&mut self) {
         for zero in self.sponge_zeros() {
             // Absorb phase pads with zeros the new state
             self.constrain(self.is_absorb() * zero);
@@ -204,15 +224,10 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                         - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None)),
             );
         }
-        let sponge_shifts = self.vec_sponge_shifts();
-        for i in 0..QUARTERS * WORDS_IN_HASH {
-            // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
-            self.constrain(
-                self.is_squeeze()
-                    * (self.old_state(i).clone()
-                        - Self::from_shifts(&sponge_shifts, Some(i), None, None, None)),
-            );
-        }
+    }
+
+    /// Constrains 6 checks of padding absorb sponges
+    fn constrain_padding(&mut self) {
         // Check that the padding is located at the end of the message
         let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
             acc * Self::two() + self.in_padding(i)
@@ -224,10 +239,23 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         }
     }
 
-    /// ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
+    /// Constrains 16 checks of squeeze sponges
+    fn constrain_squeeze(&mut self) {
+        let sponge_shifts = self.vec_sponge_shifts();
+        for i in 0..QUARTERS * WORDS_IN_HASH {
+            // In squeeze, check shifts correspond to the 256-bit prefix digest of the old state (current)
+            self.constrain(
+                self.is_squeeze()
+                    * (self.old_state(i).clone()
+                        - Self::from_shifts(&sponge_shifts, Some(i), None, None, None)),
+            );
+        }
+    }
+
+    /// Constrains 389 checks of round steps
     /// - 384 constraints of degree 2
     /// - 5 constraints of degree 3
-    fn constraints_round(&mut self) {
+    fn constrain_round(&mut self) {
         // Define vectors storing expressions which are not in the witness layout for efficiency
         let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
         let mut state_d = vec![vec![Self::zero(); QUARTERS]; DIM];
