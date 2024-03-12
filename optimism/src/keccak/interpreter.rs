@@ -259,23 +259,23 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
         // - 30 constraints of degree 2
         // - 5 constraints of degree 3
-        self.constrain_theta();
+        let state_e = self.constrain_theta();
 
         // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
-        self.constrain_pirho();
+        let state_b = self.constrain_pirho(state_e);
 
         // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
-        self.constrain_chi();
+        let state_f = self.constrain_chi(state_b);
 
         // STEP iota: 4 constraints of degree 2
-        self.constrain_iota();
+        self.constrain_iota(state_f);
     }
 
     /// Constrains 35 checks of the theta algorithm in round steps
     ///  - 30 constraints of degree 2
     ///  - 5 constraints of degree 3
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
-    fn constrain_theta(&mut self) {
+    fn constrain_theta(&mut self) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
         let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
         let mut state_d = vec![vec![Self::zero(); QUARTERS]; DIM];
@@ -320,11 +320,15 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 }
             }
         }
+        state_e
     }
 
     /// Constrains 150 checks (of degree 2) of the pirho algorithm in round steps
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
-    fn constrain_pirho(&mut self) {
+    fn constrain_pirho(
+        &mut self,
+        state_e: Vec<Vec<Vec<Self::Variable>>>,
+    ) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
         let mut state_b = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
 
@@ -358,11 +362,15 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 }
             }
         }
+        state_b
     }
 
     /// Constrains 200 checks (of degree 2) of the chi algorithm in round steps
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
-    fn constrain_chi(&mut self) {
+    fn constrain_chi(
+        &mut self,
+        state_b: Vec<Vec<Vec<Self::Variable>>>,
+    ) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
         let mut state_f = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
 
@@ -400,11 +408,12 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 }
             }
         }
+        state_f
     }
 
     /// Constrains 4 checks (of degree 2) of the iota algorithm in round steps
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
-    fn constrain_iota(&mut self) {
+    fn constrain_iota(&mut self, state_f: Vec<Vec<Vec<Self::Variable>>>) {
         for (q, c) in self.round_constants().to_vec().iter().enumerate() {
             self.constrain(
                 self.is_round()
