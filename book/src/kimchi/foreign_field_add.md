@@ -255,7 +255,7 @@ $$add(add(add(a,b),c),d)$$
 | 30..33 | `multi-range-check` | $a+b+c+d$     |
 | 34..37 | `multi-range-check` | bound         |
 
-Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8\cdotn+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges):
+Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8\cdot n+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges):
 
 | Row(s)   | Gate type(s)                                          | Witness |
 | -------- | ----------------------------------------------------- | ------- |
