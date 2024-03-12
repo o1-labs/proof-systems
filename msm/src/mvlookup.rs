@@ -79,11 +79,11 @@ pub struct MVLookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
 /// the type?
 #[derive(Debug, Clone)]
 pub struct LookupProof<T> {
-    // The multiplicity polynomials
+    /// The multiplicity polynomials
     pub(crate) m: Vec<T>,
-    // The polynomial keeping the sum of each row
+    /// The polynomial keeping the sum of each row
     pub(crate) h: Vec<T>,
-    // The "running-sum" over the rows, coined \phi
+    /// The "running-sum" over the rows, coined `\phi`
     pub(crate) sum: T,
 }
 
