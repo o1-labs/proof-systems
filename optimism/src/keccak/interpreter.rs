@@ -167,9 +167,6 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         {
             self.constraints_round();
         }
-
-        // READ LOOKUP CONSTRAINTS
-        self.lookups();
     }
 
     /// ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
