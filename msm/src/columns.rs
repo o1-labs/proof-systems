@@ -1,6 +1,5 @@
 use kimchi::circuits::expr::{Domain, GenericColumn};
 
-// @volhovm: maybe this needs to be a trait
 /// Describe a generic indexed variable X_{i}.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Column {
