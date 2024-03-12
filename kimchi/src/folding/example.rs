@@ -101,7 +101,7 @@ impl Alphas {
     fn get(&self, i: usize) -> Option<Fp> {
         match self {
             Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i, Ordering::Relaxed);
+                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
                 let i = [i as u64];
                 Some(alpha.pow(i))
             }
@@ -166,7 +166,7 @@ impl Witness<Curve> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
         for (a, b) in a.iter_mut().zip(b) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                *a = *a + challenge * b;
+                *a += challenge * b;
             }
         }
         a
@@ -201,7 +201,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for Te
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.iter_mut() {
-                ///check this, while not relevant in this case I think it be right rotation
+                //check this, while not relevant in this case I think it should be right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -214,7 +214,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for Te
     }
 
     fn zero_vec(&self) -> Vec<Fp> {
-        vec![Fp::zero(); 1]
+        vec![Fp::zero(); 2]
     }
 
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
@@ -310,7 +310,7 @@ fn instance_from_witness(
 ) -> TestInstance {
     let commitments = witness
         .iter()
-        .map(|w| srs.commit_evaluations_non_hiding(domain, &w))
+        .map(|w| srs.commit_evaluations_non_hiding(domain, w))
         .map(|c| c.elems[0])
         .collect_vec();
     let commitments: [_; 3] = commitments.try_into().unwrap();
@@ -365,7 +365,9 @@ mod checker {
     impl Provide for Provider {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
-                FoldingCompatibleExprInner::Constant(_) => todo!(),
+                FoldingCompatibleExprInner::Constant(c) => {
+                    vec![c; self.rows]
+                }
                 FoldingCompatibleExprInner::Challenge(chall) => {
                     let chals = self.instance.challenges;
                     let v = match chall {
@@ -386,7 +388,7 @@ mod checker {
                     };
 
                     let mut col = col.clone();
-                    ///check this, while not relevant in this case I think it be right rotation
+                    //check this, while not relevant in this case I think it should be right rotation
                     if let CurrOrNext::Next = row {
                         col.rotate_left(1);
                     }
@@ -444,7 +446,7 @@ mod checker {
                         vec![alpha; self.inner_provider.rows]
                     }
                 },
-                e @ _ => self.inner_provider.resolve(e),
+                e => self.inner_provider.resolve(e),
             }
         }
     }
