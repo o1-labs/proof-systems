@@ -256,16 +256,31 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// - 384 constraints of degree 2
     /// - 5 constraints of degree 3
     fn constrain_round(&mut self) {
+        // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
+        // - 30 constraints of degree 2
+        // - 5 constraints of degree 3
+        self.constrain_theta();
+
+        // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
+        self.constrain_pirho();
+
+        // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
+        self.constrain_chi();
+
+        // STEP iota: 4 constraints of degree 2
+        self.constrain_iota();
+    }
+
+    /// Constrains 35 checks of the theta algorithm in round steps
+    ///  - 30 constraints of degree 2
+    ///  - 5 constraints of degree 3
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_theta(&mut self) {
         // Define vectors storing expressions which are not in the witness layout for efficiency
         let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
         let mut state_d = vec![vec![Self::zero(); QUARTERS]; DIM];
         let mut state_e = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
-        let mut state_b = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
-        let mut state_f = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
 
-        // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
-        // - 30 constraints of degree 2
-        // - 5 constraints of degree 3
         for x in 0..DIM {
             let word_c = Self::from_quarters(&self.vec_dense_c(), None, x);
             let rem_c = Self::from_quarters(&self.vec_remainder_c(), None, x);
@@ -304,9 +319,15 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                     column_e[x][q] = self.state_a(y, x, q) + state_d[x][q].clone();
                 }
             }
-        } // END theta
+        }
+    }
 
-        // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
+    /// Constrains 150 checks (of degree 2) of the pirho algorithm in round steps
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_pirho(&mut self) {
+        // Define vectors storing expressions which are not in the witness layout for efficiency
+        let mut state_b = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
+
         for (y, col) in OFF.iter().enumerate() {
             for (x, off) in col.iter().enumerate() {
                 let word_e = Self::from_quarters(&self.vec_dense_e(), Some(y), x);
@@ -336,9 +357,15 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                     state_b[(2 * x + 3 * y) % DIM][y][q] = self.expand_rot_e(y, x, q);
                 }
             }
-        } // END pirho
+        }
+    }
 
-        // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
+    /// Constrains 200 checks (of degree 2) of the chi algorithm in round steps
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_chi(&mut self) {
+        // Define vectors storing expressions which are not in the witness layout for efficiency
+        let mut state_f = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
+
         for q in 0..QUARTERS {
             for x in 0..DIM {
                 for y in 0..DIM {
@@ -372,15 +399,18 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                     state_f[y][x][q] = self.shifts_b(0, y, x, q) + and;
                 }
             }
-        } // END chi
+        }
+    }
 
-        // STEP iota: 4 constraints of degree 2
+    /// Constrains 4 checks (of degree 2) of the iota algorithm in round steps
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_iota(&mut self) {
         for (q, c) in self.round_constants().to_vec().iter().enumerate() {
             self.constrain(
                 self.is_round()
                     * (self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone())),
             );
-        } // END iota
+        }
     }
 
     ////////////////////////
