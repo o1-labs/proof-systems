@@ -1,5 +1,5 @@
 use crate::{
-    column_env::MSMColumnEnvironment,
+    column_env::ColumnEnvironment,
     columns::Column,
     expr::{curr_cell, E},
     lookups::Lookup,
@@ -236,7 +236,7 @@ where
             gamma: G::ScalarField::zero(),
             joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
         };
-        MSMColumnEnvironment {
+        ColumnEnvironment {
             constants: Constants {
                 endo_coefficient: *endo_r,
                 mds: &G::sponge_params().mds,

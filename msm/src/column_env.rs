@@ -2,13 +2,15 @@ use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
 use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain};
+use kimchi::circuits::expr::{
+    Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain,
+};
 
 /// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct MSMColumnEnvironment<'a, F: FftField> {
+pub struct ColumnEnvironment<'a, F: FftField> {
     /// The witness column polynomials
     pub witness: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The coefficient column polynomials
@@ -27,7 +29,7 @@ pub struct MSMColumnEnvironment<'a, F: FftField> {
     pub lookup: Option<()>,
 }
 
-impl<'a, F: FftField> ColumnEnvironment<'a, F> for MSMColumnEnvironment<'a, F> {
+impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
     type Column = crate::columns::Column;
 
     fn get_column(
