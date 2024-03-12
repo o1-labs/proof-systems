@@ -1,6 +1,8 @@
 use crate::{
     column_env::MSMColumnEnvironment,
-    expr::E,
+    columns::Column,
+    expr::{curr_cell, E},
+    lookups::Lookup,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
@@ -8,8 +10,11 @@ use crate::{
 use ark_ff::{Field, One, Zero};
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as R2D};
-use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::circuits::expr::{l0_1, Challenges, Constants, Expr};
+use kimchi::circuits::{
+    domains::EvaluationDomains,
+    expr::{ChallengeTerm, ConstantExpr, ExprInner},
+};
 use kimchi::plonk_sponge::FrSponge;
 use kimchi::proof::PointEvaluations;
 use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
@@ -25,6 +30,76 @@ use rand::{CryptoRng, RngCore};
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use thiserror::Error;
+
+/// Compute the following constraint:
+/// ```text
+///                     lhs
+///    |------------------------------------------|
+///    |                           denominators   |
+///    |                         /--------------\ |
+/// column * (\prod_{i = 1}^{N} (\beta + f_{i}(X))) =
+/// \sum_{i = 1}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (\beta + f_{j}(X))
+///    |             |--------------------------------------------------|
+///    |                             Inner part of rhs                  |
+///    |                                                                |
+///    |                                                               /
+///     \                                                             /
+///      \                                                           /
+///       \---------------------------------------------------------/
+///                           rhs
+/// ```
+pub fn combine_lookups<F: Field>(column: Column, lookups: Vec<Lookup<E<F>>>) -> E<F> {
+    let joint_combiner = {
+        let joint_combiner = ConstantExpr::from(ChallengeTerm::JointCombiner);
+        E::Atom(ExprInner::Constant(joint_combiner))
+    };
+    let beta = {
+        let beta = ConstantExpr::from(ChallengeTerm::Beta);
+        E::Atom(ExprInner::Constant(beta))
+    };
+
+    // Compute (\beta + f_{i}(X)) for each i.
+    // Note that f_i(X) = x_{0} + r x_{1} + ... r^{N} x_{N} + r^{N + 1} table_id
+    let denominators = lookups
+        .iter()
+        .map(|x| {
+            let combined_value = x
+                .value
+                .iter()
+                .rev()
+                .fold(E::zero(), |x, y| x * joint_combiner.clone() + y.clone());
+            // FIXME: add table id. Will be later as table_id should be also an
+            // expression.
+            // * joint_combiner * x.table_id
+            beta.clone() + combined_value
+        })
+        .collect::<Vec<_>>();
+    // Compute `column * (\prod_{i = 1}^{N} (\beta + f_{i}(X)))`
+    let lhs = denominators
+        .iter()
+        .fold(curr_cell(column), |acc, x| acc * x.clone());
+    let rhs = lookups
+        .into_iter()
+        .enumerate()
+        .map(|(i, x)| {
+            denominators.iter().enumerate().fold(
+                // Compute individual \sum_{j = 1, j \neq i}^{N} f_{j}(X)
+                // This is the inner part of rhs. It multiplies with m_{i}
+                x.numerator,
+                |acc, (j, y)| {
+                    if i == j {
+                        acc
+                    } else {
+                        acc * y.clone()
+                    }
+                },
+            )
+        })
+        // Individual sums
+        .reduce(|x, y| x + y)
+        .unwrap_or(E::zero());
+    lhs - rhs
+}
 
 /// Errors that can arise when creating a proof
 #[derive(Error, Debug, Clone)]
