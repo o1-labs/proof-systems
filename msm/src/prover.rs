@@ -1,6 +1,6 @@
 use crate::{
     column_env::MSMColumnEnvironment,
-    expr::MSMExpr,
+    expr::E,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
@@ -52,7 +52,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraints: &Vec<MSMExpr<G::ScalarField>>,
+    constraints: &Vec<E<G::ScalarField>>,
     inputs: ProofInputs<N, G, ID>,
     rng: &mut RNG,
 ) -> Result<Proof<N, G, OpeningProof>, ProverError>
