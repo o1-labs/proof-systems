@@ -3,11 +3,16 @@
 use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::{
     circuits::polynomials::keccak::constants::{
-        CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
-        PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
-        QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
-        SPONGE_ZEROS_OFF, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF,
-        THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
+        CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF,
+        PIRHO_DENSE_E_LEN, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF,
+        PIRHO_EXPAND_ROT_E_LEN, PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF,
+        PIRHO_REMAINDER_E_LEN, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF,
+        QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_LEN, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_LEN,
+        SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_LEN, SPONGE_SHIFTS_OFF, SPONGE_ZEROS_LEN,
+        SPONGE_ZEROS_OFF, STATE_LEN, THETA_DENSE_C_LEN, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN,
+        THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_LEN, THETA_EXPAND_ROT_C_OFF,
+        THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_LEN, THETA_REMAINDER_C_OFF,
+        THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
     },
     folding::expressions::FoldingColumnTrait,
 };
@@ -230,29 +235,98 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
             Column::PadLength => &self.mode_flags()[PAD_LEN_OFF],
             Column::InvPadLength => &self.mode_flags()[PAD_INV_OFF],
             Column::TwoToPad => &self.mode_flags()[PAD_TWO_OFF],
-            Column::PadBytesFlags(idx) => &self.mode_flags()[PAD_BYTES_OFF + idx],
-            Column::PadSuffix(idx) => &self.mode_flags()[PAD_SUFFIX_OFF + idx],
-            Column::RoundConstants(idx) => &self.mode_flags()[ROUND_COEFFS_OFF + idx],
-            Column::Input(idx) => &self.curr()[idx],
-            Column::ThetaShiftsC(idx) => &self.curr()[THETA_SHIFTS_C_OFF + idx],
-            Column::ThetaDenseC(idx) => &self.curr()[THETA_DENSE_C_OFF + idx],
-            Column::ThetaQuotientC(idx) => &self.curr()[THETA_QUOTIENT_C_OFF + idx],
-            Column::ThetaRemainderC(idx) => &self.curr()[THETA_REMAINDER_C_OFF + idx],
-            Column::ThetaDenseRotC(idx) => &self.curr()[THETA_DENSE_ROT_C_OFF + idx],
-            Column::ThetaExpandRotC(idx) => &self.curr()[THETA_EXPAND_ROT_C_OFF + idx],
-            Column::PiRhoShiftsE(idx) => &self.curr()[PIRHO_SHIFTS_E_OFF + idx],
-            Column::PiRhoDenseE(idx) => &self.curr()[PIRHO_DENSE_E_OFF + idx],
-            Column::PiRhoQuotientE(idx) => &self.curr()[PIRHO_QUOTIENT_E_OFF + idx],
-            Column::PiRhoRemainderE(idx) => &self.curr()[PIRHO_REMAINDER_E_OFF + idx],
-            Column::PiRhoDenseRotE(idx) => &self.curr()[PIRHO_DENSE_ROT_E_OFF + idx],
-            Column::PiRhoExpandRotE(idx) => &self.curr()[PIRHO_EXPAND_ROT_E_OFF + idx],
-            Column::ChiShiftsB(idx) => &self.curr()[CHI_SHIFTS_B_OFF + idx],
-            Column::ChiShiftsSum(idx) => &self.curr()[CHI_SHIFTS_SUM_OFF + idx],
-            Column::SpongeNewState(idx) => &self.curr()[SPONGE_NEW_STATE_OFF + idx],
-            Column::SpongeZeros(idx) => &self.curr()[SPONGE_ZEROS_OFF + idx],
-            Column::SpongeBytes(idx) => &self.curr()[SPONGE_BYTES_OFF + idx],
-            Column::SpongeShifts(idx) => &self.curr()[SPONGE_SHIFTS_OFF + idx],
-            Column::Output(idx) => &self.next()[idx],
+            Column::PadBytesFlags(idx) => {
+                assert!(idx < PAD_BYTES_LEN);
+                &self.mode_flags()[PAD_BYTES_OFF + idx]
+            }
+            Column::PadSuffix(idx) => {
+                assert!(idx < PAD_SUFFIX_LEN);
+                &self.mode_flags()[PAD_SUFFIX_OFF + idx]
+            }
+            Column::RoundConstants(idx) => {
+                assert!(idx < ROUND_COEFFS_LEN);
+                &self.mode_flags()[ROUND_COEFFS_OFF + idx]
+            }
+            Column::Input(idx) => {
+                assert!(idx < STATE_LEN);
+                &self.curr()[idx]
+            }
+            Column::ThetaShiftsC(idx) => {
+                assert!(idx < THETA_SHIFTS_C_LEN);
+                &self.curr()[THETA_SHIFTS_C_OFF + idx]
+            }
+            Column::ThetaDenseC(idx) => {
+                assert!(idx < THETA_DENSE_C_LEN);
+                &self.curr()[THETA_DENSE_C_OFF + idx]
+            }
+            Column::ThetaQuotientC(idx) => {
+                assert!(idx < THETA_QUOTIENT_C_LEN);
+                &self.curr()[THETA_QUOTIENT_C_OFF + idx]
+            }
+            Column::ThetaRemainderC(idx) => {
+                assert!(idx < THETA_REMAINDER_C_LEN);
+                &self.curr()[THETA_REMAINDER_C_OFF + idx]
+            }
+            Column::ThetaDenseRotC(idx) => {
+                assert!(idx < THETA_DENSE_ROT_C_LEN);
+                &self.curr()[THETA_DENSE_ROT_C_OFF + idx]
+            }
+            Column::ThetaExpandRotC(idx) => {
+                assert!(idx < THETA_EXPAND_ROT_C_LEN);
+                &self.curr()[THETA_EXPAND_ROT_C_OFF + idx]
+            }
+            Column::PiRhoShiftsE(idx) => {
+                assert!(idx < PIRHO_SHIFTS_E_LEN);
+                &self.curr()[PIRHO_SHIFTS_E_OFF + idx]
+            }
+            Column::PiRhoDenseE(idx) => {
+                assert!(idx < PIRHO_DENSE_E_LEN);
+                &self.curr()[PIRHO_DENSE_E_OFF + idx]
+            }
+            Column::PiRhoQuotientE(idx) => {
+                assert!(idx < PIRHO_QUOTIENT_E_LEN);
+                &self.curr()[PIRHO_QUOTIENT_E_OFF + idx]
+            }
+            Column::PiRhoRemainderE(idx) => {
+                assert!(idx < PIRHO_REMAINDER_E_LEN);
+                &self.curr()[PIRHO_REMAINDER_E_OFF + idx]
+            }
+            Column::PiRhoDenseRotE(idx) => {
+                assert!(idx < PIRHO_DENSE_ROT_E_LEN);
+                &self.curr()[PIRHO_DENSE_ROT_E_OFF + idx]
+            }
+            Column::PiRhoExpandRotE(idx) => {
+                assert!(idx < PIRHO_EXPAND_ROT_E_LEN);
+                &self.curr()[PIRHO_EXPAND_ROT_E_OFF + idx]
+            }
+            Column::ChiShiftsB(idx) => {
+                assert!(idx < CHI_SHIFTS_B_LEN);
+                &self.curr()[CHI_SHIFTS_B_OFF + idx]
+            }
+            Column::ChiShiftsSum(idx) => {
+                assert!(idx < CHI_SHIFTS_SUM_LEN);
+                &self.curr()[CHI_SHIFTS_SUM_OFF + idx]
+            }
+            Column::SpongeNewState(idx) => {
+                assert!(idx < SPONGE_NEW_STATE_LEN);
+                &self.curr()[SPONGE_NEW_STATE_OFF + idx]
+            }
+            Column::SpongeZeros(idx) => {
+                assert!(idx < SPONGE_ZEROS_LEN);
+                &self.curr()[SPONGE_ZEROS_OFF + idx]
+            }
+            Column::SpongeBytes(idx) => {
+                assert!(idx < SPONGE_BYTES_LEN);
+                &self.curr()[SPONGE_BYTES_OFF + idx]
+            }
+            Column::SpongeShifts(idx) => {
+                assert!(idx < SPONGE_SHIFTS_LEN);
+                &self.curr()[SPONGE_SHIFTS_OFF + idx]
+            }
+            Column::Output(idx) => {
+                assert!(idx < STATE_LEN);
+                &self.next()[idx]
+            }
         }
     }
 }
@@ -270,29 +344,98 @@ impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
             Column::PadLength => &mut self.mode_flags_mut()[PAD_LEN_OFF],
             Column::InvPadLength => &mut self.mode_flags_mut()[PAD_INV_OFF],
             Column::TwoToPad => &mut self.mode_flags_mut()[PAD_TWO_OFF],
-            Column::PadBytesFlags(idx) => &mut self.mode_flags_mut()[PAD_BYTES_OFF + idx],
-            Column::PadSuffix(idx) => &mut self.mode_flags_mut()[PAD_SUFFIX_OFF + idx],
-            Column::RoundConstants(idx) => &mut self.mode_flags_mut()[ROUND_COEFFS_OFF + idx],
-            Column::Input(idx) => &mut self.curr_mut()[idx],
-            Column::ThetaShiftsC(idx) => &mut self.curr_mut()[THETA_SHIFTS_C_OFF + idx],
-            Column::ThetaDenseC(idx) => &mut self.curr_mut()[THETA_DENSE_C_OFF + idx],
-            Column::ThetaQuotientC(idx) => &mut self.curr_mut()[THETA_QUOTIENT_C_OFF + idx],
-            Column::ThetaRemainderC(idx) => &mut self.curr_mut()[THETA_REMAINDER_C_OFF + idx],
-            Column::ThetaDenseRotC(idx) => &mut self.curr_mut()[THETA_DENSE_ROT_C_OFF + idx],
-            Column::ThetaExpandRotC(idx) => &mut self.curr_mut()[THETA_EXPAND_ROT_C_OFF + idx],
-            Column::PiRhoShiftsE(idx) => &mut self.curr_mut()[PIRHO_SHIFTS_E_OFF + idx],
-            Column::PiRhoDenseE(idx) => &mut self.curr_mut()[PIRHO_DENSE_E_OFF + idx],
-            Column::PiRhoQuotientE(idx) => &mut self.curr_mut()[PIRHO_QUOTIENT_E_OFF + idx],
-            Column::PiRhoRemainderE(idx) => &mut self.curr_mut()[PIRHO_REMAINDER_E_OFF + idx],
-            Column::PiRhoDenseRotE(idx) => &mut self.curr_mut()[PIRHO_DENSE_ROT_E_OFF + idx],
-            Column::PiRhoExpandRotE(idx) => &mut self.curr_mut()[PIRHO_EXPAND_ROT_E_OFF + idx],
-            Column::ChiShiftsB(idx) => &mut self.curr_mut()[CHI_SHIFTS_B_OFF + idx],
-            Column::ChiShiftsSum(idx) => &mut self.curr_mut()[CHI_SHIFTS_SUM_OFF + idx],
-            Column::SpongeNewState(idx) => &mut self.curr_mut()[SPONGE_NEW_STATE_OFF + idx],
-            Column::SpongeZeros(idx) => &mut self.curr_mut()[SPONGE_ZEROS_OFF + idx],
-            Column::SpongeBytes(idx) => &mut self.curr_mut()[SPONGE_BYTES_OFF + idx],
-            Column::SpongeShifts(idx) => &mut self.curr_mut()[SPONGE_SHIFTS_OFF + idx],
-            Column::Output(idx) => &mut self.next_mut()[idx],
+            Column::PadBytesFlags(idx) => {
+                assert!(idx < PAD_BYTES_LEN);
+                &mut self.mode_flags_mut()[PAD_BYTES_OFF + idx]
+            }
+            Column::PadSuffix(idx) => {
+                assert!(idx < PAD_SUFFIX_LEN);
+                &mut self.mode_flags_mut()[PAD_SUFFIX_OFF + idx]
+            }
+            Column::RoundConstants(idx) => {
+                assert!(idx < ROUND_COEFFS_LEN);
+                &mut self.mode_flags_mut()[ROUND_COEFFS_OFF + idx]
+            }
+            Column::Input(idx) => {
+                assert!(idx < STATE_LEN);
+                &mut self.curr_mut()[idx]
+            }
+            Column::ThetaShiftsC(idx) => {
+                assert!(idx < THETA_SHIFTS_C_LEN);
+                &mut self.curr_mut()[THETA_SHIFTS_C_OFF + idx]
+            }
+            Column::ThetaDenseC(idx) => {
+                assert!(idx < THETA_DENSE_C_LEN);
+                &mut self.curr_mut()[THETA_DENSE_C_OFF + idx]
+            }
+            Column::ThetaQuotientC(idx) => {
+                assert!(idx < THETA_QUOTIENT_C_LEN);
+                &mut self.curr_mut()[THETA_QUOTIENT_C_OFF + idx]
+            }
+            Column::ThetaRemainderC(idx) => {
+                assert!(idx < THETA_REMAINDER_C_LEN);
+                &mut self.curr_mut()[THETA_REMAINDER_C_OFF + idx]
+            }
+            Column::ThetaDenseRotC(idx) => {
+                assert!(idx < THETA_DENSE_ROT_C_LEN);
+                &mut self.curr_mut()[THETA_DENSE_ROT_C_OFF + idx]
+            }
+            Column::ThetaExpandRotC(idx) => {
+                assert!(idx < THETA_EXPAND_ROT_C_LEN);
+                &mut self.curr_mut()[THETA_EXPAND_ROT_C_OFF + idx]
+            }
+            Column::PiRhoShiftsE(idx) => {
+                assert!(idx < PIRHO_SHIFTS_E_LEN);
+                &mut self.curr_mut()[PIRHO_SHIFTS_E_OFF + idx]
+            }
+            Column::PiRhoDenseE(idx) => {
+                assert!(idx < PIRHO_DENSE_E_LEN);
+                &mut self.curr_mut()[PIRHO_DENSE_E_OFF + idx]
+            }
+            Column::PiRhoQuotientE(idx) => {
+                assert!(idx < PIRHO_QUOTIENT_E_LEN);
+                &mut self.curr_mut()[PIRHO_QUOTIENT_E_OFF + idx]
+            }
+            Column::PiRhoRemainderE(idx) => {
+                assert!(idx < PIRHO_REMAINDER_E_LEN);
+                &mut self.curr_mut()[PIRHO_REMAINDER_E_OFF + idx]
+            }
+            Column::PiRhoDenseRotE(idx) => {
+                assert!(idx < PIRHO_DENSE_ROT_E_LEN);
+                &mut self.curr_mut()[PIRHO_DENSE_ROT_E_OFF + idx]
+            }
+            Column::PiRhoExpandRotE(idx) => {
+                assert!(idx < PIRHO_EXPAND_ROT_E_LEN);
+                &mut self.curr_mut()[PIRHO_EXPAND_ROT_E_OFF + idx]
+            }
+            Column::ChiShiftsB(idx) => {
+                assert!(idx < CHI_SHIFTS_B_LEN);
+                &mut self.curr_mut()[CHI_SHIFTS_B_OFF + idx]
+            }
+            Column::ChiShiftsSum(idx) => {
+                assert!(idx < CHI_SHIFTS_SUM_LEN);
+                &mut self.curr_mut()[CHI_SHIFTS_SUM_OFF + idx]
+            }
+            Column::SpongeNewState(idx) => {
+                assert!(idx < SPONGE_NEW_STATE_LEN);
+                &mut self.curr_mut()[SPONGE_NEW_STATE_OFF + idx]
+            }
+            Column::SpongeZeros(idx) => {
+                assert!(idx < SPONGE_ZEROS_LEN);
+                &mut self.curr_mut()[SPONGE_ZEROS_OFF + idx]
+            }
+            Column::SpongeBytes(idx) => {
+                assert!(idx < SPONGE_BYTES_LEN);
+                &mut self.curr_mut()[SPONGE_BYTES_OFF + idx]
+            }
+            Column::SpongeShifts(idx) => {
+                assert!(idx < SPONGE_SHIFTS_LEN);
+                &mut self.curr_mut()[SPONGE_SHIFTS_OFF + idx]
+            }
+            Column::Output(idx) => {
+                assert!(idx < STATE_LEN);
+                &mut self.next_mut()[idx]
+            }
         }
     }
 }
