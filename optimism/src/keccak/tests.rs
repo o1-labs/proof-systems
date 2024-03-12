@@ -1,4 +1,6 @@
-use crate::keccak::{environment::KeccakEnv, interpreter::KeccakInterpreter};
+use crate::keccak::{
+    environment::KeccakEnv, interpreter::KeccakInterpreter, KeccakColumn, KeccakError,
+};
 use kimchi::o1_utils::{self, FieldHelpers};
 use mina_curves::pasta::Fp;
 use rand::Rng;
@@ -52,4 +54,40 @@ fn test_keccak_witness_satisfies_constraints() {
     for (i, byte) in output.iter().enumerate() {
         assert_eq!(*byte, hash[i]);
     }
+}
+
+#[test]
+fn test_keccak_fake_witness_wont_satisfy_constraints() {
+    let mut rng = o1_utils::tests::make_test_rng();
+
+    // Generate random preimage of 1 block for Keccak
+    let preimage: Vec<u8> = (0..100).map(|_| rng.gen()).collect();
+
+    // Initialize witness for
+    // - 1 absorb
+    // - 24 rounds
+    // - 1 squeeze
+    let n_steps = 26;
+    let mut witness_env = Vec::with_capacity(n_steps);
+
+    // Initialize the environment
+    let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+
+    // Run the interpreter and keep track of the witness
+    while keccak_env.keccak_step.is_some() {
+        keccak_env.step();
+        // Store a copy of the witness to be altered later
+        witness_env.push(keccak_env.witness_env.clone());
+        // Make sure that the constraints of that row hold
+        keccak_env.witness_env.constraints();
+    }
+    assert_eq!(witness_env.len(), n_steps);
+
+    // Negativize mode flags in the witness
+    witness_env[0].witness[KeccakColumn::FlagAbsorb] = Fp::from(2u32);
+    witness_env[0].constrain_booleanity();
+    assert_eq!(
+        witness_env[0].error.as_ref().unwrap(),
+        KeccakError::Constraint(1)
+    );
 }

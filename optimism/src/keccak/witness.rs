@@ -7,7 +7,7 @@
 //! For a pseudo code implementation of Keccap-f, see
 //! <https://keccak.team/keccak_specs_summary.html>
 use crate::{
-    keccak::{column::KeccakWitness, interpreter::KeccakInterpreter, KeccakColumn},
+    keccak::{column::KeccakWitness, interpreter::KeccakInterpreter, KeccakColumn, KeccakError},
     lookups::Lookup,
 };
 use ark_ff::Field;
@@ -22,6 +22,8 @@ pub struct Env<Fp> {
     // TODO
     /// A counter of constraints to help with debugging, starts with 1
     pub(crate) check_idx: usize,
+    /// If any, an error that occurred during the execution of the constraints
+    pub(crate) error: Option<KeccakError>,
 }
 
 impl<F: Field> Default for Env<F> {
@@ -29,6 +31,7 @@ impl<F: Field> Default for Env<F> {
         Self {
             witness: KeccakWitness::default(),
             check_idx: 0,
+            error: None,
         }
     }
 }
@@ -62,6 +65,9 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     /// Assert that the input is zero
     fn constrain(&mut self, x: Self::Variable) {
         self.check_idx += 1;
+        if x != F::zero() {
+            self.error = Some(KeccakError::Constraint(self.check_idx));
+        }
         assert_eq!(
             x,
             F::zero(),

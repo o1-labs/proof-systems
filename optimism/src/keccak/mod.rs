@@ -29,6 +29,42 @@ pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeccakError {
+    Constraint(KeccakConstraint),
+    #[allow(dead_code)]
+    Lookup(usize),
+}
+
+pub enum KeccakConstraint {
+    BooleanityAbsorb,
+    BooleanitySqueeze,
+    BooleanityRoot,
+    BooleanityPadding(usize),
+    MutexSqueezeRoot,
+    MutexSqueezePad,
+    MutexRoundPad,
+    MutexRoundRoot,
+    MutexAbsorbSqueeze,
+    AbsorbZeroPad(usize),
+    AbsorbRootZero(usize),
+    AbsorbXor(usize),
+    AbsorbShifts(usize),
+    PadAtEnd,
+    BlockInPadding(usize),
+    SqueezeShifts(usize),
+    ThetaWordC(usize),
+    ThetaRotatedC(usize),
+    ThetaQuotientC(usize),
+    ThetaShiftsC(usize, usize),
+    PiRhoWordE(usize, usize),
+    PiRhoRotatedE(usize, usize),
+    PiRhoShiftsE(usize, usize, usize),
+    ChiShiftsB(usize, usize, usize),
+    ChiShiftsSum(usize, usize, usize),
+    IotaStateG(usize),
+}
+
 // This function maps a 4D index into a 1D index depending on the length of the grid
 fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
     match length {

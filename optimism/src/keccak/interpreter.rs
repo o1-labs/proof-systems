@@ -4,6 +4,7 @@ use crate::{
     keccak::{
         column::{PAD_BYTES_LEN, ROUND_COEFFS_LEN},
         grid_index, KeccakColumn,
+        KeccakConstraint::*,
     },
     lookups::Lookup,
 };
@@ -112,8 +113,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Returns the variable corresponding to a given column alias.
     fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
-    /// Adds one constraint to the environment.
-    fn constrain(&mut self, x: Self::Variable);
+    /// Adds one KeccakConstraint to the environment.
+    fn constrain(&mut self, tag: KeccakConstraint, x: Self::Variable);
 
     /// Adds all 887 constraints/checks to the environment:
     /// - 143 constraints of degree 1
@@ -148,7 +149,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// - 142 constraints are sponge-only
     /// - 1 constraint is sponge+round related
     // TODO: when Round and Sponge circuits are separated, the last one will be removed
-    //       (in particular, the one involving round and sponge together)
+    //       (in particular, the ones involving round and sponge together)
     fn constrain_flags(&mut self) {
         // Booleanity of sponge flags: 139 constraints of degree 1
         {
@@ -166,32 +167,49 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// These involve sponge-only related variables.
     fn constrain_booleanity(&mut self) {
         // Absorb is either true or false
-        self.constrain(Self::is_boolean(self.is_absorb()));
+        self.constrain(BooleanityAbsorb, Self::is_boolean(self.is_absorb()));
         // Squeeze is either true or false
-        self.constrain(Self::is_boolean(self.is_squeeze()));
+        self.constrain(BooleanitySqueeze, Self::is_boolean(self.is_squeeze()));
         // Root is either true or false
-        self.constrain(Self::is_boolean(self.is_root()));
+        self.constrain(BooleanityRoot, Self::is_boolean(self.is_root()));
         for i in 0..RATE_IN_BYTES {
             // Bytes are either involved on padding or not
-            self.constrain(Self::is_boolean(self.in_padding(i)));
+            self.constrain(BooleanityPadding(i), Self::is_boolean(self.in_padding(i)));
         }
     }
 
     /// Constrains 5 checks of mutual exclusivity between some mode flags.
-    /// - 4 involve sponge-only related variables
-    /// - 1 involves sponge+round  variables
+    /// - 3 involve sponge-only related variables
+    /// - 2 involves sponge+round variables
+    // TODO: when Round and Sponge circuits are separated, the last one will be removed
+    //       (in particular, the ones involving round and sponge together)
     fn constrain_mutex(&mut self) {
         // Squeeze and Root are not both true
-        self.constrain(Self::either_zero(self.is_squeeze(), self.is_root()));
+        self.constrain(
+            MutexSqueezeRoot,
+            Self::either_zero(self.is_squeeze(), self.is_root()),
+        );
         // Squeeze and Pad are not both true
-        self.constrain(Self::either_zero(self.is_squeeze(), self.is_pad()));
+        self.constrain(
+            MutexSqueezePad,
+            Self::either_zero(self.is_squeeze(), self.is_pad()),
+        );
         // Round and Pad are not both true
-        self.constrain(Self::either_zero(self.is_round(), self.is_pad()));
+        self.constrain(
+            MutexRoundPad,
+            Self::either_zero(self.is_round(), self.is_pad()),
+        );
         // Round and Root are not both true
-        self.constrain(Self::either_zero(self.is_round(), self.is_root()));
+        self.constrain(
+            MutexRoundRoot,
+            Self::either_zero(self.is_round(), self.is_root()),
+        );
         // Absorb and Squeeze cannot happen at the same time.
         // Equivalent to is_boolean(is_sponge())
-        self.constrain(Self::either_zero(self.is_absorb(), self.is_squeeze()));
+        self.constrain(
+            MutexAbsorbSqueeze,
+            Self::either_zero(self.is_absorb(), self.is_squeeze()),
+        );
         // Trivially, is_sponge and is_round are mutually exclusive
     }
 
@@ -204,21 +222,26 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
     /// Constrains 332 checks of absorb sponges
     fn constrain_absorb(&mut self) {
-        for zero in self.sponge_zeros() {
+        for (i, zero) in self.sponge_zeros().iter().enumerate() {
             // Absorb phase pads with zeros the new state
-            self.constrain(self.is_absorb() * zero);
+            self.constrain(AbsorbZeroPad(i), self.is_absorb() * zero);
         }
         for i in 0..QUARTERS * DIM * DIM {
             // In first absorb, root state is all zeros
-            self.constrain(self.is_root() * self.old_state(i).clone());
+            self.constrain(
+                AbsorbRootZero(i),
+                self.is_root() * self.old_state(i).clone(),
+            );
             // Absorbs the new block by performing XOR with the old state
             self.constrain(
+                AbsorbXor(i),
                 self.is_absorb()
                     * (self.xor_state(i).clone()
                         - (self.old_state(i).clone() + self.new_state(i).clone())),
             );
             // In absorb, Check shifts correspond to the decomposition of the new state
             self.constrain(
+                AbsorbShifts(i),
                 self.is_absorb()
                     * (self.new_state(i).clone()
                         - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None)),
@@ -232,10 +255,16 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
             acc * Self::two() + self.in_padding(i)
         });
-        self.constrain(self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end));
+        self.constrain(
+            PadAtEnd,
+            self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end),
+        );
         // Check that the padding value is correct
         for i in 0..PAD_SUFFIX_LEN {
-            self.constrain(self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)));
+            self.constrain(
+                BlockInPadding(i),
+                self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)),
+            );
         }
     }
 
@@ -245,6 +274,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         for i in 0..QUARTERS * WORDS_IN_HASH {
             // In squeeze, check shifts correspond to the 256-bit prefix digest of the old state (current)
             self.constrain(
+                SqueezeShifts(i),
                 self.is_squeeze()
                     * (self.old_state(i).clone()
                         - Self::from_shifts(&sponge_shifts, Some(i), None, None, None)),
@@ -287,12 +317,19 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
             let rot_c = Self::from_quarters(&self.vec_dense_rot_c(), None, x);
 
             self.constrain(
+                ThetaWordC(x),
                 self.is_round()
                     * (word_c * Self::two_pow(1)
                         - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone())),
             );
-            self.constrain(self.is_round() * (rot_c - (self.quotient_c(x) + rem_c)));
-            self.constrain(self.is_round() * (Self::is_boolean(self.quotient_c(x))));
+            self.constrain(
+                ThetaRotatedC(x),
+                self.is_round() * (rot_c - (self.quotient_c(x) + rem_c)),
+            );
+            self.constrain(
+                ThetaQuotientC(x),
+                self.is_round() * (Self::is_boolean(self.quotient_c(x))),
+            );
 
             for q in 0..QUARTERS {
                 state_c[x][q] = self.state_a(0, x, q)
@@ -301,6 +338,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                     + self.state_a(3, x, q)
                     + self.state_a(4, x, q);
                 self.constrain(
+                    ThetaShiftsC(x, q),
                     self.is_round()
                         * (state_c[x][q].clone()
                             - Self::from_shifts(
@@ -340,14 +378,19 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 let rot_e = Self::from_quarters(&self.vec_dense_rot_e(), Some(y), x);
 
                 self.constrain(
+                    PiRhoWordE(y, x),
                     self.is_round()
                         * (word_e * Self::two_pow(*off)
                             - (quo_e.clone() * Self::two_pow(64) + rem_e.clone())),
                 );
-                self.constrain(self.is_round() * (rot_e - (quo_e.clone() + rem_e)));
+                self.constrain(
+                    PiRhoRotatedE(y, x),
+                    self.is_round() * (rot_e - (quo_e.clone() + rem_e)),
+                );
 
                 for q in 0..QUARTERS {
                     self.constrain(
+                        PiRhoShiftsE(y, x, q),
                         self.is_round()
                             * (state_e[y][x][q].clone()
                                 - Self::from_shifts(
@@ -383,6 +426,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                     let and = self.shifts_sum(1, y, x, q);
 
                     self.constrain(
+                        ChiShiftsB(y, x, q),
                         self.is_round()
                             * (state_b[y][x][q].clone()
                                 - Self::from_shifts(
@@ -394,6 +438,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                                 )),
                     );
                     self.constrain(
+                        ChiShiftsSum(y, x, q),
                         self.is_round()
                             * (sum
                                 - Self::from_shifts(
@@ -416,6 +461,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     fn constrain_iota(&mut self, state_f: Vec<Vec<Vec<Self::Variable>>>) {
         for (q, c) in self.round_constants().to_vec().iter().enumerate() {
             self.constrain(
+                IotaStateG(q),
                 self.is_round()
                     * (self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone())),
             );
