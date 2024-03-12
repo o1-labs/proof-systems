@@ -95,13 +95,14 @@ r  =  (-------r0-------|-------r1-------|-------r2-------)
 
 Our witness computation is currently using the `BigUint` library, which takes care of all of the intermediate carry limbs itself so we do not have to address all casuistries ourselves (such as propagating the low carry flag to the high limb in case the middle limb is all zeros).
 
-### Upper bound check
+### Upper bound check for foreign field membership
 
 Last but not least, we should perform some range checks to make sure that the result $r$ is contained in $\mathbb{F}_f$. This is important because there could be other values of the result which still fit in $<2^{264}$ but are larger than $f$, and we must make sure that the final result is the minimum one (that we will be referring to as $r_{min}$ in the following).
 
 Ideally, we would like to reuse some gates that we already have. In particular, we can perform range checks for $0\leq X <2^{3\ell}=2^{3\cdot 88}$. But we want to check that $0 \leq r_{min} < f$, which is a smaller range. The way we can tweak the existing range check gate to behave as we want, is as follows.
 
-First, the above inequality is equivalent to $-f \leq r_{min} - f < 0$. Add $2^{264}$ on both sides to obtain $2^{264} - f \leq r_{min} - f + 2^{264} < 2^{264}$. Thus, all there is left to check is that a given bound value is indeed computed correctly. Meaning, that an upperbound term $u$ is correctly obtained as $u = r_{min} + 2^{264} - f$. Even if we could apply this check for all intermediate results of foreign field additions, it is sufficient to apply it only once at the end of the computations.
+First, the above inequality is equivalent to $-f \leq r_{min} - f < 0$. Add $2^{264}$ on both sides to obtain $2^{264} - f \leq r_{min} - f + 2^{264} < 2^{264}$. Thus, we can perform the standard $r_{min} \in [0,2^{264})$ check together with the $r_{min} - f + 2^{264} \in [0,2^{264})$, which together will imply $r_{min} \in [0,f)$ as intended. All there is left to check is that a given upperbound term is correctly obtained; calling it $u$, we want to enforce $u := r_{min} + 2^{264} - f$.
+
 
 The following computation is very similar to a foreign field addition ($r_{min} + 2^{264} = u \mod f$), but simpler. The field overflow bit will always be $1$, the main operation sign is positive $1$ (we are doing addition, not subtraction), and the right input $2^{264}$, call it $g$, is represented by the limbs $(0, 0, 2^{88})$.  There could be intermediate limb carry bits $k_0$ and $k_1$ as in the general case FF addition protocol. Observe that, because the sum is meant to be $<2^{264}$, the carry bit for the most significant limb should always be zero $k_2 = 0$, so this condition is enforced implicitly by omitting $k_2$ from the equations. Happily, we can apply the addition gate again to perform the addition limb-wise, by selecting the following parameters:
 
@@ -143,6 +144,8 @@ $$
 
 But now we also have to check that $0\leq r$. But this is implicitly covered by $r$ being a field element of at most 264 bits (range check).
 
+
+When we have a chain of additions $a_i + b_i = r_i$ with $a_i = {r_{i-1}}$, we could apply the field membership check naively to every intermediate $r_i$, however it is sufficient to apply it only once at the end of the computations for $r_{n}$, and keep intermediate $r_i \in [0,2^{264})$, in a "raw" form. Generally speaking, treating intermediate values lazily helps to save a lot of computation in many different FF addition and multiplication scenarios.
 
 ### Subtractions
 
