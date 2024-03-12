@@ -1,0 +1,109 @@
+use std::collections::HashSet;
+
+use ark_ff::PrimeField;
+use ark_ff::Zero;
+
+use crate::{
+    columns::Column,
+    fec::{columns::FEC_N_COLUMNS, interpreter::FECInterpreterEnv},
+    lookups::LookupTableIDs,
+    proof::ProofInputs,
+    witness::Witness,
+    {BN254G1Affine, Fp},
+};
+
+#[allow(dead_code)]
+/// Builder environment for a native group `G`.
+pub struct WitnessBuilderEnv<F: PrimeField> {
+    /// Aggregated witness, in raw form. For accessing [`Witness`], see the
+    /// `get_witness` method.
+    witness: Vec<Witness<FEC_N_COLUMNS, F>>,
+    double_write_checker: HashSet<usize>,
+}
+
+impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
+    type Variable = F;
+
+    fn empty() -> Self {
+        WitnessBuilderEnv {
+            witness: vec![Witness {
+                cols: Box::new([Zero::zero(); FEC_N_COLUMNS]),
+            }],
+            double_write_checker: HashSet::new(),
+        }
+    }
+
+    fn assert_zero(&mut self, cst: Self::Variable) {
+        assert_eq!(cst, F::zero(), "The given value was nonzero");
+    }
+
+    fn constant(value: F) -> Self::Variable {
+        value
+    }
+
+    fn copy(&mut self, value: &Self::Variable, position: Column) -> Self::Variable {
+        let Column::X(i) = position else { todo!() };
+        self.witness.last_mut().unwrap().cols[i] = *value;
+        if self.double_write_checker.contains(&i) {
+            eprintln!("Warning: double writing into column number {i:?}");
+        }
+        self.double_write_checker.insert(i);
+        *value
+    }
+
+    fn read_column(&self, ix: Column) -> Self::Variable {
+        let Column::X(i) = ix else { todo!() };
+        self.witness.last().unwrap().cols[i]
+    }
+
+    fn range_check_abs1(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
+
+    fn range_check_15bit(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
+}
+
+impl WitnessBuilderEnv<Fp> {
+    /// Each WitnessColumn stands for both one row and multirow. This
+    /// function converts from a vector of one-row instantiation to a
+    /// single multi-row form (which is a `Witness`).
+    pub fn get_witness(
+        &self,
+        domain_size: usize,
+    ) -> ProofInputs<FEC_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
+        let mut cols: Box<[Vec<Fp>; FEC_N_COLUMNS]> = Box::new(std::array::from_fn(|_| vec![]));
+
+        if self.witness.len() > domain_size {
+            panic!("Too many witness rows added");
+        }
+
+        // Filling actually used rows
+        for w in &self.witness {
+            let Witness { cols: witness_row } = w;
+            for i in 0..FEC_N_COLUMNS {
+                cols[i].push(witness_row[i]);
+            }
+        }
+
+        // Filling ther rows up to the domain size
+        for _ in self.witness.len()..domain_size {
+            for col in cols.iter_mut() {
+                col.push(Zero::zero());
+            }
+        }
+
+        ProofInputs {
+            evaluations: Witness { cols },
+            mvlookups: vec![],
+            public_input_size: 0,
+        }
+    }
+
+    pub fn next_row(&mut self) {
+        self.witness.push(Witness {
+            cols: Box::new([Zero::zero(); FEC_N_COLUMNS]),
+        });
+    }
+}
