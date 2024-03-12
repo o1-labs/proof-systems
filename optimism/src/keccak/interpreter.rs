@@ -124,20 +124,20 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         // - 143 constraints of degree 1
         // - 1 constraint of degree 2
         {
-            self.constraints_flags();
+            self.constrain_flags();
         }
 
         // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         // - 354 constraints of degree 2
         {
-            self.constraints_sponge();
+            self.constrain_sponge();
         }
 
         // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
         // - 384 constraints of degree 2
         // - 5 constraints of degree 3
         {
-            self.constraints_round();
+            self.constrain_round();
         }
     }
 
@@ -149,16 +149,16 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// - 1 constraint is sponge+round related
     // TODO: when Round and Sponge circuits are separated, the last one will be removed
     //       (in particular, the one involving round and sponge together)
-    fn constraints_flags(&mut self) {
+    fn constrain_flags(&mut self) {
         // Booleanity of sponge flags: 139 constraints of degree 1
         {
-            self.constraints_booleanity();
+            self.constrain_booleanity();
         }
         // Mutual exclusivity of flags: 5 constraints:
         // - 4 of degree 1
         // - 1 of degree 2
         {
-            self.constraints_mutex();
+            self.constrain_mutex();
         }
     }
 
@@ -197,9 +197,9 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
     /// Constrains 354 checks of sponge steps
     fn constrain_sponge(&mut self) {
-        self.constraints_absorb();
-        self.constraints_squeeze();
-        self.constraints_padding();
+        self.constrain_absorb();
+        self.constrain_squeeze();
+        self.constrain_padding();
     }
 
     /// Constrains 332 checks of absorb sponges
