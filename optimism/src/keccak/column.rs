@@ -96,9 +96,52 @@ impl FoldingColumnTrait for Column {
 /// The row is split into the following entries:
 /// - hash_index: Which hash this is inside the circuit
 /// - step_index: Which step this is inside the hash
-/// - mode_flags: Round, Absorb, Squeeze
-/// - curr: Contains 1969 witnesses used in the current step including Input and RoundConstants
+/// - mode_flags: Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad, PadBytesFlags, PadSuffix, RoundConstants
+/// - curr: Contains 1969 witnesses used in the current step including Input
 /// - next: Contains the Output
+///
+///   Keccak Witness Columns: KeccakWitness.cols
+///  ----------------------------------------------
+/// | 0 | 1 | 2 | 3..154 | 155..2119 | 2120..2219 |
+///  ----------------------------------------------
+///   0 -> hash_index
+///   1 -> block_index
+///   2 -> step_index
+///   3..154 -> mode_flags
+///          -> 3: FlagRound
+///          -> 4: FlagAbsorb
+///          -> 5: FlagSqueeze
+///          -> 6: FlagRoot
+///          -> 7..142: PadBytesFlags
+///          -> 143: PadLength
+///          -> 144: InvPadLength
+///          -> 145: TwoToPad
+///          -> 146..150: PadSuffix
+///          -> 151..154: RoundConstants
+///   155..2123 -> curr
+///         155                                                                        2119
+///          <--------------------------------if_round<---------------------------------->
+///          <-------------if_sponge------------->    
+///         155                                 954           
+///          -> SPONGE:                          | -> ROUND:    
+///         -> 155..254: Input == SpongeOldState | -> 155..254: Input == ThetaStateA    
+///         -> 255..354: SpongeNewState          | -> 255..334: ThetaShiftsC           
+///                    : 323..354 -> SpongeZeros | -> 335..354: ThetaDenseC
+///         -> 355..554: SpongeBytes             | -> 355..359: ThetaQuotientC
+///         -> 555..954: SpongeShifts            | -> 360..379: ThetaRemainderC
+///                                              | -> 380..399: ThetaDenseRotC
+///                                              | -> 400..419: ThetaExpandRotC
+///                                              | -> 420..819: PiRhoShiftsE
+///                                              | -> 820..919: PiRhoDenseE
+///                                              | -> 920..1019: PiRhoQuotientE
+///                                              | -> 1020..1119: PiRhoRemainderE
+///                                              | -> 1120..1219: PiRhoDenseRotE
+///                                              | -> 1220..1319: PiRhoExpandRotE
+///                                              | -> 1320..1719: ChiShiftsB
+///                                              | -> 1720..2119: ChiShiftsSum
+///   2124..2223 -> next
+///        -> 2124..2223: Output (if Round, then IotaStateG, if Sponge then SpongeXorState)
+///
 pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS, T>;
 
 pub trait KeccakWitnessTrait<T> {
