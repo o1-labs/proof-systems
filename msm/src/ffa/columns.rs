@@ -20,7 +20,7 @@ pub enum FFAColumnIndexer {
     Quotient,
 }
 
-impl ColumnIndexer for FFAColumnIndexer {
+impl ColumnIndexer<FFA_N_COLUMNS> for FFAColumnIndexer {
     fn ix_to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);

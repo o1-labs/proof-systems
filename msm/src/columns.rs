@@ -19,7 +19,7 @@ impl GenericColumn for Column {
 
 /// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
-pub trait ColumnIndexer {
+pub trait ColumnIndexer<const COL_N: usize> {
     // TODO: rename it in to_column. It is not necessary to have ix_
     fn ix_to_column(self) -> Column;
 }
