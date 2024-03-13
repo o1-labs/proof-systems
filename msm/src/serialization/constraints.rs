@@ -4,7 +4,7 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
-use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
+use crate::{columns::Column, expr::E, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
 use super::interpreter::InterpreterEnv;
 
@@ -29,7 +29,7 @@ impl<Fp: PrimeField> Env<Fp> {
 impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
-    type Variable = Expr<ConstantExpr<F>, Column>;
+    type Variable = E<F>;
 
     fn add_constraint(&mut self, cst: Self::Variable) {
         // FIXME: We should enforce that we add the same expression
