@@ -254,7 +254,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         // Check that the padding value is correct
         for i in 0..PAD_SUFFIX_LEN {
             self.constrain(
-                BlockInPadding(i),
+                PaddingSuffix(i),
                 self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)),
             );
         }

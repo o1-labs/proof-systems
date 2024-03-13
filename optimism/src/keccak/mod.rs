@@ -54,7 +54,7 @@ pub enum Constraint {
     AbsorbXor(usize),
     AbsorbShifts(usize),
     PadAtEnd,
-    BlockInPadding(usize),
+    PaddingSuffix(usize),
     SqueezeShifts(usize),
     ThetaWordC(usize),
     ThetaRotatedC(usize),
