@@ -22,10 +22,10 @@ pub trait InterpreterEnv<Fp: PrimeField> {
     fn get_column_for_msm_limb(j: usize) -> Self::Position;
 
     /// Check that the value is in the range [0, 2^15-1]
-    fn range_check15(&mut self, _value: &Self::Variable);
+    fn range_check15(&mut self, value: &Self::Variable);
 
     /// Check that the value is in the range [0, 2^4-1]
-    fn range_check4(&mut self, _value: &Self::Variable);
+    fn range_check4(&mut self, value: &Self::Variable);
 
     fn constant(value: Fp) -> Self::Variable;
 
