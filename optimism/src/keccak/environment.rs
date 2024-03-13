@@ -120,8 +120,7 @@ impl<F: Field> KeccakEnv<F> {
     /// Nullifies the KeccakWitness of the environment by resetting it to default values
     pub fn null_state(&mut self) {
         self.witness_env.witness = KeccakWitness::default();
-        self.witness_env.check_idx = 0; // Reset constraint count for debugging
-        self.witness_env.error = None; // Reset results of constraints for the new row
+        self.witness_env.errors = vec![]; // Reset errors of constraints for the new row
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),

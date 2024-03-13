@@ -1,5 +1,5 @@
 use crate::keccak::{
-    environment::KeccakEnv, interpreter::KeccakInterpreter, KeccakColumn, KeccakError,
+    environment::KeccakEnv, interpreter::KeccakInterpreter, Constraint::*, Error, KeccakColumn,
 };
 use kimchi::o1_utils::{self, FieldHelpers};
 use mina_curves::pasta::Fp;
@@ -41,6 +41,7 @@ fn test_keccak_witness_satisfies_constraints() {
         keccak_env.step();
         // Simulate the constraints for each row
         keccak_env.witness_env.constraints();
+        assert!(keccak_env.witness_env.errors.is_empty());
         // Simulate the lookups for each row (it is still a no-op)
         keccak_env.witness_env.lookups();
     }
@@ -80,6 +81,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
         witness_env.push(keccak_env.witness_env.clone());
         // Make sure that the constraints of that row hold
         keccak_env.witness_env.constraints();
+        assert!(keccak_env.witness_env.errors.is_empty());
     }
     assert_eq!(witness_env.len(), n_steps);
 
@@ -87,7 +89,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[0].witness[KeccakColumn::FlagAbsorb] = Fp::from(2u32);
     witness_env[0].constrain_booleanity();
     assert_eq!(
-        witness_env[0].error.as_ref().unwrap(),
-        KeccakError::Constraint(1)
+        witness_env[0].errors,
+        vec![Error::Constraint(BooleanityAbsorb)]
     );
 }

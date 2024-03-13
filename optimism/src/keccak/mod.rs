@@ -29,14 +29,17 @@ pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
+/// Errors that can occur during the check of the witness
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum KeccakError {
-    Constraint(KeccakConstraint),
+pub enum Error {
+    Constraint(Constraint),
     #[allow(dead_code)]
     Lookup(usize),
 }
 
-pub enum KeccakConstraint {
+/// All the names for constraints involved in the Keccak circuit
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Constraint {
     BooleanityAbsorb,
     BooleanitySqueeze,
     BooleanityRoot,

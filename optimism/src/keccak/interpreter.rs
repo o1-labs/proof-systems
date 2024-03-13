@@ -3,8 +3,9 @@
 use crate::{
     keccak::{
         column::{PAD_BYTES_LEN, ROUND_COEFFS_LEN},
-        grid_index, KeccakColumn,
-        KeccakConstraint::*,
+        grid_index,
+        Constraint::{self, *},
+        KeccakColumn,
     },
     lookups::Lookup,
 };
@@ -114,7 +115,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
     /// Adds one KeccakConstraint to the environment.
-    fn constrain(&mut self, tag: KeccakConstraint, x: Self::Variable);
+    fn constrain(&mut self, tag: Constraint, x: Self::Variable);
 
     /// Adds all 887 constraints/checks to the environment:
     /// - 143 constraints of degree 1
@@ -124,22 +125,16 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         // CORRECTNESS OF FLAGS: 144 CONSTRAINTS
         // - 143 constraints of degree 1
         // - 1 constraint of degree 2
-        {
-            self.constrain_flags();
-        }
+        self.constrain_flags();
 
         // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         // - 354 constraints of degree 2
-        {
-            self.constrain_sponge();
-        }
+        self.constrain_sponge();
 
         // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
         // - 384 constraints of degree 2
         // - 5 constraints of degree 3
-        {
-            self.constrain_round();
-        }
+        self.constrain_round();
     }
 
     /// Constrains 144 checks of correctness of mode flags
@@ -152,15 +147,12 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     //       (in particular, the ones involving round and sponge together)
     fn constrain_flags(&mut self) {
         // Booleanity of sponge flags: 139 constraints of degree 1
-        {
-            self.constrain_booleanity();
-        }
+        self.constrain_booleanity();
+
         // Mutual exclusivity of flags: 5 constraints:
         // - 4 of degree 1
         // - 1 of degree 2
-        {
-            self.constrain_mutex();
-        }
+        self.constrain_mutex();
     }
 
     /// Constrains 139 checks of booleanity for some mode flags.
@@ -224,7 +216,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     fn constrain_absorb(&mut self) {
         for (i, zero) in self.sponge_zeros().iter().enumerate() {
             // Absorb phase pads with zeros the new state
-            self.constrain(AbsorbZeroPad(i), self.is_absorb() * zero);
+            self.constrain(AbsorbZeroPad(i), self.is_absorb() * zero.clone());
         }
         for i in 0..QUARTERS * DIM * DIM {
             // In first absorb, root state is all zeros

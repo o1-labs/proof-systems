@@ -1,6 +1,6 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
-    keccak::{KeccakColumn, E},
+    keccak::{Constraint, KeccakColumn, E},
     lookups::{Lookup, LookupTableIDs},
 };
 use ark_ff::Field;
@@ -65,7 +65,7 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         }))
     }
 
-    fn constrain(&mut self, x: Self::Variable) {
+    fn constrain(&mut self, _tag: Constraint, x: Self::Variable) {
         self.constraints.push(x);
     }
 

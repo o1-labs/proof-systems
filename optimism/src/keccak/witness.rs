@@ -7,7 +7,9 @@
 //! For a pseudo code implementation of Keccap-f, see
 //! <https://keccak.team/keccak_specs_summary.html>
 use crate::{
-    keccak::{column::KeccakWitness, interpreter::KeccakInterpreter, KeccakColumn, KeccakError},
+    keccak::{
+        column::KeccakWitness, interpreter::KeccakInterpreter, Constraint, Error, KeccakColumn,
+    },
     lookups::Lookup,
 };
 use ark_ff::Field;
@@ -20,18 +22,15 @@ pub struct Env<Fp> {
     pub witness: KeccakWitness<Fp>,
     // The multiplicities of each lookup table
     // TODO
-    /// A counter of constraints to help with debugging, starts with 1
-    pub(crate) check_idx: usize,
-    /// If any, an error that occurred during the execution of the constraints
-    pub(crate) error: Option<KeccakError>,
+    /// If any, an error that occurred during the execution of the constraints, to help with debugging
+    pub(crate) errors: Vec<Error>,
 }
 
 impl<F: Field> Default for Env<F> {
     fn default() -> Self {
         Self {
             witness: KeccakWitness::default(),
-            check_idx: 0,
-            error: None,
+            errors: vec![],
         }
     }
 }
@@ -63,17 +62,10 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     }
 
     /// Assert that the input is zero
-    fn constrain(&mut self, x: Self::Variable) {
-        self.check_idx += 1;
+    fn constrain(&mut self, tag: Constraint, x: Self::Variable) {
         if x != F::zero() {
-            self.error = Some(KeccakError::Constraint(self.check_idx));
+            self.errors.push(Error::Constraint(tag));
         }
-        assert_eq!(
-            x,
-            F::zero(),
-            "Keccak witness failed at constraint index {}",
-            self.check_idx
-        );
     }
 
     ////////////////////////
