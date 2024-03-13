@@ -37,8 +37,10 @@ fn test_keccak_witness_satisfies_constraints() {
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
     while keccak_env.keccak_step.is_some() {
         keccak_env.step();
-        // Simulate the constraints for each row (still checks nothing about lookups)
+        // Simulate the constraints for each row
         keccak_env.witness_env.constraints();
+        // Simulate the lookups for each row (it is still a no-op)
+        keccak_env.witness_env.lookups();
     }
     // Extract the hash from the witness
     let output = keccak_env.witness_env.sponge_bytes()[0..32]

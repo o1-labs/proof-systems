@@ -115,7 +115,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Adds one constraint to the environment.
     fn constrain(&mut self, x: Self::Variable);
 
-    /// Adds all 887 constraints to the environment and triggers read lookups:
+    /// Adds all 887 constraints/checks to the environment:
     /// - 143 constraints of degree 1
     /// - 739 constraints of degree 2
     /// - 5 constraints of degree 5
@@ -124,219 +124,302 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         // - 143 constraints of degree 1
         // - 1 constraint of degree 2
         {
-            // Booleanity of sponge flags: 139 constraints of degree 1
-            {
-                // Absorb is either true or false
-                self.constrain(Self::is_boolean(self.is_absorb()));
-                // Squeeze is either true or false
-                self.constrain(Self::is_boolean(self.is_squeeze()));
-                // Root is either true or false
-                self.constrain(Self::is_boolean(self.is_root()));
-                for i in 0..RATE_IN_BYTES {
-                    // Bytes are either involved on padding or not
-                    self.constrain(Self::is_boolean(self.in_padding(i)));
-                }
-            }
-            // Mutual exclusivity of flags: 5 constraints:
-            // - 4 of degree 1
-            // - 1 of degree 2
-            {
-                // Squeeze and Root are not both true
-                self.constrain(Self::either_zero(self.is_squeeze(), self.is_root()));
-                // Squeeze and Pad are not both true
-                self.constrain(Self::either_zero(self.is_squeeze(), self.is_pad()));
-                // Round and Pad are not both true
-                self.constrain(Self::either_zero(self.is_round(), self.is_pad()));
-                // Round and Root are not both true
-                self.constrain(Self::either_zero(self.is_round(), self.is_root()));
-                // Absorb and Squeeze cannot happen at the same time.
-                // Equivalent to is_boolean(is_sponge())
-                self.constrain(Self::either_zero(self.is_absorb(), self.is_squeeze()));
-                // Trivially, is_sponge and is_round are mutually exclusive
-            }
+            self.constrain_flags();
         }
 
         // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
+        // - 354 constraints of degree 2
         {
-            for zero in self.sponge_zeros() {
-                // Absorb phase pads with zeros the new state
-                self.constrain(self.is_absorb() * zero);
-            }
-            for i in 0..QUARTERS * DIM * DIM {
-                // In first absorb, root state is all zeros
-                self.constrain(self.is_root() * self.old_state(i).clone());
-                // Absorbs the new block by performing XOR with the old state
-                self.constrain(
-                    self.is_absorb()
-                        * (self.xor_state(i).clone()
-                            - (self.old_state(i).clone() + self.new_state(i).clone())),
-                );
-                // In absorb, Check shifts correspond to the decomposition of the new state
-                self.constrain(
-                    self.is_absorb()
-                        * (self.new_state(i).clone()
-                            - Self::from_shifts(
-                                &self.vec_sponge_shifts(),
-                                Some(i),
-                                None,
-                                None,
-                                None,
-                            )),
-                );
-            }
-            let sponge_shifts = self.vec_sponge_shifts();
-            for i in 0..QUARTERS * WORDS_IN_HASH {
-                // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
-                self.constrain(
-                    self.is_squeeze()
-                        * (self.old_state(i).clone()
-                            - Self::from_shifts(&sponge_shifts, Some(i), None, None, None)),
-                );
-            }
-            // Check that the padding is located at the end of the message
-            let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
-                acc * Self::two() + self.in_padding(i)
-            });
-            self.constrain(self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end));
-            // Check that the padding value is correct
-            for i in 0..PAD_SUFFIX_LEN {
-                self.constrain(self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)));
-            }
+            self.constrain_sponge();
         }
 
         // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
         // - 384 constraints of degree 2
         // - 5 constraints of degree 3
         {
-            // Define vectors storing expressions which are not in the witness layout for efficiency
-            let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
-            let mut state_d = vec![vec![Self::zero(); QUARTERS]; DIM];
-            let mut state_e = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
-            let mut state_b = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
-            let mut state_f = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
+            self.constrain_round();
+        }
+    }
 
-            // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
-            // - 30 constraints of degree 2
-            // - 5 constraints of degree 3
-            for x in 0..DIM {
-                let word_c = Self::from_quarters(&self.vec_dense_c(), None, x);
-                let rem_c = Self::from_quarters(&self.vec_remainder_c(), None, x);
-                let rot_c = Self::from_quarters(&self.vec_dense_rot_c(), None, x);
+    /// Constrains 144 checks of correctness of mode flags
+    /// - 143 constraints of degree 1
+    /// - 1 constraint of degree 2
+    /// Of which:
+    /// - 142 constraints are sponge-only
+    /// - 1 constraint is sponge+round related
+    // TODO: when Round and Sponge circuits are separated, the last one will be removed
+    //       (in particular, the one involving round and sponge together)
+    fn constrain_flags(&mut self) {
+        // Booleanity of sponge flags: 139 constraints of degree 1
+        {
+            self.constrain_booleanity();
+        }
+        // Mutual exclusivity of flags: 5 constraints:
+        // - 4 of degree 1
+        // - 1 of degree 2
+        {
+            self.constrain_mutex();
+        }
+    }
+
+    /// Constrains 139 checks of booleanity for some mode flags.
+    /// These involve sponge-only related variables.
+    fn constrain_booleanity(&mut self) {
+        // Absorb is either true or false
+        self.constrain(Self::is_boolean(self.is_absorb()));
+        // Squeeze is either true or false
+        self.constrain(Self::is_boolean(self.is_squeeze()));
+        // Root is either true or false
+        self.constrain(Self::is_boolean(self.is_root()));
+        for i in 0..RATE_IN_BYTES {
+            // Bytes are either involved on padding or not
+            self.constrain(Self::is_boolean(self.in_padding(i)));
+        }
+    }
+
+    /// Constrains 5 checks of mutual exclusivity between some mode flags.
+    /// - 4 involve sponge-only related variables
+    /// - 1 involves sponge+round  variables
+    fn constrain_mutex(&mut self) {
+        // Squeeze and Root are not both true
+        self.constrain(Self::either_zero(self.is_squeeze(), self.is_root()));
+        // Squeeze and Pad are not both true
+        self.constrain(Self::either_zero(self.is_squeeze(), self.is_pad()));
+        // Round and Pad are not both true
+        self.constrain(Self::either_zero(self.is_round(), self.is_pad()));
+        // Round and Root are not both true
+        self.constrain(Self::either_zero(self.is_round(), self.is_root()));
+        // Absorb and Squeeze cannot happen at the same time.
+        // Equivalent to is_boolean(is_sponge())
+        self.constrain(Self::either_zero(self.is_absorb(), self.is_squeeze()));
+        // Trivially, is_sponge and is_round are mutually exclusive
+    }
+
+    /// Constrains 354 checks of sponge steps
+    fn constrain_sponge(&mut self) {
+        self.constrain_absorb();
+        self.constrain_squeeze();
+        self.constrain_padding();
+    }
+
+    /// Constrains 332 checks of absorb sponges
+    fn constrain_absorb(&mut self) {
+        for zero in self.sponge_zeros() {
+            // Absorb phase pads with zeros the new state
+            self.constrain(self.is_absorb() * zero);
+        }
+        for i in 0..QUARTERS * DIM * DIM {
+            // In first absorb, root state is all zeros
+            self.constrain(self.is_root() * self.old_state(i).clone());
+            // Absorbs the new block by performing XOR with the old state
+            self.constrain(
+                self.is_absorb()
+                    * (self.xor_state(i).clone()
+                        - (self.old_state(i).clone() + self.new_state(i).clone())),
+            );
+            // In absorb, Check shifts correspond to the decomposition of the new state
+            self.constrain(
+                self.is_absorb()
+                    * (self.new_state(i).clone()
+                        - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None)),
+            );
+        }
+    }
+
+    /// Constrains 6 checks of padding absorb sponges
+    fn constrain_padding(&mut self) {
+        // Check that the padding is located at the end of the message
+        let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
+            acc * Self::two() + self.in_padding(i)
+        });
+        self.constrain(self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end));
+        // Check that the padding value is correct
+        for i in 0..PAD_SUFFIX_LEN {
+            self.constrain(self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)));
+        }
+    }
+
+    /// Constrains 16 checks of squeeze sponges
+    fn constrain_squeeze(&mut self) {
+        let sponge_shifts = self.vec_sponge_shifts();
+        for i in 0..QUARTERS * WORDS_IN_HASH {
+            // In squeeze, check shifts correspond to the 256-bit prefix digest of the old state (current)
+            self.constrain(
+                self.is_squeeze()
+                    * (self.old_state(i).clone()
+                        - Self::from_shifts(&sponge_shifts, Some(i), None, None, None)),
+            );
+        }
+    }
+
+    /// Constrains 389 checks of round steps
+    /// - 384 constraints of degree 2
+    /// - 5 constraints of degree 3
+    fn constrain_round(&mut self) {
+        // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
+        // - 30 constraints of degree 2
+        // - 5 constraints of degree 3
+        let state_e = self.constrain_theta();
+
+        // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
+        let state_b = self.constrain_pirho(state_e);
+
+        // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
+        let state_f = self.constrain_chi(state_b);
+
+        // STEP iota: 4 constraints of degree 2
+        self.constrain_iota(state_f);
+    }
+
+    /// Constrains 35 checks of the theta algorithm in round steps
+    ///  - 30 constraints of degree 2
+    ///  - 5 constraints of degree 3
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_theta(&mut self) -> Vec<Vec<Vec<Self::Variable>>> {
+        // Define vectors storing expressions which are not in the witness layout for efficiency
+        let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
+        let mut state_d = vec![vec![Self::zero(); QUARTERS]; DIM];
+        let mut state_e = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
+
+        for x in 0..DIM {
+            let word_c = Self::from_quarters(&self.vec_dense_c(), None, x);
+            let rem_c = Self::from_quarters(&self.vec_remainder_c(), None, x);
+            let rot_c = Self::from_quarters(&self.vec_dense_rot_c(), None, x);
+
+            self.constrain(
+                self.is_round()
+                    * (word_c * Self::two_pow(1)
+                        - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone())),
+            );
+            self.constrain(self.is_round() * (rot_c - (self.quotient_c(x) + rem_c)));
+            self.constrain(self.is_round() * (Self::is_boolean(self.quotient_c(x))));
+
+            for q in 0..QUARTERS {
+                state_c[x][q] = self.state_a(0, x, q)
+                    + self.state_a(1, x, q)
+                    + self.state_a(2, x, q)
+                    + self.state_a(3, x, q)
+                    + self.state_a(4, x, q);
+                self.constrain(
+                    self.is_round()
+                        * (state_c[x][q].clone()
+                            - Self::from_shifts(
+                                &self.vec_shifts_c(),
+                                None,
+                                None,
+                                Some(x),
+                                Some(q),
+                            )),
+                );
+
+                state_d[x][q] =
+                    self.shifts_c(0, (x + DIM - 1) % DIM, q) + self.expand_rot_c((x + 1) % DIM, q);
+
+                for (y, column_e) in state_e.iter_mut().enumerate() {
+                    column_e[x][q] = self.state_a(y, x, q) + state_d[x][q].clone();
+                }
+            }
+        }
+        state_e
+    }
+
+    /// Constrains 150 checks (of degree 2) of the pirho algorithm in round steps
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_pirho(
+        &mut self,
+        state_e: Vec<Vec<Vec<Self::Variable>>>,
+    ) -> Vec<Vec<Vec<Self::Variable>>> {
+        // Define vectors storing expressions which are not in the witness layout for efficiency
+        let mut state_b = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
+
+        for (y, col) in OFF.iter().enumerate() {
+            for (x, off) in col.iter().enumerate() {
+                let word_e = Self::from_quarters(&self.vec_dense_e(), Some(y), x);
+                let quo_e = Self::from_quarters(&self.vec_quotient_e(), Some(y), x);
+                let rem_e = Self::from_quarters(&self.vec_remainder_e(), Some(y), x);
+                let rot_e = Self::from_quarters(&self.vec_dense_rot_e(), Some(y), x);
 
                 self.constrain(
                     self.is_round()
-                        * (word_c * Self::two_pow(1)
-                            - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone())),
+                        * (word_e * Self::two_pow(*off)
+                            - (quo_e.clone() * Self::two_pow(64) + rem_e.clone())),
                 );
-                self.constrain(self.is_round() * (rot_c - (self.quotient_c(x) + rem_c)));
-                self.constrain(self.is_round() * (Self::is_boolean(self.quotient_c(x))));
+                self.constrain(self.is_round() * (rot_e - (quo_e.clone() + rem_e)));
 
                 for q in 0..QUARTERS {
-                    state_c[x][q] = self.state_a(0, x, q)
-                        + self.state_a(1, x, q)
-                        + self.state_a(2, x, q)
-                        + self.state_a(3, x, q)
-                        + self.state_a(4, x, q);
                     self.constrain(
                         self.is_round()
-                            * (state_c[x][q].clone()
+                            * (state_e[y][x][q].clone()
                                 - Self::from_shifts(
-                                    &self.vec_shifts_c(),
+                                    &self.vec_shifts_e(),
                                     None,
-                                    None,
+                                    Some(y),
                                     Some(x),
                                     Some(q),
                                 )),
                     );
-
-                    state_d[x][q] = self.shifts_c(0, (x + DIM - 1) % DIM, q)
-                        + self.expand_rot_c((x + 1) % DIM, q);
-
-                    for (y, column_e) in state_e.iter_mut().enumerate() {
-                        column_e[x][q] = self.state_a(y, x, q) + state_d[x][q].clone();
-                    }
+                    state_b[(2 * x + 3 * y) % DIM][y][q] = self.expand_rot_e(y, x, q);
                 }
-            } // END theta
+            }
+        }
+        state_b
+    }
 
-            // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
-            for (y, col) in OFF.iter().enumerate() {
-                for (x, off) in col.iter().enumerate() {
-                    let word_e = Self::from_quarters(&self.vec_dense_e(), Some(y), x);
-                    let quo_e = Self::from_quarters(&self.vec_quotient_e(), Some(y), x);
-                    let rem_e = Self::from_quarters(&self.vec_remainder_e(), Some(y), x);
-                    let rot_e = Self::from_quarters(&self.vec_dense_rot_e(), Some(y), x);
+    /// Constrains 200 checks (of degree 2) of the chi algorithm in round steps
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_chi(
+        &mut self,
+        state_b: Vec<Vec<Vec<Self::Variable>>>,
+    ) -> Vec<Vec<Vec<Self::Variable>>> {
+        // Define vectors storing expressions which are not in the witness layout for efficiency
+        let mut state_f = vec![vec![vec![Self::zero(); QUARTERS]; DIM]; DIM];
+
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                for y in 0..DIM {
+                    let not = Self::constant(0x1111111111111111u64)
+                        - self.shifts_b(0, y, (x + 1) % DIM, q);
+                    let sum = not + self.shifts_b(0, y, (x + 2) % DIM, q);
+                    let and = self.shifts_sum(1, y, x, q);
 
                     self.constrain(
                         self.is_round()
-                            * (word_e * Self::two_pow(*off)
-                                - (quo_e.clone() * Self::two_pow(64) + rem_e.clone())),
+                            * (state_b[y][x][q].clone()
+                                - Self::from_shifts(
+                                    &self.vec_shifts_b(),
+                                    None,
+                                    Some(y),
+                                    Some(x),
+                                    Some(q),
+                                )),
                     );
-                    self.constrain(self.is_round() * (rot_e - (quo_e.clone() + rem_e)));
-
-                    for q in 0..QUARTERS {
-                        self.constrain(
-                            self.is_round()
-                                * (state_e[y][x][q].clone()
-                                    - Self::from_shifts(
-                                        &self.vec_shifts_e(),
-                                        None,
-                                        Some(y),
-                                        Some(x),
-                                        Some(q),
-                                    )),
-                        );
-                        state_b[(2 * x + 3 * y) % DIM][y][q] = self.expand_rot_e(y, x, q);
-                    }
+                    self.constrain(
+                        self.is_round()
+                            * (sum
+                                - Self::from_shifts(
+                                    &self.vec_shifts_sum(),
+                                    None,
+                                    Some(y),
+                                    Some(x),
+                                    Some(q),
+                                )),
+                    );
+                    state_f[y][x][q] = self.shifts_b(0, y, x, q) + and;
                 }
-            } // END pirho
-
-            // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
-            for q in 0..QUARTERS {
-                for x in 0..DIM {
-                    for y in 0..DIM {
-                        let not = Self::constant(0x1111111111111111u64)
-                            - self.shifts_b(0, y, (x + 1) % DIM, q);
-                        let sum = not + self.shifts_b(0, y, (x + 2) % DIM, q);
-                        let and = self.shifts_sum(1, y, x, q);
-
-                        self.constrain(
-                            self.is_round()
-                                * (state_b[y][x][q].clone()
-                                    - Self::from_shifts(
-                                        &self.vec_shifts_b(),
-                                        None,
-                                        Some(y),
-                                        Some(x),
-                                        Some(q),
-                                    )),
-                        );
-                        self.constrain(
-                            self.is_round()
-                                * (sum
-                                    - Self::from_shifts(
-                                        &self.vec_shifts_sum(),
-                                        None,
-                                        Some(y),
-                                        Some(x),
-                                        Some(q),
-                                    )),
-                        );
-                        state_f[y][x][q] = self.shifts_b(0, y, x, q) + and;
-                    }
-                }
-            } // END chi
-
-            // STEP iota: 4 constraints of degree 2
-            for (q, c) in self.round_constants().to_vec().iter().enumerate() {
-                self.constrain(
-                    self.is_round()
-                        * (self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone())),
-                );
-            } // END iota
+            }
         }
+        state_f
+    }
 
-        // READ LOOKUP CONSTRAINTS
-        self.lookups();
+    /// Constrains 4 checks (of degree 2) of the iota algorithm in round steps
+    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    fn constrain_iota(&mut self, state_f: Vec<Vec<Vec<Self::Variable>>>) {
+        for (q, c) in self.round_constants().to_vec().iter().enumerate() {
+            self.constrain(
+                self.is_round()
+                    * (self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone())),
+            );
+        }
     }
 
     ////////////////////////
