@@ -10,18 +10,19 @@ use crate::{
     keccak::{
         column::KeccakWitness, interpreter::KeccakInterpreter, Constraint, Error, KeccakColumn,
     },
-    lookups::Lookup,
+    lookups::{Lookup, LookupTableIDs::*},
 };
 use ark_ff::Field;
 use kimchi::o1_utils::Two;
+use kimchi_msm::LookupTableID;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct Env<Fp> {
     /// The full state of the Keccak gate (witness)
     pub witness: KeccakWitness<Fp>,
-    // The multiplicities of each lookup table
-    // TODO
+    /// The multiplicities of each lookup entry
+    pub multiplicities: Vec<Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,
 }
@@ -30,6 +31,14 @@ impl<F: Field> Default for Env<F> {
     fn default() -> Self {
         Self {
             witness: KeccakWitness::default(),
+            multiplicities: vec![
+                Vec::with_capacity(RangeCheck16Lookup.length()),
+                Vec::with_capacity(SparseLookup.length()),
+                Vec::with_capacity(ResetLookup.length()),
+                Vec::with_capacity(RoundConstantsLookup.length()),
+                Vec::with_capacity(PadLookup.length()),
+                Vec::with_capacity(ByteLookup.length()),
+            ],
             errors: vec![],
         }
     }
