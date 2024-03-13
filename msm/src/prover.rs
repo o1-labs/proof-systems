@@ -69,7 +69,7 @@ pub fn combine_lookups<F: Field>(column: Column, lookups: Vec<Lookup<E<F>>>) -> 
                 .rev()
                 .fold(E::zero(), |acc, y| acc * joint_combiner.clone() + y.clone())
                 * joint_combiner.clone())
-                + x.table_id.into_constraint();
+                + x.table_id.to_constraint();
             beta.clone() + combined_value
         })
         .collect::<Vec<_>>();

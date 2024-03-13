@@ -18,7 +18,7 @@ pub enum LookupTableIDs {
 }
 
 impl LookupTableID for LookupTableIDs {
-    fn into_field<F: Field>(&self) -> F {
+    fn to_field<F: Field>(&self) -> F {
         match self {
             LookupTableIDs::RangeCheck16 => F::one(),
             LookupTableIDs::Custom(id) => F::from(*id as u64) + F::one(),
