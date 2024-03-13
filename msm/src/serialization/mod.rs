@@ -89,6 +89,17 @@ mod tests {
         const DOMAIN_SIZE: usize = 1 << 15;
 
         const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + N_LIMBS;
+        // number of lookups
+        let n_lookup: usize = N_INTERMEDIATE_LIMBS + N_LIMBS;
+        // Rancheck4 and Rangecheck15
+        let n_tables: usize = 2;
+        // 6 is max degree supported. We add N_TABLES for the multiplicities and
+        // 1 for the accumulator and n_tables for the lookup tables
+        // n_lookup + n_tables to compute the number of elements in the partial
+        // sums. TODO: split in multiple h.
+        let n_lookup_columns: usize = ((n_lookup + n_tables) / 6) + 1 + n_tables;
+
+        let _n_columns: usize = SERIALIZATION_N_COLUMNS + n_lookup_columns;
 
         let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
