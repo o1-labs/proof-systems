@@ -11,8 +11,6 @@ use kimchi::{
 };
 use kimchi_msm::{LookupTableID, MVLookupTable};
 
-pub(crate) const TWO_TO_16_UPPERBOUND: u32 = 1 << 16;
-
 /// All of the possible lookup table IDs used in the zkVM
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTableIDs {
@@ -43,6 +41,18 @@ impl LookupTableID for LookupTableIDs {
     fn into_field<F: Field>(self) -> F {
         F::from(self as u32)
     }
+
+    fn length(&self) -> usize {
+        match self {
+            LookupTableIDs::RangeCheck16Lookup
+            | LookupTableIDs::SparseLookup
+            | LookupTableIDs::ResetLookup => 1 << 16,
+            LookupTableIDs::RoundConstantsLookup => ROUNDS,
+            LookupTableIDs::PadLookup => RATE_IN_BYTES,
+            LookupTableIDs::ByteLookup => 1 << 8,
+            _ => panic!("RAM Tables do not have a fixed length"),
+        }
+    }
 }
 
 /// The lookups struct based on RAMLookups for the VM table IDs
@@ -66,7 +76,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     fn table_range_check_16() -> Self {
         Self {
             table_id: LookupTableIDs::RangeCheck16Lookup,
-            entries: (0..TWO_TO_16_UPPERBOUND)
+            entries: (0..LookupTableIDs::RangeCheck16Lookup.length())
                 .map(|i| vec![F::from(i)])
                 .collect(),
         }
@@ -76,7 +86,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     fn table_sparse() -> Self {
         Self {
             table_id: LookupTableIDs::SparseLookup,
-            entries: (0..TWO_TO_16_UPPERBOUND)
+            entries: (0..LookupTableIDs::SparseLookup.length())
                 .map(|i| {
                     vec![F::from(
                         u64::from_str_radix(&format!("{:b}", i), 16).unwrap(),
@@ -90,7 +100,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     fn table_reset() -> Self {
         Self {
             table_id: LookupTableIDs::ResetLookup,
-            entries: (0..TWO_TO_16_UPPERBOUND)
+            entries: (0..LookupTableIDs::ResetLookup.length())
                 .map(|i| {
                     vec![
                         F::from(i),
@@ -105,7 +115,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     fn table_round_constants() -> Self {
         Self {
             table_id: LookupTableIDs::RoundConstantsLookup,
-            entries: (0..=ROUNDS)
+            entries: (0..LookupTableIDs::RoundConstantsLookup.length())
                 .map(|i| {
                     vec![
                         F::from(i as u32),
@@ -123,7 +133,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     fn table_pad() -> Self {
         Self {
             table_id: LookupTableIDs::PadLookup,
-            entries: (1..=RATE_IN_BYTES)
+            entries: (1..=LookupTableIDs::PadLookup.length())
                 .map(|i| {
                     let suffix = pad_blocks(i);
                     vec![
@@ -144,7 +154,9 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
     fn table_byte() -> Self {
         Self {
             table_id: LookupTableIDs::ByteLookup,
-            entries: (0..(1 << 8) as u32).map(|i| vec![F::from(i)]).collect(),
+            entries: (0..LookupTableIDs::ByteLookup.length())
+                .map(|i| vec![F::from(i)])
+                .collect(),
         }
     }
 }
