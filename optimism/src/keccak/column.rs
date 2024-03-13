@@ -139,7 +139,7 @@ impl FoldingColumnTrait for Column {
 ///                                              | -> 1220..1319: PiRhoExpandRotE
 ///                                              | -> 1320..1719: ChiShiftsB
 ///                                              | -> 1720..2119: ChiShiftsSum
-///   2124..2223 -> next
+///   2119..2219 -> next
 ///        -> 2124..2223: Output (if Round, then IotaStateG, if Sponge then SpongeXorState)
 ///
 pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS, T>;
