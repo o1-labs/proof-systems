@@ -189,10 +189,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     ) -> Self::Variable {
         // No constraint added. It is supposed that the caller will constraint
         // later the returned variable and/or do a range check.
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        curr_cell(position)
     }
 }
 
