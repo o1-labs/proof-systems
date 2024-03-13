@@ -14,27 +14,27 @@ use kimchi_msm::{LookupTableID, MVLookupTable};
 /// All of the possible lookup table IDs used in the zkVM
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTableIDs {
-    // RAM Tables
-    MemoryLookup = 0,
-    RegisterLookup = 1,
-    /// Syscalls communication channel
-    SyscallLookup = 2,
-    /// Input/Output of Keccak steps
-    KeccakStepLookup = 3,
-
-    // Read Tables
+    // Read tables come first to allow indexing with the table ID for the multiplicities
     /// Single-column table of all values in the range [0, 2^16)
-    RangeCheck16Lookup = 4,
+    RangeCheck16Lookup = 0,
     /// Single-column table of 2^16 entries with the sparse representation of all values
-    SparseLookup = 5,
+    SparseLookup = 1,
     /// Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    ResetLookup = 6,
+    ResetLookup = 2,
     /// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
-    RoundConstantsLookup = 7,
+    RoundConstantsLookup = 3,
     /// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    PadLookup = 8,
+    PadLookup = 4,
     /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    ByteLookup = 9,
+    ByteLookup = 5,
+
+    // RAM Tables
+    MemoryLookup = 6,
+    RegisterLookup = 7,
+    /// Syscalls communication channel
+    SyscallLookup = 8,
+    /// Input/Output of Keccak steps
+    KeccakStepLookup = 9,
 }
 
 impl LookupTableID for LookupTableIDs {
