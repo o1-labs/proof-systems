@@ -7,7 +7,8 @@ pub enum Column {
     // Columns related to the lookup protocol
     /// Partial sums, indexed. This corresponds to the `h_i`
     LookupPartialSum(usize),
-    LookupMultiplicity(usize),
+    /// Multiplicities, indexed. This corresponds to the `m_i`
+    LookupMultiplicity(u32),
     LookupAggregation,
 }
 
