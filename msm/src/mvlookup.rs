@@ -37,12 +37,17 @@ where
 
 /// Trait for lookup table variants
 pub trait LookupTableID {
+    /// Assign a unique ID, as a u32 value
+    fn to_u32(&self) -> u32;
+
     /// Assign a unique ID to the lookup tables.
-    fn into_field<F: Field>(&self) -> F;
+    fn to_field<F: Field>(&self) -> F {
+        F::from(self.to_u32())
+    }
 
     /// Assign a unique ID to the lookup tables, as an expression.
-    fn into_constraint<F: Field>(&self) -> E<F> {
-        let f = self.into_field();
+    fn to_constraint<F: Field>(&self) -> E<F> {
+        let f = self.to_field();
         let f = ConstantExpr::from(ConstantTerm::Literal(f));
         E::Atom(ExprInner::Constant(f))
     }
@@ -224,7 +229,7 @@ pub mod prover {
                                 value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
                                     x * vector_lookup_combiner + y
                                 }) * vector_lookup_combiner
-                                    + table_id.into_field::<G::ScalarField>();
+                                    + table_id.to_field::<G::ScalarField>();
 
                             // beta + a_{i}
                             let lookup_denominator = beta + combined_value;
@@ -241,7 +246,7 @@ pub mod prover {
                             value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
                                 x * vector_lookup_combiner + y
                             }) * vector_lookup_combiner
-                                + table_id.into_field::<G::ScalarField>();
+                                + table_id.to_field::<G::ScalarField>();
 
                         let lookup_denominator = beta + combined_value;
                         denominators.push(lookup_denominator);

@@ -1,7 +1,7 @@
 //! Instantiate the MVLookup protocol for the MSM project.
 
 use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
-use ark_ff::{FftField, Field};
+use ark_ff::FftField;
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use std::iter;
@@ -14,14 +14,14 @@ pub enum LookupTableIDs {
     /// Custom lookup table
     /// The index of the table is used as the ID, padded with the number of
     /// built-in tables.
-    Custom(usize),
+    Custom(u32),
 }
 
 impl LookupTableID for LookupTableIDs {
-    fn into_field<F: Field>(&self) -> F {
+    fn to_u32(&self) -> u32 {
         match self {
-            LookupTableIDs::RangeCheck16 => F::one(),
-            LookupTableIDs::Custom(id) => F::from(*id as u64) + F::one(),
+            LookupTableIDs::RangeCheck16 => 1_u32,
+            LookupTableIDs::Custom(id) => id + 1,
         }
     }
 }
