@@ -77,7 +77,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
         Self {
             table_id: LookupTableIDs::RangeCheck16Lookup,
             entries: (0..LookupTableIDs::RangeCheck16Lookup.length())
-                .map(|i| vec![F::from(i)])
+                .map(|i| vec![F::from(i as u32)])
                 .collect(),
         }
     }
@@ -103,7 +103,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
             entries: (0..LookupTableIDs::ResetLookup.length())
                 .map(|i| {
                     vec![
-                        F::from(i),
+                        F::from(i as u32),
                         F::from(u64::from_str_radix(&format!("{:b}", i), 16).unwrap()),
                     ]
                 })
@@ -155,7 +155,7 @@ impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
         Self {
             table_id: LookupTableIDs::ByteLookup,
             entries: (0..LookupTableIDs::ByteLookup.length())
-                .map(|i| vec![F::from(i)])
+                .map(|i| vec![F::from(i as u32)])
                 .collect(),
         }
     }
