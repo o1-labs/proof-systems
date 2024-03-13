@@ -1,7 +1,7 @@
 //! Instantiate the MVLookup protocol for the MSM project.
 
 use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
-use ark_ff::{FftField, Field};
+use ark_ff::FftField;
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use std::iter;
