@@ -4,6 +4,10 @@ use kimchi::circuits::expr::{Domain, GenericColumn};
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Column {
     X(usize),
+    // Columns related to the lookup protocol
+    LookupPartialSum(usize),
+    LookupMultiplicity(usize),
+    LookupAggregation,
 }
 
 impl GenericColumn for Column {

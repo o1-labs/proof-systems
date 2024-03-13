@@ -138,6 +138,15 @@ impl<Fp: PrimeField> Env<Fp> {
                     panic!("Invalid column index")
                 }
             }
+            Column::LookupPartialSum(_) => {
+                panic!("Invalid column");
+            }
+            Column::LookupMultiplicity(_) => {
+                panic!("Invalid column");
+            }
+            Column::LookupAggregation => {
+                panic!("Invalid column");
+            }
         }
     }
 
