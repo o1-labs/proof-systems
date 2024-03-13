@@ -4,7 +4,9 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
-use crate::{columns::Column, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
+use crate::{
+    columns::Column, expr::E, lookups::Lookup, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS,
+};
 
 use super::interpreter::InterpreterEnv;
 
@@ -13,8 +15,9 @@ pub struct Env<Fp> {
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
-    pub constraints: Vec<(usize, Expr<ConstantExpr<Fp>, Column>)>,
+    pub constraints: Vec<(usize, E<Fp>)>,
     pub constrain_index: usize,
+    pub lookups: Vec<Lookup<E<Fp>>>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
@@ -22,6 +25,7 @@ impl<Fp: PrimeField> Env<Fp> {
         Self {
             constraints: vec![],
             constrain_index: 0,
+            lookups: vec![],
         }
     }
 }

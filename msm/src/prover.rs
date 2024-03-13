@@ -63,14 +63,13 @@ pub fn combine_lookups<F: Field>(column: Column, lookups: Vec<Lookup<E<F>>>) -> 
     let denominators = lookups
         .iter()
         .map(|x| {
-            let combined_value = x
+            let combined_value = (x
                 .value
                 .iter()
                 .rev()
-                .fold(E::zero(), |x, y| x * joint_combiner.clone() + y.clone());
-            // FIXME: add table id. Will be later as table_id should be also an
-            // expression.
-            // * joint_combiner * x.table_id
+                .fold(E::zero(), |acc, y| acc * joint_combiner.clone() + y.clone())
+                * joint_combiner.clone())
+                + x.table_id.into_constraint();
             beta.clone() + combined_value
         })
         .collect::<Vec<_>>();

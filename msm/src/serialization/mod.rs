@@ -16,7 +16,7 @@ pub enum LookupTable {
 }
 
 impl LookupTableID for LookupTable {
-    fn into_field<F: Field>(self) -> F {
+    fn into_field<F: Field>(&self) -> F {
         match self {
             Self::RangeCheck15 => F::one(),
             Self::RangeCheck4 => F::one() + F::one(),
