@@ -7,7 +7,7 @@ use crate::{
         Constraint::{self, *},
         KeccakColumn,
     },
-    lookups::Lookup,
+    lookups::{Lookup, LookupTableIDs::*},
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -505,7 +505,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         for i in 0..RATE_IN_BYTES {
             self.add_lookup(Lookup::read_if(
                 self.is_absorb(),
-                LookupTableIDs::SyscallLookup,
+                SyscallLookup,
                 vec![
                     self.hash_index(),
                     self.block_index() * Self::constant(RATE_IN_BYTES as u64)
@@ -523,7 +523,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         });
         self.add_lookup(Lookup::write_if(
             self.is_squeeze(),
-            LookupTableIDs::SyscallLookup,
+            SyscallLookup,
             vec![self.hash_index(), bytes31],
         ));
     }
@@ -534,24 +534,20 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         // (if not a root) Output of previous step is input of current step
         self.add_lookup(Lookup::read_if(
             Self::not(self.is_root()),
-            LookupTableIDs::KeccakStepLookup,
+            KeccakStepLookup,
             self.input_of_step(),
         ));
         // (if not a squeeze) Input for next step is output of current step
         self.add_lookup(Lookup::write_if(
             Self::not(self.is_squeeze()),
-            LookupTableIDs::KeccakStepLookup,
+            KeccakStepLookup,
             self.output_of_step(),
         ));
     }
 
     /// Adds a lookup to the RangeCheck16 table
     fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(
-            flag,
-            LookupTableIDs::RangeCheck16Lookup,
-            vec![value],
-        ));
+        self.add_lookup(Lookup::read_if(flag, RangeCheck16Lookup, vec![value]));
     }
 
     /// Adds a lookup to the Reset table
@@ -561,43 +557,27 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         dense: Self::Variable,
         sparse: Self::Variable,
     ) {
-        self.add_lookup(Lookup::read_if(
-            flag,
-            LookupTableIDs::ResetLookup,
-            vec![dense, sparse],
-        ));
+        self.add_lookup(Lookup::read_if(flag, ResetLookup, vec![dense, sparse]));
     }
 
     /// Adds a lookup to the Shift table
     fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(
-            flag,
-            LookupTableIDs::SparseLookup,
-            vec![value],
-        ));
+        self.add_lookup(Lookup::read_if(flag, SparseLookup, vec![value]));
     }
 
     /// Adds a lookup to the Byte table
     fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(Lookup::read_if(
-            flag,
-            LookupTableIDs::ByteLookup,
-            vec![value],
-        ));
+        self.add_lookup(Lookup::read_if(flag, ByteLookup, vec![value]));
     }
 
     /// Adds a lookup to the Pad table
     fn lookup_pad(&mut self, flag: Self::Variable, value: Vec<Self::Variable>) {
-        self.add_lookup(Lookup::read_if(flag, LookupTableIDs::PadLookup, value));
+        self.add_lookup(Lookup::read_if(flag, PadLookup, value));
     }
 
     /// Adds a lookup to the RoundConstants table
     fn lookup_round_constants(&mut self, flag: Self::Variable, value: Vec<Self::Variable>) {
-        self.add_lookup(Lookup::read_if(
-            flag,
-            LookupTableIDs::RoundConstantsLookup,
-            value,
-        ));
+        self.add_lookup(Lookup::read_if(flag, RoundConstantsLookup, value));
     }
 
     /// Adds the 601 lookups required for the sponge

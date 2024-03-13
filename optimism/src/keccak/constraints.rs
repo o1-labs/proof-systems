@@ -1,14 +1,13 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
     keccak::{Constraint, KeccakColumn, E},
-    lookups::{Lookup, LookupTableIDs},
+    lookups::Lookup,
 };
 use ark_ff::Field;
 use kimchi::{
     circuits::{
         expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
         gate::CurrOrNext,
-        polynomials::keccak::constants::RATE_IN_BYTES,
     },
     o1_utils::Two,
 };
