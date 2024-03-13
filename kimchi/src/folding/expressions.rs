@@ -368,14 +368,14 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
                 let init =
                     FoldingExp::Atom(ExtendedFoldingColumn::Constant(ScalarField::<C>::zero()));
                 exps.into_iter().fold(init, |acc, (exp, sign, alpha)| {
-                    let e = match sign {
+                    let exp = FoldingExp::Mul(
+                        Box::new(exp),
+                        Box::new(FoldingExp::Atom(ExtendedFoldingColumn::Alpha(alpha))),
+                    );
+                    match sign {
                         Sign::Pos => FoldingExp::Add(Box::new(acc), Box::new(exp)),
                         Sign::Neg => FoldingExp::Sub(Box::new(acc), Box::new(exp)),
-                    };
-                    FoldingExp::Mul(
-                        Box::new(e),
-                        Box::new(FoldingExp::Atom(ExtendedFoldingColumn::Alpha(alpha))),
-                    )
+                    }
                 })
             })
             .map(|e| e.into_compatible());

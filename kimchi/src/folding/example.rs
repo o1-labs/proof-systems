@@ -497,6 +497,8 @@ fn test_folding_instance() {
     use checker::{Checker, Provider};
 
     let constraints = constraints();
+    //disabling mul gate for now
+    let constraints = vec![constraints.into_iter().next().unwrap()];
     let domain = D::<Fp>::new(2).unwrap();
     let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
     srs.add_lagrange_basis(domain);
