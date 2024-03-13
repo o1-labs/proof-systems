@@ -4,11 +4,10 @@ use kimchi::circuits::{
     gate::CurrOrNext,
 };
 
-use crate::{
-    columns::Column, expr::E, lookups::Lookup, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS,
-};
+use crate::{columns::Column, expr::E, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
-use super::interpreter::InterpreterEnv;
+use super::Lookup;
+use super::{interpreter::InterpreterEnv, LookupTable};
 
 pub struct Env<Fp> {
     /// An indexed set of constraints.
@@ -17,7 +16,8 @@ pub struct Env<Fp> {
     /// folding for instance.
     pub constraints: Vec<(usize, E<Fp>)>,
     pub constrain_index: usize,
-    pub lookups: Vec<Lookup<E<Fp>>>,
+    pub rangecheck4_lookups: Vec<Lookup<E<Fp>>>,
+    pub rangecheck15_lookups: Vec<Lookup<E<Fp>>>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
@@ -25,7 +25,8 @@ impl<Fp: PrimeField> Env<Fp> {
         Self {
             constraints: vec![],
             constrain_index: 0,
-            lookups: vec![],
+            rangecheck4_lookups: vec![],
+            rangecheck15_lookups: vec![],
         }
     }
 }
@@ -67,12 +68,22 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         Column::X(3 + j)
     }
 
-    fn range_check15(&mut self, _value: &Self::Variable) {
-        // TODO
+    fn range_check15(&mut self, value: &Self::Variable) {
+        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        self.rangecheck15_lookups.push(Lookup {
+            table_id: LookupTable::RangeCheck15,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: vec![value.clone()],
+        })
     }
 
-    fn range_check4(&mut self, _value: &Self::Variable) {
-        // TODO
+    fn range_check4(&mut self, value: &Self::Variable) {
+        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        self.rangecheck4_lookups.push(Lookup {
+            table_id: LookupTable::RangeCheck4,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: vec![value.clone()],
+        })
     }
 
     fn constant(value: F) -> Self::Variable {
