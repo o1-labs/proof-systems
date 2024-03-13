@@ -52,7 +52,7 @@ impl ColumnIndexer for FFAColumnIndexer {
 
 impl FFAColumnIndexer {
     pub fn column_to_ix(col: Column) -> Self {
-        let Column::X(pos) = col;
+        let Column::X(pos) = col else { todo!() };
         let upper_bound = |i: usize| (i + 1) * N_LIMBS;
         let pos_map = |i: usize| pos - upper_bound(i - 1);
         if pos < upper_bound(0) {

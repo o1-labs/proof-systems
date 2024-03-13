@@ -138,6 +138,30 @@ impl<Fp: PrimeField> Env<Fp> {
                     panic!("Invalid column index")
                 }
             }
+            Column::LookupPartialSum(_) => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
+            Column::LookupMultiplicity(_) => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
+            Column::LookupAggregation => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
+            Column::LookupFixedTable(_) => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
         }
     }
 

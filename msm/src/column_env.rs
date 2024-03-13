@@ -38,7 +38,9 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
         let witness_columns_n: usize = self.witness.len();
         let coefficients_columns_n: usize = self.coefficients.len();
-        let crate::columns::Column::X(i) = col;
+        let crate::columns::Column::X(i) = col else {
+            todo!()
+        };
         let i = *i;
         if i < witness_columns_n {
             let res = &self.witness[i];
