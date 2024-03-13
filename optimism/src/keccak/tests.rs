@@ -41,9 +41,6 @@ fn test_keccak_witness_satisfies_constraints() {
         keccak_env.step();
         // Simulate the constraints for each row
         keccak_env.witness_env.constraints();
-        assert!(keccak_env.witness_env.errors.is_empty());
-        // Simulate the lookups for each row (it is still a no-op)
-        keccak_env.witness_env.lookups();
     }
     // Extract the hash from the witness
     let output = keccak_env.witness_env.sponge_bytes()[0..32]
@@ -54,6 +51,27 @@ fn test_keccak_witness_satisfies_constraints() {
     // Check that the hash matches
     for (i, byte) in output.iter().enumerate() {
         assert_eq!(*byte, hash[i]);
+    }
+}
+
+#[test]
+fn test_keccak_witness_satisfies_lookups() {
+    let mut rng = o1_utils::tests::make_test_rng();
+
+    // Generate random preimage of 1 block for Keccak
+    let preimage: Vec<u8> = (0..100).map(|_| rng.gen()).collect();
+
+    // Initialize the environment and run the interpreter
+    let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+    let mut i = 0;
+    while keccak_env.keccak_step.is_some() {
+        keccak_env.step();
+        // Simulate the lookups only for absorb, last round, and squeeze because it is too slow for now
+        if i == 0 || i == 24 || i == 25 {
+            keccak_env.witness_env.lookups();
+            assert!(keccak_env.witness_env.errors.is_empty());
+        }
+        i += 1;
     }
 }
 

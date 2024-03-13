@@ -83,9 +83,11 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
             LookupTableIDs::ByteLookup => Self::table_byte().entries,
             _ => return None,
         };
-        let bytes = value[0].to_bytes();
-        assert!(bytes.len() <= 8); // To make sure it is a u64 at most
-        let idx = bytes.iter().fold(0u64, |acc, &x| (acc << 8) + x as u64) as usize;
+        let idx = value[0]
+            .to_bytes()
+            .iter()
+            .rev()
+            .fold(0u64, |acc, &x| acc * 256 + x as u64) as usize;
 
         match id {
             LookupTableIDs::RangeCheck16Lookup

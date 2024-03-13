@@ -32,12 +32,12 @@ impl<F: Field> Default for Env<F> {
         Self {
             witness: KeccakWitness::default(),
             multiplicities: vec![
-                Vec::with_capacity(RangeCheck16Lookup.length()),
-                Vec::with_capacity(SparseLookup.length()),
-                Vec::with_capacity(ResetLookup.length()),
-                Vec::with_capacity(RoundConstantsLookup.length()),
-                Vec::with_capacity(PadLookup.length()),
-                Vec::with_capacity(ByteLookup.length()),
+                vec![0; RangeCheck16Lookup.length()],
+                vec![0; SparseLookup.length()],
+                vec![0; ResetLookup.length()],
+                vec![0; RoundConstantsLookup.length()],
+                vec![0; PadLookup.length()],
+                vec![0; ByteLookup.length()],
             ],
             errors: vec![],
         }
