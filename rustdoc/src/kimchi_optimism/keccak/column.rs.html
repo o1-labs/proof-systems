@@ -255,6 +255,49 @@
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 </span><span class="kw">use </span><span class="kw">crate</span>::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
@@ -353,9 +396,52 @@
 /// The row is split into the following entries:
 /// - hash_index: Which hash this is inside the circuit
 /// - step_index: Which step this is inside the hash
-/// - mode_flags: Round, Absorb, Squeeze
-/// - curr: Contains 1969 witnesses used in the current step including Input and RoundConstants
+/// - mode_flags: Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad, PadBytesFlags, PadSuffix, RoundConstants
+/// - curr: Contains 1969 witnesses used in the current step including Input
 /// - next: Contains the Output
+///
+///   Keccak Witness Columns: KeccakWitness.cols
+///  ----------------------------------------------
+/// | 0 | 1 | 2 | 3..154 | 155..2119 | 2120..2219 |
+///  ----------------------------------------------
+///   0 -&gt; hash_index
+///   1 -&gt; block_index
+///   2 -&gt; step_index
+///   3..154 -&gt; mode_flags
+///          -&gt; 3: FlagRound
+///          -&gt; 4: FlagAbsorb
+///          -&gt; 5: FlagSqueeze
+///          -&gt; 6: FlagRoot
+///          -&gt; 7..142: PadBytesFlags
+///          -&gt; 143: PadLength
+///          -&gt; 144: InvPadLength
+///          -&gt; 145: TwoToPad
+///          -&gt; 146..150: PadSuffix
+///          -&gt; 151..154: RoundConstants
+///   155..2123 -&gt; curr
+///         155                                                                        2119
+///          &lt;--------------------------------if_round&lt;----------------------------------&gt;
+///          &lt;-------------if_sponge-------------&gt;    
+///         155                                 954           
+///          -&gt; SPONGE:                          | -&gt; ROUND:    
+///         -&gt; 155..254: Input == SpongeOldState | -&gt; 155..254: Input == ThetaStateA    
+///         -&gt; 255..354: SpongeNewState          | -&gt; 255..334: ThetaShiftsC           
+///                    : 323..354 -&gt; SpongeZeros | -&gt; 335..354: ThetaDenseC
+///         -&gt; 355..554: SpongeBytes             | -&gt; 355..359: ThetaQuotientC
+///         -&gt; 555..954: SpongeShifts            | -&gt; 360..379: ThetaRemainderC
+///                                              | -&gt; 380..399: ThetaDenseRotC
+///                                              | -&gt; 400..419: ThetaExpandRotC
+///                                              | -&gt; 420..819: PiRhoShiftsE
+///                                              | -&gt; 820..919: PiRhoDenseE
+///                                              | -&gt; 920..1019: PiRhoQuotientE
+///                                              | -&gt; 1020..1119: PiRhoRemainderE
+///                                              | -&gt; 1120..1219: PiRhoDenseRotE
+///                                              | -&gt; 1220..1319: PiRhoExpandRotE
+///                                              | -&gt; 1320..1719: ChiShiftsB
+///                                              | -&gt; 1720..2119: ChiShiftsSum
+///   2119..2219 -&gt; next
+///        -&gt; 2124..2223: Output (if Round, then IotaStateG, if Sponge then SpongeXorState)
+///
 </span><span class="kw">pub type </span>KeccakWitness&lt;T&gt; = Witness&lt;ZKVM_KECCAK_COLS, T&gt;;
 
 <span class="kw">pub trait </span>KeccakWitnessTrait&lt;T&gt; {

@@ -93,7 +93,7 @@
 <span class="doccomment">/// Length of each word in the Keccak state, in bits
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>WORD_LENGTH_IN_BITS: usize = <span class="number">64</span>;
 <span class="doccomment">/// Number of columns required in the `curr` part of the witness
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
 <span class="doccomment">/// Number of columns required in the `next` part of the witness, corresponding to the output length
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 <span class="doccomment">/// Number of words that fit in the hash digest
