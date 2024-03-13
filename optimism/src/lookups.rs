@@ -12,7 +12,7 @@ use kimchi::{
 use kimchi_msm::{LookupTableID, MVLookupTable};
 
 /// All of the possible lookup table IDs used in the zkVM
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum LookupTableIDs {
     // Read tables come first to allow indexing with the table ID for the multiplicities
     /// Single-column table of all values in the range [0, 2^16)
@@ -73,7 +73,7 @@ pub(crate) trait FixedLookupTables<F, ID: LookupTableID> {
 }
 
 impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
-    fn in_table(id: LookupTableIDs, entry: Vec<F>) -> Option<usize> {
+    fn in_table(id: LookupTableIDs, value: Vec<F>) -> Option<usize> {
         let table = match id {
             LookupTableIDs::RangeCheck16Lookup => Self::table_range_check_16().entries,
             LookupTableIDs::SparseLookup => Self::table_sparse().entries,
@@ -83,32 +83,33 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
             LookupTableIDs::ByteLookup => Self::table_byte().entries,
             _ => return None,
         };
-        let bytes = entry[0].to_bytes();
+        let bytes = value[0].to_bytes();
         assert!(bytes.len() <= 8); // To make sure it is a u64 at most
-        let value = bytes.iter().fold(0u64, |acc, &x| (acc << 8) + x as u64) as usize;
+        let idx = bytes.iter().fold(0u64, |acc, &x| (acc << 8) + x as u64) as usize;
 
         match id {
             LookupTableIDs::RangeCheck16Lookup
             | LookupTableIDs::ResetLookup
             | LookupTableIDs::ByteLookup
             | LookupTableIDs::RoundConstantsLookup => {
-                if table[value] == entry {
-                    Some(value)
+                if table[idx] == value {
+                    Some(idx)
                 } else {
                     None
                 }
             }
             LookupTableIDs::SparseLookup => {
-                let dense = u64::from_str_radix(&format!("{:x}", value), 2).unwrap() as usize;
-                if table[dense] == entry {
-                    Some(value)
+                let dense = u64::from_str_radix(&format!("{:x}", idx), 2).unwrap() as usize;
+                if table[dense] == value {
+                    Some(dense)
                 } else {
                     None
                 }
             }
             LookupTableIDs::PadLookup => {
-                if table[value - 1] == entry {
-                    Some(value - 1)
+                // Because this table starts with entry 1
+                if table[idx - 1] == value {
+                    Some(idx - 1)
                 } else {
                     None
                 }

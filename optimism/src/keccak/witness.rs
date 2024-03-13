@@ -10,7 +10,7 @@ use crate::{
     keccak::{
         column::KeccakWitness, interpreter::KeccakInterpreter, Constraint, Error, KeccakColumn,
     },
-    lookups::{Lookup, LookupTableIDs::*},
+    lookups::{FixedLookupTables, Lookup, LookupTable, LookupTableIDs::*},
 };
 use ark_ff::Field;
 use kimchi::o1_utils::Two;
@@ -88,7 +88,11 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
             | ByteLookup => {
                 if lookup.magnitude == Self::Variable::one() {
                     // Check that the lookup value is in the table
-                    //self.multiplicities[lookup.table_id as usize][entry] += 1;
+                    if let Some(idx) = LookupTable::in_table(lookup.table_id, lookup.value) {
+                        self.multiplicities[lookup.table_id as usize][idx] += 1;
+                    } else {
+                        self.errors.push(Error::Lookup(lookup.table_id));
+                    }
                 }
             }
             _ => (),
