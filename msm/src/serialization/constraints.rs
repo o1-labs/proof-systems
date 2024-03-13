@@ -34,7 +34,7 @@ impl<Fp: PrimeField> Env<Fp> {
 impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
-    type Variable = Expr<ConstantExpr<F>, Column>;
+    type Variable = E<F>;
 
     fn add_constraint(&mut self, cst: Self::Variable) {
         // FIXME: We should enforce that we add the same expression
