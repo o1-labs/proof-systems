@@ -296,10 +296,10 @@ impl<
     }
     pub fn verify(
         &self,
-        srs: &PairingSRS<Pair>,           // SRS
-        evaluations: &Vec<Evaluation<G>>, // commitments to the polynomials
-        polyscale: F,                     // scaling factor for polynoms
-        elm: &[F],                        // vector of evaluation points
+        srs: &PairingSRS<Pair>,        // SRS
+        evaluations: &[Evaluation<G>], // commitments to the polynomials
+        polyscale: F,                  // scaling factor for polynoms
+        elm: &[F],                     // vector of evaluation points
     ) -> bool {
         let poly_commitment = {
             let mut scalars: Vec<F> = Vec::new();
