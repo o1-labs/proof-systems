@@ -83,13 +83,15 @@ pub fn combine_lookups<F: Field>(column: Column, lookups: Vec<Lookup<E<F>>>) -> 
     lhs - rhs
 }
 
-pub struct Env<Fp> {
+pub struct Env<Fp: PrimeField> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
     pub constraints: Vec<(usize, E<Fp>)>,
+
     pub constrain_index: usize,
+
     pub rangecheck4_lookups: Vec<Lookup<E<Fp>>>,
     pub rangecheck15_lookups: Vec<Lookup<E<Fp>>>,
 }
@@ -191,5 +193,20 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
             col: position,
             row: CurrOrNext::Curr,
         }))
+    }
+}
+
+impl<Fp: PrimeField> Env<Fp> {
+    #[allow(dead_code)]
+    fn constrain_lookups(&self) -> Vec<E<Fp>> {
+        // FIXME
+        let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(Fp::zero()));
+        let x = Expr::Atom(ExprInner::Constant(cst_expr_inner));
+        vec![x]
+
+        // TODO: individual lookup partial term
+        // TODO: lookup aggregation
+        // TODO: lookup multiplicities
+        // 0 to 6, RC4
     }
 }
