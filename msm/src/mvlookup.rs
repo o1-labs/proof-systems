@@ -37,8 +37,13 @@ where
 
 /// Trait for lookup table variants
 pub trait LookupTableID {
+    /// Assign a unique ID, as a u32 value
+    fn to_u32(&self) -> u32;
+
     /// Assign a unique ID to the lookup tables.
-    fn to_field<F: Field>(&self) -> F;
+    fn to_field<F: Field>(&self) -> F {
+        F::from(self.to_u32())
+    }
 
     /// Assign a unique ID to the lookup tables, as an expression.
     fn to_constraint<F: Field>(&self) -> E<F> {
