@@ -21,7 +21,7 @@ pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
 /// Length of each word in the Keccak state, in bits
 pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
 /// Number of columns required in the `curr` part of the witness
-pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
+pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
 /// Number of columns required in the `next` part of the witness, corresponding to the output length
 pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 /// Number of words that fit in the hash digest
