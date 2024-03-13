@@ -86,7 +86,7 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         match lookup.table_id {
             RangeCheck16Lookup | SparseLookup | ResetLookup | RoundConstantsLookup | PadLookup
             | ByteLookup => {
-                if lookup.magnitude == Self::Variable::one() {
+                if lookup.magnitude == Self::one() {
                     // Check that the lookup value is in the table
                     if let Some(idx) = LookupTable::in_table(lookup.table_id, lookup.value) {
                         self.multiplicities[lookup.table_id as usize][idx] += 1;
@@ -96,53 +96,6 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
                 }
             }
             _ => (),
-        }
-    }
-
-    fn lookup_rc16(&mut self, flag: Self::Variable, _value: Self::Variable) {
-        if flag == Self::one() {
-            // TODO: keep track of multiplicity of range check 16 entry
-            // TODO: check that [value] is in the RangeCheck16Lookup
-        }
-    }
-
-    fn lookup_reset(
-        &mut self,
-        flag: Self::Variable,
-        _dense: Self::Variable,
-        _sparse: Self::Variable,
-    ) {
-        if flag == Self::one() {
-            // TODO: keep track of multiplicity of range check 16 entry
-            // TODO: check that [dense, sparse] is in the ResetLookup
-        }
-    }
-
-    fn lookup_sparse(&mut self, flag: Self::Variable, _value: Self::Variable) {
-        if flag == Self::one() {
-            // TODO: keep track of multiplicity of range check 16 entry
-            // TODO: check that [value] is in the SparseLookup
-        }
-    }
-
-    fn lookup_byte(&mut self, flag: Self::Variable, _value: Self::Variable) {
-        if flag == Self::one() {
-            // TODO: keep track of multiplicity of range check 16 entry
-            // TODO: check that [value] is in the ByteLookup
-        }
-    }
-
-    fn lookup_pad(&mut self, flag: Self::Variable, _value: Vec<Self::Variable>) {
-        if flag == Self::one() {
-            // TODO: keep track of multiplicity of range check 16 entry
-            // TODO: check that [value] is in the PadLookup
-        }
-    }
-
-    fn lookup_round_constants(&mut self, flag: Self::Variable, _value: Vec<Self::Variable>) {
-        if flag == Self::one() {
-            // TODO: keep track of multiplicity of range check 16 entry
-            // TODO: check that [value] is in the RoundConstantsLookup
         }
     }
 }
