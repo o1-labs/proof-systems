@@ -81,21 +81,18 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    fn add_lookup(&mut self, _lookup: Lookup<Self::Variable>) {
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         // Keep track of multiplicities for fixed lookups
-        todo!()
-    }
-
-    fn lookup_syscall_preimage(&mut self) {
-        // No-op for witness
-    }
-
-    fn lookup_syscall_hash(&mut self) {
-        // No-op for witness
-    }
-
-    fn lookup_steps(&mut self) {
-        // No-op for witness
+        match lookup.table_id {
+            RangeCheck16Lookup | SparseLookup | ResetLookup | RoundConstantsLookup | PadLookup
+            | ByteLookup => {
+                if lookup.magnitude == Self::Variable::one() {
+                    // Check that the lookup value is in the table
+                    //self.multiplicities[lookup.table_id as usize][entry] += 1;
+                }
+            }
+            _ => (),
+        }
     }
 
     fn lookup_rc16(&mut self, flag: Self::Variable, _value: Self::Variable) {
