@@ -1,6 +1,9 @@
 //! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
 
 use ark_ff::Field;
+use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
+
+use crate::expr::E;
 
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
@@ -35,7 +38,14 @@ where
 /// Trait for lookup table variants
 pub trait LookupTableID {
     /// Assign a unique ID to the lookup tables.
-    fn into_field<F: Field>(self) -> F;
+    fn into_field<F: Field>(&self) -> F;
+
+    /// Assign a unique ID to the lookup tables, as an expression.
+    fn into_constraint<F: Field>(&self) -> E<F> {
+        let f = self.into_field();
+        let f = ConstantExpr::from(ConstantTerm::Literal(f));
+        E::Atom(ExprInner::Constant(f))
+    }
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
