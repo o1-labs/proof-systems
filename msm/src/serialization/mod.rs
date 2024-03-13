@@ -133,7 +133,7 @@ mod tests {
 
         for (i, limbs) in field_elements.into_iter().enumerate() {
             let mut constraint_env = constraints::Env::<Fp>::create();
-            // Witness
+            // --- Witness
             deserialize_field_element(&mut witness_env, limbs);
             for i in 0..3 {
                 witness.cols[i].push(witness_env.current_kimchi_limbs[i]);
@@ -145,18 +145,7 @@ mod tests {
                 witness.cols[3 + N_LIMBS + i].push(witness_env.intermediate_limbs[i]);
             }
 
-            // Constraints
-            deserialize_field_element(&mut constraint_env, limbs);
-            // FIXME: do not use clone.
-            // FIXME: this is ugly, but only to make it work for now.
-            // It does suppose the same constraint aalways have the same index.
-            // Totally wrong assumption according to the current env implementation.
-            for (idx, cst) in constraint_env.constraints.iter() {
-                if *idx >= constraints.len() {
-                    constraints.push(cst.clone())
-                }
-            }
-
+            // Build witness lookups
             for (j, lookup) in witness_env.rangecheck4_lookups.iter().enumerate() {
                 rangecheck4[j].push(lookup.clone())
             }
@@ -167,7 +156,19 @@ mod tests {
 
             witness_env.add_rangecheck4_table_value(i);
 
-            witness_env.reset()
+            witness_env.reset();
+
+            // --- Constraints
+            deserialize_field_element(&mut constraint_env, limbs);
+            // FIXME: do not use clone.
+            // FIXME: this is ugly, but only to make it work for now.
+            // It does suppose the same constraint aalways have the same index.
+            // Totally wrong assumption according to the current env implementation.
+            for (idx, cst) in constraint_env.constraints.iter() {
+                if *idx >= constraints.len() {
+                    constraints.push(cst.clone())
+                }
+            }
         }
 
         let rangecheck15_m = witness_env.get_rangecheck15_normalized_multipliticies(domain);
