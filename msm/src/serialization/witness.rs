@@ -149,6 +149,11 @@ impl<Fp: PrimeField> Env<Fp> {
             Column::LookupAggregation => {
                 panic!("This is a lookup related column. The environment is
                 supposed to write only in witness columns");
+            Column::LookupFixedTable(_) => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
             }
         }
     }

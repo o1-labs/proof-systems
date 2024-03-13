@@ -10,6 +10,9 @@ pub enum Column {
     /// Multiplicities, indexed. This corresponds to the `m_i`
     LookupMultiplicity(u32),
     LookupAggregation,
+    /// The fixed tables. The parameter is considered to the indexed table.
+    /// u32 has been arbitrarily chosen as it seems to be already large enough
+    LookupFixedTable(u32),
 }
 
 impl GenericColumn for Column {
