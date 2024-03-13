@@ -5,6 +5,7 @@ use kimchi::circuits::expr::{Domain, GenericColumn};
 pub enum Column {
     X(usize),
     // Columns related to the lookup protocol
+    /// Partial sums, indexed. This corresponds to the `h_i`
     LookupPartialSum(usize),
     LookupMultiplicity(usize),
     LookupAggregation,
