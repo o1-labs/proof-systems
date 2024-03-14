@@ -42,10 +42,8 @@ pub trait LookupTableID {
 #[derive(Debug, Clone)]
 pub struct LookupTable<F, ID: LookupTableID + Send + Sync + Copy> {
     /// Table ID corresponding to this table
-    #[allow(dead_code)]
     pub table_id: ID,
     /// Vector of values inside each entry of the table
-    #[allow(dead_code)]
     pub entries: Vec<Vec<F>>,
 }
 
@@ -79,11 +77,11 @@ pub struct MVLookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
 /// the type?
 #[derive(Debug, Clone)]
 pub struct LookupProof<T> {
-    // The multiplicity polynomials
+    /// The multiplicity polynomials
     pub(crate) m: Vec<T>,
-    // The polynomial keeping the sum of each row
+    /// The polynomial keeping the sum of each row
     pub(crate) h: Vec<T>,
-    // The "running-sum" over the rows, coined \phi
+    /// The "running-sum" over the rows, coined `\phi`
     pub(crate) sum: T,
 }
 
