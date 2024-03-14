@@ -120,6 +120,12 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
 
     type Variable = E<F>;
 
+    fn reset(&mut self) {
+        self.constraints = vec![];
+        self.rangecheck4_lookups = vec![];
+        self.rangecheck15_lookups = vec![];
+    }
+
     fn add_constraint(&mut self, cst: Self::Variable) {
         // FIXME: We should enforce that we add the same expression
         // Maybe we could have a digest of the expression

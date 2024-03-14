@@ -11,6 +11,9 @@ pub trait InterpreterEnv<Fp: PrimeField> {
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
+    /// Reset the environment to the initial state.
+    fn reset(&mut self);
+
     fn add_constraint(&mut self, cst: Self::Variable);
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;

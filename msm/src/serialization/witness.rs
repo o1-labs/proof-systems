@@ -51,6 +51,11 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
     // in the 15 bits decomposition.
     type Variable = Fp;
 
+    fn reset(&mut self) {
+        self.rangecheck15_lookups = vec![];
+        self.rangecheck4_lookups = vec![];
+    }
+
     fn add_constraint(&mut self, cst: Self::Variable) {
         assert_eq!(cst, Fp::zero());
     }
@@ -173,11 +178,6 @@ impl<Fp: PrimeField> Env<Fp> {
         } else {
             self.lookup_t_multiplicities_rangecheck4[0] += Fp::one();
         }
-    }
-
-    pub fn reset(&mut self) {
-        self.rangecheck15_lookups = vec![];
-        self.rangecheck4_lookups = vec![];
     }
 
     /// Return the normalized multiplicity vector of RangeCheck4 in case the
