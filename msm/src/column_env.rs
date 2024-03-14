@@ -2,6 +2,7 @@ use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
 use crate::mvlookup;
+use crate::witness::Witness;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::circuits::expr::{
     Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain,
@@ -11,9 +12,9 @@ use kimchi::circuits::expr::{
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct ColumnEnvironment<'a, F: FftField> {
+pub struct ColumnEnvironment<'a, const N: usize, F: FftField> {
     /// The witness column polynomials
-    pub witness: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
+    pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The coefficient column polynomials
     pub coefficients: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
@@ -31,7 +32,7 @@ pub struct ColumnEnvironment<'a, F: FftField> {
     pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F>>,
 }
 
-impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
+impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, F> {
     type Column = crate::columns::Column;
 
     fn get_column(
