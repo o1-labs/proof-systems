@@ -32,7 +32,6 @@ pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Constraint(Constraint),
-    #[allow(dead_code)]
     Lookup(LookupTableIDs),
 }
 

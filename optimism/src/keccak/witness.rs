@@ -70,7 +70,7 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         self.witness[column]
     }
 
-    /// Assert that the input is zero
+    /// Checks the constraint `tag` by checking that the input `x` is zero
     fn constrain(&mut self, tag: Constraint, x: Self::Variable) {
         if x != F::zero() {
             self.errors.push(Error::Constraint(tag));
@@ -88,14 +88,14 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
             | ByteLookup => {
                 if lookup.magnitude == Self::one() {
                     // Check that the lookup value is in the table
-                    if let Some(idx) = LookupTable::in_table(lookup.table_id, lookup.value) {
+                    if let Some(idx) = LookupTable::is_in_table(lookup.table_id, lookup.value) {
                         self.multiplicities[lookup.table_id as usize][idx] += 1;
                     } else {
                         self.errors.push(Error::Lookup(lookup.table_id));
                     }
                 }
             }
-            _ => (),
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => (),
         }
     }
 }
