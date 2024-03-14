@@ -125,6 +125,7 @@ impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
 
 pub mod prover {
     use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
+    use crate::MAX_SUPPORTED_DEGREE;
     use ark_ff::Zero;
     use ark_poly::Evaluations;
     use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -214,12 +215,23 @@ pub mod prover {
 
             // Contain the evalations of the h_i. We divide the looked-up values
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
-            let lookup_terms_evals: Vec<Vec<G::ScalarField>> = lookups
+            let lookup_terms_evals: Vec<Vec<Vec<G::ScalarField>>> = lookups
                 .into_iter()
                 .map(|lookup| {
                     let MVLookupWitness { f, m: _ } = lookup;
                     // The number of functions to look up, including the fixed table.
                     let n = f.len();
+                    let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
+                        n / (MAX_SUPPORTED_DEGREE - 2)
+                    } else {
+                        n / (MAX_SUPPORTED_DEGREE - 2) + 1
+                    };
+                    let mut partial_sums =
+                        vec![
+                            Vec::<G::ScalarField>::with_capacity(domain.d1.size as usize);
+                            n_partial_sums
+                        ];
+
                     // We compute first the denominators of all f_i and t. We gather them in
                     // a vector to perform a batch inversion.
                     let mut denominators = Vec::with_capacity(n * domain.d1.size as usize);
@@ -248,11 +260,11 @@ pub mod prover {
                     ark_ff::fields::batch_inversion(&mut denominators);
 
                     // Evals is the sum on the individual columns for each row
-                    let mut evals = Vec::with_capacity(domain.d1.size as usize);
                     let mut denominator_index = 0;
 
                     // We only need to add the numerator now
                     for j in 0..domain.d1.size {
+                        let mut partial_sum_idx = 0;
                         let mut row_acc = G::ScalarField::zero();
                         for f_i in f.iter() {
                             let MVLookup {
@@ -262,14 +274,27 @@ pub mod prover {
                             } = &f_i[j as usize];
                             row_acc += *numerator * denominators[denominator_index];
                             denominator_index += 1;
+                            if denominator_index % (MAX_SUPPORTED_DEGREE - 2) == 0 {
+                                partial_sums[partial_sum_idx].push(row_acc);
+                                row_acc = G::ScalarField::zero();
+                                partial_sum_idx += 1;
+                            }
                         }
-                        // FIXME: this should be splitted in chunks of (MAXIMUM_DEGREE - 2).
-                        // Use denominator_index.
-                        evals.push(row_acc)
+                        if denominator_index % (MAX_SUPPORTED_DEGREE - 2) != 0 {
+                            partial_sums[partial_sum_idx].push(row_acc);
+                        }
                     }
-                    evals
+                    partial_sums
                 })
                 .collect::<Vec<_>>();
+
+            let lookup_terms_evals: Vec<Vec<G::ScalarField>> =
+                lookup_terms_evals.into_iter().flatten().collect();
+
+            // Sanity check to verify that the number of evaluations is correct
+            lookup_terms_evals
+                .iter()
+                .for_each(|evals| assert_eq!(evals.len(), domain.d1.size as usize));
 
             let lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
                 lookup_terms_evals
