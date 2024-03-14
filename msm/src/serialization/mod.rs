@@ -40,7 +40,9 @@ mod tests {
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            constraints, interpreter::deserialize_field_element, witness, N_INTERMEDIATE_LIMBS,
+            constraints,
+            interpreter::{deserialize_field_element, InterpreterEnv as _},
+            witness, N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
@@ -130,8 +132,9 @@ mod tests {
         let mut rangecheck4: [Vec<Lookup<Fp>>; N_INTERMEDIATE_LIMBS] =
             std::array::from_fn(|_| vec![]);
 
+        let mut constraint_env = constraints::Env::<Fp>::create();
+
         for (i, limbs) in field_elements.into_iter().enumerate() {
-            let mut constraint_env = constraints::Env::<Fp>::create();
             // --- Witness
             deserialize_field_element(&mut witness_env, limbs);
             for i in 0..3 {
@@ -154,7 +157,6 @@ mod tests {
             }
 
             witness_env.add_rangecheck4_table_value(i);
-
             witness_env.reset();
 
             // --- Constraints
@@ -168,7 +170,10 @@ mod tests {
                     constraints.push(cst.clone())
                 }
             }
+            constraint_env.reset();
         }
+
+        constraints.extend(constraint_env.constrain_lookups());
 
         let rangecheck15_m = witness_env.get_rangecheck15_normalized_multipliticies(domain);
         let rangecheck15_t = LookupTable::RangeCheck15
