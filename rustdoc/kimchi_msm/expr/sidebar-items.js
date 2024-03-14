@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["curr_cell","next_cell"],"type":["E"]};
+window.SIDEBAR_ITEMS = {"type":["MSMExpr"]};

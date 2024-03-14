@@ -63,7 +63,7 @@
 <a href="#61" id="61">61</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
-    expr::E,
+    expr::MSMExpr,
     ffa::{columns::FFAColumnIndexer, interpreter::FFAInterpreterEnv},
 };
 <span class="kw">use </span>ark_ff::PrimeField;
@@ -74,13 +74,13 @@
 
 <span class="doccomment">/// Contains constraints for just one row.
 </span><span class="kw">pub struct </span>ConstraintBuilderEnv&lt;F&gt; {
-    <span class="kw">pub </span>constraints: Vec&lt;E&lt;F&gt;&gt;,
+    <span class="kw">pub </span>constraints: Vec&lt;MSMExpr&lt;F&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; FFAInterpreterEnv&lt;F&gt; <span class="kw">for </span>ConstraintBuilderEnv&lt;F&gt; {
     <span class="kw">type </span>Position = Column;
 
-    <span class="kw">type </span>Variable = E&lt;F&gt;;
+    <span class="kw">type </span>Variable = MSMExpr&lt;F&gt;;
 
     <span class="kw">fn </span>empty() -&gt; <span class="self">Self </span>{
         ConstraintBuilderEnv {
