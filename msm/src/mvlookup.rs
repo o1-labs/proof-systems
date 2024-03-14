@@ -63,9 +63,14 @@ pub struct LookupTable<F, ID: LookupTableID + Send + Sync + Copy> {
 }
 
 /// Represents a witness of one instance of the lookup argument
+/// IMPROVEME: Possible to index by a generic const?
+// The parameter N is the number of functions/looked-up values per row. It is
+// used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug)]
 pub struct MVLookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
     /// A list of functions/looked-up values.
+    /// Invariant: for fixed lookup tables, the last value of the vector is the
+    /// lookup table t. The lookup table values must have a negative sign.
     /// The values are represented as:
     /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
     ///   [f_{2}(1), ..., f_{2}(\omega^n)]
@@ -78,8 +83,6 @@ pub struct MVLookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
     pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
-    /// The table the lookup is performed on.
-    pub(crate) t: Vec<MVLookup<F, ID>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
 }
@@ -206,15 +209,17 @@ pub mod prover {
             // Coin an evaluation point for the rational functions
             let beta = fq_sponge.challenge();
 
+            // Contain the evalations of the h_i. We divide the looked-up values
+            // in chunks of (MAX_SUPPORTED_DEGREE - 2)
             let lookup_terms_evals: Vec<Vec<G::ScalarField>> = lookups
                 .into_iter()
                 .map(|lookup| {
-                    let MVLookupWitness { f, t, m: _ } = lookup;
+                    let MVLookupWitness { f, m: _ } = lookup;
+                    // The number of functions to look up, including the fixed table.
                     let n = f.len();
                     // We compute first the denominators of all f_i and t. We gather them in
                     // a vector to perform a batch inversion.
-                    // We include t in the denominator, therefore n + 1
-                    let mut denominators = Vec::with_capacity((n + 1) * domain.d1.size as usize);
+                    let mut denominators = Vec::with_capacity(n * domain.d1.size as usize);
                     // Iterate over the rows
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
@@ -235,21 +240,6 @@ pub mod prover {
                             let lookup_denominator = beta + combined_value;
                             denominators.push(lookup_denominator);
                         }
-
-                        // We process t now
-                        let MVLookup {
-                            numerator: _,
-                            table_id,
-                            value,
-                        } = &t[j as usize];
-                        let combined_value: G::ScalarField =
-                            value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
-                                x * vector_lookup_combiner + y
-                            }) * vector_lookup_combiner
-                                + table_id.to_field::<G::ScalarField>();
-
-                        let lookup_denominator = beta + combined_value;
-                        denominators.push(lookup_denominator);
                     }
 
                     ark_ff::fields::batch_inversion(&mut denominators);
@@ -270,14 +260,8 @@ pub mod prover {
                             row_acc += *numerator * denominators[denominator_index];
                             denominator_index += 1;
                         }
-                        // We process t now
-                        let MVLookup {
-                            numerator,
-                            table_id: _,
-                            value: _,
-                        } = &t[j as usize];
-                        row_acc += *numerator * denominators[denominator_index];
-                        denominator_index += 1;
+                        // FIXME: this should be splitted in chunks of (MAXIMUM_DEGREE - 2).
+                        // Use denominator_index.
                         evals.push(row_acc)
                     }
                     evals

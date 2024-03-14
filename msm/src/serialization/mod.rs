@@ -115,8 +115,9 @@ mod tests {
 
         let mut constraints = vec![];
 
-        let mut rangecheck15: [Vec<Lookup<Fp>>; N_LIMBS] = std::array::from_fn(|_| vec![]);
-        let mut rangecheck4: [Vec<Lookup<Fp>>; N_INTERMEDIATE_LIMBS] =
+        // Adding one for the fixed table.
+        let mut rangecheck15: [Vec<Lookup<Fp>>; N_LIMBS + 1] = std::array::from_fn(|_| vec![]);
+        let mut rangecheck4: [Vec<Lookup<Fp>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
 
         for (i, limbs) in field_elements.into_iter().enumerate() {
@@ -179,6 +180,7 @@ mod tests {
                     }
                 },
             );
+        rangecheck15[N_LIMBS] = rangecheck15_t.collect();
 
         let rangecheck4_m = witness_env.get_rangecheck4_normalized_multipliticies(domain);
         let rangecheck4_t = LookupTable::RangeCheck4
@@ -201,11 +203,11 @@ mod tests {
                     }
                 },
             );
+        rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
 
         let lookup_witness_rangecheck4: MVLookupWitness<Fp, LookupTable> = {
             MVLookupWitness {
                 f: rangecheck4.to_vec(),
-                t: rangecheck4_t.collect(),
                 m: rangecheck4_m,
             }
         };
@@ -213,7 +215,6 @@ mod tests {
         let lookup_witness_rangecheck15: MVLookupWitness<Fp, LookupTable> = {
             MVLookupWitness {
                 f: rangecheck15.to_vec(),
-                t: rangecheck15_t.collect(),
                 m: rangecheck15_m,
             }
         };
