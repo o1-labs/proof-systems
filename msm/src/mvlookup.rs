@@ -312,7 +312,7 @@ pub mod prover {
 
             let lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
                 lookup_terms_evals
-                    .into_iter()
+                    .into_par_iter()
                     .map(|lte| {
                         Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                             lte, domain.d1,
