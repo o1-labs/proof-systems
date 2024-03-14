@@ -1,5 +1,6 @@
 use ark_ff::Zero;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+use std::ops::Index;
 
 /// The witness columns used by a gate of the MSM circuits.
 /// It is generic over the number of columns, N, and the type of the witness, T.
@@ -19,6 +20,24 @@ impl<const N: usize, T: Zero + Clone> Default for Witness<N, T> {
         Witness {
             cols: std::array::from_fn(|_| T::zero()),
         }
+    }
+}
+
+impl<const N: usize, T> Index<usize> for Witness<N, T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.cols[index]
+    }
+}
+
+impl<const N: usize, T> Witness<N, T> {
+    pub fn len(&self) -> usize {
+        self.cols.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cols.is_empty()
     }
 }
 
