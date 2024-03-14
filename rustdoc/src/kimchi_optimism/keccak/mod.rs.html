@@ -107,15 +107,12 @@
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{keccak::column::Column <span class="kw">as </span>KeccakColumn, lookups::LookupTableIDs};
+<span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
 };
-
-<span class="kw">use </span><span class="self">self</span>::column::Column <span class="kw">as </span>KeccakColumn;
 
 <span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
@@ -144,8 +141,7 @@
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Error {
     Constraint(Constraint),
-    <span class="attr">#[allow(dead_code)]
-    </span>Lookup(usize),
+    Lookup(LookupTableIDs),
 }
 
 <span class="doccomment">/// All the names for constraints involved in the Keccak circuit

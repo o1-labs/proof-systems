@@ -162,43 +162,103 @@
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
 <a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
-</span><span class="kw">use crate</span>::{keccak::pad_blocks, ramlookup::RAMLookup};
+</span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
+<span class="kw">use crate</span>::{keccak::pad_blocks, ramlookup::RAMLookup};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::{
     circuits::polynomials::keccak::{
         constants::{RATE_IN_BYTES, ROUNDS},
         Keccak, RC,
     },
-    o1_utils::Two,
+    o1_utils::{FieldHelpers, Two},
 };
 <span class="kw">use </span>kimchi_msm::{LookupTableID, MVLookupTable};
 
 <span class="doccomment">/// All of the possible lookup table IDs used in the zkVM
-</span><span class="attr">#[derive(Copy, Clone, Debug)]
+</span><span class="attr">#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>LookupTableIDs {
-    <span class="comment">// RAM Tables
-    </span>MemoryLookup = <span class="number">0</span>,
-    RegisterLookup = <span class="number">1</span>,
-    <span class="doccomment">/// Syscalls communication channel
-    </span>SyscallLookup = <span class="number">2</span>,
-    <span class="doccomment">/// Input/Output of Keccak steps
-    </span>KeccakStepLookup = <span class="number">3</span>,
-
-    <span class="comment">// Read Tables
-    </span><span class="doccomment">/// Single-column table of all values in the range [0, 2^16)
-    </span>RangeCheck16Lookup = <span class="number">4</span>,
-    <span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of all values
-    </span>SparseLookup = <span class="number">5</span>,
-    <span class="doccomment">/// Dual-column table of all values in the range [0, 2^16) and their sparse representation
-    </span>ResetLookup = <span class="number">6</span>,
+    <span class="comment">// PadLookup ID is 0 because this is the only fixed table whose first entry is not 0.
+    // This way, it is guaranteed that the 0 value is not always in the tables after the
+    // randomization with the joint combiner is applied.
+    </span><span class="doccomment">/// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
+    </span>PadLookup = <span class="number">0</span>,
     <span class="doccomment">/// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
-    </span>RoundConstantsLookup = <span class="number">7</span>,
-    <span class="doccomment">/// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
-    </span>PadLookup = <span class="number">8</span>,
+    </span>RoundConstantsLookup = <span class="number">1</span>,
     <span class="doccomment">/// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
-    </span>ByteLookup = <span class="number">9</span>,
+    </span>ByteLookup = <span class="number">2</span>,
+    <span class="comment">// Read tables come first to allow indexing with the table ID for the multiplicities
+    </span><span class="doccomment">/// Single-column table of all values in the range [0, 2^16)
+    </span>RangeCheck16Lookup = <span class="number">3</span>,
+    <span class="doccomment">/// Single-column table of 2^16 entries with the sparse representation of all values
+    </span>SparseLookup = <span class="number">4</span>,
+    <span class="doccomment">/// Dual-column table of all values in the range [0, 2^16) and their sparse representation
+    </span>ResetLookup = <span class="number">5</span>,
+
+    <span class="comment">// RAM Tables
+    </span>MemoryLookup = <span class="number">6</span>,
+    RegisterLookup = <span class="number">7</span>,
+    <span class="doccomment">/// Syscalls communication channel
+    </span>SyscallLookup = <span class="number">8</span>,
+    <span class="doccomment">/// Input/Output of Keccak steps
+    </span>KeccakStepLookup = <span class="number">9</span>,
 }
 
 <span class="kw">impl </span>LookupTableID <span class="kw">for </span>LookupTableIDs {
@@ -208,13 +268,13 @@
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
-            LookupTableIDs::RangeCheck16Lookup
-            | LookupTableIDs::SparseLookup
-            | LookupTableIDs::ResetLookup =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">16</span>,
-            LookupTableIDs::RoundConstantsLookup =&gt; ROUNDS,
-            LookupTableIDs::PadLookup =&gt; RATE_IN_BYTES,
-            LookupTableIDs::ByteLookup =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">8</span>,
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"RAM Tables do not have a fixed length"</span>),
+            PadLookup =&gt; RATE_IN_BYTES,
+            RoundConstantsLookup =&gt; ROUNDS,
+            ByteLookup =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">8</span>,
+            RangeCheck16Lookup | SparseLookup | ResetLookup =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">16</span>,
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; {
+                <span class="macro">panic!</span>(<span class="string">"RAM Tables do not have a fixed length"</span>)
+            }
         }
     }
 }
@@ -226,78 +286,78 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>LookupTable&lt;F&gt; = MVLookupTable&lt;F, LookupTableIDs&gt;;
 
 <span class="doccomment">/// Trait that creates all the fixed lookup tables used in the VM
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>FixedLookupTables&lt;F&gt; {
-    <span class="kw">fn </span>table_range_check_16() -&gt; LookupTable&lt;F&gt;;
-    <span class="kw">fn </span>table_sparse() -&gt; LookupTable&lt;F&gt;;
-    <span class="kw">fn </span>table_reset() -&gt; LookupTable&lt;F&gt;;
-    <span class="kw">fn </span>table_round_constants() -&gt; LookupTable&lt;F&gt;;
-    <span class="kw">fn </span>table_pad() -&gt; LookupTable&lt;F&gt;;
-    <span class="kw">fn </span>table_byte() -&gt; LookupTable&lt;F&gt;;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>FixedLookupTables&lt;F, ID: LookupTableID&gt; {
+    <span class="doccomment">/// Checks whether a value is in a table ID and returns the position if it is or None otherwise.
+    </span><span class="kw">fn </span>is_in_table(id: ID, value: Vec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt;;
+    <span class="doccomment">/// Returns the pad table
+    </span><span class="kw">fn </span>table_pad() -&gt; LookupTable&lt;F&gt;;
+    <span class="doccomment">/// Returns the round constants table
+    </span><span class="kw">fn </span>table_round_constants() -&gt; LookupTable&lt;F&gt;;
+    <span class="doccomment">/// Returns the byte table
+    </span><span class="kw">fn </span>table_byte() -&gt; LookupTable&lt;F&gt;;
+    <span class="doccomment">/// Returns the range check 16 table
+    </span><span class="kw">fn </span>table_range_check_16() -&gt; LookupTable&lt;F&gt;;
+    <span class="doccomment">/// Returns the sparse table
+    </span><span class="kw">fn </span>table_sparse() -&gt; LookupTable&lt;F&gt;;
+    <span class="doccomment">/// Returns the reset table
+    </span><span class="kw">fn </span>table_reset() -&gt; LookupTable&lt;F&gt;;
 }
 
-<span class="kw">impl</span>&lt;F: Field&gt; FixedLookupTables&lt;F&gt; <span class="kw">for </span>LookupTable&lt;F&gt; {
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">fn </span>table_range_check_16() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            table_id: LookupTableIDs::RangeCheck16Lookup,
-            entries: (<span class="number">0</span>..LookupTableIDs::RangeCheck16Lookup.length())
-                .map(|i| <span class="macro">vec!</span>[F::from(i <span class="kw">as </span>u32)])
-                .collect(),
+<span class="kw">impl</span>&lt;F: Field&gt; FixedLookupTables&lt;F, LookupTableIDs&gt; <span class="kw">for </span>LookupTable&lt;F&gt; {
+    <span class="kw">fn </span>is_in_table(id: LookupTableIDs, value: Vec&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+        <span class="kw">let </span>table = <span class="kw">match </span>id {
+            RangeCheck16Lookup =&gt; <span class="self">Self</span>::table_range_check_16().entries,
+            SparseLookup =&gt; <span class="self">Self</span>::table_sparse().entries,
+            ResetLookup =&gt; <span class="self">Self</span>::table_reset().entries,
+            RoundConstantsLookup =&gt; <span class="self">Self</span>::table_round_constants().entries,
+            PadLookup =&gt; <span class="self">Self</span>::table_pad().entries,
+            ByteLookup =&gt; <span class="self">Self</span>::table_byte().entries,
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+        };
+        <span class="comment">// In these tables, the first value of the vector is related to the index within the table.
+        </span><span class="kw">let </span>idx = value[<span class="number">0</span>]
+            .to_bytes()
+            .iter()
+            .rev()
+            .fold(<span class="number">0u64</span>, |acc, <span class="kw-2">&amp;</span>x| acc * <span class="number">256 </span>+ x <span class="kw">as </span>u64) <span class="kw">as </span>usize;
+
+        <span class="kw">match </span>id {
+            RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | ResetLookup =&gt; {
+                <span class="kw">if </span>idx &lt; id.length() &amp;&amp; table[idx] == value {
+                    <span class="prelude-val">Some</span>(idx)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            }
+            PadLookup =&gt; {
+                <span class="comment">// Because this table starts with entry 1
+                </span><span class="kw">if </span>idx - <span class="number">1 </span>&lt; id.length() &amp;&amp; table[idx - <span class="number">1</span>] == value {
+                    <span class="prelude-val">Some</span>(idx - <span class="number">1</span>)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            }
+            SparseLookup =&gt; {
+                <span class="kw">let </span>res = u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:x}"</span>, idx), <span class="number">2</span>);
+                <span class="kw">let </span>dense = <span class="kw">if let </span><span class="prelude-val">Ok</span>(ok) = res {
+                    ok <span class="kw">as </span>usize
+                } <span class="kw">else </span>{
+                    id.length() <span class="comment">// So that it returns None
+                </span>};
+                <span class="kw">if </span>dense &lt; id.length() &amp;&amp; table[dense] == value {
+                    <span class="prelude-val">Some</span>(dense)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            }
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">fn </span>table_sparse() -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>table_pad() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            table_id: LookupTableIDs::SparseLookup,
-            entries: (<span class="number">0</span>..LookupTableIDs::SparseLookup.length())
-                .map(|i| {
-                    <span class="macro">vec!</span>[F::from(
-                        u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap(),
-                    )]
-                })
-                .collect(),
-        }
-    }
-
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">fn </span>table_reset() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            table_id: LookupTableIDs::ResetLookup,
-            entries: (<span class="number">0</span>..LookupTableIDs::ResetLookup.length())
-                .map(|i| {
-                    <span class="macro">vec!</span>[
-                        F::from(i <span class="kw">as </span>u32),
-                        F::from(u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap()),
-                    ]
-                })
-                .collect(),
-        }
-    }
-
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">fn </span>table_round_constants() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            table_id: LookupTableIDs::RoundConstantsLookup,
-            entries: (<span class="number">0</span>..LookupTableIDs::RoundConstantsLookup.length())
-                .map(|i| {
-                    <span class="macro">vec!</span>[
-                        F::from(i <span class="kw">as </span>u32),
-                        F::from(Keccak::sparse(RC[i])[<span class="number">3</span>]),
-                        F::from(Keccak::sparse(RC[i])[<span class="number">2</span>]),
-                        F::from(Keccak::sparse(RC[i])[<span class="number">1</span>]),
-                        F::from(Keccak::sparse(RC[i])[<span class="number">0</span>]),
-                    ]
-                })
-                .collect(),
-        }
-    }
-
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">fn </span>table_pad() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            table_id: LookupTableIDs::PadLookup,
-            entries: (<span class="number">1</span>..=LookupTableIDs::PadLookup.length())
+            table_id: PadLookup,
+            entries: (<span class="number">1</span>..=PadLookup.length())
                 .map(|i| {
                     <span class="kw">let </span>suffix = pad_blocks(i);
                     <span class="macro">vec!</span>[
@@ -314,12 +374,64 @@
         }
     }
 
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="kw">fn </span>table_byte() -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>table_round_constants() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            table_id: LookupTableIDs::ByteLookup,
-            entries: (<span class="number">0</span>..LookupTableIDs::ByteLookup.length())
+            table_id: RoundConstantsLookup,
+            entries: (<span class="number">0</span>..RoundConstantsLookup.length())
+                .map(|i| {
+                    <span class="macro">vec!</span>[
+                        F::from(i <span class="kw">as </span>u32),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">3</span>]),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">2</span>]),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">1</span>]),
+                        F::from(Keccak::sparse(RC[i])[<span class="number">0</span>]),
+                    ]
+                })
+                .collect(),
+        }
+    }
+
+    <span class="kw">fn </span>table_byte() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: ByteLookup,
+            entries: (<span class="number">0</span>..ByteLookup.length())
                 .map(|i| <span class="macro">vec!</span>[F::from(i <span class="kw">as </span>u32)])
+                .collect(),
+        }
+    }
+
+    <span class="kw">fn </span>table_range_check_16() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: RangeCheck16Lookup,
+            entries: (<span class="number">0</span>..RangeCheck16Lookup.length())
+                .map(|i| <span class="macro">vec!</span>[F::from(i <span class="kw">as </span>u32)])
+                .collect(),
+        }
+    }
+
+    <span class="kw">fn </span>table_sparse() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: SparseLookup,
+            entries: (<span class="number">0</span>..SparseLookup.length())
+                .map(|i| {
+                    <span class="macro">vec!</span>[F::from(
+                        u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap(),
+                    )]
+                })
+                .collect(),
+        }
+    }
+
+    <span class="kw">fn </span>table_reset() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            table_id: ResetLookup,
+            entries: (<span class="number">0</span>..ResetLookup.length())
+                .map(|i| {
+                    <span class="macro">vec!</span>[
+                        F::from(i <span class="kw">as </span>u32),
+                        F::from(u64::from_str_radix(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:b}"</span>, i), <span class="number">16</span>).unwrap()),
+                    ]
+                })
                 .collect(),
         }
     }
