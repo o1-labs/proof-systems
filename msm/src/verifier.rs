@@ -13,7 +13,7 @@ use poly_commitment::{
 };
 use rand::thread_rng;
 
-use crate::expr::MSMExpr;
+use crate::expr::E;
 use crate::proof::Proof;
 
 pub fn verify<
@@ -25,7 +25,7 @@ pub fn verify<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraint_exprs: &Vec<MSMExpr<G::ScalarField>>,
+    constraint_exprs: &Vec<E<G::ScalarField>>,
     proof: &Proof<N, G, OpeningProof>,
 ) -> bool {
     let Proof {
