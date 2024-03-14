@@ -1,10 +1,9 @@
+use crate::{keccak::column::Column as KeccakColumn, lookups::LookupTableIDs};
 use ark_ff::Field;
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
 };
-
-use self::column::Column as KeccakColumn;
 
 pub mod column;
 pub mod constraints;
@@ -28,6 +27,44 @@ pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
+
+/// Errors that can occur during the check of the witness
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    Constraint(Constraint),
+    Lookup(LookupTableIDs),
+}
+
+/// All the names for constraints involved in the Keccak circuit
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Constraint {
+    BooleanityAbsorb,
+    BooleanitySqueeze,
+    BooleanityRoot,
+    BooleanityPadding(usize),
+    MutexSqueezeRoot,
+    MutexSqueezePad,
+    MutexRoundPad,
+    MutexRoundRoot,
+    MutexAbsorbSqueeze,
+    AbsorbZeroPad(usize),
+    AbsorbRootZero(usize),
+    AbsorbXor(usize),
+    AbsorbShifts(usize),
+    PadAtEnd,
+    PaddingSuffix(usize),
+    SqueezeShifts(usize),
+    ThetaWordC(usize),
+    ThetaRotatedC(usize),
+    ThetaQuotientC(usize),
+    ThetaShiftsC(usize, usize),
+    PiRhoWordE(usize, usize),
+    PiRhoRotatedE(usize, usize),
+    PiRhoShiftsE(usize, usize, usize),
+    ChiShiftsB(usize, usize, usize),
+    ChiShiftsSum(usize, usize, usize),
+    IotaStateG(usize),
+}
 
 // This function maps a 4D index into a 1D index depending on the length of the grid
 fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {

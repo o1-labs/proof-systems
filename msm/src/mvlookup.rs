@@ -51,6 +51,9 @@ pub trait LookupTableID {
         let f = ConstantExpr::from(ConstantTerm::Literal(f));
         E::Atom(ExprInner::Constant(f))
     }
+
+    /// Returns the length of each table.
+    fn length(&self) -> usize;
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.

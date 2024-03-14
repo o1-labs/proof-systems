@@ -24,6 +24,13 @@ impl LookupTableID for LookupTableIDs {
             LookupTableIDs::Custom(id) => id + 1,
         }
     }
+
+    fn length(&self) -> usize {
+        match self {
+            LookupTableIDs::RangeCheck16 => 1 << 16,
+            LookupTableIDs::Custom(_) => todo!(),
+        }
+    }
 }
 
 /// Additive lookups used in the MSM project based on MVLookup

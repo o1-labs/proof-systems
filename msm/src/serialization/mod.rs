@@ -21,6 +21,13 @@ impl LookupTableID for LookupTable {
             Self::RangeCheck4 => 2,
         }
     }
+
+    fn length(&self) -> usize {
+        match self {
+            Self::RangeCheck15 => 1 << 15,
+            Self::RangeCheck4 => 1 << 4,
+        }
+    }
 }
 
 pub type Lookup<F> = MVLookup<F, LookupTable>;
