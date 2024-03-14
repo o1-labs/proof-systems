@@ -202,7 +202,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
 impl<Fp: PrimeField> Env<Fp> {
     #[allow(dead_code)]
     // FIXME: not mut
-    fn constrain_lookups(&mut self) -> Vec<E<Fp>> {
+    pub fn constrain_lookups(&mut self) -> Vec<E<Fp>> {
         assert_eq!(self.rangecheck4_lookups.len(), 20);
         assert_eq!(self.rangecheck15_lookups.len(), 17);
 
