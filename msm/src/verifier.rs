@@ -48,27 +48,25 @@ pub fn verify<
     ////////////////////////////////////////////////////////////////////////////
 
     let (joint_combiner, beta) = {
-        if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
-            // First, we absorb the multiplicity polynomials
-            mvlookup_comms
-                .m
-                .iter()
-                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+        // First, we absorb the multiplicity polynomials
+        proof_comms
+            .mvlookup_comms
+            .m
+            .iter()
+            .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
-            // To generate the challenges
-            let joint_combiner = fq_sponge.challenge();
-            let beta = fq_sponge.challenge();
+        // To generate the challenges
+        let joint_combiner = fq_sponge.challenge();
+        let beta = fq_sponge.challenge();
 
-            // And now, we absorb the commitments to the other polynomials
-            mvlookup_comms
-                .h
-                .iter()
-                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
-            absorb_commitment(&mut fq_sponge, &mvlookup_comms.sum);
-            (Some(joint_combiner), beta)
-        } else {
-            (None, G::ScalarField::zero())
-        }
+        // And now, we absorb the commitments to the other polynomials
+        proof_comms
+            .mvlookup_comms
+            .h
+            .iter()
+            .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+        absorb_commitment(&mut fq_sponge, &proof_comms.mvlookup_comms.sum);
+        (Some(joint_combiner), beta)
     };
 
     //~ 1. Sample $\alpha'$ with the Fq-Sponge.
@@ -101,18 +99,17 @@ pub fn verify<
             }),
     );
 
-    if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
-        coms_and_evaluations.extend(
-            mvlookup_comms
-                .into_iter()
-                .zip(proof_evals.mvlookup_evals.as_ref().unwrap())
-                .map(|(commitment, point_eval)| Evaluation {
-                    commitment: commitment.clone(),
-                    evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
-                })
-                .collect::<Vec<_>>(),
-        );
-    }
+    coms_and_evaluations.extend(
+        proof_comms
+            .mvlookup_comms
+            .into_iter()
+            .zip(proof_evals.mvlookup_evals.as_ref().unwrap())
+            .map(|(commitment, point_eval)| Evaluation {
+                commitment: commitment.clone(),
+                evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
+            })
+            .collect::<Vec<_>>(),
+    );
 
     // -- Absorb all coms_and_evaluations
     let fq_sponge_before_coms_and_evaluations = fq_sponge.clone();
@@ -123,15 +120,13 @@ pub fn verify<
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
-    if proof_comms.mvlookup_comms.is_some() {
-        // MVLookup FS
-        for PointEvaluations { zeta, zeta_omega } in
-            proof_evals.mvlookup_evals.as_ref().unwrap().into_iter()
-        {
-            fr_sponge.absorb(zeta);
-            fr_sponge.absorb(zeta_omega);
-        }
-    };
+    // MVLookup FS
+    for PointEvaluations { zeta, zeta_omega } in
+        proof_evals.mvlookup_evals.as_ref().unwrap().into_iter()
+    {
+        fr_sponge.absorb(zeta);
+        fr_sponge.absorb(zeta_omega);
+    }
 
     let ft_comm = {
         // TODO zeta or zeta*omega?

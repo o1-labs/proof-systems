@@ -115,31 +115,31 @@ where
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     // -- Start MVLookup
-    let lookup_env = if !inputs.mvlookups.is_empty() {
-        Some(Env::create::<OpeningProof, EFqSponge, ID>(
-            inputs.mvlookups,
-            domain,
-            &mut fq_sponge,
-            srs,
-        ))
-    } else {
-        None
+
+    // FIXME: I'm enforcing to have at least one dummy lookup.
+    // This is only to make the code work. We should remove this.
+    // It is also because handling the case of no lookups require to
+    // trick the degree of the quotient polynomial. I want to always
+    // have it at 8.
+    assert!(
+        !inputs.mvlookups.is_empty(),
+        "Enforce to have at least one dummy lookup"
+    );
+    let lookup_env = {
+        Env::create::<OpeningProof, EFqSponge, ID>(inputs.mvlookups, domain, &mut fq_sponge, srs)
     };
 
     // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
     // FIXME: remove clone
-    let mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+    let mvlookup_comms = LookupProof {
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
-    });
+    };
 
     // -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
 
-    // TODO rename this
-    // The evaluations should be at least the degree of our expressions. Higher?
-    // Maybe we can only use d4, we don't have degree-7 gates anyway
     let witness_evals_env: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
         (&witness_polys)
             .into_par_iter()
@@ -155,27 +155,6 @@ where
     // We do not support zero-knowledge
     let zk_rows = 0;
 
-    // Computing the maximum degree of the constraints.
-    // As we want the prover to handle any type of constraints, we need to
-    // adjust the degree of the quotient polynomial and number of commitments we
-    // will have. For PlonK-ish constraints, we have degree 3, and therefore we split into
-    // 3 t_i(X): t(X) = t_1(X) + X^n t_2(X) + X^{2n} t_3(X)
-    // In our case, we also do support additive lookups. In this case, we will
-    // *always* suppose we make at least 6 lookups per row, and therefore we
-    // will need degree 7, at least.
-    // This is not a good assumption, but we will do with it for now.
-    // We also do suppose that we do lookups on every row, and therefore we do
-    // not use a selector.
-    let max_expr_degree = if lookup_env.is_some() {
-        8
-    } else {
-        constraints
-            .iter()
-            .map(|expr| expr.degree(1, zk_rows))
-            .max()
-            .ok_or(ProverError::Generic("No constraints provided"))?
-    };
-
     //~ 1. Sample $\alpha'$ with the Fq-Sponge.
     let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
@@ -190,9 +169,9 @@ where
             alpha,
             // NB: as there is on permutation argument, we do use the beta
             // field instead of a new one for the evaluation point.
-            beta: Option::map(lookup_env.as_ref(), |x| x.beta).unwrap_or(G::ScalarField::zero()),
+            beta: lookup_env.beta,
             gamma: G::ScalarField::zero(),
-            joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
+            joint_combiner: Some(lookup_env.joint_combiner),
         };
         ColumnEnvironment {
             constants: Constants {
@@ -204,31 +183,19 @@ where
             witness: &witness_evals_env,
             coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
-            lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
-                mvlookup::prover::QuotientPolynomialEnvironment {
-                    lookup_terms_evals_d1: &lookup_env.lookup_counters_evals_d1,
-                    lookup_aggregation_evals_d1: &lookup_env.lookup_aggregation_evals_d1,
-                    lookup_counters_evals_d1: &lookup_env.lookup_counters_evals_d1,
-                    // FIXME
-                    fixed_lookup_tables: &coefficient_evals_env,
-                }
-            }),
+            lookup: mvlookup::prover::QuotientPolynomialEnvironment {
+                lookup_terms_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                lookup_aggregation_evals_d1: &lookup_env.lookup_aggregation_evals_d1,
+                lookup_counters_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                // FIXME
+                fixed_lookup_tables: &coefficient_evals_env,
+            },
             domain,
         }
     };
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         for expr in constraints.iter() {
-            // otherwise we need different t_size
-            let expr_degree = expr.degree(1, zk_rows);
-            if expr_degree > 2 {
-                return Err(ProverError::ConstraintDegreeTooHigh(
-                    expr_degree,
-                    2,
-                    format!("{:?}", expr),
-                ));
-            }
-
             let fail_q_division =
                 ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
             // Check this expression are witness satisfied
@@ -312,41 +279,37 @@ where
     };
 
     let mvlookup_evals = {
-        if let Some(ref lookup_env) = lookup_env {
-            let evals = |point| {
-                let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-                let m = (&lookup_env.lookup_counters_poly_d1)
-                    .into_par_iter()
-                    .map(eval)
-                    .collect::<Vec<_>>();
-                let h = (&lookup_env.lookup_terms_poly_d1)
-                    .into_par_iter()
-                    .map(eval)
-                    .collect::<Vec<_>>();
-                let sum = eval(&lookup_env.lookup_aggregation_poly_d1);
-                (m, h, sum)
-            };
-            let (m_zeta, h_zeta, sum_zeta) = evals(&zeta);
-            let (m_zeta_omega, h_zeta_omega, sum_zeta_omega) = evals(&zeta_omega);
-            Some(LookupProof {
-                m: m_zeta
-                    .into_iter()
-                    .zip(m_zeta_omega)
-                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
-                    .collect(),
-                h: h_zeta
-                    .into_iter()
-                    .zip(h_zeta_omega)
-                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
-                    .collect(),
-                sum: PointEvaluations {
-                    zeta: sum_zeta,
-                    zeta_omega: sum_zeta_omega,
-                },
-            })
-        } else {
-            None
-        }
+        let evals = |point| {
+            let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
+            let m = (&lookup_env.lookup_counters_poly_d1)
+                .into_par_iter()
+                .map(eval)
+                .collect::<Vec<_>>();
+            let h = (&lookup_env.lookup_terms_poly_d1)
+                .into_par_iter()
+                .map(eval)
+                .collect::<Vec<_>>();
+            let sum = eval(&lookup_env.lookup_aggregation_poly_d1);
+            (m, h, sum)
+        };
+        let (m_zeta, h_zeta, sum_zeta) = evals(&zeta);
+        let (m_zeta_omega, h_zeta_omega, sum_zeta_omega) = evals(&zeta_omega);
+        Some(LookupProof {
+            m: m_zeta
+                .into_iter()
+                .zip(m_zeta_omega)
+                .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
+                .collect(),
+            h: h_zeta
+                .into_iter()
+                .zip(h_zeta_omega)
+                .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
+                .collect(),
+            sum: PointEvaluations {
+                zeta: sum_zeta,
+                zeta_omega: sum_zeta_omega,
+            },
+        })
     };
 
     ////////////////////////////////////////////////////////////////////////////
@@ -363,11 +326,9 @@ where
         fr_sponge.absorb(zeta_omega);
     }
 
-    if lookup_env.is_some() {
-        for PointEvaluations { zeta, zeta_omega } in mvlookup_evals.as_ref().unwrap().into_iter() {
-            fr_sponge.absorb(zeta);
-            fr_sponge.absorb(zeta_omega);
-        }
+    for PointEvaluations { zeta, zeta_omega } in mvlookup_evals.as_ref().unwrap().into_iter() {
+        fr_sponge.absorb(zeta);
+        fr_sponge.absorb(zeta_omega);
     }
 
     // TODO @volhovm I'm suspecting that due to the fact we don't use linearisation polynomial, we
@@ -408,27 +369,25 @@ where
         .collect();
 
     // Adding MVLookup
-    if let Some(ref lookup_env) = lookup_env {
-        // -- first m(X)
-        polynomials.extend(
-            (&lookup_env.lookup_counters_poly_d1)
-                .into_par_iter()
-                .map(|poly| (coefficients_form(poly), non_hiding(1)))
-                .collect::<Vec<_>>(),
-        );
-        // -- after that f_i and t
-        polynomials.extend(
-            (&lookup_env.lookup_terms_poly_d1)
-                .into_par_iter()
-                .map(|poly| (coefficients_form(poly), non_hiding(1)))
-                .collect::<Vec<_>>(),
-        );
-        // -- after that the running sum
-        polynomials.push((
-            coefficients_form(&lookup_env.lookup_aggregation_poly_d1),
-            non_hiding(1),
-        ));
-    }
+    // -- first m(X)
+    polynomials.extend(
+        (&lookup_env.lookup_counters_poly_d1)
+            .into_par_iter()
+            .map(|poly| (coefficients_form(poly), non_hiding(1)))
+            .collect::<Vec<_>>(),
+    );
+    // -- after that f_i and t
+    polynomials.extend(
+        (&lookup_env.lookup_terms_poly_d1)
+            .into_par_iter()
+            .map(|poly| (coefficients_form(poly), non_hiding(1)))
+            .collect::<Vec<_>>(),
+    );
+    // -- after that the running sum
+    polynomials.push((
+        coefficients_form(&lookup_env.lookup_aggregation_poly_d1),
+        non_hiding(1),
+    ));
     polynomials.push((coefficients_form(&ft), non_hiding(1)));
 
     let opening_proof = OpenProof::open::<_, _, R2D<G::ScalarField>>(

@@ -41,7 +41,7 @@ pub fn main() {
         witness_env.next_row();
     }
 
-    let inputs = witness_env.get_witness(domain_size);
+    let inputs = witness_env.get_witness(domain);
     let constraints = constraint_env.constraints;
 
     println!("Generating the proof");

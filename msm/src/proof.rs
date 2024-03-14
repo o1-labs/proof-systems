@@ -74,7 +74,7 @@ impl<const N: usize, F: Clone> ColumnEvaluations<F> for ProofEvaluations<N, F> {
 #[derive(Debug, Clone)]
 pub struct ProofCommitments<const N: usize, G: KimchiCurve> {
     pub(crate) witness_comms: Witness<N, PolyComm<G>>,
-    pub(crate) mvlookup_comms: Option<LookupProof<PolyComm<G>>>,
+    pub(crate) mvlookup_comms: LookupProof<PolyComm<G>>,
     pub(crate) t_comm: PolyComm<G>,
 }
 

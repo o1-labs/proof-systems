@@ -8,10 +8,12 @@ use crate::{
         interpreter::FFAInterpreterEnv,
     },
     lookups::LookupTableIDs,
+    lookups::LookupWitness,
     proof::ProofInputs,
     witness::Witness,
     {BN254G1Affine, Fp},
 };
+use kimchi::circuits::domains::EvaluationDomains;
 
 #[allow(dead_code)]
 /// Builder environment for a native group `G`.
@@ -73,8 +75,9 @@ impl WitnessBuilderEnv<Fp> {
     /// single multi-row form (which is a `Witness`).
     pub fn get_witness(
         &self,
-        domain_size: usize,
+        domain: EvaluationDomains<Fp>,
     ) -> ProofInputs<FFA_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
+        let domain_size = domain.d1.size as usize;
         let mut cols: [Vec<Fp>; FFA_N_COLUMNS] = std::array::from_fn(|_| vec![]);
 
         if self.witness.len() > domain_size {
@@ -96,9 +99,10 @@ impl WitnessBuilderEnv<Fp> {
             }
         }
 
+        let dummy_lookup = LookupWitness::<Fp>::random(domain);
         ProofInputs {
             evaluations: Witness { cols },
-            mvlookups: vec![],
+            mvlookups: vec![dummy_lookup],
             public_input_size: 0,
         }
     }

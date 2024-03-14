@@ -118,7 +118,7 @@ mod tests {
         ffa_interpreter::constrain_multiplication(&mut constraint_env);
         gen_random_mul_witness(&mut witness_env, &mut rng);
 
-        let inputs = witness_env.get_witness(domain_size);
+        let inputs = witness_env.get_witness(domain);
         let constraints = constraint_env.constraints;
 
         // generate the proof
@@ -165,7 +165,7 @@ mod tests {
 
         let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
         gen_random_mul_witness(&mut witness_env, &mut rng);
-        let inputs = witness_env.get_witness(domain_size);
+        let inputs = witness_env.get_witness(domain);
 
         // generate the proof
         let proof = prove::<
@@ -182,7 +182,7 @@ mod tests {
 
         let mut witness_env_prime = FFAWitnessBuilderEnv::<Fp>::empty();
         gen_random_mul_witness(&mut witness_env_prime, &mut rng);
-        let inputs_prime = witness_env_prime.get_witness(domain_size);
+        let inputs_prime = witness_env_prime.get_witness(domain);
 
         // generate another (prime) proof
         let proof_prime = prove::<

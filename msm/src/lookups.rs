@@ -3,8 +3,7 @@
 use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
 use ark_ff::FftField;
 use kimchi::circuits::domains::EvaluationDomains;
-use rand::{seq::SliceRandom, thread_rng, Rng};
-use std::iter;
+use rand::{seq::SliceRandom, thread_rng};
 
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
@@ -39,73 +38,37 @@ pub type LookupWitness<F> = MVLookupWitness<F, LookupTableIDs>;
 impl<F: FftField> LookupWitness<F> {
     /// Generate a random number of correct lookups in the table RangeCheck16
     pub fn random(domain: EvaluationDomains<F>) -> Self {
+        let n = domain.d1.size as usize;
+        let table_id = LookupTableIDs::Custom(42);
         let mut rng = thread_rng();
-        // TODO: generate more random f
-        let table_size: u64 = rng.gen_range(1..domain.d1.size);
-        let table_id = rng.gen_range(1..1000);
-        // Build a table of value we can look up
-        let t: Vec<u64> = {
-            // Generate distinct values to avoid to have to handle the
-            // normalized multiplicity polynomial
-            let mut n: Vec<u64> = (1..(table_size * 100)).collect();
-            n.shuffle(&mut rng);
-            n[0..table_size as usize].to_vec()
-        };
-        // permutation argument
-        let f = {
-            let mut f = t.clone();
-            f.shuffle(&mut rng);
-            f
-        };
-        let dummy_value = F::rand(&mut rng);
-        let repeated_dummy_value: Vec<F> = {
-            let r: Vec<F> = iter::repeat(dummy_value)
-                .take((domain.d1.size - table_size) as usize)
-                .collect();
-            r
-        };
-        let t_evals = {
-            let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(t.iter().map(|v| Lookup {
-                table_id: LookupTableIDs::Custom(table_id),
-                numerator: -F::one(),
-                value: vec![F::from(*v)],
-            }));
-            table.extend(
-                repeated_dummy_value
-                    .iter()
-                    .map(|v| Lookup {
-                        table_id: LookupTableIDs::Custom(table_id),
-                        numerator: -F::one(),
-                        value: vec![*v],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
-            );
-            table
-        };
-        let f_evals: Vec<Lookup<F>> = {
-            let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(f.iter().map(|v| Lookup {
-                table_id: LookupTableIDs::Custom(table_id),
-                numerator: F::one(),
-                value: vec![F::from(*v)],
-            }));
-            table.extend(
-                repeated_dummy_value
-                    .iter()
-                    .map(|v| Lookup {
-                        table_id: LookupTableIDs::Custom(table_id),
+        // generate one random table with degree n
+        let t_values = (0..n).map(|_| F::rand(&mut rng)).collect::<Vec<_>>();
+        let mut f: Vec<_> = (0..6)
+            .map(|_| {
+                let mut t = t_values.clone();
+                t.shuffle(&mut rng);
+                t.into_iter()
+                    .map(|x| MVLookup {
+                        table_id,
                         numerator: F::one(),
-                        value: vec![*v],
+                        value: vec![x],
                     })
-                    .collect::<Vec<Lookup<F>>>(),
-            );
-            table
-        };
-        let m = (0..domain.d1.size).map(|_| F::one()).collect();
-        LookupWitness {
-            f: vec![f_evals, t_evals],
-            m,
-        }
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        let m = (0..n).map(|_| F::from(6_u32)).collect::<Vec<_>>();
+        let t = (0..n)
+            .map(|i| {
+                let numerator = -F::from(6_u32);
+                let value = vec![t_values[i]];
+                MVLookup {
+                    table_id,
+                    numerator,
+                    value,
+                }
+            })
+            .collect::<Vec<_>>();
+        f.push(t);
+        Self { f, m }
     }
 }

@@ -29,7 +29,7 @@ pub struct ColumnEnvironment<'a, const N: usize, F: FftField> {
     /// Lookup specific polynomials
     // TODO: rename in additive lookup or "logup"
     // We do not use multi-variate lookups, only the additive part
-    pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F>>,
+    pub lookup: mvlookup::prover::QuotientPolynomialEnvironment<'a, F>,
 }
 
 impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, F> {
@@ -55,26 +55,10 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
                     panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
                 }
             }
-            Self::Column::LookupPartialSum(i) => {
-                if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_terms_evals_d1[i])
-                } else {
-                    panic!("No lookup provided")
-                }
-            }
-            Self::Column::LookupAggregation => {
-                if let Some(ref lookup) = self.lookup {
-                    Some(lookup.lookup_aggregation_evals_d1)
-                } else {
-                    panic!("No lookup provided")
-                }
-            }
+            Self::Column::LookupPartialSum(i) => Some(&self.lookup.lookup_terms_evals_d1[i]),
+            Self::Column::LookupAggregation => Some(self.lookup.lookup_aggregation_evals_d1),
             Self::Column::LookupMultiplicity(i) => {
-                if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d1[i as usize])
-                } else {
-                    panic!("No lookup provided")
-                }
+                Some(&self.lookup.lookup_counters_evals_d1[i as usize])
             }
             Self::Column::LookupFixedTable(_) => {
                 panic!("Logup is not yet implemented.")
