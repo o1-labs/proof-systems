@@ -98,6 +98,21 @@
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -106,7 +121,8 @@
 
 <span class="kw">use crate</span>::{columns::Column, expr::E, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
-<span class="kw">use </span><span class="kw">super</span>::interpreter::InterpreterEnv;
+<span class="kw">use </span><span class="kw">super</span>::Lookup;
+<span class="kw">use super</span>::{interpreter::InterpreterEnv, LookupTable};
 
 <span class="kw">pub struct </span>Env&lt;Fp&gt; {
     <span class="doccomment">/// An indexed set of constraints.
@@ -115,6 +131,8 @@
     /// folding for instance.
     </span><span class="kw">pub </span>constraints: Vec&lt;(usize, Expr&lt;ConstantExpr&lt;Fp&gt;, Column&gt;)&gt;,
     <span class="kw">pub </span>constrain_index: usize,
+    <span class="kw">pub </span>rangecheck4_lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
+    <span class="kw">pub </span>rangecheck15_lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;Fp: PrimeField&gt; Env&lt;Fp&gt; {
@@ -122,6 +140,8 @@
         <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],
             constrain_index: <span class="number">0</span>,
+            rangecheck4_lookups: <span class="macro">vec!</span>[],
+            rangecheck15_lookups: <span class="macro">vec!</span>[],
         }
     }
 }
@@ -163,13 +183,23 @@
         Column::X(<span class="number">3 </span>+ j)
     }
 
-    <span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="comment">// TODO
-    </span>}
+    <span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        <span class="self">self</span>.rangecheck15_lookups.push(Lookup {
+            table_id: LookupTable::RangeCheck15,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: <span class="macro">vec!</span>[value.clone()],
+        })
+    }
 
-    <span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="comment">// TODO
-    </span>}
+    <span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        <span class="self">self</span>.rangecheck4_lookups.push(Lookup {
+            table_id: LookupTable::RangeCheck4,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: <span class="macro">vec!</span>[value.clone()],
+        })
+    }
 
     <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
