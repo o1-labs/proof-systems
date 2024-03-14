@@ -350,22 +350,6 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -434,9 +418,14 @@
 }
 
 <span class="doccomment">/// Represents a witness of one instance of the lookup argument
+/// IMPROVEME: Possible to index by a generic const?
+</span><span class="comment">// The parameter N is the number of functions/looked-up values per row. It is
+// used by the PlonK polynomial IOP to compute the number of partial sums.
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>MVLookupWitness&lt;F, ID: LookupTableID + Send + Sync + Copy&gt; {
     <span class="doccomment">/// A list of functions/looked-up values.
+    /// Invariant: for fixed lookup tables, the last value of the vector is the
+    /// lookup table t. The lookup table values must have a negative sign.
     /// The values are represented as:
     /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
     ///   [f_{2}(1), ..., f_{2}(\omega^n)]
@@ -449,8 +438,6 @@
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) f: Vec&lt;Vec&lt;MVLookup&lt;F, ID&gt;&gt;&gt;,
-    <span class="doccomment">/// The table the lookup is performed on.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) t: Vec&lt;MVLookup&lt;F, ID&gt;&gt;,
     <span class="doccomment">/// The multiplicity polynomial
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: Vec&lt;F&gt;,
 }
@@ -577,15 +564,17 @@
             <span class="comment">// Coin an evaluation point for the rational functions
             </span><span class="kw">let </span>beta = fq_sponge.challenge();
 
-            <span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;G::ScalarField&gt;&gt; = lookups
+            <span class="comment">// Contain the evalations of the h_i. We divide the looked-up values
+            // in chunks of (MAX_SUPPORTED_DEGREE - 2)
+            </span><span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;G::ScalarField&gt;&gt; = lookups
                 .into_iter()
                 .map(|lookup| {
-                    <span class="kw">let </span>MVLookupWitness { f, t, m: <span class="kw">_ </span>} = lookup;
-                    <span class="kw">let </span>n = f.len();
+                    <span class="kw">let </span>MVLookupWitness { f, m: <span class="kw">_ </span>} = lookup;
+                    <span class="comment">// The number of functions to look up, including the fixed table.
+                    </span><span class="kw">let </span>n = f.len();
                     <span class="comment">// We compute first the denominators of all f_i and t. We gather them in
                     // a vector to perform a batch inversion.
-                    // We include t in the denominator, therefore n + 1
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>denominators = Vec::with_capacity((n + <span class="number">1</span>) * domain.d1.size <span class="kw">as </span>usize);
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>denominators = Vec::with_capacity(n * domain.d1.size <span class="kw">as </span>usize);
                     <span class="comment">// Iterate over the rows
                     </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
                         <span class="comment">// Iterate over individual columns (i.e. f_i and t)
@@ -606,21 +595,6 @@
                             </span><span class="kw">let </span>lookup_denominator = beta + combined_value;
                             denominators.push(lookup_denominator);
                         }
-
-                        <span class="comment">// We process t now
-                        </span><span class="kw">let </span>MVLookup {
-                            numerator: <span class="kw">_</span>,
-                            table_id,
-                            value,
-                        } = <span class="kw-2">&amp;</span>t[j <span class="kw">as </span>usize];
-                        <span class="kw">let </span>combined_value: G::ScalarField =
-                            value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
-                                x * vector_lookup_combiner + y
-                            }) * vector_lookup_combiner
-                                + table_id.to_field::&lt;G::ScalarField&gt;();
-
-                        <span class="kw">let </span>lookup_denominator = beta + combined_value;
-                        denominators.push(lookup_denominator);
                     }
 
                     ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
@@ -641,15 +615,9 @@
                             row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
                             denominator_index += <span class="number">1</span>;
                         }
-                        <span class="comment">// We process t now
-                        </span><span class="kw">let </span>MVLookup {
-                            numerator,
-                            table_id: <span class="kw">_</span>,
-                            value: <span class="kw">_</span>,
-                        } = <span class="kw-2">&amp;</span>t[j <span class="kw">as </span>usize];
-                        row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
-                        denominator_index += <span class="number">1</span>;
-                        evals.push(row_acc)
+                        <span class="comment">// FIXME: this should be splitted in chunks of (MAXIMUM_DEGREE - 2).
+                        // Use denominator_index.
+                        </span>evals.push(row_acc)
                     }
                     evals
                 })

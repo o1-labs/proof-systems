@@ -118,7 +118,6 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the MVLookup protocol for the MSM project.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
@@ -232,8 +231,7 @@
         };
         <span class="kw">let </span>m = (<span class="number">0</span>..domain.d1.size).map(|<span class="kw">_</span>| F::one()).collect();
         LookupWitness {
-            f: <span class="macro">vec!</span>[f_evals],
-            t: t_evals,
+            f: <span class="macro">vec!</span>[f_evals, t_evals],
             m,
         }
     }

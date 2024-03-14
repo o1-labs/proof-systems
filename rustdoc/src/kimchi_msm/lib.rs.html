@@ -285,6 +285,12 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -312,6 +318,12 @@
 
 <span class="kw">pub mod </span>ffa;
 <span class="kw">pub mod </span>serialization;
+
+<span class="doccomment">/// Define the maximum degree we support for the evaluations.
+/// For instance, it can be used to split the looked-up functions into partial
+/// sums.
+</span><span class="attr">#[allow(dead_code)]
+</span><span class="kw">const </span>MAX_SUPPORTED_DEGREE: usize = <span class="number">8</span>;
 
 <span class="doccomment">/// Domain size for the MSM project, equal to the BN254 SRS size.
 </span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;

@@ -254,6 +254,7 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{mvlookup::LookupTableID, MVLookup};
 
 <span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
@@ -378,8 +379,9 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
 
-        <span class="kw">let </span><span class="kw-2">mut </span>rangecheck15: [Vec&lt;Lookup&lt;Fp&gt;&gt;; N_LIMBS] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
-        <span class="kw">let </span><span class="kw-2">mut </span>rangecheck4: [Vec&lt;Lookup&lt;Fp&gt;&gt;; N_INTERMEDIATE_LIMBS] =
+        <span class="comment">// Adding one for the fixed table.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>rangecheck15: [Vec&lt;Lookup&lt;Fp&gt;&gt;; N_LIMBS + <span class="number">1</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+        <span class="kw">let </span><span class="kw-2">mut </span>rangecheck4: [Vec&lt;Lookup&lt;Fp&gt;&gt;; N_INTERMEDIATE_LIMBS + <span class="number">1</span>] =
             std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
         <span class="kw">for </span>(i, limbs) <span class="kw">in </span>field_elements.into_iter().enumerate() {
@@ -442,6 +444,7 @@
                     }
                 },
             );
+        rangecheck15[N_LIMBS] = rangecheck15_t.collect();
 
         <span class="kw">let </span>rangecheck4_m = witness_env.get_rangecheck4_normalized_multipliticies(domain);
         <span class="kw">let </span>rangecheck4_t = LookupTable::RangeCheck4
@@ -464,11 +467,11 @@
                     }
                 },
             );
+        rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
 
         <span class="kw">let </span>lookup_witness_rangecheck4: MVLookupWitness&lt;Fp, LookupTable&gt; = {
             MVLookupWitness {
                 f: rangecheck4.to_vec(),
-                t: rangecheck4_t.collect(),
                 m: rangecheck4_m,
             }
         };
@@ -476,7 +479,6 @@
         <span class="kw">let </span>lookup_witness_rangecheck15: MVLookupWitness&lt;Fp, LookupTable&gt; = {
             MVLookupWitness {
                 f: rangecheck15.to_vec(),
-                t: rangecheck15_t.collect(),
                 m: rangecheck15_m,
             }
         };
