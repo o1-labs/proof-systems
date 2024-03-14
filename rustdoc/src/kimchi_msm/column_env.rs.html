@@ -81,6 +81,16 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -108,9 +118,10 @@
     <span class="doccomment">/// The domains used in the PLONK argument.
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
     <span class="doccomment">/// Lookup specific polynomials
-    </span><span class="comment">// TODO define MVlookup one
     </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;()&gt;,
-}
+    <span class="comment">// TODO: rename in additive lookup or "logup"
+    // We do not use multi-variate lookups, only the additive part
+</span>}
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: FftField&gt; TColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt; <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt; {
     <span class="kw">type </span>Column = <span class="kw">crate</span>::columns::Column;
@@ -119,20 +130,29 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
-        <span class="kw">let </span>witness_columns_n: usize = <span class="self">self</span>.witness.len();
-        <span class="kw">let </span>coefficients_columns_n: usize = <span class="self">self</span>.coefficients.len();
-        <span class="kw">let </span><span class="kw">crate</span>::columns::Column::X(i) = col <span class="kw">else </span>{
-            <span class="macro">todo!</span>()
-        };
-        <span class="kw">let </span>i = <span class="kw-2">*</span>i;
-        <span class="kw">if </span>i &lt; witness_columns_n {
-            <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[i];
-            <span class="prelude-val">Some</span>(res)
-        } <span class="kw">else if </span>i &lt; witness_columns_n + coefficients_columns_n {
-            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.coefficients[i])
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>}
+        <span class="kw">let </span>witness_length: usize = <span class="self">self</span>.witness.len();
+        <span class="kw">let </span>coefficients_length: usize = <span class="self">self</span>.coefficients.len();
+        <span class="kw">match </span><span class="kw-2">*</span>col {
+            <span class="comment">// Handling the "relation columns"
+            </span><span class="self">Self</span>::Column::X(i) =&gt; {
+                <span class="kw">if </span>i &lt; witness_length {
+                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[i];
+                    <span class="prelude-val">Some</span>(res)
+                } <span class="kw">else if </span>i &lt; witness_length + coefficients_length {
+                    <span class="comment">// FIXME and add a test
+                    </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.coefficients[i])
+                } <span class="kw">else </span>{
+                    <span class="comment">// TODO: add a test for this
+                    </span><span class="macro">panic!</span>(<span class="string">"Requested column with index {:?} but the given witness is meant for {:?} columns"</span>, i, witness_length)
+                }
+            }
+            <span class="self">Self</span>::Column::LookupPartialSum(<span class="kw">_</span>)
+            | <span class="self">Self</span>::Column::LookupFixedTable(<span class="kw">_</span>)
+            | <span class="self">Self</span>::Column::LookupAggregation
+            | <span class="self">Self</span>::Column::LookupMultiplicity(<span class="kw">_</span>) =&gt; {
+                <span class="macro">panic!</span>(<span class="string">"Logup is not yet implemented."</span>)
+            }
+        }
     }
 
     <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; Radix2EvaluationDomain&lt;F&gt; {
