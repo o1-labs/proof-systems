@@ -43,7 +43,7 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
     }
 
     fn copy(&mut self, value: &Self::Variable, position: Self::Position) -> Self::Variable {
-        let Column::X(i) = position;
+        let Column::X(i) = position else { todo!() };
         self.witness.last_mut().unwrap().cols[i] = *value;
         *value
     }
@@ -54,7 +54,9 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
     }
 
     fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable {
-        let Column::X(i) = Self::column_pos(ix);
+        let Column::X(i) = Self::column_pos(ix) else {
+            todo!()
+        };
         self.witness.last().unwrap().cols[i]
     }
 

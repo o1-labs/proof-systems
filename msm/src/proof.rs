@@ -60,7 +60,9 @@ pub struct ProofEvaluations<const N: usize, F> {
 impl<const N: usize, F: Clone> ColumnEvaluations<F> for ProofEvaluations<N, F> {
     type Column = crate::columns::Column;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
-        let crate::columns::Column::X(i) = col;
+        let crate::columns::Column::X(i) = col else {
+            todo!()
+        };
         if i < self.witness_evals.cols.len() {
             Ok(self.witness_evals.cols[i].clone())
         } else {
