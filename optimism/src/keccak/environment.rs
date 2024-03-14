@@ -2,8 +2,8 @@
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
 use crate::keccak::{
-    column::KeccakWitness, constraints::Env as ConstraintsEnv, grid_index, pad_blocks,
-    witness::Env as WitnessEnv, KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    constraints::Env as ConstraintsEnv, grid_index, pad_blocks, witness::Env as WitnessEnv,
+    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
 use kimchi::{
@@ -14,6 +14,8 @@ use kimchi::{
     },
     o1_utils::Two,
 };
+
+use super::column::KeccakWitness;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
@@ -117,10 +119,11 @@ impl<F: Field> KeccakEnv<F> {
         self.witness_env.witness[column] = value;
     }
 
-    /// Nullifies the KeccakWitness of the environment by resetting it to default values
+    /// Nullifies the Witness environment by resetting it to default values (except for multiplicities)
     pub fn null_state(&mut self) {
         self.witness_env.witness = KeccakWitness::default();
-        self.witness_env.errors = vec![]; // Reset errors of constraints for the new row
+        self.witness_env.errors = vec![];
+        // The multiplicities are not reset.
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),

@@ -1,10 +1,9 @@
+use crate::{keccak::column::Column as KeccakColumn, lookups::LookupTableIDs};
 use ark_ff::Field;
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
 };
-
-use self::column::Column as KeccakColumn;
 
 pub mod column;
 pub mod constraints;
@@ -33,8 +32,7 @@ pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Constraint(Constraint),
-    #[allow(dead_code)]
-    Lookup(usize),
+    Lookup(LookupTableIDs),
 }
 
 /// All the names for constraints involved in the Keccak circuit
