@@ -72,7 +72,7 @@ where
     ////////////////////////////////////////////////////////////////////////////
 
     // Interpolate all columns on d1, using trait Into.
-    let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = inputs
+    let witness_evals_d1: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = inputs
         .evaluations
         .into_par_iter()
         .map(|evals| {
@@ -85,11 +85,19 @@ where
     let witness_polys: Witness<N, DensePolynomial<G::ScalarField>> = {
         let interpolate =
             |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
-        witness_evals
+        witness_evals_d1
             .into_par_iter()
             .map(interpolate)
             .collect::<Witness<N, DensePolynomial<G::ScalarField>>>()
     };
+
+    // Evaluate all columns on d8 for the quotient polynomial
+    // It also means we do support maximum degree 8 constraints
+    let _witness_evals_d8: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
+        (&witness_polys)
+            .into_par_iter()
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
+            .collect::<Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
 
     let witness_comms: Witness<N, PolyComm<G>> = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
