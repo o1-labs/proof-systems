@@ -187,6 +187,74 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, PrimeField, Zero};
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -195,7 +263,7 @@
 
 <span class="kw">use crate</span>::{
     columns::Column,
-    expr::{curr_cell, E},
+    expr::{curr_cell, next_cell, E},
     serialization::N_INTERMEDIATE_LIMBS,
     MVLookupTableID <span class="kw">as _</span>, N_LIMBS,
 };
@@ -372,6 +440,74 @@
             col: position,
             row: CurrOrNext::Curr,
         }))
+    }
+}
+
+<span class="kw">impl</span>&lt;Fp: PrimeField&gt; Env&lt;Fp&gt; {
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="comment">// FIXME: not mut
+    </span><span class="kw">fn </span>constrain_lookups(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;E&lt;Fp&gt;&gt; {
+        <span class="macro">assert_eq!</span>(<span class="self">self</span>.rangecheck4_lookups.len(), <span class="number">20</span>);
+        <span class="macro">assert_eq!</span>(<span class="self">self</span>.rangecheck15_lookups.len(), <span class="number">17</span>);
+
+        {
+            <span class="kw">let </span>rc4_t_lookup = Lookup {
+                table_id: LookupTable::RangeCheck4,
+                numerator: curr_cell(Column::LookupMultiplicity(
+                    LookupTable::RangeCheck4.to_u32(),
+                )),
+                value: <span class="macro">vec!</span>[curr_cell(Column::LookupFixedTable(
+                    LookupTable::RangeCheck4.to_u32(),
+                ))],
+            };
+            <span class="self">self</span>.rangecheck4_lookups.push(rc4_t_lookup);
+        }
+
+        {
+            <span class="kw">let </span>rc15_t_lookup = Lookup {
+                table_id: LookupTable::RangeCheck15,
+                numerator: curr_cell(Column::LookupMultiplicity(
+                    LookupTable::RangeCheck15.to_u32(),
+                )),
+                value: <span class="macro">vec!</span>[curr_cell(Column::LookupFixedTable(
+                    LookupTable::RangeCheck15.to_u32(),
+                ))],
+            };
+            <span class="self">self</span>.rangecheck15_lookups.push(rc15_t_lookup);
+        }
+
+        <span class="comment">// This can be generalized for any table. We can have a hashmap or an
+        // array of lookups
+        // Computing individual "boat"
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[];
+        <span class="kw">let </span><span class="kw-2">mut </span>idx = <span class="number">0</span>;
+        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.rangecheck4_lookups.chunks(<span class="number">6</span>) {
+            constraints.push(combine_lookups(
+                Column::LookupPartialSum(idx),
+                chunk.to_vec(),
+            ));
+            idx += <span class="number">1</span>;
+        }
+
+        <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.rangecheck15_lookups.chunks(<span class="number">6</span>) {
+            constraints.push(combine_lookups(
+                Column::LookupPartialSum(idx),
+                chunk.to_vec(),
+            ));
+            idx += <span class="number">1</span>;
+        }
+
+        <span class="comment">// Generic code over the partial sum
+        // Compute \phi(\omega X) - \phi(X) - \sum_{i = 1}^{N} h_i(X)
+        </span>{
+            <span class="kw">let </span>constraint =
+                next_cell(Column::LookupAggregation) - curr_cell(Column::LookupAggregation);
+            <span class="kw">let </span>constraint = (<span class="number">0</span>..idx).fold(constraint, |acc, i| {
+                acc - curr_cell(Column::LookupPartialSum(i))
+            });
+            constraints.push(constraint);
+        }
+        constraints
     }
 }
 </code></pre></div></section></main></body></html>
