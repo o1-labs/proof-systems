@@ -61,11 +61,30 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     fn rows() -> usize;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum EvalLeaf<'a, F> {
     Const(F),
     Col(&'a Vec<F>),
     Result(Vec<F>),
+}
+
+impl<'a, F: std::fmt::Display> std::fmt::Display for EvalLeaf<'a, F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let vec = match self {
+            EvalLeaf::Const(c) => {
+                write!(f, "Const: {}", c)?;
+                return Ok(());
+            }
+            EvalLeaf::Col(a) => a,
+            EvalLeaf::Result(a) => a,
+        };
+        writeln!(f, "[")?;
+        for e in vec.iter() {
+            writeln!(f, "{e}")?;
+        }
+        write!(f, "]")?;
+        Ok(())
+    }
 }
 
 impl<'a, F: std::ops::Add<Output = F> + Clone> std::ops::Add for EvalLeaf<'a, F> {

@@ -159,7 +159,6 @@ impl Instance<Curve> for TestInstance {
 
 /// Our witness is going to be the polynomials that we will commit too.
 /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
-// FIXME: use evaluations
 type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 3];
 
 impl Witness<Curve> for TestWitness {
@@ -201,7 +200,7 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for Te
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.iter_mut() {
-                //check this, while not relevant in this case I think it should be right rotation
+                //TODO: check this, while not relevant for this example I think it should be right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -299,7 +298,6 @@ impl FoldingConfig for TestFoldingConfig {
     type Env = TestFoldingEnv;
 
     fn rows() -> usize {
-        // FIXME: this is the domain size. Atm, let's have only one row
         2
     }
 }
@@ -452,20 +450,21 @@ mod checker {
     }
 
     pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
-            match exp {
+        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) -> Vec<Fp> {
+            let e2 = exp.clone();
+            let res = match exp {
                 FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
                 FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e);
+                    let v = self.check_rec(*e, debug);
                     v.into_iter().map(|x| x.double()).collect()
                 }
                 FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e);
+                    let v = self.check_rec(*e, debug);
                     v.into_iter().map(|x| x.square()).collect()
                 }
                 FoldingCompatibleExpr::BinOp(op, e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
+                    let v1 = self.check_rec(*e1, debug);
+                    let v2 = self.check_rec(*e2, debug);
                     let op = match op {
                         Op2::Add => |(a, b)| a + b,
                         Op2::Mul => |(a, b)| a * b,
@@ -474,13 +473,22 @@ mod checker {
                     v1.into_iter().zip(v2).map(op).collect()
                 }
                 FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e);
+                    let v = self.check_rec(*e, debug);
                     v.into_iter().map(|x| x.pow([exp])).collect()
                 }
+            };
+            if debug {
+                println!("exp: {:?}", e2);
+                println!("res: [\n");
+                for e in res.iter() {
+                    println!("{e}\n");
+                }
+                println!("]");
             }
+            res
         }
-        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) {
-            let res = self.check_rec(exp);
+        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) {
+            let res = self.check_rec(exp, debug);
             for (i, row) in res.iter().enumerate() {
                 if !row.is_zero() {
                     panic!("check in row {i} failed, {row} != 0");
@@ -491,14 +499,14 @@ mod checker {
     impl<T: Provide> Checker for T {}
 }
 
+// this checks a single folding, it would be good to expand it in the future to do several foldings,
+// as a few thigs are trivial in the first fold
 #[test]
 fn test_folding_instance() {
     use ark_poly::Radix2EvaluationDomain as D;
     use checker::{Checker, Provider};
 
     let constraints = constraints();
-    //disabling mul gate for now
-    let constraints = vec![constraints.into_iter().next().unwrap()];
     let domain = D::<Fp>::new(2).unwrap();
     let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
     srs.add_lagrange_basis(domain);
@@ -512,7 +520,7 @@ fn test_folding_instance() {
         structure.clone(),
     );
 
-    // Circuits only have 1 row in this example
+    // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
 
     // Left: 1 + 2 - 3 = 0
     let left_witness = [
@@ -537,24 +545,26 @@ fn test_folding_instance() {
 
     //check left
     {
+        // println!("check left");
         let checker = Provider::new(
             structure.clone(),
             left_instance.clone(),
             left_witness.clone(),
         );
         for constraint in &constraints {
-            checker.check(constraint.clone())
+            checker.check(constraint.clone(), false)
         }
     }
     //check right
     {
+        // println!("check right");
         let checker = Provider::new(
             structure.clone(),
             right_instance.clone(),
             right_witness.clone(),
         );
         for constraint in &constraints {
-            checker.check(constraint.clone())
+            checker.check(constraint.clone(), false)
         }
     }
 
@@ -566,6 +576,8 @@ fn test_folding_instance() {
     let (folded_instance, folded_witness, [_t0, _t1]) = folded;
     {
         let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-        checker.check(final_constraint);
+        // println!("exp: \n {:#?}", final_constraint);
+        // println!("check folded");
+        checker.check(final_constraint, false);
     }
 }

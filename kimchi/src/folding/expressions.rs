@@ -32,7 +32,7 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Alpha(usize),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
@@ -46,7 +46,7 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
 }
 
 ///designed for easy translation to and from most Expr
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Atom(FoldingCompatibleExprInner<C>),
     Double(Box<Self>),
@@ -56,7 +56,7 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
 }
 
 /// Extra expressions that can be created by folding
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ExpExtension {
     U,
     Error,
