@@ -1048,6 +1048,59 @@
 <a href="#1046" id="1046">1046</a>
 <a href="#1047" id="1047">1047</a>
 <a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+<a href="#1050" id="1050">1050</a>
+<a href="#1051" id="1051">1051</a>
+<a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
 </span><span class="kw">use crate</span>::{
@@ -1057,7 +1110,7 @@
         Constraint::{<span class="self">self</span>, <span class="kw-2">*</span>},
         KeccakColumn,
     },
-    lookups::Lookup,
+    lookups::{Lookup, LookupTableIDs::<span class="kw-2">*</span>},
 };
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>kimchi::{
@@ -1550,32 +1603,85 @@
     }
 
     <span class="doccomment">/// Reads Lookups containing the 136 bytes of the block of the preimage
-    </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    </span><span class="comment">// TODO: optimize this by using a single lookup reusing PadSuffix
+    </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
+            <span class="self">self</span>.add_lookup(Lookup::read_if(
+                <span class="self">self</span>.is_absorb(),
+                SyscallLookup,
+                <span class="macro">vec!</span>[
+                    <span class="self">self</span>.hash_index(),
+                    <span class="self">self</span>.block_index() * <span class="self">Self</span>::constant(RATE_IN_BYTES <span class="kw">as </span>u64)
+                        + <span class="self">Self</span>::constant(i <span class="kw">as </span>u64),
+                    <span class="self">self</span>.sponge_byte(i),
+                ],
+            ));
+        }
+    }
 
     <span class="doccomment">/// Writes a Lookup containing the 31byte output of the hash (excludes the MSB)
-    </span><span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    </span><span class="kw">fn </span>lookup_syscall_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(<span class="self">Self</span>::zero(), |acc, i| {
+            acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_byte(i)
+        });
+        <span class="self">self</span>.add_lookup(Lookup::write_if(
+            <span class="self">self</span>.is_squeeze(),
+            SyscallLookup,
+            <span class="macro">vec!</span>[<span class="self">self</span>.hash_index(), bytes31],
+        ));
+    }
 
     <span class="doccomment">/// Reads a Lookup containing the input of a step
     /// and writes a Lookup containing the output of the next step
-    </span><span class="kw">fn </span>lookup_steps(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+    </span><span class="kw">fn </span>lookup_steps(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// (if not a root) Output of previous step is input of current step
+        </span><span class="self">self</span>.add_lookup(Lookup::read_if(
+            <span class="self">Self</span>::not(<span class="self">self</span>.is_root()),
+            KeccakStepLookup,
+            <span class="self">self</span>.input_of_step(),
+        ));
+        <span class="comment">// (if not a squeeze) Input for next step is output of current step
+        </span><span class="self">self</span>.add_lookup(Lookup::write_if(
+            <span class="self">Self</span>::not(<span class="self">self</span>.is_squeeze()),
+            KeccakStepLookup,
+            <span class="self">self</span>.output_of_step(),
+        ));
+    }
 
     <span class="doccomment">/// Adds a lookup to the RangeCheck16 table
-    </span><span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    </span><span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(flag, RangeCheck16Lookup, <span class="macro">vec!</span>[value]));
+    }
 
     <span class="doccomment">/// Adds a lookup to the Reset table
-    </span><span class="kw">fn </span>lookup_reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, dense: <span class="self">Self</span>::Variable, sparse: <span class="self">Self</span>::Variable);
+    </span><span class="kw">fn </span>lookup_reset(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        flag: <span class="self">Self</span>::Variable,
+        dense: <span class="self">Self</span>::Variable,
+        sparse: <span class="self">Self</span>::Variable,
+    ) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(flag, ResetLookup, <span class="macro">vec!</span>[dense, sparse]));
+    }
 
     <span class="doccomment">/// Adds a lookup to the Shift table
-    </span><span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    </span><span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(flag, SparseLookup, <span class="macro">vec!</span>[value]));
+    }
 
     <span class="doccomment">/// Adds a lookup to the Byte table
-    </span><span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    </span><span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(flag, ByteLookup, <span class="macro">vec!</span>[value]));
+    }
 
     <span class="doccomment">/// Adds a lookup to the Pad table
-    </span><span class="kw">fn </span>lookup_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;);
+    </span><span class="kw">fn </span>lookup_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(flag, PadLookup, value));
+    }
 
     <span class="doccomment">/// Adds a lookup to the RoundConstants table
-    </span><span class="kw">fn </span>lookup_round_constants(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;);
+    </span><span class="kw">fn </span>lookup_round_constants(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.add_lookup(Lookup::read_if(flag, RoundConstantsLookup, value));
+    }
 
     <span class="doccomment">/// Adds the 601 lookups required for the sponge
     </span><span class="kw">fn </span>lookups_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
