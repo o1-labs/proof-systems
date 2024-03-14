@@ -152,16 +152,39 @@ where
 
     let (_, endo_r) = G::endos();
 
+    // We do not support zero-knowledge
+    let zk_rows = 0;
+
+    // Computing the maximum degree of the constraints.
+    // As we want the prover to handle any type of constraints, we need to
+    // adjust the degree of the quotient polynomial and number of commitments we
+    // will have. For PlonK-ish constraints, we have degree 3, and therefore we split into
+    // 3 t_i(X): t(X) = t_1(X) + X^n t_2(X) + X^{2n} t_3(X)
+    // In our case, we also do support additive lookups. In this case, we will
+    // *always* suppose we make at least 6 lookups per row, and therefore we
+    // will need degree 7, at least.
+    // This is not a good assumption, but we will do with it for now.
+    // We also do suppose that we do lookups on every row, and therefore we do
+    // not use a selector.
+    let max_expr_degree = if lookup_env.is_some() {
+        8
+    } else {
+        constraints
+            .iter()
+            .map(|expr| expr.degree(1, zk_rows))
+            .max()
+            .ok_or(ProverError::Generic("No constraints provided"))?
+    };
+
     //~ 1. Sample $\alpha'$ with the Fq-Sponge.
     let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
     //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
-    // TODO These should be evaluations of fixed coefficient polys
+    // FIXME These should be evaluations of fixed coefficient polys
     let coefficient_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
 
-    let zk_rows = 0;
     let column_env = {
         let challenges = Challenges {
             alpha,
