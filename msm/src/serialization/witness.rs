@@ -26,6 +26,8 @@ pub struct Env<Fp> {
 
     /// Keep track of the RangeCheck4 table multiplicities.
     /// The value `0` is used as a (repeated) dummy value.
+    // TODO: use hashmap, and build the polynomial from there.
+    // It can be generalized for any table.
     // Boxing to avoid stack overflow
     pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
 
