@@ -103,7 +103,7 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
 
         match id {
             RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | ResetLookup => {
-                if table[idx] == value {
+                if idx < id.length() && table[idx] == value {
                     Some(idx)
                 } else {
                     None
@@ -111,15 +111,20 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
             }
             PadLookup => {
                 // Because this table starts with entry 1
-                if table[idx - 1] == value {
+                if idx - 1 < id.length() && table[idx - 1] == value {
                     Some(idx - 1)
                 } else {
                     None
                 }
             }
             SparseLookup => {
-                let dense = u64::from_str_radix(&format!("{:x}", idx), 2).unwrap() as usize;
-                if table[dense] == value {
+                let res = u64::from_str_radix(&format!("{:x}", idx), 2);
+                let dense = if res.is_ok() {
+                    res.unwrap() as usize
+                } else {
+                    id.length() // So that it returns None
+                };
+                if dense < id.length() && table[dense] == value {
                     Some(dense)
                 } else {
                     None
