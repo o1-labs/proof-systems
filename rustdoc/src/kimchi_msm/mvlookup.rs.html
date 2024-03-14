@@ -350,6 +350,31 @@
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -477,6 +502,7 @@
 
 <span class="kw">pub mod </span>prover {
     <span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
+    <span class="kw">use </span><span class="kw">crate</span>::MAX_SUPPORTED_DEGREE;
     <span class="kw">use </span>ark_ff::Zero;
     <span class="kw">use </span>ark_poly::Evaluations;
     <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -566,12 +592,23 @@
 
             <span class="comment">// Contain the evalations of the h_i. We divide the looked-up values
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
-            </span><span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;G::ScalarField&gt;&gt; = lookups
+            </span><span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; = lookups
                 .into_iter()
                 .map(|lookup| {
                     <span class="kw">let </span>MVLookupWitness { f, m: <span class="kw">_ </span>} = lookup;
                     <span class="comment">// The number of functions to look up, including the fixed table.
                     </span><span class="kw">let </span>n = f.len();
+                    <span class="kw">let </span>n_partial_sums = <span class="kw">if </span>n % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
+                        n / (MAX_SUPPORTED_DEGREE - <span class="number">2</span>)
+                    } <span class="kw">else </span>{
+                        n / (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) + <span class="number">1
+                    </span>};
+                    <span class="kw">let </span><span class="kw-2">mut </span>partial_sums =
+                        <span class="macro">vec!</span>[
+                            Vec::&lt;G::ScalarField&gt;::with_capacity(domain.d1.size <span class="kw">as </span>usize);
+                            n_partial_sums
+                        ];
+
                     <span class="comment">// We compute first the denominators of all f_i and t. We gather them in
                     // a vector to perform a batch inversion.
                     </span><span class="kw">let </span><span class="kw-2">mut </span>denominators = Vec::with_capacity(n * domain.d1.size <span class="kw">as </span>usize);
@@ -600,11 +637,11 @@
                     ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
 
                     <span class="comment">// Evals is the sum on the individual columns for each row
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>evals = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
-                    <span class="kw">let </span><span class="kw-2">mut </span>denominator_index = <span class="number">0</span>;
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>denominator_index = <span class="number">0</span>;
 
                     <span class="comment">// We only need to add the numerator now
                     </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
+                        <span class="kw">let </span><span class="kw-2">mut </span>partial_sum_idx = <span class="number">0</span>;
                         <span class="kw">let </span><span class="kw-2">mut </span>row_acc = G::ScalarField::zero();
                         <span class="kw">for </span>f_i <span class="kw">in </span>f.iter() {
                             <span class="kw">let </span>MVLookup {
@@ -614,14 +651,27 @@
                             } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
                             row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
                             denominator_index += <span class="number">1</span>;
+                            <span class="kw">if </span>denominator_index % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
+                                partial_sums[partial_sum_idx].push(row_acc);
+                                row_acc = G::ScalarField::zero();
+                                partial_sum_idx += <span class="number">1</span>;
+                            }
                         }
-                        <span class="comment">// FIXME: this should be splitted in chunks of (MAXIMUM_DEGREE - 2).
-                        // Use denominator_index.
-                        </span>evals.push(row_acc)
+                        <span class="kw">if </span>denominator_index % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) != <span class="number">0 </span>{
+                            partial_sums[partial_sum_idx].push(row_acc);
+                        }
                     }
-                    evals
+                    partial_sums
                 })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
+            <span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;G::ScalarField&gt;&gt; =
+                lookup_terms_evals.into_iter().flatten().collect();
+
+            <span class="comment">// Sanity check to verify that the number of evaluations is correct
+            </span>lookup_terms_evals
+                .iter()
+                .for_each(|evals| <span class="macro">assert_eq!</span>(evals.len(), domain.d1.size <span class="kw">as </span>usize));
 
             <span class="kw">let </span>lookup_terms_evals_d1: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; =
                 lookup_terms_evals
