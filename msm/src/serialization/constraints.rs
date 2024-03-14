@@ -65,7 +65,7 @@ pub fn combine_lookups<F: Field>(column: Column, lookups: Vec<Lookup<E<F>>>) -> 
         .enumerate()
         .map(|(i, x)| {
             denominators.iter().enumerate().fold(
-                // Compute individual \sum_{j = 1, j \neq i}^{N} f_{j}(X)
+                // Compute individual \sum_{j = 1, j \neq i}^{N} (\beta + f_{j}(X))
                 // This is the inner part of rhs. It multiplies with m_{i}
                 x.numerator,
                 |acc, (j, y)| {
