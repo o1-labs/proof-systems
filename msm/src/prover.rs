@@ -1,3 +1,4 @@
+use crate::mvlookup;
 use crate::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -171,7 +172,15 @@ where
             witness: &witness_evals_env,
             coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
-            lookup: None,
+            lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
+                mvlookup::prover::QuotientPolynomialEnvironment {
+                    lookup_terms_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                    lookup_aggregation_evals_d1: &lookup_env.lookup_aggregation_evals_d1,
+                    lookup_counters_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                    // FIXME
+                    fixed_lookup_tables: &coefficient_evals_env,
+                }
+            }),
             domain,
         }
     };

@@ -1,6 +1,7 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
+use crate::mvlookup;
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::circuits::expr::{
     Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain,
@@ -25,9 +26,9 @@ pub struct ColumnEnvironment<'a, F: FftField> {
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
-    pub lookup: Option<()>,
     // TODO: rename in additive lookup or "logup"
     // We do not use multi-variate lookups, only the additive part
+    pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F>>,
 }
 
 impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
@@ -53,8 +54,14 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
                     panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
                 }
             }
-            Self::Column::LookupPartialSum(_)
-            | Self::Column::LookupFixedTable(_)
+            Self::Column::LookupPartialSum(i) => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(&lookup.lookup_terms_evals_d1[i])
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupFixedTable(_)
             | Self::Column::LookupAggregation
             | Self::Column::LookupMultiplicity(_) => {
                 panic!("Logup is not yet implemented.")
