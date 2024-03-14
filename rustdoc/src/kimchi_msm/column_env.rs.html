@@ -79,6 +79,8 @@
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -119,7 +121,9 @@
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
         <span class="kw">let </span>witness_columns_n: usize = <span class="self">self</span>.witness.len();
         <span class="kw">let </span>coefficients_columns_n: usize = <span class="self">self</span>.coefficients.len();
-        <span class="kw">let </span><span class="kw">crate</span>::columns::Column::X(i) = col;
+        <span class="kw">let </span><span class="kw">crate</span>::columns::Column::X(i) = col <span class="kw">else </span>{
+            <span class="macro">todo!</span>()
+        };
         <span class="kw">let </span>i = <span class="kw-2">*</span>i;
         <span class="kw">if </span>i &lt; witness_columns_n {
             <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[i];

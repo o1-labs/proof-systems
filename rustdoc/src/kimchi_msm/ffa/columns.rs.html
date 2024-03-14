@@ -124,7 +124,7 @@
 
 <span class="kw">impl </span>FFAColumnIndexer {
     <span class="kw">pub fn </span>column_to_ix(col: Column) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>Column::X(pos) = col;
+        <span class="kw">let </span>Column::X(pos) = col <span class="kw">else </span>{ <span class="macro">todo!</span>() };
         <span class="kw">let </span>upper_bound = |i: usize| (i + <span class="number">1</span>) * N_LIMBS;
         <span class="kw">let </span>pos_map = |i: usize| pos - upper_bound(i - <span class="number">1</span>);
         <span class="kw">if </span>pos &lt; upper_bound(<span class="number">0</span>) {

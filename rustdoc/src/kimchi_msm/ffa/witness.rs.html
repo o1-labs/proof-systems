@@ -103,6 +103,8 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>ark_ff::Zero;
 
@@ -148,7 +150,7 @@
     }
 
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>Column::X(i) = position;
+        <span class="kw">let </span>Column::X(i) = position <span class="kw">else </span>{ <span class="macro">todo!</span>() };
         <span class="self">self</span>.witness.last_mut().unwrap().cols[i] = <span class="kw-2">*</span>value;
         <span class="kw-2">*</span>value
     }
@@ -159,7 +161,9 @@
     }
 
     <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>Column::X(i) = <span class="self">Self</span>::column_pos(ix);
+        <span class="kw">let </span>Column::X(i) = <span class="self">Self</span>::column_pos(ix) <span class="kw">else </span>{
+            <span class="macro">todo!</span>()
+        };
         <span class="self">self</span>.witness.last().unwrap().cols[i]
     }
 
