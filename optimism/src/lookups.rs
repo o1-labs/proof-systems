@@ -42,8 +42,8 @@ pub enum LookupTableIDs {
 }
 
 impl LookupTableID for LookupTableIDs {
-    fn into_field<F: Field>(self) -> F {
-        F::from(self as u32)
+    fn to_u32(&self) -> u32 {
+        *self as u32
     }
 
     fn length(&self) -> usize {
