@@ -229,7 +229,7 @@
             formatter,
             <span class="string">"numerator: {}\ntable_id: {:?}\nvalue:\n[\n"</span>,
             numerator,
-            <span class="self">self</span>.table_id.into_field::&lt;F&gt;()
+            <span class="self">self</span>.table_id.to_field::&lt;F&gt;()
         )<span class="question-mark">?</span>;
         <span class="kw">for </span>value <span class="kw">in </span><span class="self">self</span>.value.iter() {
             <span class="macro">writeln!</span>(formatter, <span class="string">"\t{}"</span>, value)<span class="question-mark">?</span>;

@@ -122,7 +122,7 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the MVLookup protocol for the MSM project.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
-<span class="kw">use </span>ark_ff::{FftField, Field};
+<span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>rand::{seq::SliceRandom, thread_rng, Rng};
 <span class="kw">use </span>std::iter;
@@ -135,14 +135,14 @@
     <span class="doccomment">/// Custom lookup table
     /// The index of the table is used as the ID, padded with the number of
     /// built-in tables.
-    </span>Custom(usize),
+    </span>Custom(u32),
 }
 
 <span class="kw">impl </span>LookupTableID <span class="kw">for </span>LookupTableIDs {
-    <span class="kw">fn </span>into_field&lt;F: Field&gt;(<span class="self">self</span>) -&gt; F {
+    <span class="kw">fn </span>to_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">match </span><span class="self">self </span>{
-            LookupTableIDs::RangeCheck16 =&gt; F::one(),
-            LookupTableIDs::Custom(id) =&gt; F::from(id <span class="kw">as </span>u64) + F::one(),
+            LookupTableIDs::RangeCheck16 =&gt; <span class="number">1_u32</span>,
+            LookupTableIDs::Custom(id) =&gt; id + <span class="number">1</span>,
         }
     }
 

@@ -254,9 +254,7 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{mvlookup::LookupTableID, MVLookup};
-<span class="kw">use </span>ark_ff::Field;
 
 <span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
 </span><span class="kw">pub const </span>N_INTERMEDIATE_LIMBS: usize = <span class="number">20</span>;
@@ -273,10 +271,10 @@
 }
 
 <span class="kw">impl </span>LookupTableID <span class="kw">for </span>LookupTable {
-    <span class="kw">fn </span>into_field&lt;F: Field&gt;(<span class="self">self</span>) -&gt; F {
+    <span class="kw">fn </span>to_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::RangeCheck15 =&gt; F::one(),
-            <span class="self">Self</span>::RangeCheck4 =&gt; F::one() + F::one(),
+            <span class="self">Self</span>::RangeCheck15 =&gt; <span class="number">1</span>,
+            <span class="self">Self</span>::RangeCheck4 =&gt; <span class="number">2</span>,
         }
     }
 
