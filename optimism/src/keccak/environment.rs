@@ -119,11 +119,12 @@ impl<F: Field> KeccakEnv<F> {
         self.witness_env.witness[column] = value;
     }
 
-    /// Nullifies the Witness environment by resetting it to default values (except for multiplicities)
+    /// Nullifies the Witness environment by resetting it to default values (except for lookup-related)
     pub fn null_state(&mut self) {
         self.witness_env.witness = KeccakWitness::default();
         self.witness_env.errors = vec![];
         // The multiplicities are not reset.
+        // The fixed tables are not modified.
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),

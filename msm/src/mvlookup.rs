@@ -45,10 +45,8 @@ pub trait LookupTableID {
 #[derive(Debug, Clone)]
 pub struct LookupTable<F, ID: LookupTableID + Send + Sync + Copy> {
     /// Table ID corresponding to this table
-    #[allow(dead_code)]
     pub table_id: ID,
     /// Vector of values inside each entry of the table
-    #[allow(dead_code)]
     pub entries: Vec<Vec<F>>,
 }
 
