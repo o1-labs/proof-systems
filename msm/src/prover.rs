@@ -187,8 +187,6 @@ where
     };
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
-        // TODO FIXME This is only sound if powers of alpha are not used to combine constraints internally!
-        // And they are, so we need to take extra care.
         for expr in constraints.iter() {
             // otherwise we need different t_size
             let expr_degree = expr.degree(1, zk_rows);
@@ -211,7 +209,6 @@ where
             if !res.is_zero() {
                 return Err(fail_q_division);
             }
-            // TODO assert none of expressions contain alpha
         }
 
         let combined_expr =
