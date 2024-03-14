@@ -23,10 +23,8 @@ pub struct Env<F> {
     /// The full state of the Keccak gate (witness)
     pub witness: KeccakWitness<F>,
     /// The fixed tables used in the Keccak gate
-    // FIXME: too costly to store them all for each step. Should be once for the whole execution.
     pub tables: Vec<LookupTable<F>>,
     /// The multiplicities of each lookup entry. Should not be cleared between steps.
-    // FIXME: too costly to store them all for each step. Should be once for the whole execution.
     pub multiplicities: Vec<Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,
