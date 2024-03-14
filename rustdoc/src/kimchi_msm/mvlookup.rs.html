@@ -375,6 +375,13 @@
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -503,7 +510,7 @@
 <span class="kw">pub mod </span>prover {
     <span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
     <span class="kw">use </span><span class="kw">crate</span>::MAX_SUPPORTED_DEGREE;
-    <span class="kw">use </span>ark_ff::Zero;
+    <span class="kw">use </span>ark_ff::{FftField, Zero};
     <span class="kw">use </span>ark_poly::Evaluations;
     <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -513,6 +520,13 @@
     <span class="kw">use </span>poly_commitment::{OpenProof, SRS <span class="kw">as _</span>};
     <span class="kw">use </span>rayon::iter::IntoParallelIterator;
     <span class="kw">use </span>rayon::iter::ParallelIterator;
+
+    <span class="kw">pub struct </span>QuotientPolynomialEnvironment&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
+        <span class="kw">pub </span>lookup_terms_evals_d1: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+        <span class="kw">pub </span>lookup_aggregation_evals_d1: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
+        <span class="kw">pub </span>lookup_counters_evals_d1: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+        <span class="kw">pub </span>fixed_lookup_tables: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+    }
 
     <span class="kw">pub struct </span>Env&lt;G: KimchiCurve&gt; {
         <span class="kw">pub </span>lookup_counters_evals_d1: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,

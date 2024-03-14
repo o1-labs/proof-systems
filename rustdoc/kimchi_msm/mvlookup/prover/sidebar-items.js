@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Env"]};
+window.SIDEBAR_ITEMS = {"struct":["Env","QuotientPolynomialEnvironment"]};
