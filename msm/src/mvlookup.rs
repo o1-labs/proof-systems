@@ -36,6 +36,9 @@ where
 pub trait LookupTableID {
     /// Assign a unique ID to the lookup tables.
     fn into_field<F: Field>(self) -> F;
+
+    /// Returns the length of each table.
+    fn length(&self) -> usize;
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
