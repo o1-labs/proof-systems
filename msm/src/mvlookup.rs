@@ -126,7 +126,7 @@ impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
 pub mod prover {
     use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
     use crate::MAX_SUPPORTED_DEGREE;
-    use ark_ff::Zero;
+    use ark_ff::{FftField, Zero};
     use ark_poly::Evaluations;
     use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
     use kimchi::circuits::domains::EvaluationDomains;
@@ -136,6 +136,13 @@ pub mod prover {
     use poly_commitment::{OpenProof, SRS as _};
     use rayon::iter::IntoParallelIterator;
     use rayon::iter::ParallelIterator;
+
+    pub struct QuotientPolynomialEnvironment<'a, F: FftField> {
+        pub lookup_terms_evals_d1: &'a Vec<Evaluations<F, D<F>>>,
+        pub lookup_aggregation_evals_d1: &'a Evaluations<F, D<F>>,
+        pub lookup_counters_evals_d1: &'a Vec<Evaluations<F, D<F>>>,
+        pub fixed_lookup_tables: &'a Vec<Evaluations<F, D<F>>>,
+    }
 
     pub struct Env<G: KimchiCurve> {
         pub lookup_counters_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
