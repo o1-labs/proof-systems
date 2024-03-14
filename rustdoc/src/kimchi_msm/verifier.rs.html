@@ -219,7 +219,7 @@
 };
 <span class="kw">use </span>rand::thread_rng;
 
-<span class="kw">use </span><span class="kw">crate</span>::expr::MSMExpr;
+<span class="kw">use </span><span class="kw">crate</span>::expr::E;
 <span class="kw">use </span><span class="kw">crate</span>::proof::Proof;
 
 <span class="kw">pub fn </span>verify&lt;
@@ -231,7 +231,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    constraint_exprs: <span class="kw-2">&amp;</span>Vec&lt;MSMExpr&lt;G::ScalarField&gt;&gt;,
+    constraint_exprs: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
     proof: <span class="kw-2">&amp;</span>Proof&lt;N, G, OpeningProof&gt;,
 ) -&gt; bool {
     <span class="kw">let </span>Proof {

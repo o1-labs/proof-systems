@@ -172,7 +172,7 @@
 <a href="#170" id="170">170</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
 </span><span class="kw">use crate</span>::{
-    keccak::{KeccakColumn, E},
+    keccak::{Constraint, KeccakColumn, E},
     lookups::{Lookup, LookupTableIDs},
 };
 <span class="kw">use </span>ark_ff::Field;
@@ -237,7 +237,7 @@
         }))
     }
 
-    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
+    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _tag: Constraint, x: <span class="self">Self</span>::Variable) {
         <span class="self">self</span>.constraints.push(x);
     }
 

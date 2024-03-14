@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["MSMColumnEnvironment"]};
+window.SIDEBAR_ITEMS = {"struct":["ColumnEnvironment"]};

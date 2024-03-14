@@ -1010,12 +1010,52 @@
 <a href="#1008" id="1008">1008</a>
 <a href="#1009" id="1009">1009</a>
 <a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a>
+<a href="#1039" id="1039">1039</a>
+<a href="#1040" id="1040">1040</a>
+<a href="#1041" id="1041">1041</a>
+<a href="#1042" id="1042">1042</a>
+<a href="#1043" id="1043">1043</a>
+<a href="#1044" id="1044">1044</a>
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
 </span><span class="kw">use crate</span>::{
     keccak::{
         column::{PAD_BYTES_LEN, ROUND_COEFFS_LEN},
-        grid_index, KeccakColumn,
+        grid_index,
+        Constraint::{<span class="self">self</span>, <span class="kw-2">*</span>},
+        KeccakColumn,
     },
     lookups::Lookup,
 };
@@ -1124,8 +1164,8 @@
     </span><span class="doccomment">/// Returns the variable corresponding to a given column alias.
     </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: KeccakColumn) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Adds one constraint to the environment.
-    </span><span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable);
+    <span class="doccomment">/// Adds one KeccakConstraint to the environment.
+    </span><span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, tag: Constraint, x: <span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Adds all 887 constraints/checks to the environment:
     /// - 143 constraints of degree 1
@@ -1135,22 +1175,16 @@
         <span class="comment">// CORRECTNESS OF FLAGS: 144 CONSTRAINTS
         // - 143 constraints of degree 1
         // - 1 constraint of degree 2
-        </span>{
-            <span class="self">self</span>.constrain_flags();
-        }
+        </span><span class="self">self</span>.constrain_flags();
 
         <span class="comment">// SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
         // - 354 constraints of degree 2
-        </span>{
-            <span class="self">self</span>.constrain_sponge();
-        }
+        </span><span class="self">self</span>.constrain_sponge();
 
         <span class="comment">// ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
         // - 384 constraints of degree 2
         // - 5 constraints of degree 3
-        </span>{
-            <span class="self">self</span>.constrain_round();
-        }
+        </span><span class="self">self</span>.constrain_round();
     }
 
     <span class="doccomment">/// Constrains 144 checks of correctness of mode flags
@@ -1160,50 +1194,64 @@
     /// - 142 constraints are sponge-only
     /// - 1 constraint is sponge+round related
     </span><span class="comment">// TODO: when Round and Sponge circuits are separated, the last one will be removed
-    //       (in particular, the one involving round and sponge together)
+    //       (in particular, the ones involving round and sponge together)
     </span><span class="kw">fn </span>constrain_flags(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Booleanity of sponge flags: 139 constraints of degree 1
-        </span>{
-            <span class="self">self</span>.constrain_booleanity();
-        }
+        </span><span class="self">self</span>.constrain_booleanity();
+
         <span class="comment">// Mutual exclusivity of flags: 5 constraints:
         // - 4 of degree 1
         // - 1 of degree 2
-        </span>{
-            <span class="self">self</span>.constrain_mutex();
-        }
+        </span><span class="self">self</span>.constrain_mutex();
     }
 
     <span class="doccomment">/// Constrains 139 checks of booleanity for some mode flags.
     /// These involve sponge-only related variables.
     </span><span class="kw">fn </span>constrain_booleanity(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Absorb is either true or false
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_absorb()));
+        </span><span class="self">self</span>.constrain(BooleanityAbsorb, <span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_absorb()));
         <span class="comment">// Squeeze is either true or false
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_squeeze()));
+        </span><span class="self">self</span>.constrain(BooleanitySqueeze, <span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_squeeze()));
         <span class="comment">// Root is either true or false
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_root()));
+        </span><span class="self">self</span>.constrain(BooleanityRoot, <span class="self">Self</span>::is_boolean(<span class="self">self</span>.is_root()));
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
             <span class="comment">// Bytes are either involved on padding or not
-            </span><span class="self">self</span>.constrain(<span class="self">Self</span>::is_boolean(<span class="self">self</span>.in_padding(i)));
+            </span><span class="self">self</span>.constrain(BooleanityPadding(i), <span class="self">Self</span>::is_boolean(<span class="self">self</span>.in_padding(i)));
         }
     }
 
     <span class="doccomment">/// Constrains 5 checks of mutual exclusivity between some mode flags.
-    /// - 4 involve sponge-only related variables
-    /// - 1 involves sponge+round  variables
+    /// - 3 involve sponge-only related variables
+    /// - 2 involves sponge+round variables
+    </span><span class="comment">// TODO: when Round and Sponge circuits are separated, the last one will be removed
+    //       (in particular, the ones involving round and sponge together)
     </span><span class="kw">fn </span>constrain_mutex(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Squeeze and Root are not both true
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_root()));
+        </span><span class="self">self</span>.constrain(
+            MutexSqueezeRoot,
+            <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_root()),
+        );
         <span class="comment">// Squeeze and Pad are not both true
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_pad()));
+        </span><span class="self">self</span>.constrain(
+            MutexSqueezePad,
+            <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_pad()),
+        );
         <span class="comment">// Round and Pad are not both true
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_pad()));
+        </span><span class="self">self</span>.constrain(
+            MutexRoundPad,
+            <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_pad()),
+        );
         <span class="comment">// Round and Root are not both true
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_root()));
+        </span><span class="self">self</span>.constrain(
+            MutexRoundRoot,
+            <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_root()),
+        );
         <span class="comment">// Absorb and Squeeze cannot happen at the same time.
         // Equivalent to is_boolean(is_sponge())
-        </span><span class="self">self</span>.constrain(<span class="self">Self</span>::either_zero(<span class="self">self</span>.is_absorb(), <span class="self">self</span>.is_squeeze()));
+        </span><span class="self">self</span>.constrain(
+            MutexAbsorbSqueeze,
+            <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_absorb(), <span class="self">self</span>.is_squeeze()),
+        );
         <span class="comment">// Trivially, is_sponge and is_round are mutually exclusive
     </span>}
 
@@ -1216,21 +1264,26 @@
 
     <span class="doccomment">/// Constrains 332 checks of absorb sponges
     </span><span class="kw">fn </span>constrain_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>zero <span class="kw">in </span><span class="self">self</span>.sponge_zeros() {
+        <span class="kw">for </span>(i, zero) <span class="kw">in </span><span class="self">self</span>.sponge_zeros().iter().enumerate() {
             <span class="comment">// Absorb phase pads with zeros the new state
-            </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_absorb() * zero);
+            </span><span class="self">self</span>.constrain(AbsorbZeroPad(i), <span class="self">self</span>.is_absorb() * zero.clone());
         }
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * DIM * DIM {
             <span class="comment">// In first absorb, root state is all zeros
-            </span><span class="self">self</span>.constrain(<span class="self">self</span>.is_root() * <span class="self">self</span>.old_state(i).clone());
+            </span><span class="self">self</span>.constrain(
+                AbsorbRootZero(i),
+                <span class="self">self</span>.is_root() * <span class="self">self</span>.old_state(i).clone(),
+            );
             <span class="comment">// Absorbs the new block by performing XOR with the old state
             </span><span class="self">self</span>.constrain(
+                AbsorbXor(i),
                 <span class="self">self</span>.is_absorb()
                     * (<span class="self">self</span>.xor_state(i).clone()
                         - (<span class="self">self</span>.old_state(i).clone() + <span class="self">self</span>.new_state(i).clone())),
             );
             <span class="comment">// In absorb, Check shifts correspond to the decomposition of the new state
             </span><span class="self">self</span>.constrain(
+                AbsorbShifts(i),
                 <span class="self">self</span>.is_absorb()
                     * (<span class="self">self</span>.new_state(i).clone()
                         - <span class="self">Self</span>::from_shifts(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_sponge_shifts(), <span class="prelude-val">Some</span>(i), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)),
@@ -1244,10 +1297,16 @@
         </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
             acc * <span class="self">Self</span>::two() + <span class="self">self</span>.in_padding(i)
         });
-        <span class="self">self</span>.constrain(<span class="self">self</span>.is_pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end));
+        <span class="self">self</span>.constrain(
+            PadAtEnd,
+            <span class="self">self</span>.is_pad() * (<span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end),
+        );
         <span class="comment">// Check that the padding value is correct
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..PAD_SUFFIX_LEN {
-            <span class="self">self</span>.constrain(<span class="self">self</span>.is_pad() * (<span class="self">self</span>.block_in_padding(i) - <span class="self">self</span>.pad_suffix(i)));
+            <span class="self">self</span>.constrain(
+                PaddingSuffix(i),
+                <span class="self">self</span>.is_pad() * (<span class="self">self</span>.block_in_padding(i) - <span class="self">self</span>.pad_suffix(i)),
+            );
         }
     }
 
@@ -1257,6 +1316,7 @@
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * WORDS_IN_HASH {
             <span class="comment">// In squeeze, check shifts correspond to the 256-bit prefix digest of the old state (current)
             </span><span class="self">self</span>.constrain(
+                SqueezeShifts(i),
                 <span class="self">self</span>.is_squeeze()
                     * (<span class="self">self</span>.old_state(i).clone()
                         - <span class="self">Self</span>::from_shifts(<span class="kw-2">&amp;</span>sponge_shifts, <span class="prelude-val">Some</span>(i), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)),
@@ -1299,12 +1359,19 @@
             <span class="kw">let </span>rot_c = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_rot_c(), <span class="prelude-val">None</span>, x);
 
             <span class="self">self</span>.constrain(
+                ThetaWordC(x),
                 <span class="self">self</span>.is_round()
                     * (word_c * <span class="self">Self</span>::two_pow(<span class="number">1</span>)
                         - (<span class="self">self</span>.quotient_c(x) * <span class="self">Self</span>::two_pow(<span class="number">64</span>) + rem_c.clone())),
             );
-            <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (rot_c - (<span class="self">self</span>.quotient_c(x) + rem_c)));
-            <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (<span class="self">Self</span>::is_boolean(<span class="self">self</span>.quotient_c(x))));
+            <span class="self">self</span>.constrain(
+                ThetaRotatedC(x),
+                <span class="self">self</span>.is_round() * (rot_c - (<span class="self">self</span>.quotient_c(x) + rem_c)),
+            );
+            <span class="self">self</span>.constrain(
+                ThetaQuotientC(x),
+                <span class="self">self</span>.is_round() * (<span class="self">Self</span>::is_boolean(<span class="self">self</span>.quotient_c(x))),
+            );
 
             <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                 state_c[x][q] = <span class="self">self</span>.state_a(<span class="number">0</span>, x, q)
@@ -1313,6 +1380,7 @@
                     + <span class="self">self</span>.state_a(<span class="number">3</span>, x, q)
                     + <span class="self">self</span>.state_a(<span class="number">4</span>, x, q);
                 <span class="self">self</span>.constrain(
+                    ThetaShiftsC(x, q),
                     <span class="self">self</span>.is_round()
                         * (state_c[x][q].clone()
                             - <span class="self">Self</span>::from_shifts(
@@ -1352,14 +1420,19 @@
                 <span class="kw">let </span>rot_e = <span class="self">Self</span>::from_quarters(<span class="kw-2">&amp;</span><span class="self">self</span>.vec_dense_rot_e(), <span class="prelude-val">Some</span>(y), x);
 
                 <span class="self">self</span>.constrain(
+                    PiRhoWordE(y, x),
                     <span class="self">self</span>.is_round()
                         * (word_e * <span class="self">Self</span>::two_pow(<span class="kw-2">*</span>off)
                             - (quo_e.clone() * <span class="self">Self</span>::two_pow(<span class="number">64</span>) + rem_e.clone())),
                 );
-                <span class="self">self</span>.constrain(<span class="self">self</span>.is_round() * (rot_e - (quo_e.clone() + rem_e)));
+                <span class="self">self</span>.constrain(
+                    PiRhoRotatedE(y, x),
+                    <span class="self">self</span>.is_round() * (rot_e - (quo_e.clone() + rem_e)),
+                );
 
                 <span class="kw">for </span>q <span class="kw">in </span><span class="number">0</span>..QUARTERS {
                     <span class="self">self</span>.constrain(
+                        PiRhoShiftsE(y, x, q),
                         <span class="self">self</span>.is_round()
                             * (state_e[y][x][q].clone()
                                 - <span class="self">Self</span>::from_shifts(
@@ -1395,6 +1468,7 @@
                     <span class="kw">let </span>and = <span class="self">self</span>.shifts_sum(<span class="number">1</span>, y, x, q);
 
                     <span class="self">self</span>.constrain(
+                        ChiShiftsB(y, x, q),
                         <span class="self">self</span>.is_round()
                             * (state_b[y][x][q].clone()
                                 - <span class="self">Self</span>::from_shifts(
@@ -1406,6 +1480,7 @@
                                 )),
                     );
                     <span class="self">self</span>.constrain(
+                        ChiShiftsSum(y, x, q),
                         <span class="self">self</span>.is_round()
                             * (sum
                                 - <span class="self">Self</span>::from_shifts(
@@ -1428,6 +1503,7 @@
     </span><span class="kw">fn </span>constrain_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state_f: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt;) {
         <span class="kw">for </span>(q, c) <span class="kw">in </span><span class="self">self</span>.round_constants().to_vec().iter().enumerate() {
             <span class="self">self</span>.constrain(
+                IotaStateG(q),
                 <span class="self">self</span>.is_round()
                     * (<span class="self">self</span>.state_g(q).clone() - (state_f[<span class="number">0</span>][<span class="number">0</span>][q].clone() + c.clone())),
             );
