@@ -348,8 +348,6 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -394,10 +392,8 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupTable&lt;F, ID: LookupTableID + Send + Sync + Copy&gt; {
     <span class="doccomment">/// Table ID corresponding to this table
-    </span><span class="attr">#[allow(dead_code)]
     </span><span class="kw">pub </span>table_id: ID,
     <span class="doccomment">/// Vector of values inside each entry of the table
-    </span><span class="attr">#[allow(dead_code)]
     </span><span class="kw">pub </span>entries: Vec&lt;Vec&lt;F&gt;&gt;,
 }
 
@@ -431,11 +427,11 @@
 /// the type?
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupProof&lt;T&gt; {
-    <span class="comment">// The multiplicity polynomials
+    <span class="doccomment">/// The multiplicity polynomials
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: Vec&lt;T&gt;,
-    <span class="comment">// The polynomial keeping the sum of each row
+    <span class="doccomment">/// The polynomial keeping the sum of each row
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) h: Vec&lt;T&gt;,
-    <span class="comment">// The "running-sum" over the rows, coined \phi
+    <span class="doccomment">/// The "running-sum" over the rows, coined `\phi`
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) sum: T,
 }
 

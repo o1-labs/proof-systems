@@ -426,8 +426,8 @@
 <a href="#424" id="424">424</a>
 <a href="#425" id="425">425</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    column_env::MSMColumnEnvironment,
-    expr::MSMExpr,
+    column_env::ColumnEnvironment,
+    expr::E,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
@@ -479,7 +479,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    constraints: <span class="kw-2">&amp;</span>Vec&lt;MSMExpr&lt;G::ScalarField&gt;&gt;,
+    constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
     inputs: ProofInputs&lt;N, G, ID&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;N, G, OpeningProof&gt;, ProverError&gt;
@@ -588,7 +588,7 @@
             gamma: G::ScalarField::zero(),
             joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
         };
-        MSMColumnEnvironment {
+        ColumnEnvironment {
             constants: Constants {
                 endo_coefficient: <span class="kw-2">*</span>endo_r,
                 mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
