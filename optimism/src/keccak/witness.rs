@@ -21,7 +21,7 @@ use kimchi_msm::LookupTableID;
 pub struct Env<Fp> {
     /// The full state of the Keccak gate (witness)
     pub witness: KeccakWitness<Fp>,
-    /// The multiplicities of each lookup entry
+    /// The multiplicities of each lookup entry. Should not be cleared between steps.
     pub multiplicities: Vec<Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,

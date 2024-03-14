@@ -119,8 +119,8 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
             }
             SparseLookup => {
                 let res = u64::from_str_radix(&format!("{:x}", idx), 2);
-                let dense = if res.is_ok() {
-                    res.unwrap() as usize
+                let dense = if let Ok(ok) = res {
+                    ok as usize
                 } else {
                     id.length() // So that it returns None
                 };

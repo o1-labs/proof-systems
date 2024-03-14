@@ -15,6 +15,8 @@ use kimchi::{
     o1_utils::Two,
 };
 
+use super::column::KeccakWitness;
+
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<F> {
@@ -117,9 +119,11 @@ impl<F: Field> KeccakEnv<F> {
         self.witness_env.witness[column] = value;
     }
 
-    /// Nullifies the Witness environment by resetting it to default values
+    /// Nullifies the Witness environment by resetting it to default values (except for multiplicities)
     pub fn null_state(&mut self) {
-        self.witness_env = WitnessEnv::default();
+        self.witness_env.witness = KeccakWitness::default();
+        self.witness_env.errors = vec![];
+        // The multiplicities are not reset.
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),

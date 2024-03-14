@@ -90,22 +90,23 @@ fn test_is_in_table() {
     assert!(LookupTable::is_in_table(ByteLookup, vec![Fp::from(256u32)]).is_none());
     // RangeCheck16Lookup
     assert!(LookupTable::is_in_table(RangeCheck16Lookup, vec![Fp::zero()]).is_some());
-    assert!(LookupTable::is_in_table(RangeCheck16Lookup, vec![Fp::from(1 << 16 - 1)]).is_some());
+    assert!(LookupTable::is_in_table(RangeCheck16Lookup, vec![Fp::from((1 << 16) - 1)]).is_some());
     assert!(LookupTable::is_in_table(RangeCheck16Lookup, vec![Fp::from(1 << 16)]).is_none());
     // SparseLookup
     assert!(LookupTable::is_in_table(SparseLookup, vec![Fp::zero()]).is_some());
-    assert!(
-        LookupTable::is_in_table(SparseLookup, vec![Fp::from(Keccak::sparse(1 << 16 - 1)[3])])
-            .is_some()
-    );
+    assert!(LookupTable::is_in_table(
+        SparseLookup,
+        vec![Fp::from(Keccak::sparse((1 << 16) - 1)[3])]
+    )
+    .is_some());
     assert!(LookupTable::is_in_table(SparseLookup, vec![Fp::two()]).is_none());
     // ResetLookup
     assert!(LookupTable::is_in_table(ResetLookup, vec![Fp::zero(), Fp::zero()]).is_some());
     assert!(LookupTable::is_in_table(
         ResetLookup,
         vec![
-            Fp::from(1 << 16 - 1),
-            Fp::from(Keccak::sparse(1 << 64 - 1)[3])
+            Fp::from((1 << 16) - 1),
+            Fp::from(Keccak::sparse(((1u128 << 64) - 1) as u64)[3])
         ]
     )
     .is_some());
@@ -329,4 +330,41 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
         vec![Error::Constraint(IotaStateG(0))]
     );
     witness_env[1].errors.clear();
+}
+
+#[test]
+fn test_keccak_multiplicities() {
+    let mut rng = o1_utils::tests::make_test_rng();
+
+    // Generate random preimage of 1 block for Keccak, which will need a second full block for padding
+    let preimage: Vec<u8> = (0..136).map(|_| rng.gen()).collect();
+
+    // Initialize witness for
+    // - 1 root absorb
+    // - 24 rounds
+    // - 1 pad absorb
+    // - 24 rounds
+    // - 1 squeeze
+    let n_steps = 51;
+    let mut witness_env = Vec::with_capacity(n_steps);
+
+    // Run the interpreter and keep track of the witness
+    let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+    while keccak_env.keccak_step.is_some() {
+        keccak_env.step();
+        // Run only the iota lookups because it is too slow for now
+        keccak_env.witness_env.lookups_round_iota();
+        // Store a copy of the witness
+        witness_env.push(keccak_env.witness_env.clone());
+    }
+    assert_eq!(witness_env.len(), n_steps);
+
+    // Check multiplicities of the padding suffixes
+    witness_env[25].lookups_sponge();
+    assert_eq!(witness_env[25].multiplicities[PadLookup as usize][135], 1);
+    // Check multiplicities of the round constants of Rounds 0
+    assert_eq!(
+        witness_env[26].multiplicities[RoundConstantsLookup as usize][0],
+        2
+    );
 }
