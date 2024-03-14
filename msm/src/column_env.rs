@@ -61,9 +61,21 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupFixedTable(_)
-            | Self::Column::LookupAggregation
-            | Self::Column::LookupMultiplicity(_) => {
+            Self::Column::LookupAggregation => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(lookup.lookup_aggregation_evals_d1)
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupMultiplicity(i) => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(&lookup.lookup_counters_evals_d1[i as usize])
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupFixedTable(_) => {
                 panic!("Logup is not yet implemented.")
             }
         }
