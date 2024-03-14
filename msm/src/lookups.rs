@@ -111,8 +111,7 @@ impl<F: FftField> LookupWitness<F> {
         };
         let m = (0..domain.d1.size).map(|_| F::one()).collect();
         LookupWitness {
-            f: vec![f_evals],
-            t: t_evals,
+            f: vec![f_evals, t_evals],
             m,
         }
     }
