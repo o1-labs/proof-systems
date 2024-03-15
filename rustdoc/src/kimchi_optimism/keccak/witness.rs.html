@@ -101,6 +101,20 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This file contains the witness for the Keccak hash function for the zkVM project.
 //! It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 //!
@@ -120,10 +134,13 @@
 <span class="kw">use </span>kimchi_msm::LookupTableID;
 
 <span class="doccomment">/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+</span><span class="comment">// TODO: the fixed tables information should be inferred from the general environment
 </span><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>Env&lt;Fp&gt; {
+</span><span class="kw">pub struct </span>Env&lt;F&gt; {
     <span class="doccomment">/// The full state of the Keccak gate (witness)
-    </span><span class="kw">pub </span>witness: KeccakWitness&lt;Fp&gt;,
+    </span><span class="kw">pub </span>witness: KeccakWitness&lt;F&gt;,
+    <span class="doccomment">/// The fixed tables used in the Keccak gate
+    </span><span class="kw">pub </span>tables: Vec&lt;LookupTable&lt;F&gt;&gt;,
     <span class="doccomment">/// The multiplicities of each lookup entry. Should not be cleared between steps.
     </span><span class="kw">pub </span>multiplicities: Vec&lt;Vec&lt;u32&gt;&gt;,
     <span class="doccomment">/// If any, an error that occurred during the execution of the constraints, to help with debugging
@@ -134,6 +151,14 @@
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             witness: KeccakWitness::default(),
+            tables: <span class="macro">vec!</span>[
+                LookupTable::table_pad(),
+                LookupTable::table_round_constants(),
+                LookupTable::table_byte(),
+                LookupTable::table_range_check_16(),
+                LookupTable::table_sparse(),
+                LookupTable::table_reset(),
+            ],
             multiplicities: <span class="macro">vec!</span>[
                 <span class="macro">vec!</span>[<span class="number">0</span>; PadLookup.length()],
                 <span class="macro">vec!</span>[<span class="number">0</span>; RoundConstantsLookup.length()],
@@ -191,7 +216,10 @@
             | ByteLookup =&gt; {
                 <span class="kw">if </span>lookup.magnitude == <span class="self">Self</span>::one() {
                     <span class="comment">// Check that the lookup value is in the table
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = LookupTable::is_in_table(lookup.table_id, lookup.value) {
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = LookupTable::is_in_table(
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.tables[lookup.table_id <span class="kw">as </span>usize],
+                        lookup.value,
+                    ) {
                         <span class="self">self</span>.multiplicities[lookup.table_id <span class="kw">as </span>usize][idx] += <span class="number">1</span>;
                     } <span class="kw">else </span>{
                         <span class="self">self</span>.errors.push(Error::Lookup(lookup.table_id));

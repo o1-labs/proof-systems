@@ -437,6 +437,7 @@
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
@@ -558,11 +559,12 @@
         <span class="self">self</span>.witness_env.witness[column] = value;
     }
 
-    <span class="doccomment">/// Nullifies the Witness environment by resetting it to default values (except for multiplicities)
+    <span class="doccomment">/// Nullifies the Witness environment by resetting it to default values (except for lookup-related)
     </span><span class="kw">pub fn </span>null_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.witness_env.witness = KeccakWitness::default();
         <span class="self">self</span>.witness_env.errors = <span class="macro">vec!</span>[];
         <span class="comment">// The multiplicities are not reset.
+        // The fixed tables are not modified.
     </span>}
 
     <span class="doccomment">/// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
