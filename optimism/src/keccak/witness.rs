@@ -17,10 +17,13 @@ use kimchi::o1_utils::Two;
 use kimchi_msm::LookupTableID;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+// TODO: the fixed tables information should be inferred from the general environment
 #[derive(Clone, Debug)]
-pub struct Env<Fp> {
+pub struct Env<F> {
     /// The full state of the Keccak gate (witness)
-    pub witness: KeccakWitness<Fp>,
+    pub witness: KeccakWitness<F>,
+    /// The fixed tables used in the Keccak gate
+    pub tables: Vec<LookupTable<F>>,
     /// The multiplicities of each lookup entry. Should not be cleared between steps.
     pub multiplicities: Vec<Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
@@ -31,6 +34,14 @@ impl<F: Field> Default for Env<F> {
     fn default() -> Self {
         Self {
             witness: KeccakWitness::default(),
+            tables: vec![
+                LookupTable::table_pad(),
+                LookupTable::table_round_constants(),
+                LookupTable::table_byte(),
+                LookupTable::table_range_check_16(),
+                LookupTable::table_sparse(),
+                LookupTable::table_reset(),
+            ],
             multiplicities: vec![
                 vec![0; PadLookup.length()],
                 vec![0; RoundConstantsLookup.length()],
@@ -88,7 +99,10 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
             | ByteLookup => {
                 if lookup.magnitude == Self::one() {
                     // Check that the lookup value is in the table
-                    if let Some(idx) = LookupTable::is_in_table(lookup.table_id, lookup.value) {
+                    if let Some(idx) = LookupTable::is_in_table(
+                        &self.tables[lookup.table_id as usize],
+                        lookup.value,
+                    ) {
                         self.multiplicities[lookup.table_id as usize][idx] += 1;
                     } else {
                         self.errors.push(Error::Lookup(lookup.table_id));

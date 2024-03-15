@@ -66,9 +66,9 @@ pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
 pub(crate) type LookupTable<F> = MVLookupTable<F, LookupTableIDs>;
 
 /// Trait that creates all the fixed lookup tables used in the VM
-pub(crate) trait FixedLookupTables<F, ID: LookupTableID> {
-    /// Checks whether a value is in a table ID and returns the position if it is or None otherwise.
-    fn is_in_table(id: ID, value: Vec<F>) -> Option<usize>;
+pub(crate) trait FixedLookupTables<F> {
+    /// Checks whether a value is in a table and returns the position if it is or None otherwise.
+    fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize>;
     /// Returns the pad table
     fn table_pad() -> LookupTable<F>;
     /// Returns the round constants table
@@ -83,17 +83,9 @@ pub(crate) trait FixedLookupTables<F, ID: LookupTableID> {
     fn table_reset() -> LookupTable<F>;
 }
 
-impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
-    fn is_in_table(id: LookupTableIDs, value: Vec<F>) -> Option<usize> {
-        let table = match id {
-            RangeCheck16Lookup => Self::table_range_check_16().entries,
-            SparseLookup => Self::table_sparse().entries,
-            ResetLookup => Self::table_reset().entries,
-            RoundConstantsLookup => Self::table_round_constants().entries,
-            PadLookup => Self::table_pad().entries,
-            ByteLookup => Self::table_byte().entries,
-            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => return None,
-        };
+impl<F: Field> FixedLookupTables<F> for LookupTable<F> {
+    fn is_in_table(table: &LookupTable<F>, value: Vec<F>) -> Option<usize> {
+        let id = table.table_id;
         // In these tables, the first value of the vector is related to the index within the table.
         let idx = value[0]
             .to_bytes()
@@ -103,7 +95,7 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
 
         match id {
             RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | ResetLookup => {
-                if idx < id.length() && table[idx] == value {
+                if idx < id.length() && table.entries[idx] == value {
                     Some(idx)
                 } else {
                     None
@@ -111,7 +103,7 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
             }
             PadLookup => {
                 // Because this table starts with entry 1
-                if idx - 1 < id.length() && table[idx - 1] == value {
+                if idx - 1 < id.length() && table.entries[idx - 1] == value {
                     Some(idx - 1)
                 } else {
                     None
@@ -124,7 +116,7 @@ impl<F: Field> FixedLookupTables<F, LookupTableIDs> for LookupTable<F> {
                 } else {
                     id.length() // So that it returns None
                 };
-                if dense < id.length() && table[dense] == value {
+                if dense < id.length() && table.entries[dense] == value {
                     Some(dense)
                 } else {
                     None

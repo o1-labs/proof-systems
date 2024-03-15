@@ -32,9 +32,15 @@ fn test_pad_blocks() {
 
 #[test]
 fn test_is_in_table() {
+    let table_pad = LookupTable::table_pad();
+    let table_round_constants = LookupTable::table_round_constants();
+    let table_byte = LookupTable::table_byte();
+    let table_range_check_16 = LookupTable::table_range_check_16();
+    let table_sparse = LookupTable::table_sparse();
+    let table_reset = LookupTable::table_reset();
     // PadLookup
     assert!(LookupTable::is_in_table(
-        PadLookup,
+        &table_pad,
         vec![
             Fp::one(),      // Length of padding
             Fp::two_pow(1), // 2^length of padding
@@ -47,7 +53,7 @@ fn test_is_in_table() {
     )
     .is_some());
     assert!(LookupTable::is_in_table(
-        PadLookup,
+        &table_pad,
         vec![
             Fp::from(136),                            // Length of padding
             Fp::two_pow(136),                         // 2^length of padding
@@ -59,10 +65,10 @@ fn test_is_in_table() {
         ]
     )
     .is_some());
-    assert!(LookupTable::is_in_table(PadLookup, vec![Fp::from(137u32)]).is_none());
+    assert!(LookupTable::is_in_table(&table_pad, vec![Fp::from(137u32)]).is_none());
     // RoundConstantsLookup
     assert!(LookupTable::is_in_table(
-        RoundConstantsLookup,
+        &table_round_constants,
         vec![
             Fp::zero(), // Round index
             Fp::zero(), // Most significant quarter of round constant
@@ -73,7 +79,7 @@ fn test_is_in_table() {
     )
     .is_some());
     assert!(LookupTable::is_in_table(
-        RoundConstantsLookup,
+        &table_round_constants,
         vec![
             Fp::from(23),                        // Round index
             Fp::from(Keccak::sparse(0x8000)[0]), // Most significant quarter of round constant
@@ -83,34 +89,36 @@ fn test_is_in_table() {
         ]
     )
     .is_some());
-    assert!(LookupTable::is_in_table(RoundConstantsLookup, vec![Fp::from(24u32)]).is_none());
+    assert!(LookupTable::is_in_table(&table_round_constants, vec![Fp::from(24u32)]).is_none());
     // ByteLookup
-    assert!(LookupTable::is_in_table(ByteLookup, vec![Fp::zero()]).is_some());
-    assert!(LookupTable::is_in_table(ByteLookup, vec![Fp::from(255u32)]).is_some());
-    assert!(LookupTable::is_in_table(ByteLookup, vec![Fp::from(256u32)]).is_none());
+    assert!(LookupTable::is_in_table(&table_byte, vec![Fp::zero()]).is_some());
+    assert!(LookupTable::is_in_table(&table_byte, vec![Fp::from(255u32)]).is_some());
+    assert!(LookupTable::is_in_table(&table_byte, vec![Fp::from(256u32)]).is_none());
     // RangeCheck16Lookup
-    assert!(LookupTable::is_in_table(RangeCheck16Lookup, vec![Fp::zero()]).is_some());
-    assert!(LookupTable::is_in_table(RangeCheck16Lookup, vec![Fp::from((1 << 16) - 1)]).is_some());
-    assert!(LookupTable::is_in_table(RangeCheck16Lookup, vec![Fp::from(1 << 16)]).is_none());
+    assert!(LookupTable::is_in_table(&table_range_check_16, vec![Fp::zero()]).is_some());
+    assert!(
+        LookupTable::is_in_table(&table_range_check_16, vec![Fp::from((1 << 16) - 1)]).is_some()
+    );
+    assert!(LookupTable::is_in_table(&table_range_check_16, vec![Fp::from(1 << 16)]).is_none());
     // SparseLookup
-    assert!(LookupTable::is_in_table(SparseLookup, vec![Fp::zero()]).is_some());
+    assert!(LookupTable::is_in_table(&table_sparse, vec![Fp::zero()]).is_some());
     assert!(LookupTable::is_in_table(
-        SparseLookup,
+        &table_sparse,
         vec![Fp::from(Keccak::sparse((1 << 16) - 1)[3])]
     )
     .is_some());
-    assert!(LookupTable::is_in_table(SparseLookup, vec![Fp::two()]).is_none());
+    assert!(LookupTable::is_in_table(&table_sparse, vec![Fp::two()]).is_none());
     // ResetLookup
-    assert!(LookupTable::is_in_table(ResetLookup, vec![Fp::zero(), Fp::zero()]).is_some());
+    assert!(LookupTable::is_in_table(&table_reset, vec![Fp::zero(), Fp::zero()]).is_some());
     assert!(LookupTable::is_in_table(
-        ResetLookup,
+        &table_reset,
         vec![
             Fp::from((1 << 16) - 1),
             Fp::from(Keccak::sparse(((1u128 << 64) - 1) as u64)[3])
         ]
     )
     .is_some());
-    assert!(LookupTable::is_in_table(ResetLookup, vec![Fp::from(1 << 16)]).is_none());
+    assert!(LookupTable::is_in_table(&table_reset, vec![Fp::from(1 << 16)]).is_none());
 }
 
 #[test]
@@ -153,15 +161,10 @@ fn test_keccak_witness_satisfies_lookups() {
 
     // Initialize the environment and run the interpreter
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    let mut i = 0;
     while keccak_env.keccak_step.is_some() {
         keccak_env.step();
-        // Simulate the lookups only for absorb, last round, and squeeze because it is too slow for now
-        if i == 0 || i == 24 || i == 25 {
-            keccak_env.witness_env.lookups();
-            assert!(keccak_env.witness_env.errors.is_empty());
-        }
-        i += 1;
+        keccak_env.witness_env.lookups();
+        assert!(keccak_env.witness_env.errors.is_empty());
     }
 }
 
@@ -352,15 +355,13 @@ fn test_keccak_multiplicities() {
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
     while keccak_env.keccak_step.is_some() {
         keccak_env.step();
-        // Run only the iota lookups because it is too slow for now
-        keccak_env.witness_env.lookups_round_iota();
+        keccak_env.witness_env.lookups();
         // Store a copy of the witness
         witness_env.push(keccak_env.witness_env.clone());
     }
     assert_eq!(witness_env.len(), n_steps);
 
     // Check multiplicities of the padding suffixes
-    witness_env[25].lookups_sponge();
     assert_eq!(witness_env[25].multiplicities[PadLookup as usize][135], 1);
     // Check multiplicities of the round constants of Rounds 0
     assert_eq!(
