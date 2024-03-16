@@ -137,7 +137,6 @@ where
             8
         }
     };
-    println!("Max degree: {:?}", max_degree);
 
     // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
     // FIXME: remove clone
