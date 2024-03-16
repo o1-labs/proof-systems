@@ -25,6 +25,7 @@ pub mod witness;
 
 pub mod ffa;
 pub mod serialization;
+pub mod test;
 
 /// Define the maximum degree we support for the evaluations.
 /// For instance, it can be used to split the looked-up functions into partial
@@ -63,15 +64,15 @@ pub type OpeningProof = PairingProof<BN254>;
 mod tests {
     use crate::{
         columns::Column,
-        ffa::{
-            columns::FFA_N_COLUMNS,
-            constraint::ConstraintBuilderEnv as FFAConstraintBuilderEnv,
-            interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
-            witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
-        },
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
+        test::{
+            columns::TEST_N_COLUMNS,
+            constraint::ConstraintBuilderEnv as TestConstraintBuilderEnv,
+            interpreter::{self as ffa_interpreter, TestInterpreterEnv},
+            witness::WitnessBuilderEnv as TestWitnessBuilderEnv,
+        },
         verifier::verify,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
@@ -85,7 +86,7 @@ mod tests {
 
     // Creates a test witness for a * b = c constraint.
     fn gen_random_mul_witness<RNG: RngCore + CryptoRng>(
-        witness_env: &mut FFAWitnessBuilderEnv<Fp>,
+        witness_env: &mut TestWitnessBuilderEnv<Fp>,
         rng: &mut RNG,
     ) {
         let row_num = 10;
@@ -112,8 +113,8 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
-        let mut constraint_env = FFAConstraintBuilderEnv::<Fp>::empty();
+        let mut witness_env = TestWitnessBuilderEnv::<Fp>::empty();
+        let mut constraint_env = TestConstraintBuilderEnv::<Fp>::empty();
 
         ffa_interpreter::constrain_multiplication(&mut constraint_env);
         gen_random_mul_witness(&mut witness_env, &mut rng);
@@ -129,13 +130,13 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            FFA_N_COLUMNS,
+            TEST_N_COLUMNS,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
             domain,
             &srs,
             &constraints,
@@ -159,11 +160,11 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let mut constraint_env = FFAConstraintBuilderEnv::<Fp>::empty();
+        let mut constraint_env = TestConstraintBuilderEnv::<Fp>::empty();
         ffa_interpreter::constrain_multiplication(&mut constraint_env);
         let constraints = constraint_env.constraints;
 
-        let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
+        let mut witness_env = TestWitnessBuilderEnv::<Fp>::empty();
         gen_random_mul_witness(&mut witness_env, &mut rng);
         let inputs = witness_env.get_witness(domain_size);
 
@@ -175,12 +176,12 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            FFA_N_COLUMNS,
+            TEST_N_COLUMNS,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
 
-        let mut witness_env_prime = FFAWitnessBuilderEnv::<Fp>::empty();
+        let mut witness_env_prime = TestWitnessBuilderEnv::<Fp>::empty();
         gen_random_mul_witness(&mut witness_env_prime, &mut rng);
         let inputs_prime = witness_env_prime.get_witness(domain_size);
 
@@ -192,7 +193,7 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            FFA_N_COLUMNS,
+            TEST_N_COLUMNS,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs_prime, &mut rng)
         .unwrap();
@@ -201,7 +202,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
@@ -216,7 +217,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_comms = proof_prime.proof_comms;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
@@ -232,7 +233,7 @@ mod tests {
         {
             let mut proof_clone = proof.clone();
             proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
-            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS>(
+            let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS>(
                 domain,
                 &srs,
                 &constraints,
