@@ -291,6 +291,7 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -318,6 +319,7 @@
 
 <span class="kw">pub mod </span>ffa;
 <span class="kw">pub mod </span>serialization;
+<span class="kw">pub mod </span>test;
 
 <span class="doccomment">/// Define the maximum degree we support for the evaluations.
 /// For instance, it can be used to split the looked-up functions into partial
@@ -356,15 +358,15 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
         columns::Column,
-        ffa::{
-            columns::FFA_N_COLUMNS,
-            constraint::ConstraintBuilderEnv <span class="kw">as </span>FFAConstraintBuilderEnv,
-            interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, FFAInterpreterEnv},
-            witness::WitnessBuilderEnv <span class="kw">as </span>FFAWitnessBuilderEnv,
-        },
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
+        test::{
+            columns::TEST_N_COLUMNS,
+            constraint::ConstraintBuilderEnv <span class="kw">as </span>TestConstraintBuilderEnv,
+            interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, TestInterpreterEnv},
+            witness::WitnessBuilderEnv <span class="kw">as </span>TestWitnessBuilderEnv,
+        },
         verifier::verify,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
@@ -378,7 +380,7 @@
 
     <span class="comment">// Creates a test witness for a * b = c constraint.
     </span><span class="kw">fn </span>gen_random_mul_witness&lt;RNG: RngCore + CryptoRng&gt;(
-        witness_env: <span class="kw-2">&amp;mut </span>FFAWitnessBuilderEnv&lt;Fp&gt;,
+        witness_env: <span class="kw-2">&amp;mut </span>TestWitnessBuilderEnv&lt;Fp&gt;,
         rng: <span class="kw-2">&amp;mut </span>RNG,
     ) {
         <span class="kw">let </span>row_num = <span class="number">10</span>;
@@ -405,8 +407,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
-        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = FFAConstraintBuilderEnv::&lt;Fp&gt;::empty();
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = TestWitnessBuilderEnv::&lt;Fp&gt;::empty();
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = TestConstraintBuilderEnv::&lt;Fp&gt;::empty();
 
         ffa_interpreter::constrain_multiplication(<span class="kw-2">&amp;mut </span>constraint_env);
         gen_random_mul_witness(<span class="kw-2">&amp;mut </span>witness_env, <span class="kw-2">&amp;mut </span>rng);
@@ -422,13 +424,13 @@
             ScalarSponge,
             Column,
             <span class="kw">_</span>,
-            FFA_N_COLUMNS,
+            TEST_N_COLUMNS,
             LookupTableIDs,
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
 
         <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
+        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             <span class="kw-2">&amp;</span>constraints,
@@ -452,11 +454,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(x, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = FFAConstraintBuilderEnv::&lt;Fp&gt;::empty();
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = TestConstraintBuilderEnv::&lt;Fp&gt;::empty();
         ffa_interpreter::constrain_multiplication(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="kw">let </span>constraints = constraint_env.constraints;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = TestWitnessBuilderEnv::&lt;Fp&gt;::empty();
         gen_random_mul_witness(<span class="kw-2">&amp;mut </span>witness_env, <span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span>inputs = witness_env.get_witness(domain_size);
 
@@ -468,12 +470,12 @@
             ScalarSponge,
             Column,
             <span class="kw">_</span>,
-            FFA_N_COLUMNS,
+            TEST_N_COLUMNS,
             LookupTableIDs,
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env_prime = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env_prime = TestWitnessBuilderEnv::&lt;Fp&gt;::empty();
         gen_random_mul_witness(<span class="kw-2">&amp;mut </span>witness_env_prime, <span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span>inputs_prime = witness_env_prime.get_witness(domain_size);
 
@@ -485,7 +487,7 @@
             ScalarSponge,
             Column,
             <span class="kw">_</span>,
-            FFA_N_COLUMNS,
+            TEST_N_COLUMNS,
             LookupTableIDs,
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs_prime, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
@@ -494,7 +496,7 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
                 <span class="kw-2">&amp;</span>constraints,
@@ -509,7 +511,7 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.proof_comms = proof_prime.proof_comms;
-            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
                 <span class="kw-2">&amp;</span>constraints,
@@ -525,7 +527,7 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
-            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
                 <span class="kw-2">&amp;</span>constraints,

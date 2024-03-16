@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["constrain_addition","constrain_ff_addition","constrain_ff_addition_row","constrain_multiplication","ff_addition_circuit","test_addition","test_multiplication"],"trait":["FFAInterpreterEnv"]};
+window.SIDEBAR_ITEMS = {"fn":["constrain_ff_addition","constrain_ff_addition_row","ff_addition_circuit"],"trait":["FFAInterpreterEnv"]};

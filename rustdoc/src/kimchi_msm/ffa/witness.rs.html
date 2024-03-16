@@ -175,12 +175,6 @@
         <span class="self">self</span>.witness.last().unwrap().cols[i]
     }
 
-    <span class="kw">fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.witness.push(Witness {
-            cols: [Zero::zero(); FFA_N_COLUMNS],
-        });
-    }
-
     <span class="kw">fn </span>range_check_abs1(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="comment">// FIXME unimplemented
     </span>}
@@ -224,6 +218,12 @@
             mvlookups: <span class="macro">vec!</span>[],
             public_input_size: <span class="number">0</span>,
         }
+    }
+
+    <span class="kw">pub fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.witness.push(Witness {
+            cols: [Zero::zero(); FFA_N_COLUMNS],
+        });
     }
 }
 </code></pre></div></section></main></body></html>
