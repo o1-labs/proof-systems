@@ -126,6 +126,19 @@ where
         None
     };
 
+    let max_degree = {
+        if lookup_env.is_none() {
+            constraints
+                .iter()
+                .map(|expr| expr.degree(1, 0))
+                .max()
+                .unwrap_or(0)
+        } else {
+            8
+        }
+    };
+    println!("Max degree: {:?}", max_degree);
+
     // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
     // FIXME: remove clone
     let mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
@@ -248,12 +261,13 @@ where
     //
     // Our constraints are at most degree d2. When divided by
     // vanishing polynomial, we obtain t(X) of degree d1.
-    let expected_t_size = 1;
+    // let num_chunks: usize = (max_degree - 1) as usize;
     // Quotient commitment
+    // let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
     let t_comm = {
         let num_chunks = 1;
         let mut t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
-        let dummies_n = expected_t_size - t_comm.elems.len();
+        let dummies_n = num_chunks - t_comm.elems.len();
         for _ in 0..dummies_n {
             t_comm.elems.push(G::zero());
         }
