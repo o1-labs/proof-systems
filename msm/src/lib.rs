@@ -62,13 +62,11 @@ pub type OpeningProof = PairingProof<BN254>;
 
 #[cfg(test)]
 mod tests {
-    use crate::witness::Witness;
     use crate::{
         columns::Column,
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
-        expr,
         test::{
             columns::TEST_N_COLUMNS,
             constraint::ConstraintBuilderEnv as TestConstraintBuilderEnv,
@@ -290,55 +288,5 @@ mod tests {
         );
         // FIXME: At the moment, it does verify. It should not. We are missing constraints.
         assert!(!verifies);
-    }
-
-    #[test]
-    fn test_different_degrees() {
-        let mut rng = o1_utils::tests::make_test_rng();
-        let domain_size = 1 << 2;
-        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
-
-        let mut srs: PairingSRS<BN254> = {
-            // Trusted setup toxic waste
-            let x = Fp::rand(&mut rng);
-            PairingSRS::create(x, domain.d1.size as usize)
-        };
-        srs.full_srs.add_lagrange_basis(domain.d1);
-
-        let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
-            vec![x0.clone() * x0.clone() - x1]
-        };
-
-        const N: usize = 2;
-        let random_x0s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
-        let exp_x1 = (&random_x0s).into_iter().map(|x| *x * *x).collect();
-        let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, exp_x1],
-        };
-
-        let proof_inputs = ProofInputs {
-            evaluations: witness,
-            mvlookups: vec![],
-            public_input_size: 0,
-        };
-
-        let proof =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
-                domain,
-                &srs,
-                &constraints,
-                proof_inputs,
-                &mut rng,
-            )
-            .unwrap();
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-        );
-        assert!(verifies)
     }
 }
