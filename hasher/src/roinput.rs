@@ -91,7 +91,7 @@ impl ROInput {
     pub fn append_scalar(mut self, s: Fq) -> Self {
         // mina scalars are 255 bytes
         let bytes = s.to_bytes();
-        let bits = &bytes.as_bits::<Lsb0>()[..Fq::size_in_bits()];
+        let bits = &bytes.as_bits::<Lsb0>()[..Fq::MODULUS_BIT_SIZE as usize];
         self.bits.extend(bits);
         self
     }
@@ -121,7 +121,9 @@ impl ROInput {
     /// Serialize random oracle input to bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bits: BitVec<u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
-            acc.extend_from_bitslice(&fe.to_bytes().as_bits::<Lsb0>()[..Fp::size_in_bits()]);
+            acc.extend_from_bitslice(
+                &fe.to_bytes().as_bits::<Lsb0>()[..Fp::MODULUS_BIT_SIZE as usize],
+            );
 
             acc
         });
@@ -135,38 +137,37 @@ impl ROInput {
     pub fn to_fields(&self) -> Vec<Fp> {
         let mut fields: Vec<Fp> = self.fields.clone();
 
-        let bits_as_fields =
-            self.bits
-                .chunks(Fp::size_in_bits() - 1)
-                .into_iter()
-                .fold(vec![], |mut acc, chunk| {
-                    // Workaround: chunk.clone() does not appear to respect
-                    // the chunk's boundaries when it's not byte-aligned.
-                    //
-                    // That is,
-                    //
-                    //   let mut bv = chunk.clone().to_bitvec();
-                    //   bv.resize(B::size_in_bits(), false);
-                    //   fields.push(B::from_bytes(bv.into()));
-                    //
-                    // doesn't work.
-                    //
-                    // Instead we must do
+        let bits_as_fields = self
+            .bits
+            .chunks(Fp::MODULUS_BIT_SIZE as usize - 1)
+            .into_iter()
+            .fold(vec![], |mut acc, chunk| {
+                // Workaround: chunk.clone() does not appear to respect
+                // the chunk's boundaries when it's not byte-aligned.
+                //
+                // That is,
+                //
+                //   let mut bv = chunk.clone().to_bitvec();
+                //   bv.resize(B::size_in_bits(), false);
+                //   fields.push(B::from_bytes(bv.into()));
+                //
+                // doesn't work.
+                //
+                // Instead we must do
 
-                    let mut bv = BitVec::<u8>::new();
-                    bv.resize(chunk.len(), false);
-                    bv.clone_from_bitslice(chunk);
+                let mut bv = BitVec::<u8>::new();
+                bv.resize(chunk.len(), false);
+                bv.clone_from_bitslice(chunk);
 
-                    // extend to the size of a field;
-                    bv.resize(Fp::size_in_bits(), false);
+                // extend to the size of a field;
+                bv.resize(Fp::MODULUS_BIT_SIZE as usize, false);
 
-                    acc.push(
-                        Fp::from_bytes(&bv.into_vec())
-                            .expect("failed to create base field element"),
-                    );
+                acc.push(
+                    Fp::from_bytes(&bv.into_vec()).expect("failed to create base field element"),
+                );
 
-                    acc
-                });
+                acc
+            });
 
         fields.extend(bits_as_fields);
 

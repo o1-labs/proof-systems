@@ -3,10 +3,11 @@
 //! Definition of secret key, keypairs and related helpers
 
 use crate::{CurvePoint, PubKey, ScalarField, SecKey};
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, CurveGroup};
 use core::fmt;
 use o1_utils::FieldHelpers;
 use rand::{self, CryptoRng, RngCore};
+use std::ops::Mul;
 use thiserror::Error;
 
 /// Keypair error
@@ -48,9 +49,7 @@ impl Keypair {
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Self {
         let sec_key: SecKey = SecKey::rand(rng);
         let scalar = sec_key.into_scalar();
-        let public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(scalar)
-            .into_affine();
+        let public: CurvePoint = CurvePoint::generator().mul(scalar).into_affine();
 
         // Safe in this case b/c point must be on curve
         Self::from_parts_unsafe(scalar, public)
@@ -66,9 +65,7 @@ impl Keypair {
         bytes.reverse(); // mina scalars hex format is in big-endian order
 
         let secret = ScalarField::from_bytes(&bytes).map_err(|_| KeypairError::SecretKeyBytes)?;
-        let public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(secret)
-            .into_affine();
+        let public: CurvePoint = CurvePoint::generator().mul(secret).into_affine();
 
         if !public.is_on_curve() {
             return Err(KeypairError::NonCurvePoint);

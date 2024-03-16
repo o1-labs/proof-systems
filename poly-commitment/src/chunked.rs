@@ -1,5 +1,6 @@
-use ark_ec::ProjectiveCurve;
+use ark_ec::CurveGroup;
 use ark_ff::{Field, Zero};
+use std::ops::AddAssign;
 
 use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
@@ -12,13 +13,13 @@ where
     /// Note that it ignores the shifted part.
     // TODO(mimoo): better name for this function
     pub fn chunk_commitment(&self, zeta_n: C::ScalarField) -> Self {
-        let mut res = C::Projective::zero();
+        let mut res = C::Group::zero();
         // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
         // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
         for chunk in self.unshifted.iter().rev() {
             res *= zeta_n;
-            res.add_assign_mixed(chunk);
+            res.add_assign(chunk);
         }
 
         PolyComm {
