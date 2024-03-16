@@ -224,6 +224,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             beta: F::rand(rng),
             gamma: F::rand(rng),
             joint_combiner: None,
+            sigma: cs.shift.iter().cloned().collect(),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
         };
