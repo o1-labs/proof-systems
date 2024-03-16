@@ -1,4 +1,4 @@
-use rand::Rng;
+use ark_ff::UniformRand;
 
 use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
@@ -14,14 +14,14 @@ use kimchi_msm::lookups::LookupTableIDs;
 use kimchi_msm::precomputed_srs::get_bn254_srs;
 use kimchi_msm::prover::prove;
 use kimchi_msm::verifier::verify;
-use kimchi_msm::{BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, DOMAIN_SIZE};
+use kimchi_msm::{BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254};
 
 pub fn main() {
     // FIXME: use a proper RNG
     let mut rng = o1_utils::tests::make_test_rng();
 
     println!("Creating the domain and SRS");
-    let domain_size = DOMAIN_SIZE;
+    let domain_size = 1 << 8;
     let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
     let srs: PairingSRS<BN254> = get_bn254_srs(domain);
@@ -29,15 +29,20 @@ pub fn main() {
     let mut witness_env = FFAWitnessBuilderEnv::<Fp>::empty();
     let mut constraint_env = FFAConstraintBuilderEnv::<Fp>::empty();
 
-    ffa_interpreter::constrain_multiplication(&mut constraint_env);
+    ffa_interpreter::constrain_ff_addition(&mut constraint_env);
 
     let row_num = 10;
-    assert!(row_num <= DOMAIN_SIZE);
+    assert!(row_num <= domain_size);
 
     for _row_i in 0..row_num {
-        let a: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-        let b: Ff1 = From::from(rng.gen_range(0..(1 << 16)));
-        ffa_interpreter::test_multiplication(&mut witness_env, a, b);
+        println!("processing row {_row_i:?}");
+        let a: Ff1 = Ff1::rand(&mut rng);
+        let b: Ff1 = Ff1::rand(&mut rng);
+
+        //use rand::Rng;
+        //let a: Ff1 = From::from(rng.gen_range(0..(1 << 50)));
+        //let b: Ff1 = From::from(rng.gen_range(0..(1 << 50)));
+        ffa_interpreter::ff_addition_circuit(&mut witness_env, a, b);
         witness_env.next_row();
     }
 
