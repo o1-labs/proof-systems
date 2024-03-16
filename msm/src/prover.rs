@@ -208,16 +208,6 @@ where
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         for expr in constraints.iter() {
-            // otherwise we need different t_size
-            let expr_degree = expr.degree(1, zk_rows);
-            if expr_degree > 2 {
-                return Err(ProverError::ConstraintDegreeTooHigh(
-                    expr_degree,
-                    2,
-                    format!("{:?}", expr),
-                ));
-            }
-
             let fail_q_division =
                 ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
             // Check this expression are witness satisfied
