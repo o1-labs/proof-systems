@@ -4,8 +4,80 @@
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
+<a href="#5" id="5">5</a>
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraint;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>witness;
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+
+    <span class="kw">use </span><span class="kw">crate</span>::ffa::{
+        interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, FFAInterpreterEnv},
+        witness::WitnessBuilderEnv <span class="kw">as </span>FFAWitnessBuilderEnv,
+    };
+    <span class="kw">use crate</span>::{Ff1, Fp};
+    <span class="kw">use </span>ark_ff::UniformRand;
+    <span class="kw">use </span>rand::Rng;
+
+    <span class="attr">#[test]
+    </span><span class="doccomment">/// Builds the FF addition circuit with random values. The witness
+    /// environment enforces the constraints internally, so it is
+    /// enough to just build the circuit to ensure it is satisfied.
+    </span><span class="kw">pub fn </span>test_foreign_field_addition_circuit() {
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FFAWitnessBuilderEnv::&lt;Fp&gt;::empty();
+
+        <span class="kw">let </span>row_num = rng.gen_range(<span class="number">0</span>..domain_size);
+
+        <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..row_num {
+            <span class="kw">let </span>a: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
+            <span class="kw">let </span>b: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
+
+            <span class="comment">//use rand::Rng;
+            //let a: Ff1 = From::from(rng.gen_range(0..(1 &lt;&lt; 50)));
+            //let b: Ff1 = From::from(rng.gen_range(0..(1 &lt;&lt; 50)));
+            </span>ffa_interpreter::ff_addition_circuit(<span class="kw-2">&amp;mut </span>witness_env, a, b);
+            witness_env.next_row();
+        }
+    }
+}
 </code></pre></div></section></main></body></html>
