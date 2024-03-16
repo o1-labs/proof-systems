@@ -4,10 +4,7 @@ use ark_ff::{Fp256, UniformRand, Zero};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::{
-        column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
-        interpreter::KeccakInterpreter,
-    },
+    keccak::column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
     mips::{
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
         witness::{self as mips_witness, SCRATCH_SIZE},
@@ -121,7 +118,8 @@ pub fn main() -> ExitCode {
             // Update the witness with the Keccak step columns before resetting the environment
             // TODO: simplify the contents of the KeccakWitness or create an iterator for it
             for (env_wit, pre_fold_wit) in keccak_env
-                .keccak_witness
+                .witness_env
+                .witness
                 .cols
                 .iter()
                 .zip(keccak_current_pre_folding_witness.cols.iter_mut())

@@ -4,7 +4,6 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
 use o1_utils::field_helpers::BigUintFieldHelpers;
-use o1_utils::foreign_field::{BigUintForeignFieldHelpers, LIMB_BITS};
 use o1_utils::{FieldHelpers, ForeignElement};
 use std::array;
 
@@ -13,6 +12,7 @@ use crate::variable_map;
 use crate::{
     circuits::{
         polynomial::COLUMNS,
+        polynomials::foreign_field_common::{BigUintForeignFieldHelpers, LIMB_BITS},
         witness::{init_row, CopyBitsCell, CopyCell, VariableCell, WitnessCell},
     },
     variables,

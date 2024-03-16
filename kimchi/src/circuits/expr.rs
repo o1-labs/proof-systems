@@ -8,7 +8,9 @@ use crate::{
             index::LookupSelectors,
             lookups::{LookupPattern, LookupPatterns},
         },
-        polynomials::permutation::eval_vanishes_on_last_n_rows,
+        polynomials::{
+            foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
+        },
         wires::COLUMNS,
     },
     proof::PointEvaluations,
@@ -3183,24 +3185,21 @@ pub mod constraints {
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
-                F,
-            >>::two_to_limb(
-            ))
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+                KimchiForeignElement::<F>::two_to_limb(),
+            )
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
-                F,
-            >>::two_to_2limb(
-            ))
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+                KimchiForeignElement::<F>::two_to_2limb(),
+            )
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
-                F,
-            >>::two_to_3limb(
-            ))
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+                KimchiForeignElement::<F>::two_to_3limb(),
+            )
         }
 
         fn double(&self) -> Self {
@@ -3250,15 +3249,15 @@ pub mod constraints {
         }
 
         fn two_to_limb() -> Self {
-            <F as ForeignFieldHelpers<F>>::two_to_limb()
+            KimchiForeignElement::<F>::two_to_limb()
         }
 
         fn two_to_2limb() -> Self {
-            <F as ForeignFieldHelpers<F>>::two_to_2limb()
+            KimchiForeignElement::<F>::two_to_2limb()
         }
 
         fn two_to_3limb() -> Self {
-            <F as ForeignFieldHelpers<F>>::two_to_3limb()
+            KimchiForeignElement::<F>::two_to_3limb()
         }
 
         fn double(&self) -> Self {

@@ -1,321 +1,115 @@
-/// This file contains the witness for the Keccak hash function for the zkVM project.
-/// It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
-///
-/// The actual witness generation code makes use of the code which is already present in Kimchi,
-/// to avoid code duplication and reduce error-proneness.
-///
-/// For a pseudo code implementation of Keccap-f, see
-/// https://keccak.team/keccak_specs_summary.html
-use crate::keccak::{
-    environment::KeccakEnv,
-    grid_index,
-    interpreter::{Absorb, KeccakInterpreter, KeccakStep, Sponge},
-    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+//! This file contains the witness for the Keccak hash function for the zkVM project.
+//! It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
+//!
+//! The actual witness generation code makes use of the code which is already present in Kimchi,
+//! to avoid code duplication and reduce error-proneness.
+//!
+//! For a pseudo code implementation of Keccap-f, see
+//! <https://keccak.team/keccak_specs_summary.html>
+use crate::{
+    keccak::{
+        column::KeccakWitness, interpreter::KeccakInterpreter, Constraint, Error, KeccakColumn,
+    },
+    lookups::{FixedLookupTables, Lookup, LookupTable, LookupTableIDs::*},
 };
 use ark_ff::Field;
-use kimchi::circuits::polynomials::keccak::{
-    constants::{
-        CAPACITY_IN_BYTES, PIRHO_SHIFTS_E_LEN, RATE_IN_BYTES, ROUNDS, SHIFTS, SHIFTS_LEN,
-        STATE_LEN, THETA_SHIFTS_C_LEN, THETA_STATE_A_LEN,
-    },
-    witness::{Chi, Iota, PiRho, Theta},
-    Keccak,
-};
+use kimchi::o1_utils::Two;
+use kimchi_msm::LookupTableID;
 
-/// This function returns a vector of field elements that represent the 5 padding suffixes.
-/// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-pub fn pad_blocks<Fp: Field>(pad_bytelength: usize) -> Vec<Fp> {
-    // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-    let mut blocks = vec![Fp::zero(); 5];
-    let mut pad = [Fp::zero(); RATE_IN_BYTES];
-    pad[RATE_IN_BYTES - pad_bytelength] = Fp::one();
-    pad[RATE_IN_BYTES - 1] += Fp::from(0x80u8);
-    blocks[0] = pad
-        .iter()
-        .take(12)
-        .fold(Fp::zero(), |acc, x| acc * Fp::from(256u32) + *x);
-    for (i, block) in blocks.iter_mut().enumerate().take(5).skip(1) {
-        // take 31 elements from pad, starting at 12 + (i - 1) * 31 and fold them into a single Fp
-        *block = pad
-            .iter()
-            .skip(12 + (i - 1) * 31)
-            .take(31)
-            .fold(Fp::zero(), |acc, x| acc * Fp::from(256u32) + *x);
-    }
-
-    blocks
+/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
+// TODO: the fixed tables information should be inferred from the general environment
+#[derive(Clone, Debug)]
+pub struct Env<F> {
+    /// The full state of the Keccak gate (witness)
+    pub witness: KeccakWitness<F>,
+    /// The fixed tables used in the Keccak gate
+    pub tables: Vec<LookupTable<F>>,
+    /// The multiplicities of each lookup entry. Should not be cleared between steps.
+    pub multiplicities: Vec<Vec<u32>>,
+    /// If any, an error that occurred during the execution of the constraints, to help with debugging
+    pub(crate) errors: Vec<Error>,
 }
 
-impl<Fp: Field> KeccakInterpreter for KeccakEnv<Fp> {
-    type Position = KeccakColumn;
-
-    type Variable = Fp;
-
-    fn step(&mut self) {
-        // Reset columns to zeros to avoid conflicts between steps
-        self.null_state();
-
-        match self.keccak_step.unwrap() {
-            KeccakStep::Sponge(typ) => self.run_sponge(typ),
-            KeccakStep::Round(i) => self.run_round(i),
-        }
-        self.write_column(KeccakColumn::StepIndex, self.step_idx);
-
-        self.update_step();
-    }
-
-    fn set_flag_root(&mut self) {
-        self.write_column(KeccakColumn::FlagRoot, 1);
-    }
-
-    fn set_flag_pad(&mut self) {
-        self.write_column(KeccakColumn::PadLength, self.pad_len);
-        self.write_column_field(
-            KeccakColumn::InvPadLength,
-            Fp::inverse(&Fp::from(self.pad_len)).unwrap(),
-        );
-        let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
-        for i in pad_range {
-            self.write_column(KeccakColumn::PadBytesFlags(i), 1);
-        }
-        let pad_blocks = pad_blocks::<Fp>(self.pad_len as usize);
-        for (idx, value) in pad_blocks.iter().enumerate() {
-            self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
+impl<F: Field> Default for Env<F> {
+    fn default() -> Self {
+        Self {
+            witness: KeccakWitness::default(),
+            tables: vec![
+                LookupTable::table_pad(),
+                LookupTable::table_round_constants(),
+                LookupTable::table_byte(),
+                LookupTable::table_range_check_16(),
+                LookupTable::table_sparse(),
+                LookupTable::table_reset(),
+            ],
+            multiplicities: vec![
+                vec![0; PadLookup.length()],
+                vec![0; RoundConstantsLookup.length()],
+                vec![0; ByteLookup.length()],
+                vec![0; RangeCheck16Lookup.length()],
+                vec![0; SparseLookup.length()],
+                vec![0; ResetLookup.length()],
+            ],
+            errors: vec![],
         }
     }
+}
 
-    fn set_flag_round(&mut self, round: u64) {
-        assert!(round < ROUNDS as u64);
-        self.write_column(KeccakColumn::FlagRound, round);
+impl<F: Field> KeccakInterpreter<F> for Env<F> {
+    type Variable = F;
+    ///////////////////////////
+    // ARITHMETIC OPERATIONS //
+    ///////////////////////////
+
+    fn constant(x: u64) -> Self::Variable {
+        Self::constant_field(F::from(x))
     }
 
-    fn set_flag_squeeze(&mut self) {
-        self.write_column(KeccakColumn::FlagSqueeze, 1);
+    fn constant_field(x: F) -> Self::Variable {
+        x
     }
 
-    fn set_flag_absorb(&mut self, absorb: Absorb) {
-        self.write_column(KeccakColumn::FlagAbsorb, 1);
-        match absorb {
-            Absorb::First => self.set_flag_root(),
-            Absorb::Last => self.set_flag_pad(),
-            Absorb::FirstAndLast => {
-                self.set_flag_root();
-                self.set_flag_pad()
-            }
-            Absorb::Middle => (),
-        }
+    fn two_pow(x: u64) -> Self::Variable {
+        Self::constant_field(F::two_pow(x))
     }
 
-    fn run_sponge(&mut self, sponge: Sponge) {
-        match sponge {
-            Sponge::Absorb(absorb) => self.run_absorb(absorb),
-            Sponge::Squeeze => self.run_squeeze(),
+    ////////////////////////////
+    // CONSTRAINTS OPERATIONS //
+    ////////////////////////////
+
+    fn variable(&self, column: KeccakColumn) -> Self::Variable {
+        self.witness[column]
+    }
+
+    /// Checks the constraint `tag` by checking that the input `x` is zero
+    fn constrain(&mut self, tag: Constraint, x: Self::Variable) {
+        if x != F::zero() {
+            self.errors.push(Error::Constraint(tag));
         }
     }
 
-    fn run_squeeze(&mut self) {
-        self.set_flag_squeeze();
+    ////////////////////////
+    // LOOKUPS OPERATIONS //
+    ////////////////////////
 
-        // Compute witness values
-        let state = self.prev_block.clone();
-        let shifts = Keccak::shift(&state);
-        let dense = Keccak::collapse(&Keccak::reset(&shifts));
-        let bytes = Keccak::bytestring(&dense);
-
-        // Write squeeze-related columns
-        for (idx, value) in state.iter().enumerate() {
-            self.write_column(KeccakColumn::Input(idx), *value);
-        }
-        for (idx, value) in bytes.iter().enumerate().take(HASH_BYTELENGTH) {
-            self.write_column(KeccakColumn::SpongeBytes(idx), *value);
-        }
-        for (idx, value) in shifts.iter().enumerate().take(QUARTERS * WORDS_IN_HASH) {
-            self.write_column(KeccakColumn::SpongeShifts(idx), *value);
-        }
-
-        // Rest is zero thanks to null_state
-    }
-
-    fn run_absorb(&mut self, absorb: Absorb) {
-        self.set_flag_absorb(absorb);
-
-        // Compute witness values
-        let ini_idx = RATE_IN_BYTES * self.block_idx as usize;
-        let mut block = self.padded[ini_idx..ini_idx + RATE_IN_BYTES].to_vec();
-        self.write_column(KeccakColumn::BlockIndex, self.block_idx);
-
-        // Pad with zeros
-        block.append(&mut vec![0; CAPACITY_IN_BYTES]);
-
-        //    Round + Mode of Operation (Sponge)
-        //    state -> permutation(state) -> state'
-        //              ----> either [0] or state'
-        //             |            new state = Exp(block)
-        //             |         ------------------------
-        //    Absorb: state  + [  block      +     0...0 ]
-        //                       1088 bits          512
-        //            ----------------------------------
-        //                         XOR STATE
-        let old_state = self.prev_block.clone();
-        let new_state = Keccak::expand_state(&block);
-        let xor_state = old_state
-            .iter()
-            .zip(new_state.clone())
-            .map(|(x, y)| x + y)
-            .collect::<Vec<u64>>();
-
-        let shifts = Keccak::shift(&new_state);
-        let bytes = block.iter().map(|b| *b as u64).collect::<Vec<u64>>();
-
-        // Write absorb-related columns
-        for idx in 0..STATE_LEN {
-            self.write_column(KeccakColumn::Input(idx), old_state[idx]);
-            self.write_column(KeccakColumn::SpongeNewState(idx), new_state[idx]);
-            self.write_column(KeccakColumn::Output(idx), xor_state[idx]);
-        }
-        for (idx, value) in bytes.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeBytes(idx), *value);
-        }
-        for (idx, value) in shifts.iter().enumerate() {
-            self.write_column(KeccakColumn::SpongeShifts(idx), *value);
-        }
-        // Rest is zero thanks to null_state
-
-        // Update environment
-        self.prev_block = xor_state;
-        self.block_idx += 1; // To be used in next absorb (if any)
-    }
-
-    fn run_round(&mut self, round: u64) {
-        self.set_flag_round(round);
-
-        let state_a = self.prev_block.clone();
-        let state_e = self.run_theta(&state_a);
-        let state_b = self.run_pirho(&state_e);
-        let state_f = self.run_chi(&state_b);
-        let state_g = self.run_iota(&state_f, round as usize);
-
-        // Update block for next step with the output of the round
-        self.prev_block = state_g;
-    }
-
-    /// Computing
-    /// ```text
-    /// for x in 0…4
-    ///   C[x] = A[x,0] xor A[x,1] xor \
-    ///          A[x,2] xor A[x,3] xor \
-    ///          A[x,4]
-    /// for x in 0…4
-    ///   D[x] = C[x-1] xor rot(C[x+1],1)
-    /// for (x,y) in (0…4,0…4)
-    ///   A[x,y] = A[x,y] xor D[x]
-    /// ```
-    fn run_theta(&mut self, state_a: &[u64]) -> Vec<u64> {
-        let theta = Theta::create(state_a);
-
-        // Write Theta-related columns
-        for x in 0..DIM {
-            self.write_column(KeccakColumn::ThetaQuotientC(x), theta.quotient_c(x));
-            for q in 0..QUARTERS {
-                let idx = grid_index(QUARTERS * DIM, 0, 0, x, q);
-                self.write_column(KeccakColumn::ThetaDenseC(idx), theta.dense_c(x, q));
-                self.write_column(KeccakColumn::ThetaRemainderC(idx), theta.remainder_c(x, q));
-                self.write_column(KeccakColumn::ThetaDenseRotC(idx), theta.dense_rot_c(x, q));
-                self.write_column(KeccakColumn::ThetaExpandRotC(idx), theta.expand_rot_c(x, q));
-                for y in 0..DIM {
-                    let idx = grid_index(THETA_STATE_A_LEN, 0, y, x, q);
-                    self.write_column(KeccakColumn::Input(idx), state_a[idx]);
-                }
-                for i in 0..QUARTERS {
-                    let idx = grid_index(THETA_SHIFTS_C_LEN, i, 0, x, q);
-                    self.write_column(KeccakColumn::ThetaShiftsC(idx), theta.shifts_c(i, x, q));
-                }
-            }
-        }
-        theta.state_e()
-    }
-
-    /// Computing
-    /// ```text
-    /// for (x,y) in (0…4,0…4)
-    ///   B[y,2*x+3*y] = rot(A[x,y], r[x,y])
-    /// ```
-    fn run_pirho(&mut self, state_e: &[u64]) -> Vec<u64> {
-        let pirho = PiRho::create(state_e);
-
-        // Write PiRho-related columns
-        for y in 0..DIM {
-            for x in 0..DIM {
-                for q in 0..QUARTERS {
-                    let idx = grid_index(STATE_LEN, 0, y, x, q);
-                    self.write_column(KeccakColumn::PiRhoDenseE(idx), pirho.dense_e(y, x, q));
-                    self.write_column(KeccakColumn::PiRhoQuotientE(idx), pirho.quotient_e(y, x, q));
-                    self.write_column(
-                        KeccakColumn::PiRhoRemainderE(idx),
-                        pirho.remainder_e(y, x, q),
-                    );
-                    self.write_column(
-                        KeccakColumn::PiRhoDenseRotE(idx),
-                        pirho.dense_rot_e(y, x, q),
-                    );
-                    self.write_column(
-                        KeccakColumn::PiRhoExpandRotE(idx),
-                        pirho.expand_rot_e(y, x, q),
-                    );
-                    for i in 0..QUARTERS {
-                        self.write_column(
-                            KeccakColumn::PiRhoShiftsE(grid_index(PIRHO_SHIFTS_E_LEN, i, y, x, q)),
-                            pirho.shifts_e(i, y, x, q),
-                        );
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        // Keep track of multiplicities for fixed lookups
+        match lookup.table_id {
+            RangeCheck16Lookup | SparseLookup | ResetLookup | RoundConstantsLookup | PadLookup
+            | ByteLookup => {
+                if lookup.magnitude == Self::one() {
+                    // Check that the lookup value is in the table
+                    if let Some(idx) = LookupTable::is_in_table(
+                        &self.tables[lookup.table_id as usize],
+                        lookup.value,
+                    ) {
+                        self.multiplicities[lookup.table_id as usize][idx] += 1;
+                    } else {
+                        self.errors.push(Error::Lookup(lookup.table_id));
                     }
                 }
             }
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => (),
         }
-        pirho.state_b()
-    }
-
-    /// Computing
-    /// ```text
-    /// for (x,y) in (0…4,0…4)
-    ///   A[x, y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y])
-    /// ```
-    fn run_chi(&mut self, state_b: &[u64]) -> Vec<u64> {
-        let chi = Chi::create(state_b);
-
-        // Write Chi-related columns
-        for i in 0..SHIFTS {
-            for y in 0..DIM {
-                for x in 0..DIM {
-                    for q in 0..QUARTERS {
-                        let idx = grid_index(SHIFTS_LEN, i, y, x, q);
-                        self.write_column(KeccakColumn::ChiShiftsB(idx), chi.shifts_b(i, y, x, q));
-                        self.write_column(
-                            KeccakColumn::ChiShiftsSum(idx),
-                            chi.shifts_sum(i, y, x, q),
-                        );
-                    }
-                }
-            }
-        }
-        chi.state_f()
-    }
-
-    /// Computing
-    /// ```text
-    /// A[0,0] = A[0,0] xor RC
-    /// ```
-    fn run_iota(&mut self, state_f: &[u64], round: usize) -> Vec<u64> {
-        let iota = Iota::create(state_f, round);
-        let state_g = iota.state_g();
-
-        // Update columns
-        for (idx, g) in state_g.iter().enumerate() {
-            self.write_column(KeccakColumn::Output(idx), *g);
-        }
-        for idx in 0..QUARTERS {
-            self.write_column(KeccakColumn::RoundConstants(idx), iota.round_constants(idx));
-        }
-
-        state_g
     }
 }

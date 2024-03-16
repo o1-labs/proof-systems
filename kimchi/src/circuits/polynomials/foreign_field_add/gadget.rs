@@ -2,10 +2,10 @@
 
 use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
-use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 use crate::circuits::{
     gate::{CircuitGate, Connect, GateType},
+    polynomials::foreign_field_common::BigUintForeignFieldHelpers,
     wires::Wire,
 };
 

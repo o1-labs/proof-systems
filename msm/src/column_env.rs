@@ -1,14 +1,17 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
+use crate::mvlookup;
 use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain};
+use kimchi::circuits::expr::{
+    Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain,
+};
 
 /// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct MSMColumnEnvironment<'a, F: FftField> {
+pub struct ColumnEnvironment<'a, F: FftField> {
     /// The witness column polynomials
     pub witness: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The coefficient column polynomials
@@ -23,28 +26,58 @@ pub struct MSMColumnEnvironment<'a, F: FftField> {
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
-    // TODO define MVlookup one
-    pub lookup: Option<()>,
+    // TODO: rename in additive lookup or "logup"
+    // We do not use multi-variate lookups, only the additive part
+    pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F>>,
 }
 
-impl<'a, F: FftField> ColumnEnvironment<'a, F> for MSMColumnEnvironment<'a, F> {
+impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
     type Column = crate::columns::Column;
 
     fn get_column(
         &self,
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
-        let witness_columns_n: usize = self.witness.len();
-        let coefficients_columns_n: usize = self.coefficients.len();
-        let crate::columns::Column::X(i) = col;
-        let i = *i;
-        if i < witness_columns_n {
-            let res = &self.witness[i];
-            Some(res)
-        } else if i < witness_columns_n + coefficients_columns_n {
-            Some(&self.coefficients[i])
-        } else {
-            None
+        let witness_length: usize = self.witness.len();
+        let coefficients_length: usize = self.coefficients.len();
+        match *col {
+            // Handling the "relation columns"
+            Self::Column::X(i) => {
+                if i < witness_length {
+                    let res = &self.witness[i];
+                    Some(res)
+                } else if i < witness_length + coefficients_length {
+                    // FIXME and add a test
+                    Some(&self.coefficients[i])
+                } else {
+                    // TODO: add a test for this
+                    panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
+                }
+            }
+            Self::Column::LookupPartialSum(i) => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(&lookup.lookup_terms_evals_d1[i])
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupAggregation => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(lookup.lookup_aggregation_evals_d1)
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupMultiplicity(i) => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(&lookup.lookup_counters_evals_d1[i as usize])
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupFixedTable(_) => {
+                panic!("Logup is not yet implemented.")
+            }
         }
     }
 

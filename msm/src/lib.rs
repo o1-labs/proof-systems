@@ -27,6 +27,12 @@ pub mod ffa;
 pub mod serialization;
 pub mod test;
 
+/// Define the maximum degree we support for the evaluations.
+/// For instance, it can be used to split the looked-up functions into partial
+/// sums.
+#[allow(dead_code)]
+const MAX_SUPPORTED_DEGREE: usize = 8;
+
 /// Domain size for the MSM project, equal to the BN254 SRS size.
 pub const DOMAIN_SIZE: usize = 1 << 15;
 

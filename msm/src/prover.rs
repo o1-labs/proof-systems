@@ -1,6 +1,7 @@
+use crate::mvlookup;
 use crate::{
-    column_env::MSMColumnEnvironment,
-    expr::MSMExpr,
+    column_env::ColumnEnvironment,
+    expr::E,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
@@ -52,7 +53,7 @@ pub fn prove<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraints: &Vec<MSMExpr<G::ScalarField>>,
+    constraints: &Vec<E<G::ScalarField>>,
     inputs: ProofInputs<N, G, ID>,
     rng: &mut RNG,
 ) -> Result<Proof<N, G, OpeningProof>, ProverError>
@@ -161,7 +162,7 @@ where
             gamma: G::ScalarField::zero(),
             joint_combiner: Option::map(lookup_env.as_ref(), |x| x.joint_combiner),
         };
-        MSMColumnEnvironment {
+        ColumnEnvironment {
             constants: Constants {
                 endo_coefficient: *endo_r,
                 mds: &G::sponge_params().mds,
@@ -171,7 +172,15 @@ where
             witness: &witness_evals_env,
             coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
-            lookup: None,
+            lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
+                mvlookup::prover::QuotientPolynomialEnvironment {
+                    lookup_terms_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                    lookup_aggregation_evals_d1: &lookup_env.lookup_aggregation_evals_d1,
+                    lookup_counters_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                    // FIXME
+                    fixed_lookup_tables: &coefficient_evals_env,
+                }
+            }),
             domain,
         }
     };

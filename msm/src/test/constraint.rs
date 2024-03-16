@@ -1,6 +1,6 @@
 use crate::{
     columns::{Column, ColumnIndexer},
-    expr::MSMExpr,
+    expr::E,
     test::{columns::TestColumnIndexer, interpreter::TestInterpreterEnv},
 };
 use ark_ff::PrimeField;
@@ -11,13 +11,13 @@ use kimchi::circuits::{
 
 /// Contains constraints for just one row.
 pub struct ConstraintBuilderEnv<F> {
-    pub constraints: Vec<MSMExpr<F>>,
+    pub constraints: Vec<E<F>>,
 }
 
 impl<F: PrimeField> TestInterpreterEnv<F> for ConstraintBuilderEnv<F> {
     type Position = Column;
 
-    type Variable = MSMExpr<F>;
+    type Variable = E<F>;
 
     fn empty() -> Self {
         ConstraintBuilderEnv {
