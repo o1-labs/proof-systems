@@ -254,13 +254,12 @@ where
     // Quotient commitment
     // let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
     let t_comm = {
-        let num_chunks = 1;
-        let mut t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
-        let dummies_n = num_chunks - t_comm.elems.len();
-        for _ in 0..dummies_n {
-            t_comm.elems.push(G::zero());
-        }
-        t_comm
+        let num_chunks = if max_degree == 1 {
+            1
+        } else {
+            (max_degree - 1) as usize
+        };
+        srs.commit_non_hiding(&quotient_poly, num_chunks)
     };
 
     ////////////////////////////////////////////////////////////////////////////
