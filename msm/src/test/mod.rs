@@ -3,12 +3,15 @@ pub mod constraint;
 pub mod interpreter;
 pub mod witness;
 
+// TODO: move tests from src/lib.rs into this file
+// TODO: use interpreter/witness/constraint files to define witness/cosntraints
+
 #[cfg(test)]
 mod tests {
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
-    use rand::{CryptoRng, RngCore};
+    use rand::{CryptoRng, RngCore, Rng};
 
     use crate::{
         columns::Column,
@@ -64,6 +67,54 @@ mod tests {
         assert!(verifies)
     }
 
+    fn test_soundness_generic<const N: usize, RNG>(
+        constraints: Vec<E<Fp>>,
+        evaluations: Witness<N, Vec<Fp>>,
+        domain_size: usize,
+        rng: &mut RNG,
+    ) where
+        RNG: RngCore + CryptoRng,
+    {
+        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
+
+        let mut srs: PairingSRS<BN254> = {
+            // Trusted setup toxic waste
+            let x = Fp::rand(rng);
+            PairingSRS::create(x, domain.d1.size as usize)
+        };
+        srs.full_srs.add_lagrange_basis(domain.d1);
+
+        let mut evaluations_prime = evaluations.clone();
+        {
+            let i = rng.gen_range(0..N);
+            let j = rng.gen_range(0..domain_size);
+            evaluations_prime.cols[i][j] = Fp::rand(rng);
+        }
+
+        let proof_inputs = ProofInputs {
+            evaluations: evaluations_prime,
+            mvlookups: vec![],
+            public_input_size: 0,
+        };
+
+        let proof =
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
+                domain,
+                &srs,
+                &constraints,
+                proof_inputs,
+                rng,
+            )
+            .unwrap();
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+        );
+        assert!(!verifies)
+    }
+
     // Test degree a degree one constraint: X_{0} - X_{1}
     #[test]
     fn test_completeness_degree_one() {
@@ -83,7 +134,10 @@ mod tests {
             cols: [random_x0s, exp_x1],
         };
 
-        test_completeness_generic::<N, _>(constraints, witness, domain_size, &mut rng)
+        test_completeness_generic::<N, _>(constraints.clone(), witness.clone(), domain_size, &mut rng);
+        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
+        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
     // Test degree a degree one constraint: X_{0} * X_{0} - X_{1} - X_{2}
@@ -111,7 +165,10 @@ mod tests {
             cols: [random_x0s, random_x1s, exp_x2],
         };
 
-        test_completeness_generic::<N, _>(constraints, witness, domain_size, &mut rng)
+        test_completeness_generic::<N, _>(constraints.clone(), witness.clone(), domain_size, &mut rng);
+        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
+        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
     // Test degree a degree one constraint:
@@ -142,12 +199,15 @@ mod tests {
             .iter()
             .zip(random_x1s.iter())
             .zip(random_x2s.iter())
-            .map(|((x0, x1), x2)| (*x0) * (*x0) * (*x0) - Fp::from(42) * (*x1) * (*x2))
+            .map(|((x0, x1), x2)| -((*x0) * (*x0) * (*x0) - Fp::from(42) * (*x1) * (*x2)))
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
             cols: [random_x0s, random_x1s, random_x2s, exp_x3],
         };
 
-        test_completeness_generic::<N, _>(constraints, witness, domain_size, &mut rng)
+        test_completeness_generic::<N, _>(constraints.clone(), witness.clone(), domain_size, &mut rng);
+        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
+        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 }
