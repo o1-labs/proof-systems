@@ -62,11 +62,37 @@ mod tests {
             )
             .unwrap();
 
-        // TODO: add a check on the proof size. We should be able to determine
-        // the number of commitments and evaluations based on the number of
-        // rows, and the degree of the constraints.
-        // With this added, we can be more convinced about the correctness of
-        // the protocolcorrectness of the protocol
+        {
+            // Checking the proof size. We should have:
+            // - N commitments for the columns
+            // - N evaluations for the columns
+            // - MAX_DEGREE - 1 commitments for the constraints (quotient polynomial)
+            // TODO: add lookups
+
+            // We check there is always only one commitment chunk
+            (&proof.proof_comms.witness_comms)
+                .into_iter()
+                .for_each(|x| assert_eq!(x.len(), 1));
+            // This equality is therefore trivial, but still doing it.
+            assert!(
+                (&proof.proof_comms.witness_comms)
+                    .into_iter()
+                    .fold(0, |acc, x| acc + x.len())
+                    == N
+            );
+
+            // Checking the number of chunks of the quotient polynomial
+            let max_degree = constraints
+                .iter()
+                .map(|c| c.degree(1, 0) as usize)
+                .max()
+                .unwrap();
+            if max_degree == 1 {
+                assert_eq!(proof.proof_comms.t_comm.len(), 1);
+            } else {
+                assert_eq!(proof.proof_comms.t_comm.len(), max_degree - 1);
+            }
+        }
 
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
             domain,
