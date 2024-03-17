@@ -192,9 +192,9 @@ where
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 mvlookup::prover::QuotientPolynomialEnvironment {
-                    lookup_terms_evals_d1: &lookup_env.lookup_counters_evals_d1,
-                    lookup_aggregation_evals_d1: &lookup_env.lookup_aggregation_evals_d1,
-                    lookup_counters_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                    lookup_terms_evals_d8: &lookup_env.lookup_counters_evals_d8,
+                    lookup_aggregation_evals_d8: &lookup_env.lookup_aggregation_evals_d8,
+                    lookup_counters_evals_d8: &lookup_env.lookup_counters_evals_d8,
                     // FIXME
                     fixed_lookup_tables: &coefficient_evals_env,
                 }

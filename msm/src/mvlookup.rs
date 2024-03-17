@@ -138,9 +138,9 @@ pub mod prover {
     use rayon::iter::ParallelIterator;
 
     pub struct QuotientPolynomialEnvironment<'a, F: FftField> {
-        pub lookup_terms_evals_d1: &'a Vec<Evaluations<F, D<F>>>,
-        pub lookup_aggregation_evals_d1: &'a Evaluations<F, D<F>>,
-        pub lookup_counters_evals_d1: &'a Vec<Evaluations<F, D<F>>>,
+        pub lookup_terms_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
+        pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
+        pub lookup_counters_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
         pub fixed_lookup_tables: &'a Vec<Evaluations<F, D<F>>>,
     }
 
@@ -156,6 +156,11 @@ pub mod prover {
         pub lookup_aggregation_evals_d1: Evaluations<G::ScalarField, D<G::ScalarField>>,
         pub lookup_aggregation_poly_d1: DensePolynomial<G::ScalarField>,
         pub lookup_aggregation_comm_d1: PolyComm<G>,
+
+        // Evaluating over d8 for the quotient polynomial
+        pub lookup_counters_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+        pub lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+        pub lookup_aggregation_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>>,
 
         /// The combiner used for vector lookups
         pub joint_combiner: G::ScalarField,
@@ -199,6 +204,11 @@ pub mod prover {
                     .into_par_iter()
                     .map(|evals| evals.interpolate_by_ref())
                     .collect();
+
+            let lookup_counters_evals_d8 = (&lookup_counters_poly_d1)
+                .into_par_iter()
+                .map(|lookup| lookup.evaluate_over_domain_by_ref(domain.d8))
+                .collect::<Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
 
             let lookup_counters_comm_d1: Vec<PolyComm<G>> = (&lookup_counters_evals_d1)
                 .into_par_iter()
@@ -319,6 +329,12 @@ pub mod prover {
                     .map(|lte| lte.interpolate_by_ref())
                     .collect::<Vec<_>>();
 
+            let lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
+                (&lookup_terms_poly_d1)
+                    .into_par_iter()
+                    .map(|lte| lte.evaluate_over_domain_by_ref(domain.d8))
+                    .collect::<Vec<_>>();
+
             let lookup_terms_comms_d1: Vec<PolyComm<G>> = (&lookup_terms_evals_d1)
                 .into_par_iter()
                 .map(|lte| srs.commit_evaluations_non_hiding(domain.d1, lte))
@@ -357,6 +373,10 @@ pub mod prover {
             };
 
             let lookup_aggregation_poly_d1 = lookup_aggregation_evals_d1.interpolate_by_ref();
+
+            let lookup_aggregation_evals_d8 =
+                lookup_aggregation_poly_d1.evaluate_over_domain_by_ref(domain.d8);
+
             let lookup_aggregation_comm_d1 =
                 srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation_evals_d1);
 
@@ -373,6 +393,10 @@ pub mod prover {
                 lookup_aggregation_evals_d1,
                 lookup_aggregation_poly_d1,
                 lookup_aggregation_comm_d1,
+
+                lookup_counters_evals_d8,
+                lookup_terms_evals_d8,
+                lookup_aggregation_evals_d8,
 
                 joint_combiner: vector_lookup_combiner,
                 beta,
