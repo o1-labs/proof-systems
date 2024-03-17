@@ -93,10 +93,6 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
     }
 
     fn column_domain(&self, col: &Self::Column) -> Domain {
-        // TODO FIXME check this is a tricky variable it should match the evalution in column
-        // this must be bigger or equal than degree chosen in runtime inside evaluations() for
-        // evaluating an expression = degree of expression that is evaluated
-        // And also ... in some cases... bigger than the witness column size? Equal?
         match *col {
             Self::Column::X(i) => {
                 let domain_size = self.witness[i].domain().size;
