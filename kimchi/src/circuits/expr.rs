@@ -1253,7 +1253,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             ) => {
                 let n = res_domain.1.size();
                 let scale = (domain as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 let v: Vec<_> = (0..n)
                     .into_par_iter()
                     .map(|i| {
@@ -1305,7 +1310,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -1324,10 +1334,19 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
+                assert!(
+                    scale1 != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
-                assert!(scale2 != 0);
-
+                assert!(
+                    scale2 != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 let n = res_domain.1.size();
                 let v: Vec<_> = (0..n)
                     .into_par_iter()
@@ -1366,7 +1385,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 Constant(x),
             ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x
                 })
@@ -1380,7 +1404,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
+
                 EvalResult::init(res_domain, |i| {
                     x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
                 })
@@ -1414,7 +1444,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
+
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()] - *e;
                 });
@@ -1432,7 +1468,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -1451,9 +1492,19 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
+                assert!(
+                    scale1 != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
-                assert!(scale2 != 0);
+                assert!(
+                    scale2 != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
 
                 EvalResult::init(res_domain, |i| {
                     es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
@@ -1492,7 +1543,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 shift: s,
             } => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square()
                 })
@@ -1526,7 +1582,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
                 })
@@ -1571,7 +1632,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
+
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -1590,10 +1657,20 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
+                assert!(
+                    scale1 != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
-                assert!(scale2 != 0);
 
+                assert!(
+                    scale2 != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
                         * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
@@ -1943,7 +2020,12 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
             } => {
                 let res_domain = env.get_domain(d);
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init_((d, res_domain), |i| {
                     evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()]
                 })
