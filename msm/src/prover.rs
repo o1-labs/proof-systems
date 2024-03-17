@@ -1,4 +1,4 @@
-use crate::mvlookup;
+use crate::{mvlookup, MAX_SUPPORTED_DEGREE};
 use crate::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -91,14 +91,6 @@ where
             .collect::<Witness<N, DensePolynomial<G::ScalarField>>>()
     };
 
-    // Evaluate all columns on d8 for the quotient polynomial
-    // It also means we do support maximum degree 8 constraints
-    let _witness_evals_d8: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
-        (&witness_polys)
-            .into_par_iter()
-            .map(|evals| evals.evaluate_over_domain_by_ref(domain.d8))
-            .collect::<Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
-
     let witness_comms: Witness<N, PolyComm<G>> = {
         let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
         (&witness_polys)
@@ -126,6 +118,20 @@ where
         None
     };
 
+    // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
+    // FIXME: remove clone
+    let mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+        m: lookup_env.lookup_counters_comm_d1.clone(),
+        h: lookup_env.lookup_terms_comms_d1.clone(),
+        sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+    });
+
+    // -- end computing the running sum in lookup_aggregation
+    // -- End of MVLookup
+    ////////////////////////////////////////////////////////////////////////////
+    // Round 2: Creating and committing to the quotient polynomial
+    ////////////////////////////////////////////////////////////////////////////
+
     let max_degree = {
         if lookup_env.is_none() {
             constraints
@@ -138,29 +144,22 @@ where
         }
     };
 
-    // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
-    // FIXME: remove clone
-    let mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
-        m: lookup_env.lookup_counters_comm_d1.clone(),
-        h: lookup_env.lookup_terms_comms_d1.clone(),
-        sum: lookup_env.lookup_aggregation_comm_d1.clone(),
-    });
-
-    // -- end computing the running sum in lookup_aggregation
-    // -- End of MVLookup
-
-    // TODO rename this
-    // The evaluations should be at least the degree of our expressions. Higher?
-    // Maybe we can only use d4, we don't have degree-7 gates anyway
-    let witness_evals_env: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
+    let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = {
+        let domain_eval = if max_degree <= 4 {
+            println!("Witness evaluated on d4");
+            domain.d4
+        }
+        else if max_degree as usize <= MAX_SUPPORTED_DEGREE {
+            println!("Witness evaluated on d8");
+            domain.d8
+        } else {
+            panic!("We do support only up to {:?}", MAX_SUPPORTED_DEGREE)
+        };
         (&witness_polys)
-            .into_par_iter()
-            .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
-            .collect();
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Round 2: Creating and committing to the quotient polynomial
-    ////////////////////////////////////////////////////////////////////////////
+        .into_par_iter()
+        .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
+        .collect::<Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>()
+    };
 
     let (_, endo_r) = G::endos();
 
@@ -190,14 +189,14 @@ where
                 zk_rows,
             },
             challenges,
-            witness: &witness_evals_env,
+            witness: &witness_evals,
             coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 mvlookup::prover::QuotientPolynomialEnvironment {
-                    lookup_terms_evals_d1: &lookup_env.lookup_counters_evals_d1,
-                    lookup_aggregation_evals_d1: &lookup_env.lookup_aggregation_evals_d1,
-                    lookup_counters_evals_d1: &lookup_env.lookup_counters_evals_d1,
+                    lookup_terms_evals_d1: &lookup_env.lookup_counters_evals_d8,
+                    lookup_aggregation_evals_d1: &lookup_env.lookup_aggregation_evals_d8,
+                    lookup_counters_evals_d1: &lookup_env.lookup_counters_evals_d8,
                     // FIXME
                     fixed_lookup_tables: &coefficient_evals_env,
                 }
@@ -207,22 +206,23 @@ where
     };
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
-        for expr in constraints.iter() {
-            let fail_q_division =
-                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
-            // Check this expression are witness satisfied
-            let (_, res) = expr
-                .evaluations(&column_env)
-                .interpolate_by_ref()
-                .divide_by_vanishing_poly(domain.d1)
-                .ok_or(fail_q_division.clone())?;
-            if !res.is_zero() {
-                return Err(fail_q_division);
-            }
-        }
+        // for expr in constraints.iter() {
+        //     let fail_q_division =
+        //         ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
+        //     // Check this expression are witness satisfied
+        //     let (_, res) = expr
+        //         .evaluations(&column_env)
+        //         .interpolate_by_ref()
+        //         .divide_by_vanishing_poly(domain.d1)
+        //         .ok_or(fail_q_division.clone())?;
+        //     if !res.is_zero() {
+        //         return Err(fail_q_division);
+        //     }
+        // }
 
         let combined_expr =
             Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
+        println!("Combine expression degree: {:?}", combined_expr.degree(1, 0));
 
         // An evaluation of our expression E(vec X) on witness columns
         // Every witness column w_i(X) is evaluated first at D1, so we get E(vec w_i(X)) = 0?
@@ -231,6 +231,8 @@ where
             combined_expr.evaluations(&column_env);
 
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
+        println!("Degree t(X) without vanishing: {:?}", expr_evaluation_interpolated.degree());
+        println!("max degree constraints: {:?}", max_degree);
 
         // divide contributions with vanishing polynomial
         let fail_final_q_division = || {
@@ -247,12 +249,7 @@ where
     };
 
     //~ 1. commit (hiding) to the quotient polynomial $t$.
-    //
-    // Our constraints are at most degree d2. When divided by
-    // vanishing polynomial, we obtain t(X) of degree d1.
-    // let num_chunks: usize = (max_degree - 1) as usize;
     // Quotient commitment
-    // let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
     let t_comm = {
         let num_chunks = if max_degree == 1 {
             1
