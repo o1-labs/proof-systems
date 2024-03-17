@@ -61,6 +61,13 @@ mod tests {
                 rng,
             )
             .unwrap();
+
+        // TODO: add a check on the proof size. We should be able to determine
+        // the number of commitments and evaluations based on the number of
+        // rows, and the degree of the constraints.
+        // With this added, we can be more convinced about the correctness of
+        // the protocolcorrectness of the protocol
+
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
             domain,
             &srs,
