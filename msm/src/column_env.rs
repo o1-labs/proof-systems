@@ -90,6 +90,14 @@ impl<'a, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, F> {
         }
     }
 
+    fn column_domain(&self, _col: &Self::Column) -> Domain {
+        // TODO FIXME check this is a tricky variable it should match the evalution in column
+        // this must be bigger or equal than degree chosen in runtime inside evaluations() for
+        // evaluating an expression = degree of expression that is evaluated
+        // And also ... in some cases... bigger than the witness column size? Equal?
+        Domain::D4
+    }
+
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
     }
