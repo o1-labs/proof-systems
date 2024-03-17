@@ -1994,6 +1994,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     ) -> Evaluations<F, D<F>> {
         let d1_size = env.get_domain(Domain::D1).size;
         let deg = self.degree(d1_size, env.get_constants().zk_rows);
+        println!("Degree is {:?}", deg);
         let d = if deg <= d1_size {
             Domain::D1
         } else if deg <= 4 * d1_size {
@@ -2003,6 +2004,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
         } else {
             panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
         };
+        println!("D in evaluations: {:?}", d);
 
         let mut cache = HashMap::new();
 
@@ -2046,7 +2048,10 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
     where
         'a: 'b,
     {
+        println!("------------------");
+        println!("Helper - d = {:?}", d);
         let dom = (d, env.get_domain(d));
+        println!("Helper - dom = {:?}", dom);
 
         let res: EvalResult<'a, F> = match self {
             Expr::Square(x) => match x.evaluations_helper(cache, d, env) {
@@ -2146,6 +2151,7 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
             }
             Expr::Add(e1, e2) => {
                 let dom = (d, env.get_domain(d));
+                println!("In add: d = {:?}", d);
                 let f = |x: EvalResult<F>, y: EvalResult<F>| x.add(y, dom);
                 let e1 = e1.evaluations_helper(cache, d, env);
                 let e2 = e2.evaluations_helper(cache, d, env);
@@ -2176,9 +2182,12 @@ impl<F: FftField, Column: Copy> Expr<F, Column> {
             }
             Expr::Mul(e1, e2) => {
                 let dom = (d, env.get_domain(d));
+                println!("Mul dom = {:?}", dom);
                 let f = |x: EvalResult<F>, y: EvalResult<F>| x.mul(y, dom);
                 let e1 = e1.evaluations_helper(cache, d, env);
+                println!("Mul dom after e1: {:?}", dom);
                 let e2 = e2.evaluations_helper(cache, d, env);
+                println!("Mul dom after e2: {:?}", dom);
                 use Either::*;
                 match (e1, e2) {
                     (Left(e1), Left(e2)) => f(e1, e2),
