@@ -1,4 +1,3 @@
-use crate::mvlookup;
 use crate::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -6,6 +5,7 @@ use crate::{
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
 };
+use crate::{mvlookup, MAX_SUPPORTED_DEGREE};
 use ark_ff::{Field, One, Zero};
 use ark_poly::Evaluations;
 use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as R2D};
@@ -141,14 +141,19 @@ where
     // -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
 
-    // TODO rename this
-    // The evaluations should be at least the degree of our expressions. Higher?
-    // Maybe we can only use d4, we don't have degree-7 gates anyway
-    let witness_evals_env: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
+    let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = {
+        let domain_eval = if max_degree <= 4 {
+            domain.d4
+        } else if max_degree as usize <= MAX_SUPPORTED_DEGREE {
+            domain.d8
+        } else {
+            panic!("We do support constraints up to {:?}", MAX_SUPPORTED_DEGREE)
+        };
         (&witness_polys)
             .into_par_iter()
-            .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
-            .collect();
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
+            .collect::<Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>()
+    };
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
@@ -182,7 +187,7 @@ where
                 zk_rows,
             },
             challenges,
-            witness: &witness_evals_env,
+            witness: &witness_evals,
             coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {

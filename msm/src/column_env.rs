@@ -26,6 +26,7 @@ pub struct ColumnEnvironment<'a, const N: usize, F: FftField> {
     pub challenges: Challenges<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
+
     /// Lookup specific polynomials
     // TODO: rename in additive lookup or "logup"
     // We do not use multi-variate lookups, only the additive part
@@ -91,12 +92,33 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
         }
     }
 
-    fn column_domain(&self, _col: &Self::Column) -> Domain {
+    fn column_domain(&self, col: &Self::Column) -> Domain {
         // TODO FIXME check this is a tricky variable it should match the evalution in column
         // this must be bigger or equal than degree chosen in runtime inside evaluations() for
         // evaluating an expression = degree of expression that is evaluated
         // And also ... in some cases... bigger than the witness column size? Equal?
-        Domain::D4
+        match *col {
+            Self::Column::X(i) => {
+                let domain_size = self.witness[i].domain().size;
+                if self.domain.d1.size == domain_size {
+                    Domain::D1
+                } else if self.domain.d2.size == domain_size {
+                    Domain::D2
+                } else if self.domain.d4.size == domain_size {
+                    Domain::D4
+                } else if self.domain.d8.size == domain_size {
+                    Domain::D8
+                } else {
+                    panic!("Domain not supported. We do support the following multiple of the domain registered in the environment: 1, 2, 4, 8")
+                }
+            }
+            Self::Column::LookupAggregation
+            | Self::Column::LookupFixedTable(_)
+            | Self::Column::LookupMultiplicity(_)
+            | Self::Column::LookupPartialSum(_) => {
+                panic!("Not implemented yet")
+            }
+        }
     }
 
     fn get_constants(&self) -> &Constants<F> {
