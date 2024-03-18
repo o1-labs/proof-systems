@@ -382,6 +382,30 @@
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -522,9 +546,9 @@
     <span class="kw">use </span>rayon::iter::ParallelIterator;
 
     <span class="kw">pub struct </span>QuotientPolynomialEnvironment&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
-        <span class="kw">pub </span>lookup_terms_evals_d1: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
-        <span class="kw">pub </span>lookup_aggregation_evals_d1: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
-        <span class="kw">pub </span>lookup_counters_evals_d1: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+        <span class="kw">pub </span>lookup_terms_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+        <span class="kw">pub </span>lookup_aggregation_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
+        <span class="kw">pub </span>lookup_counters_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
         <span class="kw">pub </span>fixed_lookup_tables: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
     }
 
@@ -540,6 +564,11 @@
         <span class="kw">pub </span>lookup_aggregation_evals_d1: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
         <span class="kw">pub </span>lookup_aggregation_poly_d1: DensePolynomial&lt;G::ScalarField&gt;,
         <span class="kw">pub </span>lookup_aggregation_comm_d1: PolyComm&lt;G&gt;,
+
+        <span class="comment">// Evaluating over d8 for the quotient polynomial
+        </span><span class="kw">pub </span>lookup_counters_evals_d8: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
+        <span class="kw">pub </span>lookup_terms_evals_d8: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
+        <span class="kw">pub </span>lookup_aggregation_evals_d8: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
 
         <span class="doccomment">/// The combiner used for vector lookups
         </span><span class="kw">pub </span>joint_combiner: G::ScalarField,
@@ -583,6 +612,11 @@
                     .into_par_iter()
                     .map(|evals| evals.interpolate_by_ref())
                     .collect();
+
+            <span class="kw">let </span>lookup_counters_evals_d8 = (<span class="kw-2">&amp;</span>lookup_counters_poly_d1)
+                .into_par_iter()
+                .map(|lookup| lookup.evaluate_over_domain_by_ref(domain.d8))
+                .collect::&lt;Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;();
 
             <span class="kw">let </span>lookup_counters_comm_d1: Vec&lt;PolyComm&lt;G&gt;&gt; = (<span class="kw-2">&amp;</span>lookup_counters_evals_d1)
                 .into_par_iter()
@@ -703,6 +737,12 @@
                     .map(|lte| lte.interpolate_by_ref())
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
+            <span class="kw">let </span>lookup_terms_evals_d8: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; =
+                (<span class="kw-2">&amp;</span>lookup_terms_poly_d1)
+                    .into_par_iter()
+                    .map(|lte| lte.evaluate_over_domain_by_ref(domain.d8))
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
             <span class="kw">let </span>lookup_terms_comms_d1: Vec&lt;PolyComm&lt;G&gt;&gt; = (<span class="kw-2">&amp;</span>lookup_terms_evals_d1)
                 .into_par_iter()
                 .map(|lte| srs.commit_evaluations_non_hiding(domain.d1, lte))
@@ -741,6 +781,10 @@
             };
 
             <span class="kw">let </span>lookup_aggregation_poly_d1 = lookup_aggregation_evals_d1.interpolate_by_ref();
+
+            <span class="kw">let </span>lookup_aggregation_evals_d8 =
+                lookup_aggregation_poly_d1.evaluate_over_domain_by_ref(domain.d8);
+
             <span class="kw">let </span>lookup_aggregation_comm_d1 =
                 srs.commit_evaluations_non_hiding(domain.d1, <span class="kw-2">&amp;</span>lookup_aggregation_evals_d1);
 
@@ -757,6 +801,10 @@
                 lookup_aggregation_evals_d1,
                 lookup_aggregation_poly_d1,
                 lookup_aggregation_comm_d1,
+
+                lookup_counters_evals_d8,
+                lookup_terms_evals_d8,
+                lookup_aggregation_evals_d8,
 
                 joint_combiner: vector_lookup_combiner,
                 beta,
