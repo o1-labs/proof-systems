@@ -401,7 +401,7 @@ mod tests {
     }
 
     #[test]
-    // X_{0}^6 + X_{1}^4 - X_{2}^3 - 2 X_{3}
+    // X_{0}^7 + X_{1}^4 - X_{2}^3 - 2 X_{3}
     fn test_completeness_degree_seven() {
         let mut rng = o1_utils::tests::make_test_rng();
         const N: usize = 4;
