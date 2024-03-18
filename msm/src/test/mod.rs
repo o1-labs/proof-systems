@@ -116,7 +116,7 @@ mod tests {
         assert!(!verifies)
     }
 
-    // Test degree a degree one constraint: X_{0} - X_{1}
+    // Test a constraint of degree one: X_{0} - X_{1}
     #[test]
     fn test_completeness_degree_one() {
         let mut rng = o1_utils::tests::make_test_rng();
@@ -146,7 +146,7 @@ mod tests {
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
-    // Test degree a degree one constraint: X_{0} * X_{0} - X_{1} - X_{2}
+    // Test a constraint of degree two: X_{0} * X_{0} - X_{1} - X_{2}
     #[test]
     fn test_completeness_degree_two() {
         let mut rng = o1_utils::tests::make_test_rng();
@@ -182,7 +182,7 @@ mod tests {
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
 
-    // Test degree a degree one constraint:
+    // Test a constraint of degree three:
     //   X_{0} * X_{0} * X_{0} \
     // - 42 * X_{1} * X_{2} \
     // + X_{3}
