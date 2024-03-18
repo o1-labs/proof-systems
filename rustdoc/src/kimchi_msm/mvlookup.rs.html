@@ -689,7 +689,7 @@
 
             <span class="kw">let </span>lookup_terms_evals_d1: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; =
                 lookup_terms_evals
-                    .into_iter()
+                    .into_par_iter()
                     .map(|lte| {
                         Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
                             lte, domain.d1,
