@@ -141,8 +141,6 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -203,21 +201,21 @@
             }
             <span class="self">Self</span>::Column::LookupPartialSum(i) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.lookup {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_terms_evals_d8[i])
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_terms_evals_d1[i])
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
             }
             <span class="self">Self</span>::Column::LookupAggregation =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.lookup {
-                    <span class="prelude-val">Some</span>(lookup.lookup_aggregation_evals_d8)
+                    <span class="prelude-val">Some</span>(lookup.lookup_aggregation_evals_d1)
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
             }
             <span class="self">Self</span>::Column::LookupMultiplicity(i) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.lookup {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_counters_evals_d8[i <span class="kw">as </span>usize])
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_counters_evals_d1[i <span class="kw">as </span>usize])
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
@@ -261,9 +259,7 @@
             | <span class="self">Self</span>::Column::LookupFixedTable(<span class="kw">_</span>)
             | <span class="self">Self</span>::Column::LookupMultiplicity(<span class="kw">_</span>)
             | <span class="self">Self</span>::Column::LookupPartialSum(<span class="kw">_</span>) =&gt; {
-                <span class="comment">// When there is a lookup, we do suppose the domain is always D8
-                // and we have at leat 6 lookups per row.
-                </span>Domain::D8
+                <span class="macro">panic!</span>(<span class="string">"Not implemented yet"</span>)
             }
         }
     }
