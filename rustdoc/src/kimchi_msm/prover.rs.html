@@ -428,13 +428,6 @@
 <a href="#426" id="426">426</a>
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup;
 <span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
@@ -555,6 +548,18 @@
         <span class="prelude-val">None
     </span>};
 
+    <span class="kw">let </span>max_degree = {
+        <span class="kw">if </span>lookup_env.is_none() {
+            constraints
+                .iter()
+                .map(|expr| expr.degree(<span class="number">1</span>, <span class="number">0</span>))
+                .max()
+                .unwrap_or(<span class="number">0</span>)
+        } <span class="kw">else </span>{
+            <span class="number">8
+        </span>}
+    };
+
     <span class="comment">// Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
     // FIXME: remove clone
     </span><span class="kw">let </span>mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
@@ -624,19 +629,7 @@
     };
 
     <span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
-        <span class="comment">// TODO FIXME This is only sound if powers of alpha are not used to combine constraints internally!
-        // And they are, so we need to take extra care.
-        </span><span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
-            <span class="comment">// otherwise we need different t_size
-            </span><span class="kw">let </span>expr_degree = expr.degree(<span class="number">1</span>, zk_rows);
-            <span class="kw">if </span>expr_degree &gt; <span class="number">2 </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::ConstraintDegreeTooHigh(
-                    expr_degree,
-                    <span class="number">2</span>,
-                    <span class="macro">format!</span>(<span class="string">"{:?}"</span>, expr),
-                ));
-            }
-
+        <span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
             <span class="kw">let </span>fail_q_division =
                 ProverError::ConstraintNotSatisfied(<span class="macro">format!</span>(<span class="string">"Unsatisfied expression: {:?}"</span>, expr));
             <span class="comment">// Check this expression are witness satisfied
@@ -648,8 +641,7 @@
             <span class="kw">if </span>!res.is_zero() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(fail_q_division);
             }
-            <span class="comment">// TODO assert none of expressions contain alpha
-        </span>}
+        }
 
         <span class="kw">let </span>combined_expr =
             Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
@@ -676,20 +668,14 @@
         quotient
     };
 
-    <span class="comment">//~ 1. commit (hiding) to the quotient polynomial $t$.
-    //
-    // Our constraints are at most degree d2. When divided by
-    // vanishing polynomial, we obtain t(X) of degree d1.
-    </span><span class="kw">let </span>expected_t_size = <span class="number">1</span>;
-    <span class="comment">// Quotient commitment
+    <span class="comment">//~ 1. commit to the quotient polynomial $t$.
     </span><span class="kw">let </span>t_comm = {
-        <span class="kw">let </span>num_chunks = <span class="number">1</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks);
-        <span class="kw">let </span>dummies_n = expected_t_size - t_comm.elems.len();
-        <span class="kw">for _ in </span><span class="number">0</span>..dummies_n {
-            t_comm.elems.push(G::zero());
-        }
-        t_comm
+        <span class="kw">let </span>num_chunks: usize = <span class="kw">if </span>max_degree == <span class="number">1 </span>{
+            <span class="number">1
+        </span>} <span class="kw">else </span>{
+            (max_degree - <span class="number">1</span>) <span class="kw">as </span>usize
+        };
+        srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks)
     };
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
