@@ -3634,6 +3634,8 @@
 <a href="#3632" id="3632">3632</a>
 <a href="#3633" id="3633">3633</a>
 <a href="#3634" id="3634">3634</a>
+<a href="#3635" id="3635">3635</a>
+<a href="#3636" id="3636">3636</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3773,6 +3775,9 @@
     <span class="doccomment">/// Return the evaluation of the given column, over the domain.
     </span><span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;;
 
+    <span class="doccomment">/// Defines the domain over which the column is evaluated
+    </span><span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; Domain;
+
     <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; D&lt;F&gt;;
 
     <span class="doccomment">/// Return the constants parameters that the expression might use.
@@ -3823,6 +3828,14 @@
         }
     }
 
+    <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; Domain {
+        <span class="kw">match </span><span class="kw-2">*</span>col {
+            <span class="self">Self</span>::Column::Index(GateType::Generic) =&gt; Domain::D4,
+            <span class="self">Self</span>::Column::Index(GateType::CompleteAdd) =&gt; Domain::D4,
+            <span class="kw">_ </span>=&gt; Domain::D8,
+        }
+    }
+
     <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.constants
     }
@@ -3866,13 +3879,6 @@
         domain.group_gen.pow([i <span class="kw">as </span>u64])
     };
     domain.evaluate_vanishing_polynomial(<span class="kw-2">*</span>pt) / (<span class="kw-2">*</span>pt - omega_i)
-}
-
-<span class="kw">pub trait </span>GenericColumn {
-    <span class="comment">// TODO These two traits must work together but it is NOT obvious. Change interface.
-    </span><span class="doccomment">/// Defines the domain over which the column is evaluated, as
-    /// contained in the `ColumnEnvironment`.
-    </span><span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain;
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -4892,7 +4898,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..n)
@@ -4949,7 +4955,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
@@ -4973,14 +4979,14 @@
                 <span class="macro">assert!</span>(
                     scale1 != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
                 <span class="macro">assert!</span>(
                     scale2 != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 <span class="kw">let </span>n = res_domain.<span class="number">1</span>.size();
@@ -5024,7 +5030,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 EvalResult::init(res_domain, |i| {
@@ -5043,7 +5049,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
 
@@ -5083,7 +5089,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
 
@@ -5107,7 +5113,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
@@ -5131,14 +5137,14 @@
                 <span class="macro">assert!</span>(
                     scale1 != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
                 <span class="macro">assert!</span>(
                     scale2 != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
 
@@ -5182,7 +5188,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 EvalResult::init(res_domain, |i| {
@@ -5221,7 +5227,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 EvalResult::init(res_domain, |i| {
@@ -5271,7 +5277,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domainand the evaluation domain of the
                 witnesses are the same"
                 </span>);
 
@@ -5296,7 +5302,7 @@
                 <span class="macro">assert!</span>(
                     scale1 != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
@@ -5304,7 +5310,7 @@
                 <span class="macro">assert!</span>(
                     scale2 != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 EvalResult::init(res_domain, |i| {
@@ -5439,7 +5445,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy + GenericColumn&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="kw">fn </span>evaluate_constants_(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;, chals: <span class="kw-2">&amp;</span>Challenges&lt;F&gt;) -&gt; Expr&lt;F, Column&gt; {
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
@@ -5565,7 +5571,7 @@
     Right(B),
 }
 
-<span class="kw">impl</span>&lt;F: FftField, Column: Copy + GenericColumn&gt; Expr&lt;F, Column&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: Copy&gt; Expr&lt;F, Column&gt; {
     <span class="doccomment">/// Evaluate an expression into a field element.
     </span><span class="kw">pub fn </span>evaluate&lt;Evaluations: ColumnEvaluations&lt;F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -5659,7 +5665,7 @@
                 <span class="macro">assert!</span>(
                     scale != <span class="number">0</span>,
                     <span class="string">"Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 </span>);
                 EvalResult::init_((d, res_domain), |i| {
@@ -5771,7 +5777,7 @@
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: col.column_domain(),
+                    domain: env.column_domain(col),
                     shift: row.shift(),
                     evals,
                 }
@@ -5863,9 +5869,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy + GenericColumn&gt;
-    Linearization&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;, Column&gt;
-{
+<span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy&gt; Linearization&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;, Column&gt; {
     <span class="doccomment">/// Evaluate the constants in a linearization with `ConstantExpr&lt;F&gt;` coefficients down
     /// to literal field elements.
     </span><span class="kw">pub fn </span>evaluate_constants&lt;<span class="lifetime">'a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">'a</span>, F, Column = Column&gt;&gt;(
@@ -5912,7 +5916,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField, Column: Debug + PartialEq + Copy + GenericColumn&gt;
+<span class="kw">impl</span>&lt;F: FftField, Column: Debug + PartialEq + Copy&gt;
     Linearization&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;, Column&gt;
 {
     <span class="doccomment">/// Given a linearization and an environment, compute the polynomial corresponding to the

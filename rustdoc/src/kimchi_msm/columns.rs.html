@@ -22,21 +22,7 @@
 <a href="#20" id="20">20</a>
 <a href="#21" id="21">21</a>
 <a href="#22" id="22">22</a>
-<a href="#23" id="23">23</a>
-<a href="#24" id="24">24</a>
-<a href="#25" id="25">25</a>
-<a href="#26" id="26">26</a>
-<a href="#27" id="27">27</a>
-<a href="#28" id="28">28</a>
-<a href="#29" id="29">29</a>
-<a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>kimchi::circuits::expr::{Domain, GenericColumn};
-
-<span class="doccomment">/// Describe a generic indexed variable X_{i}.
+</pre></div><pre class="rust"><code><span class="doccomment">/// Describe a generic indexed variable X_{i}.
 </span><span class="attr">#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 </span><span class="kw">pub enum </span>Column {
     X(usize),
@@ -50,16 +36,6 @@
     <span class="doccomment">/// The fixed tables. The parameter is considered to the indexed table.
     /// u32 has been arbitrarily chosen as it seems to be already large enough
     </span>LookupFixedTable(u32),
-}
-
-<span class="kw">impl </span>GenericColumn <span class="kw">for </span>Column {
-    <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain {
-        <span class="comment">// TODO FIXME check this is a tricky variable it should match the evalution in column
-        // this must be bigger or equal than degree chosen in runtime inside evaluations() for
-        // evaluating an expression = degree of expression that is evaluated
-        // And also ... in some cases... bigger than the witness column size? Equal?
-        </span>Domain::D4
-    }
 }
 
 <span class="doccomment">/// A datatype expressing a generalized column, but with potentially
