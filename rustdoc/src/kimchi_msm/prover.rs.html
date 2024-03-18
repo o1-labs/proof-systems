@@ -627,9 +627,9 @@
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 mvlookup::prover::QuotientPolynomialEnvironment {
-                    lookup_terms_evals_d1: <span class="kw-2">&amp;</span>lookup_env.lookup_counters_evals_d1,
-                    lookup_aggregation_evals_d1: <span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_evals_d1,
-                    lookup_counters_evals_d1: <span class="kw-2">&amp;</span>lookup_env.lookup_counters_evals_d1,
+                    lookup_terms_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_counters_evals_d8,
+                    lookup_aggregation_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_evals_d8,
+                    lookup_counters_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_counters_evals_d8,
                     <span class="comment">// FIXME
                     </span>fixed_lookup_tables: <span class="kw-2">&amp;</span>coefficient_evals_env,
                 }
