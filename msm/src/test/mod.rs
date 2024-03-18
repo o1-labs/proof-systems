@@ -8,8 +8,11 @@ pub mod witness;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::UniformRand;
-    use kimchi::circuits::domains::EvaluationDomains;
+    use ark_ff::{One, UniformRand};
+    use kimchi::circuits::{
+        domains::EvaluationDomains,
+        expr::{ConstantExpr, ConstantTerm},
+    };
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
 
@@ -214,6 +217,78 @@ mod tests {
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
             cols: [random_x0s, random_x1s, random_x2s, exp_x3],
+        };
+
+        test_completeness_generic::<N, _>(
+            constraints.clone(),
+            witness.clone(),
+            domain_size,
+            &mut rng,
+        );
+        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
+        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // test_soundness_generic(constraints, witness, domain_size, &mut rng);
+    }
+
+    #[test]
+    // X_{0} * (X_{1} * X_{2} * X_{3} + 1)
+    fn test_completeness_degree_four() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        const N: usize = 4;
+        let domain_size = 1 << 8;
+
+        let constraints = {
+            let x0 = expr::curr_cell::<Fp>(Column::X(0));
+            let x1 = expr::curr_cell::<Fp>(Column::X(1));
+            let x2 = expr::curr_cell::<Fp>(Column::X(2));
+            let x3 = expr::curr_cell::<Fp>(Column::X(3));
+            let one = ConstantExpr::from(ConstantTerm::Literal(Fp::one()));
+            vec![x0.clone() * (x1.clone() * x2.clone() * x3.clone() + E::constant(one))]
+        };
+
+        let random_x0s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
+        let random_x1s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
+        let random_x2s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
+        let exp_x3 = random_x1s
+            .iter()
+            .zip(random_x2s.iter())
+            .map(|(x1, x2)| -Fp::one() / (*x1 * *x2))
+            .collect::<Vec<Fp>>();
+        let witness: Witness<N, Vec<Fp>> = Witness {
+            cols: [random_x0s, random_x1s, random_x2s, exp_x3],
+        };
+
+        test_completeness_generic::<N, _>(
+            constraints.clone(),
+            witness.clone(),
+            domain_size,
+            &mut rng,
+        );
+        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
+        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // test_soundness_generic(constraints, witness, domain_size, &mut rng);
+    }
+
+    #[test]
+    // X_{0}^5 + X_{1}
+    fn test_completeness_degree_five() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        const N: usize = 2;
+        let domain_size = 1 << 8;
+
+        let constraints = {
+            let x0 = expr::curr_cell::<Fp>(Column::X(0));
+            let x1 = expr::curr_cell::<Fp>(Column::X(1));
+            vec![x0.clone() * x0.clone() * x0.clone() * x0.clone() * x0.clone() + x1.clone()]
+        };
+
+        let random_x0s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
+        let exp_x1 = random_x0s
+            .iter()
+            .map(|x0| -*x0 * *x0 * *x0 * *x0 * *x0)
+            .collect::<Vec<Fp>>();
+        let witness: Witness<N, Vec<Fp>> = Witness {
+            cols: [random_x0s, exp_x1],
         };
 
         test_completeness_generic::<N, _>(
