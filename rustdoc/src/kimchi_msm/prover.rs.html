@@ -428,14 +428,19 @@
 <a href="#426" id="426">426</a>
 <a href="#427" id="427">427</a>
 <a href="#428" id="428">428</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup;
-<span class="kw">use crate</span>::{
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
 };
+<span class="kw">use crate</span>::{mvlookup, MAX_SUPPORTED_DEGREE};
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>R2D};
@@ -571,14 +576,19 @@
     <span class="comment">// -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
 
-    // TODO rename this
-    // The evaluations should be at least the degree of our expressions. Higher?
-    // Maybe we can only use d4, we don't have degree-7 gates anyway
-    </span><span class="kw">let </span>witness_evals_env: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; =
+    </span><span class="kw">let </span>witness_evals: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = {
+        <span class="kw">let </span>domain_eval = <span class="kw">if </span>max_degree &lt;= <span class="number">4 </span>{
+            domain.d4
+        } <span class="kw">else if </span>max_degree <span class="kw">as </span>usize &lt;= MAX_SUPPORTED_DEGREE {
+            domain.d8
+        } <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">"We do support constraints up to {:?}"</span>, MAX_SUPPORTED_DEGREE)
+        };
         (<span class="kw-2">&amp;</span>witness_polys)
             .into_par_iter()
-            .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
-            .collect();
+            .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
+            .collect::&lt;Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt;&gt;()
+    };
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
@@ -612,7 +622,7 @@
                 zk_rows,
             },
             challenges,
-            witness: <span class="kw-2">&amp;</span>witness_evals_env,
+            witness: <span class="kw-2">&amp;</span>witness_evals,
             coefficients: <span class="kw-2">&amp;</span>coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
