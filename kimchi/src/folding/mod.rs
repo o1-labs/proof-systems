@@ -2,7 +2,7 @@ use crate::circuits::gate::CurrOrNext;
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use error_term::{compute_error, ExtendedEnv, Side};
+use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
@@ -10,6 +10,8 @@ use instance_witness::{RelaxableInstance, RelaxablePair};
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
+
+pub use error_term::Side;
 
 mod error_term;
 #[allow(dead_code)]

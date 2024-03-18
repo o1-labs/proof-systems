@@ -85,13 +85,6 @@ pub enum Column {
     Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
 }
 
-impl FoldingColumnTrait for Column {
-    fn is_witness(&self) -> bool {
-        // All Keccak columns are witness columns
-        true
-    }
-}
-
 /// The witness columns used by the Keccak circuit.
 /// The Keccak circuit is split into two main modes: Sponge and Round.
 /// The columns are shared between the Sponge and Round steps.
