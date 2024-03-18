@@ -137,6 +137,9 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     /// Return the evaluation of the given column, over the domain.
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
 
+    /// Defines the domain over which the column is evaluated
+    fn column_domain(&self, col: &Self::Column) -> Domain;
+
     fn get_domain(&self, d: Domain) -> D<F>;
 
     /// Return the constants parameters that the expression might use.
@@ -187,6 +190,14 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
         }
     }
 
+    fn column_domain(&self, col: &Self::Column) -> Domain {
+        match *col {
+            Self::Column::Index(GateType::Generic) => Domain::D4,
+            Self::Column::Index(GateType::CompleteAdd) => Domain::D4,
+            _ => Domain::D8,
+        }
+    }
+
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
     }
@@ -230,13 +241,6 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
         domain.group_gen.pow([i as u64])
     };
     domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
-}
-
-pub trait GenericColumn {
-    // TODO These two traits must work together but it is NOT obvious. Change interface.
-    /// Defines the domain over which the column is evaluated, as
-    /// contained in the `ColumnEnvironment`.
-    fn column_domain(&self) -> Domain;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1256,7 +1260,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 let v: Vec<_> = (0..n)
@@ -1313,7 +1317,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
@@ -1337,14 +1341,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale1 != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(
                     scale2 != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 let n = res_domain.1.size();
@@ -1388,7 +1392,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
@@ -1407,7 +1411,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
 
@@ -1447,7 +1451,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
 
@@ -1471,7 +1475,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
@@ -1495,14 +1499,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale1 != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(
                     scale2 != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
 
@@ -1546,7 +1550,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
@@ -1585,7 +1589,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
@@ -1635,7 +1639,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domainand the evaluation domain of the
                 witnesses are the same"
                 );
 
@@ -1660,7 +1664,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale1 != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
@@ -1668,7 +1672,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 assert!(
                     scale2 != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 EvalResult::init(res_domain, |i| {
@@ -1803,7 +1807,7 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>, Column> {
+impl<F: FftField, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     fn evaluate_constants_(&self, c: &Constants<F>, chals: &Challenges<F>) -> Expr<F, Column> {
         use ExprInner::*;
         use Operations::*;
@@ -1929,7 +1933,7 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
+impl<F: FftField, Column: Copy> Expr<F, Column> {
     /// Evaluate an expression into a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
@@ -2023,7 +2027,7 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
                 assert!(
                     scale != 0,
                     "Check that the implementation of
-                column_domain in GenericColumn and the evaluation domain of the
+                column_domain and the evaluation domain of the
                 witnesses are the same"
                 );
                 EvalResult::init_((d, res_domain), |i| {
@@ -2135,7 +2139,7 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: col.column_domain(),
+                    domain: env.column_domain(col),
                     shift: row.shift(),
                     evals,
                 }
@@ -2227,9 +2231,7 @@ impl<A, Column: Copy> Linearization<A, Column> {
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy + GenericColumn>
-    Linearization<Expr<ConstantExpr<F>, Column>, Column>
-{
+impl<F: FftField, Column: PartialEq + Copy> Linearization<Expr<ConstantExpr<F>, Column>, Column> {
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
     pub fn evaluate_constants<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
@@ -2276,7 +2278,7 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
     }
 }
 
-impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
+impl<F: FftField, Column: Debug + PartialEq + Copy>
     Linearization<Expr<ConstantExpr<F>, Column>, Column>
 {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
