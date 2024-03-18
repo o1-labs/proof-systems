@@ -47,7 +47,7 @@ pub(crate) const PAD_SUFFIX_LEN: usize = 5; // The padding suffix of 1088 bits i
 /// columns.
 /// Each alias will be mapped to a column index depending on the step kind
 /// (Sponge or Round) that is currently being executed.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Column {
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
