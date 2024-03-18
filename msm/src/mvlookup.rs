@@ -145,15 +145,12 @@ pub mod prover {
     }
 
     pub struct Env<G: KimchiCurve> {
-        pub lookup_counters_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
         pub lookup_counters_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
         pub lookup_counters_comm_d1: Vec<PolyComm<G>>,
 
-        pub lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
         pub lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
         pub lookup_terms_comms_d1: Vec<PolyComm<G>>,
 
-        pub lookup_aggregation_evals_d1: Evaluations<G::ScalarField, D<G::ScalarField>>,
         pub lookup_aggregation_poly_d1: DensePolynomial<G::ScalarField>,
         pub lookup_aggregation_comm_d1: PolyComm<G>,
 
@@ -382,15 +379,12 @@ pub mod prover {
 
             absorb_commitment(fq_sponge, &lookup_aggregation_comm_d1);
             Self {
-                lookup_counters_evals_d1,
                 lookup_counters_poly_d1,
                 lookup_counters_comm_d1,
 
-                lookup_terms_evals_d1,
                 lookup_terms_poly_d1,
                 lookup_terms_comms_d1,
 
-                lookup_aggregation_evals_d1,
                 lookup_aggregation_poly_d1,
                 lookup_aggregation_comm_d1,
 
