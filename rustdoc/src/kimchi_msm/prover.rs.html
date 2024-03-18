@@ -433,6 +433,22 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -639,7 +655,8 @@
     };
 
     <span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
-        <span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
+        <span class="comment">// Only for debugging purposes
+        </span><span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
             <span class="kw">let </span>fail_q_division =
                 ProverError::ConstraintNotSatisfied(<span class="macro">format!</span>(<span class="string">"Unsatisfied expression: {:?}"</span>, expr));
             <span class="comment">// Check this expression are witness satisfied
@@ -653,25 +670,40 @@
             }
         }
 
-        <span class="kw">let </span>combined_expr =
+        <span class="comment">// Compute ∑ α^i constraint_i as an expression
+        </span><span class="kw">let </span>combined_expr =
             Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
 
-        <span class="comment">// An evaluation of our expression E(vec X) on witness columns
-        // Every witness column w_i(X) is evaluated first at D1, so we get E(vec w_i(X)) = 0?
-        // E(w(X)) = 0 but only over H, so it's 0 evaluated at every {w^i}_{i=1}^N
+        <span class="comment">// We want to compute the quotient polynomial, i.e.
+        // t(X) = (∑ α^i constraint_i(X)) / Z_H(X).
+        // The sum of the expressions is called the "constraint polynomial".
+        // We will use the evaluations points of the individual witness and
+        // lookup columns.
+        // Note that as the constraints might be of higher degree than N, the
+        // size of the set H we want the constraints to be verified on, we must
+        // have more than N evaluations points for each columns. This is handled
+        // in the ColumnEnvironment structure.
+        // Reminder: to compute P(X) = P_{1}(X) * P_{2}(X), from the evaluations
+        // of P_{1} and P_{2}, with deg(P_{1}) = deg(P_{2}(X)) = N, we must have
+        // 2N evaluation points to compute P as deg(P(X)) &lt;= 2N.
         </span><span class="kw">let </span>expr_evaluation: Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt; =
             combined_expr.evaluations(<span class="kw-2">&amp;</span>column_env);
 
-        <span class="kw">let </span>expr_evaluation_interpolated = expr_evaluation.interpolate();
+        <span class="comment">// And we interpolate using the evaluations
+        </span><span class="kw">let </span>expr_evaluation_interpolated = expr_evaluation.interpolate();
 
-        <span class="comment">// divide contributions with vanishing polynomial
-        </span><span class="kw">let </span>fail_final_q_division = || {
+        <span class="kw">let </span>fail_final_q_division = || {
             <span class="macro">panic!</span>(<span class="string">"Division by vanishing poly must not fail at this point, we checked it before"</span>)
         };
-        <span class="kw">let </span>(quotient, res) = expr_evaluation_interpolated
+        <span class="comment">// We compute the polynomial t(X) by dividing the constraints polynomial
+        // by the vanishing polynomial, i.e. Z_H(X).
+        </span><span class="kw">let </span>(quotient, res) = expr_evaluation_interpolated
             .divide_by_vanishing_poly(domain.d1)
             .unwrap_or_else(fail_final_q_division);
-        <span class="kw">if </span>!res.is_zero() {
+        <span class="comment">// As the constraints must be verified on H, the rest of the division
+        // must be equal to 0 as the constraints polynomial and Z_H(X) are both
+        // equals on H.
+        </span><span class="kw">if </span>!res.is_zero() {
             fail_final_q_division();
         }
 
