@@ -259,15 +259,14 @@ where
         quotient
     };
 
-    //~ 1. commit to the quotient polynomial $t$.
-    let t_comm = {
-        let num_chunks: usize = if max_degree == 1 {
-            1
-        } else {
-            (max_degree - 1) as usize
-        };
-        srs.commit_non_hiding(&quotient_poly, num_chunks)
+    let num_chunks: usize = if max_degree == 1 {
+        1
+    } else {
+        (max_degree - 1) as usize
     };
+
+    //~ 1. commit to the quotient polynomial $t$.
+    let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at zeta and zeta_omega
@@ -356,17 +355,17 @@ where
         }
     }
 
-    // TODO @volhovm I'm suspecting that due to the fact we don't use linearisation polynomial, we
-    // need to evaluate t directly.
-    // ft = (1 - xi^n) (t_0(X) + \xi^n t_1(X))
+    // Evaluate Z_H(X) * t(X)
+    // Compute ft = (1 - xi^n) (t_0(X) + \xi^n t_1(X) + ... + \xi^{kn} t_{k}(X))
+    // where \sum_i t_i(X) X^{i n} = t(X)
     let ft: DensePolynomial<G::ScalarField> = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
-        // TODO FIXME a wild guess. The second parameter should be chunk size, so srs size = domain.
-        // t_chunked is t_0(X) + \xi^n t_1(X)
-        // that is of degree n, but recombined.
+        // Compute \sum_i t_i(X) \zeta^{i n}
+        // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
         let t_chunked = quotient_poly
-            .to_chunked_polynomial(1, domain.d1.size as usize)
+            .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
+        // Multiply by Z_H(\zeta)
         t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
     };
 
