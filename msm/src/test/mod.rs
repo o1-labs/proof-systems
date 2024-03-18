@@ -301,4 +301,47 @@ mod tests {
         // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
         // test_soundness_generic(constraints, witness, domain_size, &mut rng);
     }
+
+    #[test]
+    // X_{0}^3 + X_{1} AND X_{2}^2 - 3 X_{3}
+    fn test_completeness_different_constraints_different_degrees() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        const N: usize = 4;
+        let domain_size = 1 << 8;
+
+        let constraints = {
+            let x0 = expr::curr_cell::<Fp>(Column::X(0));
+            let x1 = expr::curr_cell::<Fp>(Column::X(1));
+            let cst1 = x0.clone() * x0.clone() * x0.clone() + x1.clone();
+            let x2 = expr::curr_cell::<Fp>(Column::X(2));
+            let x3 = expr::curr_cell::<Fp>(Column::X(3));
+            let three = ConstantExpr::from(ConstantTerm::Literal(Fp::from(3)));
+            let cst2 = x2.clone() * x2.clone() - E::constant(three) * x3.clone();
+            vec![cst1, cst2]
+        };
+
+        let random_x0s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
+        let exp_x1 = random_x0s
+            .iter()
+            .map(|x0| -*x0 * *x0 * *x0)
+            .collect::<Vec<Fp>>();
+        let random_x2s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
+        let exp_x3: Vec<Fp> = random_x2s
+            .iter()
+            .map(|x2| (Fp::one() / Fp::from(3)) * x2 * x2)
+            .collect::<Vec<Fp>>();
+        let witness: Witness<N, Vec<Fp>> = Witness {
+            cols: [random_x0s, exp_x1, random_x2s, exp_x3],
+        };
+
+        test_completeness_generic::<N, _>(
+            constraints.clone(),
+            witness.clone(),
+            domain_size,
+            &mut rng,
+        );
+        // FIXME: we would want to allow the prover to make a proof, but the verification must fail.
+        // TODO: Refactorize code in prover to handle a degug or add an adversarial prover.
+        // test_soundness_generic(constraints, witness, domain_size, &mut rng);
+    }
 }
