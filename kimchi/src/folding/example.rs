@@ -5,14 +5,14 @@ use crate::{
     },
     curve::KimchiCurve,
     folding::{
-        error_term::Side, example::checker::ExtendedProvider, expressions::FoldingColumnTrait,
-        FoldingConfig, FoldingEnv, FoldingScheme, Instance, Sponge, Witness,
+        error_term::Side, expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, Instance,
+        Sponge, Witness,
     },
 };
 use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, UniformRand, Zero};
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -46,10 +46,10 @@ use super::{
 /// B = (0, 0, 0)
 /// C = (1 1 -1)
 
-type Fp = ark_bn254::Fr;
-type Curve = ark_bn254::G1Affine;
-type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+pub type Fp = ark_bn254::Fr;
+pub type Curve = ark_bn254::G1Affine;
+pub type SpongeParams = PlonkSpongeConstantsKimchi;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum TestColumn {
@@ -89,16 +89,16 @@ impl Sponge<Curve> for BaseSponge {
 /// linear combination of other alphas, instand of a power of other element.
 /// This type represents that, allowing to also recognize which case is present
 #[derive(Debug, Clone)]
-enum Alphas {
+pub enum Alphas {
     Powers(Fp, Rc<AtomicUsize>),
     Combinations(Vec<Fp>),
 }
 
 impl Alphas {
-    fn new(alpha: Fp) -> Self {
+    pub fn new(alpha: Fp) -> Self {
         Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
     }
-    fn get(&self, i: usize) -> Option<Fp> {
+    pub fn get(&self, i: usize) -> Option<Fp> {
         match self {
             Alphas::Powers(alpha, count) => {
                 let _ = count.fetch_max(i + 1, Ordering::Relaxed);
@@ -108,7 +108,7 @@ impl Alphas {
             Alphas::Combinations(alphas) => alphas.get(i).cloned(),
         }
     }
-    fn powers(self) -> Vec<Fp> {
+    pub fn powers(self) -> Vec<Fp> {
         match self {
             Alphas::Powers(alpha, count) => {
                 let n = count.load(Ordering::Relaxed);
@@ -118,7 +118,7 @@ impl Alphas {
             Alphas::Combinations(c) => c,
         }
     }
-    fn combine(a: Self, b: Self, challenge: Fp) -> Self {
+    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         let a = a.powers();
         let b = b.powers();
         assert_eq!(a.len(), b.len());
@@ -499,85 +499,93 @@ mod checker {
     impl<T: Provide> Checker for T {}
 }
 
-// this checks a single folding, it would be good to expand it in the future to do several foldings,
-// as a few thigs are trivial in the first fold
-#[test]
-fn test_folding_instance() {
-    use ark_poly::Radix2EvaluationDomain as D;
-    use checker::{Checker, Provider};
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::folding::{example::checker::ExtendedProvider, FoldingScheme};
+    use ark_poly::{EvaluationDomain, Evaluations};
 
-    let constraints = constraints();
-    let domain = D::<Fp>::new(2).unwrap();
-    let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
-    srs.add_lagrange_basis(domain);
-    let [s_add, s_mul] = circuit();
-    let structure = TestStructure { s_add, s_mul };
+    // this checks a single folding, it would be good to expand it in the future to do several foldings,
+    // as a few thigs are trivial in the first fold
+    #[test]
+    fn test_folding_instance() {
+        use ark_poly::Radix2EvaluationDomain as D;
+        use checker::{Checker, Provider};
 
-    let (scheme, final_constraint) = FoldingScheme::<TestFoldingConfig>::new(
-        constraints.clone(),
-        srs.clone(),
-        domain,
-        structure.clone(),
-    );
+        let constraints = constraints();
+        let domain = D::<Fp>::new(2).unwrap();
+        let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+        srs.add_lagrange_basis(domain);
+        let [s_add, s_mul] = circuit();
+        let structure = TestStructure { s_add, s_mul };
 
-    // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
-
-    // Left: 1 + 2 - 3 = 0
-    let left_witness = [
-        vec![Fp::from(1u32), Fp::from(2u32)],
-        vec![Fp::from(2u32), Fp::from(3u32)],
-        vec![Fp::from(3u32), Fp::from(6u32)],
-    ];
-    let left_witness: TestWitness =
-        left_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
-    // Right: 4 + 5 - 9 = 0
-    let right_witness = [
-        vec![Fp::from(4u32), Fp::from(3u32)],
-        vec![Fp::from(5u32), Fp::from(6u32)],
-        vec![Fp::from(9u32), Fp::from(18u32)],
-    ];
-    let right_witness: TestWitness =
-        right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
-
-    //instances
-    let left_instance = instance_from_witness(&left_witness, &srs, domain);
-    let right_instance = instance_from_witness(&left_witness, &srs, domain);
-
-    //check left
-    {
-        // println!("check left");
-        let checker = Provider::new(
+        let (scheme, final_constraint) = FoldingScheme::<TestFoldingConfig>::new(
+            constraints.clone(),
+            srs.clone(),
+            domain,
             structure.clone(),
-            left_instance.clone(),
-            left_witness.clone(),
         );
-        for constraint in &constraints {
-            checker.check(constraint.clone(), false)
-        }
-    }
-    //check right
-    {
-        // println!("check right");
-        let checker = Provider::new(
-            structure.clone(),
-            right_instance.clone(),
-            right_witness.clone(),
-        );
-        for constraint in &constraints {
-            checker.check(constraint.clone(), false)
-        }
-    }
 
-    //pairs
-    let left = (left_instance, left_witness);
-    let right = (right_instance, right_witness);
+        // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
 
-    let folded = scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(left, right);
-    let (folded_instance, folded_witness, [_t0, _t1]) = folded;
-    {
-        let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-        // println!("exp: \n {:#?}", final_constraint);
-        // println!("check folded");
-        checker.check(final_constraint, false);
+        // Left: 1 + 2 - 3 = 0
+        let left_witness = [
+            vec![Fp::from(1u32), Fp::from(2u32)],
+            vec![Fp::from(2u32), Fp::from(3u32)],
+            vec![Fp::from(3u32), Fp::from(6u32)],
+        ];
+        let left_witness: TestWitness =
+            left_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
+        // Right: 4 + 5 - 9 = 0
+        let right_witness = [
+            vec![Fp::from(4u32), Fp::from(3u32)],
+            vec![Fp::from(5u32), Fp::from(6u32)],
+            vec![Fp::from(9u32), Fp::from(18u32)],
+        ];
+        let right_witness: TestWitness =
+            right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
+
+        //instances
+        let left_instance = instance_from_witness(&left_witness, &srs, domain);
+        let right_instance = instance_from_witness(&left_witness, &srs, domain);
+
+        //check left
+        {
+            // println!("check left");
+            let checker = Provider::new(
+                structure.clone(),
+                left_instance.clone(),
+                left_witness.clone(),
+            );
+            for constraint in &constraints {
+                checker.check(constraint.clone(), false)
+            }
+        }
+        //check right
+        {
+            // println!("check right");
+            let checker = Provider::new(
+                structure.clone(),
+                right_instance.clone(),
+                right_witness.clone(),
+            );
+            for constraint in &constraints {
+                checker.check(constraint.clone(), false)
+            }
+        }
+
+        //pairs
+        let left = (left_instance, left_witness);
+        let right = (right_instance, right_witness);
+
+        let folded =
+            scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(left, right);
+        let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+        {
+            let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
+            // println!("exp: \n {:#?}", final_constraint);
+            // println!("check folded");
+            checker.check(final_constraint, false);
+        }
     }
 }
