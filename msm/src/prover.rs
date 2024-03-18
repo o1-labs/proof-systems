@@ -118,6 +118,18 @@ where
         None
     };
 
+    let max_degree = {
+        if lookup_env.is_none() {
+            constraints
+                .iter()
+                .map(|expr| expr.degree(1, 0))
+                .max()
+                .unwrap_or(0)
+        } else {
+            8
+        }
+    };
+
     // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
     // FIXME: remove clone
     let mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
@@ -188,16 +200,6 @@ where
 
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         for expr in constraints.iter() {
-            // otherwise we need different t_size
-            let expr_degree = expr.degree(1, zk_rows);
-            if expr_degree > 2 {
-                return Err(ProverError::ConstraintDegreeTooHigh(
-                    expr_degree,
-                    2,
-                    format!("{:?}", expr),
-                ));
-            }
-
             let fail_q_division =
                 ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
             // Check this expression are witness satisfied
@@ -236,20 +238,14 @@ where
         quotient
     };
 
-    //~ 1. commit (hiding) to the quotient polynomial $t$.
-    //
-    // Our constraints are at most degree d2. When divided by
-    // vanishing polynomial, we obtain t(X) of degree d1.
-    let expected_t_size = 1;
-    // Quotient commitment
+    //~ 1. commit to the quotient polynomial $t$.
     let t_comm = {
-        let num_chunks = 1;
-        let mut t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
-        let dummies_n = expected_t_size - t_comm.elems.len();
-        for _ in 0..dummies_n {
-            t_comm.elems.push(G::zero());
-        }
-        t_comm
+        let num_chunks: usize = if max_degree == 1 {
+            1
+        } else {
+            (max_degree - 1) as usize
+        };
+        srs.commit_non_hiding(&quotient_poly, num_chunks)
     };
 
     ////////////////////////////////////////////////////////////////////////////
