@@ -8,7 +8,7 @@ pub mod witness;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::{Field, One, UniformRand};
+    use ark_ff::{Field, One, UniformRand, Zero};
     use kimchi::circuits::{
         domains::EvaluationDomains,
         expr::{ConstantExpr, ConstantTerm},
@@ -80,6 +80,10 @@ mod tests {
                     .fold(0, |acc, x| acc + x.len())
                     == N
             );
+            // Checking that none of the commitments are zero
+            (&proof.proof_comms.witness_comms)
+                .into_iter()
+                .for_each(|v| v.elems.iter().for_each(|x| assert!(!x.is_zero())));
 
             // Checking the number of chunks of the quotient polynomial
             let max_degree = constraints
