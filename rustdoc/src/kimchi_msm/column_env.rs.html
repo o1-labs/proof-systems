@@ -139,6 +139,10 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -234,7 +238,11 @@
     }
 
     <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; Domain {
-        <span class="kw">match </span><span class="kw-2">*</span>col {
+        <span class="comment">// TODO FIXME check this is a tricky variable it should match the evalution in column
+        // this must be bigger or equal than degree chosen in runtime inside evaluations() for
+        // evaluating an expression = degree of expression that is evaluated
+        // And also ... in some cases... bigger than the witness column size? Equal?
+        </span><span class="kw">match </span><span class="kw-2">*</span>col {
             <span class="self">Self</span>::Column::X(i) =&gt; {
                 <span class="kw">let </span>domain_size = <span class="self">self</span>.witness[i].domain().size;
                 <span class="kw">if </span><span class="self">self</span>.domain.d1.size == domain_size {
