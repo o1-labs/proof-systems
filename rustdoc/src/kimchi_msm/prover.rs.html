@@ -432,15 +432,14 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup;
+<span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
 };
-<span class="kw">use crate</span>::{mvlookup, MAX_SUPPORTED_DEGREE};
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::Evaluations;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>R2D};
@@ -553,18 +552,6 @@
         <span class="prelude-val">None
     </span>};
 
-    <span class="kw">let </span>max_degree = {
-        <span class="kw">if </span>lookup_env.is_none() {
-            constraints
-                .iter()
-                .map(|expr| expr.degree(<span class="number">1</span>, <span class="number">0</span>))
-                .max()
-                .unwrap_or(<span class="number">0</span>)
-        } <span class="kw">else </span>{
-            <span class="number">8
-        </span>}
-    };
-
     <span class="comment">// Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
     // FIXME: remove clone
     </span><span class="kw">let </span>mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
@@ -576,19 +563,14 @@
     <span class="comment">// -- end computing the running sum in lookup_aggregation
     // -- End of MVLookup
 
-    </span><span class="kw">let </span>witness_evals: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = {
-        <span class="kw">let </span>domain_eval = <span class="kw">if </span>max_degree &lt;= <span class="number">4 </span>{
-            domain.d4
-        } <span class="kw">else if </span>max_degree <span class="kw">as </span>usize &lt;= MAX_SUPPORTED_DEGREE {
-            domain.d8
-        } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">"We do support constraints up to {:?}"</span>, MAX_SUPPORTED_DEGREE)
-        };
+    // TODO rename this
+    // The evaluations should be at least the degree of our expressions. Higher?
+    // Maybe we can only use d4, we don't have degree-7 gates anyway
+    </span><span class="kw">let </span>witness_evals_env: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; =
         (<span class="kw-2">&amp;</span>witness_polys)
             .into_par_iter()
-            .map(|evals| evals.evaluate_over_domain_by_ref(domain_eval))
-            .collect::&lt;Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt;&gt;()
-    };
+            .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
+            .collect();
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial
@@ -622,7 +604,7 @@
                 zk_rows,
             },
             challenges,
-            witness: <span class="kw-2">&amp;</span>witness_evals,
+            witness: <span class="kw-2">&amp;</span>witness_evals_env,
             coefficients: <span class="kw-2">&amp;</span>coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
@@ -640,6 +622,16 @@
 
     <span class="kw">let </span>quotient_poly: DensePolynomial&lt;G::ScalarField&gt; = {
         <span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
+            <span class="comment">// otherwise we need different t_size
+            </span><span class="kw">let </span>expr_degree = expr.degree(<span class="number">1</span>, zk_rows);
+            <span class="kw">if </span>expr_degree &gt; <span class="number">2 </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::ConstraintDegreeTooHigh(
+                    expr_degree,
+                    <span class="number">2</span>,
+                    <span class="macro">format!</span>(<span class="string">"{:?}"</span>, expr),
+                ));
+            }
+
             <span class="kw">let </span>fail_q_division =
                 ProverError::ConstraintNotSatisfied(<span class="macro">format!</span>(<span class="string">"Unsatisfied expression: {:?}"</span>, expr));
             <span class="comment">// Check this expression are witness satisfied
@@ -678,14 +670,20 @@
         quotient
     };
 
-    <span class="comment">//~ 1. commit to the quotient polynomial $t$.
+    <span class="comment">//~ 1. commit (hiding) to the quotient polynomial $t$.
+    //
+    // Our constraints are at most degree d2. When divided by
+    // vanishing polynomial, we obtain t(X) of degree d1.
+    </span><span class="kw">let </span>expected_t_size = <span class="number">1</span>;
+    <span class="comment">// Quotient commitment
     </span><span class="kw">let </span>t_comm = {
-        <span class="kw">let </span>num_chunks: usize = <span class="kw">if </span>max_degree == <span class="number">1 </span>{
-            <span class="number">1
-        </span>} <span class="kw">else </span>{
-            (max_degree - <span class="number">1</span>) <span class="kw">as </span>usize
-        };
-        srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks)
+        <span class="kw">let </span>num_chunks = <span class="number">1</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks);
+        <span class="kw">let </span>dummies_n = expected_t_size - t_comm.elems.len();
+        <span class="kw">for _ in </span><span class="number">0</span>..dummies_n {
+            t_comm.elems.push(G::zero());
+        }
+        t_comm
     };
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////

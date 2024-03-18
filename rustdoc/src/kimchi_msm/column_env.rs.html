@@ -119,28 +119,6 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -169,7 +147,6 @@
     </span><span class="kw">pub </span>challenges: Challenges&lt;F&gt;,
     <span class="doccomment">/// The domains used in the PLONK argument.
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
-
     <span class="doccomment">/// Lookup specific polynomials
     </span><span class="comment">// TODO: rename in additive lookup or "logup"
     // We do not use multi-variate lookups, only the additive part
@@ -235,33 +212,12 @@
         }
     }
 
-    <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; Domain {
+    <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, _col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; Domain {
         <span class="comment">// TODO FIXME check this is a tricky variable it should match the evalution in column
         // this must be bigger or equal than degree chosen in runtime inside evaluations() for
         // evaluating an expression = degree of expression that is evaluated
         // And also ... in some cases... bigger than the witness column size? Equal?
-        </span><span class="kw">match </span><span class="kw-2">*</span>col {
-            <span class="self">Self</span>::Column::X(i) =&gt; {
-                <span class="kw">let </span>domain_size = <span class="self">self</span>.witness[i].domain().size;
-                <span class="kw">if </span><span class="self">self</span>.domain.d1.size == domain_size {
-                    Domain::D1
-                } <span class="kw">else if </span><span class="self">self</span>.domain.d2.size == domain_size {
-                    Domain::D2
-                } <span class="kw">else if </span><span class="self">self</span>.domain.d4.size == domain_size {
-                    Domain::D4
-                } <span class="kw">else if </span><span class="self">self</span>.domain.d8.size == domain_size {
-                    Domain::D8
-                } <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">"Domain not supported. We do support the following multiple of the domain registered in the environment: 1, 2, 4, 8"</span>)
-                }
-            }
-            <span class="self">Self</span>::Column::LookupAggregation
-            | <span class="self">Self</span>::Column::LookupFixedTable(<span class="kw">_</span>)
-            | <span class="self">Self</span>::Column::LookupMultiplicity(<span class="kw">_</span>)
-            | <span class="self">Self</span>::Column::LookupPartialSum(<span class="kw">_</span>) =&gt; {
-                <span class="macro">panic!</span>(<span class="string">"Not implemented yet"</span>)
-            }
-        }
+        </span>Domain::D4
     }
 
     <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt; {
