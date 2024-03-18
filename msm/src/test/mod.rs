@@ -8,7 +8,7 @@ pub mod witness;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::{Field, One, UniformRand};
+    use ark_ff::{Field, One, UniformRand, Zero};
     use kimchi::circuits::{
         domains::EvaluationDomains,
         expr::{ConstantExpr, ConstantTerm},
@@ -61,6 +61,43 @@ mod tests {
                 rng,
             )
             .unwrap();
+
+        {
+            // Checking the proof size. We should have:
+            // - N commitments for the columns
+            // - N evaluations for the columns
+            // - MAX_DEGREE - 1 commitments for the constraints (quotient polynomial)
+            // TODO: add lookups
+
+            // We check there is always only one commitment chunk
+            (&proof.proof_comms.witness_comms)
+                .into_iter()
+                .for_each(|x| assert_eq!(x.len(), 1));
+            // This equality is therefore trivial, but still doing it.
+            assert!(
+                (&proof.proof_comms.witness_comms)
+                    .into_iter()
+                    .fold(0, |acc, x| acc + x.len())
+                    == N
+            );
+            // Checking that none of the commitments are zero
+            (&proof.proof_comms.witness_comms)
+                .into_iter()
+                .for_each(|v| v.elems.iter().for_each(|x| assert!(!x.is_zero())));
+
+            // Checking the number of chunks of the quotient polynomial
+            let max_degree = constraints
+                .iter()
+                .map(|c| c.degree(1, 0) as usize)
+                .max()
+                .unwrap();
+            if max_degree == 1 {
+                assert_eq!(proof.proof_comms.t_comm.len(), 1);
+            } else {
+                assert_eq!(proof.proof_comms.t_comm.len(), max_degree - 1);
+            }
+        }
+
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N>(
             domain,
             &srs,
