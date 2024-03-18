@@ -434,6 +434,7 @@
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup;
 <span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
@@ -568,10 +569,11 @@
     // TODO rename this
     // The evaluations should be at least the degree of our expressions. Higher?
     // Maybe we can only use d4, we don't have degree-7 gates anyway
-    </span><span class="kw">let </span>witness_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = (<span class="kw-2">&amp;</span>witness_polys)
-        .into_par_iter()
-        .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
-        .collect();
+    </span><span class="kw">let </span>witness_evals_env: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; =
+        (<span class="kw-2">&amp;</span>witness_polys)
+            .into_par_iter()
+            .map(|witness_poly| witness_poly.evaluate_over_domain_by_ref(domain.d4))
+            .collect();
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 2: Creating and committing to the quotient polynomial

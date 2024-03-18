@@ -106,8 +106,28 @@
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+<span class="kw">use </span>std::ops::Index;
 
 <span class="doccomment">/// The witness columns used by a gate of the MSM circuits.
 /// It is generic over the number of columns, N, and the type of the witness, T.
@@ -127,6 +147,24 @@
         Witness {
             cols: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
         }
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, T&gt; Index&lt;usize&gt; <span class="kw">for </span>Witness&lt;N, T&gt; {
+    <span class="kw">type </span>Output = T;
+
+    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: usize) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[index]
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, T&gt; Witness&lt;N, T&gt; {
+    <span class="kw">pub fn </span>len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.cols.len()
+    }
+
+    <span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.cols.is_empty()
     }
 }
 
