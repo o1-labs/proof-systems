@@ -58,21 +58,21 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
             }
             Self::Column::LookupPartialSum(i) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_terms_evals_d1[i])
+                    Some(&lookup.lookup_terms_evals_d8[i])
                 } else {
                     panic!("No lookup provided")
                 }
             }
             Self::Column::LookupAggregation => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(lookup.lookup_aggregation_evals_d1)
+                    Some(lookup.lookup_aggregation_evals_d8)
                 } else {
                     panic!("No lookup provided")
                 }
             }
             Self::Column::LookupMultiplicity(i) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d1[i as usize])
+                    Some(&lookup.lookup_counters_evals_d8[i as usize])
                 } else {
                     panic!("No lookup provided")
                 }
@@ -116,7 +116,9 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
             | Self::Column::LookupFixedTable(_)
             | Self::Column::LookupMultiplicity(_)
             | Self::Column::LookupPartialSum(_) => {
-                panic!("Not implemented yet")
+                // When there is a lookup, we do suppose the domain is always D8
+                // and we have at leat 6 lookups per row.
+                Domain::D8
             }
         }
     }
