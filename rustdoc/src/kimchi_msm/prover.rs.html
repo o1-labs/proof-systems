@@ -448,7 +448,6 @@
 <a href="#446" id="446">446</a>
 <a href="#447" id="447">447</a>
 <a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -710,15 +709,14 @@
         quotient
     };
 
-    <span class="comment">//~ 1. commit to the quotient polynomial $t$.
-    </span><span class="kw">let </span>t_comm = {
-        <span class="kw">let </span>num_chunks: usize = <span class="kw">if </span>max_degree == <span class="number">1 </span>{
-            <span class="number">1
-        </span>} <span class="kw">else </span>{
-            (max_degree - <span class="number">1</span>) <span class="kw">as </span>usize
-        };
-        srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks)
+    <span class="kw">let </span>num_chunks: usize = <span class="kw">if </span>max_degree == <span class="number">1 </span>{
+        <span class="number">1
+    </span>} <span class="kw">else </span>{
+        (max_degree - <span class="number">1</span>) <span class="kw">as </span>usize
     };
+
+    <span class="comment">//~ 1. commit to the quotient polynomial $t$.
+    </span><span class="kw">let </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks);
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 3: Evaluations at zeta and zeta_omega
@@ -807,18 +805,18 @@
         }
     }
 
-    <span class="comment">// TODO @volhovm I'm suspecting that due to the fact we don't use linearisation polynomial, we
-    // need to evaluate t directly.
-    // ft = (1 - xi^n) (t_0(X) + \xi^n t_1(X))
+    <span class="comment">// Evaluate Z_H(X) * t(X)
+    // Compute ft = (1 - xi^n) (t_0(X) + \xi^n t_1(X) + ... + \xi^{kn} t_{k}(X))
+    // where \sum_i t_i(X) X^{i n} = t(X)
     </span><span class="kw">let </span>ft: DensePolynomial&lt;G::ScalarField&gt; = {
         <span class="kw">let </span>evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
-        <span class="comment">// TODO FIXME a wild guess. The second parameter should be chunk size, so srs size = domain.
-        // t_chunked is t_0(X) + \xi^n t_1(X)
-        // that is of degree n, but recombined.
+        <span class="comment">// Compute \sum_i t_i(X) \zeta^{i n}
+        // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
         </span><span class="kw">let </span>t_chunked = quotient_poly
-            .to_chunked_polynomial(<span class="number">1</span>, domain.d1.size <span class="kw">as </span>usize)
+            .to_chunked_polynomial(num_chunks, domain.d1.size <span class="kw">as </span>usize)
             .linearize(evaluation_point_to_domain_size);
-        t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
+        <span class="comment">// Multiply by Z_H(\zeta)
+        </span>t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
     };
 
     <span class="comment">// TODO Maybe we also need to evaluate on zeta? why only zeta omega?
