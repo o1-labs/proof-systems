@@ -3552,6 +3552,88 @@
 <a href="#3550" id="3550">3550</a>
 <a href="#3551" id="3551">3551</a>
 <a href="#3552" id="3552">3552</a>
+<a href="#3553" id="3553">3553</a>
+<a href="#3554" id="3554">3554</a>
+<a href="#3555" id="3555">3555</a>
+<a href="#3556" id="3556">3556</a>
+<a href="#3557" id="3557">3557</a>
+<a href="#3558" id="3558">3558</a>
+<a href="#3559" id="3559">3559</a>
+<a href="#3560" id="3560">3560</a>
+<a href="#3561" id="3561">3561</a>
+<a href="#3562" id="3562">3562</a>
+<a href="#3563" id="3563">3563</a>
+<a href="#3564" id="3564">3564</a>
+<a href="#3565" id="3565">3565</a>
+<a href="#3566" id="3566">3566</a>
+<a href="#3567" id="3567">3567</a>
+<a href="#3568" id="3568">3568</a>
+<a href="#3569" id="3569">3569</a>
+<a href="#3570" id="3570">3570</a>
+<a href="#3571" id="3571">3571</a>
+<a href="#3572" id="3572">3572</a>
+<a href="#3573" id="3573">3573</a>
+<a href="#3574" id="3574">3574</a>
+<a href="#3575" id="3575">3575</a>
+<a href="#3576" id="3576">3576</a>
+<a href="#3577" id="3577">3577</a>
+<a href="#3578" id="3578">3578</a>
+<a href="#3579" id="3579">3579</a>
+<a href="#3580" id="3580">3580</a>
+<a href="#3581" id="3581">3581</a>
+<a href="#3582" id="3582">3582</a>
+<a href="#3583" id="3583">3583</a>
+<a href="#3584" id="3584">3584</a>
+<a href="#3585" id="3585">3585</a>
+<a href="#3586" id="3586">3586</a>
+<a href="#3587" id="3587">3587</a>
+<a href="#3588" id="3588">3588</a>
+<a href="#3589" id="3589">3589</a>
+<a href="#3590" id="3590">3590</a>
+<a href="#3591" id="3591">3591</a>
+<a href="#3592" id="3592">3592</a>
+<a href="#3593" id="3593">3593</a>
+<a href="#3594" id="3594">3594</a>
+<a href="#3595" id="3595">3595</a>
+<a href="#3596" id="3596">3596</a>
+<a href="#3597" id="3597">3597</a>
+<a href="#3598" id="3598">3598</a>
+<a href="#3599" id="3599">3599</a>
+<a href="#3600" id="3600">3600</a>
+<a href="#3601" id="3601">3601</a>
+<a href="#3602" id="3602">3602</a>
+<a href="#3603" id="3603">3603</a>
+<a href="#3604" id="3604">3604</a>
+<a href="#3605" id="3605">3605</a>
+<a href="#3606" id="3606">3606</a>
+<a href="#3607" id="3607">3607</a>
+<a href="#3608" id="3608">3608</a>
+<a href="#3609" id="3609">3609</a>
+<a href="#3610" id="3610">3610</a>
+<a href="#3611" id="3611">3611</a>
+<a href="#3612" id="3612">3612</a>
+<a href="#3613" id="3613">3613</a>
+<a href="#3614" id="3614">3614</a>
+<a href="#3615" id="3615">3615</a>
+<a href="#3616" id="3616">3616</a>
+<a href="#3617" id="3617">3617</a>
+<a href="#3618" id="3618">3618</a>
+<a href="#3619" id="3619">3619</a>
+<a href="#3620" id="3620">3620</a>
+<a href="#3621" id="3621">3621</a>
+<a href="#3622" id="3622">3622</a>
+<a href="#3623" id="3623">3623</a>
+<a href="#3624" id="3624">3624</a>
+<a href="#3625" id="3625">3625</a>
+<a href="#3626" id="3626">3626</a>
+<a href="#3627" id="3627">3627</a>
+<a href="#3628" id="3628">3628</a>
+<a href="#3629" id="3629">3629</a>
+<a href="#3630" id="3630">3630</a>
+<a href="#3631" id="3631">3631</a>
+<a href="#3632" id="3632">3632</a>
+<a href="#3633" id="3633">3633</a>
+<a href="#3634" id="3634">3634</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -4807,7 +4889,12 @@
             ) =&gt; {
                 <span class="kw">let </span>n = res_domain.<span class="number">1</span>.size();
                 <span class="kw">let </span>scale = (domain <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..n)
                     .into_par_iter()
                     .map(|i| {
@@ -4859,7 +4946,12 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     <span class="kw-2">*</span>e += es_sub.evals[(scale * i + (d_sub <span class="kw">as </span>usize) * s) % es_sub.evals.len()];
                 });
@@ -4878,10 +4970,19 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale1 = (d1 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale1 != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale1 != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale2 != <span class="number">0</span>);
-
+                <span class="macro">assert!</span>(
+                    scale2 != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 <span class="kw">let </span>n = res_domain.<span class="number">1</span>.size();
                 <span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..n)
                     .into_par_iter()
@@ -4920,7 +5021,12 @@
                 Constant(x),
             ) =&gt; {
                 <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 EvalResult::init(res_domain, |i| {
                     evals.evals[(scale * i + (d <span class="kw">as </span>usize) * s) % evals.evals.len()] - x
                 })
@@ -4934,7 +5040,13 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
+
                 EvalResult::init(res_domain, |i| {
                     x - evals.evals[(scale * i + (d <span class="kw">as </span>usize) * s) % evals.evals.len()]
                 })
@@ -4968,7 +5080,13 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
+
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     <span class="kw-2">*</span>e = es_sub.evals[(scale * i + (d_sub <span class="kw">as </span>usize) * s) % es_sub.evals.len()] - <span class="kw-2">*</span>e;
                 });
@@ -4986,7 +5104,12 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     <span class="kw-2">*</span>e -= es_sub.evals[(scale * i + (d_sub <span class="kw">as </span>usize) * s) % es_sub.evals.len()];
                 });
@@ -5005,9 +5128,19 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale1 = (d1 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale1 != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale1 != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale2 != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale2 != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
 
                 EvalResult::init(res_domain, |i| {
                     es1.evals[(scale1 * i + (d1 <span class="kw">as </span>usize) * s1) % es1.evals.len()]
@@ -5046,7 +5179,12 @@
                 shift: s,
             } =&gt; {
                 <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 EvalResult::init(res_domain, |i| {
                     evals.evals[(scale * i + (d <span class="kw">as </span>usize) * s) % evals.evals.len()].square()
                 })
@@ -5080,7 +5218,12 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale = (d <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 EvalResult::init(res_domain, |i| {
                     x * evals.evals[(scale * i + (d <span class="kw">as </span>usize) * s) % evals.evals.len()]
                 })
@@ -5125,7 +5268,13 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
+
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     <span class="kw-2">*</span>e <span class="kw-2">*</span>= es_sub.evals[(scale * i + (d_sub <span class="kw">as </span>usize) * s) % es_sub.evals.len()];
                 });
@@ -5144,10 +5293,20 @@
                 },
             ) =&gt; {
                 <span class="kw">let </span>scale1 = (d1 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale1 != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale1 != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 <span class="kw">let </span>scale2 = (d2 <span class="kw">as </span>usize) / (res_domain.<span class="number">0 </span><span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale2 != <span class="number">0</span>);
 
+                <span class="macro">assert!</span>(
+                    scale2 != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 EvalResult::init(res_domain, |i| {
                     es1.evals[(scale1 * i + (d1 <span class="kw">as </span>usize) * s1) % es1.evals.len()]
                         * es2.evals[(scale2 * i + (d2 <span class="kw">as </span>usize) * s2) % es2.evals.len()]
@@ -5497,7 +5656,12 @@
             } =&gt; {
                 <span class="kw">let </span>res_domain = env.get_domain(d);
                 <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
-                <span class="macro">assert!</span>(scale != <span class="number">0</span>);
+                <span class="macro">assert!</span>(
+                    scale != <span class="number">0</span>,
+                    <span class="string">"Check that the implementation of
+                column_domain in GenericColumn and the evaluation domain of the
+                witnesses are the same"
+                </span>);
                 EvalResult::init_((d, res_domain), |i| {
                     evals.evals[(scale * i + (d_sub <span class="kw">as </span>usize) * s) % evals.evals.len()]
                 })
