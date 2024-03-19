@@ -29,6 +29,9 @@ pub trait FECInterpreterEnv<F: PrimeField> {
     /// Checks |x| = 1, that is x ∈ {-1,1}
     fn range_check_abs1(&mut self, value: &Self::Variable);
 
+    /// Checks x ∈ [0, f - 2^{15*16})
+    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable);
+
     /// Checks input x ∈ [0,2^15)
     fn range_check_15bit(&mut self, value: &Self::Variable);
 
@@ -239,7 +242,7 @@ where
 /// since it has 15 "free" bits of which we will use 4 at most.
 ///
 #[allow(dead_code)]
-pub fn constrain_ec_addition<F: PrimeField, Env: FECInterpreterEnv<F>>(
+pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
     env: &mut Env,
     mem_offset: usize,
 ) {
@@ -298,20 +301,36 @@ pub fn constrain_ec_addition<F: PrimeField, Env: FECInterpreterEnv<F>>(
     // u128 covers our limb sizes shifts which is good
     let constant_u128 = |x: u128| -> Env::Variable { Env::constant(From::from(x)) };
 
-    for x in s_limbs_small
+    // Slope and result variables must be in the field.
+    for (i, x) in s_limbs_small
         .iter()
-        .chain(q1_limbs_small.iter())
-        .chain(q2_limbs_small.iter())
-        .chain(q3_limbs_small.iter())
         .chain(xr_limbs_small.iter())
         .chain(yr_limbs_small.iter())
+        .enumerate()
+    {
+        if i % N_LIMBS_LARGE == N_LIMBS_LARGE - 1 {
+            // If it's the highest limb, we need to check that it's representing a field element.
+            env.range_check_ff_highest::<Ff>(x);
+        } else {
+            env.range_check_15bit(x);
+        }
+    }
+
+    // Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
+    for x in q1_limbs_small
+        .iter()
+        .chain(q2_limbs_small.iter())
+        .chain(q3_limbs_small.iter())
     {
         env.range_check_15bit(x);
     }
 
+    // Signs must be -1 or 1.
     for x in [&q1_sign, &q2_sign, &q3_sign] {
         env.range_check_abs1(x);
     }
+
+    // Carry limbs need to be in particular ranges.
     for (i, x) in carry1_limbs_small
         .iter()
         .chain(carry2_limbs_small.iter())
@@ -699,5 +718,5 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
         );
     }
 
-    constrain_ec_addition(env, mem_offset);
+    constrain_ec_addition::<F, Ff, Env>(env, mem_offset);
 }

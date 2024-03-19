@@ -48,6 +48,8 @@ impl<F: PrimeField> FECInterpreterEnv<F> for ConstraintBuilderEnv<F> {
         // FIXME unimplemented
     }
 
+    fn range_check_ff_highest<Ff: PrimeField>(&mut self, _value: &Self::Variable) {}
+
     fn range_check_15bit(&mut self, _value: &Self::Variable) {
         // FIXME unimplemented
     }

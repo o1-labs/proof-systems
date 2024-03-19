@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
-use ark_ff::PrimeField;
-use ark_ff::Zero;
+use ark_ff::{FpParameters, PrimeField, Zero};
+use num_bigint::BigUint;
+use o1_utils::field_helpers::FieldHelpers;
 
 use crate::{
     columns::Column,
@@ -9,7 +10,7 @@ use crate::{
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Fp},
+    {BN254G1Affine, Fp, LIMB_BITSIZE, N_LIMBS},
 };
 
 #[allow(dead_code)]
@@ -58,6 +59,14 @@ impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
 
     fn range_check_abs1(&mut self, value: &Self::Variable) {
         assert!(*value == F::one() || *value == F::zero() - F::one());
+    }
+
+    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable) {
+        let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+        let big_limb: BigUint = BigUint::from(1u64) << ((N_LIMBS - 1) * LIMB_BITSIZE);
+        let top_modulus: BigUint = f_bui - big_limb;
+        let top_modulus_f: F = F::from_biguint(&top_modulus).unwrap();
+        assert!(*value < top_modulus_f);
     }
 
     fn range_check_15bit(&mut self, value: &Self::Variable) {
