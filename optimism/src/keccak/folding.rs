@@ -58,7 +58,13 @@ impl FoldingEnv<Fp, KeccakFoldingInstance, KeccakFoldingWitness, KeccakColumn, C
     }
 
     fn col(&self, col: KeccakColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
-        todo!()
+        let wit = match curr_or_next {
+            CurrOrNext::Curr => &self.curr_witnesses[side as usize],
+            CurrOrNext::Next => &self.next_witnesses[side as usize],
+        };
+        // The following is possible because Index is implemented for KeccakWitness
+        &wit.witness[col].evals
+        // TODO: if selectors columns are used, then return selectors instead of real witness columns
     }
 
     fn challenge(&self, challenge: Challenge, side: Side) -> Fp {
