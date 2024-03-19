@@ -62,3 +62,16 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
         a
     }
 }
+
+/// Environment for the folding protocol, for a given number of witness columns and structure
+pub(crate) struct FoldingEnvironment<const N: usize, S> {
+    // Structure of the folded circuit
+    pub(crate) structure: S,
+    // Commitments to the witness columns, for both sides
+    pub(crate) instances: [FoldingInstance<N>; 2],
+    // Corresponds to the omega evaluations, for both sides
+    pub(crate) curr_witnesses: [FoldingWitness<N>; 2],
+    // Corresponds to the zeta*omega evaluations, for both sides
+    // This is curr_witness but left shifted by 1
+    pub(crate) next_witnesses: [FoldingWitness<N>; 2],
+}
