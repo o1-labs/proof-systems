@@ -175,6 +175,13 @@ where
 /// q_2_sign:   5*L + 10*S-1   1
 /// carry_3:    5*L + 10*S     2*S-1      May need to be longer, depends on how big the last limb is
 /// q_3_sign:   5*L + 12*S-1   1
+///
+///
+/// Ranges:
+/// Carries for our three equations have the following generic range form (inclusive over integers):
+/// 1. c1_i \in [-((i+1)*2^(b+1) - 2*i - 3), (i+1)*2^(b+1) - 2*i - 3] (symmetric)
+/// 2. c2_i \in [-((i+1)*2^(b+1) - 2*i - 4), if i == 0 2^b else (i+1)*2^b - i]
+/// 3. c3_i \in [-((i+1)*2^(b+1) - 2*i - 4), (i+1)*2^b - i - 1]
 #[allow(dead_code)]
 pub fn constrain_ec_addition<F: PrimeField, Env: FECInterpreterEnv<F>>(
     env: &mut Env,
