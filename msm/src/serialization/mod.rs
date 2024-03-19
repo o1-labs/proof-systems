@@ -103,7 +103,7 @@ mod tests {
         let mut witness_env = witness::Env::<Fp>::create();
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
-            cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
+            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
         });
 
         // Boxing to avoid stack overflow
