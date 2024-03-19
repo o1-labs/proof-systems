@@ -94,6 +94,10 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for the [DensePolynomial] arkworks type.
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -152,6 +156,10 @@
         </span><span class="kw">for _ in </span>chunk_polys.len()..num_chunks {
             chunk_polys.push(DensePolynomial::from_coefficients_vec(<span class="macro">vec!</span>[]));
         }
+
+        <span class="comment">// Ensuring that the number of chunks is the one requested, following
+        // trait documentation
+        </span><span class="macro">assert_eq!</span>(chunk_polys.len(), num_chunks);
 
         ChunkedPolynomial {
             polys: chunk_polys,

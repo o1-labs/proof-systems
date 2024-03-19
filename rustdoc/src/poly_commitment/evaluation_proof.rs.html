@@ -493,6 +493,10 @@
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{commitment::<span class="kw-2">*</span>, srs::endos};
 <span class="kw">use crate</span>::{srs::SRS, PolynomialsToCombine, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
@@ -614,7 +618,11 @@
     <span class="kw">if </span>!plnm_evals_part.is_empty() {
         <span class="kw">let </span>n = plnm_evals_part.len();
         <span class="kw">let </span>max_poly_size = srs_length;
-        <span class="kw">let </span>num_chunks = n / max_poly_size;
+        <span class="kw">let </span>num_chunks = <span class="kw">if </span>n % max_poly_size == <span class="number">0 </span>{
+            n / max_poly_size
+        } <span class="kw">else </span>{
+            n / max_poly_size + <span class="number">1
+        </span>};
         plnm += <span class="kw-2">&amp;</span>Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
             .to_chunked_polynomial(num_chunks, max_poly_size)
