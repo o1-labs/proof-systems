@@ -75,7 +75,7 @@ impl FoldingEnv<Fp, KeccakFoldingInstance, KeccakFoldingWitness, KeccakColumn, C
         }
     }
 
-    fn lagrange_basis(&self, i: usize) -> &Vec<Fp> {
+    fn lagrange_basis(&self, _i: usize) -> &Vec<Fp> {
         todo!()
     }
 

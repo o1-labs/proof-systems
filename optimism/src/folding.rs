@@ -10,6 +10,7 @@ pub type Curve = ark_bn254::G1Affine;
 pub type Fp = ark_bn254::Fr;
 
 // Does not contain alpha because this one should be provided by folding itself
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum Challenge {
     Beta,
@@ -59,13 +60,14 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
 
 /// Environment for the folding protocol, for a given number of witness columns and structure
 pub(crate) struct FoldingEnvironment<const N: usize, S> {
-    // Structure of the folded circuit
+    /// Structure of the folded circuit
+    #[allow(dead_code)]
     pub(crate) structure: S,
-    // Commitments to the witness columns, for both sides
+    /// Commitments to the witness columns, for both sides
     pub(crate) instances: [FoldingInstance<N>; 2],
-    // Corresponds to the omega evaluations, for both sides
+    /// Corresponds to the omega evaluations, for both sides
     pub(crate) curr_witnesses: [FoldingWitness<N>; 2],
-    // Corresponds to the zeta*omega evaluations, for both sides
-    // This is curr_witness but left shifted by 1
+    /// Corresponds to the zeta*omega evaluations, for both sides
+    /// This is curr_witness but left shifted by 1
     pub(crate) next_witnesses: [FoldingWitness<N>; 2],
 }
