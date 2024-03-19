@@ -26,14 +26,17 @@ pub trait FECInterpreterEnv<F: PrimeField> {
 
     fn read_column(&self, ix: Column) -> Self::Variable;
 
-    /// Checks |x| = 1, that is x ∈ {-1,0,1}
+    /// Checks |x| = 1, that is x ∈ {-1,1}
     fn range_check_abs1(&mut self, value: &Self::Variable);
 
     /// Checks input x ∈ [0,2^15)
     fn range_check_15bit(&mut self, value: &Self::Variable);
 
-    ///// Checks input x ∈ [0,2^4)
-    //fn range_check_4bit(&mut self, value: &Self::Variable);
+    /// Checks input |x| ∈ [0,2^15)
+    fn range_check_abs15bit(&mut self, value: &Self::Variable);
+
+    /// Checks input |x| ∈ [0,2^4)
+    fn range_check_abs4bit(&mut self, value: &Self::Variable);
 }
 
 /// Alias for LIMB_BITSIZE, used for convenience.
@@ -304,6 +307,24 @@ pub fn constrain_ec_addition<F: PrimeField, Env: FECInterpreterEnv<F>>(
         .chain(yr_limbs_small.iter())
     {
         env.range_check_15bit(x);
+    }
+
+    for x in [&q1_sign, &q2_sign, &q3_sign] {
+        env.range_check_abs1(x);
+    }
+    for (i, x) in carry1_limbs_small
+        .iter()
+        .chain(carry2_limbs_small.iter())
+        .chain(carry3_limbs_small.iter())
+        .enumerate()
+    {
+        if i % 6 == 5 {
+            // This should be a diferent range check depending on which big-limb we're processing?
+            // So instead of one type of lookup we will have 5 different ones?
+            env.range_check_abs4bit(x);
+        } else {
+            env.range_check_abs15bit(x);
+        }
     }
 
     // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!

@@ -51,4 +51,12 @@ impl<F: PrimeField> FECInterpreterEnv<F> for ConstraintBuilderEnv<F> {
     fn range_check_15bit(&mut self, _value: &Self::Variable) {
         // FIXME unimplemented
     }
+
+    fn range_check_abs15bit(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
+
+    fn range_check_abs4bit(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
 }

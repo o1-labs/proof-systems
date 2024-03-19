@@ -56,12 +56,20 @@ impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
         self.witness.last().unwrap().cols[i]
     }
 
-    fn range_check_abs1(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
+    fn range_check_abs1(&mut self, value: &Self::Variable) {
+        assert!(*value == F::one() || *value == F::zero() - F::one());
     }
 
-    fn range_check_15bit(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
+    fn range_check_15bit(&mut self, value: &Self::Variable) {
+        assert!(*value < F::from(1u64 << 15));
+    }
+
+    fn range_check_abs15bit(&mut self, value: &Self::Variable) {
+        assert!(*value < F::from(1u64 << 15) || *value >= F::zero() - F::from(1u64 << 15));
+    }
+
+    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
+        assert!(*value < F::from(1u64 << 4) || *value >= F::zero() - F::from(1u64 << 4));
     }
 }
 
