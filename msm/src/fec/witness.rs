@@ -45,7 +45,7 @@ impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
         let Column::X(i) = position else { todo!() };
         self.witness.last_mut().unwrap().cols[i] = *value;
         if self.double_write_checker.contains(&i) {
-            eprintln!("Warning: double writing into column number {i:?}");
+            panic!("Warning: double writing into column number {i:?}");
         }
         self.double_write_checker.insert(i);
         *value

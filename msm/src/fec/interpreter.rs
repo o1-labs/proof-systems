@@ -158,23 +158,25 @@ where
 ///
 /// variable    offset      length        comment
 /// ---------------------------------------------------------------
-/// xP:         0              L          Always trusted, not range checked
-/// yP:         1*L            L          Always trusted, not range checked
-/// xQ:         2*L            L          Always trusted, not range checked
-/// yQ:         3*L            L          Alawys trusted, not range checked
-/// f:          4*L            L          Always trusted, not range checked
-/// xR:         5*L            S
-/// yR:         5*L + 1*S      S
-/// s:          5*L + 2*S      S
-/// q_1:        5*L + 3*S      S
-/// q_2:        5*L + 4*S      S
-/// q_3:        5*L + 5*S      S
-/// carry_1:    5*L + 6*S      2*S-1      May need to be longer, depends on how big the last limb is
-/// q_1_sign:   5*L + 8*S-1    1
-/// carry_2:    5*L + 8*S      2*S-1      May need to be longer, depends on how big the last limb is
-/// q_2_sign:   5*L + 10*S-1   1
-/// carry_3:    5*L + 10*S     2*S-1      May need to be longer, depends on how big the last limb is
-/// q_3_sign:   5*L + 12*S-1   1
+/// xP:         0                 L          Always trusted, not range checked
+/// yP:         1*L               L          Always trusted, not range checked
+/// xQ:         2*L               L          Always trusted, not range checked
+/// yQ:         3*L               L          Alawys trusted, not range checked
+/// f:          4*L               L          Always trusted, not range checked
+/// xR:         5*L               S
+/// yR:         5*L + 1*S         S
+/// s:          5*L + 2*S         S
+/// q_1:        5*L + 3*S         S
+/// q_2:        5*L + 4*S         S
+/// q_3:        5*L + 5*S         S
+/// q_2_sign:   5*L + 6*S         1
+/// q_1_sign:   5*L + 6*S + 1     1
+/// q_3_sign:   5*L + 6*S + 2     1
+/// carry_1:    5*L + 6*S + 3     2*S-4      May need to be longer, depends on how big the last limb is
+/// carry_2:    5*L + 8*S - 1     2*S-4      May need to be longer, depends on how big the last limb is
+/// carry_3:    5*L + 10*S - 5    2*S-4      May need to be longer, depends on how big the last limb is
+///----------------------------------------------------------------
+/// total columns: 5*L + 12*S - 9 = 215
 ///
 ///
 /// Ranges:
@@ -229,28 +231,28 @@ pub fn constrain_ec_addition<F: PrimeField, Env: FECInterpreterEnv<F>>(
     let q3_limbs_small: [_; N_LIMBS_SMALL] =
         read_array_small(env, 5 * N_LIMBS_LARGE + 5 * N_LIMBS_SMALL);
     let q1_sign = env.read_column(Column::X(
-        mem_offset + 5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL - 1,
+        mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL,
     ));
     let q2_sign = env.read_column(Column::X(
-        mem_offset + 5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL - 1,
+        mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1,
     ));
     let q3_sign = env.read_column(Column::X(
-        mem_offset + 5 * N_LIMBS_LARGE + 12 * N_LIMBS_SMALL - 1,
+        mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2,
     ));
 
-    let carry1_limbs_small: [_; 2 * N_LIMBS_SMALL - 1] = core::array::from_fn(|i| {
+    let carry1_limbs_small: [_; 2 * N_LIMBS_SMALL - 4] = core::array::from_fn(|i| {
         env.read_column(Column::X(
-            mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + i,
+            mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 3 + i,
         ))
     });
-    let carry2_limbs_small: [_; 2 * N_LIMBS_SMALL - 1] = core::array::from_fn(|i| {
+    let carry2_limbs_small: [_; 2 * N_LIMBS_SMALL - 4] = core::array::from_fn(|i| {
         env.read_column(Column::X(
-            mem_offset + 5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL + i,
+            mem_offset + 5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL - 1 + i,
         ))
     });
-    let carry3_limbs_small: [_; 2 * N_LIMBS_SMALL - 1] = core::array::from_fn(|i| {
+    let carry3_limbs_small: [_; 2 * N_LIMBS_SMALL - 4] = core::array::from_fn(|i| {
         env.read_column(Column::X(
-            mem_offset + 5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL + i,
+            mem_offset + 5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL - 5 + i,
         ))
     });
 
@@ -285,32 +287,31 @@ pub fn constrain_ec_addition<F: PrimeField, Env: FECInterpreterEnv<F>>(
     let q3_limbs_large =
         combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q3_limbs_small.clone());
 
-    // This is for the case when we pack 2 * 17 - 1 = 33
-    // elements into 2 * 4 - 1 = 7 elements. Then when last
-    // index is i = 6, 6 * 5 = 30, so we only need to collect
-    // elements 30, 31, 32.
-    let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 1] =
-        combine_small_to_large::<{ 2 * N_LIMBS_SMALL - 1 }, { 2 * N_LIMBS_LARGE - 1 }, F, Env>(
+    // We need 2 * N_LIMBS_LARGE - 2 = 6 big carries, and we perform 7 equations.
+    // For that we store 30 small carries, so 2 * N_LIMBS_SMALL - 4 = 30.
+    // Each small carry is 5 limbs, with only the higher limb being potentially bigger than 2^B.
+    let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
+        combine_small_to_large::<{ 2 * N_LIMBS_SMALL - 4 }, { 2 * N_LIMBS_LARGE - 2 }, F, Env>(
             carry1_limbs_small.clone(),
         );
-    let carry2_limbs_large: [_; 2 * N_LIMBS_LARGE - 1] =
-        combine_small_to_large::<{ 2 * N_LIMBS_SMALL - 1 }, { 2 * N_LIMBS_LARGE - 1 }, F, Env>(
+    let carry2_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
+        combine_small_to_large::<{ 2 * N_LIMBS_SMALL - 4 }, { 2 * N_LIMBS_LARGE - 2 }, F, Env>(
             carry2_limbs_small.clone(),
         );
-    let carry3_limbs_large: [_; 2 * N_LIMBS_LARGE - 1] =
-        combine_small_to_large::<{ 2 * N_LIMBS_SMALL - 1 }, { 2 * N_LIMBS_LARGE - 1 }, F, Env>(
+    let carry3_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
+        combine_small_to_large::<{ 2 * N_LIMBS_SMALL - 4 }, { 2 * N_LIMBS_LARGE - 2 }, F, Env>(
             carry3_limbs_small.clone(),
         );
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
     let add_extra_carries =
-        |i: usize, carry_limbs_large: &[Env::Variable; 2 * N_LIMBS_LARGE - 1]| -> Env::Variable {
+        |i: usize, carry_limbs_large: &[Env::Variable; 2 * N_LIMBS_LARGE - 2]| -> Env::Variable {
             if i == 0 {
                 -(carry_limbs_large[0].clone() * limb_size_large.clone())
-            } else if i < 2 * N_LIMBS_LARGE - 1 {
+            } else if i < 2 * N_LIMBS_LARGE - 2 {
                 carry_limbs_large[i - 1].clone()
                     - carry_limbs_large[i].clone() * limb_size_large.clone()
-            } else if i == 2 * N_LIMBS_LARGE - 1 {
+            } else if i == 2 * N_LIMBS_LARGE - 2 {
                 carry_limbs_large[i - 1].clone()
             } else {
                 panic!("add_extra_carries: the index {i:?} is too high")
@@ -527,23 +528,22 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
     );
     env.copy(
         &Env::constant(q1_sign),
-        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL - 1),
+        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL),
     );
     env.copy(
         &Env::constant(q2_sign),
-        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL - 1),
+        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1),
     );
     env.copy(
         &Env::constant(q3_sign),
-        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 12 * N_LIMBS_SMALL - 1),
+        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2),
     );
 
     let mut carry1: F = From::from(0u64);
     let mut carry2: F = From::from(0u64);
     let mut carry3: F = From::from(0u64);
 
-    // TODO Maybe it's only up to 2*N_LIMBS_LARGE-2!
-    for i in 0..N_LIMBS_LARGE * 2 {
+    for i in 0..N_LIMBS_LARGE * 2 - 1 {
         let compute_carry = |res: F| -> F {
             // TODO enforce this as an integer division
             let mut res_bi = res.to_bigint_positive();
@@ -561,7 +561,7 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
 
         let assign_carry = |env: &mut Env, newcarry: F, carryvar: &mut F, extra_offset: usize| {
             // Last carry should be zero, otherwise we record it
-            if i < N_LIMBS_LARGE * 2 - 1 {
+            if i < N_LIMBS_LARGE * 2 - 2 {
                 // Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I think.
                 let newcarry_sign = if newcarry.to_bigint_positive() > n_half_bi {
                     F::zero() - F::one()
@@ -619,7 +619,7 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
             env,
             newcarry1,
             &mut carry1,
-            5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL,
+            5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 3,
         );
 
         // Equation 2: xR - s^2 + xP + xQ - q_2 f = 0
@@ -640,7 +640,7 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
             env,
             newcarry2,
             &mut carry2,
-            5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL,
+            5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL - 1,
         );
 
         // Equation 3: yR + yP - s (xP - xR) - q_3 f = 0
@@ -661,7 +661,7 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
             env,
             newcarry3,
             &mut carry3,
-            5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL,
+            5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL - 5,
         );
     }
 
