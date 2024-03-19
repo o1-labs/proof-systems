@@ -15,7 +15,7 @@ use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
 use mina_poseidon::sponge::DefaultFqSponge;
 use mina_poseidon::FqSponge as _;
-use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{tests::make_test_rng, ExtendedDensePolynomial as _};
 use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
@@ -238,7 +238,7 @@ where
     <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // setup
-    let mut rng = rand::thread_rng();
+    let mut rng = make_test_rng();
     test_randomised(&mut rng)
 }
 
