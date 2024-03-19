@@ -171,7 +171,6 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         }
 
         // create aggregated evaluation proof
-        #[allow(clippy::type_complexity)]
         let mut polynomials: Vec<(
             DensePolynomialOrEvaluations<Fp, Radix2EvaluationDomain<Fp>>,
             PolyComm<_>,
