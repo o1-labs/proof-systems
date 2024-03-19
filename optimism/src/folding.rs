@@ -12,8 +12,8 @@ use std::{array, ops::Index};
 use crate::DOMAIN_SIZE;
 
 // Instantiate it with the desired group and field
-pub type Curve = ark_bn254::G1Affine;
 pub type Fp = ark_bn254::Fr;
+pub type Curve = ark_bn254::G1Affine;
 
 // Does not contain alpha because this one should be provided by folding itself
 #[allow(dead_code)]

@@ -46,9 +46,9 @@ use super::{
 /// B = (0, 0, 0)
 /// C = (1 1 -1)
 
-pub type Fp = ark_bn254::Fr;
-pub type Curve = ark_bn254::G1Affine;
-pub type SpongeParams = PlonkSpongeConstantsKimchi;
+type Fp = ark_bn254::Fr;
+type Curve = ark_bn254::G1Affine;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]

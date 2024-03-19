@@ -1,5 +1,3 @@
-use std::ops::Index;
-
 use crate::{
     folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
     mips::{column::MIPS_COLUMNS, Column as MIPSColumn},
@@ -7,6 +5,7 @@ use crate::{
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig};
+use std::ops::Index;
 
 pub(crate) type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS>;
 pub(crate) type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS>;
