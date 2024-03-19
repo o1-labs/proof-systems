@@ -284,7 +284,7 @@ where
     let omega = domain.d1.group_gen; // index.cs.domain.d1.group_gen;
     let zeta_omega = zeta * omega;
 
-    // Evaluate the polynomials at zeta and zeta * omega -- Columns
+    // Evaluate the polynomials at ζ and ζω -- Columns
     let witness_evals: Witness<N, PointEvaluations<_>> = {
         let eval = |p: &DensePolynomial<_>| PointEvaluations {
             zeta: p.evaluate(&zeta),
@@ -355,24 +355,31 @@ where
         }
     }
 
-    // Evaluate Z_H(X) * t(X)
-    // Compute ft = (1 - xi^n) (t_0(X) + \xi^n t_1(X) + ... + \xi^{kn} t_{k}(X))
-    // where \sum_i t_i(X) X^{i n} = t(X)
+    // Compute ft(X) = \
+    //   (1 - ζ^n) \
+    //    (t_0(X) + ζ^n t_1(X) + ... + ζ^{kn} t_{k}(X))
+    // where \sum_i t_i(X) X^{i n} = t(X), and t(X) is the quotient polynomial.
+    // At the end, we get the (partial) evaluation of the constraint polynomial
+    // in ζ.
     let ft: DensePolynomial<G::ScalarField> = {
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
-        // Compute \sum_i t_i(X) \zeta^{i n}
+        // Compute \sum_i t_i(X) ζ^{i n}
         // First we split t in t_i, and we reduce to degree (n - 1) after using `linearize`
-        let t_chunked = quotient_poly
+        let t_chunked: DensePolynomial<G::ScalarField> = quotient_poly
             .to_chunked_polynomial(num_chunks, domain.d1.size as usize)
             .linearize(evaluation_point_to_domain_size);
-        // Multiply by Z_H(\zeta)
+        // Multiply the polynomial \sum_i t_i(X) ζ^{i n} by Z_H(ζ)
+        // (the evaluation in ζ of the vanishing polynomial)
         t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
     };
 
-    // TODO Maybe we also need to evaluate on zeta? why only zeta omega?
+    // We only evaluate at ζω as the verifier can compute the
+    // evaluation at ζ from the independent evaluations at ζ of the
+    // witness columns because ft(X) is the constraint polynomial, built from
+    // the public constraints.
     let ft_eval1 = ft.evaluate(&zeta_omega);
 
-    // Absorb ft/t
+    // Absorb ft(ζω)
     fr_sponge.absorb(&ft_eval1);
 
     let v_chal = fr_sponge.challenge();
