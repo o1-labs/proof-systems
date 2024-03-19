@@ -570,7 +570,7 @@
             error_commitment: error,
         } = <span class="self">self</span>;
         <span class="kw">let </span>[e0, e1] = error_commitments;
-        <span class="kw">let </span>error_commitment = <span class="kw-2">&amp;</span>error - <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>e0.scale(challenge) + <span class="kw-2">&amp;</span>e1.scale(challenge.square()));
+        <span class="kw">let </span>error_commitment = <span class="kw-2">&amp;</span>error - (<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>e0.scale(challenge) + <span class="kw-2">&amp;</span>e1.scale(challenge.square())));
         RelaxedInstance {
             instance,
             u,
@@ -579,7 +579,7 @@
     }
 
     <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: &lt;G&gt;::ScalarField) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>challenge_square = challenge * challenge;
+        <span class="kw">let </span>challenge_cube = challenge * challenge * challenge;
         <span class="kw">let </span>RelaxedInstance {
             instance: ins1,
             u: u1,
@@ -592,7 +592,7 @@
         } = b;
         <span class="kw">let </span>instance = &lt;ExtendedInstance&lt;G, I&gt;&gt;::combine(ins1, ins2, challenge);
         <span class="kw">let </span>u = u1 + u2 * challenge;
-        <span class="kw">let </span>error_commitment = <span class="kw-2">&amp;</span>e1 + <span class="kw-2">&amp;</span>e2.scale(challenge_square);
+        <span class="kw">let </span>error_commitment = <span class="kw-2">&amp;</span>e1 + <span class="kw-2">&amp;</span>e2.scale(challenge_cube);
         RelaxedInstance {
             instance,
             u,
@@ -635,10 +635,10 @@
             witness: b,
             error_vec: e2,
         } = b;
-        <span class="kw">let </span>challenge = challenge * challenge;
+        <span class="kw">let </span>challenge_cube = (challenge * challenge) * challenge;
         <span class="kw">let </span>witness = &lt;ExtendedWitness&lt;G, W&gt;&gt;::combine(a, b, challenge);
         <span class="kw">for </span>(a, b) <span class="kw">in </span>e1.evals.iter_mut().zip(e2.evals.into_iter()) {
-            <span class="kw-2">*</span>a += b * challenge;
+            <span class="kw-2">*</span>a += b * challenge_cube;
         }
         <span class="kw">let </span>error_vec = e1;
         RelaxedWitness { witness, error_vec }

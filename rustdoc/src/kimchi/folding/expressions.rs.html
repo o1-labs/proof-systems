@@ -536,7 +536,7 @@
     Alpha(usize),
 }
 
-<span class="attr">#[derive(Clone)]
+<span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     Challenge(C::Challenge),
@@ -550,7 +550,7 @@
 }
 
 <span class="doccomment">///designed for easy translation to and from most Expr
-</span><span class="attr">#[derive(Clone)]
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
     Atom(FoldingCompatibleExprInner&lt;C&gt;),
     Double(Box&lt;<span class="self">Self</span>&gt;),
@@ -560,7 +560,7 @@
 }
 
 <span class="doccomment">/// Extra expressions that can be created by folding
-</span><span class="attr">#[derive(Clone)]
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>ExpExtension {
     U,
     Error,
@@ -872,14 +872,14 @@
                 <span class="kw">let </span>init =
                     FoldingExp::Atom(ExtendedFoldingColumn::Constant(ScalarField::&lt;C&gt;::zero()));
                 exps.into_iter().fold(init, |acc, (exp, sign, alpha)| {
-                    <span class="kw">let </span>e = <span class="kw">match </span>sign {
+                    <span class="kw">let </span>exp = FoldingExp::Mul(
+                        Box::new(exp),
+                        Box::new(FoldingExp::Atom(ExtendedFoldingColumn::Alpha(alpha))),
+                    );
+                    <span class="kw">match </span>sign {
                         Sign::Pos =&gt; FoldingExp::Add(Box::new(acc), Box::new(exp)),
                         Sign::Neg =&gt; FoldingExp::Sub(Box::new(acc), Box::new(exp)),
-                    };
-                    FoldingExp::Mul(
-                        Box::new(e),
-                        Box::new(FoldingExp::Atom(ExtendedFoldingColumn::Alpha(alpha))),
-                    )
+                    }
                 })
             })
             .map(|e| e.into_compatible());

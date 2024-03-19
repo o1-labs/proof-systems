@@ -340,6 +340,18 @@
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::expr::{Operations, Variable},
     folding::{
@@ -395,7 +407,19 @@
         }
         Add(e1, e2) =&gt; eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
         Sub(e1, e2) =&gt; eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
-        Mul(e1, e2) =&gt; eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
+        Mul(e1, e2) =&gt; {
+            <span class="kw">let </span>d1 = e1.folding_degree();
+            <span class="kw">let </span>d2 = e2.folding_degree();
+            <span class="kw">let </span>e1 = <span class="kw">match </span>d1 {
+                Degree::Two =&gt; eval_sided(e1, env, side),
+                <span class="kw">_ </span>=&gt; eval_exp_error(e1, env, side),
+            };
+            <span class="kw">let </span>e2 = <span class="kw">match </span>d2 {
+                Degree::Two =&gt; eval_sided(e2, env, side),
+                <span class="kw">_ </span>=&gt; eval_exp_error(e2, env, side),
+            };
+            e1 * e2
+        }
         Pow(e, i) =&gt; <span class="kw">match </span>i {
             <span class="number">0 </span>=&gt; EvalLeaf::Const(ScalarField::&lt;C&gt;::one()),
             <span class="number">1 </span>=&gt; eval_exp_error(e, env, side),
