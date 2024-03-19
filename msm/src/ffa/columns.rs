@@ -5,6 +5,7 @@ use crate::N_LIMBS;
 
 /// Number of columns in the FFA circuits.
 pub const FFA_N_COLUMNS: usize = 5 * N_LIMBS;
+pub const FFA_NPUB_COLUMNS: usize = N_LIMBS;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 /// Column indexer for MSM columns.
