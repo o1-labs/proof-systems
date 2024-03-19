@@ -1,15 +1,12 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
-use kimchi::{
-    circuits::polynomials::keccak::constants::{
-        CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF,
-        PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF,
-        PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF,
-        SPONGE_SHIFTS_OFF, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF,
-        THETA_QUOTIENT_C_OFF, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
-    },
-    folding::expressions::FoldingColumnTrait,
+use kimchi::circuits::polynomials::keccak::constants::{
+    CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_OFF, KECCAK_COLS, PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_OFF,
+    PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_OFF,
+    QUARTERS, RATE_IN_BYTES, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_OFF, SPONGE_SHIFTS_OFF,
+    THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_OFF, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_OFF,
+    THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_OFF,
 };
 use kimchi_msm::witness::Witness;
 use std::ops::{Index, IndexMut};

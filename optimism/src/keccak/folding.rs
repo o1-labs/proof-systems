@@ -1,13 +1,25 @@
-use crate::keccak::{environment::KeccakEnv, KeccakColumn};
-use ark_ec::AffineCurve;
+use crate::{
+    folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
+    keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn},
+    DOMAIN_SIZE,
+};
+use ark_ff::Zero;
 use kimchi::{
     circuits::gate::CurrOrNext,
-    folding::{
-        expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, Instance, Side, Sponge, Witness,
-    },
+    folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig, FoldingEnv, Side},
 };
-use mina_curves::pasta::Pallas;
-use poly_commitment::commitment::CommitmentCurve;
+
+pub(crate) type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
+pub(crate) type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS>;
+pub(crate) type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS, KeccakStructure>;
+
+// TODO: will contain information about the circuit structure
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct KeccakStructure;
+
+// TODO
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct KeccakConfig;
 
 impl FoldingColumnTrait for KeccakColumn {
     fn is_witness(&self) -> bool {
@@ -16,76 +28,69 @@ impl FoldingColumnTrait for KeccakColumn {
     }
 }
 
-impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for KeccakEnv<F> {
-    type Structure = ();
+impl FoldingEnv<Fp, KeccakFoldingInstance, KeccakFoldingWitness, KeccakColumn, Challenge>
+    for KeccakFoldingEnvironment
+{
+    type Structure = KeccakStructure;
 
-    fn zero_vec(&self) -> Vec<F> {
+    fn new(
+        structure: &Self::Structure,
+        instances: [&KeccakFoldingInstance; 2],
+        witnesses: [&KeccakFoldingWitness; 2],
+    ) -> Self {
+        let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
+        let mut next_witnesses = curr_witnesses.clone();
+        for side in next_witnesses.iter_mut() {
+            for col in side.witness.iter_mut() {
+                col.evals.rotate_left(1);
+            }
+        }
+        KeccakFoldingEnvironment {
+            structure: structure.clone(),
+            instances: [instances[0].clone(), instances[1].clone()],
+            curr_witnesses,
+            next_witnesses,
+        }
+    }
+
+    fn zero_vec(&self) -> Vec<Fp> {
+        vec![Fp::zero(); DOMAIN_SIZE]
+    }
+
+    fn col(&self, col: KeccakColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         todo!()
     }
 
-    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: Side) -> &Vec<F> {
+    fn challenge(&self, challenge: Challenge, side: Side) -> Fp {
+        match challenge {
+            Challenge::Beta => self.instances[side as usize].challenges[0],
+            Challenge::Gamma => self.instances[side as usize].challenges[1],
+            Challenge::JointCombiner => self.instances[side as usize].challenges[2],
+        }
+    }
+
+    fn lagrange_basis(&self, i: usize) -> &Vec<Fp> {
         todo!()
     }
 
-    fn challenge(&self, _challenge: Chal, _side: Side) -> F {
-        todo!()
-    }
-
-    fn new(_structure: &Self::Structure, _instances: [&I; 2], _witnesses: [&W; 2]) -> Self {
-        todo!()
-    }
-
-    fn lagrange_basis(&self, _i: usize) -> &Vec<F> {
-        todo!()
-    }
-
-    fn alpha(&self, _i: usize, _side: Side) -> F {
-        todo!()
+    fn alpha(&self, i: usize, side: Side) -> Fp {
+        let instance = &self.instances[side as usize];
+        instance.alphas.get(i).unwrap()
     }
 }
 
-pub(crate) struct KeccakExample;
-
-impl<G: CommitmentCurve> Sponge<G> for KeccakExample {
-    fn challenge(_absorbe: &[poly_commitment::PolyComm<G>; 2]) -> <G>::ScalarField {
-        panic!("just for test")
-    }
-}
-
-impl<G: CommitmentCurve> Instance<G> for KeccakExample {
-    fn combine(_a: Self, _b: Self, _challenge: G::ScalarField) -> Self {
-        KeccakExample
-    }
-}
-
-impl<G: CommitmentCurve> Witness<G> for KeccakExample {
-    fn combine(_a: Self, _b: Self, _challenge: G::ScalarField) -> Self {
-        KeccakExample
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KeccakConfig;
 impl FoldingConfig for KeccakConfig {
     type Column = KeccakColumn;
-
-    type Challenge = ();
-
-    type Curve = Pallas;
-
-    type Srs = poly_commitment::srs::SRS<Pallas>;
-
-    type Sponge = KeccakExample;
-
-    type Instance = KeccakExample;
-
-    type Witness = KeccakExample;
-
-    type Structure = ();
-
-    type Env = KeccakEnv<<Pallas as AffineCurve>::ScalarField>;
+    type Challenge = Challenge;
+    type Curve = Curve;
+    type Srs = poly_commitment::srs::SRS<Curve>;
+    type Sponge = BaseSponge;
+    type Instance = FoldingInstance<ZKVM_KECCAK_COLS>;
+    type Witness = FoldingWitness<ZKVM_KECCAK_COLS>;
+    type Structure = KeccakStructure;
+    type Env = KeccakFoldingEnvironment;
 
     fn rows() -> usize {
-        todo!()
+        DOMAIN_SIZE
     }
 }

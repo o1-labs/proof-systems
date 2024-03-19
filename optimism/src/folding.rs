@@ -1,35 +1,27 @@
 use ark_bn254;
-use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, UniformRand, Zero};
-use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use kimchi::folding::{
-    expressions::FoldingColumnTrait, Alphas, BaseSponge, FoldingConfig, FoldingEnv, Instance, Side,
-    Sponge, Witness,
-};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, ScalarChallenge},
-    FqSponge,
-};
-use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
-use std::{
-    array,
-    iter::successors,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use kimchi::folding::{Alphas, Instance, Witness};
+use std::array;
 
 // Instantiate it with the desired group and field
 pub type Curve = ark_bn254::G1Affine;
 pub type Fp = ark_bn254::Fr;
 
+// Does not contain alpha because this one should be provided by folding itself
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub(crate) enum Challenge {
+    Beta,
+    Gamma,
+    JointCombiner,
+}
+
 /// Folding instance containing the commitment to a witness of N columns, challenges for the proof, and the alphas
 #[derive(Debug, Clone)]
 pub(crate) struct FoldingInstance<const N: usize> {
-    commitments: [Curve; N],
-    challenges: [Fp; 3],
-    alphas: Alphas,
+    pub(crate) commitments: [Curve; N],
+    pub(crate) challenges: [Fp; 3],
+    pub(crate) alphas: Alphas,
 }
 
 impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
@@ -48,8 +40,9 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct FoldingWitness<const N: usize> {
-    witness: [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; N],
+    pub(crate) witness: [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; N],
 }
 
 impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
