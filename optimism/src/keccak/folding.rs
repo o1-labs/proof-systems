@@ -1,17 +1,24 @@
+use std::ops::Index;
+
 use crate::{
     folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn},
     DOMAIN_SIZE,
 };
-use ark_ff::Zero;
-use kimchi::{
-    circuits::gate::CurrOrNext,
-    folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig, FoldingEnv, Side},
-};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use kimchi::folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig};
 
 pub(crate) type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
 pub(crate) type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS>;
 pub(crate) type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS, KeccakStructure>;
+
+impl Index<KeccakColumn> for KeccakFoldingWitness {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    fn index(&self, index: KeccakColumn) -> &Self::Output {
+        &self.witness[index]
+    }
+}
 
 // TODO: will contain information about the circuit structure
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -28,71 +35,14 @@ impl FoldingColumnTrait for KeccakColumn {
     }
 }
 
-impl FoldingEnv<Fp, KeccakFoldingInstance, KeccakFoldingWitness, KeccakColumn, Challenge>
-    for KeccakFoldingEnvironment
-{
-    type Structure = KeccakStructure;
-
-    fn new(
-        structure: &Self::Structure,
-        instances: [&KeccakFoldingInstance; 2],
-        witnesses: [&KeccakFoldingWitness; 2],
-    ) -> Self {
-        let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
-        let mut next_witnesses = curr_witnesses.clone();
-        for side in next_witnesses.iter_mut() {
-            for col in side.witness.cols.iter_mut() {
-                col.evals.rotate_left(1);
-            }
-        }
-        KeccakFoldingEnvironment {
-            structure: structure.clone(),
-            instances: [instances[0].clone(), instances[1].clone()],
-            curr_witnesses,
-            next_witnesses,
-        }
-    }
-
-    fn zero_vec(&self) -> Vec<Fp> {
-        vec![Fp::zero(); DOMAIN_SIZE]
-    }
-
-    fn col(&self, col: KeccakColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
-        let wit = match curr_or_next {
-            CurrOrNext::Curr => &self.curr_witnesses[side as usize],
-            CurrOrNext::Next => &self.next_witnesses[side as usize],
-        };
-        // The following is possible because Index is implemented for KeccakWitness
-        &wit.witness[col].evals
-        // TODO: if selectors columns are used, then return selectors instead of real witness columns
-    }
-
-    fn challenge(&self, challenge: Challenge, side: Side) -> Fp {
-        match challenge {
-            Challenge::Beta => self.instances[side as usize].challenges[0],
-            Challenge::Gamma => self.instances[side as usize].challenges[1],
-            Challenge::JointCombiner => self.instances[side as usize].challenges[2],
-        }
-    }
-
-    fn lagrange_basis(&self, _i: usize) -> &Vec<Fp> {
-        todo!()
-    }
-
-    fn alpha(&self, i: usize, side: Side) -> Fp {
-        let instance = &self.instances[side as usize];
-        instance.alphas.get(i).unwrap()
-    }
-}
-
 impl FoldingConfig for KeccakConfig {
     type Column = KeccakColumn;
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;
     type Sponge = BaseSponge;
-    type Instance = FoldingInstance<ZKVM_KECCAK_COLS>;
-    type Witness = FoldingWitness<ZKVM_KECCAK_COLS>;
+    type Instance = KeccakFoldingInstance;
+    type Witness = KeccakFoldingWitness;
     type Structure = KeccakStructure;
     type Env = KeccakFoldingEnvironment;
 
