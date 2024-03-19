@@ -28,8 +28,10 @@ def compute_c_eq1_direct(i):
 
 
 
-print([compute_c_eq1(i) for i in [0..n-1]])
+print([compute_c_eq1(i) for i in [0..2*n-2]])
+print(max([compute_c_eq1(i) for i in [0..2*n-2]]))
 print([compute_c_eq1(i) == compute_c_eq1_direct(i) for i in [0..2*n-2]])
+
 
 def compute_c_eq2(i):
     if i == -1 or i > 2*n-2:
@@ -69,6 +71,8 @@ def compute_c_eq2_direct(i):
 
 
 print([compute_c_eq2(i) for i in [0..2*n-2]])
+print(max([compute_c_eq2(i)[0] for i in [0..2*n-2]]))
+print(max([compute_c_eq2(i)[1] for i in [0..2*n-2]]))
 print([compute_c_eq2(i) == compute_c_eq2_direct(i) for i in [0..2*n-2]])
 
 
@@ -108,6 +112,8 @@ def compute_c_eq3_direct(i):
 
 
 print([compute_c_eq3(i) for i in [0..2*n-2]])
+print(max([compute_c_eq3(i)[0] for i in [0..2*n-2]]))
+print(max([compute_c_eq3(i)[1] for i in [0..2*n-2]]))
 print([compute_c_eq3(i) == compute_c_eq3_direct(i) for i in [0..2*n-2]])
 
 #print([compute_c_eq3(i)[0] // 2^b for i in [0..n-1]])
