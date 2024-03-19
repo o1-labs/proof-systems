@@ -73,6 +73,9 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -80,7 +83,7 @@
 
 <span class="kw">use </span>kimchi_msm::columns::Column;
 <span class="kw">use </span>kimchi_msm::ffa::{
-    columns::FFA_N_COLUMNS,
+    columns::{FFA_NPUB_COLUMNS, FFA_N_COLUMNS},
     constraint::ConstraintBuilderEnv <span class="kw">as </span>FFAConstraintBuilderEnv,
     interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, FFAInterpreterEnv},
     witness::WitnessBuilderEnv <span class="kw">as </span>FFAWitnessBuilderEnv,
@@ -122,6 +125,7 @@
     }
 
     <span class="kw">let </span>inputs = witness_env.get_witness(domain_size);
+    <span class="kw">let </span>pub_inputs = inputs.evaluations.to_pub_columns::&lt;FFA_NPUB_COLUMNS&gt;();
     <span class="kw">let </span>constraints = constraint_env.constraints;
 
     <span class="macro">println!</span>(<span class="string">"Generating the proof"</span>);
@@ -138,12 +142,14 @@
     .unwrap();
 
     <span class="macro">println!</span>(<span class="string">"Verifying the proof"</span>);
-    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS&gt;(
-        domain,
-        <span class="kw-2">&amp;</span>srs,
-        <span class="kw-2">&amp;</span>constraints,
-        <span class="kw-2">&amp;</span>proof,
-    );
+    <span class="kw">let </span>verifies = verify::&lt;
+        <span class="kw">_</span>,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        FFA_N_COLUMNS,
+        FFA_NPUB_COLUMNS,
+    &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, <span class="kw-2">&amp;</span>proof, pub_inputs);
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)
 }
 </code></pre></div></section></main></body></html>

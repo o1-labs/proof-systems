@@ -41,6 +41,7 @@
 <a href="#39" id="39">39</a>
 <a href="#40" id="40">40</a>
 <a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::Column;
 <span class="kw">use </span><span class="kw">crate</span>::columns::ColumnIndexer;
 
@@ -48,6 +49,7 @@
 
 <span class="doccomment">/// Number of columns in the FFA circuits.
 </span><span class="kw">pub const </span>FFA_N_COLUMNS: usize = <span class="number">5 </span>* N_LIMBS;
+<span class="kw">pub const </span>FFA_NPUB_COLUMNS: usize = N_LIMBS;
 
 <span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
 </span><span class="doccomment">/// Column indexer for MSM columns.

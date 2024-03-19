@@ -125,6 +125,24 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 <span class="kw">use </span>std::ops::Index;
@@ -165,6 +183,24 @@
 
     <span class="kw">pub fn </span>is_empty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.cols.is_empty()
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, T: Zero + Clone&gt; Witness&lt;N, Vec&lt;T&gt;&gt; {
+    <span class="kw">pub fn </span>zero_vec(domain_size: usize) -&gt; <span class="self">Self </span>{
+        Witness {
+            <span class="comment">// Ideally the vector should be of domain size, but
+            // one-element vector should be a reasonable default too.
+            </span>cols: std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[T::zero(); domain_size]),
+        }
+    }
+
+    <span class="kw">pub fn </span>to_pub_columns&lt;<span class="kw">const </span>NPUB: usize&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Witness&lt;NPUB, Vec&lt;T&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>newcols: [Vec&lt;T&gt;; NPUB] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+        <span class="kw">for </span>(i, vec) <span class="kw">in </span><span class="self">self</span>.cols[<span class="number">0</span>..NPUB].iter().enumerate() {
+            newcols[i] = vec.clone();
+        }
+        Witness { cols: newcols }
     }
 }
 

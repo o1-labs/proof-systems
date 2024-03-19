@@ -494,6 +494,8 @@
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraint;
 <span class="kw">pub mod </span>interpreter;
@@ -594,11 +596,12 @@
             }
         }
 
-        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N, <span class="number">0</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             <span class="kw-2">&amp;</span>constraints,
             <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(domain_size),
         );
         <span class="macro">assert!</span>(verifies)
     }
@@ -643,11 +646,12 @@
                 rng,
             )
             .unwrap();
-        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N, <span class="number">0</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             <span class="kw-2">&amp;</span>constraints,
             <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(domain_size),
         );
         <span class="macro">assert!</span>(!verifies)
     }

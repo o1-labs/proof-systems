@@ -454,7 +454,6 @@
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
 <a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -528,7 +527,9 @@
     // Round 1: Creating and absorbing column commitments
     ////////////////////////////////////////////////////////////////////////////
 
-    // Interpolate all columns on d1, using trait Into.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
+
+    <span class="comment">// Interpolate all columns on d1, using trait Into.
     </span><span class="kw">let </span>witness_evals: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = inputs
         .evaluations
         .into_par_iter()
@@ -555,8 +556,6 @@
             .map(comm)
             .collect::&lt;Witness&lt;N, PolyComm&lt;G&gt;&gt;&gt;()
     };
-
-    <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
     <span class="comment">// Do not use parallelism
     </span>(<span class="kw-2">&amp;</span>witness_comms)
@@ -893,7 +892,6 @@
 
     <span class="kw">let </span>proof_evals: ProofEvaluations&lt;N, G::ScalarField&gt; = {
         ProofEvaluations {
-            _public_evals: <span class="prelude-val">None</span>,
             witness_evals,
             mvlookup_evals,
             ft_eval1,

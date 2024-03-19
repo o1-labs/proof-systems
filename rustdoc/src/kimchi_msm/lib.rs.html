@@ -292,6 +292,12 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -368,6 +374,7 @@
             witness::WitnessBuilderEnv <span class="kw">as </span>TestWitnessBuilderEnv,
         },
         verifier::verify,
+        witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     <span class="kw">use </span>ark_ff::UniformRand;
@@ -430,11 +437,12 @@
         .unwrap();
 
         <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
+        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, <span class="number">0</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             <span class="kw-2">&amp;</span>constraints,
             <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(domain_size),
         );
 
         <span class="macro">assert!</span>(verifies);
@@ -496,11 +504,12 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.opening_proof = proof_prime.opening_proof;
-            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, <span class="number">0</span>&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
                 <span class="kw-2">&amp;</span>constraints,
                 <span class="kw-2">&amp;</span>proof_clone,
+                Witness::zero_vec(domain_size),
             );
             <span class="macro">assert!</span>(!verifies);
         }
@@ -511,11 +520,12 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.proof_comms = proof_prime.proof_comms;
-            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, <span class="number">0</span>&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
                 <span class="kw-2">&amp;</span>constraints,
                 <span class="kw-2">&amp;</span>proof_clone,
+                Witness::zero_vec(domain_size),
             );
             <span class="macro">assert!</span>(!verifies);
         }
@@ -527,11 +537,12 @@
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>proof_clone = proof.clone();
             proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
-            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS&gt;(
+            <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, <span class="number">0</span>&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
                 <span class="kw-2">&amp;</span>constraints,
                 <span class="kw-2">&amp;</span>proof_clone,
+                Witness::zero_vec(domain_size),
             );
             <span class="macro">assert!</span>(!verifies);
         }
@@ -574,11 +585,12 @@
                 <span class="kw-2">&amp;mut </span>rng,
             )
             .unwrap();
-        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N&gt;(
+        <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N, <span class="number">0</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             <span class="kw-2">&amp;</span>constraints,
             <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(domain_size),
         );
         <span class="comment">// FIXME: At the moment, it does verify. It should not. We are missing constraints.
         </span><span class="macro">assert!</span>(!verifies);
