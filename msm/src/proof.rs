@@ -20,6 +20,9 @@ pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID + Send 
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N, Vec<G::ScalarField>>,
     pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
+    // TODO Unless we use ZK rows, this is unused by the prover, since
+    // public inputs are modelled as a prefix of the witness that is
+    // committed w/o blinders.
     /// The number of public inputs. It is supposed that the first
     /// `public_input_size` columns of the witness represent the public values
     pub public_input_size: usize,
@@ -47,11 +50,9 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
 
 #[derive(Debug, Clone)]
 pub struct ProofEvaluations<const N: usize, F> {
-    /// public input polynomials
-    pub(crate) _public_evals: Option<PointEvaluations<F>>,
-    /// witness polynomials
+    /// Witness evaluations, including public input
     pub(crate) witness_evals: Witness<N, PointEvaluations<F>>,
-    /// MVLookup argument
+    /// MVLookup argument evaluations
     pub(crate) mvlookup_evals: Option<LookupProof<PointEvaluations<F>>>,
     /// Evaluation of Z_H(xi) (t_0(X) + xi^n t_1(X) + ...) at xi.
     pub(crate) ft_eval1: F,
@@ -60,7 +61,9 @@ pub struct ProofEvaluations<const N: usize, F> {
 impl<const N: usize, F: Clone> ColumnEvaluations<F> for ProofEvaluations<N, F> {
     type Column = crate::columns::Column;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
-        let crate::columns::Column::X(i) = col;
+        let crate::columns::Column::X(i) = col else {
+            todo!()
+        };
         if i < self.witness_evals.cols.len() {
             Ok(self.witness_evals.cols[i].clone())
         } else {

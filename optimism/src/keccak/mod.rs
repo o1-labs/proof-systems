@@ -1,16 +1,17 @@
+use crate::{keccak::column::Column as KeccakColumn, lookups::LookupTableIDs};
+use ark_ff::Field;
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
-    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, STATE_LEN},
+    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
 };
-
-use self::column::Column as KeccakColumn;
 
 pub mod column;
 pub mod constraints;
 pub mod environment;
 pub mod folding;
 pub mod interpreter;
-pub mod lookups;
+#[cfg(test)]
+pub mod tests;
 pub mod witness;
 
 /// Desired output length of the hash in bits
@@ -20,13 +21,51 @@ pub(crate) const HASH_BYTELENGTH: usize = HASH_BITLENGTH / 8;
 /// Length of each word in the Keccak state, in bits
 pub(crate) const WORD_LENGTH_IN_BITS: usize = 64;
 /// Number of columns required in the `curr` part of the witness
-pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS + QUARTERS;
+pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
 /// Number of columns required in the `next` part of the witness, corresponding to the output length
 pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 /// Number of words that fit in the hash digest
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
 pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
+
+/// Errors that can occur during the check of the witness
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    Constraint(Constraint),
+    Lookup(LookupTableIDs),
+}
+
+/// All the names for constraints involved in the Keccak circuit
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Constraint {
+    BooleanityAbsorb,
+    BooleanitySqueeze,
+    BooleanityRoot,
+    BooleanityPadding(usize),
+    MutexSqueezeRoot,
+    MutexSqueezePad,
+    MutexRoundPad,
+    MutexRoundRoot,
+    MutexAbsorbSqueeze,
+    AbsorbZeroPad(usize),
+    AbsorbRootZero(usize),
+    AbsorbXor(usize),
+    AbsorbShifts(usize),
+    PadAtEnd,
+    PaddingSuffix(usize),
+    SqueezeShifts(usize),
+    ThetaWordC(usize),
+    ThetaRotatedC(usize),
+    ThetaQuotientC(usize),
+    ThetaShiftsC(usize, usize),
+    PiRhoWordE(usize, usize),
+    PiRhoRotatedE(usize, usize),
+    PiRhoShiftsE(usize, usize, usize),
+    ChiShiftsB(usize, usize, usize),
+    ChiShiftsSum(usize, usize, usize),
+    IotaStateG(usize),
+}
 
 // This function maps a 4D index into a 1D index depending on the length of the grid
 fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
@@ -40,61 +79,30 @@ fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
     }
 }
 
-/// This trait defines common boolean operations used in the Keccak circuit
-pub(crate) trait BoolOps {
-    type Column;
-    type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + Clone;
-    type Fp: std::ops::Neg<Output = Self::Fp>;
-
-    /// Degree-2 variable encoding whether the input is a boolean value (0 = yes)
-    fn is_boolean(x: Self::Variable) -> Self::Variable;
-
-    /// Degree-1 variable encoding the negation of the input
-    /// Note: it only works as expected if the input is a boolean value
-    fn not(x: Self::Variable) -> Self::Variable;
-
-    /// Degree-1 variable encoding whether the input is the value one (0 = yes)
-    fn is_one(x: Self::Variable) -> Self::Variable;
-
-    /// Degree-2 variable encoding whether the first input is nonzero (0 = yes).
-    /// It requires the second input to be the multiplicative inverse of the first.
-    /// Note: if the first input is zero, there is no multiplicative inverse.
-    fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable;
-
-    /// Degree-1 variable encoding the XOR of two variables which should be boolean (1 = true)
-    fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable;
-
-    /// Degree-1 variable encoding the OR of two variables, which should be boolean (1 = true)
-    fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable;
-
-    /// Degree-2 variable encoding whether at least one of the two inputs is zero (0 = yes)
-    fn either_zero(x: Self::Variable, y: Self::Variable) -> Self::Variable;
-}
-
-/// This trait defines common arithmetic operations used in the Keccak circuit
-pub(crate) trait ArithOps {
-    type Column;
-    type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + Clone;
-    type Fp: std::ops::Neg<Output = Self::Fp>;
-
-    /// Creates a variable from a constant integer
-    fn constant(x: u64) -> Self::Variable;
-    /// Creates a variable from a constant field element
-    fn constant_field(x: Self::Fp) -> Self::Variable;
-
-    /// Returns a variable representing the value zero
-    fn zero() -> Self::Variable;
-    /// Returns a variable representing the value one
-    fn one() -> Self::Variable;
-    /// Returns a variable representing the value two
-    fn two() -> Self::Variable;
-
-    /// Returns a variable representing the value 2^x
-    fn two_pow(x: u64) -> Self::Variable;
+/// This function returns a vector of field elements that represent the 5 padding suffixes.
+/// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+pub fn pad_blocks<F: Field>(pad_bytelength: usize) -> Vec<F> {
+    assert!(pad_bytelength > 0, "Padding length must be at least 1 byte");
+    assert!(
+        pad_bytelength <= 136,
+        "Padding length must be at most 136 bytes",
+    );
+    // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
+    let mut blocks = vec![F::zero(); 5];
+    let mut pad = [F::zero(); RATE_IN_BYTES];
+    pad[RATE_IN_BYTES - pad_bytelength] = F::one();
+    pad[RATE_IN_BYTES - 1] += F::from(0x80u8);
+    blocks[0] = pad
+        .iter()
+        .take(12)
+        .fold(F::zero(), |acc, x| acc * F::from(256u32) + *x);
+    for (i, block) in blocks.iter_mut().enumerate().take(5).skip(1) {
+        // take 31 elements from pad, starting at 12 + (i - 1) * 31 and fold them into a single Fp
+        *block = pad
+            .iter()
+            .skip(12 + (i - 1) * 31)
+            .take(31)
+            .fold(F::zero(), |acc, x| acc * F::from(256u32) + *x);
+    }
+    blocks
 }

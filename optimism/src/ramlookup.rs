@@ -108,7 +108,7 @@ impl<F: std::fmt::Display + Field, ID: LookupTableID + Send + Sync + Copy> std::
             formatter,
             "numerator: {}\ntable_id: {:?}\nvalue:\n[\n",
             numerator,
-            self.table_id.into_field::<F>()
+            self.table_id.to_field::<F>()
         )?;
         for value in self.value.iter() {
             writeln!(formatter, "\t{}", value)?;

@@ -15,7 +15,7 @@ use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
 use mina_poseidon::sponge::DefaultFqSponge;
 use mina_poseidon::FqSponge as _;
-use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{tests::make_test_rng, ExtendedDensePolynomial as _};
 use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
@@ -150,8 +150,14 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
 
             let mut chunked_evals = vec![];
             for point in eval_points.clone() {
+                let n = poly.len();
+                let num_chunks = if n % srs.g.len() == 0 {
+                    n / srs.g.len()
+                } else {
+                    n / srs.g.len() + 1
+                };
                 chunked_evals.push(
-                    poly.to_chunked_polynomial(1, srs.g.len())
+                    poly.to_chunked_polynomial(num_chunks, srs.g.len())
                         .evaluate_chunks(point),
                 );
             }
@@ -171,7 +177,6 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         }
 
         // create aggregated evaluation proof
-        #[allow(clippy::type_complexity)]
         let mut polynomials: Vec<(
             DensePolynomialOrEvaluations<Fp, Radix2EvaluationDomain<Fp>>,
             PolyComm<_>,
@@ -239,7 +244,7 @@ where
     <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // setup
-    let mut rng = rand::thread_rng();
+    let mut rng = make_test_rng();
     test_randomised(&mut rng)
 }
 

@@ -1,6 +1,6 @@
 use crate::{
     circuits::{
-        expr::{self, ColumnEvaluations, Domain, ExprError, GenericColumn},
+        expr::{self, ColumnEvaluations, ExprError},
         gate::{CurrOrNext, GateType},
         lookup::lookups::LookupPattern,
     },
@@ -23,16 +23,6 @@ pub enum Column {
     Index(GateType),
     Coefficient(usize),
     Permutation(usize),
-}
-
-impl GenericColumn for Column {
-    fn column_domain(&self) -> Domain {
-        match self {
-            Column::Index(GateType::Generic) => Domain::D4,
-            Column::Index(GateType::CompleteAdd) => Domain::D4,
-            _ => Domain::D8,
-        }
-    }
 }
 
 impl Column {

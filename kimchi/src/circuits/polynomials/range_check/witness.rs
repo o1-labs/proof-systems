@@ -12,11 +12,11 @@ use crate::variable_map;
 use crate::{
     circuits::{
         polynomial::COLUMNS,
+        polynomials::foreign_field_common::{BigUintForeignFieldHelpers, LIMB_BITS},
         witness::{init_row, CopyBitsCell, CopyCell, VariableCell, WitnessCell},
     },
     variables,
 };
-use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 /// Witness layout
 ///   * The values and cell contents are in little-endian order.
@@ -214,7 +214,7 @@ pub fn extend_multi_compact_limbs<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS]
 /// Extend an existing witness with a multi-range-check gadget for ForeignElement
 pub fn extend_multi_from_fe<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    fe: &ForeignElement<F, 3>,
+    fe: &ForeignElement<F, LIMB_BITS, 3>,
 ) {
     extend_multi(witness, fe.limbs[0], fe.limbs[1], fe.limbs[2]);
 }

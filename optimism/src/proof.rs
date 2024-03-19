@@ -400,7 +400,7 @@ mod tests {
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let proof: Proof<
-            2074,
+            ZKVM_KECCAK_COLS,
             ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
             PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
         > = prove::<ZKVM_KECCAK_COLS, _, PairingProof<BN254Parameters>, BaseSponge, ScalarSponge>(

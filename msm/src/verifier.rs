@@ -1,4 +1,8 @@
 use ark_ff::{Field, One, Zero};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
+use rand::thread_rng;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::ParallelIterator;
 
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::circuits::expr::{Challenges, Constants, Expr, PolishToken};
@@ -8,13 +12,14 @@ use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
 use mina_poseidon::sponge::ScalarChallenge;
 use mina_poseidon::FqSponge;
 use poly_commitment::{
-    commitment::{absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation},
-    OpenProof,
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    OpenProof, SRS,
 };
-use rand::thread_rng;
 
-use crate::expr::MSMExpr;
-use crate::proof::Proof;
+use crate::expr::E;
+use crate::{proof::Proof, witness::Witness};
 
 pub fn verify<
     G: KimchiCurve,
@@ -22,38 +27,110 @@ pub fn verify<
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
     const N: usize,
+    const NPUB: usize,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraint_exprs: &Vec<MSMExpr<G::ScalarField>>,
+    constraint_exprs: &Vec<E<G::ScalarField>>,
     proof: &Proof<N, G, OpeningProof>,
-) -> bool {
+    public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
+) -> bool
+where
+    OpeningProof::SRS: Sync,
+{
     let Proof {
         proof_comms,
         proof_evals,
         opening_proof,
     } = proof;
 
-    // -- Absorbing the commitments
+    ////////////////////////////////////////////////////////////////////////////
+    // Re-evaluating public inputs
+    ////////////////////////////////////////////////////////////////////////////
+
+    // Interpolate public input columns on d1, using trait Into.
+    let public_input_evals: Witness<NPUB, Evaluations<G::ScalarField, R2D<G::ScalarField>>> =
+        public_inputs
+            .into_par_iter()
+            .map(|evals| {
+                Evaluations::<G::ScalarField, R2D<G::ScalarField>>::from_vec_and_domain(
+                    evals, domain.d1,
+                )
+            })
+            .collect::<Witness<NPUB, Evaluations<G::ScalarField, R2D<G::ScalarField>>>>();
+
+    let public_input_polys: Witness<NPUB, DensePolynomial<G::ScalarField>> = {
+        let interpolate =
+            |evals: Evaluations<G::ScalarField, R2D<G::ScalarField>>| evals.interpolate();
+        public_input_evals
+            .into_par_iter()
+            .map(interpolate)
+            .collect::<Witness<NPUB, DensePolynomial<G::ScalarField>>>()
+    };
+
+    let public_input_comms: Witness<NPUB, PolyComm<G>> = {
+        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+        (&public_input_polys)
+            .into_par_iter()
+            .map(comm)
+            .collect::<Witness<NPUB, PolyComm<G>>>()
+    };
+
+    assert!(
+        NPUB <= N,
+        "Number of public inputs exceeds number of witness columns"
+    );
+    for i in 0..NPUB {
+        assert!(public_input_comms.cols[i] == proof_comms.witness_comms.cols[i]);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Absorbing all the commitments to the columns
+    ////////////////////////////////////////////////////////////////////////////
+
     let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
     (&proof_comms.witness_comms)
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
-    if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
-        mvlookup_comms
-            .into_iter()
-            .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
-    }
+    ////////////////////////////////////////////////////////////////////////////
+    // MVLookup
+    ////////////////////////////////////////////////////////////////////////////
+
+    let (joint_combiner, beta) = {
+        if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
+            // First, we absorb the multiplicity polynomials
+            mvlookup_comms
+                .m
+                .iter()
+                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+
+            // To generate the challenges
+            let joint_combiner = fq_sponge.challenge();
+            let beta = fq_sponge.challenge();
+
+            // And now, we absorb the commitments to the other polynomials
+            mvlookup_comms
+                .h
+                .iter()
+                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+            absorb_commitment(&mut fq_sponge, &mvlookup_comms.sum);
+            (Some(joint_combiner), beta)
+        } else {
+            (None, G::ScalarField::zero())
+        }
+    };
 
     //~ 1. Sample $\alpha'$ with the Fq-Sponge.
     let alpha_chal = ScalarChallenge(fq_sponge.challenge());
     let (_, endo_r) = G::endos();
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
-    absorb_commitment(&mut fq_sponge, &proof_comms.t_comm);
+    ////////////////////////////////////////////////////////////////////////////
+    // Quotient polynomial
+    ////////////////////////////////////////////////////////////////////////////
 
-    // -- Finish absorbing the commitments
+    absorb_commitment(&mut fq_sponge, &proof_comms.t_comm);
 
     // -- Preparing for opening proof verification
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -117,9 +194,9 @@ pub fn verify<
 
     let challenges = Challenges {
         alpha,
-        beta: G::ScalarField::zero(),
+        beta,
         gamma: G::ScalarField::zero(),
-        joint_combiner: None,
+        joint_combiner,
     };
 
     let constants = Constants {

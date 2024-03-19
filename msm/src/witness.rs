@@ -1,5 +1,6 @@
 use ark_ff::Zero;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+use std::ops::Index;
 
 /// The witness columns used by a gate of the MSM circuits.
 /// It is generic over the number of columns, N, and the type of the witness, T.
@@ -19,6 +20,42 @@ impl<const N: usize, T: Zero + Clone> Default for Witness<N, T> {
         Witness {
             cols: std::array::from_fn(|_| T::zero()),
         }
+    }
+}
+
+impl<const N: usize, T> Index<usize> for Witness<N, T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.cols[index]
+    }
+}
+
+impl<const N: usize, T> Witness<N, T> {
+    pub fn len(&self) -> usize {
+        self.cols.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cols.is_empty()
+    }
+}
+
+impl<const N: usize, T: Zero + Clone> Witness<N, Vec<T>> {
+    pub fn zero_vec(domain_size: usize) -> Self {
+        Witness {
+            // Ideally the vector should be of domain size, but
+            // one-element vector should be a reasonable default too.
+            cols: std::array::from_fn(|_| vec![T::zero(); domain_size]),
+        }
+    }
+
+    pub fn to_pub_columns<const NPUB: usize>(&self) -> Witness<NPUB, Vec<T>> {
+        let mut newcols: [Vec<T>; NPUB] = std::array::from_fn(|_| vec![]);
+        for (i, vec) in self.cols[0..NPUB].iter().enumerate() {
+            newcols[i] = vec.clone();
+        }
+        Witness { cols: newcols }
     }
 }
 
