@@ -114,7 +114,6 @@ impl WitnessBuilderEnv<Fp> {
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: vec![],
-            public_input_size: 0,
         }
     }
 
@@ -122,5 +121,6 @@ impl WitnessBuilderEnv<Fp> {
         self.witness.push(Witness {
             cols: Box::new([Zero::zero(); FEC_N_COLUMNS]),
         });
+        self.double_write_checker = HashSet::new();
     }
 }

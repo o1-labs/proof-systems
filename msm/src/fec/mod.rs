@@ -7,25 +7,26 @@ pub mod witness;
 mod tests {
 
     use crate::fec::{
+        columns::FEC_N_COLUMNS,
+        constraint::ConstraintBuilderEnv as FECConstraintBuilderEnv,
         interpreter::{self as fec_interpreter, FECInterpreterEnv},
         witness::WitnessBuilderEnv as FECWitnessBuilderEnv,
     };
-    use crate::{Ff1, Fp};
+    use crate::{
+        columns::Column, lookups::LookupTableIDs, prover::prove, verifier::verify,
+        witness::Witness, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+    };
     use ark_ff::UniformRand;
-    //use rand::Rng;
+    use kimchi::circuits::domains::EvaluationDomains;
+    use poly_commitment::pairing_proof::PairingSRS;
+    use rand::Rng;
 
-    #[test]
-    /// Builds the FF addition circuit with random values. The witness
-    /// environment enforces the constraints internally, so it is
-    /// enough to just build the circuit to ensure it is satisfied.
-    pub fn test_foreign_field_addition_circuit() {
+    fn build_foreign_field_addition_circuit(domain_size: usize) -> FECWitnessBuilderEnv<Fp> {
         let mut rng = o1_utils::tests::make_test_rng();
-        //let domain_size = 1 << 8;
 
         let mut witness_env = FECWitnessBuilderEnv::<Fp>::empty();
 
-        //let row_num = rng.gen_range(0..domain_size);
-        let row_num = 1;
+        let row_num = rng.gen_range(0..domain_size);
 
         for _row_i in 0..row_num {
             let xp: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
@@ -33,11 +34,61 @@ mod tests {
             let xq: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
             let yq: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
-            //use rand::Rng;
-            //let a: Ff1 = From::from(rng.gen_range(0..(1 << 50)));
-            //let b: Ff1 = From::from(rng.gen_range(0..(1 << 50)));
             fec_interpreter::ec_add_circuit(&mut witness_env, 0, xp, yp, xq, yq);
             witness_env.next_row();
         }
+
+        witness_env
+    }
+
+    #[test]
+    /// Builds the FF addition circuit with random values. The witness
+    /// environment enforces the constraints internally, so it is
+    /// enough to just build the circuit to ensure it is satisfied.
+    pub fn test_foreign_field_addition_circuit() {
+        build_foreign_field_addition_circuit(1 << 4);
+    }
+
+    #[test]
+    pub fn test_fec_completeness() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        let domain_size = 1 << 8;
+        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
+
+        let srs_trapdoor = Fp::rand(&mut rng);
+        let mut srs: PairingSRS<BN254> = PairingSRS::create(srs_trapdoor, domain.d1.size as usize);
+        srs.full_srs.add_lagrange_basis(domain.d1);
+
+        let mut constraint_env = FECConstraintBuilderEnv::<Fp>::empty();
+        let witness_env = build_foreign_field_addition_circuit(domain_size);
+
+        fec_interpreter::constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env, 0);
+
+        let inputs = witness_env.get_witness(domain_size);
+        let constraints = constraint_env.constraints;
+
+        // generate the proof
+        let proof = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            FEC_N_COLUMNS,
+            LookupTableIDs,
+        >(domain, &srs, &constraints, inputs, &mut rng)
+        .unwrap();
+
+        // verify the proof
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, 0>(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+            Witness::zero_vec(domain_size),
+        );
+
+        assert!(verifies);
     }
 }
