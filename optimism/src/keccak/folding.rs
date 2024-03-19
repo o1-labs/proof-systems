@@ -41,7 +41,7 @@ impl FoldingEnv<Fp, KeccakFoldingInstance, KeccakFoldingWitness, KeccakColumn, C
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
-            for col in side.witness.iter_mut() {
+            for col in side.witness.cols.iter_mut() {
                 col.evals.rotate_left(1);
             }
         }

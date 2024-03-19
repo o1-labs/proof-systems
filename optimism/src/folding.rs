@@ -2,6 +2,7 @@ use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::folding::{Alphas, Instance, Witness};
+use kimchi_msm::witness::Witness as GenericWitness;
 use std::array;
 
 // Instantiate it with the desired group and field
@@ -42,12 +43,12 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct FoldingWitness<const N: usize> {
-    pub(crate) witness: [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; N],
+    pub(crate) witness: GenericWitness<N, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
 }
 
 impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-        for (a, b) in a.witness.iter_mut().zip(b.witness) {
+        for (a, b) in a.witness.cols.iter_mut().zip(b.witness.cols) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
                 *a += challenge * b;
             }
