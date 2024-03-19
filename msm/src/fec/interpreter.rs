@@ -201,6 +201,23 @@ where
 ///                           (i+1)*2^b - i - 1]
 /// - i ∈ [n,2n-2]: c3_i ∈ [-((2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3),
 ///                           (2*n-i-1)*2^(b+1) - 2*(2*n-i) + 3 - (if i == n { n-1 } else 0) ]
+///
+/// Absolute maximum values for all carries:
+/// Eq1.
+/// * Upper bound = -lower bound is achieved at i = n-1, n*2^(b+1) - 2*(n-1) - 3
+///   * (+-) 302231454903657293676535
+///
+/// Eq2 and Eq3:
+/// * Upper bound is achieved at i = n, (n-1)*2^(b+1) - 2*n + 3 - n -1
+///   * 226673591177742970257400
+/// * Lower bound is achieved at i = n-1, n*2^(b+1) - 2*(n-1) - 4
+///   * (-) 302231454903657293676534
+///
+/// As we can see, the values are about 2*n=8 times bigger than 2^b,
+/// so concretely 4 extra bits per carry will be enough. This implies
+/// that we can /definitely/ fit a large carry into 6 small limbs,
+/// since it has 15 "free" bits of which we will use 4 at most.
+///
 #[allow(dead_code)]
 pub fn constrain_ec_addition<F: PrimeField, Env: FECInterpreterEnv<F>>(
     env: &mut Env,
