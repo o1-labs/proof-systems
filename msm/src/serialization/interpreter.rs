@@ -63,9 +63,9 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     limbs: [u128; 3],
 ) {
     // Use this to constrain later
-    let kimchi_limbs0 = Env::get_column(SerializationColumn::KimchiLimb(0));
-    let kimchi_limbs1 = Env::get_column(SerializationColumn::KimchiLimb(1));
-    let kimchi_limbs2 = Env::get_column(SerializationColumn::KimchiLimb(2));
+    let kimchi_limbs0 = Env::get_column(SerializationColumn::ChalKimchi(0));
+    let kimchi_limbs1 = Env::get_column(SerializationColumn::ChalKimchi(1));
+    let kimchi_limbs2 = Env::get_column(SerializationColumn::ChalKimchi(2));
 
     let input_limb0 = Env::constant(limbs[0].into());
     let input_limb1 = Env::constant(limbs[1].into());
@@ -85,7 +85,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     {
         let mut constraint = limb2_var.clone();
         for j in 0..N_INTERMEDIATE_LIMBS {
-            let position = Env::get_column(SerializationColumn::IntermediateLimb(j));
+            let position = Env::get_column(SerializationColumn::ChalIntermediate(j));
             let var = env.bitmask_be(&input_limb2, 4 * (j + 1) as u32, 4 * j as u32, position);
             limb2_vars.push(var.clone());
             let pow: u128 = 1 << (4 * j);
@@ -99,37 +99,37 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
 
     let mut fifteen_bits_vars = vec![];
     {
-        let c0 = Env::get_column(SerializationColumn::MSMLimb(0));
+        let c0 = Env::get_column(SerializationColumn::ChalConverted(0));
         let c0_var = env.bitmask_be(&input_limb0, 15, 0, c0);
         fifteen_bits_vars.push(c0_var)
     }
 
     {
-        let c1 = Env::get_column(SerializationColumn::MSMLimb(1));
+        let c1 = Env::get_column(SerializationColumn::ChalConverted(1));
         let c1_var = env.bitmask_be(&input_limb0, 30, 15, c1);
         fifteen_bits_vars.push(c1_var);
     }
 
     {
-        let c2 = Env::get_column(SerializationColumn::MSMLimb(2));
+        let c2 = Env::get_column(SerializationColumn::ChalConverted(2));
         let c2_var = env.bitmask_be(&input_limb0, 45, 30, c2);
         fifteen_bits_vars.push(c2_var);
     }
 
     {
-        let c3 = Env::get_column(SerializationColumn::MSMLimb(3));
+        let c3 = Env::get_column(SerializationColumn::ChalConverted(3));
         let c3_var = env.bitmask_be(&input_limb0, 60, 45, c3);
         fifteen_bits_vars.push(c3_var)
     }
 
     {
-        let c4 = Env::get_column(SerializationColumn::MSMLimb(4));
+        let c4 = Env::get_column(SerializationColumn::ChalConverted(4));
         let c4_var = env.bitmask_be(&input_limb0, 75, 60, c4);
         fifteen_bits_vars.push(c4_var);
     }
 
     {
-        let c5 = Env::get_column(SerializationColumn::MSMLimb(5));
+        let c5 = Env::get_column(SerializationColumn::ChalConverted(5));
         let res = (limbs[0] >> 75) & ((1 << (88 - 75)) - 1);
         let res_prime = limbs[1] & ((1 << 2) - 1);
         let res = res + (res_prime << (15 - 2));
@@ -139,37 +139,37 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     }
 
     {
-        let c6 = Env::get_column(SerializationColumn::MSMLimb(6));
+        let c6 = Env::get_column(SerializationColumn::ChalConverted(6));
         let c6_var = env.bitmask_be(&input_limb1, 17, 2, c6);
         fifteen_bits_vars.push(c6_var);
     }
 
     {
-        let c7 = Env::get_column(SerializationColumn::MSMLimb(7));
+        let c7 = Env::get_column(SerializationColumn::ChalConverted(7));
         let c7_var = env.bitmask_be(&input_limb1, 32, 17, c7);
         fifteen_bits_vars.push(c7_var);
     }
 
     {
-        let c8 = Env::get_column(SerializationColumn::MSMLimb(8));
+        let c8 = Env::get_column(SerializationColumn::ChalConverted(8));
         let c8_var = env.bitmask_be(&input_limb1, 47, 32, c8);
         fifteen_bits_vars.push(c8_var);
     }
 
     {
-        let c9 = Env::get_column(SerializationColumn::MSMLimb(9));
+        let c9 = Env::get_column(SerializationColumn::ChalConverted(9));
         let c9_var = env.bitmask_be(&input_limb1, 62, 47, c9);
         fifteen_bits_vars.push(c9_var);
     }
 
     {
-        let c10 = Env::get_column(SerializationColumn::MSMLimb(10));
+        let c10 = Env::get_column(SerializationColumn::ChalConverted(10));
         let c10_var = env.bitmask_be(&input_limb1, 77, 62, c10);
         fifteen_bits_vars.push(c10_var);
     }
 
     {
-        let c11 = Env::get_column(SerializationColumn::MSMLimb(11));
+        let c11 = Env::get_column(SerializationColumn::ChalConverted(11));
         let res = (limbs[1] >> 77) & ((1 << (88 - 77)) - 1);
         let res_prime = limbs[2] & ((1 << 4) - 1);
         let res = res + (res_prime << (15 - 4));
@@ -179,31 +179,31 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     }
 
     {
-        let c12 = Env::get_column(SerializationColumn::MSMLimb(12));
+        let c12 = Env::get_column(SerializationColumn::ChalConverted(12));
         let c12_var = env.bitmask_be(&input_limb2, 19, 4, c12);
         fifteen_bits_vars.push(c12_var);
     }
 
     {
-        let c13 = Env::get_column(SerializationColumn::MSMLimb(13));
+        let c13 = Env::get_column(SerializationColumn::ChalConverted(13));
         let c13_var = env.bitmask_be(&input_limb2, 34, 19, c13);
         fifteen_bits_vars.push(c13_var);
     }
 
     {
-        let c14 = Env::get_column(SerializationColumn::MSMLimb(14));
+        let c14 = Env::get_column(SerializationColumn::ChalConverted(14));
         let c14_var = env.bitmask_be(&input_limb2, 49, 34, c14);
         fifteen_bits_vars.push(c14_var);
     }
 
     {
-        let c15 = Env::get_column(SerializationColumn::MSMLimb(15));
+        let c15 = Env::get_column(SerializationColumn::ChalConverted(15));
         let c15_var = env.bitmask_be(&input_limb2, 64, 49, c15);
         fifteen_bits_vars.push(c15_var);
     }
 
     {
-        let c16 = Env::get_column(SerializationColumn::MSMLimb(16));
+        let c16 = Env::get_column(SerializationColumn::ChalConverted(16));
         let c16_var = env.bitmask_be(&input_limb2, 79, 64, c16);
         fifteen_bits_vars.push(c16_var);
     }
