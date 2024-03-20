@@ -377,6 +377,8 @@ where
     // evaluation at ζ from the independent evaluations at ζ of the
     // witness columns because ft(X) is the constraint polynomial, built from
     // the public constraints.
+    // We evaluate at ζω because the lookup argument requires to compute
+    // \phi(Xω) - \phi(X).
     let ft_eval1 = ft.evaluate(&zeta_omega);
 
     // Absorb ft(ζω)
