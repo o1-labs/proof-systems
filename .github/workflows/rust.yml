@@ -44,7 +44,7 @@ jobs:
             echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
 
       - name: Setup OCaml ${{ matrix.ocaml_version }}
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v2.2.6
         with:
           ocaml-compiler: ${{ matrix.ocaml_version }}
           # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
