@@ -1,5 +1,8 @@
 use crate::{
-    circuits::expr::{ConstantExpr, Expr, ExprInner, Op2, Operations, Variable},
+    circuits::expr::{
+        ChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Op2,
+        Operations, Variable,
+    },
     folding::{
         quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
         FoldingConfig, ScalarField,
@@ -501,9 +504,9 @@ pub fn folding_expression<C: FoldingConfig>(
     (integrated, extended_witness_generator)
 }
 
-impl<F, Col, Config: FoldingConfig> From<ExprInner<F, Col>> for FoldingCompatibleExprInner<Config>
+impl<F, Col, Config: FoldingConfig<Column = Col>> From<ExprInner<F, Col>>
+    for FoldingCompatibleExprInner<Config>
 where
-    Config: FoldingConfig<Column = Col>,
     Config::Curve: AffineCurve<ScalarField = F>,
 {
     fn from(expr: ExprInner<F, Col>) -> Self {
@@ -516,6 +519,58 @@ where
             ExprInner::UnnormalizedLagrangeBasis(i) => {
                 FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize)
             }
+        }
+    }
+}
+
+impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    <Config as FoldingConfig>::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: ConstantExprInner<F>) -> Self {
+        match expr {
+            ConstantExprInner::Challenge(chal) => {
+                FoldingCompatibleExprInner::Challenge(chal.into())
+            }
+            ConstantExprInner::Constant(c) => match c {
+                ConstantTerm::Literal(f) => FoldingCompatibleExprInner::Constant(f),
+                _ => panic!("ConstantExprInner not supported in folding expressions"),
+            },
+        }
+    }
+}
+
+impl<F, Config: FoldingConfig> From<Operations<ConstantExprInner<F>>>
+    for FoldingCompatibleExprInner<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
+        match expr {
+            Operations::Atom(inner) => inner.into(),
+            _ => panic!("Cannot convert this expression to an Atom"),
+        }
+    }
+}
+
+impl<F, Config: FoldingConfig> From<Operations<ConstantExprInner<F>>>
+    for FoldingCompatibleExpr<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
+        match expr {
+            Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
+            Operations::Add(x, y) => FoldingCompatibleExpr::BinOp(Op2::Add, x.into(), y.into()),
+            Operations::Mul(x, y) => FoldingCompatibleExpr::BinOp(Op2::Mul, x.into(), y.into()),
+            Operations::Sub(x, y) => FoldingCompatibleExpr::BinOp(Op2::Sub, x.into(), y.into()),
+            Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new(x.into())),
+            Operations::Square(x) => FoldingCompatibleExpr::Square(x.into()),
+            Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(e.into(), p),
+            _ => panic!("Operation not supported in folding expressions"),
         }
     }
 }

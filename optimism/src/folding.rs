@@ -3,7 +3,7 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::Zero;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::{
-    circuits::gate::CurrOrNext,
+    circuits::{expr::ChallengeTerm, gate::CurrOrNext},
     folding::{Alphas, FoldingEnv, Instance, Side, Witness},
 };
 use kimchi_msm::witness::Witness as GenericWitness;
@@ -22,6 +22,18 @@ pub(crate) enum Challenge {
     Beta,
     Gamma,
     JointCombiner,
+}
+
+// Needed to transform from expressions to folding expressions
+impl From<ChallengeTerm> for Challenge {
+    fn from(chal: ChallengeTerm) -> Self {
+        match chal {
+            ChallengeTerm::Beta => Challenge::Beta,
+            ChallengeTerm::Gamma => Challenge::Gamma,
+            ChallengeTerm::JointCombiner => Challenge::JointCombiner,
+            ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
+        }
+    }
 }
 
 /// Folding instance containing the commitment to a witness of N columns, challenges for the proof, and the alphas
@@ -137,4 +149,3 @@ where
         instance.alphas.get(i).unwrap()
     }
 }
-
