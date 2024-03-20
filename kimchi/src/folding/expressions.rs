@@ -12,6 +12,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
 use itertools::Itertools;
 use num_traits::Zero;
+use rayon::Yield;
 
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
@@ -564,12 +565,18 @@ where
     fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
         match expr {
             Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
-            Operations::Add(x, y) => FoldingCompatibleExpr::BinOp(Op2::Add, x.into(), y.into()),
-            Operations::Mul(x, y) => FoldingCompatibleExpr::BinOp(Op2::Mul, x.into(), y.into()),
-            Operations::Sub(x, y) => FoldingCompatibleExpr::BinOp(Op2::Sub, x.into(), y.into()),
-            Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new(x.into())),
-            Operations::Square(x) => FoldingCompatibleExpr::Square(x.into()),
-            Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(e.into(), p),
+            Operations::Add(x, y) => {
+                FoldingCompatibleExpr::BinOp(Op2::Add, Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Mul(x, y) => {
+                FoldingCompatibleExpr::BinOp(Op2::Mul, Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Sub(x, y) => {
+                FoldingCompatibleExpr::BinOp(Op2::Sub, Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
+            Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
+            Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(Box::new((*e).into()), p),
             _ => panic!("Operation not supported in folding expressions"),
         }
     }
