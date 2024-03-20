@@ -1,12 +1,12 @@
 use crate::{
-    circuits::expr::{Op2, Operations, Variable},
+    circuits::expr::{ConstantExpr, Expr, ExprInner, Op2, Operations, Variable},
     folding::{
         quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
         FoldingConfig, ScalarField,
     },
 };
 use ark_ec::AffineCurve;
-use ark_ff::One;
+use ark_ff::{Field, One};
 use itertools::Itertools;
 use num_traits::Zero;
 
@@ -499,4 +499,23 @@ pub fn folding_expression<C: FoldingConfig>(
         }
     }
     (integrated, extended_witness_generator)
+}
+
+impl<F, Col, Config: FoldingConfig> From<ExprInner<F, Col>> for FoldingCompatibleExprInner<Config>
+where
+    Config: FoldingConfig<Column = Col>,
+    Config::Curve: AffineCurve<ScalarField = F>,
+{
+    fn from(expr: ExprInner<F, Col>) -> Self {
+        match expr {
+            ExprInner::Constant(c) => FoldingCompatibleExprInner::Constant(c),
+            ExprInner::Cell(col) => FoldingCompatibleExprInner::Cell(col),
+            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            }
+            ExprInner::UnnormalizedLagrangeBasis(i) => {
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize)
+            }
+        }
+    }
 }
