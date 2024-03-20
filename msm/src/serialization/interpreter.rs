@@ -16,6 +16,8 @@ pub trait InterpreterEnv<Fp: PrimeField> {
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
+    fn read_column(&self, pos: Self::Position) -> Self::Variable;
+
     fn get_column(pos: SerializationColumn) -> Self::Position;
 
     /// Check that the value is in the range [0, 2^15-1]
@@ -37,6 +39,12 @@ pub trait InterpreterEnv<Fp: PrimeField> {
         lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable;
+
+    // Helper
+    // @volhovm I think we could just use indexer directly without Position.
+    fn read_column_direct(&self, pos: SerializationColumn) -> Self::Variable {
+        self.read_column(Self::get_column(pos))
+    }
 }
 
 /// Deserialize a field element of the scalar field of Vesta or Pallas given as
