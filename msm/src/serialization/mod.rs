@@ -1,12 +1,12 @@
 use crate::{mvlookup::LookupTableID, MVLookup};
 
-/// The number of intermediate limbs of 4 bits required for the circuit
-pub const N_INTERMEDIATE_LIMBS: usize = 20;
-
 pub mod column;
 pub mod constraints;
 pub mod interpreter;
 pub mod witness;
+
+/// The number of intermediate limbs of 4 bits required for the circuit
+pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
 #[derive(Clone, Copy, Debug)]
 pub enum LookupTable {
