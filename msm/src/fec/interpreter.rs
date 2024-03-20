@@ -195,14 +195,15 @@ where
 /// q_2_sign:   5*L + 6*S         1
 /// q_1_sign:   5*L + 6*S + 1     1
 /// q_3_sign:   5*L + 6*S + 2     1
-/// carry_1:    5*L + 6*S + 3     2*S+2      May need to be longer, depends on how big the last limb is
-/// carry_2:    5*L + 8*S + 5     2*S+2      May need to be longer, depends on how big the last limb is
-/// carry_3:    5*L + 10*S + 7    2*S+2      May need to be longer, depends on how big the last limb is
+/// carry_1:    5*L + 6*S + 3     2*S+2
+/// carry_2:    5*L + 8*S + 5     2*S+2
+/// carry_3:    5*L + 10*S + 7    2*S+2
 ///----------------------------------------------------------------
 /// total columns: 5*L + 12*S - 9 = 215
 ///
 ///
 /// Ranges:
+///
 /// Carries for our three equations have the following generic range form (inclusive over integers):
 /// Note that all three equations look exactly the same for i >= n _except_ the carry from the previous limbs.
 ///
@@ -241,6 +242,10 @@ where
 /// that we can /definitely/ fit a large carry into 6 small limbs,
 /// since it has 15 "free" bits of which we will use 4 at most.
 ///
+/// @volhovm: Soundness-wise I am not convinced that we need to
+/// enforce these more precise ranges as compared to enforcing just 4
+/// bit more for the highest limb. Even checking that highest limb is
+/// 15 bits could be quite sound.
 #[allow(dead_code)]
 pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
     env: &mut Env,
