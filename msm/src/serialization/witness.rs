@@ -2,7 +2,8 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
-use crate::columns::Column;
+use crate::columns::{Column, ColumnIndexer};
+use crate::serialization::column::SerializationColumn;
 use crate::serialization::interpreter::InterpreterEnv;
 use crate::serialization::{Lookup, LookupTable};
 use crate::N_LIMBS;
@@ -57,14 +58,8 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         value
     }
 
-    fn get_column_for_kimchi_limb(j: usize) -> Self::Position {
-        assert!(j < 3);
-        Column::X(j)
-    }
-
-    fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
-        assert!(j < N_INTERMEDIATE_LIMBS);
-        Column::X(3 + N_LIMBS + j)
+    fn get_column(pos: SerializationColumn) -> Self::Position {
+        pos.ix_to_column()
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
@@ -96,11 +91,6 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, *x);
         *x
-    }
-
-    fn get_column_for_msm_limb(j: usize) -> Self::Position {
-        assert!(j < N_LIMBS);
-        Column::X(3 + j)
     }
 
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
