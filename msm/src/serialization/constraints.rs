@@ -126,6 +126,13 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         y
     }
 
+    fn read_column(&self, position: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     fn get_column(pos: SerializationColumn) -> Self::Position {
         pos.ix_to_column()
     }

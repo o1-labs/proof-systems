@@ -52,7 +52,8 @@ mod tests {
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            constraints, interpreter::deserialize_field_element, witness, N_INTERMEDIATE_LIMBS,
+            column::SER_N_COLUMNS, constraints, interpreter::deserialize_field_element, witness,
+            N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
@@ -99,15 +100,13 @@ mod tests {
         // Must be at least 1 << 15 to support rangecheck15
         const DOMAIN_SIZE: usize = 1 << 15;
 
-        const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + N_LIMBS;
-
         let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let mut witness_env = witness::Env::<Fp>::create();
         // Boxing to avoid stack overflow
-        let mut witness: Box<Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
+        let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
         });
 
@@ -136,14 +135,9 @@ mod tests {
             let mut constraint_env = constraints::Env::<Fp>::create();
             // Witness
             deserialize_field_element(&mut witness_env, limbs);
-            for i in 0..3 {
-                witness.cols[i].push(witness_env.current_kimchi_limbs[i]);
-            }
-            for i in 0..N_LIMBS {
-                witness.cols[3 + i].push(witness_env.msm_limbs[i]);
-            }
-            for i in 0..N_INTERMEDIATE_LIMBS {
-                witness.cols[3 + N_LIMBS + i].push(witness_env.intermediate_limbs[i]);
+            // Filling actually used rows
+            for j in 0..SER_N_COLUMNS {
+                witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
             // Constraints
@@ -243,26 +237,19 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            SERIALIZATION_N_COLUMNS,
+            SER_N_COLUMNS,
             LookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
 
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            SERIALIZATION_N_COLUMNS,
-            0,
-            LookupTable,
-        >(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(DOMAIN_SIZE),
-        );
+        let verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, SER_N_COLUMNS, 0, LookupTable>(
+                domain,
+                &srs,
+                &constraints,
+                &proof,
+                Witness::zero_vec(DOMAIN_SIZE),
+            );
         assert!(verifies)
     }
 }
