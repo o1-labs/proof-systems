@@ -101,6 +101,8 @@ impl WitnessBuilderEnv<Fp> {
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: vec![],
+            // FIXME
+            fixed_lookup_tables: vec![],
         }
     }
 

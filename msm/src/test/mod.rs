@@ -49,6 +49,8 @@ mod tests {
         let proof_inputs = ProofInputs {
             evaluations,
             mvlookups: vec![],
+            // FIXME
+            fixed_lookup_tables: vec![],
         };
 
         let proof =
@@ -135,6 +137,8 @@ mod tests {
         let proof_inputs = ProofInputs {
             evaluations: evaluations_prime,
             mvlookups: vec![],
+            // FIXME
+            fixed_lookup_tables: vec![],
         };
 
         let proof =

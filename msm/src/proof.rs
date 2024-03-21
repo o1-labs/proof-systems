@@ -20,6 +20,7 @@ pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N, Vec<G::ScalarField>>,
     pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
+    pub fixed_lookup_tables: Vec<(ID, Vec<G::ScalarField>)>,
 }
 
 // This should be used only for testing purposes.
@@ -37,6 +38,8 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
+            // FIXME
+            fixed_lookup_tables: vec![],
         }
     }
 }
