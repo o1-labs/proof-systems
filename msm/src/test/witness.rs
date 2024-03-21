@@ -93,7 +93,6 @@ impl WitnessBuilderEnv<Fp> {
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: vec![],
-            public_input_size: 0,
         }
     }
 

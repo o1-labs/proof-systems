@@ -234,7 +234,6 @@ mod tests {
         let proof_inputs = ProofInputs {
             evaluations: *witness,
             mvlookups: vec![lookup_witness_rangecheck15, lookup_witness_rangecheck4],
-            public_input_size: 0,
         };
 
         let proof = prove::<

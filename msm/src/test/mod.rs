@@ -49,7 +49,6 @@ mod tests {
         let proof_inputs = ProofInputs {
             evaluations,
             mvlookups: vec![],
-            public_input_size: 0,
         };
 
         let proof =
@@ -136,7 +135,6 @@ mod tests {
         let proof_inputs = ProofInputs {
             evaluations: evaluations_prime,
             mvlookups: vec![],
-            public_input_size: 0,
         };
 
         let proof =
