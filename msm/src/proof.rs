@@ -51,17 +51,48 @@ pub struct ProofEvaluations<const N: usize, F> {
     pub(crate) ft_eval1: F,
 }
 
+/// The trait ColumnEvaluations is used by the verifier.
+/// It will return the evaluation of the corresponding column at the
+/// evaluation points coined by the verifier during the protocol.
 impl<const N: usize, F: Clone> ColumnEvaluations<F> for ProofEvaluations<N, F> {
     type Column = crate::columns::Column;
+
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
-        let crate::columns::Column::X(i) = col else {
-            todo!()
+        let res = match col {
+            Self::Column::X(i) => {
+                if i < N {
+                    self.witness_evals[i].clone()
+                } else {
+                    panic!("Index out of bounds")
+                }
+            }
+            Self::Column::LookupPartialSum(i) => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.h[i].clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupAggregation => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.sum.clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupMultiplicity(i) => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.m[i as usize].clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            // FIXME: finish implement fixed tables
+            Self::Column::LookupFixedTable(_) => {
+                panic!("Logup is not yet implemented.")
+            }
         };
-        if i < self.witness_evals.cols.len() {
-            Ok(self.witness_evals.cols[i].clone())
-        } else {
-            panic!("No such column index")
-        }
+        Ok(res)
     }
 }
 
