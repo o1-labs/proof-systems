@@ -494,8 +494,6 @@
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraint;
 <span class="kw">pub mod </span>interpreter;
@@ -547,7 +545,6 @@
         <span class="kw">let </span>proof_inputs = ProofInputs {
             evaluations,
             mvlookups: <span class="macro">vec!</span>[],
-            public_input_size: <span class="number">0</span>,
         };
 
         <span class="kw">let </span>proof =
@@ -634,7 +631,6 @@
         <span class="kw">let </span>proof_inputs = ProofInputs {
             evaluations: evaluations_prime,
             mvlookups: <span class="macro">vec!</span>[],
-            public_input_size: <span class="number">0</span>,
         };
 
         <span class="kw">let </span>proof =

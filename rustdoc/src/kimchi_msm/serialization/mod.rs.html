@@ -256,7 +256,6 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{mvlookup::LookupTableID, MVLookup};
 
 <span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
@@ -488,7 +487,6 @@
         <span class="kw">let </span>proof_inputs = ProofInputs {
             evaluations: <span class="kw-2">*</span>witness,
             mvlookups: <span class="macro">vec!</span>[lookup_witness_rangecheck15, lookup_witness_rangecheck4],
-            public_input_size: <span class="number">0</span>,
         };
 
         <span class="kw">let </span>proof = prove::&lt;
