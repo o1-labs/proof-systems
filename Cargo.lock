@@ -1430,6 +1430,7 @@ dependencies = [
  "ark-poly",
  "ark-serialize",
  "groupmap",
+ "itertools 0.12.1",
  "kimchi",
  "mina-curves",
  "mina-poseidon",
