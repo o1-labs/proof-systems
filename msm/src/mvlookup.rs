@@ -2,6 +2,7 @@
 
 use ark_ff::Field;
 use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
+use std::collections::HashMap;
 
 use crate::expr::E;
 
@@ -102,18 +103,22 @@ pub struct MVLookupWitness<F, ID: LookupTableID> {
 /// FIXME: We should have a fixed number of m and h. Should we encode that in
 /// the type?
 #[derive(Debug, Clone)]
+// pub struct LookupProof<ID: LookupTableID, T> {
 pub struct LookupProof<T> {
     /// The multiplicity polynomials
+    /// FIXME: use a hashmap
     pub(crate) m: Vec<T>,
     /// The polynomial keeping the sum of each row
     pub(crate) h: Vec<T>,
     /// The "running-sum" over the rows, coined `\phi`
     pub(crate) sum: T,
+    // pub(crate) fixed_lookup_tables: HashMap<ID, T>
 }
 
 /// Iterator implementation to abstract the content of the structure.
 /// It can be used to iterate over the commitments (resp. the evaluations)
 /// without requiring to have a look at the inner fields.
+// impl<'lt, G, ID: LookupTableID + Send + Sync + Copy> IntoIterator for &'lt LookupProof<G, ID> {
 impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
     type Item = &'lt G;
     type IntoIter = std::vec::IntoIter<&'lt G>;
