@@ -1,9 +1,13 @@
-use ark_ff::PrimeField;
+use ark_ff::{FpParameters, PrimeField, Zero};
+use num_bigint::{BigInt, BigUint, ToBigInt};
+use num_integer::Integer;
+use num_traits::{sign::Signed, Euclid};
 
 use crate::{
     serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS},
     LIMB_BITSIZE, N_LIMBS,
 };
+use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 pub trait InterpreterEnv<Fp: PrimeField> {
     type Position;
@@ -284,6 +288,34 @@ pub const N_LIMBS_SMALL: usize = N_LIMBS;
 pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
 pub const N_LIMBS_LARGE: usize = 4;
 
+/// Interprets bigint `input` as an element of a field modulo `f_bi`,
+/// converts it to `[0,f_bi)` range, and outptus a corresponding
+/// biguint representation.
+fn bigint_to_biguint_f(input: BigInt, f_bi: &BigInt) -> BigUint {
+    let corrected_import: BigInt = if input.is_negative() && input > -f_bi {
+        &input + f_bi
+    } else if input.is_negative() {
+        Euclid::rem_euclid(&input, f_bi)
+    } else {
+        input
+    };
+    corrected_import.to_biguint().unwrap()
+}
+
+/// Decompose biguint into `N` limbs of bit size `B`.
+fn limb_decompose_biguint<F: PrimeField, const B: usize, const N: usize>(input: BigUint) -> [F; N] {
+    let ff_el: ForeignElement<F, B, N> = ForeignElement::from_biguint(input);
+    ff_el.limbs
+}
+
+/// Decomposes a foreign field element into `N` limbs of bit size `B`.
+fn limb_decompose_ff<F: PrimeField, Ff: PrimeField, const B: usize, const N: usize>(
+    input: &Ff,
+) -> [F; N] {
+    let input_bi: BigUint = FieldHelpers::to_biguint(input);
+    limb_decompose_biguint::<F, B, N>(input_bi)
+}
+
 /// Returns all `(i,j)` with `i,j \in [0,list_len]` such that `i + j = n`.
 fn choice2(list_len: usize, n: usize) -> Vec<(usize, usize)> {
     use itertools::Itertools;
@@ -448,4 +480,165 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
 
         env.add_constraint(constraint);
     }
+}
+
+/// Multiplication sub-circuit of the serialization/bootstrap
+/// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
+/// returns next coefficient c_i.
+#[allow(dead_code)]
+pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
+    env: &mut Env,
+    chal: Ff,
+    coeff_input: Ff,
+) -> Ff {
+    let coeff_result = chal * coeff_input;
+
+    let two_bi: BigInt = TryFrom::try_from(2).unwrap();
+
+    let large_limb_size: F = From::from(1u128 << LIMB_BITSIZE_LARGE);
+
+    // Foreign field modulus
+    let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+    let f_bi: BigInt = f_bui.to_bigint().unwrap();
+
+    // Native field modulus (prime)
+    let n_bui: BigUint = TryFrom::try_from(F::Params::MODULUS).unwrap();
+    let n_bi: BigInt = n_bui.to_bigint().unwrap();
+    let n_half_bi = &n_bi / &two_bi;
+
+    let chal_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&chal);
+    let chal_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&chal);
+    let coeff_input_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&coeff_input);
+    let coeff_result_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&coeff_result);
+    let ff_modulus_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(f_bui.clone());
+
+    let coeff_input_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&coeff_input);
+    let coeff_result_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&coeff_result);
+
+    // No generics for closures
+    let write_array_small =
+        |env: &mut Env,
+         input: [F; N_LIMBS_SMALL],
+         f_column: &dyn Fn(usize) -> SerializationColumn| {
+            input.iter().enumerate().for_each(|(i, var)| {
+                env.copy(&Env::constant(*var), Env::get_column(f_column(i)));
+            })
+        };
+
+    let write_array_large =
+        |env: &mut Env,
+         input: [F; N_LIMBS_LARGE],
+         f_column: &dyn Fn(usize) -> SerializationColumn| {
+            input.iter().enumerate().for_each(|(i, var)| {
+                env.copy(&Env::constant(*var), Env::get_column(f_column(i)));
+            })
+        };
+
+    write_array_small(env, chal_limbs_small, &|i| {
+        SerializationColumn::ChalConverted(i)
+    });
+    write_array_small(env, coeff_input_limbs_small, &|i| {
+        SerializationColumn::CoeffInput(i)
+    });
+    write_array_small(env, coeff_result_limbs_small, &|i| {
+        SerializationColumn::CoeffResult(i)
+    });
+    write_array_large(env, ff_modulus_limbs_large, &|i| {
+        SerializationColumn::FFieldModulus(i)
+    });
+
+    let chal_bi: BigInt = FieldHelpers::to_bigint_positive(&chal);
+    let coeff_input_bi: BigInt = FieldHelpers::to_bigint_positive(&coeff_input);
+    let coeff_result_bi: BigInt = FieldHelpers::to_bigint_positive(&coeff_result);
+
+    let (quotient_bi, r_bi) = (&chal_bi * coeff_input_bi - coeff_result_bi).div_rem(&f_bi);
+    assert!(r_bi.is_zero());
+    assert!(quotient_bi.is_positive());
+
+    // Used for witness computation
+    let quotient_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_biguint::<F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(
+            quotient_bi.to_biguint().unwrap(),
+        );
+
+    // Written into the columns
+    let quotient_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(
+            quotient_bi.to_biguint().unwrap(),
+        );
+
+    write_array_small(env, quotient_limbs_small, &|i| {
+        SerializationColumn::Quotient(i)
+    });
+
+    let mut carry: F = From::from(0u64);
+
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..N_LIMBS_LARGE * 2 - 1 {
+        let compute_carry = |res: F| -> F {
+            // TODO enforce this as an integer division
+            let mut res_bi = res.to_bigint_positive();
+            if res_bi > n_half_bi {
+                res_bi -= &n_bi;
+            }
+            let (div, rem) = res_bi.div_rem(&large_limb_size.to_bigint_positive());
+            assert!(
+                rem.is_zero(),
+                "Cannot compute carry for step {i:?}: div {div:?}, rem {rem:?}"
+            );
+            let carry_f: BigUint = bigint_to_biguint_f(div, &n_bi);
+            F::from_biguint(&carry_f).unwrap()
+        };
+
+        let assign_carry = |env: &mut Env, newcarry: F, carryvar: &mut F| {
+            // Last carry should be zero, otherwise we record it
+            if i < N_LIMBS_LARGE * 2 - 2 {
+                // Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I think.
+                let newcarry_sign = if newcarry.to_bigint_positive() > n_half_bi {
+                    F::zero() - F::one()
+                } else {
+                    F::one()
+                };
+                let newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
+                // Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                let newcarry_limbs: [F; 6] =
+                    limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
+
+                for (j, limb) in newcarry_limbs.iter().enumerate() {
+                    env.copy(
+                        &Env::constant(newcarry_sign * limb),
+                        Env::get_column(SerializationColumn::Carry(6 * i + j)),
+                    );
+                }
+
+                *carryvar = newcarry;
+            } else {
+                // should this be in circiut?
+                assert!(newcarry.is_zero(), "Last carry is non-zero");
+            }
+        };
+
+        let mut res = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            chal_limbs_large[j] * coeff_input_limbs_large[k]
+        });
+        if i < N_LIMBS_LARGE {
+            res -= &coeff_result_limbs_large[i];
+        }
+        res -= fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            quotient_limbs_large[j] * ff_modulus_limbs_large[k]
+        });
+        res += carry;
+        let newcarry = compute_carry(res);
+        assign_carry(env, newcarry, &mut carry);
+    }
+
+    constrain_multiplication::<F, Ff, Env>(env);
+    coeff_result
 }
