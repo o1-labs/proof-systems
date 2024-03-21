@@ -155,7 +155,7 @@ mod tests {
     use super::*;
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
     use kimchi::{
-        circuits::expr::{Expr, ExprInner, Op2, Variable},
+        circuits::expr::{ConstantExprInner, Expr, ExprInner, Op2, Variable},
         folding::{
             expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
             BaseSponge, FoldingCompatibleExpr, FoldingConfig,
@@ -239,18 +239,24 @@ mod tests {
         );
 
         // Define variables to be used in larger expressions
-        let x = Expr::Atom(ExprInner::Cell::<Fp, TestColumn>(Variable {
-            col: TestColumn::X,
-            row: CurrOrNext::Curr,
-        }));
-        let y = Expr::Atom(ExprInner::Cell::<Fp, TestColumn>(Variable {
-            col: TestColumn::Y,
-            row: CurrOrNext::Curr,
-        }));
-        let z = Expr::Atom(ExprInner::Cell::<Fp, TestColumn>(Variable {
-            col: TestColumn::Z,
-            row: CurrOrNext::Curr,
-        }));
+        let x = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
+            Variable {
+                col: TestColumn::X,
+                row: CurrOrNext::Curr,
+            },
+        ));
+        let y = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
+            Variable {
+                col: TestColumn::Y,
+                row: CurrOrNext::Curr,
+            },
+        ));
+        let z = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
+            Variable {
+                col: TestColumn::Z,
+                row: CurrOrNext::Curr,
+            },
+        ));
 
         // Define variables with folding expressions
         let x_f =

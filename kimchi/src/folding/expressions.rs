@@ -1,7 +1,6 @@
 use crate::{
     circuits::expr::{
-        ChallengeTerm, ConstantExpr, ConstantExprInner, ConstantTerm, Expr, ExprInner, Op2,
-        Operations, Variable,
+        ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
     },
     folding::{
         quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
@@ -9,10 +8,9 @@ use crate::{
     },
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One};
+use ark_ff::One;
 use itertools::Itertools;
 use num_traits::Zero;
-use rayon::Yield;
 
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
@@ -505,25 +503,6 @@ pub fn folding_expression<C: FoldingConfig>(
     (integrated, extended_witness_generator)
 }
 
-impl<F, Col, Config: FoldingConfig<Column = Col>> From<ExprInner<F, Col>>
-    for FoldingCompatibleExprInner<Config>
-where
-    Config::Curve: AffineCurve<ScalarField = F>,
-{
-    fn from(expr: ExprInner<F, Col>) -> Self {
-        match expr {
-            ExprInner::Constant(c) => FoldingCompatibleExprInner::Constant(c),
-            ExprInner::Cell(col) => FoldingCompatibleExprInner::Cell(col),
-            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows
-            }
-            ExprInner::UnnormalizedLagrangeBasis(i) => {
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize)
-            }
-        }
-    }
-}
-
 impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
@@ -542,27 +521,33 @@ where
     }
 }
 
-impl<F, Config: FoldingConfig> From<Operations<ConstantExprInner<F>>>
+impl<F, Col, Config: FoldingConfig<Column = Col>> From<ExprInner<ConstantExprInner<F>, Col>>
     for FoldingCompatibleExprInner<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
     Config::Challenge: From<ChallengeTerm>,
 {
-    fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
+    fn from(expr: ExprInner<ConstantExprInner<F>, Col>) -> Self {
         match expr {
-            Operations::Atom(inner) => inner.into(),
-            _ => panic!("Cannot convert this expression to an Atom"),
+            ExprInner::Constant(cexpr) => cexpr.into(),
+            ExprInner::Cell(col) => FoldingCompatibleExprInner::Cell(col),
+            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            }
+            ExprInner::UnnormalizedLagrangeBasis(i) => {
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize)
+            }
         }
     }
 }
 
-impl<F, Config: FoldingConfig> From<Operations<ConstantExprInner<F>>>
-    for FoldingCompatibleExpr<Config>
+impl<F, Col, Config: FoldingConfig<Column = Col>>
+    From<Operations<ExprInner<ConstantExprInner<F>, Col>>> for FoldingCompatibleExpr<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
     Config::Challenge: From<ChallengeTerm>,
 {
-    fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
+    fn from(expr: Operations<ExprInner<ConstantExprInner<F>, Col>>) -> Self {
         match expr {
             Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
             Operations::Add(x, y) => {
