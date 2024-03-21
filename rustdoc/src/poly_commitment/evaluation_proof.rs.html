@@ -618,11 +618,11 @@
     <span class="kw">if </span>!plnm_evals_part.is_empty() {
         <span class="kw">let </span>n = plnm_evals_part.len();
         <span class="kw">let </span>max_poly_size = srs_length;
-        <span class="kw">let </span>num_chunks = <span class="kw">if </span>n % max_poly_size == <span class="number">0 </span>{
-            n / max_poly_size
-        } <span class="kw">else </span>{
-            n / max_poly_size + <span class="number">1
-        </span>};
+        <span class="kw">let </span>num_chunks = <span class="kw">if </span>n == <span class="number">0 </span>{
+            <span class="number">1
+        </span>} <span class="kw">else </span>{
+            n / max_poly_size + <span class="kw">if </span>n % max_poly_size == <span class="number">0 </span>{ <span class="number">0 </span>} <span class="kw">else </span>{ <span class="number">1 </span>}
+        };
         plnm += <span class="kw-2">&amp;</span>Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
             .to_chunked_polynomial(num_chunks, max_poly_size)
