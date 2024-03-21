@@ -60,14 +60,44 @@ impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
     type Column = crate::columns::Column;
 
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
-        let crate::columns::Column::X(i) = col else {
-            todo!()
+        let res = match col {
+            Self::Column::X(i) => {
+                if i < N {
+                    self.witness_evals[i].clone()
+                } else {
+                    panic!("Index out of bounds")
+                }
+            }
+            Self::Column::LookupPartialSum(i) => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.h[i].clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupAggregation => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.sum.clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            // FIXME: this requires to have a hashmap for the multiplicities as
+            // the index of the column is the table ID
+            Self::Column::LookupMultiplicity(i) => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.m[i as usize].clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            // FIXME: finish implement fixed tables
+            // Use hashmap as for the lookup multiplicity
+            Self::Column::LookupFixedTable(_) => {
+                panic!("Logup is not yet implemented.")
+            }
         };
-        if i < self.witness_evals.cols.len() {
-            Ok(self.witness_evals.cols[i].clone())
-        } else {
-            panic!("No such column index")
-        }
+        Ok(res)
     }
 }
 
