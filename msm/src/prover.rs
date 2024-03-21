@@ -390,7 +390,6 @@ where
     let u = u_chal.to_field(endo_r);
 
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
-    let _evaluation_form = |e| DensePolynomialOrEvaluations::Evaluations(e, domain.d1);
     let non_hiding = |d1_size| PolyComm {
         elems: vec![G::ScalarField::zero(); d1_size],
     };
