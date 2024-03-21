@@ -22,6 +22,11 @@ impl LookupTableID for LookupTable {
         }
     }
 
+    /// All tables are fixed tables.
+    fn is_fixed(&self) -> bool {
+        true
+    }
+
     fn length(&self) -> usize {
         match self {
             Self::RangeCheck15 => 1 << 15,
