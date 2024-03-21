@@ -14,6 +14,7 @@ pub mod constants;
 pub mod constraint_system;
 pub mod cvar;
 pub mod errors;
+pub mod ff_add;
 pub mod folding;
 pub mod poseidon;
 pub(crate) mod range_checks;

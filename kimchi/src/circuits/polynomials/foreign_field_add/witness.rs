@@ -42,7 +42,7 @@ impl FFOps {
 // - the sign of the operation
 // - the overflow flag
 // - the carry value
-fn compute_ffadd_values<F: PrimeField>(
+pub(crate) fn compute_ffadd_values<F: PrimeField>(
     left_input: &ForeignElement<F, 3>,
     right_input: &ForeignElement<F, 4>,
     opcode: FFOps,
