@@ -49,7 +49,7 @@ pub fn prove<
     Column,
     RNG,
     const N: usize,
-    ID: LookupTableID + Send + Sync + Copy,
+    ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
