@@ -103,8 +103,7 @@ pub struct MVLookupWitness<F, ID: LookupTableID> {
 /// FIXME: We should have a fixed number of m and h. Should we encode that in
 /// the type?
 #[derive(Debug, Clone)]
-// pub struct LookupProof<ID: LookupTableID, T> {
-pub struct LookupProof<T> {
+pub struct LookupProof<T, ID> {
     /// The multiplicity polynomials
     /// FIXME: use a hashmap
     pub(crate) m: Vec<T>,
@@ -112,6 +111,8 @@ pub struct LookupProof<T> {
     pub(crate) h: Vec<T>,
     /// The "running-sum" over the rows, coined `\phi`
     pub(crate) sum: T,
+    // FIXME: use a hashmap for the multiplicity, and get rid of me.
+    pub id: std::marker::PhantomData<ID>,
     // pub(crate) fixed_lookup_tables: HashMap<ID, T>
 }
 
@@ -119,7 +120,7 @@ pub struct LookupProof<T> {
 /// It can be used to iterate over the commitments (resp. the evaluations)
 /// without requiring to have a look at the inner fields.
 // impl<'lt, G, ID: LookupTableID + Send + Sync + Copy> IntoIterator for &'lt LookupProof<G, ID> {
-impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
+impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
     type Item = &'lt G;
     type IntoIter = std::vec::IntoIter<&'lt G>;
 
