@@ -1436,6 +1436,7 @@ dependencies = [
  "mina-poseidon",
  "num-bigint",
  "num-integer",
+ "num-traits",
  "o1-utils",
  "poly-commitment",
  "rand",
