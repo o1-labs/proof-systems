@@ -63,8 +63,11 @@ impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
 
     fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable) {
         let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
-        let big_limb: BigUint = BigUint::from(1u64) << ((N_LIMBS - 1) * LIMB_BITSIZE);
-        let top_modulus: BigUint = f_bui - big_limb;
+        // N_LIMBS * LIMB_BITSIZE = 17*15 = 255
+        // (N_LIMBS-1) * LIMB_BITSIZE = 16*15 = 240
+        // So we only want to check that the highest 15 bits of our number is
+        // less than the highest bits of f after dropping 240 of the lowest ones.
+        let top_modulus: BigUint = f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE);
         let top_modulus_f: F = F::from_biguint(&top_modulus).unwrap();
         assert!(*value < top_modulus_f);
     }

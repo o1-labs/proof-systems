@@ -29,7 +29,7 @@ pub trait FECInterpreterEnv<F: PrimeField> {
     /// Checks |x| = 1, that is x ∈ {-1,1}
     fn range_check_abs1(&mut self, value: &Self::Variable);
 
-    /// Checks x ∈ [0, f - 2^{15*16})
+    /// Checks x ∈ [0, f >> 15*16)
     fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable);
 
     /// Checks input x ∈ [0,2^15)
@@ -312,7 +312,7 @@ pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterE
         .chain(yr_limbs_small.iter())
         .enumerate()
     {
-        if i % N_LIMBS_LARGE == N_LIMBS_LARGE - 1 {
+        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
             env.range_check_ff_highest::<Ff>(x);
         } else {
