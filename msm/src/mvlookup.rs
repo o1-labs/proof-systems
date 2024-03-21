@@ -1,5 +1,6 @@
 //! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
 
+use std::collections::HashMap;
 use ark_ff::Field;
 use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
 
@@ -93,6 +94,8 @@ pub struct MVLookupWitness<F, ID: LookupTableID> {
     pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
+    /// The table ID
+    pub id: ID,
 }
 
 /// Represents the proof of the lookup argument
@@ -104,13 +107,11 @@ pub struct MVLookupWitness<F, ID: LookupTableID> {
 #[derive(Debug, Clone)]
 pub struct LookupProof<T, ID> {
     /// The multiplicity polynomials
-    pub(crate) m: Vec<T>,
+    pub(crate) m: HashMap<ID, T>,
     /// The polynomial keeping the sum of each row
     pub(crate) h: Vec<T>,
     /// The "running-sum" over the rows, coined `\phi`
     pub(crate) sum: T,
-    // FIXME: use a hashmap for the multiplicity, and get rid of me.
-    pub id: std::marker::PhantomData<ID>,
 }
 
 /// Iterator implementation to abstract the content of the structure.
@@ -123,7 +124,9 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
     fn into_iter(self) -> Self::IntoIter {
         let n = self.h.len();
         let mut iter_contents = Vec::with_capacity(1 + n + 1);
-        iter_contents.extend(&self.m);
+        self.m.iter().for_each(|(_key, value)| {
+            iter_contents.push(value);
+        });
         iter_contents.extend(&self.h);
         iter_contents.push(&self.sum);
         iter_contents.into_iter()
@@ -131,6 +134,8 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 }
 
 pub mod prover {
+    use std::collections::HashMap;
+
     use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
     use crate::MAX_SUPPORTED_DEGREE;
     use ark_ff::{FftField, Zero};
@@ -151,9 +156,9 @@ pub mod prover {
         pub fixed_lookup_tables: &'a Vec<Evaluations<F, D<F>>>,
     }
 
-    pub struct Env<G: KimchiCurve> {
-        pub lookup_counters_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
-        pub lookup_counters_comm_d1: Vec<PolyComm<G>>,
+    pub struct Env<G: KimchiCurve, ID: LookupTableID> {
+        pub lookup_counters_poly_d1: HashMap<ID, DensePolynomial<G::ScalarField>>,
+        pub lookup_counters_comm_d1: HashMap<ID, PolyComm<G>>,
 
         pub lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
         pub lookup_terms_comms_d1: Vec<PolyComm<G>>,
@@ -162,7 +167,7 @@ pub mod prover {
         pub lookup_aggregation_comm_d1: PolyComm<G>,
 
         // Evaluating over d8 for the quotient polynomial
-        pub lookup_counters_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+        pub lookup_counters_evals_d8: HashMap<ID, Evaluations<G::ScalarField, D<G::ScalarField>>>,
         pub lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
         pub lookup_aggregation_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>>,
 
@@ -173,7 +178,7 @@ pub mod prover {
         pub beta: G::ScalarField,
     }
 
-    impl<G: KimchiCurve> Env<G> {
+    impl<G: KimchiCurve, ID: LookupTableID> Env<G, ID> {
         /// Create an environment for the prover to create a proof for the MVLookup protocol.
         /// The protocol does suppose that the individual lookup terms are
         /// committed as part of the columns.
@@ -182,7 +187,6 @@ pub mod prover {
         pub fn create<
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
-            ID: LookupTableID,
         >(
             lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
@@ -196,32 +200,33 @@ pub mod prover {
             let lookup_counters_evals_d1 = (&lookups)
                 .into_par_iter()
                 .map(|lookup| {
-                    Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                         lookup.m.to_vec(),
                         domain.d1,
-                    )
+                    );
+                    (lookup.id, evals)
                 })
-                .collect::<Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
+                .collect::<Vec<(ID, Evaluations<G::ScalarField, D<G::ScalarField>>)>>();
 
-            let lookup_counters_poly_d1: Vec<DensePolynomial<G::ScalarField>> =
+            let lookup_counters_poly_d1: Vec<(ID, DensePolynomial<G::ScalarField>)> =
                 (&lookup_counters_evals_d1)
                     .into_par_iter()
-                    .map(|evals| evals.interpolate_by_ref())
+                    .map(|(id, evals)| (id, evals.interpolate_by_ref()))
                     .collect();
 
             let lookup_counters_evals_d8 = (&lookup_counters_poly_d1)
                 .into_par_iter()
-                .map(|lookup| lookup.evaluate_over_domain_by_ref(domain.d8))
-                .collect::<Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
+                .map(|(id, lookup)| (id, lookup.evaluate_over_domain_by_ref(domain.d8)))
+                .collect::<Vec<(ID, Evaluations<G::ScalarField, D<G::ScalarField>>)>>();
 
-            let lookup_counters_comm_d1: Vec<PolyComm<G>> = (&lookup_counters_evals_d1)
+            let lookup_counters_comm_d1: Vec<(ID, PolyComm<G>)> = (&lookup_counters_evals_d1)
                 .into_par_iter()
-                .map(|poly| srs.commit_evaluations_non_hiding(domain.d1, poly))
+                .map(|(id, poly)| (id, srs.commit_evaluations_non_hiding(domain.d1, poly)))
                 .collect();
 
             lookup_counters_comm_d1
                 .iter()
-                .for_each(|comm| absorb_commitment(fq_sponge, comm));
+                .for_each(|(_id, comm)| absorb_commitment(fq_sponge, comm));
             // -- end of m(X)
 
             // -- start computing the row sums h(X)
@@ -239,7 +244,7 @@ pub mod prover {
             let lookup_terms_evals: Vec<Vec<Vec<G::ScalarField>>> = lookups
                 .into_iter()
                 .map(|lookup| {
-                    let MVLookupWitness { f, m: _ } = lookup;
+                    let MVLookupWitness { f, m: _, id: _ } = lookup;
                     // The number of functions to look up, including the fixed table.
                     let n = f.len();
                     let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
