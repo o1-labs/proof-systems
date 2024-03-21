@@ -67,8 +67,14 @@ impl<const N: usize, F: Clone> ColumnEvaluations<F> for ProofEvaluations<N, F> {
 
 #[derive(Debug, Clone)]
 pub struct ProofCommitments<const N: usize, G: KimchiCurve> {
+    /// Commitments to the N columns of the circuits, also called the 'witnesses'.
+    /// If some columns are considered as public inputs, it is counted in the witness.
     pub(crate) witness_comms: Witness<N, PolyComm<G>>,
+    /// Commitments to the polynomials used by the lookup argument.
+    /// The values contains the chunked polynomials.
     pub(crate) mvlookup_comms: Option<LookupProof<PolyComm<G>>>,
+    /// Commitments to the quotient polynomial.
+    /// The value contains the chunked polynomials.
     pub(crate) t_comm: PolyComm<G>,
 }
 
