@@ -98,7 +98,7 @@ mod tests {
             }
         }
 
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0, LookupTableIDs>(
             domain,
             &srs,
             &constraints,

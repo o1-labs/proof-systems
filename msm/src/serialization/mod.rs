@@ -244,14 +244,21 @@ mod tests {
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
 
-        let verifies =
-            verify::<_, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS, 0>(
-                domain,
-                &srs,
-                &constraints,
-                &proof,
-                Witness::zero_vec(DOMAIN_SIZE),
-            );
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            SERIALIZATION_N_COLUMNS,
+            0,
+            LookupTable,
+        >(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+            Witness::zero_vec(DOMAIN_SIZE),
+        );
         assert!(verifies)
     }
 }

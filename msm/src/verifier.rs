@@ -1,3 +1,4 @@
+use crate::mvlookup::LookupTableID;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
 use rand::thread_rng;
@@ -28,11 +29,12 @@ pub fn verify<
     EFrSponge: FrSponge<G::ScalarField>,
     const N: usize,
     const NPUB: usize,
+    ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
     constraint_exprs: &Vec<E<G::ScalarField>>,
-    proof: &Proof<N, G, OpeningProof>,
+    proof: &Proof<N, G, OpeningProof, ID>,
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
 ) -> bool
 where

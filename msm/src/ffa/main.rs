@@ -71,6 +71,7 @@ pub fn main() {
         ScalarSponge,
         FFA_N_COLUMNS,
         FFA_NPUB_COLUMNS,
+        LookupTableIDs,
     >(domain, &srs, &constraints, &proof, pub_inputs);
     println!("Proof verification result: {verifies}")
 }

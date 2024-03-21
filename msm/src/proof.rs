@@ -49,17 +49,23 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProofEvaluations<const N: usize, F> {
-    /// Witness evaluations, including public input
+pub struct ProofEvaluations<const N: usize, F, ID: LookupTableID> {
+    /// Witness evaluations, including public inputs
     pub(crate) witness_evals: Witness<N, PointEvaluations<F>>,
     /// MVLookup argument evaluations
-    pub(crate) mvlookup_evals: Option<LookupProof<PointEvaluations<F>>>,
-    /// Evaluation of Z_H(xi) (t_0(X) + xi^n t_1(X) + ...) at xi.
+    pub(crate) mvlookup_evals: Option<LookupProof<PointEvaluations<F>, ID>>,
+    /// Evaluation of Z_H(ζ) (t_0(X) + ζ^n t_1(X) + ...) at ζω.
     pub(crate) ft_eval1: F,
 }
 
-impl<const N: usize, F: Clone> ColumnEvaluations<F> for ProofEvaluations<N, F> {
+/// The trait ColumnEvaluations is used by the verifier.
+/// It will return the evaluation of the corresponding column at the
+/// evaluation points coined by the verifier during the protocol.
+impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
+    for ProofEvaluations<N, F, ID>
+{
     type Column = crate::columns::Column;
+
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
         let crate::columns::Column::X(i) = col else {
             todo!()
@@ -73,21 +79,21 @@ impl<const N: usize, F: Clone> ColumnEvaluations<F> for ProofEvaluations<N, F> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ProofCommitments<const N: usize, G: KimchiCurve> {
+pub struct ProofCommitments<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     /// Commitments to the N columns of the circuits, also called the 'witnesses'.
     /// If some columns are considered as public inputs, it is counted in the witness.
     pub(crate) witness_comms: Witness<N, PolyComm<G>>,
     /// Commitments to the polynomials used by the lookup argument.
     /// The values contains the chunked polynomials.
-    pub(crate) mvlookup_comms: Option<LookupProof<PolyComm<G>>>,
+    pub(crate) mvlookup_comms: Option<LookupProof<PolyComm<G>, ID>>,
     /// Commitments to the quotient polynomial.
     /// The value contains the chunked polynomials.
     pub(crate) t_comm: PolyComm<G>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Proof<const N: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    pub(crate) proof_comms: ProofCommitments<N, G>,
-    pub(crate) proof_evals: ProofEvaluations<N, G::ScalarField>,
+pub struct Proof<const N: usize, G: KimchiCurve, OpeningProof: OpenProof<G>, ID: LookupTableID> {
+    pub(crate) proof_comms: ProofCommitments<N, G, ID>,
+    pub(crate) proof_evals: ProofEvaluations<N, G::ScalarField, ID>,
     pub(crate) opening_proof: OpeningProof,
 }
