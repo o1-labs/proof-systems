@@ -1,6 +1,9 @@
 use ark_ff::PrimeField;
 
-use crate::serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS};
+use crate::{
+    serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS},
+    LIMB_BITSIZE, N_LIMBS,
+};
 
 pub trait InterpreterEnv<Fp: PrimeField> {
     type Position;
@@ -9,6 +12,8 @@ pub trait InterpreterEnv<Fp: PrimeField> {
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
+        + std::ops::Neg<Output = Self::Variable>
+        + From<u64>
         + std::fmt::Debug;
 
     fn add_constraint(&mut self, cst: Self::Variable);
@@ -21,6 +26,15 @@ pub trait InterpreterEnv<Fp: PrimeField> {
 
     /// Check that the value is in the range [0, 2^15-1]
     fn range_check15(&mut self, _value: &Self::Variable);
+
+    /// Checks input |x| ∈ [0,2^15)
+    fn range_check_abs15bit(&mut self, value: &Self::Variable);
+
+    /// Checks input |x| ∈ [0,2^4)
+    fn range_check_abs4bit(&mut self, value: &Self::Variable);
+
+    /// Checks x ∈ [0, f >> 15*16)
+    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable);
 
     /// Check that the value is in the range [0, 2^4-1]
     fn range_check4(&mut self, _value: &Self::Variable);
@@ -256,6 +270,182 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
             let var = limb2_vars[i].clone() * Env::constant(Fp::from(1u128 << (4 * (i - 1))));
             acc - var
         });
+        env.add_constraint(constraint);
+    }
+}
+
+/// Alias for LIMB_BITSIZE, used for convenience.
+pub const LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
+/// Alias for N_LIMBS, used for convenience.
+pub const N_LIMBS_SMALL: usize = N_LIMBS;
+
+/// In FEC addition we use bigger limbs, of 75 bits, that are still
+/// nicely decomposable into smaller 15bit ones for range checking.
+pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
+pub const N_LIMBS_LARGE: usize = 4;
+
+/// Returns all `(i,j)` with `i,j \in [0,list_len]` such that `i + j = n`.
+fn choice2(list_len: usize, n: usize) -> Vec<(usize, usize)> {
+    use itertools::Itertools;
+    let indices = Vec::from_iter(0..list_len);
+    indices
+        .clone()
+        .into_iter()
+        .cartesian_product(indices)
+        .filter(|(i1, i2)| i1 + i2 == n)
+        .collect()
+}
+
+/// A convenience helper: given a `list_len` and `n` (arguments of
+/// `choice2`), it creates an array consisting of `f(i,j)` where `i,j
+/// \in [0,list_len]` such that `i + j = n`, and then sums all the
+/// elements in this array.
+fn fold_choice2<Var, Foo>(list_len: usize, n: usize, f: Foo) -> Var
+where
+    Foo: Fn(usize, usize) -> Var,
+    Var: Clone + std::ops::Add<Var, Output = Var> + From<u64>,
+{
+    let chosen = choice2(list_len, n);
+    chosen
+        .into_iter()
+        .map(|(j, k)| f(j, k))
+        .fold(Var::from(0u64), |acc, v| acc + v)
+}
+
+/// Helper function for limb recombination.
+///
+/// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
+/// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
+/// chunks `a_i` of size `5` from the first, and recombining them as
+/// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
+fn combine_small_to_large<const M: usize, const N: usize, F: PrimeField, Env: InterpreterEnv<F>>(
+    x: [Env::Variable; M],
+) -> [Env::Variable; N] {
+    let constant_u128 = |x: u128| Env::constant(From::from(x));
+    let disparity: usize = M % 5;
+    std::array::from_fn(|i| {
+        // We have less small limbs in the last large limb
+        let upper_bound = if disparity != 0 && i == N - 1 {
+            disparity
+        } else {
+            5
+        };
+        (0..upper_bound)
+            .map(|j| x[5 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
+            .fold(Env::Variable::from(0u64), |acc, v| acc + v)
+    })
+}
+
+/// Helper function for limb recombination for carry specifically.
+/// Each big carry limb is stored as 6 (not 5!) small elements. We
+/// accept 36 small limbs, and return 6 large ones.
+fn combine_carry<F: PrimeField, Env: InterpreterEnv<F>>(
+    x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
+) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
+    let constant_u128 = |x: u128| Env::constant(From::from(x));
+    std::array::from_fn(|i| {
+        (0..6)
+            .map(|j| x[6 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
+            .fold(Env::Variable::from(0u64), |acc, v| acc + v)
+    })
+}
+
+/// This constarins the multiplication part of the circuit.
+pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
+    env: &mut Env,
+) {
+    let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::ChalConverted(i)));
+    let coeff_input_limbs_small: [_; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffInput(i)));
+    let coeff_result_limbs_small: [_; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffResult(i)));
+
+    let ffield_modulus_limbs_large: [_; N_LIMBS_LARGE] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::FFieldModulus(i)));
+    let quotient_limbs_small: [_; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Quotient(i)));
+    let carry_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Carry(i)));
+
+    // u128 covers our limb sizes shifts which is good
+    let constant_u128 = |x: u128| -> Env::Variable { Env::constant(From::from(x)) };
+
+    // Result variable must be in the field.
+    for (i, x) in coeff_result_limbs_small.iter().enumerate() {
+        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
+            // If it's the highest limb, we need to check that it's representing a field element.
+            env.range_check_ff_highest::<Ff>(x);
+        } else {
+            env.range_check15(x);
+        }
+    }
+
+    // Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
+    for x in quotient_limbs_small.iter() {
+        env.range_check15(x);
+    }
+
+    // Carry limbs need to be in particular ranges.
+    for (i, x) in carry_limbs_small.iter().enumerate() {
+        if i % 6 == 5 {
+            // This should be a diferent range check depending on which big-limb we're processing?
+            // So instead of one type of lookup we will have 5 different ones?
+            env.range_check_abs4bit(x);
+        } else {
+            env.range_check_abs15bit(x);
+        }
+    }
+
+    // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
+
+    let chal_converted_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+        chal_converted_limbs_small.clone(),
+    );
+    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+        coeff_input_limbs_small.clone(),
+    );
+    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+        coeff_result_limbs_small.clone(),
+    );
+    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+        quotient_limbs_small.clone(),
+    );
+    let carry_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
+        combine_carry::<F, Env>(carry_limbs_small.clone());
+
+    let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
+    let add_extra_carries =
+        |i: usize, carry_limbs_large: &[Env::Variable; 2 * N_LIMBS_LARGE - 2]| -> Env::Variable {
+            if i == 0 {
+                -(carry_limbs_large[0].clone() * limb_size_large.clone())
+            } else if i < 2 * N_LIMBS_LARGE - 2 {
+                carry_limbs_large[i - 1].clone()
+                    - carry_limbs_large[i].clone() * limb_size_large.clone()
+            } else if i == 2 * N_LIMBS_LARGE - 2 {
+                carry_limbs_large[i - 1].clone()
+            } else {
+                panic!("add_extra_carries: the index {i:?} is too high")
+            }
+        };
+
+    // Equation 1
+    // General form:
+    // \sum_{k,j | k+j = i} xi_j cprev_k - c_i - \sum_{k,j} q_k f_j - c_i * 2^B + c_{i-1} =  0
+    #[allow(clippy::needless_range_loop)]
+    for i in 0..2 * N_LIMBS_LARGE - 1 {
+        let mut constraint = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            chal_converted_limbs_large[j].clone() * coeff_input_limbs_large[k].clone()
+        });
+        if i < N_LIMBS_LARGE {
+            constraint = constraint - coeff_result_limbs_large[i].clone();
+        }
+        constraint = constraint
+            - fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+                quotient_limbs_large[j].clone() * ffield_modulus_limbs_large[k].clone()
+            });
+        constraint = constraint + add_extra_carries(i, &carry_limbs_large);
+
         env.add_constraint(constraint);
     }
 }
