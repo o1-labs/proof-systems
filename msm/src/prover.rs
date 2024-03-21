@@ -281,7 +281,8 @@ where
     //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
     let zeta = zeta_chal.to_field(endo_r);
 
-    let omega = domain.d1.group_gen; // index.cs.domain.d1.group_gen;
+    let omega = domain.d1.group_gen;
+    // We will also evaluate at ζω as lookups do require to go to the next row.
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at ζ and ζω -- Columns
