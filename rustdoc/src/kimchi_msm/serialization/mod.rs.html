@@ -361,7 +361,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = witness::Env::&lt;Fp&gt;::create();
         <span class="comment">// Boxing to avoid stack overflow
         </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;SERIALIZATION_N_COLUMNS, Vec&lt;Fp&gt;&gt;&gt; = Box::new(Witness {
-            cols: std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(DOMAIN_SIZE)),
+            cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(DOMAIN_SIZE))),
         });
 
         <span class="comment">// Boxing to avoid stack overflow

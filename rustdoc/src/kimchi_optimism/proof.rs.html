@@ -420,6 +420,8 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -452,9 +454,9 @@
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         ProofInputs {
             evaluations: Witness {
-                cols: std::array::from_fn(|<span class="kw">_</span>| {
+                cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| {
                     (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
-                }),
+                })),
             },
         }
     }
@@ -553,7 +555,7 @@
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
         Witness {
-            cols: eval_array_col(<span class="kw-2">&amp;</span>evaluations.cols).try_into().unwrap(),
+            cols: Box::new(eval_array_col(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>evaluations.cols)).try_into().unwrap()),
         }
     };
     <span class="kw">let </span>commitments = {
@@ -562,7 +564,7 @@
             polys.into_par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
         Witness {
-            cols: comm_array(<span class="kw-2">&amp;</span>polys.cols).try_into().unwrap(),
+            cols: Box::new(comm_array(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>polys.cols)).try_into().unwrap()),
         }
     };
 
@@ -583,7 +585,7 @@
             polys.par_iter().map(comm).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         };
         Witness {
-            cols: comm_array(<span class="kw-2">&amp;</span>polys.cols).try_into().unwrap(),
+            cols: Box::new(comm_array(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>polys.cols)).try_into().unwrap()),
         }
     };
     <span class="kw">let </span>zeta_evaluations = evals(<span class="kw-2">&amp;</span>zeta);
@@ -760,7 +762,9 @@
                 (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             });
             ProofInputs {
-                evaluations: MIPSWitness { cols },
+                evaluations: MIPSWitness {
+                    cols: Box::new(cols),
+                },
             }
         };
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
@@ -807,9 +811,9 @@
         <span class="kw">let </span>proof_inputs = {
             ProofInputs {
                 evaluations: KeccakWitness {
-                    cols: std::array::from_fn(|<span class="kw">_</span>| {
+                    cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| {
                         (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| Fp::rand(rng)).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                    }),
+                    })),
                 },
             }
         };

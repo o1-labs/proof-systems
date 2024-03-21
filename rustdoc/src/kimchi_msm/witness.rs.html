@@ -143,6 +143,8 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 <span class="kw">use </span>std::ops::Index;
@@ -157,13 +159,13 @@
 </span><span class="kw">pub struct </span>Witness&lt;<span class="kw">const </span>N: usize, T&gt; {
     <span class="doccomment">/// A witness row is represented by an array of N witness columns
     /// When T is a vector, then the witness describes the rows of the circuit.
-    </span><span class="kw">pub </span>cols: [T; N],
+    </span><span class="kw">pub </span>cols: Box&lt;[T; N]&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, T: Zero + Clone&gt; Default <span class="kw">for </span>Witness&lt;N, T&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         Witness {
-            cols: std::array::from_fn(|<span class="kw">_</span>| T::zero()),
+            cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| T::zero())),
         }
     }
 }
@@ -191,7 +193,7 @@
         Witness {
             <span class="comment">// Ideally the vector should be of domain size, but
             // one-element vector should be a reasonable default too.
-            </span>cols: std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[T::zero(); domain_size]),
+            </span>cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[T::zero(); domain_size])),
         }
     }
 
@@ -200,7 +202,9 @@
         <span class="kw">for </span>(i, vec) <span class="kw">in </span><span class="self">self</span>.cols[<span class="number">0</span>..NPUB].iter().enumerate() {
             newcols[i] = vec.clone();
         }
-        Witness { cols: newcols }
+        Witness {
+            cols: Box::new(newcols),
+        }
     }
 }
 
@@ -212,7 +216,7 @@
 
     <span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.cols);
+        iter_contents.extend(<span class="kw-2">&amp;*</span><span class="self">self</span>.cols);
         iter_contents.into_iter()
     }
 }
@@ -224,7 +228,7 @@
     <span class="doccomment">/// Iterate over the columns in the circuit.
     </span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(<span class="self">self</span>.cols);
+        iter_contents.extend(<span class="kw-2">*</span><span class="self">self</span>.cols);
         iter_contents.into_iter()
     }
 }
@@ -239,7 +243,7 @@
     <span class="doccomment">/// Iterate over the columns in the circuit, in parallel.
     </span><span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(<span class="self">self</span>.cols);
+        iter_contents.extend(<span class="kw-2">*</span><span class="self">self</span>.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -268,7 +272,7 @@
 
     <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.cols);
+        iter_contents.extend(<span class="kw-2">&amp;*</span><span class="self">self</span>.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -282,7 +286,7 @@
 
     <span class="kw">fn </span>into_par_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Iter {
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>.cols);
+        iter_contents.extend(<span class="kw-2">&amp;mut *</span><span class="self">self</span>.cols);
         iter_contents.into_par_iter()
     }
 }

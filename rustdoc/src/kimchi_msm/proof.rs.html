@@ -111,11 +111,11 @@
 </span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; ProofInputs&lt;N, G, LookupTableIDs&gt; {
     <span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;G::ScalarField&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
-        <span class="kw">let </span>cols: [Vec&lt;G::ScalarField&gt;; N] = std::array::from_fn(|<span class="kw">_</span>| {
+        <span class="kw">let </span>cols: Box&lt;[Vec&lt;G::ScalarField&gt;; N]&gt; = Box::new(std::array::from_fn(|<span class="kw">_</span>| {
             (<span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize)
                 .map(|<span class="kw">_</span>| G::ScalarField::rand(<span class="kw-2">&amp;mut </span>rng))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-        });
+        }));
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: <span class="macro">vec!</span>[LookupWitness::&lt;G::ScalarField&gt;::random(domain)],
