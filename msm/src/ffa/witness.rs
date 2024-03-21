@@ -29,7 +29,7 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
     fn empty() -> Self {
         WitnessBuilderEnv {
             witness: vec![Witness {
-                cols: [Zero::zero(); FFA_N_COLUMNS],
+                cols: Box::new([Zero::zero(); FFA_N_COLUMNS]),
             }],
         }
     }
@@ -99,14 +99,16 @@ impl WitnessBuilderEnv<Fp> {
         }
 
         ProofInputs {
-            evaluations: Witness { cols },
+            evaluations: Witness {
+                cols: Box::new(cols),
+            },
             mvlookups: vec![],
         }
     }
 
     pub fn next_row(&mut self) {
         self.witness.push(Witness {
-            cols: [Zero::zero(); FFA_N_COLUMNS],
+            cols: Box::new([Zero::zero(); FFA_N_COLUMNS]),
         });
     }
 }

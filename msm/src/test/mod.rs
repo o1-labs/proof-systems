@@ -172,7 +172,7 @@ mod tests {
         let random_x0s: Vec<Fp> = (0..domain_size).map(|_| Fp::rand(&mut rng)).collect();
         let exp_x1 = random_x0s.clone();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, exp_x1],
+            cols: Box::new([random_x0s, exp_x1]),
         };
 
         test_completeness_generic::<N, _>(
@@ -208,7 +208,7 @@ mod tests {
             .map(|(x0, x1)| (*x0) * (*x0) - x1)
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, random_x1s, exp_x2],
+            cols: Box::new([random_x0s, random_x1s, exp_x2]),
         };
 
         test_completeness_generic::<N, _>(
@@ -253,7 +253,7 @@ mod tests {
             .map(|((x0, x1), x2)| -((*x0) * (*x0) * (*x0) - Fp::from(42) * (*x1) * (*x2)))
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, random_x1s, random_x2s, exp_x3],
+            cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
         test_completeness_generic::<N, _>(
@@ -292,7 +292,7 @@ mod tests {
             .map(|(x1, x2)| -Fp::one() / (*x1 * *x2))
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, random_x1s, random_x2s, exp_x3],
+            cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
         test_completeness_generic::<N, _>(
@@ -325,7 +325,7 @@ mod tests {
             .map(|x0| -*x0 * *x0 * *x0 * *x0 * *x0)
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, exp_x1],
+            cols: Box::new([random_x0s, exp_x1]),
         };
 
         test_completeness_generic::<N, _>(
@@ -368,7 +368,7 @@ mod tests {
             .map(|x2| (Fp::one() / Fp::from(3)) * x2 * x2)
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, exp_x1, random_x2s, exp_x3],
+            cols: Box::new([random_x0s, exp_x1, random_x2s, exp_x3]),
         };
 
         test_completeness_generic::<N, _>(
@@ -423,7 +423,7 @@ mod tests {
             })
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, random_x1s, random_x2s, exp_x3],
+            cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
         test_completeness_generic::<N, _>(
@@ -478,7 +478,7 @@ mod tests {
             })
             .collect::<Vec<Fp>>();
         let witness: Witness<N, Vec<Fp>> = Witness {
-            cols: [random_x0s, random_x1s, random_x2s, exp_x3],
+            cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
         test_completeness_generic::<N, _>(
