@@ -350,8 +350,6 @@ pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterE
         }
     }
 
-    // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
-
     let xr_limbs_large =
         combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(xr_limbs_small.clone());
     let yr_limbs_large =
@@ -365,9 +363,6 @@ pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterE
     let q3_limbs_large =
         combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q3_limbs_small.clone());
 
-    // We need 2 * N_LIMBS_LARGE - 2 = 6 big carries, and we perform 7 equations.
-    // For that we store 30 small carries, so 2 * N_LIMBS_SMALL - 4 = 30.
-    // Each small carry is 5 limbs, with only the higher limb being potentially bigger than 2^B.
     let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
         combine_carry::<F, Env>(carry1_limbs_small.clone());
     let carry2_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
