@@ -67,37 +67,16 @@ mod tests {
         BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
 
-    use ark_ff::{FftField, Field, PrimeField};
-    use std::collections::HashMap;
+    use ark_ff::FftField;
 
     impl LookupTable {
-        fn into_lookup_vector<F: FftField + PrimeField + Field>(
-            self,
-            domain: EvaluationDomains<F>,
-        ) -> Vec<Lookup<F>> {
+        fn entries<F: FftField>(&self, domain: EvaluationDomains<F>) -> Vec<F> {
             assert!(domain.d1.size >= (1 << 15));
             match self {
-                Self::RangeCheck15 => (0..(1 << 15))
-                    .map(|i| Lookup {
-                        table_id: LookupTable::RangeCheck15,
-                        numerator: -F::one(),
-                        value: vec![F::from(i as u64)],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
-                Self::RangeCheck4 => (0..(1 << 15))
-                    .map(|i| {
-                        if i < (1 << 4) {
-                            F::from(i as u64)
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .map(|x| Lookup {
-                        table_id: LookupTable::RangeCheck4,
-                        numerator: -F::one(),
-                        value: vec![x],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
+                Self::RangeCheck15 => (0..domain.d1.size).map(|i| F::from(i)).collect(),
+                Self::RangeCheck4 => (0..domain.d1.size)
+                    .map(|i| if i < (1 << 4) { F::from(i) } else { F::zero() })
+                    .collect(),
             }
         }
     }
@@ -182,48 +161,26 @@ mod tests {
 
         let rangecheck15_m = witness_env.get_rangecheck15_normalized_multipliticies(domain);
         let rangecheck15_t = LookupTable::RangeCheck15
-            .into_lookup_vector(domain)
+            .entries(domain)
             .into_iter()
             .enumerate()
-            .map(
-                |(
-                    i,
-                    Lookup {
-                        table_id,
-                        numerator,
-                        value,
-                    },
-                )| {
-                    Lookup {
-                        table_id,
-                        numerator: numerator * rangecheck15_m[i],
-                        value,
-                    }
-                },
-            );
+            .map(|(i, v)| Lookup {
+                table_id: LookupTable::RangeCheck15,
+                numerator: -rangecheck15_m[i],
+                value: vec![v],
+            });
         rangecheck15[N_LIMBS] = rangecheck15_t.collect();
 
         let rangecheck4_m = witness_env.get_rangecheck4_normalized_multipliticies(domain);
         let rangecheck4_t = LookupTable::RangeCheck4
-            .into_lookup_vector(domain)
+            .entries(domain)
             .into_iter()
             .enumerate()
-            .map(
-                |(
-                    i,
-                    Lookup {
-                        table_id,
-                        numerator,
-                        value,
-                    },
-                )| {
-                    Lookup {
-                        table_id,
-                        numerator: numerator * rangecheck4_m[i],
-                        value,
-                    }
-                },
-            );
+            .map(|(i, v)| Lookup {
+                table_id: LookupTable::RangeCheck4,
+                numerator: -rangecheck4_m[i],
+                value: vec![v],
+            });
         rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
 
         let lookup_witness_rangecheck4: MVLookupWitness<Fp, LookupTable> = {
