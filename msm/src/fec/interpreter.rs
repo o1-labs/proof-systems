@@ -159,7 +159,7 @@ where
         .fold(Var::from(0u64), |acc, v| acc + v)
 }
 
-/// When P = (xP,yP) and Q = (xQ,yQ) are not negative of each other,
+/// When P = (xP,yP) and Q = (xQ,yQ) are not negative of each other, thus function ensures
 ///
 /// P + Q = R where
 ///
@@ -173,9 +173,71 @@ where
 ///   2. xR - s^2 + xP + xQ - q_2 f = 0
 ///   3. yR + yP - s (xP - xR) - q_3 f = 0
 ///
+/// We will use several different "packing" format.
 ///
-/// Data layout:
+/// === Limb equations
 ///
+/// The standard (small limb) one, using 17 limbs of 15 bits each, is
+/// mostly helpful for range-checking the element, because 15-bit
+/// range checks are easy to perform. Additionally, this format is
+/// helpful for checking that the value is ∈ [0,f), where f is a
+/// foreign field modulus.
+///
+/// We will additionally use a "large limb" format, where each limb is
+/// 75 bits, so fitting exactly 5 small limbs. This format is
+/// effective for trusted values that we do not need to range check.
+/// Additionally, verifying equations on 75 bits is more effective in
+/// terms of minimising constraints.
+///
+/// Regarding our /concrete limb/ equations, they are different from
+/// the generic ones above in that they have carries. The carries are
+/// stored in a third format. Let us illustrate the design on the
+/// first equation of the three. Its concrete final form is as follows:
+///
+/// for i ∈ [0..2L-2]:
+///    \sum_{j,k < L | k+j = i} s_j (xP_k - xQ_k)
+///       - ((yP_i - yQ_i) if i < L else 0)
+///       - q_1_sign * \sum_{j,k < L | k+j = i} q_1_j f_k
+///       - (c_i * 2^B if i < 2L-2 else 0)
+///       + (c_{i-1} if i > 0 else 0) = 0
+///
+/// First, note that the equation has turned into 2L-2 equations. This
+/// is because the form of multiplication (and there are two
+/// multiplications here, s*(xP-xQ) and q*f) implies quadratic number
+/// of limb multiplications, but because our operations are modulo f,
+/// every single element except for q in this equation is in the
+/// field.
+///
+/// Instead of having one limb-multiplication per row (e.g.
+/// q_1_5*f_6), which would lead to quadratic number of constraints,
+/// and quadratic number of intermediate-representation columns, we
+/// "batch" all multiplications for degree $i$ in one constraint as
+/// above.
+///
+/// Second, note that the carries are non-uniform in the loop: for the
+/// first limb, we only subtract c_0*2^B, while for the last limb we
+/// only add the previous carry c_{2L-3}. This means that, as usual,
+/// the number of carries is one less than the number of
+/// limb-equations. In our case, every equation relies on 2L-2 "large"
+/// carries.
+///
+/// Finally, small remark is that for simplicity we carry the sign of
+/// q separately from its absolute value. Note that in the original
+/// generic equation s (xP - xQ) - (yP - yQ) - q_1 f = 0 that holds
+/// over the integers, the only value (except for f) that can actually
+/// be outside of the field range [0,f-1) is q_1. In fact, while every
+/// other value is strictly positive, q_1 can be actually negative.
+/// Carrying its sign separately greatly simplifies modelling limbs at
+/// the expense of just 3 extra columns per circuit. So q_1 limbs
+/// actually contains the absolute value of q_1, while q_1_sign is in
+/// {-1,1}.
+///
+/// === Data layout
+///
+/// Now we are ready to present the data layout and to discuss the
+/// representation modes.
+///
+/// Let
 /// L := N_LIMBS_LARGE
 /// S := N_LIMBS_SMALL
 ///
@@ -201,10 +263,26 @@ where
 ///----------------------------------------------------------------
 ///
 ///
-/// Ranges:
+/// As we said before, all elements that are either S small limbs or 1
+/// are for range-checking. The only unusual part here is that the
+/// carries are represented in 2*S+2 limbs. Let us explain.
 ///
-/// Carries for our three equations have the following generic range form (inclusive over integers):
-/// Note that all three equations look exactly the same for i >= n _except_ the carry from the previous limbs.
+/// As we said, we need 2*L-2 carries, which in 6. Because our
+/// operations contain not just one limb multiplication, but several
+/// limb multiplication and extra additions, our carries will /not/
+/// fit into 75 bits. But we can prove (below) that they always fit
+/// into 79 limbs. Therefore, every large carry will be represented
+/// not by 5 15-bit chunks, but by 6 15-bit chunks. This gives us 6
+/// bits * 6 carries = 36 chunks, and every 6th chunk is 4 bits only.
+/// This matches the 2*S+2 = 36, since S = 17.
+///
+///
+/// === Ranges
+///
+/// Carries for our three equations have the following generic range
+/// form (inclusive over integers). Note that all three equations look
+/// exactly the same for i >= n _except_ the carry from the previous
+/// limbs.
 ///
 ///
 /// Eq1.
@@ -444,7 +522,11 @@ pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterE
     }
 }
 
-/// Adding two points, p and q, each represented as a pair of foreign field elements.
+/// Creates a witness for adding two points, p and q, each represented as a pair of foreign
+/// field elements.
+///
+/// This function is witness-generation counterpart (called by the prover) of
+/// `constrain_ec_addition` -- see the documentation of the latter.
 #[allow(dead_code)]
 pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
     env: &mut Env,
