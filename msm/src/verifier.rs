@@ -116,6 +116,22 @@ where
                 .h
                 .iter()
                 .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+
+            // Absorbing fixed tables. We must process it in the same order on
+            // the prover and verifier side.
+            // We order by IDs as iterating directly over the elements of the
+            // hashmap is not deterministic
+            {
+                let mut comms = mvlookup_comms
+                    .fixed_tables
+                    .iter()
+                    .collect::<Vec<(&ID, &PolyComm<G>)>>();
+                comms.sort_by(|(id1, _), (id2, _)| id1.to_u32().cmp(&id2.to_u32()));
+                comms
+                    .iter()
+                    .for_each(|(_, comm)| absorb_commitment(&mut fq_sponge, comm));
+            }
+
             absorb_commitment(&mut fq_sponge, &mvlookup_comms.sum);
             (Some(joint_combiner), beta)
         } else {

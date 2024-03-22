@@ -68,6 +68,7 @@ mod tests {
     };
 
     use ark_ff::{FftField, Field, PrimeField};
+    use std::collections::HashMap;
 
     impl LookupTable {
         fn into_lookup_vector<F: FftField + PrimeField + Field>(

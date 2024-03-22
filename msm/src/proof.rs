@@ -91,10 +91,12 @@ impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
                     panic!("No lookup provided")
                 }
             }
-            // FIXME: finish implement fixed tables
-            // Use hashmap as for the lookup multiplicity
-            Self::Column::LookupFixedTable(_) => {
-                panic!("Logup is not yet implemented.")
+            Self::Column::LookupFixedTable(id) => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.fixed_tables[&ID::from_u32(id)].clone()
+                } else {
+                    panic!("No lookup provided")
+                }
             }
         };
         Ok(res)
