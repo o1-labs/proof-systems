@@ -18,7 +18,7 @@ pub enum TestColumnIndexer {
     D(usize),
 }
 
-impl ColumnIndexer<TEST_N_COLUMNS> for TestColumnIndexer {
+impl ColumnIndexer for TestColumnIndexer {
     fn ix_to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);

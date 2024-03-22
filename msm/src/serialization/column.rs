@@ -13,9 +13,9 @@ pub enum SerializationColumn {
     IntermediateLimb(usize),
 }
 
-const SER_COL_N: usize = 0; // fix later
+pub const SER_COL_N: usize = 42; // fix later
 
-impl ColumnIndexer<SER_COL_N> for SerializationColumn {
+impl ColumnIndexer for SerializationColumn {
     fn ix_to_column(self) -> Column {
         match self {
             Self::KimchiLimb(j) => {
