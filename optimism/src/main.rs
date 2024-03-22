@@ -85,7 +85,7 @@ pub fn main() -> ExitCode {
     };
 
     let mut mips_current_pre_folding_witness = MIPSWitness {
-        cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
+        cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
     };
 
     // The keccak environment is extracted inside the loop
@@ -103,7 +103,7 @@ pub fn main() -> ExitCode {
 
     let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp256<FrParameters>>> =
         KeccakWitness {
-            cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
+            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
         };
 
     while !env.halt {

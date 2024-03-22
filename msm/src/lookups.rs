@@ -31,6 +31,11 @@ impl LookupTableID for LookupTableIDs {
             LookupTableIDs::Custom(_) => todo!(),
         }
     }
+
+    /// All tables are fixed tables.
+    fn is_fixed(&self) -> bool {
+        true
+    }
 }
 
 /// Additive lookups used in the MSM project based on MVLookup
