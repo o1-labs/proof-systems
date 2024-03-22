@@ -8,7 +8,7 @@ use std::iter;
 
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum LookupTableIDs {
     RangeCheck16,
     /// Custom lookup table
