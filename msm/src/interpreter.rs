@@ -8,8 +8,8 @@ use ark_ff::PrimeField;
 /// Applicative. Not sure what's a better name. To me this looks most
 /// like a prism.
 ///
-/// - https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html
-/// - https://hackage.haskell.org/package/lens-tutorial-1.0.4/docs/Control-Lens-Tutorial.html
+/// - <https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html>
+/// - <https://hackage.haskell.org/package/lens-tutorial-1.0.4/docs/Control-Lens-Tutorial.html>
 pub trait MPrism {
     /// The lens source type, i.e., the object containing the field.
     type Source;
