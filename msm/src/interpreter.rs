@@ -1,13 +1,25 @@
 use ark_ff::PrimeField;
 use ark_ff::Zero;
 
-use crate::{columns::Column, Fp};
+use crate::Fp;
+
+// To use the `derive(Lenses)` macro
+use pl_lens::Lenses;
+
+// To use the `lens!` macro
+use pl_lens::lens;
+
+// To bring trait methods like `get_ref` and `set` into scope
+use pl_lens::{Lens, LensPath, RefLens};
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct Column(usize);
 
 // PRototype-y
 pub trait ColIndexer<const COL_N: usize> {
     // TODO: rename it in to_column. It is not necessary to have ix_
     fn ix_to_column(self) -> Column;
-    fn flatten_one_level(self) -> usize;
+    //    fn flatten_one_level(self) -> usize;
 }
 
 pub const FOO_COL_N: usize = 17;
@@ -26,11 +38,84 @@ pub enum BlaColIndexer {
     Bla2(usize),
 }
 
+pub struct Foo1Lens {}
+
+/// Something like a Traversal
+///
+/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Traversal.html
+///
+/// but for Maybe in a Getter-style
+///
+/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Getter.html
+pub trait MGetter {
+    /// The lens source type, i.e., the object containing the field.
+    type Source;
+
+    /// The lens target type, i.e., the field to be accessed or modified.
+    type Target;
+
+    /// Returns a `LensPath` that describes the target of this lens relative to its source.
+    fn path(&self) -> LensPath;
+
+    fn get(&self, source: Self::Source) -> Option<Self::Target>;
+}
+
+impl Lens for Foo1Lens {
+    type Source = BlaColIndexer;
+    type Target = FooColIndexer;
+
+    fn path(&self) -> LensPath {
+        LensPath::new(0)
+    }
+
+    fn mutate<'a>(&self, source: &'a mut Self::Source, target: Self::Target) {
+        match *source {
+            BlaColIndexer::SubFoo1(_) => {
+                *source = BlaColIndexer::SubFoo1(target);
+            }
+            _ => {}
+        }
+    }
+}
+
+impl MGetter for Foo1Lens {
+    type Source = BlaColIndexer;
+    type Target = FooColIndexer;
+
+    fn path(&self) -> LensPath {
+        LensPath::new(0)
+    }
+
+    fn get(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            BlaColIndexer::SubFoo1(ixer) => Some(ixer),
+            _ => None,
+        }
+    }
+}
+
+pub struct Foo2Lens {}
+
+impl Lens for Foo2Lens {
+    type Source = BlaColIndexer;
+    type Target = FooColIndexer;
+
+    fn path(&self) -> LensPath {
+        LensPath::new(0)
+    }
+
+    fn mutate<'a>(&self, source: &'a mut Self::Source, target: Self::Target) {
+        match *source {
+            BlaColIndexer::SubFoo2(_) => {
+                *source = BlaColIndexer::SubFoo2(target);
+            }
+            _ => {}
+        }
+    }
+}
+
 impl ColIndexer<FOO_COL_N> for FooColIndexer {
     fn ix_to_column(self) -> Column {
-        unimplemented!()
-    }
-    fn flatten_one_level(self) -> usize {
         unimplemented!()
     }
 }
@@ -39,9 +124,9 @@ impl ColIndexer<BLA_COL_N> for BlaColIndexer {
     fn ix_to_column(self) -> Column {
         unimplemented!()
     }
-    fn flatten_one_level(self) -> usize {
-        unimplemented!()
-    }
+    //fn flatten_one_level(self) -> usize {
+    //    unimplemented!()
+    //}
 }
 
 // Without integer
@@ -230,13 +315,13 @@ impl<F: PrimeField, const COL_N: usize, CIx: ColIndexer<COL_N>> InterpreterEnv<C
     }
 
     fn copy(&mut self, value: &Self::Variable, ix: CIx) -> Self::Variable {
-        let Column::X(i) = ix.ix_to_column();
+        let Column(i) = ix.ix_to_column();
         self.witness[i] = *value;
         *value
     }
 
     fn read_column(&self, ix: CIx) -> Self::Variable {
-        let Column::X(i) = ix.ix_to_column();
+        let Column(i) = ix.ix_to_column();
         self.witness[i]
     }
 }
