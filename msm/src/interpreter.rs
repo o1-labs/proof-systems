@@ -1,8 +1,5 @@
 use ark_ff::PrimeField;
 
-// To bring trait methods like `get_ref` and `set` into scope
-use pl_lens::LensPath;
-
 ////////////////////////////////////////////////////////////////////////////
 // Abstract lenses
 ////////////////////////////////////////////////////////////////////////////
@@ -19,10 +16,6 @@ pub trait MPrism {
 
     /// The lens target type, i.e., the field to be accessed or modified.
     type Target;
-
-    // TODO @volhovm unused for now
-    /// Returns a `LensPath` that describes the target of this lens relative to its source.
-    fn path(&self) -> LensPath;
 
     fn traverse(&self, source: Self::Source) -> Option<Self::Target>;
 
@@ -54,10 +47,6 @@ where
 {
     type Source = LHS::Source;
     type Target = RHS::Target;
-
-    fn path(&self) -> LensPath {
-        LensPath::concat(self.lhs.path(), self.rhs.path())
-    }
 
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         let r1: Option<_> = self.lhs.traverse(source);
@@ -144,10 +133,6 @@ impl MPrism for BlaFoo1Lens {
     type Source = BlaColIndexer;
     type Target = FooColIndexer;
 
-    fn path(&self) -> LensPath {
-        LensPath::new(0)
-    }
-
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {
             BlaColIndexer::SubFoo1(ixer) => Some(ixer),
@@ -165,10 +150,6 @@ pub struct BlaFoo2Lens {}
 impl MPrism for BlaFoo2Lens {
     type Source = BlaColIndexer;
     type Target = FooColIndexer;
-
-    fn path(&self) -> LensPath {
-        LensPath::new(0)
-    }
 
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {
@@ -188,10 +169,6 @@ impl MPrism for KekBla1Lens {
     type Source = KekColIndexer;
     type Target = BlaColIndexer;
 
-    fn path(&self) -> LensPath {
-        LensPath::new(0)
-    }
-
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {
             KekColIndexer::SubBla1(ixer) => Some(ixer),
@@ -209,10 +186,6 @@ pub struct KekFooComplexLens {}
 impl MPrism for KekFooComplexLens {
     type Source = KekColIndexer;
     type Target = FooColIndexer;
-
-    fn path(&self) -> LensPath {
-        LensPath::new(0)
-    }
 
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {

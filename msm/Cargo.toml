@@ -37,4 +37,3 @@ ark-ec.workspace = true
 rand.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
-pl-lens = "1.0"

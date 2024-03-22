@@ -1436,7 +1436,6 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "o1-utils",
- "pl-lens",
  "poly-commitment",
  "rand",
  "rayon",
@@ -2066,40 +2065,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2900ede94e305130c13ddd391e0ab7cbaeb783945ae07a279c268cb05109c6cb"
 
 [[package]]
-name = "pl-lens"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b6bb604680652ea1e2b279fb4f0b71e0ab5a2fe899937be84a74be86399dc7"
-dependencies = [
- "pl-lens-derive",
- "pl-lens-macros",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "pl-lens-derive"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d316f1fe713ec058331a2b6c3451d5dbe1642822e2561d7d4bd1d6a51b8f79"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "pl-lens-macros"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78d4b95d73048cede685d94f96223e833196daf0cb9b8b3dc09538b263ff0e9c"
-dependencies = [
- "proc-macro-hack",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "plist"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2205,12 +2170,6 @@ dependencies = [
  "quote",
  "version_check",
 ]
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
