@@ -20,13 +20,24 @@ pub enum FooColIndexer {
     Foo2(usize),
 }
 
-pub const BLA_COL_N: usize = 2 * FOO_COL_N + 5;
+pub const BLA_COL_N: usize = 2 * FOO_COL_N + 4;
 
 pub enum BlaColIndexer {
     SubFoo1(FooColIndexer),
     SubFoo2(FooColIndexer),
-    Bla1(usize),
-    Bla2(usize),
+    Bla1(usize), // at most 2
+    Bla2(usize), // at most 2
+}
+
+pub const KEK_COL_N: usize = 2 * FOO_COL_N + 4;
+
+pub enum KekColIndexer {
+    SubFoo1(FooColIndexer),
+    SubBla1(BlaColIndexer),
+    Kek1(usize), // at most 2
+    Kek2(usize), // at most 2
+    Kek3(usize), // at most 2
+    Kek4(usize), // at most 2
 }
 
 impl ColIndexer<FOO_COL_N> for FooColIndexer {
@@ -39,12 +50,13 @@ impl ColIndexer<BLA_COL_N> for BlaColIndexer {
     fn ix_to_column(self) -> Column {
         unimplemented!()
     }
-    //fn flatten_one_level(self) -> usize {
-    //    unimplemented!()
-    //}
 }
 
-pub struct Foo1Lens {}
+impl ColIndexer<BLA_COL_N> for KekColIndexer {
+    fn ix_to_column(self) -> Column {
+        unimplemented!()
+    }
+}
 
 /// Something like a Traversal
 ///
@@ -70,7 +82,9 @@ pub trait MGetter {
     fn re_get(&self, target: Self::Target) -> Self::Source;
 }
 
-impl MGetter for Foo1Lens {
+pub struct BlaFoo1Lens {}
+
+impl MGetter for BlaFoo1Lens {
     type Source = BlaColIndexer;
     type Target = FooColIndexer;
 
@@ -90,9 +104,9 @@ impl MGetter for Foo1Lens {
     }
 }
 
-pub struct Foo2Lens {}
+pub struct BlaFoo2Lens {}
 
-impl MGetter for Foo2Lens {
+impl MGetter for BlaFoo2Lens {
     type Source = BlaColIndexer;
     type Target = FooColIndexer;
 
@@ -109,6 +123,28 @@ impl MGetter for Foo2Lens {
 
     fn re_get(&self, target: Self::Target) -> Self::Source {
         BlaColIndexer::SubFoo2(target)
+    }
+}
+
+pub struct KekBla1Lens {}
+
+impl MGetter for KekBla1Lens {
+    type Source = KekColIndexer;
+    type Target = BlaColIndexer;
+
+    fn path(&self) -> LensPath {
+        LensPath::new(0)
+    }
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            KekColIndexer::SubBla1(ixer) => Some(ixer),
+            _ => None,
+        }
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        KekColIndexer::SubBla1(target)
     }
 }
 
@@ -231,7 +267,7 @@ impl<
     }
 }
 
-pub fn constrain_foo2<F, Env>(env: &mut Env) -> Env::Variable
+pub fn constrain_foo<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
     Env: InterpreterEnv<FOO_COL_N, FooColIndexer, F>,
@@ -240,12 +276,27 @@ where
     unimplemented!()
 }
 
-pub fn constrain_bla2<F, Env>(env: &mut Env) -> Env::Variable
+pub fn constrain_bla<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
     Env: InterpreterEnv<BLA_COL_N, BlaColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
-    constrain_foo2(&mut SubInterpreter::new(env, Foo1Lens {}));
+    constrain_foo(&mut SubInterpreter::new(env, BlaFoo1Lens {}));
+    constrain_foo(&mut SubInterpreter::new(env, BlaFoo2Lens {}));
+    unimplemented!()
+}
+
+pub fn constrain_kek<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: InterpreterEnv<KEK_COL_N, KekColIndexer, F>,
+{
+    let _a_var: Env::Variable = Env::read_column(env, KekColIndexer::Kek1(0));
+    constrain_bla(&mut SubInterpreter::new(env, KekBla1Lens {}));
+    constrain_foo(&mut SubInterpreter::new(
+        env,
+        compose(KekBla1Lens {}, BlaFoo1Lens {}),
+    ));
     unimplemented!()
 }
