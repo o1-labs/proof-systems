@@ -40,6 +40,9 @@ pub trait LookupTableID: Send + Sync + Copy {
     /// Assign a unique ID, as a u32 value
     fn to_u32(&self) -> u32;
 
+    /// Build a value from a u32
+    fn from_u32(value: u32) -> Self;
+
     /// Assign a unique ID to the lookup tables.
     fn to_field<F: Field>(&self) -> F {
         F::from(self.to_u32())

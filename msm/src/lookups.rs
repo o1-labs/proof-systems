@@ -25,6 +25,13 @@ impl LookupTableID for LookupTableIDs {
         }
     }
 
+    fn from_u32(id: u32) -> Self {
+        match id {
+            1 => LookupTableIDs::RangeCheck16,
+            _ => LookupTableIDs::Custom(id - 1),
+        }
+    }
+
     fn length(&self) -> usize {
         match self {
             LookupTableIDs::RangeCheck16 => 1 << 16,

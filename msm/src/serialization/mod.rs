@@ -22,6 +22,14 @@ impl LookupTableID for LookupTable {
         }
     }
 
+    fn from_u32(value: u32) -> Self {
+        match value {
+            1 => Self::RangeCheck15,
+            2 => Self::RangeCheck4,
+            _ => panic!("Invalid lookup table id"),
+        }
+    }
+
     /// All tables are fixed tables.
     fn is_fixed(&self) -> bool {
         true
