@@ -2,6 +2,7 @@
 
 use ark_ff::Field;
 use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
+use std::hash::Hash;
 
 use crate::expr::E;
 
@@ -36,7 +37,7 @@ where
 }
 
 /// Trait for lookup table variants
-pub trait LookupTableID: Send + Sync + Copy {
+pub trait LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq {
     /// Assign a unique ID, as a u32 value
     fn to_u32(&self) -> u32;
 

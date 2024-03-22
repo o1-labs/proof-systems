@@ -13,7 +13,7 @@ use kimchi::{
 use kimchi_msm::{LookupTableID, MVLookupTable};
 
 /// All of the possible lookup table IDs used in the zkVM
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LookupTableIDs {
     // PadLookup ID is 0 because this is the only fixed table whose first entry is not 0.
     // This way, it is guaranteed that the 0 value is not always in the tables after the
