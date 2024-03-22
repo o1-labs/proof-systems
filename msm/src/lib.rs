@@ -13,6 +13,7 @@ pub mod column_env;
 pub mod columns;
 pub mod expr;
 pub mod interpreter;
+pub mod interpreter_old;
 /// Instantiations of MVLookups for the MSM project
 pub mod lookups;
 /// Generic definitions of MVLookups
