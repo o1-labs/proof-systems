@@ -13,7 +13,7 @@ use crate::expr::E;
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct MVLookup<F, ID: LookupTableID + Send + Sync + Copy> {
+pub struct MVLookup<F, ID: LookupTableID> {
     pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
@@ -23,7 +23,7 @@ pub struct MVLookup<F, ID: LookupTableID + Send + Sync + Copy> {
 impl<F, ID> MVLookup<F, ID>
 where
     F: Clone,
-    ID: LookupTableID + Send + Sync + Copy,
+    ID: LookupTableID,
 {
     /// Creates a new MVLookup
     pub fn new(table_id: ID, numerator: F, value: &[F]) -> Self {
@@ -36,7 +36,7 @@ where
 }
 
 /// Trait for lookup table variants
-pub trait LookupTableID {
+pub trait LookupTableID: Send + Sync + Copy {
     /// Assign a unique ID, as a u32 value
     fn to_u32(&self) -> u32;
 
@@ -44,6 +44,11 @@ pub trait LookupTableID {
     fn to_field<F: Field>(&self) -> F {
         F::from(self.to_u32())
     }
+
+    /// Identify fixed and RAMLookups with a boolean.
+    /// This can be used to identify the lookups whose table values are fixed,
+    /// like range checks.
+    fn is_fixed(&self) -> bool;
 
     /// Assign a unique ID to the lookup tables, as an expression.
     fn to_constraint<F: Field>(&self) -> E<F> {
@@ -58,7 +63,7 @@ pub trait LookupTableID {
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
-pub struct LookupTable<F, ID: LookupTableID + Send + Sync + Copy> {
+pub struct LookupTable<F, ID: LookupTableID> {
     /// Table ID corresponding to this table
     pub table_id: ID,
     /// Vector of values inside each entry of the table
@@ -70,7 +75,7 @@ pub struct LookupTable<F, ID: LookupTableID + Send + Sync + Copy> {
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug)]
-pub struct MVLookupWitness<F, ID: LookupTableID + Send + Sync + Copy> {
+pub struct MVLookupWitness<F, ID: LookupTableID> {
     /// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
@@ -175,7 +180,7 @@ pub mod prover {
         pub fn create<
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
-            ID: LookupTableID + Send + Sync + Copy,
+            ID: LookupTableID,
         >(
             lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,

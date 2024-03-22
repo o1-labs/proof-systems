@@ -67,7 +67,7 @@ pub(crate) struct FoldingWitness<const N: usize> {
 
 impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-        for (a, b) in a.witness.cols.iter_mut().zip(b.witness.cols) {
+        for (a, b) in (*a.witness.cols).iter_mut().zip(*(b.witness.cols)) {
             for (a, b) in a.evals.iter_mut().zip(b.evals) {
                 *a += challenge * b;
             }

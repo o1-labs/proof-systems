@@ -151,10 +151,10 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
             let mut chunked_evals = vec![];
             for point in eval_points.clone() {
                 let n = poly.len();
-                let num_chunks = if n % srs.g.len() == 0 {
-                    n / srs.g.len()
+                let num_chunks = if n == 0 {
+                    1
                 } else {
-                    n / srs.g.len() + 1
+                    n / srs.g.len() + if n % srs.g.len() == 0 { 0 } else { 1 }
                 };
                 chunked_evals.push(
                     poly.to_chunked_polynomial(num_chunks, srs.g.len())

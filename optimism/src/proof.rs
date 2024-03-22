@@ -30,9 +30,9 @@ impl<const N: usize, G: KimchiCurve> Default for ProofInputs<N, G> {
     fn default() -> Self {
         ProofInputs {
             evaluations: Witness {
-                cols: std::array::from_fn(|_| {
+                cols: Box::new(std::array::from_fn(|_| {
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
-                }),
+                })),
             },
         }
     }
@@ -131,7 +131,7 @@ where
                 .collect::<Vec<_>>()
         };
         Witness {
-            cols: eval_array_col(&evaluations.cols).try_into().unwrap(),
+            cols: Box::new(eval_array_col(&(*evaluations.cols)).try_into().unwrap()),
         }
     };
     let commitments = {
@@ -140,7 +140,7 @@ where
             polys.into_par_iter().map(comm).collect::<Vec<_>>()
         };
         Witness {
-            cols: comm_array(&polys.cols).try_into().unwrap(),
+            cols: Box::new(comm_array(&(*polys.cols)).try_into().unwrap()),
         }
     };
 
@@ -161,7 +161,7 @@ where
             polys.par_iter().map(comm).collect::<Vec<_>>()
         };
         Witness {
-            cols: comm_array(&polys.cols).try_into().unwrap(),
+            cols: Box::new(comm_array(&(*polys.cols)).try_into().unwrap()),
         }
     };
     let zeta_evaluations = evals(&zeta);
@@ -338,7 +338,9 @@ mod tests {
                 (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
             });
             ProofInputs {
-                evaluations: MIPSWitness { cols },
+                evaluations: MIPSWitness {
+                    cols: Box::new(cols),
+                },
             }
         };
         let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
@@ -385,9 +387,9 @@ mod tests {
         let proof_inputs = {
             ProofInputs {
                 evaluations: KeccakWitness {
-                    cols: std::array::from_fn(|_| {
+                    cols: Box::new(std::array::from_fn(|_| {
                         (0..DOMAIN_SIZE).map(|_| Fp::rand(rng)).collect::<Vec<_>>()
-                    }),
+                    })),
                 },
             }
         };
