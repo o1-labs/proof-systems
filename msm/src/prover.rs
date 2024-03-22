@@ -56,7 +56,7 @@ pub fn prove<
     constraints: &Vec<E<G::ScalarField>>,
     inputs: ProofInputs<N, G, ID>,
     rng: &mut RNG,
-) -> Result<Proof<N, G, OpeningProof>, ProverError>
+) -> Result<Proof<N, G, OpeningProof, ID>, ProverError>
 where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
@@ -136,6 +136,7 @@ where
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+        id: std::marker::PhantomData,
     });
 
     // -- end computing the running sum in lookup_aggregation
@@ -329,6 +330,7 @@ where
                     zeta: sum_zeta,
                     zeta_omega: sum_zeta_omega,
                 },
+                id: std::marker::PhantomData,
             })
         } else {
             None
@@ -436,7 +438,7 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<N, G::ScalarField> = {
+    let proof_evals: ProofEvaluations<N, G::ScalarField, ID> = {
         ProofEvaluations {
             witness_evals,
             mvlookup_evals,
