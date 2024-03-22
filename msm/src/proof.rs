@@ -15,7 +15,7 @@ use kimchi::proof::PointEvaluations;
 use poly_commitment::{commitment::PolyComm, OpenProof};
 
 #[derive(Debug)]
-pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID + Send + Sync + Copy> {
+pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     /// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N, Vec<G::ScalarField>>,
