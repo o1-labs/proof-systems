@@ -3,6 +3,79 @@ use ark_ff::PrimeField;
 // To bring trait methods like `get_ref` and `set` into scope
 use pl_lens::LensPath;
 
+////////////////////////////////////////////////////////////////////////////
+// Abstract lenses
+////////////////////////////////////////////////////////////////////////////
+
+/// Something like a Traversal
+///
+/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Traversal.html
+///
+/// but for Maybe in a Getter-style
+///
+/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Getter.html
+///
+/// Also seems very similar to a Prism: https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html
+pub trait MGetter {
+    /// The lens source type, i.e., the object containing the field.
+    type Source;
+
+    /// The lens target type, i.e., the field to be accessed or modified.
+    type Target;
+
+    /// Returns a `LensPath` that describes the target of this lens relative to its source.
+    fn path(&self) -> LensPath;
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target>;
+
+    fn re_get(&self, target: Self::Target) -> Self::Source;
+}
+
+pub struct ComposedMGetter<LHS, RHS> {
+    /// The left-hand side of the composition.
+    lhs: LHS,
+
+    /// The right-hand side of the composition.
+    rhs: RHS,
+}
+
+pub fn compose<LHS, RHS>(lhs: LHS, rhs: RHS) -> ComposedMGetter<LHS, RHS>
+where
+    LHS: MGetter,
+    LHS::Target: 'static,
+    RHS: MGetter<Source = LHS::Target>,
+{
+    ComposedMGetter { lhs, rhs }
+}
+
+impl<LHS, RHS> MGetter for ComposedMGetter<LHS, RHS>
+where
+    LHS: MGetter,
+    LHS::Target: 'static,
+    RHS: MGetter<Source = LHS::Target>,
+{
+    type Source = LHS::Source;
+    type Target = RHS::Target;
+
+    fn path(&self) -> LensPath {
+        LensPath::concat(self.lhs.path(), self.rhs.path())
+    }
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        let r1: Option<_> = self.lhs.traverse(source);
+        let r2: Option<_> = r1.and_then(|x| self.rhs.traverse(x));
+        r2
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        self.lhs.re_get(self.rhs.re_get(target))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Column definitions
+////////////////////////////////////////////////////////////////////////////
+
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Column(usize);
 
@@ -58,29 +131,9 @@ impl ColIndexer<BLA_COL_N> for KekColIndexer {
     }
 }
 
-/// Something like a Traversal
-///
-/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Traversal.html
-///
-/// but for Maybe in a Getter-style
-///
-/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Getter.html
-///
-/// Also seems very similar to a Prism: https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html
-pub trait MGetter {
-    /// The lens source type, i.e., the object containing the field.
-    type Source;
-
-    /// The lens target type, i.e., the field to be accessed or modified.
-    type Target;
-
-    /// Returns a `LensPath` that describes the target of this lens relative to its source.
-    fn path(&self) -> LensPath;
-
-    fn traverse(&self, source: Self::Source) -> Option<Self::Target>;
-
-    fn re_get(&self, target: Self::Target) -> Self::Source;
-}
+////////////////////////////////////////////////////////////////////////////
+// Concrete lenses for our columns
+////////////////////////////////////////////////////////////////////////////
 
 pub struct BlaFoo1Lens {}
 
@@ -148,46 +201,35 @@ impl MGetter for KekBla1Lens {
     }
 }
 
-pub struct ComposedMGetter<LHS, RHS> {
-    /// The left-hand side of the composition.
-    lhs: LHS,
+pub struct KekFooComplexLens {}
 
-    /// The right-hand side of the composition.
-    rhs: RHS,
-}
-
-pub fn compose<LHS, RHS>(lhs: LHS, rhs: RHS) -> ComposedMGetter<LHS, RHS>
-where
-    LHS: MGetter,
-    LHS::Target: 'static,
-    RHS: MGetter<Source = LHS::Target>,
-{
-    ComposedMGetter { lhs, rhs }
-}
-
-impl<LHS, RHS> MGetter for ComposedMGetter<LHS, RHS>
-where
-    LHS: MGetter,
-    LHS::Target: 'static,
-    RHS: MGetter<Source = LHS::Target>,
-{
-    type Source = LHS::Source;
-    type Target = RHS::Target;
+impl MGetter for KekFooComplexLens {
+    type Source = KekColIndexer;
+    type Target = FooColIndexer;
 
     fn path(&self) -> LensPath {
-        LensPath::concat(self.lhs.path(), self.rhs.path())
+        LensPath::new(0)
     }
 
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
-        let r1: Option<_> = self.lhs.traverse(source);
-        let r2: Option<_> = r1.and_then(|x| self.rhs.traverse(x));
-        r2
+        match source {
+            KekColIndexer::Kek1(ixer) => Some(FooColIndexer::Foo1(ixer)),
+            KekColIndexer::Kek2(ixer) => Some(FooColIndexer::Foo2(ixer)),
+            _ => None,
+        }
     }
 
     fn re_get(&self, target: Self::Target) -> Self::Source {
-        self.lhs.re_get(self.rhs.re_get(target))
+        match target {
+            FooColIndexer::Foo1(i) => KekColIndexer::Kek1(i),
+            FooColIndexer::Foo2(i) => KekColIndexer::Kek2(i),
+        }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////
+// Interpreter and sub-interpreter
+////////////////////////////////////////////////////////////////////////////
 
 /// Attempt to define a generic interpreter.
 /// It is not used yet.
@@ -267,6 +309,10 @@ impl<
     }
 }
 
+////////////////////////////////////////////////////////////////////////////
+// Functions using interpreter env
+////////////////////////////////////////////////////////////////////////////
+
 pub fn constrain_foo<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
@@ -298,5 +344,7 @@ where
         env,
         compose(KekBla1Lens {}, BlaFoo1Lens {}),
     ));
+    constrain_foo(&mut SubInterpreter::new(env, KekFooComplexLens {}));
+
     unimplemented!()
 }
