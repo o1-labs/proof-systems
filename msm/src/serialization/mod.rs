@@ -8,7 +8,7 @@ pub mod constraints;
 pub mod interpreter;
 pub mod witness;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LookupTable {
     RangeCheck15,
     RangeCheck4,
@@ -221,6 +221,7 @@ mod tests {
             MVLookupWitness {
                 f: rangecheck4.to_vec(),
                 m: rangecheck4_m,
+                id: LookupTable::RangeCheck4
             }
         };
 
@@ -228,6 +229,7 @@ mod tests {
             MVLookupWitness {
                 f: rangecheck15.to_vec(),
                 m: rangecheck15_m,
+                id: LookupTable::RangeCheck15
             }
         };
 

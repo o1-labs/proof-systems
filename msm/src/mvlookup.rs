@@ -1,8 +1,10 @@
 //! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
 
-use std::collections::HashMap;
 use ark_ff::Field;
 use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
+use std::collections::HashMap;
+use std::hash::Hash;
+
 
 use crate::expr::E;
 
@@ -37,7 +39,7 @@ where
 }
 
 /// Trait for lookup table variants
-pub trait LookupTableID: Send + Sync + Copy {
+pub trait LookupTableID: Send + Sync + Copy + Eq + Hash {
     /// Assign a unique ID, as a u32 value
     fn to_u32(&self) -> u32;
 
@@ -76,7 +78,7 @@ pub struct LookupTable<F, ID: LookupTableID> {
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug)]
-pub struct MVLookupWitness<F, ID: LookupTableID> {
+pub struct MVLookupWitness<F, ID> {
     /// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
@@ -94,8 +96,6 @@ pub struct MVLookupWitness<F, ID: LookupTableID> {
     pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
-    /// The table ID
-    pub id: ID,
 }
 
 /// Represents the proof of the lookup argument
@@ -188,7 +188,7 @@ pub mod prover {
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
         >(
-            lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
+            lookups: HashMap<ID, MVLookupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -197,36 +197,37 @@ pub mod prover {
             OpeningProof::SRS: Sync,
         {
             // Polynomial m(X)
-            let lookup_counters_evals_d1 = (&lookups)
-                .into_par_iter()
+            let lookup_counters_evals_d1: Vec<(ID, Evaluations<G::ScalarField, D<G::ScalarField>>)> = (&lookups)
+                .into_iter()
                 .map(|lookup| {
-                    let evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                        lookup.m.to_vec(),
-                        domain.d1,
-                    );
-                    (lookup.id, evals)
-                })
-                .collect::<Vec<(ID, Evaluations<G::ScalarField, D<G::ScalarField>>)>>();
+                    let evals =
+                        Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                            lookup.m.to_vec(),
+                            domain.d1,
+                        );
+                    ((*lookup).id.clone(), evals)
+                }).collect();
 
             let lookup_counters_poly_d1: Vec<(ID, DensePolynomial<G::ScalarField>)> =
                 (&lookup_counters_evals_d1)
-                    .into_par_iter()
-                    .map(|(id, evals)| (id, evals.interpolate_by_ref()))
+                    .into_iter()
+                    .map(|(id, evals)| (*id, evals.interpolate_by_ref()))
                     .collect();
 
-            let lookup_counters_evals_d8 = (&lookup_counters_poly_d1)
-                .into_par_iter()
-                .map(|(id, lookup)| (id, lookup.evaluate_over_domain_by_ref(domain.d8)))
-                .collect::<Vec<(ID, Evaluations<G::ScalarField, D<G::ScalarField>>)>>();
+            let lookup_counters_evals_d8: Vec<(ID, Evaluations<G::ScalarField, D<G::ScalarField>>)> =
+                (&lookup_counters_poly_d1)
+                    .into_par_iter()
+                    .map(|(id, lookup)| (*id, lookup.evaluate_over_domain_by_ref(domain.d8)))
+                    .collect();
 
             let lookup_counters_comm_d1: Vec<(ID, PolyComm<G>)> = (&lookup_counters_evals_d1)
                 .into_par_iter()
-                .map(|(id, poly)| (id, srs.commit_evaluations_non_hiding(domain.d1, poly)))
+                .map(|(id, poly)| (*id, srs.commit_evaluations_non_hiding(domain.d1, poly)))
                 .collect();
 
             lookup_counters_comm_d1
                 .iter()
-                .for_each(|(_id, comm)| absorb_commitment(fq_sponge, comm));
+                .for_each(|(_, comm)| absorb_commitment(fq_sponge, comm));
             // -- end of m(X)
 
             // -- start computing the row sums h(X)
