@@ -22,6 +22,11 @@ impl LookupTableID for LookupTable {
         }
     }
 
+    /// All tables are fixed tables.
+    fn is_fixed(&self) -> bool {
+        true
+    }
+
     fn length(&self) -> usize {
         match self {
             Self::RangeCheck15 => 1 << 15,
@@ -103,7 +108,7 @@ mod tests {
         let mut witness_env = witness::Env::<Fp>::create();
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
-            cols: std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE)),
+            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
         });
 
         // Boxing to avoid stack overflow
@@ -229,7 +234,6 @@ mod tests {
         let proof_inputs = ProofInputs {
             evaluations: *witness,
             mvlookups: vec![lookup_witness_rangecheck15, lookup_witness_rangecheck4],
-            public_input_size: 0,
         };
 
         let proof = prove::<

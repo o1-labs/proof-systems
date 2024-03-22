@@ -20,12 +20,6 @@ pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N, Vec<G::ScalarField>>,
     pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
-    // TODO Unless we use ZK rows, this is unused by the prover, since
-    // public inputs are modelled as a prefix of the witness that is
-    // committed w/o blinders.
-    /// The number of public inputs. It is supposed that the first
-    /// `public_input_size` columns of the witness represent the public values
-    pub public_input_size: usize,
 }
 
 // This should be used only for testing purposes.
@@ -35,15 +29,14 @@ pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
 impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
     pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
         let mut rng = thread_rng();
-        let cols: [Vec<G::ScalarField>; N] = std::array::from_fn(|_| {
+        let cols: Box<[Vec<G::ScalarField>; N]> = Box::new(std::array::from_fn(|_| {
             (0..domain.d1.size as usize)
                 .map(|_| G::ScalarField::rand(&mut rng))
                 .collect::<Vec<_>>()
-        });
+        }));
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
-            public_input_size: 0,
         }
     }
 }
