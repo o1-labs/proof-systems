@@ -400,6 +400,11 @@
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -446,6 +451,11 @@
     </span><span class="kw">fn </span>to_field&lt;F: Field&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
         F::from(<span class="self">self</span>.to_u32())
     }
+
+    <span class="doccomment">/// Identify fixed and RAMLookups with a boolean.
+    /// This can be used to identify the lookups whose table values are fixed,
+    /// like range checks.
+    </span><span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
 
     <span class="doccomment">/// Assign a unique ID to the lookup tables, as an expression.
     </span><span class="kw">fn </span>to_constraint&lt;F: Field&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; E&lt;F&gt; {

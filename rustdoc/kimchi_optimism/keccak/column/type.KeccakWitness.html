@@ -41,11 +41,11 @@ The row is split into the following entries:</p>
 155..2123 -&gt; curr
 155                                                                        2119
 &lt;––––––––––––––––if_round&lt;–––––––––––––––––&gt;
-&lt;———––if_sponge———––&gt;<br />
-155                                 954<br />
--&gt; SPONGE:                          | -&gt; ROUND:<br />
--&gt; 155..254: Input == SpongeOldState | -&gt; 155..254: Input == ThetaStateA<br />
--&gt; 255..354: SpongeNewState          | -&gt; 255..334: ThetaShiftsC<br />
+&lt;———––if_sponge———––&gt;
+155                                 954
+-&gt; SPONGE:                          | -&gt; ROUND:
+-&gt; 155..254: Input == SpongeOldState | -&gt; 155..254: Input == ThetaStateA
+-&gt; 255..354: SpongeNewState          | -&gt; 255..334: ThetaShiftsC
 : 323..354 -&gt; SpongeZeros | -&gt; 335..354: ThetaDenseC
 -&gt; 355..554: SpongeBytes             | -&gt; 355..359: ThetaQuotientC
 -&gt; 555..954: SpongeShifts            | -&gt; 360..379: ThetaRemainderC

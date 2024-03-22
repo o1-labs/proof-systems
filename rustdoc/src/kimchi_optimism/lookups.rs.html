@@ -210,6 +210,14 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
@@ -267,6 +275,14 @@
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; {
                 <span class="macro">panic!</span>(<span class="string">"RAM Tables do not have a fixed length"</span>)
             }
+        }
+    }
+
+    <span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="kw">match </span><span class="self">self </span>{
+            PadLookup | RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | SparseLookup
+            | ResetLookup =&gt; <span class="bool-val">true</span>,
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; <span class="bool-val">false</span>,
         }
     }
 }

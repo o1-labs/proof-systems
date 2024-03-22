@@ -256,6 +256,11 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{mvlookup::LookupTableID, MVLookup};
 
 <span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
@@ -279,6 +284,11 @@
             <span class="self">Self</span>::RangeCheck4 =&gt; <span class="number">2</span>,
         }
     }
+
+    <span class="doccomment">/// All tables are fixed tables.
+    </span><span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="bool-val">true
+    </span>}
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
