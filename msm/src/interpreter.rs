@@ -80,7 +80,9 @@ where
 pub struct Column(usize);
 
 // PRototype-y
-pub trait ColIndexer<const COL_N: usize> {
+pub trait ColIndexer {
+    const IX_COL_N: usize;
+
     // TODO: rename it in to_column. It is not necessary to have ix_
     fn ix_to_column(self) -> Column;
     //    fn flatten_one_level(self) -> usize;
@@ -113,19 +115,22 @@ pub enum KekColIndexer {
     Kek4(usize), // at most 2
 }
 
-impl ColIndexer<FOO_COL_N> for FooColIndexer {
+impl ColIndexer for FooColIndexer {
+    const IX_COL_N: usize = FOO_COL_N;
     fn ix_to_column(self) -> Column {
         unimplemented!()
     }
 }
 
-impl ColIndexer<BLA_COL_N> for BlaColIndexer {
+impl ColIndexer for BlaColIndexer {
+    const IX_COL_N: usize = BLA_COL_N;
     fn ix_to_column(self) -> Column {
         unimplemented!()
     }
 }
 
-impl ColIndexer<BLA_COL_N> for KekColIndexer {
+impl ColIndexer for KekColIndexer {
+    const IX_COL_N: usize = KEK_COL_N;
     fn ix_to_column(self) -> Column {
         unimplemented!()
     }
@@ -233,7 +238,7 @@ impl MGetter for KekFooComplexLens {
 
 /// Attempt to define a generic interpreter.
 /// It is not used yet.
-pub trait InterpreterEnv<const COL_N: usize, CIx: ColIndexer<COL_N>, F: PrimeField> {
+pub trait InterpreterEnv<CIx: ColIndexer, F: PrimeField> {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
@@ -250,11 +255,9 @@ pub trait InterpreterEnv<const COL_N: usize, CIx: ColIndexer<COL_N>, F: PrimeFie
 pub struct SubInterpreter<
     'a,
     F: PrimeField,
-    const N1_COL: usize,
-    const N2_COL: usize,
-    CIx1: ColIndexer<N1_COL>,
-    CIx2: ColIndexer<N2_COL>,
-    Env1: InterpreterEnv<N1_COL, CIx1, F>,
+    CIx1: ColIndexer,
+    CIx2: ColIndexer,
+    Env1: InterpreterEnv<CIx1, F>,
     L: MGetter<Source = CIx1, Target = CIx2>,
 > {
     env: &'a mut Env1,
@@ -265,13 +268,11 @@ pub struct SubInterpreter<
 impl<
         'a,
         F: PrimeField,
-        const N1_COL: usize,
-        const N2_COL: usize,
-        CIx1: ColIndexer<N1_COL>,
-        CIx2: ColIndexer<N2_COL>,
-        Env1: InterpreterEnv<N1_COL, CIx1, F>,
+        CIx1: ColIndexer,
+        CIx2: ColIndexer,
+        Env1: InterpreterEnv<CIx1, F>,
         L: MGetter<Source = CIx1, Target = CIx2>,
-    > SubInterpreter<'a, F, N1_COL, N2_COL, CIx1, CIx2, Env1, L>
+    > SubInterpreter<'a, F, CIx1, CIx2, Env1, L>
 {
     pub fn new(env: &'a mut Env1, lens: L) -> Self {
         SubInterpreter {
@@ -285,14 +286,11 @@ impl<
 impl<
         'a,
         F: PrimeField,
-        const N1_COL: usize,
-        const N2_COL: usize,
-        CIx1: ColIndexer<N1_COL>,
-        CIx2: ColIndexer<N2_COL>,
-        Env1: InterpreterEnv<N1_COL, CIx1, F>,
+        CIx1: ColIndexer,
+        CIx2: ColIndexer,
+        Env1: InterpreterEnv<CIx1, F>,
         L: MGetter<Source = CIx1, Target = CIx2>,
-    > InterpreterEnv<N2_COL, CIx2, F>
-    for SubInterpreter<'a, F, N1_COL, N2_COL, CIx1, CIx2, Env1, L>
+    > InterpreterEnv<CIx2, F> for SubInterpreter<'a, F, CIx1, CIx2, Env1, L>
 {
     type Variable = Env1::Variable;
 
@@ -316,7 +314,7 @@ impl<
 pub fn constrain_foo<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: InterpreterEnv<FOO_COL_N, FooColIndexer, F>,
+    Env: InterpreterEnv<FooColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
     unimplemented!()
@@ -325,7 +323,7 @@ where
 pub fn constrain_bla<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: InterpreterEnv<BLA_COL_N, BlaColIndexer, F>,
+    Env: InterpreterEnv<BlaColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
     constrain_foo(&mut SubInterpreter::new(env, BlaFoo1Lens {}));
@@ -336,7 +334,7 @@ where
 pub fn constrain_kek<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: InterpreterEnv<KEK_COL_N, KekColIndexer, F>,
+    Env: InterpreterEnv<KekColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, KekColIndexer::Kek1(0));
     constrain_bla(&mut SubInterpreter::new(env, KekBla1Lens {}));
