@@ -82,10 +82,10 @@ where
             let comm = (0..a.len())
                 .map(|i| {
                     let n = a[i].len();
-                    let num_chunks = if n % srs.g.len() == 0 {
-                        n / size
+                    let num_chunks = if n == 0 {
+                        1
                     } else {
-                        n / size + 1
+                        n / srs.g.len() + if n % srs.g.len() == 0 { 0 } else { 1 }
                     };
                     (
                         srs.commit(&a[i].clone(), num_chunks, rng),

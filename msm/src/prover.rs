@@ -49,7 +49,7 @@ pub fn prove<
     Column,
     RNG,
     const N: usize,
-    ID: LookupTableID + Send + Sync + Copy,
+    ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
@@ -281,7 +281,8 @@ where
     //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
     let zeta = zeta_chal.to_field(endo_r);
 
-    let omega = domain.d1.group_gen; // index.cs.domain.d1.group_gen;
+    let omega = domain.d1.group_gen;
+    // We will also evaluate at ζω as lookups do require to go to the next row.
     let zeta_omega = zeta * omega;
 
     // Evaluate the polynomials at ζ and ζω -- Columns
@@ -377,6 +378,8 @@ where
     // evaluation at ζ from the independent evaluations at ζ of the
     // witness columns because ft(X) is the constraint polynomial, built from
     // the public constraints.
+    // We evaluate at ζω because the lookup argument requires to compute
+    // \phi(Xω) - \phi(X).
     let ft_eval1 = ft.evaluate(&zeta_omega);
 
     // Absorb ft(ζω)
@@ -388,7 +391,6 @@ where
     let u = u_chal.to_field(endo_r);
 
     let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
-    let _evaluation_form = |e| DensePolynomialOrEvaluations::Evaluations(e, domain.d1);
     let non_hiding = |d1_size| PolyComm {
         elems: vec![G::ScalarField::zero(); d1_size],
     };

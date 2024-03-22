@@ -115,11 +115,11 @@ pub enum Column {
 ///   155..2123 -> curr
 ///         155                                                                        2119
 ///          <--------------------------------if_round<---------------------------------->
-///          <-------------if_sponge------------->    
-///         155                                 954           
-///          -> SPONGE:                          | -> ROUND:    
-///         -> 155..254: Input == SpongeOldState | -> 155..254: Input == ThetaStateA    
-///         -> 255..354: SpongeNewState          | -> 255..334: ThetaShiftsC           
+///          <-------------if_sponge------------->
+///         155                                 954
+///          -> SPONGE:                          | -> ROUND:
+///         -> 155..254: Input == SpongeOldState | -> 155..254: Input == ThetaStateA
+///         -> 255..354: SpongeNewState          | -> 255..334: ThetaShiftsC
 ///                    : 323..354 -> SpongeZeros | -> 335..354: ThetaDenseC
 ///         -> 355..554: SpongeBytes             | -> 355..359: ThetaQuotientC
 ///         -> 555..954: SpongeShifts            | -> 360..379: ThetaRemainderC

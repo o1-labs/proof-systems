@@ -12,13 +12,13 @@ use std::ops::Index;
 pub struct Witness<const N: usize, T> {
     /// A witness row is represented by an array of N witness columns
     /// When T is a vector, then the witness describes the rows of the circuit.
-    pub cols: [T; N],
+    pub cols: Box<[T; N]>,
 }
 
 impl<const N: usize, T: Zero + Clone> Default for Witness<N, T> {
     fn default() -> Self {
         Witness {
-            cols: std::array::from_fn(|_| T::zero()),
+            cols: Box::new(std::array::from_fn(|_| T::zero())),
         }
     }
 }
@@ -46,7 +46,7 @@ impl<const N: usize, T: Zero + Clone> Witness<N, Vec<T>> {
         Witness {
             // Ideally the vector should be of domain size, but
             // one-element vector should be a reasonable default too.
-            cols: std::array::from_fn(|_| vec![T::zero(); domain_size]),
+            cols: Box::new(std::array::from_fn(|_| vec![T::zero(); domain_size])),
         }
     }
 
@@ -55,7 +55,9 @@ impl<const N: usize, T: Zero + Clone> Witness<N, Vec<T>> {
         for (i, vec) in self.cols[0..NPUB].iter().enumerate() {
             newcols[i] = vec.clone();
         }
-        Witness { cols: newcols }
+        Witness {
+            cols: Box::new(newcols),
+        }
     }
 }
 
@@ -67,7 +69,7 @@ impl<'lt, const N: usize, G> IntoIterator for &'lt Witness<N, G> {
 
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&self.cols);
+        iter_contents.extend(&*self.cols);
         iter_contents.into_iter()
     }
 }
@@ -79,7 +81,7 @@ impl<const N: usize, F: Clone> IntoIterator for Witness<N, F> {
     /// Iterate over the columns in the circuit.
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(self.cols);
+        iter_contents.extend(*self.cols);
         iter_contents.into_iter()
     }
 }
@@ -94,7 +96,7 @@ where
     /// Iterate over the columns in the circuit, in parallel.
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(self.cols);
+        iter_contents.extend(*self.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -123,7 +125,7 @@ where
 
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&self.cols);
+        iter_contents.extend(&*self.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -137,7 +139,7 @@ where
 
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&mut self.cols);
+        iter_contents.extend(&mut *self.cols);
         iter_contents.into_par_iter()
     }
 }
