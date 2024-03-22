@@ -8,6 +8,7 @@ pub mod witness;
 
 #[cfg(test)]
 mod tests {
+
     use ark_ff::{Field, One, UniformRand, Zero};
     use kimchi::circuits::{
         domains::EvaluationDomains,

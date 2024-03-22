@@ -2,7 +2,7 @@
 
 use ark_ff::Field;
 use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
-use std::hash::Hash;
+use std::{collections::HashMap, hash::Hash};
 
 use crate::expr::E;
 
@@ -113,8 +113,8 @@ pub struct LookupProof<T, ID> {
     pub(crate) h: Vec<T>,
     /// The "running-sum" over the rows, coined `\phi`
     pub(crate) sum: T,
-    // FIXME: use a hashmap for the multiplicity, and get rid of me.
-    pub id: std::marker::PhantomData<ID>,
+    /// All fixed lookup tables values, indexed by their ID
+    pub(crate) fixed_tables: HashMap<ID, T>,
 }
 
 /// Iterator implementation to abstract the content of the structure.
@@ -125,11 +125,20 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
     type IntoIter = std::vec::IntoIter<&'lt G>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let n = self.h.len();
-        let mut iter_contents = Vec::with_capacity(1 + n + 1);
+        let mut iter_contents = vec![];
         iter_contents.extend(&self.m);
         iter_contents.extend(&self.h);
         iter_contents.push(&self.sum);
+        // We must process it in the same order on
+        // the prover and verifier side.
+        // We order by IDs as iterating directly over the elements of the
+        // hashmap is not deterministic
+        {
+            let mut ft: Vec<(&ID, &G)> = self.fixed_tables.iter().collect();
+            ft.sort_by(|(id1, _), (id2, _)| id1.to_u32().cmp(&id2.to_u32()));
+            ft.into_iter()
+                .for_each(|(_, elem)| iter_contents.push(elem));
+        }
         iter_contents.into_iter()
     }
 }
@@ -148,15 +157,16 @@ pub mod prover {
         OpenProof, SRS as _,
     };
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
+    use std::collections::HashMap;
 
-    pub struct QuotientPolynomialEnvironment<'a, F: FftField> {
+    pub struct QuotientPolynomialEnvironment<'a, F: FftField, ID: LookupTableID> {
         pub lookup_terms_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
         pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
         pub lookup_counters_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
-        pub fixed_lookup_tables: &'a Vec<Evaluations<F, D<F>>>,
+        pub fixed_tables_evals_d8: &'a HashMap<ID, Evaluations<F, D<F>>>,
     }
 
-    pub struct Env<G: KimchiCurve> {
+    pub struct Env<G: KimchiCurve, ID: LookupTableID> {
         pub lookup_counters_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
         pub lookup_counters_comm_d1: Vec<PolyComm<G>>,
 
@@ -171,6 +181,11 @@ pub mod prover {
         pub lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
         pub lookup_aggregation_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>>,
 
+        pub fixed_lookup_tables_poly_d1: HashMap<ID, DensePolynomial<G::ScalarField>>,
+        pub fixed_lookup_tables_comms_d1: HashMap<ID, PolyComm<G>>,
+        pub fixed_lookup_tables_evals_d8:
+            HashMap<ID, Evaluations<G::ScalarField, D<G::ScalarField>>>,
+
         /// The combiner used for vector lookups
         pub joint_combiner: G::ScalarField,
 
@@ -178,7 +193,7 @@ pub mod prover {
         pub beta: G::ScalarField,
     }
 
-    impl<G: KimchiCurve> Env<G> {
+    impl<G: KimchiCurve, ID: LookupTableID> Env<G, ID> {
         /// Create an environment for the prover to create a proof for the MVLookup protocol.
         /// The protocol does suppose that the individual lookup terms are
         /// committed as part of the columns.
@@ -187,7 +202,6 @@ pub mod prover {
         pub fn create<
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
-            ID: LookupTableID,
         >(
             lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
@@ -241,6 +255,8 @@ pub mod prover {
 
             // Contain the evalations of the h_i. We divide the looked-up values
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
+            let mut fixed_lookup_tables: HashMap<ID, Vec<G::ScalarField>> = HashMap::new();
+
             let lookup_terms_evals: Vec<Vec<Vec<G::ScalarField>>> = lookups
                 .into_iter()
                 .map(|lookup| {
@@ -264,7 +280,7 @@ pub mod prover {
                     // Iterate over the rows
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
-                        for f_i in f.iter() {
+                        for (i, f_i) in f.iter().enumerate() {
                             let MVLookup {
                                 numerator: _,
                                 table_id,
@@ -276,6 +292,15 @@ pub mod prover {
                                     x * vector_lookup_combiner + y
                                 }) * vector_lookup_combiner
                                     + table_id.to_field::<G::ScalarField>();
+
+                            // If last element and fixed lookup tables, we keep
+                            // the *combined* value of the table.
+                            if i == (n - 1) && table_id.is_fixed() {
+                                fixed_lookup_tables
+                                    .entry(*table_id)
+                                    .or_insert_with(Vec::new)
+                                    .push(combined_value);
+                            }
 
                             // beta + a_{i}
                             let lookup_denominator = beta + combined_value;
@@ -300,6 +325,9 @@ pub mod prover {
                             } = &f_i[j as usize];
                             row_acc += *numerator * denominators[denominator_index];
                             denominator_index += 1;
+                            // We split in chunks of (MAX_SUPPORTED_DEGREE - 2)
+                            // We reset the accumulator for the current partial
+                            // sum after keeping it.
                             if denominator_index % (MAX_SUPPORTED_DEGREE - 2) == 0 {
                                 partial_sums[partial_sum_idx].push(row_acc);
                                 row_acc = G::ScalarField::zero();
@@ -322,6 +350,11 @@ pub mod prover {
                 .iter()
                 .for_each(|evals| assert_eq!(evals.len(), domain.d1.size as usize));
 
+            // Sanity check to verify that we have all the evaluations for the fixed lookup tables
+            fixed_lookup_tables
+                .iter()
+                .for_each(|(_, evals)| assert_eq!(evals.len(), domain.d1.size as usize));
+
             let lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
                 lookup_terms_evals
                     .into_par_iter()
@@ -332,11 +365,32 @@ pub mod prover {
                     })
                     .collect::<Vec<_>>();
 
+            let fixed_lookup_tables_evals_d1: HashMap<
+                ID,
+                Evaluations<G::ScalarField, D<G::ScalarField>>,
+            > = fixed_lookup_tables
+                .into_iter()
+                .map(|(id, evals)| {
+                    (
+                        id,
+                        Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                            evals, domain.d1,
+                        ),
+                    )
+                })
+                .collect();
+
             let lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>> =
                 (&lookup_terms_evals_d1)
                     .into_par_iter()
                     .map(|lte| lte.interpolate_by_ref())
                     .collect::<Vec<_>>();
+
+            let fixed_lookup_tables_poly_d1: HashMap<ID, DensePolynomial<G::ScalarField>> =
+                (&fixed_lookup_tables_evals_d1)
+                    .into_par_iter()
+                    .map(|(id, evals)| (*id, evals.interpolate_by_ref()))
+                    .collect();
 
             let lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
                 (&lookup_terms_poly_d1)
@@ -344,14 +398,41 @@ pub mod prover {
                     .map(|lte| lte.evaluate_over_domain_by_ref(domain.d8))
                     .collect::<Vec<_>>();
 
+            let fixed_lookup_tables_evals_d8: HashMap<
+                ID,
+                Evaluations<G::ScalarField, D<G::ScalarField>>,
+            > = (&fixed_lookup_tables_poly_d1)
+                .into_par_iter()
+                .map(|(id, poly)| (*id, poly.evaluate_over_domain_by_ref(domain.d8)))
+                .collect();
+
             let lookup_terms_comms_d1: Vec<PolyComm<G>> = (&lookup_terms_evals_d1)
                 .into_par_iter()
                 .map(|lte| srs.commit_evaluations_non_hiding(domain.d1, lte))
                 .collect::<Vec<_>>();
 
+            let fixed_lookup_tables_comms_d1: HashMap<ID, PolyComm<G>> =
+                (&fixed_lookup_tables_evals_d1)
+                    .into_par_iter()
+                    .map(|(id, evals)| (*id, srs.commit_evaluations_non_hiding(domain.d1, evals)))
+                    .collect();
+
             lookup_terms_comms_d1
                 .iter()
                 .for_each(|comm| absorb_commitment(fq_sponge, comm));
+
+            // Absorbing fixed tables. We must process it in the same order on
+            // the prover and verifier side.
+            // We order by IDs as iterating directly over the elements of the
+            // hashmap is not deterministic
+            {
+                let mut comms: Vec<(&ID, &PolyComm<G>)> =
+                    fixed_lookup_tables_comms_d1.iter().collect();
+                comms.sort_by(|(id1, _), (id2, _)| id1.to_u32().cmp(&id2.to_u32()));
+                comms
+                    .into_iter()
+                    .for_each(|(_, comm)| absorb_commitment(fq_sponge, comm));
+            }
             // -- end computing the row sums h
 
             // -- start computing the running sum in lookup_aggregation
@@ -403,6 +484,10 @@ pub mod prover {
                 lookup_counters_evals_d8,
                 lookup_terms_evals_d8,
                 lookup_aggregation_evals_d8,
+
+                fixed_lookup_tables_poly_d1,
+                fixed_lookup_tables_comms_d1,
+                fixed_lookup_tables_evals_d8,
 
                 joint_combiner: vector_lookup_combiner,
                 beta,
