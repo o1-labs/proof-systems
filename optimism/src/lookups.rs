@@ -46,6 +46,22 @@ impl LookupTableID for LookupTableIDs {
         *self as u32
     }
 
+    fn from_u32(value: u32) -> Self {
+        match value {
+            0 => PadLookup,
+            1 => RoundConstantsLookup,
+            2 => ByteLookup,
+            3 => RangeCheck16Lookup,
+            4 => SparseLookup,
+            5 => ResetLookup,
+            6 => MemoryLookup,
+            7 => RegisterLookup,
+            8 => SyscallLookup,
+            9 => KeccakStepLookup,
+            _ => panic!("Invalid table ID"),
+        }
+    }
+
     fn length(&self) -> usize {
         match self {
             PadLookup => RATE_IN_BYTES,
