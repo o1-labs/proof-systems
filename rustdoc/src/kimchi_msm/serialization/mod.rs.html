@@ -261,6 +261,13 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{mvlookup::LookupTableID, MVLookup};
 
 <span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
@@ -511,14 +518,21 @@
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
 
-        <span class="kw">let </span>verifies =
-            verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS, <span class="number">0</span>&gt;(
-                domain,
-                <span class="kw-2">&amp;</span>srs,
-                <span class="kw-2">&amp;</span>constraints,
-                <span class="kw-2">&amp;</span>proof,
-                Witness::zero_vec(DOMAIN_SIZE),
-            );
+        <span class="kw">let </span>verifies = verify::&lt;
+            <span class="kw">_</span>,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            SERIALIZATION_N_COLUMNS,
+            <span class="number">0</span>,
+            LookupTable,
+        &gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(DOMAIN_SIZE),
+        );
         <span class="macro">assert!</span>(verifies)
     }
 }

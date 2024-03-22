@@ -76,6 +76,7 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -149,6 +150,7 @@
         ScalarSponge,
         FFA_N_COLUMNS,
         FFA_NPUB_COLUMNS,
+        LookupTableIDs,
     &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, <span class="kw-2">&amp;</span>proof, pub_inputs);
     <span class="macro">println!</span>(<span class="string">"Proof verification result: {verifies}"</span>)
 }

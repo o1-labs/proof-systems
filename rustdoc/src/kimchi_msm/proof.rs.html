@@ -80,6 +80,18 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{LookupTableIDs, LookupWitness},
     mvlookup::{LookupProof, LookupTableID},
@@ -124,17 +136,23 @@
 }
 
 <span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>ProofEvaluations&lt;<span class="kw">const </span>N: usize, F&gt; {
+</span><span class="kw">pub struct </span>ProofEvaluations&lt;<span class="kw">const </span>N: usize, F, ID: LookupTableID&gt; {
     <span class="doccomment">/// Witness evaluations, including public inputs
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) witness_evals: Witness&lt;N, PointEvaluations&lt;F&gt;&gt;,
     <span class="doccomment">/// MVLookup argument evaluations
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) mvlookup_evals: <span class="prelude-ty">Option</span>&lt;LookupProof&lt;PointEvaluations&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) mvlookup_evals: <span class="prelude-ty">Option</span>&lt;LookupProof&lt;PointEvaluations&lt;F&gt;, ID&gt;&gt;,
     <span class="doccomment">/// Evaluation of Z_H(ζ) (t_0(X) + ζ^n t_1(X) + ...) at ζω.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) ft_eval1: F,
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, F: Clone&gt; ColumnEvaluations&lt;F&gt; <span class="kw">for </span>ProofEvaluations&lt;N, F&gt; {
+<span class="doccomment">/// The trait ColumnEvaluations is used by the verifier.
+/// It will return the evaluation of the corresponding column at the
+/// evaluation points coined by the verifier during the protocol.
+</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, F: Clone, ID: LookupTableID&gt; ColumnEvaluations&lt;F&gt;
+    <span class="kw">for </span>ProofEvaluations&lt;N, F, ID&gt;
+{
     <span class="kw">type </span>Column = <span class="kw">crate</span>::columns::Column;
+
     <span class="kw">fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Result</span>&lt;PointEvaluations&lt;F&gt;, ExprError&lt;<span class="self">Self</span>::Column&gt;&gt; {
         <span class="kw">let </span><span class="kw">crate</span>::columns::Column::X(i) = col <span class="kw">else </span>{
             <span class="macro">todo!</span>()
@@ -148,16 +166,22 @@
 }
 
 <span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>ProofCommitments&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) witness_comms: Witness&lt;N, PolyComm&lt;G&gt;&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) mvlookup_comms: <span class="prelude-ty">Option</span>&lt;LookupProof&lt;PolyComm&lt;G&gt;&gt;&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) t_comm: PolyComm&lt;G&gt;,
+</span><span class="kw">pub struct </span>ProofCommitments&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID&gt; {
+    <span class="doccomment">/// Commitments to the N columns of the circuits, also called the 'witnesses'.
+    /// If some columns are considered as public inputs, it is counted in the witness.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) witness_comms: Witness&lt;N, PolyComm&lt;G&gt;&gt;,
+    <span class="doccomment">/// Commitments to the polynomials used by the lookup argument.
+    /// The values contains the chunked polynomials.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) mvlookup_comms: <span class="prelude-ty">Option</span>&lt;LookupProof&lt;PolyComm&lt;G&gt;, ID&gt;&gt;,
+    <span class="doccomment">/// Commitments to the quotient polynomial.
+    /// The value contains the chunked polynomials.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) t_comm: PolyComm&lt;G&gt;,
 }
 
 <span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>Proof&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) proof_comms: ProofCommitments&lt;N, G&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) proof_evals: ProofEvaluations&lt;N, G::ScalarField&gt;,
+</span><span class="kw">pub struct </span>Proof&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;, ID: LookupTableID&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) proof_comms: ProofCommitments&lt;N, G, ID&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) proof_evals: ProofEvaluations&lt;N, G::ScalarField, ID&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) opening_proof: OpeningProof,
 }
 </code></pre></div></section></main></body></html>

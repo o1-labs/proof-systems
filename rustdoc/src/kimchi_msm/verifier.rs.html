@@ -256,7 +256,10 @@
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One, Zero};
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup::LookupTableID;
+<span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>rayon::iter::IntoParallelIterator;
@@ -286,11 +289,12 @@
     EFrSponge: FrSponge&lt;G::ScalarField&gt;,
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>NPUB: usize,
+    ID: LookupTableID,
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
     constraint_exprs: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
-    proof: <span class="kw-2">&amp;</span>Proof&lt;N, G, OpeningProof&gt;,
+    proof: <span class="kw-2">&amp;</span>Proof&lt;N, G, OpeningProof, ID&gt;,
     public_inputs: Witness&lt;NPUB, Vec&lt;G::ScalarField&gt;&gt;,
 ) -&gt; bool
 <span class="kw">where

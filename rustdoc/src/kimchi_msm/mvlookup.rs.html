@@ -405,6 +405,8 @@
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -509,19 +511,21 @@
 /// FIXME: We should have a fixed number of m and h. Should we encode that in
 /// the type?
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>LookupProof&lt;T&gt; {
+</span><span class="kw">pub struct </span>LookupProof&lt;T, ID&gt; {
     <span class="doccomment">/// The multiplicity polynomials
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: Vec&lt;T&gt;,
     <span class="doccomment">/// The polynomial keeping the sum of each row
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) h: Vec&lt;T&gt;,
     <span class="doccomment">/// The "running-sum" over the rows, coined `\phi`
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) sum: T,
+    <span class="comment">// FIXME: use a hashmap for the multiplicity, and get rid of me.
+    </span><span class="kw">pub </span>id: std::marker::PhantomData&lt;ID&gt;,
 }
 
 <span class="doccomment">/// Iterator implementation to abstract the content of the structure.
 /// It can be used to iterate over the commitments (resp. the evaluations)
 /// without requiring to have a look at the inner fields.
-</span><span class="kw">impl</span>&lt;<span class="lifetime">'lt</span>, G&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'lt </span>LookupProof&lt;G&gt; {
+</span><span class="kw">impl</span>&lt;<span class="lifetime">'lt</span>, G, ID: LookupTableID&gt; IntoIterator <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">'lt </span>LookupProof&lt;G, ID&gt; {
     <span class="kw">type </span>Item = <span class="kw-2">&amp;</span><span class="lifetime">'lt </span>G;
     <span class="kw">type </span>IntoIter = std::vec::IntoIter&lt;<span class="kw-2">&amp;</span><span class="lifetime">'lt </span>G&gt;;
 
