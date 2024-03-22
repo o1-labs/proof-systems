@@ -45,6 +45,11 @@ pub trait LookupTableID {
         F::from(self.to_u32())
     }
 
+    /// Identify fixed and RAMLookups with a boolean.
+    /// This can be used to identify the lookups whose table values are fixed,
+    /// like range checks.
+    fn is_fixed(&self) -> bool;
+
     /// Assign a unique ID to the lookup tables, as an expression.
     fn to_constraint<F: Field>(&self) -> E<F> {
         let f = self.to_field();

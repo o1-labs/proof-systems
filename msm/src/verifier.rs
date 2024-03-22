@@ -183,8 +183,10 @@ where
         }
     };
 
+    // Compute [ft(X)] = \
+    //   (1 - ζ^n) \
+    //    ([t_0(X)] + ζ^n [t_1(X)] + ... + ζ^{kn} [t_{k}(X)])
     let ft_comm = {
-        // TODO zeta or zeta*omega?
         let evaluation_point_to_domain_size = zeta.pow([domain.d1.size]);
         let chunked_t_comm = proof_comms
             .t_comm

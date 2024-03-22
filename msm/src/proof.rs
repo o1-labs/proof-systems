@@ -43,11 +43,11 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
 
 #[derive(Debug, Clone)]
 pub struct ProofEvaluations<const N: usize, F> {
-    /// Witness evaluations, including public input
+    /// Witness evaluations, including public inputs
     pub(crate) witness_evals: Witness<N, PointEvaluations<F>>,
     /// MVLookup argument evaluations
     pub(crate) mvlookup_evals: Option<LookupProof<PointEvaluations<F>>>,
-    /// Evaluation of Z_H(xi) (t_0(X) + xi^n t_1(X) + ...) at xi.
+    /// Evaluation of Z_H(ζ) (t_0(X) + ζ^n t_1(X) + ...) at ζω.
     pub(crate) ft_eval1: F,
 }
 
