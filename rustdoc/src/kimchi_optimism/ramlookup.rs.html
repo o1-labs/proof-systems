@@ -117,8 +117,6 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>kimchi_msm::{LookupTableID, MVLookup};
 
@@ -131,7 +129,7 @@
 
 <span class="doccomment">/// Struct containing a RAMLookup
 </span><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>RAMLookup&lt;T, ID: LookupTableID + Send + Sync + Copy&gt; {
+</span><span class="kw">pub struct </span>RAMLookup&lt;T, ID: LookupTableID&gt; {
     <span class="doccomment">/// The table ID corresponding to this lookup
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) table_id: ID,
     <span class="doccomment">/// Whether it is a read or write lookup
@@ -151,7 +149,7 @@
         + std::fmt::Debug
         + One
         + Zero,
-    ID: LookupTableID + Send + Sync + Copy,
+    ID: LookupTableID,
 {
     <span class="doccomment">/// Creates a new RAMLookup from a mode, a table ID, a magnitude, and a value
     </span><span class="kw">pub fn </span>new(mode: LookupMode, table_id: ID, magnitude: T, value: <span class="kw-2">&amp;</span>[T]) -&gt; <span class="self">Self </span>{
@@ -217,9 +215,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: std::fmt::Display + Field, ID: LookupTableID + Send + Sync + Copy&gt; std::fmt::Display
-    <span class="kw">for </span>RAMLookup&lt;F, ID&gt;
-{
+<span class="kw">impl</span>&lt;F: std::fmt::Display + Field, ID: LookupTableID&gt; std::fmt::Display <span class="kw">for </span>RAMLookup&lt;F, ID&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">let </span>numerator = <span class="kw">match </span><span class="self">self</span>.mode {
             LookupMode::Read =&gt; -<span class="self">self</span>.magnitude,

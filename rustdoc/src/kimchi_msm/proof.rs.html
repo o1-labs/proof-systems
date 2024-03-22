@@ -80,6 +80,12 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{LookupTableIDs, LookupWitness},
     mvlookup::{LookupProof, LookupTableID},
@@ -97,7 +103,7 @@
 <span class="kw">use </span>poly_commitment::{commitment::PolyComm, OpenProof};
 
 <span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID + Send + Sync + Copy&gt; {
+</span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID&gt; {
     <span class="doccomment">/// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
     </span><span class="kw">pub </span>evaluations: Witness&lt;N, Vec&lt;G::ScalarField&gt;&gt;,
@@ -149,9 +155,15 @@
 
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ProofCommitments&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) witness_comms: Witness&lt;N, PolyComm&lt;G&gt;&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) mvlookup_comms: <span class="prelude-ty">Option</span>&lt;LookupProof&lt;PolyComm&lt;G&gt;&gt;&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) t_comm: PolyComm&lt;G&gt;,
+    <span class="doccomment">/// Commitments to the N columns of the circuits, also called the 'witnesses'.
+    /// If some columns are considered as public inputs, it is counted in the witness.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) witness_comms: Witness&lt;N, PolyComm&lt;G&gt;&gt;,
+    <span class="doccomment">/// Commitments to the polynomials used by the lookup argument.
+    /// The values contains the chunked polynomials.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) mvlookup_comms: <span class="prelude-ty">Option</span>&lt;LookupProof&lt;PolyComm&lt;G&gt;&gt;&gt;,
+    <span class="doccomment">/// Commitments to the quotient polynomial.
+    /// The value contains the chunked polynomials.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) t_comm: PolyComm&lt;G&gt;,
 }
 
 <span class="attr">#[derive(Debug, Clone)]

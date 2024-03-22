@@ -420,7 +420,7 @@
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>MVLookup&lt;F, ID: LookupTableID + Send + Sync + Copy&gt; {
+</span><span class="kw">pub struct </span>MVLookup&lt;F, ID: LookupTableID&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) table_id: ID,
     <span class="kw">pub</span>(<span class="kw">crate</span>) numerator: F,
     <span class="kw">pub</span>(<span class="kw">crate</span>) value: Vec&lt;F&gt;,
@@ -430,7 +430,7 @@
 </span><span class="kw">impl</span>&lt;F, ID&gt; MVLookup&lt;F, ID&gt;
 <span class="kw">where
     </span>F: Clone,
-    ID: LookupTableID + Send + Sync + Copy,
+    ID: LookupTableID,
 {
     <span class="doccomment">/// Creates a new MVLookup
     </span><span class="kw">pub fn </span>new(table_id: ID, numerator: F, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="self">Self </span>{
@@ -443,7 +443,7 @@
 }
 
 <span class="doccomment">/// Trait for lookup table variants
-</span><span class="kw">pub trait </span>LookupTableID {
+</span><span class="kw">pub trait </span>LookupTableID: Send + Sync + Copy {
     <span class="doccomment">/// Assign a unique ID, as a u32 value
     </span><span class="kw">fn </span>to_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32;
 
@@ -470,7 +470,7 @@
 
 <span class="doccomment">/// A table of values that can be used for a lookup, along with the ID for the table.
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>LookupTable&lt;F, ID: LookupTableID + Send + Sync + Copy&gt; {
+</span><span class="kw">pub struct </span>LookupTable&lt;F, ID: LookupTableID&gt; {
     <span class="doccomment">/// Table ID corresponding to this table
     </span><span class="kw">pub </span>table_id: ID,
     <span class="doccomment">/// Vector of values inside each entry of the table
@@ -482,7 +482,7 @@
 </span><span class="comment">// The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span>MVLookupWitness&lt;F, ID: LookupTableID + Send + Sync + Copy&gt; {
+</span><span class="kw">pub struct </span>MVLookupWitness&lt;F, ID: LookupTableID&gt; {
     <span class="doccomment">/// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
@@ -587,7 +587,7 @@
         </span><span class="kw">pub fn </span>create&lt;
             OpeningProof: OpenProof&lt;G&gt;,
             Sponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
-            ID: LookupTableID + Send + Sync + Copy,
+            ID: LookupTableID,
         &gt;(
             lookups: Vec&lt;MVLookupWitness&lt;G::ScalarField, ID&gt;&gt;,
             domain: EvaluationDomains&lt;G::ScalarField&gt;,
