@@ -3,14 +3,8 @@ use ark_ff::Zero;
 
 use crate::Fp;
 
-// To use the `derive(Lenses)` macro
-use pl_lens::Lenses;
-
-// To use the `lens!` macro
-use pl_lens::lens;
-
 // To bring trait methods like `get_ref` and `set` into scope
-use pl_lens::{Lens, LensPath, RefLens};
+use pl_lens::LensPath;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Column(usize);
@@ -47,6 +41,8 @@ pub struct Foo1Lens {}
 /// but for Maybe in a Getter-style
 ///
 /// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Getter.html
+///
+/// Also seems very similar to a Prism: https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html
 pub trait MGetter {
     /// The lens source type, i.e., the object containing the field.
     type Source;
@@ -57,25 +53,9 @@ pub trait MGetter {
     /// Returns a `LensPath` that describes the target of this lens relative to its source.
     fn path(&self) -> LensPath;
 
-    fn get(&self, source: Self::Source) -> Option<Self::Target>;
-}
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target>;
 
-impl Lens for Foo1Lens {
-    type Source = BlaColIndexer;
-    type Target = FooColIndexer;
-
-    fn path(&self) -> LensPath {
-        LensPath::new(0)
-    }
-
-    fn mutate<'a>(&self, source: &'a mut Self::Source, target: Self::Target) {
-        match *source {
-            BlaColIndexer::SubFoo1(_) => {
-                *source = BlaColIndexer::SubFoo1(target);
-            }
-            _ => {}
-        }
-    }
+    fn re_get(&self, target: Self::Target) -> Self::Source;
 }
 
 impl MGetter for Foo1Lens {
@@ -86,17 +66,21 @@ impl MGetter for Foo1Lens {
         LensPath::new(0)
     }
 
-    fn get(&self, source: Self::Source) -> Option<Self::Target> {
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {
             BlaColIndexer::SubFoo1(ixer) => Some(ixer),
             _ => None,
         }
     }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        BlaColIndexer::SubFoo1(target)
+    }
 }
 
 pub struct Foo2Lens {}
 
-impl Lens for Foo2Lens {
+impl MGetter for Foo2Lens {
     type Source = BlaColIndexer;
     type Target = FooColIndexer;
 
@@ -104,13 +88,56 @@ impl Lens for Foo2Lens {
         LensPath::new(0)
     }
 
-    fn mutate<'a>(&self, source: &'a mut Self::Source, target: Self::Target) {
-        match *source {
-            BlaColIndexer::SubFoo2(_) => {
-                *source = BlaColIndexer::SubFoo2(target);
-            }
-            _ => {}
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            BlaColIndexer::SubFoo2(ixer) => Some(ixer),
+            _ => None,
         }
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        BlaColIndexer::SubFoo2(target)
+    }
+}
+
+pub struct ComposedMGetter<LHS, RHS> {
+    /// The left-hand side of the composition.
+    lhs: LHS,
+
+    /// The right-hand side of the composition.
+    rhs: RHS,
+}
+
+pub fn compose<LHS, RHS>(lhs: LHS, rhs: RHS) -> ComposedMGetter<LHS, RHS>
+where
+    LHS: MGetter,
+    LHS::Target: 'static,
+    RHS: MGetter<Source = LHS::Target>,
+{
+    ComposedMGetter { lhs, rhs }
+}
+
+impl<LHS, RHS> MGetter for ComposedMGetter<LHS, RHS>
+where
+    LHS: MGetter,
+    LHS::Target: 'static,
+    RHS: MGetter<Source = LHS::Target>,
+{
+    type Source = LHS::Source;
+    type Target = RHS::Target;
+
+    fn path(&self) -> LensPath {
+        LensPath::concat(self.lhs.path(), self.rhs.path())
+    }
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        let r1: Option<_> = self.lhs.traverse(source);
+        let r2: Option<_> = r1.and_then(|x| self.rhs.traverse(x));
+        r2
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        self.lhs.re_get(self.rhs.re_get(target))
     }
 }
 
@@ -367,4 +394,112 @@ impl<const COL_N: usize> WitnessBuilderEnv<Fp, COL_N> {
     //            public_input_size: 0,
     //        }
     //    }
+}
+
+/// Attempt to define a generic interpreter.
+/// It is not used yet.
+pub trait InterpreterEnv2<const COL_N: usize, CIx: ColIndexer<COL_N>, F: PrimeField> {
+    type Variable: Clone
+        + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Sub<Self::Variable, Output = Self::Variable>
+        + std::ops::Mul<Self::Variable, Output = Self::Variable>
+        + std::fmt::Debug;
+
+    fn assert_zero(&mut self, cst: Self::Variable);
+
+    fn read_column(&self, ix: CIx) -> Self::Variable;
+
+    fn constant(&self, value: F) -> Self::Variable;
+}
+
+pub struct SubInterpreter<
+    'a,
+    F: PrimeField,
+    const N1_COL: usize,
+    const N2_COL: usize,
+    CIx1: ColIndexer<N1_COL>,
+    CIx2: ColIndexer<N2_COL>,
+    Env1: InterpreterEnv2<N1_COL, CIx1, F>,
+    L: MGetter<Source = CIx1, Target = CIx2>,
+> {
+    env: &'a mut Env1,
+    lens: L,
+    field_phantom: core::marker::PhantomData<F>,
+}
+
+impl<
+        'a,
+        F: PrimeField,
+        const N1_COL: usize,
+        const N2_COL: usize,
+        CIx1: ColIndexer<N1_COL>,
+        CIx2: ColIndexer<N2_COL>,
+        Env1: InterpreterEnv2<N1_COL, CIx1, F>,
+        L: MGetter<Source = CIx1, Target = CIx2>,
+    > SubInterpreter<'a, F, N1_COL, N2_COL, CIx1, CIx2, Env1, L>
+{
+    pub fn new(env: &'a mut Env1, lens: L) -> Self {
+        SubInterpreter {
+            env,
+            lens,
+            field_phantom: Default::default(),
+        }
+    }
+}
+
+impl<
+        'a,
+        F: PrimeField,
+        const N1_COL: usize,
+        const N2_COL: usize,
+        CIx1: ColIndexer<N1_COL>,
+        CIx2: ColIndexer<N2_COL>,
+        Env1: InterpreterEnv2<N1_COL, CIx1, F>,
+        L: MGetter<Source = CIx1, Target = CIx2>,
+    > InterpreterEnv2<N2_COL, CIx2, F>
+    for SubInterpreter<'a, F, N1_COL, N2_COL, CIx1, CIx2, Env1, L>
+{
+    type Variable = Env1::Variable;
+
+    fn assert_zero(&mut self, cst: Self::Variable) {
+        self.env.assert_zero(cst);
+    }
+
+    fn constant(&self, value: F) -> Self::Variable {
+        self.env.constant(value)
+    }
+
+    fn read_column(&self, ix: CIx2) -> Self::Variable {
+        self.env.read_column(self.lens.re_get(ix))
+    }
+}
+
+pub fn constrain_multiplication2<F, CIx, const N: usize, const COL_N: usize, Env>(
+    env: &mut Env,
+) -> Env::Variable
+where
+    F: PrimeField,
+    Env: InterpreterEnv<FOO_COL_N, FooColIndexer, F>,
+{
+    let _a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
+    unimplemented!()
+}
+
+pub fn constrain_foo2<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: InterpreterEnv2<FOO_COL_N, FooColIndexer, F>,
+{
+    let _a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
+    unimplemented!()
+}
+
+pub fn constrain_bla2<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: InterpreterEnv2<BLA_COL_N, BlaColIndexer, F>,
+{
+    let _a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
+    constrain_foo2(&mut SubInterpreter::new(env, Foo1Lens {}));
+    unimplemented!()
 }
