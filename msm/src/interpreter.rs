@@ -7,22 +7,20 @@ use pl_lens::LensPath;
 // Abstract lenses
 ////////////////////////////////////////////////////////////////////////////
 
-/// Something like a Traversal
+/// Something like a Prism, but for Maybe and not just any
+/// Applicative. Not sure what's a better name. To me this looks most
+/// like a prism.
 ///
-/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Traversal.html
-///
-/// but for Maybe in a Getter-style
-///
-/// https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Getter.html
-///
-/// Also seems very similar to a Prism: https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html
-pub trait MGetter {
+/// - https://hackage.haskell.org/package/lens-4.17.1/docs/Control-Lens-Prism.html
+/// - https://hackage.haskell.org/package/lens-tutorial-1.0.4/docs/Control-Lens-Tutorial.html
+pub trait MPrism {
     /// The lens source type, i.e., the object containing the field.
     type Source;
 
     /// The lens target type, i.e., the field to be accessed or modified.
     type Target;
 
+    // TODO @volhovm unused for now
     /// Returns a `LensPath` that describes the target of this lens relative to its source.
     fn path(&self) -> LensPath;
 
@@ -31,7 +29,7 @@ pub trait MGetter {
     fn re_get(&self, target: Self::Target) -> Self::Source;
 }
 
-pub struct ComposedMGetter<LHS, RHS> {
+pub struct ComposedMPrism<LHS, RHS> {
     /// The left-hand side of the composition.
     lhs: LHS,
 
@@ -39,20 +37,20 @@ pub struct ComposedMGetter<LHS, RHS> {
     rhs: RHS,
 }
 
-pub fn compose<LHS, RHS>(lhs: LHS, rhs: RHS) -> ComposedMGetter<LHS, RHS>
+pub fn compose<LHS, RHS>(lhs: LHS, rhs: RHS) -> ComposedMPrism<LHS, RHS>
 where
-    LHS: MGetter,
+    LHS: MPrism,
     LHS::Target: 'static,
-    RHS: MGetter<Source = LHS::Target>,
+    RHS: MPrism<Source = LHS::Target>,
 {
-    ComposedMGetter { lhs, rhs }
+    ComposedMPrism { lhs, rhs }
 }
 
-impl<LHS, RHS> MGetter for ComposedMGetter<LHS, RHS>
+impl<LHS, RHS> MPrism for ComposedMPrism<LHS, RHS>
 where
-    LHS: MGetter,
+    LHS: MPrism,
     LHS::Target: 'static,
-    RHS: MGetter<Source = LHS::Target>,
+    RHS: MPrism<Source = LHS::Target>,
 {
     type Source = LHS::Source;
     type Target = RHS::Target;
@@ -142,7 +140,7 @@ impl ColIndexer for KekColIndexer {
 
 pub struct BlaFoo1Lens {}
 
-impl MGetter for BlaFoo1Lens {
+impl MPrism for BlaFoo1Lens {
     type Source = BlaColIndexer;
     type Target = FooColIndexer;
 
@@ -164,7 +162,7 @@ impl MGetter for BlaFoo1Lens {
 
 pub struct BlaFoo2Lens {}
 
-impl MGetter for BlaFoo2Lens {
+impl MPrism for BlaFoo2Lens {
     type Source = BlaColIndexer;
     type Target = FooColIndexer;
 
@@ -186,7 +184,7 @@ impl MGetter for BlaFoo2Lens {
 
 pub struct KekBla1Lens {}
 
-impl MGetter for KekBla1Lens {
+impl MPrism for KekBla1Lens {
     type Source = KekColIndexer;
     type Target = BlaColIndexer;
 
@@ -208,7 +206,7 @@ impl MGetter for KekBla1Lens {
 
 pub struct KekFooComplexLens {}
 
-impl MGetter for KekFooComplexLens {
+impl MPrism for KekFooComplexLens {
     type Source = KekColIndexer;
     type Target = FooColIndexer;
 
@@ -258,7 +256,7 @@ pub struct SubInterpreter<
     CIx1: ColIndexer,
     CIx2: ColIndexer,
     Env1: InterpreterEnv<CIx1, F>,
-    L: MGetter<Source = CIx1, Target = CIx2>,
+    L: MPrism<Source = CIx1, Target = CIx2>,
 > {
     env: &'a mut Env1,
     lens: L,
@@ -271,7 +269,7 @@ impl<
         CIx1: ColIndexer,
         CIx2: ColIndexer,
         Env1: InterpreterEnv<CIx1, F>,
-        L: MGetter<Source = CIx1, Target = CIx2>,
+        L: MPrism<Source = CIx1, Target = CIx2>,
     > SubInterpreter<'a, F, CIx1, CIx2, Env1, L>
 {
     pub fn new(env: &'a mut Env1, lens: L) -> Self {
@@ -289,7 +287,7 @@ impl<
         CIx1: ColIndexer,
         CIx2: ColIndexer,
         Env1: InterpreterEnv<CIx1, F>,
-        L: MGetter<Source = CIx1, Target = CIx2>,
+        L: MPrism<Source = CIx1, Target = CIx2>,
     > InterpreterEnv<CIx2, F> for SubInterpreter<'a, F, CIx1, CIx2, Env1, L>
 {
     type Variable = Env1::Variable;
