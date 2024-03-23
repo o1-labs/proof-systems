@@ -67,5 +67,5 @@ fn main() {
     generate_witness(3, poseidon_params, &mut witness, input);
 
     // create the HTML
-    visu(&index, Some(witness.into()));
+    visu(&index, Some(witness.into()), None);
 }

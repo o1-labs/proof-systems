@@ -15,13 +15,7 @@ use kimchi::{
 };
 use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
 use serde::Serialize;
-use std::{
-    collections::HashMap,
-    fmt::Display,
-    fs::{self, File},
-    io::Write,
-    path::Path,
-};
+use std::{collections::HashMap, fmt::Display, fs::File, io::Write};
 use tinytemplate::TinyTemplate;
 
 pub mod witness;
@@ -69,6 +63,8 @@ where
     map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::latex());
     map
 }
+static ASSET_DIR: include_dir::Dir<'_> =
+    include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/assets");
 
 /// Produces a `circuit.html` in the current folder.
 ///
@@ -78,6 +74,7 @@ where
 pub fn visu<G: KimchiCurve>(
     index: &ProverIndex<G, OpeningProof<G>>,
     witness: Option<Witness<G::ScalarField>>,
+    filename: Option<String>,
 ) where
     G::BaseField: PrimeField,
 {
@@ -99,13 +96,11 @@ pub fn visu<G: KimchiCurve>(
     data = format!("{data}const constraints = {constraints};");
 
     // create template
-    let template_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/assets/template.html");
-    let template = fs::read_to_string(&template_path).unwrap_or_else(|e| {
-        format!(
-            "could not read template file {}: {e}",
-            template_path.display()
-        )
-    });
+    let template = ASSET_DIR
+        .get_file("template.html")
+        .unwrap()
+        .contents_utf8()
+        .unwrap();
 
     let mut tt = TinyTemplate::new();
     tt.set_default_formatter(&tinytemplate::format_unescaped);
@@ -113,13 +108,14 @@ pub fn visu<G: KimchiCurve>(
         .expect("could not create template");
 
     // render
-    let html_output = std::env::current_dir()
-        .expect("no current directory?")
-        .join("circuit.html");
+    let html_output = filename.unwrap_or_else(|| "./circuit.html".to_string());
 
-    let js_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/assets/script.js");
-    let js = fs::read_to_string(&js_path)
-        .unwrap_or_else(|e| format!("could not read js file {}: {e}", js_path.display()));
+    let js = ASSET_DIR
+        .get_file("script.js")
+        .unwrap()
+        .contents_utf8()
+        .unwrap()
+        .to_string();
 
     let context = Context { js, data };
 
