@@ -125,3 +125,25 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         }))
     }
 }
+
+impl<F: PrimeField> Env<F> {
+    pub fn get_constraints(&self) -> Vec<E<F>> {
+        let mut constraints: Vec<E<F>> = vec![];
+
+        let relation_constraints: Vec<E<F>> = self
+            .constraints
+            .iter()
+            .map(|(_, cst)| cst.clone())
+            .collect();
+        constraints.extend(relation_constraints);
+
+        assert!(self.lookups[&LookupTable::RangeCheck15].len() == 17);
+        assert!(self.lookups[&LookupTable::RangeCheck4].len() == 20);
+
+        let _lookup_constraint = constraint_lookups(&self.lookups);
+        // FIXME: LookupMultiplicity must still be correctly implemented in column_env.
+        // Activate lookup constraints after by decommenting the following line
+        // constraints.extend(_lookup_constraint);
+        constraints
+    }
+}
