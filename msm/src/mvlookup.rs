@@ -1,11 +1,14 @@
 //! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
 
-use ark_ff::Field;
-use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
+use ark_ff::{Field, Zero};
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use crate::expr::E;
+use kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner};
+
+use crate::columns::Column;
+use crate::expr::{curr_cell, next_cell, E};
+use crate::MAX_SUPPORTED_DEGREE;
 
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
@@ -214,6 +217,46 @@ pub fn combine_lookups<F: Field, ID: LookupTableID>(
         .reduce(|x, y| x + y)
         .unwrap_or(E::zero());
     lhs - rhs
+}
+
+/// Build the constraints for the lookup protocol.
+/// The constraints are the partial sum and the aggregation of the partial sums.
+#[allow(dead_code)]
+pub fn constraint_lookups<F: Field, ID: LookupTableID>(
+    lookups_map: &HashMap<ID, Vec<MVLookup<E<F>, ID>>>,
+) -> Vec<E<F>> {
+    let mut constraints: Vec<E<F>> = vec![];
+    let mut idx_partial_sum = 0;
+    lookups_map.iter().for_each(|(id, lookups)| {
+        let table_lookup = MVLookup {
+            table_id: *id,
+            numerator: -curr_cell(Column::LookupMultiplicity(id.to_u32())),
+            value: vec![curr_cell(Column::LookupFixedTable(id.to_u32()))],
+        };
+        // FIXME: do not clone
+        let mut lookups = lookups.clone();
+        lookups.push(table_lookup);
+        // We split in chunks of 6 (MAX_SUPPORTED_DEGREE - 2)
+        lookups.chunks(MAX_SUPPORTED_DEGREE - 2).for_each(|chunk| {
+            constraints.push(combine_lookups(
+                Column::LookupPartialSum(idx_partial_sum),
+                chunk.to_vec(),
+            ));
+            idx_partial_sum += 1;
+        });
+    });
+
+    // Generic code over the partial sum
+    // Compute φ(ωX) - φ(X) - \sum_{i = 1}^{N} h_i(X)
+    {
+        let constraint =
+            next_cell(Column::LookupAggregation) - curr_cell(Column::LookupAggregation);
+        let constraint = (0..idx_partial_sum).fold(constraint, |acc, i| {
+            acc - curr_cell(Column::LookupPartialSum(i))
+        });
+        constraints.push(constraint);
+    }
+    constraints
 }
 
 pub mod prover {
