@@ -112,7 +112,7 @@ pub struct LookupProof<T, ID> {
     pub(crate) m: Vec<T>,
     /// The polynomial keeping the sum of each row
     pub(crate) h: Vec<T>,
-    /// The "running-sum" over the rows, coined `\phi`
+    /// The "running-sum" over the rows, coined `φ`
     pub(crate) sum: T,
     /// All fixed lookup tables values, indexed by their ID
     pub(crate) fixed_tables: HashMap<ID, T>,
@@ -319,7 +319,7 @@ pub mod prover {
             // It will be used to compute the running sum in lookup_aggregation
             // Coin a combiner to perform vector lookup.
             // The row sums h are defined as
-            // h(\omega^i) = \sum_{j = 0}^{m} (1/\beta + f_{j}(\omega^i)) - (1 / (\beta + t(\omega^i)))
+            // h(ω^i) = \sum_{j = 0}^{m} (1/(β + f_{j}(ω^i))) - (1 / (β + t(ω^i)))
             let vector_lookup_combiner = fq_sponge.challenge();
 
             // Coin an evaluation point for the rational functions
@@ -374,7 +374,7 @@ pub mod prover {
                                     .push(combined_value);
                             }
 
-                            // beta + a_{i}
+                            // β + a_{i}
                             let lookup_denominator = beta + combined_value;
                             denominators.push(lookup_denominator);
                         }
@@ -508,17 +508,17 @@ pub mod prover {
             // -- end computing the row sums h
 
             // -- start computing the running sum in lookup_aggregation
-            // The running sum, \phi, is defined recursively over the subgroup as followed:
-            // - phi(1) = 0
-            // - phi(\omega^{j + 1}) = \phi(\omega^j) + \
-            //                         \sum_{i = 1}^{n} (1 / \beta + f_i(\omega^{j + 1})) - \
-            //                         (m(\omega^{j + 1}) / beta + t(\omega^{j + 1}))
-            // - phi(\omega^n) = 0
+            // The running sum, φ, is defined recursively over the subgroup as followed:
+            // - φ(1) = 0
+            // - φ(ω^{j + 1}) = φ(ω^j) + \
+            //                         \sum_{i = 1}^{n} (1 / (β + f_i(ω^{j + 1}))) - \
+            //                         (m(ω^{j + 1}) / (β + t(ω^{j + 1})))
+            // - φ(ω^n) = 0
             let lookup_aggregation_evals_d1 = {
                 let mut evals = Vec::with_capacity(domain.d1.size as usize);
                 let mut acc = G::ScalarField::zero();
                 for i in 0..domain.d1.size as usize {
-                    // phi(1) = 0
+                    // φ(1) = 0
                     evals.push(acc);
                     for lte in lookup_terms_evals_d1.iter() {
                         acc += lte[i]
