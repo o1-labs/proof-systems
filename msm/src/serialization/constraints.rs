@@ -43,13 +43,12 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         self.constrain_index += 1;
     }
 
-    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        let y = Expr::Atom(ExprInner::Cell(Variable {
+    fn copy(&mut self, _x: &Self::Variable, position: Self::Position) -> Self::Variable {
+        // No-op in constraints, witness only
+        Expr::Atom(ExprInner::Cell(Variable {
             col: position,
             row: CurrOrNext::Curr,
-        }));
-        self.add_constraint(y.clone() - x.clone());
-        y
+        }))
     }
 
     fn get_column_for_kimchi_limb(j: usize) -> Self::Position {
