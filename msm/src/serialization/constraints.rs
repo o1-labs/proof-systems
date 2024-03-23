@@ -1,15 +1,10 @@
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::PrimeField;
 use kimchi::circuits::{
-    expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
 
-use crate::{
-    columns::Column,
-    expr::{curr_cell, next_cell, E},
-    serialization::N_INTERMEDIATE_LIMBS,
-    MVLookupTableID as _, N_LIMBS,
-};
+use crate::{columns::Column, expr::E, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
 use super::Lookup;
 use super::{interpreter::InterpreterEnv, LookupTable};
@@ -114,73 +109,5 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
             col: position,
             row: CurrOrNext::Curr,
         }))
-    }
-}
-
-impl<Fp: PrimeField> Env<Fp> {
-    #[allow(dead_code)]
-    // FIXME: not mut
-    fn constrain_lookups(&mut self) -> Vec<E<Fp>> {
-        assert_eq!(self.rangecheck4_lookups.len(), 20);
-        assert_eq!(self.rangecheck15_lookups.len(), 17);
-
-        {
-            let rc4_t_lookup = Lookup {
-                table_id: LookupTable::RangeCheck4,
-                numerator: curr_cell(Column::LookupMultiplicity(
-                    LookupTable::RangeCheck4.to_u32(),
-                )),
-                value: vec![curr_cell(Column::LookupFixedTable(
-                    LookupTable::RangeCheck4.to_u32(),
-                ))],
-            };
-            self.rangecheck4_lookups.push(rc4_t_lookup);
-        }
-
-        {
-            let rc15_t_lookup = Lookup {
-                table_id: LookupTable::RangeCheck15,
-                numerator: curr_cell(Column::LookupMultiplicity(
-                    LookupTable::RangeCheck15.to_u32(),
-                )),
-                value: vec![curr_cell(Column::LookupFixedTable(
-                    LookupTable::RangeCheck15.to_u32(),
-                ))],
-            };
-            self.rangecheck15_lookups.push(rc15_t_lookup);
-        }
-
-        // This can be generalized for any table. We can have a hashmap or an
-        // array of lookups
-        // Computing individual "boat"
-        let mut constraints = vec![];
-        let mut idx = 0;
-        for chunk in self.rangecheck4_lookups.chunks(6) {
-            constraints.push(combine_lookups(
-                Column::LookupPartialSum(idx),
-                chunk.to_vec(),
-            ));
-            idx += 1;
-        }
-
-        for chunk in self.rangecheck15_lookups.chunks(6) {
-            constraints.push(combine_lookups(
-                Column::LookupPartialSum(idx),
-                chunk.to_vec(),
-            ));
-            idx += 1;
-        }
-
-        // Generic code over the partial sum
-        // Compute \phi(\omega X) - \phi(X) - \sum_{i = 1}^{N} h_i(X)
-        {
-            let constraint =
-                next_cell(Column::LookupAggregation) - curr_cell(Column::LookupAggregation);
-            let constraint = (0..idx).fold(constraint, |acc, i| {
-                acc - curr_cell(Column::LookupPartialSum(i))
-            });
-            constraints.push(constraint);
-        }
-        constraints
     }
 }
