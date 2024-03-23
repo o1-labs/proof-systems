@@ -1,8 +1,10 @@
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::PrimeField;
 use kimchi::circuits::{
-    expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+
+use crate::mvlookup::combine_lookups;
 
 use crate::{
     columns::{Column, ColumnIndexer},
