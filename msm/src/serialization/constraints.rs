@@ -8,7 +8,10 @@ use std::collections::HashMap;
 use crate::{columns::Column, expr::E};
 
 use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
-use crate::{columns::ColumnIndexer, serialization::column::SerializationColumn};
+use crate::{
+    columns::ColumnIndexer, mvlookup::constraint_lookups,
+    serialization::column::SerializationColumn,
+};
 
 pub struct Env<Fp> {
     /// An indexed set of constraints.
