@@ -112,32 +112,17 @@ mod tests {
             field_elements.push([x, y, z])
         }
 
-        let mut constraints = vec![];
-
         // Adding one for the fixed table.
         let mut rangecheck15: [Vec<Lookup<Fp>>; N_LIMBS + 1] = std::array::from_fn(|_| vec![]);
         let mut rangecheck4: [Vec<Lookup<Fp>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
 
-        for (i, limbs) in field_elements.into_iter().enumerate() {
-            let mut constraint_env = constraints::Env::<Fp>::create();
+        for (i, limbs) in field_elements.iter().enumerate() {
             // Witness
-            deserialize_field_element(&mut witness_env, limbs);
+            deserialize_field_element(&mut witness_env, *limbs);
             // Filling actually used rows
             for j in 0..SER_N_COLUMNS {
                 witness.cols[j].push(witness_env.witness.cols[j]);
-            }
-
-            // Constraints
-            deserialize_field_element(&mut constraint_env, limbs);
-            // FIXME: do not use clone.
-            // FIXME: this is ugly, but only to make it work for now.
-            // It does suppose the same constraint aalways have the same index.
-            // Totally wrong assumption according to the current env implementation.
-            for (idx, cst) in constraint_env.constraints.iter() {
-                if *idx >= constraints.len() {
-                    constraints.push(cst.clone())
-                }
             }
 
             for (j, lookup) in witness_env.rangecheck4_lookups.iter().enumerate() {
@@ -152,6 +137,12 @@ mod tests {
 
             witness_env.reset()
         }
+
+        let constraints = {
+            let mut constraints_env = constraints::Env::<Fp>::create();
+            deserialize_field_element(&mut constraints_env, field_elements[0]);
+            constraints_env.get_constraints()
+        };
 
         let rangecheck15_m = witness_env.get_rangecheck15_normalized_multipliticies(domain);
         let rangecheck15_t = LookupTable::RangeCheck15
