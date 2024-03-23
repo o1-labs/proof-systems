@@ -221,7 +221,6 @@ pub fn combine_lookups<F: Field, ID: LookupTableID>(
 
 /// Build the constraints for the lookup protocol.
 /// The constraints are the partial sum and the aggregation of the partial sums.
-#[allow(dead_code)]
 pub fn constraint_lookups<F: Field, ID: LookupTableID>(
     lookups_map: &HashMap<ID, Vec<MVLookup<E<F>, ID>>>,
 ) -> Vec<E<F>> {
