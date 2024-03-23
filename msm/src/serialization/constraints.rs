@@ -3,6 +3,7 @@ use kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+use std::collections::HashMap;
 
 use crate::{columns::Column, expr::E, serialization::N_INTERMEDIATE_LIMBS, N_LIMBS};
 
@@ -16,8 +17,7 @@ pub struct Env<Fp> {
     /// folding for instance.
     pub constraints: Vec<(usize, Expr<ConstantExpr<Fp>, Column>)>,
     pub constrain_index: usize,
-    pub rangecheck4_lookups: Vec<Lookup<E<Fp>>>,
-    pub rangecheck15_lookups: Vec<Lookup<E<Fp>>>,
+    pub lookups: HashMap<LookupTable, Vec<Lookup<E<Fp>>>>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
@@ -25,8 +25,7 @@ impl<Fp: PrimeField> Env<Fp> {
         Self {
             constraints: vec![],
             constrain_index: 0,
-            rangecheck4_lookups: vec![],
-            rangecheck15_lookups: vec![],
+            lookups: HashMap::new(),
         }
     }
 }
@@ -70,20 +69,28 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
 
     fn range_check15(&mut self, value: &Self::Variable) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        self.rangecheck15_lookups.push(Lookup {
+        let lookup = Lookup {
             table_id: LookupTable::RangeCheck15,
             numerator: Expr::Atom(ExprInner::Constant(one)),
             value: vec![value.clone()],
-        })
+        };
+        self.lookups
+            .entry(LookupTable::RangeCheck15)
+            .or_insert_with(Vec::new)
+            .push(lookup);
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        self.rangecheck4_lookups.push(Lookup {
+        let lookup = Lookup {
             table_id: LookupTable::RangeCheck4,
             numerator: Expr::Atom(ExprInner::Constant(one)),
             value: vec![value.clone()],
-        })
+        };
+        self.lookups
+            .entry(LookupTable::RangeCheck4)
+            .or_insert_with(Vec::new)
+            .push(lookup);
     }
 
     fn constant(value: F) -> Self::Variable {
