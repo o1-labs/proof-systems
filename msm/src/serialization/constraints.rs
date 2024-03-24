@@ -76,7 +76,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         };
         self.lookups
             .entry(LookupTable::RangeCheck15)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(lookup);
     }
 
@@ -89,7 +89,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         };
         self.lookups
             .entry(LookupTable::RangeCheck4)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(lookup);
     }
 
