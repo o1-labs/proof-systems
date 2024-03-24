@@ -7,6 +7,7 @@ use crate::serialization::interpreter::InterpreterEnv;
 use crate::serialization::{Lookup, LookupTable};
 use crate::N_LIMBS;
 use kimchi::circuits::domains::EvaluationDomains;
+use std::collections::BTreeMap;
 use std::iter;
 
 use super::N_INTERMEDIATE_LIMBS;
@@ -20,26 +21,16 @@ pub struct Env<Fp> {
     /// field Kimchi gate
     pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
 
-    /// Keep track of the RangeCheck4 lookup multiplicities
-    // Boxing to avoid stack overflow
-    pub lookup_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
-
     /// Keep track of the RangeCheck4 table multiplicities.
     /// The value `0` is used as a (repeated) dummy value.
     // Boxing to avoid stack overflow
     pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
 
-    /// Keep track of the RangeCheck15 lookup multiplicities
-    /// No t multiplicities as we do suppose we have a domain of
-    /// size `1 << 15`
-    // Boxing to avoid stack overflow
-    pub lookup_multiplicities_rangecheck15: Box<[Fp; 1 << 15]>,
+    /// Keep track of the lookup multiplicities.
+    pub lookup_multiplicities: BTreeMap<LookupTable, Vec<Fp>>,
 
-    /// Keep track of the rangecheck 4 lookups for each row.
-    pub rangecheck4_lookups: Vec<Lookup<Fp>>,
-
-    /// Keep track of the rangecheck 15 lookups for each row.
-    pub rangecheck15_lookups: Vec<Lookup<Fp>>,
+    /// Keep track of the lookups for each row.
+    pub lookups: BTreeMap<LookupTable, Vec<Lookup<Fp>>>,
 }
 
 impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
@@ -72,12 +63,17 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         assert!(value_biguint < BigUint::from(2u128.pow(15)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities_rangecheck15[value_usize] += Fp::one();
-        self.rangecheck15_lookups.push(Lookup {
-            table_id: LookupTable::RangeCheck15,
-            numerator: Fp::one(),
-            value: vec![*value],
-        })
+        self.lookup_multiplicities
+            .get_mut(&LookupTable::RangeCheck15)
+            .unwrap()[value_usize] += Fp::one();
+        self.lookups
+            .get_mut(&LookupTable::RangeCheck15)
+            .unwrap()
+            .push(Lookup {
+                table_id: LookupTable::RangeCheck15,
+                numerator: Fp::one(),
+                value: vec![*value],
+            })
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
@@ -85,12 +81,17 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         assert!(value_biguint < BigUint::from(2u128.pow(4)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities_rangecheck4[value_usize] += Fp::one();
-        self.rangecheck4_lookups.push(Lookup {
-            table_id: LookupTable::RangeCheck4,
-            numerator: Fp::one(),
-            value: vec![*value],
-        })
+        self.lookup_multiplicities
+            .get_mut(&LookupTable::RangeCheck4)
+            .unwrap()[value_usize] += Fp::one();
+        self.lookups
+            .get_mut(&LookupTable::RangeCheck4)
+            .unwrap()
+            .push(Lookup {
+                table_id: LookupTable::RangeCheck4,
+                numerator: Fp::one(),
+                value: vec![*value],
+            })
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -174,8 +175,8 @@ impl<Fp: PrimeField> Env<Fp> {
     }
 
     pub fn reset(&mut self) {
-        self.rangecheck15_lookups = vec![];
-        self.rangecheck4_lookups = vec![];
+        *self.lookups.get_mut(&LookupTable::RangeCheck4).unwrap() = Vec::new();
+        *self.lookups.get_mut(&LookupTable::RangeCheck15).unwrap() = Vec::new();
     }
 
     /// Return the normalized multiplicity vector of RangeCheck4 in case the
@@ -185,11 +186,13 @@ impl<Fp: PrimeField> Env<Fp> {
         domain: EvaluationDomains<Fp>,
     ) -> Vec<Fp> {
         let mut m = vec![Fp::zero(); 1 << 4];
-        self.lookup_multiplicities_rangecheck4
-            .into_iter()
+        self.lookup_multiplicities
+            .get(&LookupTable::RangeCheck4)
+            .unwrap()
+            .iter()
             .zip(self.lookup_t_multiplicities_rangecheck4.iter())
             .enumerate()
-            .for_each(|(i, (m_f, m_t))| m[i] = m_f / m_t);
+            .for_each(|(i, (m_f, m_t))| m[i] = *m_f / m_t);
         let repeated_dummy_value: Vec<Fp> = iter::repeat(m[0])
             .take((domain.d1.size - (1 << 4)) as usize)
             .collect();
@@ -204,23 +207,28 @@ impl<Fp: PrimeField> Env<Fp> {
         domain: EvaluationDomains<Fp>,
     ) -> Vec<Fp> {
         assert_eq!(domain.d1.size, 1 << 15);
-        self.lookup_multiplicities_rangecheck15.to_vec()
+        self.lookup_multiplicities[&LookupTable::RangeCheck15].to_vec()
     }
 }
 
 impl<Fp: PrimeField> Env<Fp> {
     pub fn create() -> Self {
+        let mut lookups = BTreeMap::new();
+        lookups.insert(LookupTable::RangeCheck4, Vec::new());
+        lookups.insert(LookupTable::RangeCheck15, Vec::new());
+
+        let mut lookup_multiplicities = BTreeMap::new();
+        lookup_multiplicities.insert(LookupTable::RangeCheck4, vec![Fp::zero(); 1 << 4]);
+        lookup_multiplicities.insert(LookupTable::RangeCheck15, vec![Fp::zero(); 1 << 15]);
+
         Self {
             current_kimchi_limbs: [Fp::zero(); 3],
             msm_limbs: [Fp::zero(); N_LIMBS],
             intermediate_limbs: [Fp::zero(); N_INTERMEDIATE_LIMBS],
 
-            lookup_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
+            lookup_multiplicities,
             lookup_t_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
-
-            lookup_multiplicities_rangecheck15: Box::new([Fp::zero(); 1 << 15]),
-            rangecheck4_lookups: vec![],
-            rangecheck15_lookups: vec![],
+            lookups,
         }
     }
 }
