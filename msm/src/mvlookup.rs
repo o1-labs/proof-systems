@@ -41,7 +41,7 @@ where
 }
 
 /// Trait for lookup table variants
-pub trait LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq {
+pub trait LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq + Ord + PartialOrd {
     /// Assign a unique ID, as a u32 value
     fn to_u32(&self) -> u32;
 

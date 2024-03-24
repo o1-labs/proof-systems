@@ -8,7 +8,7 @@ pub mod constraints;
 pub mod interpreter;
 pub mod witness;
 
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LookupTable {
     RangeCheck15,
     RangeCheck4,
