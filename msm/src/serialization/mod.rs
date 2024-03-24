@@ -125,11 +125,23 @@ mod tests {
                 witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
-            for (j, lookup) in witness_env.rangecheck4_lookups.iter().enumerate() {
+            for (j, lookup) in witness_env
+                .lookups
+                .get(&LookupTable::RangeCheck4)
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
                 rangecheck4[j].push(lookup.clone())
             }
 
-            for (j, lookup) in witness_env.rangecheck15_lookups.iter().enumerate() {
+            for (j, lookup) in witness_env
+                .lookups
+                .get(&LookupTable::RangeCheck15)
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
                 rangecheck15[j].push(lookup.clone())
             }
 
