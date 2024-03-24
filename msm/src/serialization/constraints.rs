@@ -78,29 +78,11 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
-        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        let lookup = Lookup {
-            table_id: LookupTable::RangeCheck15,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: vec![value.clone()],
-        };
-        self.lookups
-            .entry(LookupTable::RangeCheck15)
-            .or_insert_with(Vec::new)
-            .push(lookup);
+        self.add_lookup(LookupTable::RangeCheck15, value);
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
-        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        let lookup = Lookup {
-            table_id: LookupTable::RangeCheck4,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: vec![value.clone()],
-        };
-        self.lookups
-            .entry(LookupTable::RangeCheck4)
-            .or_insert_with(Vec::new)
-            .push(lookup);
+        self.add_lookup(LookupTable::RangeCheck4, value);
     }
 
     fn constant(value: F) -> Self::Variable {
@@ -130,6 +112,16 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
 }
 
 impl<F: PrimeField> Env<F> {
+    fn add_lookup(&mut self, table_id: LookupTable, value: &E<F>) {
+        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        let lookup = Lookup {
+            table_id,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: vec![value.clone()],
+        };
+        self.lookups.entry(table_id).or_default().push(lookup);
+    }
+
     pub fn get_constraints(&self) -> Vec<E<F>> {
         let mut constraints: Vec<E<F>> = vec![];
 
