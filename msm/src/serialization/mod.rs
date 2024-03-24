@@ -8,7 +8,7 @@ pub mod witness;
 /// The number of intermediate limbs of 4 bits required for the circuit
 pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LookupTable {
     RangeCheck15,
     RangeCheck4,
