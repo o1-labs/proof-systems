@@ -73,9 +73,9 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(i) => {
+            Self::Column::LookupMultiplicity(id) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d8[i as usize])
+                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(id)])
                 } else {
                     panic!("No lookup provided")
                 }
