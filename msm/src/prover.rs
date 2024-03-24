@@ -297,12 +297,15 @@ where
             .collect::<Witness<N, PointEvaluations<_>>>()
     };
 
+    // IMPROVEME: move this into the mvlookup module
     let mvlookup_evals = lookup_env.as_ref().map(|lookup_env| LookupProof {
-        m: (&lookup_env.lookup_counters_poly_d1)
-            .into_par_iter()
-            .map(|poly| PointEvaluations {
-                zeta: poly.evaluate(&zeta),
-                zeta_omega: poly.evaluate(&zeta_omega),
+        m: lookup_env
+            .lookup_counters_poly_d1
+            .iter()
+            .map(|(id, poly)| {
+                let zeta = poly.evaluate(&zeta);
+                let zeta_omega = poly.evaluate(&zeta_omega);
+                (*id, PointEvaluations { zeta, zeta_omega })
             })
             .collect(),
         h: (&lookup_env.lookup_terms_poly_d1)
@@ -317,10 +320,9 @@ where
             zeta_omega: lookup_env.lookup_aggregation_poly_d1.evaluate(&zeta_omega),
         },
         fixed_tables: {
-            let mut ft: Vec<(&ID, &DensePolynomial<G::ScalarField>)> =
-                lookup_env.fixed_lookup_tables_poly_d1.iter().collect();
-            ft.sort_by(|(id1, _), (id2, _)| id1.to_u32().cmp(&id2.to_u32()));
-            ft.into_iter()
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .iter()
                 .map(|(id, poly)| {
                     let zeta = poly.evaluate(&zeta);
                     let zeta_omega = poly.evaluate(&zeta_omega);
@@ -400,8 +402,9 @@ where
     if let Some(ref lookup_env) = lookup_env {
         // -- first m(X)
         polynomials.extend(
-            (&lookup_env.lookup_counters_poly_d1)
-                .into_par_iter()
+            lookup_env
+                .lookup_counters_poly_d1
+                .values()
                 .map(|poly| (coefficients_form(poly), non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
@@ -418,13 +421,13 @@ where
             non_hiding(1),
         ));
         // -- Adding fixed lookup tables
-        polynomials.extend({
-            let mut ft: Vec<(&ID, &DensePolynomial<G::ScalarField>)> =
-                lookup_env.fixed_lookup_tables_poly_d1.iter().collect();
-            ft.sort_by(|(id1, _), (id2, _)| id1.to_u32().cmp(&id2.to_u32()));
-            ft.into_iter()
-                .map(|(_, poly)| (coefficients_form(poly), non_hiding(1)))
-        });
+        polynomials.extend(
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .values()
+                .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                .collect::<Vec<_>>(),
+        );
     }
     polynomials.push((coefficients_form(&ft), non_hiding(1)));
 
