@@ -3,7 +3,7 @@ use kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::{columns::Column, expr::E};
 
@@ -20,7 +20,7 @@ pub struct Env<Fp> {
     /// folding for instance.
     pub constraints: Vec<(usize, Expr<ConstantExpr<Fp>, Column>)>,
     pub constrain_index: usize,
-    pub lookups: HashMap<LookupTable, Vec<Lookup<E<Fp>>>>,
+    pub lookups: BTreeMap<LookupTable, Vec<Lookup<E<Fp>>>>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
@@ -28,7 +28,7 @@ impl<Fp: PrimeField> Env<Fp> {
         Self {
             constraints: vec![],
             constrain_index: 0,
-            lookups: HashMap::new(),
+            lookups: BTreeMap::new(),
         }
     }
 }
