@@ -86,11 +86,9 @@ impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
                     panic!("No lookup provided")
                 }
             }
-            // FIXME: this requires to have a hashmap for the multiplicities as
-            // the index of the column is the table ID
-            Self::Column::LookupMultiplicity(i) => {
+            Self::Column::LookupMultiplicity(id) => {
                 if let Some(ref lookup) = self.mvlookup_evals {
-                    lookup.m[i as usize].clone()
+                    lookup.m[&ID::from_u32(id)].clone()
                 } else {
                     panic!("No lookup provided")
                 }
