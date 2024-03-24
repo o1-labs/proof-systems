@@ -30,8 +30,6 @@ where
     let size = 1 << 7;
     let srs = SRS::<Vesta>::create(size);
 
-    let num_chunks = 1;
-
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
     let sponge = DefaultFqSponge::<VestaParameters, SC>::new(
@@ -83,10 +81,19 @@ where
             let mut start = Instant::now();
             let comm = (0..a.len())
                 .map(|i| {
+                    let n = a[i].len();
+                    let num_chunks = if n == 0 {
+                        1
+                    } else {
+                        n / srs.g.len() + if n % srs.g.len() == 0 { 0 } else { 1 }
+                    };
                     (
                         srs.commit(&a[i].clone(), num_chunks, rng),
                         x.iter()
-                            .map(|xx| a[i].to_chunked_polynomial(1, size).evaluate_chunks(*xx))
+                            .map(|xx| {
+                                a[i].to_chunked_polynomial(num_chunks, size)
+                                    .evaluate_chunks(*xx)
+                            })
                             .collect::<Vec<_>>(),
                         bounds[i],
                     )

@@ -119,7 +119,11 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     if !plnm_evals_part.is_empty() {
         let n = plnm_evals_part.len();
         let max_poly_size = srs_length;
-        let num_chunks = n / max_poly_size;
+        let num_chunks = if n == 0 {
+            1
+        } else {
+            n / max_poly_size + if n % max_poly_size == 0 { 0 } else { 1 }
+        };
         plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
             .to_chunked_polynomial(num_chunks, max_poly_size)
