@@ -111,10 +111,6 @@
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This file contains the witness for the Keccak hash function for the zkVM project.
 //! It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 //!
@@ -211,22 +207,18 @@
 
     </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
         <span class="comment">// Keep track of multiplicities for fixed lookups
-        </span><span class="kw">match </span>lookup.table_id {
-            RangeCheck16Lookup | SparseLookup | ResetLookup | RoundConstantsLookup | PadLookup
-            | ByteLookup =&gt; {
-                <span class="kw">if </span>lookup.magnitude == <span class="self">Self</span>::one() {
-                    <span class="comment">// Check that the lookup value is in the table
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = LookupTable::is_in_table(
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.tables[lookup.table_id <span class="kw">as </span>usize],
-                        lookup.value,
-                    ) {
-                        <span class="self">self</span>.multiplicities[lookup.table_id <span class="kw">as </span>usize][idx] += <span class="number">1</span>;
-                    } <span class="kw">else </span>{
-                        <span class="self">self</span>.errors.push(Error::Lookup(lookup.table_id));
-                    }
+        </span><span class="kw">if </span>lookup.table_id.is_fixed() {
+            <span class="comment">// Only when reading. We ignore the other values.
+            </span><span class="kw">if </span>lookup.magnitude == <span class="self">Self</span>::one() {
+                <span class="comment">// Check that the lookup value is in the table
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(idx) =
+                    LookupTable::is_in_table(<span class="kw-2">&amp;</span><span class="self">self</span>.tables[lookup.table_id <span class="kw">as </span>usize], lookup.value)
+                {
+                    <span class="self">self</span>.multiplicities[lookup.table_id <span class="kw">as </span>usize][idx] += <span class="number">1</span>;
+                } <span class="kw">else </span>{
+                    <span class="self">self</span>.errors.push(Error::Lookup(lookup.table_id));
                 }
             }
-            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup =&gt; (),
         }
     }
 }
