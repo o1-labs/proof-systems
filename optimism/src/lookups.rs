@@ -13,7 +13,7 @@ use kimchi::{
 use kimchi_msm::{LookupTableID, MVLookupTable};
 
 /// All of the possible lookup table IDs used in the zkVM
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum LookupTableIDs {
     // PadLookup ID is 0 because this is the only fixed table whose first entry is not 0.
     // This way, it is guaranteed that the 0 value is not always in the tables after the
@@ -44,6 +44,22 @@ pub enum LookupTableIDs {
 impl LookupTableID for LookupTableIDs {
     fn to_u32(&self) -> u32 {
         *self as u32
+    }
+
+    fn from_u32(value: u32) -> Self {
+        match value {
+            0 => PadLookup,
+            1 => RoundConstantsLookup,
+            2 => ByteLookup,
+            3 => RangeCheck16Lookup,
+            4 => SparseLookup,
+            5 => ResetLookup,
+            6 => MemoryLookup,
+            7 => RegisterLookup,
+            8 => SyscallLookup,
+            9 => KeccakStepLookup,
+            _ => panic!("Invalid table ID"),
+        }
     }
 
     fn length(&self) -> usize {
