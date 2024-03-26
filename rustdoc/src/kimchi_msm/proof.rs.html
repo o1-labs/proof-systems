@@ -92,6 +92,36 @@
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{LookupTableIDs, LookupWitness},
     mvlookup::{LookupProof, LookupTableID},
@@ -154,14 +184,44 @@
     <span class="kw">type </span>Column = <span class="kw">crate</span>::columns::Column;
 
     <span class="kw">fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Result</span>&lt;PointEvaluations&lt;F&gt;, ExprError&lt;<span class="self">Self</span>::Column&gt;&gt; {
-        <span class="kw">let </span><span class="kw">crate</span>::columns::Column::X(i) = col <span class="kw">else </span>{
-            <span class="macro">todo!</span>()
+        <span class="kw">let </span>res = <span class="kw">match </span>col {
+            <span class="self">Self</span>::Column::X(i) =&gt; {
+                <span class="kw">if </span>i &lt; N {
+                    <span class="self">self</span>.witness_evals[i].clone()
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"Index out of bounds"</span>)
+                }
+            }
+            <span class="self">Self</span>::Column::LookupPartialSum(i) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.mvlookup_evals {
+                    lookup.h[i].clone()
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
+                }
+            }
+            <span class="self">Self</span>::Column::LookupAggregation =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.mvlookup_evals {
+                    lookup.sum.clone()
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
+                }
+            }
+            <span class="comment">// FIXME: this requires to have a hashmap for the multiplicities as
+            // the index of the column is the table ID
+            </span><span class="self">Self</span>::Column::LookupMultiplicity(i) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.mvlookup_evals {
+                    lookup.m[i <span class="kw">as </span>usize].clone()
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
+                }
+            }
+            <span class="comment">// FIXME: finish implement fixed tables
+            // Use hashmap as for the lookup multiplicity
+            </span><span class="self">Self</span>::Column::LookupFixedTable(<span class="kw">_</span>) =&gt; {
+                <span class="macro">panic!</span>(<span class="string">"Logup is not yet implemented."</span>)
+            }
         };
-        <span class="kw">if </span>i &lt; <span class="self">self</span>.witness_evals.cols.len() {
-            <span class="prelude-val">Ok</span>(<span class="self">self</span>.witness_evals.cols[i].clone())
-        } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">"No such column index"</span>)
-        }
+        <span class="prelude-val">Ok</span>(res)
     }
 }
 
