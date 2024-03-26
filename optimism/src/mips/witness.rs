@@ -1,8 +1,5 @@
 use crate::{
-    cannon::{
-        Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
-        PAGE_ADDRESS_SIZE, PAGE_SIZE,
-    },
+    cannon::{Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration},
     keccak::environment::KeccakEnv,
     lookups::Lookup,
     mips::{
@@ -56,10 +53,8 @@ impl SyscallEnv {
 /// execution.
 pub struct Env<Fp> {
     pub instruction_counter: u64,
-    pub memory: Vec<(u32, Vec<u8>)>,
-    pub last_memory_accesses: [usize; 3],
-    pub memory_write_index: Vec<(u32, Vec<u64>)>,
-    pub last_memory_write_index_accesses: [usize; 3],
+    pub memory: Vec<u8>,
+    pub memory_write_index: Vec<u64>,
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
@@ -209,21 +204,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         output: Self::Position,
     ) -> Self::Variable {
         let addr: u32 = (*addr).try_into().unwrap();
-        let page = addr >> PAGE_ADDRESS_SIZE;
-        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        let memory_page_idx = self.get_memory_page_index(page);
-        let value = self.memory[memory_page_idx].1[page_address];
+        let value = self.memory[addr as usize];
         self.write_column(output, value.into());
         value.into()
     }
 
     unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let addr: u32 = (*addr).try_into().unwrap();
-        let page = addr >> PAGE_ADDRESS_SIZE;
-        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        let memory_page_idx = self.get_memory_page_index(page);
-        self.memory[memory_page_idx].1[page_address] =
-            value.try_into().expect("push_memory values fit in a u8");
+        self.memory[addr as usize] = value.try_into().expect("push_memory values fit in a u8");
     }
 
     unsafe fn fetch_memory_access(
@@ -232,20 +220,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         output: Self::Position,
     ) -> Self::Variable {
         let addr: u32 = (*addr).try_into().unwrap();
-        let page = addr >> PAGE_ADDRESS_SIZE;
-        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        let memory_write_index_page_idx = self.get_memory_access_page_index(page);
-        let value = self.memory_write_index[memory_write_index_page_idx].1[page_address];
+        let value = self.memory_write_index[addr as usize];
         self.write_column(output, value);
         value
     }
 
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let addr = *addr as u32;
-        let page = addr >> PAGE_ADDRESS_SIZE;
-        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        let memory_write_index_page_idx = self.get_memory_access_page_index(page);
-        self.memory_write_index[memory_write_index_page_idx].1[page_address] = value;
+        self.memory_write_index[addr as usize] = value;
     }
 
     fn constant(x: u32) -> Self::Variable {
@@ -706,10 +688,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // Fetch the value without allocating witness columns
             let value = {
                 let addr: u32 = (*addr).try_into().unwrap();
-                let page = addr >> PAGE_ADDRESS_SIZE;
-                let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-                let memory_page_idx = self.get_memory_page_index(page);
-                self.memory[memory_page_idx].1[page_address]
+                self.memory[addr as usize]
             };
             last_hint.push(value);
         }
@@ -734,28 +713,22 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 }
 
 impl<Fp: Field> Env<Fp> {
-    pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
+    pub fn create(_page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
 
         let syscall_env = SyscallEnv::create(&state);
 
-        let mut initial_memory: Vec<(u32, Vec<u8>)> = state
-            .memory
-            .into_iter()
-            // Check that the conversion from page data is correct
-            .map(|page| (page.index, page.data))
-            .collect();
+        let max_index = state.memory.iter().map(|page| page.index).max().unwrap();
+        let max_memory_address: usize = (max_index * 4096).try_into().unwrap();
+        let mut initial_memory: Vec<u8> = vec![0; max_memory_address];
 
-        for (_address, initial_memory) in initial_memory.iter_mut() {
-            initial_memory.extend((0..(page_size - initial_memory.len())).map(|_| 0u8));
-            assert_eq!(initial_memory.len(), page_size);
-        }
-
-        let memory_offsets = initial_memory
-            .iter()
-            .map(|(offset, _)| *offset)
-            .collect::<Vec<_>>();
+        state.memory.into_iter().for_each(|page| {
+            let addr = (page.index * 4096) as usize;
+            initial_memory[addr..addr + 4096].copy_from_slice(&page.data[..4096])
+        });
+        // Initial memory index only 0
+        let memory_write_index = vec![0; max_memory_address];
 
         let initial_registers = {
             let preimage_key = {
@@ -782,12 +755,7 @@ impl<Fp: Field> Env<Fp> {
         Env {
             instruction_counter: state.step,
             memory: initial_memory.clone(),
-            last_memory_accesses: [0usize; 3],
-            memory_write_index: memory_offsets
-                .iter()
-                .map(|offset| (*offset, vec![0u64; page_size]))
-                .collect(),
-            last_memory_write_index_accesses: [0usize; 3],
+            memory_write_index,
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
@@ -819,64 +787,8 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
-    pub fn update_last_memory_access(&mut self, i: usize) {
-        let [i_0, i_1, _] = self.last_memory_accesses;
-        self.last_memory_accesses = [i, i_0, i_1]
-    }
-
-    pub fn get_memory_page_index(&mut self, page: u32) -> usize {
-        for &i in self.last_memory_accesses.iter() {
-            if self.memory_write_index[i].0 == page {
-                return i;
-            }
-        }
-        for (i, (page_index, _memory)) in self.memory.iter_mut().enumerate() {
-            if *page_index == page {
-                self.update_last_memory_access(i);
-                return i;
-            }
-        }
-
-        // Memory not found; dynamically allocate
-        let memory = vec![0u8; PAGE_SIZE as usize];
-        self.memory.push((page, memory));
-        let i = self.memory.len() - 1;
-        self.update_last_memory_access(i);
-        i
-    }
-
-    pub fn update_last_memory_write_index_access(&mut self, i: usize) {
-        let [i_0, i_1, _] = self.last_memory_write_index_accesses;
-        self.last_memory_write_index_accesses = [i, i_0, i_1]
-    }
-
-    pub fn get_memory_access_page_index(&mut self, page: u32) -> usize {
-        for &i in self.last_memory_write_index_accesses.iter() {
-            if self.memory_write_index[i].0 == page {
-                return i;
-            }
-        }
-        for (i, (page_index, _memory_write_index)) in self.memory_write_index.iter_mut().enumerate()
-        {
-            if *page_index == page {
-                self.update_last_memory_write_index_access(i);
-                return i;
-            }
-        }
-
-        // Memory not found; dynamically allocate
-        let memory_write_index = vec![0u64; PAGE_SIZE as usize];
-        self.memory_write_index.push((page, memory_write_index));
-        let i = self.memory_write_index.len() - 1;
-        self.update_last_memory_write_index_access(i);
-        i
-    }
-
     pub fn get_memory_direct(&mut self, addr: u32) -> u8 {
-        let page = addr >> PAGE_ADDRESS_SIZE;
-        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        let memory_idx = self.get_memory_page_index(page);
-        self.memory[memory_idx].1[page_address]
+        self.memory[addr as usize]
     }
 
     pub fn decode_instruction(&mut self) -> (Instruction, u32) {
@@ -1058,28 +970,14 @@ impl<Fp: Field> Env<Fp> {
 
     // Compute memory usage
     fn memory_usage(&self) -> String {
-        let total = self.memory.len() * PAGE_SIZE as usize;
+        let total = self.memory.len();
         memory_size(total)
     }
 
-    fn page_address(&self) -> (u32, usize) {
-        let address = self.registers.current_instruction_pointer;
-        let page = address >> PAGE_ADDRESS_SIZE;
-        let page_address = (address & PAGE_ADDRESS_MASK) as usize;
-        (page, page_address)
-    }
-
     fn get_opcode(&mut self) -> Option<u32> {
-        let (page_id, page_address) = self.page_address();
-        for (page_index, memory) in self.memory.iter() {
-            if page_id == *page_index {
-                let memory_slice: [u8; 4] = memory[page_address..page_address + 4]
-                    .try_into()
-                    .expect("Couldn't read 4 bytes at given address");
-                return Some(u32::from_be_bytes(memory_slice));
-            }
-        }
-        None
+        let addr: usize = self.registers.current_instruction_pointer as usize;
+        let memory_slice: [u8; 4] = self.memory[addr..addr + 4].try_into().unwrap();
+        Some(u32::from_be_bytes(memory_slice))
     }
 
     fn snapshot_state_at(&mut self, at: &StepFrequency) {
@@ -1098,7 +996,15 @@ impl<Fp: Field> Env<Fp> {
                 .memory
                 .clone()
                 .into_iter()
-                .map(|(idx, data)| Page { index: idx, data })
+                .enumerate()
+                .filter(|(i, _data)| i % 4096 == 0)
+                .map(|(i, _d)| {
+                    let d: [u8; 4096] = self.memory[i..i + 4096].try_into().unwrap();
+                    Page {
+                        index: i as u32,
+                        data: d.to_vec(),
+                    }
+                })
                 .collect();
             let s: State = State {
                 pc: self.registers.current_instruction_pointer,
@@ -1139,7 +1045,7 @@ impl<Fp: Field> Env<Fp> {
             let how_many_steps = step as usize - start.step;
             let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
 
-            let pages = self.memory.len();
+            let pages = self.memory.len() / 4096;
 
             let mem = self.memory_usage();
             let name = meta
