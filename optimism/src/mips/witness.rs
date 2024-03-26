@@ -63,7 +63,7 @@ pub struct Env<Fp> {
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
-    pub scratch_state: [Fp; SCRATCH_SIZE],
+    pub scratch_state: [u64; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
@@ -74,7 +74,7 @@ pub struct Env<Fp> {
     pub hash_counter: u64,
 }
 
-fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
+fn fresh_scratch_state<Fp: ark_ff::Zero, const N: usize>() -> [Fp; N] {
     array::from_fn(|_| Fp::zero())
 }
 
@@ -323,7 +323,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.write_column(position, 0);
             0
         } else {
-            self.write_field_column(position, Fp::from(*x).inverse().unwrap());
+            self.write_column(position, 0);
             1 // Placeholder value
         }
     }
@@ -809,10 +809,6 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
-        self.write_field_column(column, value.into())
-    }
-
-    pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),

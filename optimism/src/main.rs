@@ -81,7 +81,7 @@ pub fn main() -> ExitCode {
     let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
         let MIPSWitness { cols } = witness_columns;
         // Resize without deallocating
-        cols.iter_mut().for_each(Vec::clear);
+        cols.iter_mut().for_each(Vec::<Fp>::clear);
     };
 
     let mut mips_current_pre_folding_witness = MIPSWitness {
@@ -144,7 +144,7 @@ pub fn main() -> ExitCode {
         }
 
         // TODO: unify witness of MIPS to include the instruction and the error
-        for i in 0..MIPS_COLUMNS {
+        /*for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
                 mips_current_pre_folding_witness.cols[i].push(env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
@@ -165,7 +165,7 @@ pub fn main() -> ExitCode {
                 &mips_current_pre_folding_witness,
             );
             mips_reset_pre_folding_witness(&mut mips_current_pre_folding_witness);
-        }
+        }*/
     }
     if !mips_current_pre_folding_witness
         .instruction_counter()
