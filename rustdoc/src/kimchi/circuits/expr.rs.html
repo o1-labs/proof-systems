@@ -3632,10 +3632,6 @@
 <a href="#3630" id="3630">3630</a>
 <a href="#3631" id="3631">3631</a>
 <a href="#3632" id="3632">3632</a>
-<a href="#3633" id="3633">3633</a>
-<a href="#3634" id="3634">3634</a>
-<a href="#3635" id="3635">3635</a>
-<a href="#3636" id="3636">3636</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3661,15 +3657,12 @@
 <span class="kw">use </span>o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::ops::{Add, AddAssign, Mul, Neg, Sub};
 <span class="kw">use </span>std::{
     cmp::Ordering,
+    collections::{HashMap, HashSet},
     fmt::{<span class="self">self</span>, Debug},
     iter::FromIterator,
-};
-<span class="kw">use </span>std::{
-    collections::{HashMap, HashSet},
-    ops::MulAssign,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
 };
 <span class="kw">use </span>thiserror::Error;
 <span class="kw">use </span>CurrOrNext::{Curr, Next};
@@ -7137,8 +7130,7 @@
         srs::{endos, SRS},
     };
     <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
-    <span class="kw">use </span>std::array;
-    <span class="kw">use </span>std::sync::Arc;
+    <span class="kw">use </span>std::{array, sync::Arc};
 
     <span class="attr">#[test]
     #[should_panic]

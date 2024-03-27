@@ -66,13 +66,15 @@
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>ark_ff::FftField;
-<span class="kw">use </span>ark_poly::EvaluationDomain;
-<span class="kw">use </span>ark_poly::UVPolynomial;
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial <span class="kw">as </span>DP, Evaluations <span class="kw">as </span>E, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>ark_poly::{
+    univariate::DensePolynomial <span class="kw">as </span>DP, EvaluationDomain, Evaluations <span class="kw">as </span>E,
+    Radix2EvaluationDomain <span class="kw">as </span>D, UVPolynomial,
+};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 

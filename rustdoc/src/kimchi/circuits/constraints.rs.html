@@ -964,7 +964,6 @@
 <a href="#962" id="962">962</a>
 <a href="#963" id="963">963</a>
 <a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -995,8 +994,7 @@
 <span class="kw">use </span>poly_commitment::OpenProof;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
-<span class="kw">use </span>std::array;
-<span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::{array, sync::Arc};
 
 <span class="comment">//
 // ConstraintSystem

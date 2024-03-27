@@ -305,14 +305,14 @@
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The Cairo language works natively for field elements in the finite field with
 //! modulus 0x800000000000011000000000000000000000000000000000000000000000001
 //! This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1
 //! Our Pallas curves have 255 bits, so Cairo native instructions will fit.
 //! This means that our Cairo implementation can admit a larger domain for immediate values than theirs.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::flags::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::helper::CairoFieldHelpers;
+</span><span class="kw">use crate</span>::{flags::<span class="kw-2">*</span>, helper::CairoFieldHelpers};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
 
@@ -551,8 +551,10 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span><span class="kw">crate</span>::flags::<span class="kw-2">*</span>;
-    <span class="kw">use </span><span class="kw">crate</span>::word::{FlagBits, FlagSets, Offsets};
+    <span class="kw">use crate</span>::{
+        flags::<span class="kw-2">*</span>,
+        word::{FlagBits, FlagSets, Offsets},
+    };
     <span class="kw">use </span>ark_ff::{One, Zero};
     <span class="kw">use </span>mina_curves::pasta::Fp <span class="kw">as </span>F;
 

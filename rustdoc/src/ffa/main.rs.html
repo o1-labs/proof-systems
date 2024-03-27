@@ -77,23 +77,27 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::UniformRand;
 
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
 
-<span class="kw">use </span>kimchi_msm::columns::Column;
-<span class="kw">use </span>kimchi_msm::ffa::{
-    columns::{FFA_NPUB_COLUMNS, FFA_N_COLUMNS},
-    constraint::ConstraintBuilderEnv <span class="kw">as </span>FFAConstraintBuilderEnv,
-    interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, FFAInterpreterEnv},
-    witness::WitnessBuilderEnv <span class="kw">as </span>FFAWitnessBuilderEnv,
+<span class="kw">use </span>kimchi_msm::{
+    columns::Column,
+    ffa::{
+        columns::{FFA_NPUB_COLUMNS, FFA_N_COLUMNS},
+        constraint::ConstraintBuilderEnv <span class="kw">as </span>FFAConstraintBuilderEnv,
+        interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter, FFAInterpreterEnv},
+        witness::WitnessBuilderEnv <span class="kw">as </span>FFAWitnessBuilderEnv,
+    },
+    lookups::LookupTableIDs,
+    precomputed_srs::get_bn254_srs,
+    prover::prove,
+    verifier::verify,
+    BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
 };
-<span class="kw">use </span>kimchi_msm::lookups::LookupTableIDs;
-<span class="kw">use </span>kimchi_msm::precomputed_srs::get_bn254_srs;
-<span class="kw">use </span>kimchi_msm::prover::prove;
-<span class="kw">use </span>kimchi_msm::verifier::verify;
-<span class="kw">use </span>kimchi_msm::{BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254};
 
 <span class="kw">pub fn </span>main() {
     <span class="comment">// FIXME: use a proper RNG

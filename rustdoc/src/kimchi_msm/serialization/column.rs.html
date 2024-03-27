@@ -33,9 +33,13 @@
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::{Column, ColumnIndexer};
-<span class="kw">use </span><span class="kw">crate</span>::serialization::N_INTERMEDIATE_LIMBS;
-<span class="kw">use </span><span class="kw">crate</span>::N_LIMBS;
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    columns::{Column, ColumnIndexer},
+    serialization::N_INTERMEDIATE_LIMBS,
+    N_LIMBS,
+};
 
 <span class="doccomment">/// Column used by the serialization subcircuit
 /// It is not used yet.

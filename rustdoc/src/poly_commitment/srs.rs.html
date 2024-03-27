@@ -297,13 +297,9 @@
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
 
-</span><span class="kw">use </span><span class="kw">crate</span>::commitment::CommitmentCurve;
-<span class="kw">use </span><span class="kw">crate</span>::PolyComm;
+</span><span class="kw">use crate</span>::{commitment::CommitmentCurve, PolyComm};
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
@@ -313,9 +309,7 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
-<span class="kw">use </span>std::array;
-<span class="kw">use </span>std::cmp::min;
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::{array, cmp::min, collections::HashMap};
 
 <span class="attr">#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]

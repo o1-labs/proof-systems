@@ -698,12 +698,16 @@
 <a href="#696" id="696">696</a>
 <a href="#697" id="697">697</a>
 <a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module represents a run of a Cairo program as a series of consecutive
 //! execution steps, each of which define the execution logic of Cairo instructions
 
-</span><span class="kw">use </span><span class="kw">crate</span>::flags::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::memory::CairoMemory;
-<span class="kw">use </span><span class="kw">crate</span>::word::{CairoWord, FlagBits, FlagSets, Offsets};
+</span><span class="kw">use crate</span>::{
+    flags::<span class="kw-2">*</span>,
+    memory::CairoMemory,
+    word::{CairoWord, FlagBits, FlagSets, Offsets},
+};
 <span class="kw">use </span>ark_ff::Field;
 
 <span class="doccomment">/// A structure to store program counter, allocation pointer and frame pointer

@@ -217,24 +217,18 @@
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="self">self</span>::instance::{Instance, RelaxedInstance};
-<span class="kw">use </span><span class="kw">super</span>::poseidon::DuplexState;
-<span class="kw">use </span><span class="kw">super</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use super</span>::{poseidon::DuplexState, prelude::<span class="kw-2">*</span>};
 <span class="kw">use crate</span>::{
     curve::KimchiCurve,
     loc,
-    snarky::api::SnarkyCircuit,
-    snarky::{cvar::FieldVar, runner::RunState},
+    snarky::{api::SnarkyCircuit, cvar::FieldVar, runner::RunState},
 };
 <span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::{BigInteger, One, PrimeField};
 <span class="kw">use </span>mina_curves::pasta::Fp;
 <span class="kw">use </span>poly_commitment::{evaluation_proof::OpeningProof, OpenProof};
-<span class="kw">use </span>std::marker::PhantomData;
-<span class="kw">use </span>std::ops::Add;
+<span class="kw">use </span>std::{marker::PhantomData, ops::Add};
 
 <span class="kw">mod </span>instance;
 

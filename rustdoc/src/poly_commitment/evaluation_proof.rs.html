@@ -497,12 +497,16 @@
 <a href="#495" id="495">495</a>
 <a href="#496" id="496">496</a>
 <a href="#497" id="497">497</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{commitment::<span class="kw-2">*</span>, srs::endos};
-<span class="kw">use crate</span>::{srs::SRS, PolynomialsToCombine, SRS <span class="kw">as _</span>};
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    commitment::<span class="kw-2">*</span>,
+    srs::{endos, SRS},
+    PolynomialsToCombine, SRS <span class="kw">as _</span>,
+};
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, UVPolynomial};
-<span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations};
+<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations, UVPolynomial};
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::{math, ExtendedDensePolynomial};
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};

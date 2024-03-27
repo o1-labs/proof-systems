@@ -113,9 +113,7 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>ark_ff::Zero;
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{PrimeField, Zero};
 
 <span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
@@ -126,7 +124,7 @@
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Fp},
+    BN254G1Affine, Fp,
 };
 
 <span class="attr">#[allow(dead_code)]

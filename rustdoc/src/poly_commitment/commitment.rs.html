@@ -1205,9 +1205,11 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-</span><span class="kw">use </span><span class="kw">crate</span>::srs::endos;
-<span class="kw">use </span><span class="kw">crate</span>::SRS <span class="kw">as </span>SRSTrait;
-<span class="kw">use crate</span>::{error::CommitmentError, srs::SRS};
+</span><span class="kw">use crate</span>::{
+    error::CommitmentError,
+    srs::{endos, SRS},
+    SRS <span class="kw">as </span>SRSTrait,
+};
 <span class="kw">use </span>ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine <span class="kw">as </span>SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
@@ -1222,8 +1224,7 @@
 <span class="kw">use </span>core::ops::{Add, Sub};
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-<span class="kw">use </span>o1_utils::math;
-<span class="kw">use </span>o1_utils::ExtendedDensePolynomial <span class="kw">as _</span>;
+<span class="kw">use </span>o1_utils::{math, ExtendedDensePolynomial <span class="kw">as _</span>};
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -2066,8 +2067,7 @@
     <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
     <span class="kw">use </span>ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
     <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta <span class="kw">as </span>VestaG};
-    <span class="kw">use </span>mina_poseidon::constants::PlonkSpongeConstantsKimchi <span class="kw">as </span>SC;
-    <span class="kw">use </span>mina_poseidon::sponge::DefaultFqSponge;
+    <span class="kw">use </span>mina_poseidon::{constants::PlonkSpongeConstantsKimchi <span class="kw">as </span>SC, sponge::DefaultFqSponge};
     <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
     <span class="kw">use </span>std::array;
 

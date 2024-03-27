@@ -114,7 +114,6 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! To prover and verify proofs you need a [Structured Reference String](https://www.cryptologie.net/article/560/zk-faq-whats-a-trusted-setup-whats-a-structured-reference-string-whats-toxic-waste/) (SRS).
 //! The generation of this SRS is quite expensive, so we provide a pre-generated SRS in this repo.
 //! Specifically, two of them, one for each pasta curve.
@@ -122,8 +121,7 @@
 //! We generate the SRS within the test in this module.
 //! If you modify the SRS, you will need to regenerate the SRS by passing the `SRS_OVERWRITE` env var.
 
-</span><span class="kw">use </span>std::path::PathBuf;
-<span class="kw">use </span>std::{fs::File, io::BufReader};
+</span><span class="kw">use </span>std::{fs::File, io::BufReader, path::PathBuf};
 
 <span class="kw">use </span>poly_commitment::srs::SRS;
 

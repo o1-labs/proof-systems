@@ -105,9 +105,7 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>ark_ff::Zero;
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{PrimeField, Zero};
 
 <span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
@@ -118,7 +116,7 @@
         interpreter::TestInterpreterEnv,
     },
     witness::Witness,
-    {BN254G1Affine, Fp},
+    BN254G1Affine, Fp,
 };
 
 <span class="attr">#[allow(dead_code)]

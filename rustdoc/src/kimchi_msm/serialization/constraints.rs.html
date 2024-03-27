@@ -254,7 +254,6 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, PrimeField, Zero};
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -268,8 +267,7 @@
     MVLookupTableID <span class="kw">as _</span>, N_LIMBS,
 };
 
-<span class="kw">use </span><span class="kw">super</span>::Lookup;
-<span class="kw">use super</span>::{interpreter::InterpreterEnv, LookupTable};
+<span class="kw">use super</span>::{interpreter::InterpreterEnv, Lookup, LookupTable};
 
 <span class="doccomment">/// Compute the following constraint:
 /// ```text

@@ -407,6 +407,7 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -540,18 +541,19 @@
 }
 
 <span class="kw">pub mod </span>prover {
-    <span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
-    <span class="kw">use </span><span class="kw">crate</span>::MAX_SUPPORTED_DEGREE;
+    <span class="kw">use crate</span>::{
+        mvlookup::{LookupTableID, MVLookup, MVLookupWitness},
+        MAX_SUPPORTED_DEGREE,
+    };
     <span class="kw">use </span>ark_ff::{FftField, Zero};
-    <span class="kw">use </span>ark_poly::Evaluations;
-    <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain <span class="kw">as </span>D};
-    <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-    <span class="kw">use </span>kimchi::curve::KimchiCurve;
+    <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
+    <span class="kw">use </span>kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
     <span class="kw">use </span>mina_poseidon::FqSponge;
-    <span class="kw">use </span>poly_commitment::commitment::{absorb_commitment, PolyComm};
-    <span class="kw">use </span>poly_commitment::{OpenProof, SRS <span class="kw">as _</span>};
-    <span class="kw">use </span>rayon::iter::IntoParallelIterator;
-    <span class="kw">use </span>rayon::iter::ParallelIterator;
+    <span class="kw">use </span>poly_commitment::{
+        commitment::{absorb_commitment, PolyComm},
+        OpenProof, SRS <span class="kw">as _</span>,
+    };
+    <span class="kw">use </span>rayon::iter::{IntoParallelIterator, ParallelIterator};
 
     <span class="kw">pub struct </span>QuotientPolynomialEnvironment&lt;<span class="lifetime">'a</span>, F: FftField&gt; {
         <span class="kw">pub </span>lookup_terms_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,

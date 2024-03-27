@@ -138,15 +138,13 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-<span class="kw">use </span><span class="kw">crate</span>::mvlookup;
-<span class="kw">use </span><span class="kw">crate</span>::witness::Witness;
-<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-<span class="kw">use </span>kimchi::circuits::expr::{
-    Challenges, ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants, Domain,
+<span class="kw">use crate</span>::{mvlookup, witness::Witness};
+<span class="kw">use </span>kimchi::circuits::{
+    domains::EvaluationDomains,
+    expr::{Challenges, ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants, Domain},
 };
 
 <span class="doccomment">/// The collection of polynomials (all in evaluation form) and constants

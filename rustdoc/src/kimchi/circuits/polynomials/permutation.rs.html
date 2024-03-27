@@ -506,7 +506,6 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.
 
 </span><span class="comment">//~ The permutation constraints are the following 4 constraints:
@@ -561,9 +560,8 @@
 <span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
+    EvaluationDomain, Evaluations, Polynomial, Radix2EvaluationDomain <span class="kw">as </span>D, UVPolynomial,
 };
-<span class="kw">use </span>ark_poly::{Polynomial, UVPolynomial};
 <span class="kw">use </span>blake2::{Blake2b512, Digest};
 <span class="kw">use </span>o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 <span class="kw">use </span>poly_commitment::OpenProof;

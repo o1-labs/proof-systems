@@ -138,14 +138,16 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
-</span><span class="kw">use </span>std::fmt::{Display, Formatter, <span class="prelude-ty">Result</span>};
-<span class="kw">use </span>std::ops::{Index, IndexMut};
+</span><span class="kw">use </span>std::{
+    fmt::{Display, Formatter, <span class="prelude-ty">Result</span>},
+    ops::{Index, IndexMut},
+};
 
-<span class="kw">use </span><span class="kw">crate</span>::helper::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::word::CairoWord;
+<span class="kw">use crate</span>::{helper::<span class="kw-2">*</span>, word::CairoWord};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>core::iter::repeat;
 

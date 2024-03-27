@@ -606,21 +606,29 @@
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
 <a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
-    lookup::index::LookupSelectors,
-    lookup::tables::{
-        combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-        XOR_TABLE_ID,
+    lookup::{
+        index::LookupSelectors,
+        tables::{
+            combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
+            XOR_TABLE_ID,
+        },
     },
 };
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations <span class="kw">as </span>E, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>o1_utils::field_helpers::i32_to_field;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::collections::HashSet;
-<span class="kw">use </span>std::ops::{Mul, Neg};
+<span class="kw">use </span>std::{
+    collections::HashSet,
+    ops::{Mul, Neg},
+};
 <span class="kw">use </span>strum_macros::EnumIter;
 
 <span class="kw">type </span>Evaluations&lt;Field&gt; = E&lt;Field, D&lt;Field&gt;&gt;;

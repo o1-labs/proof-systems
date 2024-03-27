@@ -487,6 +487,7 @@
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
 </pre></div><pre class="rust"><code><span class="comment">// Data structure and stuff for compatibility with Cannon
 
 </span><span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
@@ -494,8 +495,7 @@
 <span class="kw">use </span>libflate::zlib::{Decoder, Encoder};
 <span class="kw">use </span>regex::Regex;
 <span class="kw">use </span>serde::{Deserialize, Deserializer, Serialize, Serializer};
-<span class="kw">use </span>std::io::Read;
-<span class="kw">use </span>std::io::Write;
+<span class="kw">use </span>std::io::{Read, Write};
 
 <span class="kw">pub const </span>PAGE_ADDRESS_SIZE: u32 = <span class="number">12</span>;
 <span class="kw">pub const </span>PAGE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
@@ -778,8 +778,10 @@
 </span><span class="kw">mod </span>tests {
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>std::fs::File;
-    <span class="kw">use </span>std::io::{BufReader, Write};
+    <span class="kw">use </span>std::{
+        fs::File,
+        io::{BufReader, Write},
+    };
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>sp_parser() {

@@ -292,6 +292,8 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{
     Hint, HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD,
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
@@ -299,9 +301,11 @@
 <span class="kw">use </span>command_fds::{CommandFdExt, FdMapping};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>os_pipe::{PipeReader, PipeWriter};
-<span class="kw">use </span>std::io::{Read, Write};
-<span class="kw">use </span>std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-<span class="kw">use </span>std::process::{Child, Command};
+<span class="kw">use </span>std::{
+    io::{Read, Write},
+    os::fd::{AsRawFd, FromRawFd, OwnedFd},
+    process::{Child, Command},
+};
 
 <span class="kw">pub struct </span>PreImageOracle {
     <span class="kw">pub </span>cmd: Command,

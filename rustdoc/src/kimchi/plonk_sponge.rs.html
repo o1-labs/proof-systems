@@ -166,10 +166,10 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, PrimeField};
-<span class="kw">use </span>mina_poseidon::sponge::{DefaultFrSponge, ScalarChallenge};
 <span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi <span class="kw">as </span>SC,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
+    sponge::{DefaultFrSponge, ScalarChallenge},
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::proof::{PointEvaluations, ProofEvaluations};

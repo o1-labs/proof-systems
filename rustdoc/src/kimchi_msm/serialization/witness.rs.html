@@ -370,17 +370,15 @@
 <a href="#368" id="368">368</a>
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::FieldHelpers;
 
-<span class="kw">use </span><span class="kw">crate</span>::columns::Column;
-<span class="kw">use </span><span class="kw">crate</span>::serialization::interpreter::InterpreterEnv;
-<span class="kw">use </span><span class="kw">crate</span>::serialization::{Lookup, LookupTable};
-<span class="kw">use </span><span class="kw">crate</span>::N_LIMBS;
+<span class="kw">use crate</span>::{
+    columns::Column,
+    serialization::{interpreter::InterpreterEnv, Lookup, LookupTable},
+    N_LIMBS,
+};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>std::iter;
 
@@ -604,15 +602,11 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">use </span><span class="kw">crate</span>::serialization::N_INTERMEDIATE_LIMBS;
-    <span class="kw">use crate</span>::{LIMB_BITSIZE, N_LIMBS};
+    <span class="kw">use crate</span>::{serialization::N_INTERMEDIATE_LIMBS, LIMB_BITSIZE, N_LIMBS};
 
     <span class="kw">use </span><span class="kw">super</span>::Env;
     <span class="kw">use </span><span class="kw">crate</span>::serialization::interpreter::deserialize_field_element;
-    <span class="kw">use </span>ark_ff::BigInteger;
-    <span class="kw">use </span>ark_ff::FpParameters <span class="kw">as _</span>;
-    <span class="kw">use </span>ark_ff::PrimeField;
-    <span class="kw">use </span>ark_ff::{One, UniformRand, Zero};
+    <span class="kw">use </span>ark_ff::{BigInteger, FpParameters <span class="kw">as _</span>, One, PrimeField, UniformRand, Zero};
     <span class="kw">use </span>mina_curves::pasta::Fp;
     <span class="kw">use </span>num_bigint::BigUint;
     <span class="kw">use </span>o1_utils::{tests::make_test_rng, FieldHelpers};

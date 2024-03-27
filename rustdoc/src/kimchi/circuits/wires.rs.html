@@ -130,12 +130,16 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.
 
 </span><span class="kw">use </span>ark_ff::bytes::{FromBytes, ToBytes};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::array;
-<span class="kw">use </span>std::io::{Read, <span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write};
+<span class="kw">use </span>std::{
+    array,
+    io::{Read, <span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write},
+};
 
 <span class="doccomment">/// Number of registers
 </span><span class="kw">pub const </span>COLUMNS: usize = <span class="number">15</span>;

@@ -233,27 +233,21 @@
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
 <a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Range check witness computation
 
 </span><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>num_integer::Integer;
-<span class="kw">use </span>o1_utils::field_helpers::BigUintFieldHelpers;
-<span class="kw">use </span>o1_utils::{FieldHelpers, ForeignElement};
+<span class="kw">use </span>o1_utils::{field_helpers::BigUintFieldHelpers, FieldHelpers, ForeignElement};
 <span class="kw">use </span>std::array;
 
-<span class="kw">use </span><span class="kw">crate</span>::circuits::witness::Variables;
-<span class="kw">use </span><span class="kw">crate</span>::variable_map;
 <span class="kw">use crate</span>::{
     circuits::{
         polynomial::COLUMNS,
         polynomials::foreign_field_common::{BigUintForeignFieldHelpers, LIMB_BITS},
-        witness::{init_row, CopyBitsCell, CopyCell, VariableCell, WitnessCell},
+        witness::{init_row, CopyBitsCell, CopyCell, VariableCell, Variables, WitnessCell},
     },
-    variables,
+    variable_map, variables,
 };
 
 <span class="doccomment">/// Witness layout

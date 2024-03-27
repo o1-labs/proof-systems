@@ -364,10 +364,14 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Common parameters and functions for kimchi's foreign field circuits.
 
-</span><span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
-<span class="kw">use </span>o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
+</span><span class="kw">use </span>o1_utils::{
+    field_helpers::FieldHelpers,
+    foreign_field::{ForeignElement, ForeignFieldHelpers},
+};
 
 <span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;

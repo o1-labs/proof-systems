@@ -129,10 +129,14 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Poseidon Hash Function primitive
 
-</span><span class="kw">use </span><span class="kw">crate</span>::constants::SpongeConstants;
-<span class="kw">use </span><span class="kw">crate</span>::permutation::{full_round, poseidon_block_cipher};
+</span><span class="kw">use crate</span>::{
+    constants::SpongeConstants,
+    permutation::{full_round, poseidon_block_cipher},
+};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;

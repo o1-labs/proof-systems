@@ -280,16 +280,24 @@
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! An ASM-like language to print a human-friendly version of a circuit.
 
 </span><span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>std::collections::{HashMap, HashSet};
-<span class="kw">use </span>std::fmt::Write;
-<span class="kw">use </span>std::hash::Hash;
+<span class="kw">use </span>std::{
+    collections::{HashMap, HashSet},
+    fmt::Write,
+    hash::Hash,
+};
 
-<span class="kw">use </span><span class="kw">crate</span>::circuits::gate::{Circuit, CircuitGate, GateType};
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
-<span class="kw">use </span><span class="kw">crate</span>::circuits::wires::Wire;
+<span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    gate::{Circuit, CircuitGate, GateType},
+    polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS},
+    wires::Wire,
+};
 <span class="kw">use </span>ark_ff::PrimeField;
 
 <span class="kw">use </span><span class="kw">super</span>::api::Witness;

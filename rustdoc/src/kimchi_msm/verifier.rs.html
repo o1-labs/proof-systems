@@ -258,20 +258,25 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup::LookupTableID;
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>rand::thread_rng;
-<span class="kw">use </span>rayon::iter::IntoParallelIterator;
-<span class="kw">use </span>rayon::iter::ParallelIterator;
+<span class="kw">use </span>rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-<span class="kw">use </span>kimchi::circuits::expr::{Challenges, Constants, Expr, PolishToken};
-<span class="kw">use </span>kimchi::plonk_sponge::FrSponge;
-<span class="kw">use </span>kimchi::proof::PointEvaluations;
-<span class="kw">use </span>kimchi::{curve::KimchiCurve, groupmap::GroupMap};
-<span class="kw">use </span>mina_poseidon::sponge::ScalarChallenge;
-<span class="kw">use </span>mina_poseidon::FqSponge;
+<span class="kw">use </span>kimchi::{
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{Challenges, Constants, Expr, PolishToken},
+    },
+    curve::KimchiCurve,
+    groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+    proof::PointEvaluations,
+};
+<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
@@ -279,8 +284,7 @@
     OpenProof, SRS,
 };
 
-<span class="kw">use </span><span class="kw">crate</span>::expr::E;
-<span class="kw">use crate</span>::{proof::Proof, witness::Witness};
+<span class="kw">use crate</span>::{expr::E, proof::Proof, witness::Witness};
 
 <span class="kw">pub fn </span>verify&lt;
     G: KimchiCurve,

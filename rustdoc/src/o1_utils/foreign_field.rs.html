@@ -273,6 +273,8 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Describes helpers for foreign field arithmetics
 //! Generic parameters are as follows:
 //! - `B` is a bit length of one limb
@@ -281,8 +283,10 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::field_helpers::FieldHelpers;
 <span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>std::fmt::{Debug, Formatter};
-<span class="kw">use </span>std::ops::{Index, IndexMut};
+<span class="kw">use </span>std::{
+    fmt::{Debug, Formatter},
+    ops::{Index, IndexMut},
+};
 
 <span class="doccomment">/// Represents a foreign field element
 </span><span class="attr">#[derive(Clone, PartialEq, Eq)]

@@ -122,6 +122,10 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{LookupTableIDs, LookupWitness},
     mvlookup::{LookupProof, LookupTableID},
@@ -132,10 +136,14 @@
 <span class="kw">use </span>ark_ff::UniformRand;
 <span class="kw">use </span>rand::thread_rng;
 
-<span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-<span class="kw">use </span>kimchi::circuits::expr::{ColumnEvaluations, ExprError};
-<span class="kw">use </span>kimchi::curve::KimchiCurve;
-<span class="kw">use </span>kimchi::proof::PointEvaluations;
+<span class="kw">use </span>kimchi::{
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{ColumnEvaluations, ExprError},
+    },
+    curve::KimchiCurve,
+    proof::PointEvaluations,
+};
 <span class="kw">use </span>poly_commitment::{commitment::PolyComm, OpenProof};
 
 <span class="attr">#[derive(Debug)]
