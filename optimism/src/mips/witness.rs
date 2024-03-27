@@ -2,7 +2,7 @@ use crate::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration,
         INITIAL_ADDITIONAL_ALLOCATED_HEAP_MEMORY_MBI, INITIAL_HEAP_ADDRESS,
-        INITIAL_HEAP_PAGE_INDEX, PAGE_SIZE,
+        INITIAL_HEAP_PAGE_INDEX, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE,
     },
     keccak::environment::KeccakEnv,
     lookups::Lookup,
@@ -739,14 +739,18 @@ impl<Fp: Field> Env<Fp> {
         //                            nb_of_page_index
         //
         //
-        let nb_of_page_index: usize = state.memory.iter().count();
-        let initial_memory_without_heap: Vec<_> = (&state.memory)
-            .into_iter()
+        let nb_of_page_index: usize = state.memory.len();
+        let initial_memory_without_heap: Vec<_> = state
+            .memory
+            .iter()
             .filter(|page| (page.index as usize) < INITIAL_HEAP_PAGE_INDEX)
             .collect();
-        let initial_nb_page_index_heap: usize = (&initial_memory_without_heap).into_iter().count();
+        let initial_nb_page_index_heap: usize = initial_memory_without_heap.len();
         let additional_page_index: usize = nb_of_page_index - initial_nb_page_index_heap;
-        println!("Initial number of page for heap: {:?}", additional_page_index);
+        println!(
+            "Initial number of page for heap: {:?}",
+            additional_page_index
+        );
         let last_page_index_before_heap: usize = initial_memory_without_heap
             .into_iter()
             .map(|page| page.index)
@@ -761,7 +765,8 @@ impl<Fp: Field> Env<Fp> {
         // FIXME: necessary?
         let last_page_index_before_heap = last_page_index_before_heap + 10;
         let final_memory_address_without_heap = last_page_index_before_heap * page_size;
-        let cannon_initial_allocated_memory: usize = final_memory_address_without_heap + additional_page_index * page_size;
+        let cannon_initial_allocated_memory: usize =
+            final_memory_address_without_heap + additional_page_index * page_size;
         let initial_allocated_memory: usize =
             cannon_initial_allocated_memory + INITIAL_ADDITIONAL_ALLOCATED_HEAP_MEMORY_MBI;
         let mut initial_memory: Vec<u8> = vec![0; initial_allocated_memory];
@@ -771,7 +776,7 @@ impl<Fp: Field> Env<Fp> {
                 // println!("Page index: {:?}", page.index);
                 let addr = (page.index * PAGE_SIZE) as usize;
                 let flat_memory_addr: usize = if addr <= final_memory_address_without_heap {
-                    addr.try_into().unwrap()
+                    addr
                 } else {
                     // println!("Addr: {:?}", addr);
                     // println!("Initial heap addr: {:?}", INITIAL_HEAP_ADDRESS);
@@ -844,13 +849,18 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn get_flat_memory_addr(&self, addr: u32) -> usize {
-        let addr: usize = addr.try_into().unwrap();
+        let page: u32 = addr >> PAGE_ADDRESS_SIZE;
+        let page_address: u32 = addr & PAGE_ADDRESS_MASK;
+        println!("Initial addr: {:?}", addr);
+        println!("Page: {:?}", page);
+        println!("Page address: {:?}", page_address);
+        let addr: usize = (page * PAGE_SIZE + page_address).try_into().unwrap();
         let flat_memory_addr: usize = if addr <= self.final_memory_address_without_heap {
-            addr.try_into().unwrap()
+            addr
         } else if addr >= INITIAL_HEAP_ADDRESS {
             addr - INITIAL_HEAP_ADDRESS + self.final_memory_address_without_heap
         } else {
-            panic!("Requested addr: {:?}", addr);
+            panic!("Requested invalid address: {:?}", addr)
         };
         flat_memory_addr
     }
@@ -1046,7 +1056,9 @@ impl<Fp: Field> Env<Fp> {
     fn get_opcode(&mut self) -> Option<u32> {
         let addr = self.registers.current_instruction_pointer;
         let flat_memory_addr = self.get_flat_memory_addr(addr);
-        let memory_slice: [u8; 4] = self.memory[flat_memory_addr..flat_memory_addr + 4].try_into().unwrap();
+        let memory_slice: [u8; 4] = self.memory[flat_memory_addr..flat_memory_addr + 4]
+            .try_into()
+            .unwrap();
         Some(u32::from_be_bytes(memory_slice))
     }
 

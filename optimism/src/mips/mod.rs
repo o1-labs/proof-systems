@@ -15,8 +15,6 @@
 //! [crate::mips::interpreter], and the evaluations will be kept in the
 //! structure [crate::proof::ProofInputs].
 
-use crate::cannon::PAGE_SIZE;
-
 use self::column::Column;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 
