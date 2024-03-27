@@ -74,8 +74,8 @@ pub struct Env<Fp> {
     pub hash_counter: u64,
 }
 
-fn fresh_scratch_state<Fp: ark_ff::Zero, const N: usize>() -> [Fp; N] {
-    array::from_fn(|_| Fp::zero())
+fn fresh_scratch_state<const N: usize>() -> [u64; N] {
+    array::from_fn(|_| 0)
 }
 
 const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
