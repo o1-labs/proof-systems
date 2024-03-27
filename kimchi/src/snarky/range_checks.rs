@@ -1,11 +1,6 @@
-use super::constraint_system::KimchiConstraint;
-use super::runner::Constraint;
-use crate::circuits::polynomial::COLUMNS;
-use crate::FieldVar;
-use crate::RunState;
-use crate::SnarkyResult;
-use ark_ff::BigInteger;
-use ark_ff::PrimeField;
+use super::{constraint_system::KimchiConstraint, runner::Constraint};
+use crate::{circuits::polynomial::COLUMNS, FieldVar, RunState, SnarkyResult};
+use ark_ff::{BigInteger, PrimeField};
 use itertools::Itertools;
 use std::borrow::Cow;
 
