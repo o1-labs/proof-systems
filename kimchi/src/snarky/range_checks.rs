@@ -1,5 +1,6 @@
 use super::constraint_system::KimchiConstraint;
 use super::runner::Constraint;
+use crate::circuits::polynomial::COLUMNS;
 use crate::FieldVar;
 use crate::RunState;
 use crate::SnarkyResult;
@@ -105,7 +106,7 @@ pub fn range_check<F: PrimeField>(
         .chain(v0_limbs.0)
         .chain(v0_limbs.1)
         .collect_vec();
-    let r0: [FieldVar<F>; 15] = r0.try_into().unwrap();
+    let r0: [FieldVar<F>; COLUMNS] = r0.try_into().unwrap();
 
     let v1_limbs: ([FieldVar<F>; 6], [FieldVar<F>; 8]) = runner.compute(loc.clone(), |w| {
         let v = w.read_var(&v1);
@@ -121,7 +122,7 @@ pub fn range_check<F: PrimeField>(
         .collect_vec();
 
     type Limbs<F, const N: usize> = [FieldVar<F>; N];
-    let r1: [FieldVar<F>; 15] = r1.try_into().unwrap();
+    let r1: [FieldVar<F>; COLUMNS] = r1.try_into().unwrap();
     let v2_limbs: ((Limbs<F, 1>, Limbs<F, 4>), Limbs<F, 19>) =
         runner.compute(loc.clone(), |w| {
             let v = w.read_var(&v2);
@@ -141,7 +142,7 @@ pub fn range_check<F: PrimeField>(
         .chain(v2_crumb_low.by_ref().take(8))
         .collect_vec();
 
-    let r2: [FieldVar<F>; 15] = r2.try_into().unwrap();
+    let r2: [FieldVar<F>; COLUMNS] = r2.try_into().unwrap();
 
     let first_3 = v2_crumb_low.by_ref().take(3).collect_vec();
     let r3 = first_3
@@ -149,7 +150,7 @@ pub fn range_check<F: PrimeField>(
         .chain([v0p0, v0p1, v1p0, v1p1])
         .chain(v2_crumb_low.take(8))
         .collect_vec();
-    let r3: [FieldVar<F>; 15] = r3.try_into().unwrap();
+    let r3: [FieldVar<F>; COLUMNS] = r3.try_into().unwrap();
 
     let rows = [r0, r1, r2, r3].map(|r| r.to_vec()).to_vec();
 
@@ -164,7 +165,6 @@ mod test {
         circuits::expr::constraints::ExprOps, loc, snarky::api::SnarkyCircuit, FieldVar, RunState,
         SnarkyResult,
     };
-    use ark_ff::{BigInteger, PrimeField};
     use mina_curves::pasta::{Fp, Vesta, VestaParameters};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
