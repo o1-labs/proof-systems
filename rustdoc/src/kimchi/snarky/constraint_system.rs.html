@@ -1859,6 +1859,41 @@
 <a href="#1857" id="1857">1857</a>
 <a href="#1858" id="1858">1858</a>
 <a href="#1859" id="1859">1859</a>
+<a href="#1860" id="1860">1860</a>
+<a href="#1861" id="1861">1861</a>
+<a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
+<a href="#1864" id="1864">1864</a>
+<a href="#1865" id="1865">1865</a>
+<a href="#1866" id="1866">1866</a>
+<a href="#1867" id="1867">1867</a>
+<a href="#1868" id="1868">1868</a>
+<a href="#1869" id="1869">1869</a>
+<a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::all)]
 
 </span><span class="doccomment">//! The backend used by Snarky, gluing snarky to kimchi.
@@ -2110,6 +2145,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
     EcScale(Vec&lt;ScaleRound&lt;Var&gt;&gt;),
     EcEndoscale(EcEndoscaleInput&lt;Var&gt;),
     EcEndoscalar(Vec&lt;EndoscaleScalarRound&lt;Var&gt;&gt;),
+    <span class="comment">//[[Var; 15]; 4]
+    </span>RangeCheck(Vec&lt;Vec&lt;Var&gt;&gt;),
 }
 
 <span class="comment">/* TODO: This is a Unique_id in OCaml. */
@@ -3510,6 +3547,38 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                     <span class="self">self</span>.add_row(labels, loc, vars, GateType::EndoMulScalar, <span class="macro">vec!</span>[]);
                 }
             }
+            KimchiConstraint::RangeCheck(rows) =&gt; {
+                <span class="kw">let </span>rows: <span class="prelude-ty">Result</span>&lt;[Vec&lt;Cvar&gt;; <span class="number">4</span>], <span class="kw">_</span>&gt; = rows.try_into();
+                <span class="kw">let </span>rows: <span class="prelude-ty">Result</span>&lt;[[Cvar; <span class="number">15</span>]; <span class="number">4</span>], <span class="kw">_</span>&gt; = rows.map(|rows| {
+                    rows.map(|r| {
+                        <span class="kw">let </span>r = r.try_into();
+                        <span class="kw">match </span>r {
+                            <span class="prelude-val">Ok</span>(r) =&gt; r,
+                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                                <span class="macro">panic!</span>(<span class="string">"size of row is != 15"</span>);
+                            }
+                        }
+                    })
+                });
+                <span class="kw">let </span>rows = <span class="kw">match </span>rows {
+                    <span class="prelude-val">Ok</span>(rows) =&gt; rows,
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="macro">panic!</span>(<span class="string">"wrong number of rows"</span>);
+                    }
+                };
+
+                <span class="kw">let </span>vars = |cvars: [Cvar; <span class="number">15</span>]| {
+                    cvars
+                        .map(|v| <span class="self">self</span>.reduce_to_var(labels, loc, v))
+                        .map(<span class="prelude-val">Some</span>)
+                        .to_vec()
+                };
+                <span class="kw">let </span>[r0, r1, r2, r3] = rows.map(vars);
+                <span class="self">self</span>.add_row(labels, loc, r0, GateType::RangeCheck0, <span class="macro">vec!</span>[Field::zero()]);
+                <span class="self">self</span>.add_row(labels, loc, r1, GateType::RangeCheck0, <span class="macro">vec!</span>[Field::zero()]);
+                <span class="self">self</span>.add_row(labels, loc, r2, GateType::RangeCheck1, <span class="macro">vec!</span>[]);
+                <span class="self">self</span>.add_row(labels, loc, r3, GateType::Zero, <span class="macro">vec!</span>[]);
+            }
         }
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>sponge_params(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mina_poseidon::poseidon::ArithmeticSpongeParams&lt;Field&gt; {
@@ -3635,7 +3704,8 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
             | KimchiConstraint::EcAddComplete { .. }
             | KimchiConstraint::EcScale { .. }
             | KimchiConstraint::EcEndoscale { .. }
-            | KimchiConstraint::EcEndoscalar { .. } =&gt; (),
+            | KimchiConstraint::EcEndoscalar { .. }
+            | KimchiConstraint::RangeCheck { .. } =&gt; (),
         };
         <span class="prelude-val">Ok</span>(())
     }

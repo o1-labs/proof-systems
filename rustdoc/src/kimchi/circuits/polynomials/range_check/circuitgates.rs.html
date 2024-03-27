@@ -691,7 +691,7 @@
             power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
         </span>}
 
-        <span class="comment">// Next row:  Sum remaining 2-bit limbs vc10 and vc11
+        <span class="comment">// Next row:  Sum remaining 2-bit limbs v2c9, v2c10, and v2c11 (reverse order)
         </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..=<span class="number">2</span>).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
