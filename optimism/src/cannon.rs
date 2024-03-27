@@ -12,6 +12,19 @@ pub const PAGE_ADDRESS_SIZE: u32 = 12;
 pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
 pub const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
 
+/// Initial page index for the heap
+/// We do suppose the heap starts at 524281, and it is the only memory
+/// that will need to grow. Experimentally, based on commit c83cd94 from
+/// optimism, it is a correct assumption.
+/// When we access a memory address, we will need to compute this offset
+/// to get the correct corresponding flat memory address.
+pub const INITIAL_HEAP_PAGE_INDEX: usize = 524281;
+pub const INITIAL_HEAP_ADDRESS: usize = INITIAL_HEAP_PAGE_INDEX * PAGE_SIZE as usize;
+
+/// We want to allocate an extra number of MBi.
+/// = 50MBi
+pub const INITIAL_ADDITIONAL_ALLOCATED_HEAP_MEMORY_MBI: usize = 50 * 1024 * 1024;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
     pub index: u32,

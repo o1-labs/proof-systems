@@ -1,5 +1,9 @@
 use crate::{
-    cannon::{Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration},
+    cannon::{
+        Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration,
+        INITIAL_ADDITIONAL_ALLOCATED_HEAP_MEMORY_MBI, INITIAL_HEAP_ADDRESS,
+        INITIAL_HEAP_PAGE_INDEX, PAGE_SIZE,
+    },
     keccak::environment::KeccakEnv,
     lookups::Lookup,
     mips::{
@@ -67,6 +71,7 @@ pub struct Env<Fp> {
     pub preimage_key: Option<[u8; 32]>,
     pub keccak_env: Option<KeccakEnv<Fp>>,
     pub hash_counter: u64,
+    pub final_memory_address_without_heap: usize,
 }
 
 fn fresh_scratch_state<const N: usize>() -> [u64; N] {
@@ -204,14 +209,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         output: Self::Position,
     ) -> Self::Variable {
         let addr: u32 = (*addr).try_into().unwrap();
-        let value = self.memory[addr as usize];
+        let flat_memory_addr = self.get_flat_memory_addr(addr);
+        let value = self.memory[flat_memory_addr];
         self.write_column(output, value.into());
         value.into()
     }
 
     unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let addr: u32 = (*addr).try_into().unwrap();
-        self.memory[addr as usize] = value.try_into().expect("push_memory values fit in a u8");
+        let flat_memory_addr = self.get_flat_memory_addr(addr);
+        self.memory[flat_memory_addr] = value.try_into().expect("push_memory values fit in a u8");
     }
 
     unsafe fn fetch_memory_access(
@@ -220,14 +227,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         output: Self::Position,
     ) -> Self::Variable {
         let addr: u32 = (*addr).try_into().unwrap();
-        let value = self.memory_write_index[addr as usize];
+        let flat_memory_addr = self.get_flat_memory_addr(addr);
+        let value = self.memory_write_index[flat_memory_addr];
         self.write_column(output, value);
         value
     }
 
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let addr = *addr as u32;
-        self.memory_write_index[addr as usize] = value;
+        let flat_memory_addr = self.get_flat_memory_addr(addr);
+        self.memory_write_index[flat_memory_addr] = value;
     }
 
     fn constant(x: u32) -> Self::Variable {
@@ -688,7 +697,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             // Fetch the value without allocating witness columns
             let value = {
                 let addr: u32 = (*addr).try_into().unwrap();
-                self.memory[addr as usize]
+                let flat_memory_addr = self.get_flat_memory_addr(addr);
+                self.memory[flat_memory_addr]
             };
             last_hint.push(value);
         }
@@ -713,22 +723,71 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 }
 
 impl<Fp: Field> Env<Fp> {
-    pub fn create(_page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
+    pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
 
         let syscall_env = SyscallEnv::create(&state);
 
-        let max_index = state.memory.iter().map(|page| page.index).max().unwrap();
-        let max_memory_address: usize = (max_index * 4096).try_into().unwrap();
-        let mut initial_memory: Vec<u8> = vec![0; max_memory_address + 100_000 * 1024];
+        //         initial_memory_without_heap
+        //   /----------------------------------
+        //  /                                    \
+        //  |---       OUT OF HEAP MEMORY --------|   EMPTY MEMORY | ------  HEAP  ---- |
+        //  |
+        //  |
+        //  -------------------------------------------------------------------|
+        //                            nb_of_page_index
+        //
+        //
+        let nb_of_page_index: usize = state.memory.iter().count();
+        let initial_memory_without_heap: Vec<_> = (&state.memory)
+            .into_iter()
+            .filter(|page| (page.index as usize) < INITIAL_HEAP_PAGE_INDEX)
+            .collect();
+        let initial_nb_page_index_heap: usize = (&initial_memory_without_heap).into_iter().count();
+        let additional_page_index: usize = nb_of_page_index - initial_nb_page_index_heap;
+        println!("Initial number of page for heap: {:?}", additional_page_index);
+        let last_page_index_before_heap: usize = initial_memory_without_heap
+            .into_iter()
+            .map(|page| page.index)
+            .max()
+            .unwrap()
+            .try_into()
+            .unwrap();
+        println!(
+            "Last page index without heap: {:?}",
+            last_page_index_before_heap
+        );
+        // FIXME: necessary?
+        let last_page_index_before_heap = last_page_index_before_heap + 10;
+        let final_memory_address_without_heap = last_page_index_before_heap * page_size;
+        let cannon_initial_allocated_memory: usize = final_memory_address_without_heap + additional_page_index * page_size;
+        let initial_allocated_memory: usize =
+            cannon_initial_allocated_memory + INITIAL_ADDITIONAL_ALLOCATED_HEAP_MEMORY_MBI;
+        let mut initial_memory: Vec<u8> = vec![0; initial_allocated_memory];
 
         state.memory.into_iter().for_each(|page| {
-            let addr = (page.index * 4096) as usize;
+            let addr = {
+                // println!("Page index: {:?}", page.index);
+                let addr = (page.index * PAGE_SIZE) as usize;
+                let flat_memory_addr: usize = if addr <= final_memory_address_without_heap {
+                    addr.try_into().unwrap()
+                } else {
+                    // println!("Addr: {:?}", addr);
+                    // println!("Initial heap addr: {:?}", INITIAL_HEAP_ADDRESS);
+                    // println!(
+                    //     "Final memory without heap: {:?}",
+                    //     final_memory_address_without_heap
+                    // );
+                    addr - INITIAL_HEAP_ADDRESS + final_memory_address_without_heap
+                };
+                // println!("Flat memory addr: {:?}", flat_memory_addr);
+                flat_memory_addr
+            };
             initial_memory[addr..addr + 4096].copy_from_slice(&page.data[..4096])
         });
         // Initial memory index only 0
-        let memory_write_index = vec![0; max_memory_address * 2];
+        let memory_write_index = vec![0; initial_allocated_memory];
 
         let initial_registers = {
             let preimage_key = {
@@ -768,6 +827,7 @@ impl<Fp: Field> Env<Fp> {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
+            final_memory_address_without_heap,
         }
     }
 
@@ -783,8 +843,21 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
+    pub fn get_flat_memory_addr(&self, addr: u32) -> usize {
+        let addr: usize = addr.try_into().unwrap();
+        println!("Requested addr: {:?}", addr);
+        println!("Final memory address without heap: {:?}", self.final_memory_address_without_heap);
+        let flat_memory_addr: usize = if addr <= self.final_memory_address_without_heap {
+            addr.try_into().unwrap()
+        } else {
+            addr - INITIAL_HEAP_ADDRESS + self.final_memory_address_without_heap
+        };
+        flat_memory_addr
+    }
+
     pub fn get_memory_direct(&mut self, addr: u32) -> u8 {
-        self.memory[addr as usize]
+        let flat_memory_addr = self.get_flat_memory_addr(addr);
+        self.memory[flat_memory_addr]
     }
 
     pub fn decode_instruction(&mut self) -> (Instruction, u32) {
@@ -971,8 +1044,9 @@ impl<Fp: Field> Env<Fp> {
     }
 
     fn get_opcode(&mut self) -> Option<u32> {
-        let addr: usize = self.registers.current_instruction_pointer as usize;
-        let memory_slice: [u8; 4] = self.memory[addr..addr + 4].try_into().unwrap();
+        let addr = self.registers.current_instruction_pointer;
+        let flat_memory_addr = self.get_flat_memory_addr(addr);
+        let memory_slice: [u8; 4] = self.memory[flat_memory_addr..flat_memory_addr + 4].try_into().unwrap();
         Some(u32::from_be_bytes(memory_slice))
     }
 
