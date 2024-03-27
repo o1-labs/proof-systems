@@ -15,6 +15,8 @@ pub enum SerializationColumn {
     IntermediateLimb(usize),
 }
 
+pub const SER_COL_N: usize = 42; // fix later
+
 impl ColumnIndexer for SerializationColumn {
     fn ix_to_column(self) -> Column {
         match self {
