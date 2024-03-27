@@ -6,9 +6,11 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-use crate::srs::endos;
-use crate::SRS as SRSTrait;
-use crate::{error::CommitmentError, srs::SRS};
+use crate::{
+    error::CommitmentError,
+    srs::{endos, SRS},
+    SRS as SRSTrait,
+};
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
@@ -23,8 +25,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::math;
-use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{math, ExtendedDensePolynomial as _};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -867,8 +868,7 @@ mod tests {
     use crate::srs::SRS;
     use ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
-    use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
-    use mina_poseidon::sponge::DefaultFqSponge;
+    use mina_poseidon::{constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};
     use std::array;
 

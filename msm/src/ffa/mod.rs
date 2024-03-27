@@ -6,11 +6,13 @@ pub mod witness;
 #[cfg(test)]
 mod tests {
 
-    use crate::ffa::{
-        interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
-        witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
+    use crate::{
+        ffa::{
+            interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
+            witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
+        },
+        Ff1, Fp,
     };
-    use crate::{Ff1, Fp};
     use ark_ff::UniformRand;
     use rand::Rng;
 

@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::hash::Hash;
+use std::{collections::HashMap, hash::Hash};
 
 #[derive(Debug, Clone, Default)]
 /// Tarjan's Union-Find Data structure

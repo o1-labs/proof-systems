@@ -207,8 +207,7 @@ impl Keccak {
 #[cfg(test)]
 mod tests {
 
-    use rand::thread_rng;
-    use rand::{rngs::StdRng, Rng};
+    use rand::{rngs::StdRng, thread_rng, Rng};
     use rand_core::SeedableRng;
 
     use super::*;

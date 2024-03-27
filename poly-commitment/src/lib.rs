@@ -11,9 +11,11 @@ mod tests;
 
 pub use commitment::PolyComm;
 
-use crate::commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve};
-use crate::error::CommitmentError;
-use crate::evaluation_proof::DensePolynomialOrEvaluations;
+use crate::{
+    commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
+    error::CommitmentError,
+    evaluation_proof::DensePolynomialOrEvaluations,
+};
 use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
 use ark_poly::{

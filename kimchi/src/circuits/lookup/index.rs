@@ -495,8 +495,11 @@ mod tests {
 
     use super::{LookupError, LookupTable, RuntimeTableCfg};
     use crate::{
-        circuits::constraints::ConstraintSystem, circuits::gate::CircuitGate,
-        circuits::lookup::tables::xor, circuits::polynomials::range_check, error::SetupError,
+        circuits::{
+            constraints::ConstraintSystem, gate::CircuitGate, lookup::tables::xor,
+            polynomials::range_check,
+        },
+        error::SetupError,
     };
     use mina_curves::pasta::Fp;
 
