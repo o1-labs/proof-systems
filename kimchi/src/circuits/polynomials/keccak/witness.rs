@@ -649,8 +649,8 @@ mod tests {
     fn test_sparse_round_constants() {
         for round in 0..ROUNDS {
             let round_constants = Keccak::sparse(RC[round]);
-            for i in 0..QUARTERS {
-                assert_eq!(round_constants[i], SPARSE_RC[round][i]);
+            for (i, rc) in round_constants.iter().enumerate().take(QUARTERS) {
+                assert_eq!(*rc, SPARSE_RC[round][i]);
             }
         }
     }
