@@ -199,17 +199,6 @@ mod test {
     }
 
     #[test]
-    fn test_bits() {
-        let f1 = Fp::from(3);
-        let f2 = Fp::from(2);
-        let f1 = f1.into_repr().to_bits_le();
-        let f2 = f2.into_repr().to_bits_le();
-        println!("b: {}", f1[0]);
-        println!("b: {}", f1[1]);
-        println!("b: {}", f2[0]);
-        println!("b: {}", f2[1]);
-    }
-    #[test]
     fn snarky_range_check() {
         // compile
         let test_circuit = TestCircuit {};
