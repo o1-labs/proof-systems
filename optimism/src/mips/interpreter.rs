@@ -129,6 +129,14 @@ pub trait InterpreterEnv {
     /// increase the value [crate::mips::witness::SCRATCH_SIZE]
     fn alloc_scratch(&mut self) -> Self::Position;
 
+    /// Allocate a new abstract variable for the current step
+    /// to compute an inverse value before folding.
+    /// For now, at most 9 register accesses can happen per instruction,
+    /// so 9 inverse columns can at most be allocated at each step.
+    /// After every instruction, these columns are "freed"
+    /// (can be seen as evaluated to 1).
+    fn alloc_inverse(&mut self) -> Self::Position;
+
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
@@ -593,7 +601,7 @@ pub trait InterpreterEnv {
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
-            let pos = self.alloc_scratch();
+            let pos = self.alloc_inverse();
             unsafe { self.inverse_or_zero(x, pos) }
         };
         // If x = 0, then res = 1 and x_inv_or_zero = _

@@ -18,7 +18,7 @@ use crate::{
     },
     preimage_oracle::PreImageOracle,
 };
-use ark_ff::Field;
+use ark_ff::{Field, One, Zero};
 use core::panic;
 use log::{debug, info};
 use std::{
@@ -33,7 +33,10 @@ pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 // TODO: Delete and use a vector instead
+// TODO: Check if now that we have split the inverse columns, we can have fewer of these
 pub const SCRATCH_SIZE: usize = 93; // MIPS + hash_counter + is_syscall + bytes_read + bytes_left + bytes + has_n_bytes + reading_preimage
+/// Maximum number of register accesses that can happen per instruction.
+pub const INVERSE_SIZE: usize = 9;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -63,7 +66,10 @@ pub struct Env<Fp> {
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
+    /// Index of the inverse columns in the current step
+    pub inverse_state_idx: usize,
     pub scratch_state: [u64; SCRATCH_SIZE],
+    pub inverse_state: [u64; INVERSE_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
@@ -74,8 +80,13 @@ pub struct Env<Fp> {
     pub hash_counter: u64,
 }
 
-fn fresh_scratch_state<Fp: ark_ff::Zero, const N: usize>() -> [Fp; N] {
+fn fresh_scratch_state<Fp: Zero, const N: usize>() -> [Fp; N] {
     array::from_fn(|_| Fp::zero())
+}
+
+fn fresh_inverse_state<Fp: One, const N: usize>() -> [Fp; N] {
+    // So that we won't try to invert the zero value
+    array::from_fn(|_| Fp::one())
 }
 
 const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
@@ -120,6 +131,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         Column::ScratchState(scratch_idx)
+    }
+
+    fn alloc_inverse(&mut self) -> Self::Position {
+        let inverse_idx = self.inverse_state_idx;
+        self.inverse_state_idx += 1;
+        Column::InverseState(inverse_idx)
     }
 
     type Variable = u64;
@@ -323,7 +340,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             self.write_column(position, 0);
             0
         } else {
-            self.write_column(position, 0);
+            // TODO: batch inverse before folding
+            // By default, we write the value to be inverted at the end
+            self.write_column(position, *x);
             1 // Placeholder value
         }
     }
@@ -791,7 +810,9 @@ impl<Fp: Field> Env<Fp> {
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
+            inverse_state_idx: 0,
             scratch_state: fresh_scratch_state(),
+            inverse_state: fresh_inverse_state(),
             halt: state.exited,
             syscall_env,
             preimage_oracle,
@@ -808,9 +829,19 @@ impl<Fp: Field> Env<Fp> {
         self.scratch_state = fresh_scratch_state();
     }
 
+    pub fn reset_inverse_state(&mut self) {
+        self.inverse_state_idx = 0;
+        self.inverse_state = fresh_inverse_state();
+    }
+
     pub fn write_column(&mut self, column: Column, value: u64) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::InverseState(idx) => {
+                // So that we won't try to invert the zero value
+                assert_ne!(value, 0);
+                self.inverse_state[idx] = value
+            }
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }
@@ -1012,6 +1043,7 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
         self.reset_scratch_state();
+        self.reset_inverse_state();
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
