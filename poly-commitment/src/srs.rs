@@ -1,7 +1,6 @@
 //! This module implements the Marlin structured reference string primitive
 
-use crate::commitment::CommitmentCurve;
-use crate::PolyComm;
+use crate::{commitment::CommitmentCurve, PolyComm};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -11,9 +10,7 @@ use groupmap::GroupMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::array;
-use std::cmp::min;
-use std::collections::HashMap;
+use std::{array, cmp::min, collections::HashMap};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]

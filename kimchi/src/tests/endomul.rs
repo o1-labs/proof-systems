@@ -1,9 +1,11 @@
-use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    polynomials::endosclmul,
-    wires::*,
+use crate::{
+    circuits::{
+        gate::{CircuitGate, GateType},
+        polynomials::endosclmul,
+        wires::*,
+    },
+    tests::framework::TestFramework,
 };
-use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};

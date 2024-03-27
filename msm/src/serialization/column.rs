@@ -1,6 +1,8 @@
-use crate::columns::{Column, ColumnIndexer};
-use crate::serialization::N_INTERMEDIATE_LIMBS;
-use crate::N_LIMBS;
+use crate::{
+    columns::{Column, ColumnIndexer},
+    serialization::N_INTERMEDIATE_LIMBS,
+    N_LIMBS,
+};
 
 /// Column used by the serialization subcircuit
 /// It is not used yet.

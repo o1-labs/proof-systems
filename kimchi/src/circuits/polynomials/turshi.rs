@@ -93,8 +93,7 @@ use crate::{
 };
 use ark_ff::{FftField, Field, PrimeField, SquareRootField};
 use rand::{prelude::StdRng, SeedableRng};
-use std::array;
-use std::marker::PhantomData;
+use std::{array, marker::PhantomData};
 use turshi::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},

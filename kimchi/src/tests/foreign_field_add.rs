@@ -1,19 +1,22 @@
 use super::framework::TestFramework;
-use crate::circuits::gate::CircuitGateResult;
-use crate::circuits::polynomials::generic::GenericGateSpec;
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::{CircuitGate, CircuitGateError, Connect, GateType},
-    polynomial::COLUMNS,
-    polynomials::{
-        foreign_field_add::witness::{self, FFOps},
-        foreign_field_common::{BigUintForeignFieldHelpers, HI, LIMB_BITS, LO, MI, TWO_TO_LIMB},
-        range_check::{self, witness::extend_multi},
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
+        polynomial::COLUMNS,
+        polynomials::{
+            foreign_field_add::witness::{self, FFOps},
+            foreign_field_common::{
+                BigUintForeignFieldHelpers, HI, LIMB_BITS, LO, MI, TWO_TO_LIMB,
+            },
+            generic::GenericGateSpec,
+            range_check::{self, witness::extend_multi},
+        },
+        wires::Wire,
     },
-    wires::Wire,
+    curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-use crate::curve::KimchiCurve;
-use crate::prover_index::ProverIndex;
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, SquareRootField, Zero};
 use ark_poly::EvaluationDomain;
@@ -24,15 +27,13 @@ use mina_poseidon::{
 };
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
-use o1_utils::tests::make_test_rng;
-use o1_utils::{foreign_field::ForeignElement, FieldHelpers, Two};
+use o1_utils::{foreign_field::ForeignElement, tests::make_test_rng, FieldHelpers, Two};
 use poly_commitment::{
     evaluation_proof::OpeningProof,
     srs::{endos, SRS},
 };
 use rand::{rngs::StdRng, Rng};
-use std::array;
-use std::sync::Arc;
+use std::{array, sync::Arc};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;

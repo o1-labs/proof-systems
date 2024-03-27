@@ -8,10 +8,14 @@ use crate::{
 use ark_ff::UniformRand;
 use rand::thread_rng;
 
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::circuits::expr::{ColumnEvaluations, ExprError};
-use kimchi::curve::KimchiCurve;
-use kimchi::proof::PointEvaluations;
+use kimchi::{
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{ColumnEvaluations, ExprError},
+    },
+    curve::KimchiCurve,
+    proof::PointEvaluations,
+};
 use poly_commitment::{commitment::PolyComm, OpenProof};
 
 #[derive(Debug)]

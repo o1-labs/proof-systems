@@ -1,10 +1,13 @@
 use super::framework::TestFramework;
-use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::wires::COLUMNS;
-use crate::proof::RecursionChallenge;
+use crate::{
+    circuits::{
+        polynomials::generic::testing::{create_circuit, fill_in_witness},
+        wires::COLUMNS,
+    },
+    proof::RecursionChallenge,
+};
 use ark_ff::{UniformRand, Zero};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly::UVPolynomial;
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
