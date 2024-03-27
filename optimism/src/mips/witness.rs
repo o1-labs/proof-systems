@@ -721,14 +721,14 @@ impl<Fp: Field> Env<Fp> {
 
         let max_index = state.memory.iter().map(|page| page.index).max().unwrap();
         let max_memory_address: usize = (max_index * 4096).try_into().unwrap();
-        let mut initial_memory: Vec<u8> = vec![0; max_memory_address * 4];
+        let mut initial_memory: Vec<u8> = vec![0; max_memory_address * 2];
 
         state.memory.into_iter().for_each(|page| {
             let addr = (page.index * 4096) as usize;
             initial_memory[addr..addr + 4096].copy_from_slice(&page.data[..4096])
         });
         // Initial memory index only 0
-        let memory_write_index = vec![0; max_memory_address * 4];
+        let memory_write_index = vec![0; max_memory_address * 2];
 
         let initial_registers = {
             let preimage_key = {
