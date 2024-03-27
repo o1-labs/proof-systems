@@ -23,7 +23,7 @@ pub const INITIAL_HEAP_ADDRESS: usize = INITIAL_HEAP_PAGE_INDEX * PAGE_SIZE as u
 
 /// We want to allocate an extra number of MBi.
 /// = 50MBi
-pub const INITIAL_ADDITIONAL_ALLOCATED_HEAP_MEMORY_MBI: usize = 50 * 1024 * 1024;
+pub const INITIAL_ADDITIONAL_ALLOCATED_HEAP_MEMORY_MBI: usize = 100 * 1024 * 1024;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {

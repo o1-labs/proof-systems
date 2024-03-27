@@ -845,12 +845,12 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn get_flat_memory_addr(&self, addr: u32) -> usize {
         let addr: usize = addr.try_into().unwrap();
-        println!("Requested addr: {:?}", addr);
-        println!("Final memory address without heap: {:?}", self.final_memory_address_without_heap);
         let flat_memory_addr: usize = if addr <= self.final_memory_address_without_heap {
             addr.try_into().unwrap()
-        } else {
+        } else if addr >= INITIAL_HEAP_ADDRESS {
             addr - INITIAL_HEAP_ADDRESS + self.final_memory_address_without_heap
+        } else {
+            panic!("Requested addr: {:?}", addr);
         };
         flat_memory_addr
     }
