@@ -54,18 +54,18 @@ impl<F: PrimeField> RangeCheckLimbs1<F> {
 
 ///for v2
 struct RangeCheckLimbs2<F: PrimeField> {
-    crumbs_low: [F; 18],
+    crumbs_low: [F; 19],
     limbs: [F; 4],
-    crumbs_high: [F; 2],
+    crumbs_high: [F; 1],
 }
 
 impl<F: PrimeField> RangeCheckLimbs2<F> {
     ///extracts the limbs needed for range check from the bits of f
     fn parse(f: F) -> Self {
         let mut bits = f.into_repr().to_bits_le().into_iter();
-        let crumbs_low = parse_limbs::<F, 2, 18>(bits.by_ref());
+        let crumbs_low = parse_limbs::<F, 2, 19>(bits.by_ref());
         let limbs = parse_limbs::<F, 12, 4>(bits.by_ref());
-        let crumbs_high = parse_limbs::<F, 2, 2>(bits);
+        let crumbs_high = parse_limbs::<F, 2, 1>(bits);
         Self {
             crumbs_low,
             limbs,
@@ -73,7 +73,7 @@ impl<F: PrimeField> RangeCheckLimbs2<F> {
         }
     }
     ///produces limbs and crumbs with the expected endianess
-    fn into_repr(mut self) -> ([F; 2], [F; 4], [F; 18]) {
+    fn into_repr(mut self) -> ([F; 1], [F; 4], [F; 19]) {
         self.crumbs_high.reverse();
         self.limbs.reverse();
         self.crumbs_low.reverse();
@@ -122,7 +122,7 @@ pub fn range_check<F: PrimeField>(
 
     type Limbs<F, const N: usize> = [FieldVar<F>; N];
     let r1: [FieldVar<F>; 15] = r1.try_into().unwrap();
-    let v2_limbs: ((Limbs<F, 2>, Limbs<F, 4>), Limbs<F, 18>) =
+    let v2_limbs: ((Limbs<F, 1>, Limbs<F, 4>), Limbs<F, 19>) =
         runner.compute(loc.clone(), |w| {
             let v = w.read_var(&v2);
             let limbs = RangeCheckLimbs2::parse(v);
@@ -138,8 +138,7 @@ pub fn range_check<F: PrimeField>(
         .chain([FieldVar::zero()])
         .chain(v2_crumb_high.next())
         .chain(v2_limb)
-        .chain(v2_crumb_high.next())
-        .chain(v2_crumb_low.by_ref().take(7))
+        .chain(v2_crumb_low.by_ref().take(8))
         .collect_vec();
 
     let r2: [FieldVar<F>; 15] = r2.try_into().unwrap();
