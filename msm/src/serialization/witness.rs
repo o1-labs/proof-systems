@@ -2,9 +2,13 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
-use crate::columns::Column;
-use crate::serialization::interpreter::InterpreterEnv;
-use crate::N_LIMBS;
+use crate::{
+    columns::Column,
+    serialization::{interpreter::InterpreterEnv, Lookup, LookupTable},
+    N_LIMBS,
+};
+use kimchi::circuits::domains::EvaluationDomains;
+use std::iter;
 
 use super::N_INTERMEDIATE_LIMBS;
 
@@ -17,9 +21,26 @@ pub struct Env<Fp> {
     /// field Kimchi gate
     pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
 
+    /// Keep track of the RangeCheck4 lookup multiplicities
     // Boxing to avoid stack overflow
     pub lookup_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
+
+    /// Keep track of the RangeCheck4 table multiplicities.
+    /// The value `0` is used as a (repeated) dummy value.
+    // Boxing to avoid stack overflow
+    pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
+
+    /// Keep track of the RangeCheck15 lookup multiplicities
+    /// No t multiplicities as we do suppose we have a domain of
+    /// size `1 << 15`
+    // Boxing to avoid stack overflow
     pub lookup_multiplicities_rangecheck15: Box<[Fp; 1 << 15]>,
+
+    /// Keep track of the rangecheck 4 lookups for each row.
+    pub rangecheck4_lookups: Vec<Lookup<Fp>>,
+
+    /// Keep track of the rangecheck 15 lookups for each row.
+    pub rangecheck15_lookups: Vec<Lookup<Fp>>,
 }
 
 impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
@@ -48,21 +69,29 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
-        // FIXME: this is not the full intended implementation
         let value_biguint = value.to_biguint();
         assert!(value_biguint < BigUint::from(2u128.pow(15)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
         self.lookup_multiplicities_rangecheck15[value_usize] += Fp::one();
+        self.rangecheck15_lookups.push(Lookup {
+            table_id: LookupTable::RangeCheck15,
+            numerator: Fp::one(),
+            value: vec![*value],
+        })
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
-        // FIXME: this is not the full intended implementation
         let value_biguint = value.to_biguint();
         assert!(value_biguint < BigUint::from(2u128.pow(4)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
         self.lookup_multiplicities_rangecheck4[value_usize] += Fp::one();
+        self.rangecheck4_lookups.push(Lookup {
+            table_id: LookupTable::RangeCheck4,
+            numerator: Fp::one(),
+            value: vec![*value],
+        })
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -110,7 +139,73 @@ impl<Fp: PrimeField> Env<Fp> {
                     panic!("Invalid column index")
                 }
             }
+            Column::LookupPartialSum(_) => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
+            Column::LookupMultiplicity(_) => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
+            Column::LookupAggregation => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
+            Column::LookupFixedTable(_) => {
+                panic!(
+                    "This is a lookup related column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
         }
+    }
+
+    pub fn add_rangecheck4_table_value(&mut self, i: usize) {
+        if i < (1 << 4) {
+            self.lookup_t_multiplicities_rangecheck4[i] += Fp::one();
+        } else {
+            self.lookup_t_multiplicities_rangecheck4[0] += Fp::one();
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.rangecheck15_lookups = vec![];
+        self.rangecheck4_lookups = vec![];
+    }
+
+    /// Return the normalized multiplicity vector of RangeCheck4 in case the
+    /// table is not injective. Note that it is the case for `RangeCheck4`.
+    pub fn get_rangecheck4_normalized_multipliticies(
+        &self,
+        domain: EvaluationDomains<Fp>,
+    ) -> Vec<Fp> {
+        let mut m = vec![Fp::zero(); 1 << 4];
+        self.lookup_multiplicities_rangecheck4
+            .into_iter()
+            .zip(self.lookup_t_multiplicities_rangecheck4.iter())
+            .enumerate()
+            .for_each(|(i, (m_f, m_t))| m[i] = m_f / m_t);
+        let repeated_dummy_value: Vec<Fp> = iter::repeat(m[0])
+            .take((domain.d1.size - (1 << 4)) as usize)
+            .collect();
+        m.extend(repeated_dummy_value);
+        m
+    }
+    /// Return the normalized multiplicity vector of RangeCheck4 in case the
+    /// table is not injective. Note that it is not the case for `RangeCheck15` as
+    /// we assume the domain size is `1 << 15`.
+    pub fn get_rangecheck15_normalized_multipliticies(
+        &self,
+        domain: EvaluationDomains<Fp>,
+    ) -> Vec<Fp> {
+        assert_eq!(domain.d1.size, 1 << 15);
+        self.lookup_multiplicities_rangecheck15.to_vec()
     }
 }
 
@@ -120,8 +215,13 @@ impl<Fp: PrimeField> Env<Fp> {
             current_kimchi_limbs: [Fp::zero(); 3],
             msm_limbs: [Fp::zero(); N_LIMBS],
             intermediate_limbs: [Fp::zero(); N_INTERMEDIATE_LIMBS],
+
             lookup_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
+            lookup_t_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
+
             lookup_multiplicities_rangecheck15: Box::new([Fp::zero(); 1 << 15]),
+            rangecheck4_lookups: vec![],
+            rangecheck15_lookups: vec![],
         }
     }
 }
@@ -130,15 +230,11 @@ impl<Fp: PrimeField> Env<Fp> {
 mod tests {
     use std::str::FromStr;
 
-    use crate::serialization::N_INTERMEDIATE_LIMBS;
-    use crate::{LIMB_BITSIZE, N_LIMBS};
+    use crate::{serialization::N_INTERMEDIATE_LIMBS, LIMB_BITSIZE, N_LIMBS};
 
     use super::Env;
     use crate::serialization::interpreter::deserialize_field_element;
-    use ark_ff::BigInteger;
-    use ark_ff::FpParameters as _;
-    use ark_ff::PrimeField;
-    use ark_ff::{One, UniformRand, Zero};
+    use ark_ff::{BigInteger, FpParameters as _, One, PrimeField, UniformRand, Zero};
     use mina_curves::pasta::Fp;
     use num_bigint::BigUint;
     use o1_utils::{tests::make_test_rng, FieldHelpers};

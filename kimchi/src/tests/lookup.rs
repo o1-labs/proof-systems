@@ -14,8 +14,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::prelude::*;
-use rand::Rng;
+use rand::{prelude::*, Rng};
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;

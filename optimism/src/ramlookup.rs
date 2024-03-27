@@ -10,7 +10,7 @@ pub enum LookupMode {
 
 /// Struct containing a RAMLookup
 #[derive(Clone, Debug)]
-pub struct RAMLookup<T, ID: LookupTableID + Send + Sync + Copy> {
+pub struct RAMLookup<T, ID: LookupTableID> {
     /// The table ID corresponding to this lookup
     pub(crate) table_id: ID,
     /// Whether it is a read or write lookup
@@ -30,7 +30,7 @@ where
         + std::fmt::Debug
         + One
         + Zero,
-    ID: LookupTableID + Send + Sync + Copy,
+    ID: LookupTableID,
 {
     /// Creates a new RAMLookup from a mode, a table ID, a magnitude, and a value
     pub fn new(mode: LookupMode, table_id: ID, magnitude: T, value: &[T]) -> Self {
@@ -96,9 +96,7 @@ where
     }
 }
 
-impl<F: std::fmt::Display + Field, ID: LookupTableID + Send + Sync + Copy> std::fmt::Display
-    for RAMLookup<F, ID>
-{
+impl<F: std::fmt::Display + Field, ID: LookupTableID> std::fmt::Display for RAMLookup<F, ID> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let numerator = match self.mode {
             LookupMode::Read => -self.magnitude,
@@ -108,7 +106,7 @@ impl<F: std::fmt::Display + Field, ID: LookupTableID + Send + Sync + Copy> std::
             formatter,
             "numerator: {}\ntable_id: {:?}\nvalue:\n[\n",
             numerator,
-            self.table_id.into_field::<F>()
+            self.table_id.to_field::<F>()
         )?;
         for value in self.value.iter() {
             writeln!(formatter, "\t{}", value)?;

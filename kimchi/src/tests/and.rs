@@ -20,7 +20,6 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::{BitwiseOps, FieldHelpers, RandomField};
-use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
 
@@ -31,11 +30,6 @@ type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
-
-const RNG_SEED: [u8; 32] = [
-    255, 27, 111, 55, 22, 200, 10, 1, 0, 136, 56, 16, 2, 30, 31, 77, 18, 11, 40, 53, 5, 8, 189, 92,
-    97, 25, 21, 12, 13, 44, 14, 12,
-];
 
 fn create_test_gates_and<G: KimchiCurve>(bytes: usize) -> Vec<CircuitGate<G::ScalarField>>
 where
@@ -79,7 +73,7 @@ fn setup_and<G: KimchiCurve>(
 where
     G::BaseField: PrimeField,
 {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     let gates = create_test_gates_and::<G>(bytes);
     let cs = ConstraintSystem::create(gates).build().unwrap();
@@ -122,7 +116,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     // Create
     let mut gates = vec![];
@@ -298,7 +292,7 @@ fn test_and_bad_decomposition() {
 #[test]
 // Test AND when the decomposition of the inner XOR is incorrect
 fn test_bad_and() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     let bytes = 2;
     let gates = create_test_gates_and::<Vesta>(bytes);

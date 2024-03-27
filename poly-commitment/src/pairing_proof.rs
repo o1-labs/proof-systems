@@ -1,7 +1,7 @@
-use crate::commitment::*;
-use crate::evaluation_proof::combine_polys;
-use crate::srs::SRS;
-use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
+use crate::{
+    commitment::*, evaluation_proof::combine_polys, srs::SRS, CommitmentError,
+    PolynomialsToCombine, SRS as SRSTrait,
+};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
@@ -340,12 +340,10 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::{PairingProof, PairingSRS};
-    use crate::commitment::Evaluation;
-    use crate::evaluation_proof::DensePolynomialOrEvaluations;
-    use crate::srs::SRS;
-    use crate::SRS as _;
-    use ark_bn254::Fr as ScalarField;
-    use ark_bn254::{G1Affine as G1, G2Affine as G2, Parameters};
+    use crate::{
+        commitment::Evaluation, evaluation_proof::DensePolynomialOrEvaluations, srs::SRS, SRS as _,
+    };
+    use ark_bn254::{Fr as ScalarField, G1Affine as G1, G2Affine as G2, Parameters};
     use ark_ec::bn::Bn;
     use ark_ff::UniformRand;
     use ark_poly::{

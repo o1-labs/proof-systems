@@ -4,7 +4,14 @@ use crate::{
     auto_clone_array,
     circuits::{
         polynomial::COLUMNS,
-        polynomials::{foreign_field_add, range_check},
+        polynomials::{
+            foreign_field_add,
+            foreign_field_common::{
+                BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+                KimchiForeignElement,
+            },
+            range_check,
+        },
         witness::{self, ConstantCell, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
     variable_map,
@@ -14,10 +21,7 @@ use num_bigint::BigUint;
 use num_integer::Integer;
 
 use num_traits::One;
-use o1_utils::foreign_field::{
-    BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
-    ForeignFieldHelpers,
-};
+use o1_utils::foreign_field::ForeignFieldHelpers;
 use std::{array, ops::Div};
 
 use super::circuitgates;
@@ -321,7 +325,9 @@ impl<F: PrimeField> ExternalChecks<F> {
         witness: &mut [Vec<F>; COLUMNS],
         foreign_field_modulus: &BigUint,
     ) {
-        let hi_limb = F::two_to_limb() - foreign_field_modulus.to_field_limbs::<F>()[2] - F::one();
+        let hi_limb = KimchiForeignElement::<F>::two_to_limb()
+            - foreign_field_modulus.to_field_limbs::<F>()[2]
+            - F::one();
         for chunk in self.high_bounds.clone().chunks(2) {
             // Extend the witness for the generic gate
             for col in witness.iter_mut().take(COLUMNS) {

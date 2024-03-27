@@ -53,7 +53,19 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
         }
         Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
         Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
-        Mul(e1, e2) => eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
+        Mul(e1, e2) => {
+            let d1 = e1.folding_degree();
+            let d2 = e2.folding_degree();
+            let e1 = match d1 {
+                Degree::Two => eval_sided(e1, env, side),
+                _ => eval_exp_error(e1, env, side),
+            };
+            let e2 = match d2 {
+                Degree::Two => eval_sided(e2, env, side),
+                _ => eval_exp_error(e2, env, side),
+            };
+            e1 * e2
+        }
         Pow(e, i) => match i {
             0 => EvalLeaf::Const(ScalarField::<C>::one()),
             1 => eval_exp_error(e, env, side),

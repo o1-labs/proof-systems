@@ -1,5 +1,6 @@
 use ark_ff::Zero;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
+use std::ops::Index;
 
 /// The witness columns used by a gate of the MSM circuits.
 /// It is generic over the number of columns, N, and the type of the witness, T.
@@ -11,13 +12,51 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
 pub struct Witness<const N: usize, T> {
     /// A witness row is represented by an array of N witness columns
     /// When T is a vector, then the witness describes the rows of the circuit.
-    pub cols: [T; N],
+    pub cols: Box<[T; N]>,
 }
 
 impl<const N: usize, T: Zero + Clone> Default for Witness<N, T> {
     fn default() -> Self {
         Witness {
-            cols: std::array::from_fn(|_| T::zero()),
+            cols: Box::new(std::array::from_fn(|_| T::zero())),
+        }
+    }
+}
+
+impl<const N: usize, T> Index<usize> for Witness<N, T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.cols[index]
+    }
+}
+
+impl<const N: usize, T> Witness<N, T> {
+    pub fn len(&self) -> usize {
+        self.cols.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.cols.is_empty()
+    }
+}
+
+impl<const N: usize, T: Zero + Clone> Witness<N, Vec<T>> {
+    pub fn zero_vec(domain_size: usize) -> Self {
+        Witness {
+            // Ideally the vector should be of domain size, but
+            // one-element vector should be a reasonable default too.
+            cols: Box::new(std::array::from_fn(|_| vec![T::zero(); domain_size])),
+        }
+    }
+
+    pub fn to_pub_columns<const NPUB: usize>(&self) -> Witness<NPUB, Vec<T>> {
+        let mut newcols: [Vec<T>; NPUB] = std::array::from_fn(|_| vec![]);
+        for (i, vec) in self.cols[0..NPUB].iter().enumerate() {
+            newcols[i] = vec.clone();
+        }
+        Witness {
+            cols: Box::new(newcols),
         }
     }
 }
@@ -30,7 +69,7 @@ impl<'lt, const N: usize, G> IntoIterator for &'lt Witness<N, G> {
 
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&self.cols);
+        iter_contents.extend(&*self.cols);
         iter_contents.into_iter()
     }
 }
@@ -42,7 +81,7 @@ impl<const N: usize, F: Clone> IntoIterator for Witness<N, F> {
     /// Iterate over the columns in the circuit.
     fn into_iter(self) -> Self::IntoIter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(self.cols);
+        iter_contents.extend(*self.cols);
         iter_contents.into_iter()
     }
 }
@@ -57,7 +96,7 @@ where
     /// Iterate over the columns in the circuit, in parallel.
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(self.cols);
+        iter_contents.extend(*self.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -86,7 +125,7 @@ where
 
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&self.cols);
+        iter_contents.extend(&*self.cols);
         iter_contents.into_par_iter()
     }
 }
@@ -100,7 +139,7 @@ where
 
     fn into_par_iter(self) -> Self::Iter {
         let mut iter_contents = Vec::with_capacity(N);
-        iter_contents.extend(&mut self.cols);
+        iter_contents.extend(&mut *self.cols);
         iter_contents.into_par_iter()
     }
 }
