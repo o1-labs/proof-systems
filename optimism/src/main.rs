@@ -7,7 +7,7 @@ use kimchi_optimism::{
     keccak::column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
     mips::{
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
-        witness::{self as mips_witness, SCRATCH_SIZE},
+        witness::{self as mips_witness, INVERSE_SIZE, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
     proof, DOMAIN_SIZE,
@@ -59,33 +59,34 @@ pub fn main() -> ExitCode {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let domain =
-        kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(DOMAIN_SIZE).unwrap();
+    let domain = kimchi::circuits::domains::EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
     let srs = {
         // Trusted setup toxic waste
-        let x = ark_bn254::Fr::rand(&mut rand::rngs::OsRng);
+        let x = Fp::rand(&mut rand::rngs::OsRng);
 
         let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, DOMAIN_SIZE);
         srs.full_srs.add_lagrange_basis(domain.d1);
         srs
     };
 
-    let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut env = mips_witness::Env::<Fp>::create(cannon::PAGE_SIZE as usize, state, po);
 
     let mut mips_folded_witness = proof::ProofInputs::<
         MIPS_COLUMNS,
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
-    let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
+    let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<Fp>>| {
         let MIPSWitness { cols } = witness_columns;
         // Resize without deallocating
         cols.iter_mut().for_each(Vec::<Fp>::clear);
     };
 
     let mut mips_current_pre_folding_witness = MIPSWitness {
-        cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
+        cols: Box::new(std::array::from_fn(|_| {
+            Vec::<Fp>::with_capacity(DOMAIN_SIZE)
+        })),
     };
 
     // The keccak environment is extracted inside the loop
@@ -144,20 +145,33 @@ pub fn main() -> ExitCode {
         }
 
         // TODO: unify witness of MIPS to include the instruction and the error
-        /*for i in 0..MIPS_COLUMNS {
+        for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
-                mips_current_pre_folding_witness.cols[i].push(env.scratch_state[i]);
-            } else if i == MIPS_COLUMNS - 2 {
+                mips_current_pre_folding_witness.cols[i].push(Fp::from(env.scratch_state[i]));
+            } else if i < SCRATCH_SIZE + INVERSE_SIZE {
+                // TODO: batch inverse these columns
                 mips_current_pre_folding_witness.cols[i]
-                    .push(ark_bn254::Fr::from(env.instruction_counter));
+                    .push(Fp::from(env.inverse_state[i - SCRATCH_SIZE]));
+            } else if i == MIPS_COLUMNS - 2 {
+                mips_current_pre_folding_witness.cols[i].push(Fp::from(env.instruction_counter));
             } else {
                 // TODO: error
-                mips_current_pre_folding_witness.cols[i]
-                    .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
+                mips_current_pre_folding_witness.cols[i].push(Fp::rand(&mut rand::rngs::OsRng));
             }
         }
 
         if mips_current_pre_folding_witness.instruction_counter().len() == DOMAIN_SIZE {
+            let mut inverses = Vec::with_capacity(INVERSE_SIZE * DOMAIN_SIZE);
+            for i in 0..INVERSE_SIZE {
+                inverses.extend(mips_current_pre_folding_witness.inverse()[i].clone());
+            }
+            // Batch inverse the inverse columns before folding
+            ark_ff::batch_inversion::<Fp>(&mut inverses);
+            // Reassign the inverses to the witness columns
+            for i in 0..INVERSE_SIZE {
+                mips_current_pre_folding_witness.cols[SCRATCH_SIZE + i] =
+                    inverses[i * DOMAIN_SIZE..(i + 1) * DOMAIN_SIZE].to_vec();
+            }
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -165,7 +179,7 @@ pub fn main() -> ExitCode {
                 &mips_current_pre_folding_witness,
             );
             mips_reset_pre_folding_witness(&mut mips_current_pre_folding_witness);
-        }*/
+        }
     }
     if !mips_current_pre_folding_witness
         .instruction_counter()
