@@ -1,4 +1,7 @@
-use crate::{keccak::column::Column as KeccakColumn, lookups::LookupTableIDs};
+use crate::{
+    keccak::column::{Column as KeccakColumn, PAD_SUFFIX_LEN},
+    lookups::LookupTableIDs,
+};
 use ark_ff::Field;
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
@@ -80,14 +83,14 @@ fn grid_index(length: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
 
 /// This function returns a vector of field elements that represent the 5 padding suffixes.
 /// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-pub fn pad_blocks<F: Field>(pad_bytelength: usize) -> Vec<F> {
+pub fn pad_blocks<F: Field>(pad_bytelength: usize) -> [F; PAD_SUFFIX_LEN] {
     assert!(pad_bytelength > 0, "Padding length must be at least 1 byte");
     assert!(
         pad_bytelength <= 136,
         "Padding length must be at most 136 bytes",
     );
     // Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-    let mut blocks = vec![F::zero(); 5];
+    let mut blocks = [F::zero(); PAD_SUFFIX_LEN];
     let mut pad = [F::zero(); RATE_IN_BYTES];
     pad[RATE_IN_BYTES - pad_bytelength] = F::one();
     pad[RATE_IN_BYTES - 1] += F::from(0x80u8);
