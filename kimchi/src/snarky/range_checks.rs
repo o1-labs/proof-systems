@@ -217,12 +217,12 @@ mod test {
 
         let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes().unwrap();
 
-        // print ASM
-        println!("{}", prover_index.asm());
+        let mut rng = o1_utils::tests::make_test_rng();
 
+        use rand::Rng;
         // prove
         {
-            let private_input = Fp::from(2);
+            let private_input: Fp = Fp::from(rng.gen::<u64>());
 
             let debug = true;
             let (proof, _public_output) = prover_index
