@@ -13,6 +13,7 @@ pub mod boolean;
 pub mod constants;
 pub mod constraint_system;
 pub mod cvar;
+pub mod ec;
 pub mod errors;
 pub mod folding;
 pub mod poseidon;

@@ -1,19 +1,19 @@
+use crate::snarky::ec::ec_scale;
 use crate::{
     loc,
     snarky::{
+        ec::ec_add,
         folding::{ForeignElement, FullChallenge, Point, Private},
         poseidon::DuplexState,
         snarky_type::SnarkyType,
     },
     FieldVar, RunState, SnarkyResult,
 };
+use ark_ec::SWModelParameters;
 use ark_ff::PrimeField;
 use std::iter::successors;
 
-use super::{
-    challenge_linear_combination, commitment_linear_combination, ec_add, ec_scale, trim,
-    SmallChallenge,
-};
+use super::{challenge_linear_combination, commitment_linear_combination, trim, SmallChallenge};
 
 #[derive(Debug, Clone)]
 pub struct WitnessCommitments<F>(Vec<Point<F>>);
@@ -101,7 +101,7 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
 
     /// See https://eprint.iacr.org/2021/370.pdf, page 15
     /// Fold the circuit described by `sys` with the other circuit `other`.
-    pub fn fold(
+    pub fn fold<P: SWModelParameters<BaseField = F>>(
         self,
         sys: &mut RunState<F>,
         other: Instance<FieldVar<F>>,
@@ -122,19 +122,25 @@ impl<F: PrimeField> RelaxedInstance<FieldVar<F>> {
                 let set =
                     a.0.into_iter()
                         .zip(b.0)
-                        .map(|(a, b)| commitment_linear_combination(a, b, &r));
-                WitnessCommitments(set.collect())
-            })
-            .collect();
+                        .map(|(a, b)| commitment_linear_combination::<F, P>(sys, loc!(), a, b, &r));
+                let set: SnarkyResult<Vec<Point<FieldVar<F>>>> = set.collect();
+                set.map(WitnessCommitments)
+            });
+        let witness_commitments: SnarkyResult<Vec<WitnessCommitments<FieldVar<F>>>> =
+            witness_commitments.collect();
+        let witness_commitments = witness_commitments?;
+
         let one = FieldVar::constant(F::one());
         let u = challenge_linear_combination(self.u, SmallChallenge(one.clone()), &r);
 
         let rr = r.0.mul(&r.0, None, loc!(), sys)?;
         let [t1, t2] = error_terms;
-        let t1 = ec_scale(t1, &r);
-        let t2 = ec_scale(t2, &SmallChallenge(rr));
-        let error_commitment = ec_add(t1, t2);
-        let error_commitment = ec_add(self.error_commitment, error_commitment);
+        //ec_scale could be speciallized for 127 bits elements in this case
+        let t1 = ec_scale::<F, P>(sys, loc!(), t1, &r.0)?;
+        let t2 = ec_scale::<F, P>(sys, loc!(), t2, &rr)?;
+        let error_commitment = ec_add::<F, P>(sys, loc!(), t1, t2)?;
+        let error_commitment =
+            ec_add::<F, P>(sys, loc!(), self.error_commitment, error_commitment)?;
 
         let mut new_sets = Vec::with_capacity(self.challenges.len());
         for _ in 0..self.challenges.len() {
