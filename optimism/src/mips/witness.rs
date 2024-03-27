@@ -721,7 +721,7 @@ impl<Fp: Field> Env<Fp> {
 
         let max_index = state.memory.iter().map(|page| page.index).max().unwrap();
         let max_memory_address: usize = (max_index * 4096).try_into().unwrap();
-        let mut initial_memory: Vec<u8> = vec![0; max_memory_address * 2];
+        let mut initial_memory: Vec<u8> = vec![0; max_memory_address + 100_000 * 1024];
 
         state.memory.into_iter().for_each(|page| {
             let addr = (page.index * 4096) as usize;
