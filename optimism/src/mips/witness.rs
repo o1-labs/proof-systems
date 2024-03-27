@@ -721,14 +721,14 @@ impl<Fp: Field> Env<Fp> {
 
         let max_index = state.memory.iter().map(|page| page.index).max().unwrap();
         let max_memory_address: usize = (max_index * 4096).try_into().unwrap();
-        let mut initial_memory: Vec<u8> = vec![0; max_memory_address];
+        let mut initial_memory: Vec<u8> = vec![0; max_memory_address * 4];
 
         state.memory.into_iter().for_each(|page| {
             let addr = (page.index * 4096) as usize;
             initial_memory[addr..addr + 4096].copy_from_slice(&page.data[..4096])
         });
         // Initial memory index only 0
-        let memory_write_index = vec![0; max_memory_address];
+        let memory_write_index = vec![0; max_memory_address * 4];
 
         let initial_registers = {
             let preimage_key = {
@@ -927,7 +927,7 @@ impl<Fp: Field> Env<Fp> {
         let (opcode, _instruction) = self.decode_instruction();
 
         self.pp_info(&config.info_at, metadata, start);
-        self.snapshot_state_at(&config.snapshot_state_at);
+        // self.snapshot_state_at(&config.snapshot_state_at);
 
         // Force stops at given iteration
         if self.should_trigger_at(&config.stop_at) {
