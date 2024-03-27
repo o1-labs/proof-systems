@@ -9,6 +9,7 @@ use super::{
         RealSnarkyError, SnarkyCompilationError, SnarkyError, SnarkyResult, SnarkyRuntimeResult,
     },
     poseidon::poseidon,
+    range_checks::range_check,
 };
 use crate::{
     circuits::gate::CircuitGate,
@@ -663,5 +664,15 @@ where
         preimage: (FieldVar<F>, FieldVar<F>),
     ) -> (FieldVar<F>, FieldVar<F>) {
         poseidon(self, loc, preimage)
+    }
+    ///constrains the 3 provided values to fit in 88 bits
+    pub fn range_check(
+        &mut self,
+        loc: Cow<'static, str>,
+        v0: FieldVar<F>,
+        v1: FieldVar<F>,
+        v2: FieldVar<F>,
+    ) -> SnarkyResult<()> {
+        range_check(self, loc, v0, v1, v2)
     }
 }
