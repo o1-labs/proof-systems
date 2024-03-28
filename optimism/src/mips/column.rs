@@ -2,7 +2,7 @@ use kimchi::folding::expressions::FoldingColumnTrait;
 
 use kimchi_msm::witness::Witness;
 
-use super::witness::SCRATCH_SIZE;
+use super::witness::{INVERSE_SIZE, SCRATCH_SIZE};
 
 pub(crate) const MIPS_HASH_COUNTER_OFFSET: usize = 80;
 pub(crate) const MIPS_IS_SYSCALL_OFFSET: usize = 81;
@@ -19,6 +19,7 @@ pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
 pub enum Column {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
+    InverseState(usize),
     InstructionCounter,
 }
 
@@ -53,10 +54,11 @@ impl FoldingColumnTrait for Column {
 /// - 4 helpers to check if at least n bytes were read in the current row
 pub type MIPSWitness<T> = Witness<MIPS_COLUMNS, T>;
 
-pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + 2;
+pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + INVERSE_SIZE + 2;
 
 pub trait MIPSWitnessTrait<T> {
     fn scratch(&self) -> &[T];
+    fn inverse(&self) -> &[T];
     fn instruction_counter(&self) -> &T;
     fn error(&mut self) -> &T;
 }
@@ -66,11 +68,16 @@ impl<T: Clone> MIPSWitnessTrait<T> for MIPSWitness<T> {
         &self.cols[..SCRATCH_SIZE]
     }
 
+    // TODO: remember to batch invert these columns before folding
+    fn inverse(&self) -> &[T] {
+        &self.cols[SCRATCH_SIZE..SCRATCH_SIZE + INVERSE_SIZE]
+    }
+
     fn instruction_counter(&self) -> &T {
-        &self.cols[SCRATCH_SIZE]
+        &self.cols[SCRATCH_SIZE + INVERSE_SIZE]
     }
 
     fn error(&mut self) -> &T {
-        &self.cols[SCRATCH_SIZE + 1]
+        &self.cols[SCRATCH_SIZE + INVERSE_SIZE + 1]
     }
 }

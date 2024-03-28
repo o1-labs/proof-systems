@@ -21,6 +21,7 @@ use std::array;
 /// The environment keeping the constraints between the different polynomials
 pub struct Env<Fp> {
     pub scratch_state_idx: usize,
+    pub inverse_state_idx: usize,
     /// A list of constraints, which are multi-variate polynomials over a field,
     /// represented using the expression framework of `kimchi`.
     pub constraints: Vec<E<Fp>>,
@@ -44,6 +45,19 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
         Column::ScratchState(scratch_idx)
+    }
+
+    // Use one of the available columns. It won't
+    // create a new column every time this function is called. The number
+    // of columns is defined upfront by crate::mips::witness::INVERSE_SIZE.
+    fn alloc_inverse(&mut self) -> Self::Position {
+        // All columns are implemented using a simple index, and a name is given
+        // to the index.
+        // See crate::SCRATCH_SIZE for the maximum number of register accesses
+        // the instructions can perform at most.
+        let inverse_idx = self.inverse_state_idx;
+        self.inverse_state_idx += 1;
+        Column::InverseState(inverse_idx)
     }
 
     type Variable = Expr<ConstantExpr<Fp>, Column>;
