@@ -107,7 +107,13 @@
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{keccak::column::Column <span class="kw">as </span>KeccakColumn, lookups::LookupTableIDs};
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    keccak::column::{Column <span class="kw">as </span>KeccakColumn, PAD_SUFFIX_LEN},
+    lookups::LookupTableIDs,
+};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr},
@@ -189,14 +195,14 @@
 
 <span class="doccomment">/// This function returns a vector of field elements that represent the 5 padding suffixes.
 /// The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-</span><span class="kw">pub fn </span>pad_blocks&lt;F: Field&gt;(pad_bytelength: usize) -&gt; Vec&lt;F&gt; {
+</span><span class="kw">pub fn </span>pad_blocks&lt;F: Field&gt;(pad_bytelength: usize) -&gt; [F; PAD_SUFFIX_LEN] {
     <span class="macro">assert!</span>(pad_bytelength &gt; <span class="number">0</span>, <span class="string">"Padding length must be at least 1 byte"</span>);
     <span class="macro">assert!</span>(
         pad_bytelength &lt;= <span class="number">136</span>,
         <span class="string">"Padding length must be at most 136 bytes"</span>,
     );
     <span class="comment">// Blocks to store padding. The first one uses at most 12 bytes, and the rest use at most 31 bytes.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>blocks = <span class="macro">vec!</span>[F::zero(); <span class="number">5</span>];
+    </span><span class="kw">let </span><span class="kw-2">mut </span>blocks = [F::zero(); PAD_SUFFIX_LEN];
     <span class="kw">let </span><span class="kw-2">mut </span>pad = [F::zero(); RATE_IN_BYTES];
     pad[RATE_IN_BYTES - pad_bytelength] = F::one();
     pad[RATE_IN_BYTES - <span class="number">1</span>] += F::from(<span class="number">0x80u8</span>);
