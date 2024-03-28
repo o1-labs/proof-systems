@@ -3,9 +3,10 @@ use crate::{
     snarky::{
         api::SnarkyCircuit,
         boolean::Boolean,
+        cvar::FieldVar,
         errors::{SnarkyError, SnarkyRuntimeError},
+        runner::RunState,
     },
-    snarky::{cvar::FieldVar, runner::RunState},
 };
 use ark_ff::One;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};

@@ -1,13 +1,17 @@
 //! An ASM-like language to print a human-friendly version of a circuit.
 
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Write;
-use std::hash::Hash;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Write,
+    hash::Hash,
+};
 
-use crate::circuits::gate::{Circuit, CircuitGate, GateType};
-use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
-use crate::circuits::wires::Wire;
+use crate::circuits::{
+    gate::{Circuit, CircuitGate, GateType},
+    polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS},
+    wires::Wire,
+};
 use ark_ff::PrimeField;
 
 use super::api::Witness;

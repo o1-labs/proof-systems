@@ -1,11 +1,10 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-use crate::mvlookup;
-use crate::witness::Witness;
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::circuits::expr::{
-    Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain,
+use crate::{mvlookup, witness::Witness};
+use kimchi::circuits::{
+    domains::EvaluationDomains,
+    expr::{Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain},
 };
 
 /// The collection of polynomials (all in evaluation form) and constants

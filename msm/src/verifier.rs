@@ -2,16 +2,19 @@ use crate::mvlookup::LookupTableID;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
 use rand::thread_rng;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::circuits::expr::{Challenges, Constants, Expr, PolishToken};
-use kimchi::plonk_sponge::FrSponge;
-use kimchi::proof::PointEvaluations;
-use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
-use mina_poseidon::sponge::ScalarChallenge;
-use mina_poseidon::FqSponge;
+use kimchi::{
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{Challenges, Constants, Expr, PolishToken},
+    },
+    curve::KimchiCurve,
+    groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+    proof::PointEvaluations,
+};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::{
     commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
@@ -19,8 +22,7 @@ use poly_commitment::{
     OpenProof, SRS,
 };
 
-use crate::expr::E;
-use crate::{proof::Proof, witness::Witness};
+use crate::{expr::E, proof::Proof, witness::Witness};
 
 pub fn verify<
     G: KimchiCurve,

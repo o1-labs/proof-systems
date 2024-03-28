@@ -4,11 +4,14 @@ use crate::{
     auto_clone_array,
     circuits::{
         polynomial::COLUMNS,
-        polynomials::foreign_field_common::{
-            BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
-            KimchiForeignElement,
+        polynomials::{
+            foreign_field_add,
+            foreign_field_common::{
+                BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+                KimchiForeignElement,
+            },
+            range_check,
         },
-        polynomials::{foreign_field_add, range_check},
         witness::{self, ConstantCell, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
     variable_map,

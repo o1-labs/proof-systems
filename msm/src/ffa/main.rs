@@ -3,18 +3,20 @@ use ark_ff::UniformRand;
 use kimchi::circuits::domains::EvaluationDomains;
 use poly_commitment::pairing_proof::PairingSRS;
 
-use kimchi_msm::columns::Column;
-use kimchi_msm::ffa::{
-    columns::{FFA_NPUB_COLUMNS, FFA_N_COLUMNS},
-    constraint::ConstraintBuilderEnv as FFAConstraintBuilderEnv,
-    interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
-    witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
+use kimchi_msm::{
+    columns::Column,
+    ffa::{
+        columns::{FFA_NPUB_COLUMNS, FFA_N_COLUMNS},
+        constraint::ConstraintBuilderEnv as FFAConstraintBuilderEnv,
+        interpreter::{self as ffa_interpreter, FFAInterpreterEnv},
+        witness::WitnessBuilderEnv as FFAWitnessBuilderEnv,
+    },
+    lookups::LookupTableIDs,
+    precomputed_srs::get_bn254_srs,
+    prover::prove,
+    verifier::verify,
+    BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
 };
-use kimchi_msm::lookups::LookupTableIDs;
-use kimchi_msm::precomputed_srs::get_bn254_srs;
-use kimchi_msm::prover::prove;
-use kimchi_msm::verifier::verify;
-use kimchi_msm::{BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254};
 
 pub fn main() {
     // FIXME: use a proper RNG
