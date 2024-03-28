@@ -1,9 +1,15 @@
-use crate::{columns::Column, LIMB_BITSIZE, N_LIMBS};
+use crate::{
+    columns::Column,
+    serialization::interpreter::{
+        bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
+    },
+    LIMB_BITSIZE, N_LIMBS,
+};
 use ark_ff::{FpParameters, PrimeField, Zero};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
-use num_traits::{sign::Signed, Euclid};
-use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
+use num_traits::sign::Signed;
+use o1_utils::field_helpers::FieldHelpers;
 
 pub trait FECInterpreterEnv<F: PrimeField> {
     type Variable: Clone
@@ -50,34 +56,6 @@ pub const N_LIMBS_SMALL: usize = N_LIMBS;
 /// nicely decomposable into smaller 15bit ones for range checking.
 pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
 pub const N_LIMBS_LARGE: usize = 4;
-
-/// Interprets bigint `input` as an element of a field modulo `f_bi`,
-/// converts it to `[0,f_bi)` range, and outptus a corresponding
-/// biguint representation.
-fn bigint_to_biguint_f(input: BigInt, f_bi: &BigInt) -> BigUint {
-    let corrected_import: BigInt = if input.is_negative() && input > -f_bi {
-        &input + f_bi
-    } else if input.is_negative() {
-        Euclid::rem_euclid(&input, f_bi)
-    } else {
-        input
-    };
-    corrected_import.to_biguint().unwrap()
-}
-
-/// Decompose biguint into `N` limbs of bit size `B`.
-fn limb_decompose_biguint<F: PrimeField, const B: usize, const N: usize>(input: BigUint) -> [F; N] {
-    let ff_el: ForeignElement<F, B, N> = ForeignElement::from_biguint(input);
-    ff_el.limbs
-}
-
-/// Decomposes a foreign field element into `N` limbs of bit size `B`.
-fn limb_decompose_ff<F: PrimeField, Ff: PrimeField, const B: usize, const N: usize>(
-    input: &Ff,
-) -> [F; N] {
-    let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    limb_decompose_biguint::<F, B, N>(input_bi)
-}
 
 /// Helper function for limb recombination.
 ///
@@ -128,34 +106,6 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
         .iter()
         .map(|f| f.to_bigint_positive())
         .collect::<Vec<_>>()
-}
-
-/// Returns all `(i,j)` with `i,j \in [0,list_len]` such that `i + j = n`.
-fn choice2(list_len: usize, n: usize) -> Vec<(usize, usize)> {
-    use itertools::Itertools;
-    let indices = Vec::from_iter(0..list_len);
-    indices
-        .clone()
-        .into_iter()
-        .cartesian_product(indices)
-        .filter(|(i1, i2)| i1 + i2 == n)
-        .collect()
-}
-
-/// A convenience helper: given a `list_len` and `n` (arguments of
-/// `choice2`), it creates an array consisting of `f(i,j)` where `i,j
-/// \in [0,list_len]` such that `i + j = n`, and then sums all the
-/// elements in this array.
-fn fold_choice2<Var, Foo>(list_len: usize, n: usize, f: Foo) -> Var
-where
-    Foo: Fn(usize, usize) -> Var,
-    Var: Clone + std::ops::Add<Var, Output = Var> + From<u64>,
-{
-    let chosen = choice2(list_len, n);
-    chosen
-        .into_iter()
-        .map(|(j, k)| f(j, k))
-        .fold(Var::from(0u64), |acc, v| acc + v)
 }
 
 /// When P = (xP,yP) and Q = (xQ,yQ) are not negative of each other, thus function ensures

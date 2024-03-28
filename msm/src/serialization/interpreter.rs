@@ -291,7 +291,7 @@ pub const N_LIMBS_LARGE: usize = 4;
 /// Interprets bigint `input` as an element of a field modulo `f_bi`,
 /// converts it to `[0,f_bi)` range, and outptus a corresponding
 /// biguint representation.
-fn bigint_to_biguint_f(input: BigInt, f_bi: &BigInt) -> BigUint {
+pub fn bigint_to_biguint_f(input: BigInt, f_bi: &BigInt) -> BigUint {
     let corrected_import: BigInt = if input.is_negative() && input > -f_bi {
         &input + f_bi
     } else if input.is_negative() {
@@ -303,13 +303,15 @@ fn bigint_to_biguint_f(input: BigInt, f_bi: &BigInt) -> BigUint {
 }
 
 /// Decompose biguint into `N` limbs of bit size `B`.
-fn limb_decompose_biguint<F: PrimeField, const B: usize, const N: usize>(input: BigUint) -> [F; N] {
+pub fn limb_decompose_biguint<F: PrimeField, const B: usize, const N: usize>(
+    input: BigUint,
+) -> [F; N] {
     let ff_el: ForeignElement<F, B, N> = ForeignElement::from_biguint(input);
     ff_el.limbs
 }
 
 /// Decomposes a foreign field element into `N` limbs of bit size `B`.
-fn limb_decompose_ff<F: PrimeField, Ff: PrimeField, const B: usize, const N: usize>(
+pub fn limb_decompose_ff<F: PrimeField, Ff: PrimeField, const B: usize, const N: usize>(
     input: &Ff,
 ) -> [F; N] {
     let input_bi: BigUint = FieldHelpers::to_biguint(input);
@@ -332,7 +334,7 @@ fn choice2(list_len: usize, n: usize) -> Vec<(usize, usize)> {
 /// `choice2`), it creates an array consisting of `f(i,j)` where `i,j
 /// \in [0,list_len]` such that `i + j = n`, and then sums all the
 /// elements in this array.
-fn fold_choice2<Var, Foo>(list_len: usize, n: usize, f: Foo) -> Var
+pub fn fold_choice2<Var, Foo>(list_len: usize, n: usize, f: Foo) -> Var
 where
     Foo: Fn(usize, usize) -> Var,
     Var: Clone + std::ops::Add<Var, Output = Var> + From<u64>,
@@ -344,6 +346,8 @@ where
         .fold(Var::from(0u64), |acc, v| acc + v)
 }
 
+// TODO unify with the same function in fec/interpreter.rs after the
+// interpreter interface is unified.
 /// Helper function for limb recombination.
 ///
 /// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
@@ -368,6 +372,8 @@ fn combine_small_to_large<const M: usize, const N: usize, F: PrimeField, Env: In
     })
 }
 
+// TODO unify with the same function in fec/interpreter.rs after the
+// interpreter interface is unified.
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
