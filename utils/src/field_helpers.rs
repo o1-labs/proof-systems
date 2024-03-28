@@ -1,7 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_bigint::{BigUint, RandBigInt};
+use num_bigint::{BigInt, BigUint, RandBigInt, ToBigInt};
 use rand::rngs::StdRng;
 use std::ops::Neg;
 use thiserror::Error;
@@ -104,6 +104,14 @@ pub trait FieldHelpers<F> {
         F: PrimeField,
     {
         BigUint::from_bytes_le(&self.to_bytes())
+    }
+
+    /// Serialize field element f to a (positive) BigInt directly.
+    fn to_bigint_positive(&self) -> BigInt
+    where
+        F: PrimeField,
+    {
+        Self::to_biguint(self).to_bigint().unwrap()
     }
 
     /// Create a new field element from this field elements bits
