@@ -1,5 +1,7 @@
 use crate::{
-    circuits::expr::{Op2, Operations, Variable},
+    circuits::expr::{
+        ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
+    },
     folding::{
         quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
         FoldingConfig, ScalarField,
@@ -32,7 +34,7 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Alpha(usize),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
@@ -46,7 +48,7 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
 }
 
 ///designed for easy translation to and from most Expr
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Atom(FoldingCompatibleExprInner<C>),
     Double(Box<Self>),
@@ -56,7 +58,7 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
 }
 
 /// Extra expressions that can be created by folding
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ExpExtension {
     U,
     Error,
@@ -499,4 +501,68 @@ pub fn folding_expression<C: FoldingConfig>(
         }
     }
     (integrated, extended_witness_generator)
+}
+
+impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    <Config as FoldingConfig>::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: ConstantExprInner<F>) -> Self {
+        match expr {
+            ConstantExprInner::Challenge(chal) => {
+                FoldingCompatibleExprInner::Challenge(chal.into())
+            }
+            ConstantExprInner::Constant(c) => match c {
+                ConstantTerm::Literal(f) => FoldingCompatibleExprInner::Constant(f),
+                _ => panic!("ConstantExprInner not supported in folding expressions"),
+            },
+        }
+    }
+}
+
+impl<F, Col, Config: FoldingConfig<Column = Col>> From<ExprInner<ConstantExprInner<F>, Col>>
+    for FoldingCompatibleExprInner<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: ExprInner<ConstantExprInner<F>, Col>) -> Self {
+        match expr {
+            ExprInner::Constant(cexpr) => cexpr.into(),
+            ExprInner::Cell(col) => FoldingCompatibleExprInner::Cell(col),
+            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            }
+            ExprInner::UnnormalizedLagrangeBasis(i) => {
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize)
+            }
+        }
+    }
+}
+
+impl<F, Col, Config: FoldingConfig<Column = Col>>
+    From<Operations<ExprInner<ConstantExprInner<F>, Col>>> for FoldingCompatibleExpr<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: Operations<ExprInner<ConstantExprInner<F>, Col>>) -> Self {
+        match expr {
+            Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
+            Operations::Add(x, y) => {
+                FoldingCompatibleExpr::BinOp(Op2::Add, Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Mul(x, y) => {
+                FoldingCompatibleExpr::BinOp(Op2::Mul, Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Sub(x, y) => {
+                FoldingCompatibleExpr::BinOp(Op2::Sub, Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
+            Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
+            Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(Box::new((*e).into()), p),
+            _ => panic!("Operation not supported in folding expressions"),
+        }
+    }
 }
