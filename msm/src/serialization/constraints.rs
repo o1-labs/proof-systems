@@ -11,8 +11,7 @@ use crate::{
     MVLookupTableID as _, N_LIMBS,
 };
 
-use super::Lookup;
-use super::{interpreter::InterpreterEnv, LookupTable};
+use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
 
 /// Compute the following constraint:
 /// ```text

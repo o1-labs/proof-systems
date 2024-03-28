@@ -16,6 +16,7 @@ pub mod cvar;
 pub mod errors;
 pub mod folding;
 pub mod poseidon;
+pub(crate) mod range_checks;
 pub mod runner;
 pub mod snarky_type;
 pub mod union_find;

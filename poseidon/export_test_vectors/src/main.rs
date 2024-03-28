@@ -8,10 +8,12 @@ fn main() {
 
 mod inner {
     use super::vectors;
-    use std::env;
-    use std::fs::File;
-    use std::io::{self, Write};
-    use std::str::FromStr;
+    use std::{
+        env,
+        fs::File,
+        io::{self, Write},
+        str::FromStr,
+    };
 
     #[derive(Debug)]
     pub enum Mode {
