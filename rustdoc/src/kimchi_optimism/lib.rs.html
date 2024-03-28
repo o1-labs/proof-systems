@@ -29,6 +29,9 @@
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Domain size shared by the Keccak evaluations, MIPS evaluation and main
 /// program.
 </span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
@@ -38,6 +41,9 @@
 
 <span class="doccomment">/// A CLI mimicking the Cannon CLI.
 </span><span class="kw">pub mod </span>cannon_cli;
+
+<span class="doccomment">/// Integration with folding. Contains common trait implementations to be used by each circuit.
+</span><span class="kw">pub mod </span>folding;
 
 <span class="doccomment">/// Implementation of Keccak used by the zkVM.
 </span><span class="kw">pub mod </span>keccak;

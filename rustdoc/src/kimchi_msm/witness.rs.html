@@ -155,7 +155,7 @@
 /// - `Vec&lt;G::ScalarField&gt;` for the evaluations
 /// - `PolyComm&lt;G&gt;` for the commitments
 /// It can be used to represent the different subcircuits used by the project.
-</span><span class="attr">#[derive(Clone, Debug, Eq, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub struct </span>Witness&lt;<span class="kw">const </span>N: usize, T&gt; {
     <span class="doccomment">/// A witness row is represented by an array of N witness columns
     /// When T is a vector, then the witness describes the rows of the circuit.

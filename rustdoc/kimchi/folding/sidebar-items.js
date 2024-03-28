@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["expressions"],"struct":["FoldingScheme","RelaxedInstance","RelaxedWitness"],"trait":["FoldingConfig","FoldingEnv","Instance","Sponge","Witness"]};
+window.SIDEBAR_ITEMS = {"enum":["Alphas","Side"],"mod":["expressions"],"struct":["FoldingScheme","RelaxedInstance","RelaxedWitness"],"trait":["FoldingConfig","FoldingEnv","Instance","Sponge","Witness"],"type":["BaseSponge"]};

@@ -338,28 +338,34 @@
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
 <a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::gate::CurrOrNext;
 <span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-<span class="kw">use </span>error_term::{compute_error, ExtendedEnv, Side};
+<span class="kw">use </span>error_term::{compute_error, ExtendedEnv};
 <span class="kw">use </span>expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
-<span class="kw">pub use </span>expressions::{ExpExtension, FoldingCompatibleExpr};
-<span class="kw">pub use </span>instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 <span class="kw">use </span>instance_witness::{RelaxableInstance, RelaxablePair};
 <span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 <span class="kw">use </span>quadraticization::ExtendedWitnessGenerator;
 <span class="kw">use </span>std::{fmt::Debug, hash::Hash};
 
+<span class="comment">// Make available outside the crate to avoid code duplication
+</span><span class="kw">pub use </span>error_term::Side;
+<span class="kw">pub use </span>example::{Alphas, BaseSponge};
+<span class="kw">pub use </span>expressions::{ExpExtension, FoldingCompatibleExpr};
+<span class="kw">pub use </span>instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
+
 <span class="kw">mod </span>error_term;
-<span class="attr">#[cfg(test)]
-#[allow(dead_code)]
+<span class="attr">#[allow(dead_code)]
 </span><span class="kw">mod </span>example;
 <span class="kw">pub mod </span>expressions;
 <span class="kw">mod </span>instance_witness;
-<span class="kw">mod </span>quadraticization;
 <span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test;
+</span><span class="kw">mod </span>mock;
+<span class="kw">mod </span>quadraticization;
 
 <span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
 
