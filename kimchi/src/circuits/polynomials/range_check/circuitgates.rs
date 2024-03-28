@@ -330,7 +330,7 @@ where
             power_of_2 *= 4u64.into(); // 2 bits
         }
 
-        // Next row:  Sum remaining 2-bit limbs vc10 and vc11
+        // Next row:  Sum remaining 2-bit limbs v2c9, v2c10, and v2c11 (reverse order)
         for i in (0..=2).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 *= 4u64.into(); // 2 bits

@@ -2,10 +2,11 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
-use crate::columns::Column;
-use crate::serialization::interpreter::InterpreterEnv;
-use crate::serialization::{Lookup, LookupTable};
-use crate::N_LIMBS;
+use crate::{
+    columns::Column,
+    serialization::{interpreter::InterpreterEnv, Lookup, LookupTable},
+    N_LIMBS,
+};
 use kimchi::circuits::domains::EvaluationDomains;
 use std::iter;
 
@@ -229,15 +230,11 @@ impl<Fp: PrimeField> Env<Fp> {
 mod tests {
     use std::str::FromStr;
 
-    use crate::serialization::N_INTERMEDIATE_LIMBS;
-    use crate::{LIMB_BITSIZE, N_LIMBS};
+    use crate::{serialization::N_INTERMEDIATE_LIMBS, LIMB_BITSIZE, N_LIMBS};
 
     use super::Env;
     use crate::serialization::interpreter::deserialize_field_element;
-    use ark_ff::BigInteger;
-    use ark_ff::FpParameters as _;
-    use ark_ff::PrimeField;
-    use ark_ff::{One, UniformRand, Zero};
+    use ark_ff::{BigInteger, FpParameters as _, One, PrimeField, UniformRand, Zero};
     use mina_curves::pasta::Fp;
     use num_bigint::BigUint;
     use o1_utils::{tests::make_test_rng, FieldHelpers};

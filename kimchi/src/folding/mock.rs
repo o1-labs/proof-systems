@@ -97,9 +97,10 @@ impl FoldingConfig for TestConfig {
 #[test]
 //not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
-    use crate::circuits::expr::Variable;
-    use crate::folding::expressions::ExtendedFoldingColumn;
-    use crate::folding::expressions::FoldingExp;
+    use crate::{
+        circuits::expr::Variable,
+        folding::expressions::{ExtendedFoldingColumn, FoldingExp},
+    };
     let col = |col| FoldingExp::Atom(ExtendedFoldingColumn::Inner(Variable { col, row: Curr }));
     let t1: FoldingExp<TestConfig> = (col(0) + col(1)) * (col(2) + col(3));
     let t2 = col(1).double()

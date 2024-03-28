@@ -33,19 +33,21 @@
 //~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.
 //~
 
-use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
-    gate::{CircuitGate, GateType},
-    polynomial::COLUMNS,
-    wires::GateWires,
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{constraints::ExprOps, Cache},
+        gate::{CircuitGate, GateType},
+        polynomial::COLUMNS,
+        wires::GateWires,
+    },
+    curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-use crate::{curve::KimchiCurve, prover_index::ProverIndex};
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use poly_commitment::OpenProof;
-use std::array;
-use std::marker::PhantomData;
+use std::{array, marker::PhantomData};
 
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: u32 = 2;

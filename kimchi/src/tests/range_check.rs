@@ -24,8 +24,7 @@ use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 
-use std::array;
-use std::sync::Arc;
+use std::{array, sync::Arc};
 
 use crate::{prover_index::ProverIndex, verifier::verify};
 use groupmap::GroupMap;
