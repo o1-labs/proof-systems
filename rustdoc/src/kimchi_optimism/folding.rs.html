@@ -292,6 +292,32 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_bn254;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::Zero;
@@ -449,7 +475,10 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
     <span class="kw">use </span>kimchi::{
-        circuits::expr::{ConstantExprInner, Expr, ExprInner, Op2, Variable},
+        circuits::expr::{
+            ConstantExprInner, ConstantTerm, Constants, Expr, ExprInner, Literal, Op2, Variable,
+        },
+        curve::KimchiCurve,
         folding::{
             expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
             BaseSponge, FoldingCompatibleExpr, FoldingConfig,
@@ -532,6 +561,13 @@
             ChallengeTerm::JointCombiner.into()
         );
 
+        <span class="comment">// Create my special constants
+        </span><span class="kw">let </span>constants = Constants {
+            endo_coefficient: Fp::from(<span class="number">3</span>),
+            mds: <span class="kw-2">&amp;</span>Curve::sponge_params().mds,
+            zk_rows: <span class="number">0</span>,
+        };
+
         <span class="comment">// Define variables to be used in larger expressions
         </span><span class="kw">let </span>x = Expr::Atom(ExprInner::Cell::&lt;ConstantExprInner&lt;Fp&gt;, TestColumn&gt;(
             Variable {
@@ -550,6 +586,9 @@
                 col: TestColumn::Z,
                 row: CurrOrNext::Curr,
             },
+        ));
+        <span class="kw">let </span>endo = Expr::Atom(ExprInner::&lt;ConstantExprInner&lt;Fp&gt;, TestColumn&gt;::Constant(
+            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient),
         ));
 
         <span class="comment">// Define variables with folding expressions
@@ -570,18 +609,31 @@
             }));
 
         <span class="comment">// Check conversion of general expressions
-        </span><span class="kw">let </span>xyz = x * y * z;
+        </span><span class="kw">let </span>xyz = x.clone() * y * z;
         <span class="kw">let </span>xyz_f = FoldingCompatibleExpr::&lt;TestConfig&gt;::BinOp(
             Op2::Mul,
             Box::new(FoldingCompatibleExpr::&lt;TestConfig&gt;::BinOp(
                 Op2::Mul,
-                Box::new(x_f),
+                Box::new(x_f.clone()),
                 Box::new(y_f),
             )),
             Box::new(z_f),
         );
-
         <span class="macro">assert_eq!</span>(FoldingCompatibleExpr::&lt;TestConfig&gt;::from(xyz), xyz_f);
+
+        <span class="kw">let </span>x_endo = x + endo;
+        <span class="kw">let </span>x_endo_f = FoldingCompatibleExpr::&lt;TestConfig&gt;::BinOp(
+            Op2::Add,
+            Box::new(x_f),
+            Box::new(FoldingCompatibleExpr::&lt;TestConfig&gt;::Atom(
+                FoldingCompatibleExprInner::Constant(constants.endo_coefficient),
+            )),
+        );
+        <span class="kw">let </span>x_endo_lit = x_endo.as_literal(<span class="kw-2">&amp;</span>constants);
+        <span class="macro">assert_eq!</span>(
+            FoldingCompatibleExpr::&lt;TestConfig&gt;::from(x_endo_lit),
+            x_endo_f
+        );
     }
 }
 </code></pre></div></section></main></body></html>

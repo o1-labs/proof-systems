@@ -591,6 +591,9 @@
 <a href="#589" id="589">589</a>
 <a href="#590" id="590">590</a>
 <a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         expr::{Op2, Variable},
@@ -598,8 +601,10 @@
     },
     curve::KimchiCurve,
     folding::{
-        error_term::Side, expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, Instance,
-        Sponge, Witness,
+        error_term::Side,
+        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+        ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
+        RelaxedWitness, Sponge, Witness,
     },
 };
 <span class="kw">use </span>ark_bn254;
@@ -618,11 +623,6 @@
     iter::successors,
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
-};
-
-<span class="kw">use super</span>::{
-    expressions::FoldingCompatibleExprInner, ExpExtension, FoldingCompatibleExpr, RelaxedInstance,
-    RelaxedWitness,
 };
 
 <span class="doccomment">/// Field = BN254 prime field
@@ -769,6 +769,7 @@
 </span><span class="kw">struct </span>TestStructure&lt;F: Clone&gt; {
     s_add: Vec&lt;F&gt;,
     s_mul: Vec&lt;F&gt;,
+    constants: Vec&lt;F&gt;,
 }
 
 <span class="kw">struct </span>TestFoldingEnv {
@@ -894,6 +895,7 @@
         <span class="number">2
     </span>}
 }
+
 <span class="kw">fn </span>instance_from_witness(
     witness: <span class="kw-2">&amp;</span>TestWitness,
     srs: <span class="kw-2">&amp;</span>&lt;TestFoldingConfig <span class="kw">as </span>FoldingConfig&gt;::Srs,
@@ -1110,7 +1112,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs = poly_commitment::srs::SRS::&lt;Curve&gt;::create(<span class="number">2</span>);
         srs.add_lagrange_basis(domain);
         <span class="kw">let </span>[s_add, s_mul] = circuit();
-        <span class="kw">let </span>structure = TestStructure { s_add, s_mul };
+        <span class="kw">let </span>structure = TestStructure {
+            s_add,
+            s_mul,
+            constants: <span class="macro">vec!</span>[],
+        };
 
         <span class="kw">let </span>(scheme, final_constraint) = FoldingScheme::&lt;TestFoldingConfig&gt;::new(
             constraints.clone(),

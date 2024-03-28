@@ -568,6 +568,8 @@
 <a href="#566" id="566">566</a>
 <a href="#567" id="567">567</a>
 <a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::expr::{
         ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
@@ -1076,7 +1078,7 @@
 <span class="kw">impl</span>&lt;F, Config: FoldingConfig&gt; From&lt;ConstantExprInner&lt;F&gt;&gt; <span class="kw">for </span>FoldingCompatibleExprInner&lt;Config&gt;
 <span class="kw">where
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
-    &lt;Config <span class="kw">as </span>FoldingConfig&gt;::Challenge: From&lt;ChallengeTerm&gt;,
+    Config::Challenge: From&lt;ChallengeTerm&gt;,
 {
     <span class="kw">fn </span>from(expr: ConstantExprInner&lt;F&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
@@ -1085,7 +1087,9 @@
             }
             ConstantExprInner::Constant(c) =&gt; <span class="kw">match </span>c {
                 ConstantTerm::Literal(f) =&gt; FoldingCompatibleExprInner::Constant(f),
-                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"ConstantExprInner not supported in folding expressions"</span>),
+                ConstantTerm::EndoCoefficient | ConstantTerm::Mds { row: <span class="kw">_</span>, col: <span class="kw">_ </span>} =&gt; {
+                    <span class="macro">panic!</span>(<span class="string">"When special constants are involved, don't forget to simplify the expression before."</span>)
+                }
             },
         }
     }
