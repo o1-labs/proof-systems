@@ -2,7 +2,10 @@
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
 use crate::keccak::{
-    constraints::Env as ConstraintsEnv, grid_index, pad_blocks, witness::Env as WitnessEnv,
+    column::{KeccakWitness, PAD_SUFFIX_LEN},
+    constraints::Env as ConstraintsEnv,
+    grid_index, pad_blocks,
+    witness::Env as WitnessEnv,
     KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
 };
 use ark_ff::Field;
@@ -14,8 +17,7 @@ use kimchi::{
     },
     o1_utils::Two,
 };
-
-use super::column::KeccakWitness;
+use std::array;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
@@ -39,10 +41,18 @@ pub struct KeccakEnv<F> {
     pub(crate) prev_block: Vec<u64>,
     /// How many blocks are left to absorb (including current absorb)
     pub(crate) blocks_left_to_absorb: u64,
+
     /// Padded preimage data
     pub(crate) padded: Vec<u8>,
     /// Byte-length of the 10*1 pad (<=136)
     pub(crate) pad_len: u64,
+
+    /// Precomputed 2^pad_len (including 2^0 = 1)
+    two_to_pad: [F; RATE_IN_BYTES + 1],
+    /// Precomputed inverses of the padding lengths (including dummy 0)
+    inv_pad_len: [F; RATE_IN_BYTES + 1],
+    /// Precomputed suffixes for the padding blocks
+    pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES + 1],
 }
 
 /// Variants of Keccak steps available for the interpreter
@@ -82,6 +92,16 @@ impl<F: Field> KeccakEnv<F> {
             blocks_left_to_absorb: 0,
             padded: vec![],
             pad_len: 0,
+            two_to_pad: array::from_fn(|i| F::two_pow(i as u64)),
+            // When i = 0, the inverse is undefined, so we use a dummy value
+            inv_pad_len: array::from_fn(|i| F::inverse(&F::from(i as u64)).unwrap_or(F::zero())),
+            pad_suffixes: array::from_fn(|i| {
+                if i == 0 {
+                    [F::zero(); PAD_SUFFIX_LEN]
+                } else {
+                    pad_blocks::<F>(i)
+                }
+            }),
         };
 
         // Store hash index in the witness
@@ -111,7 +131,7 @@ impl<F: Field> KeccakEnv<F> {
 
     /// Writes an integer value to a column of the Keccak witness
     pub fn write_column(&mut self, column: KeccakColumn, value: u64) {
-        self.witness_env.witness[column] = F::from(value);
+        self.write_column_field(column, F::from(value));
     }
 
     /// Writes a field value to a column of the Keccak witness
@@ -207,18 +227,22 @@ impl<F: Field> KeccakEnv<F> {
     /// Sets the witness corresponding to the `FlagPad` column to 1, and updates the remaining columns
     /// related to padding flags such as `PadLength`, `InvPadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
     fn set_flag_pad(&mut self) {
+        // Initialize padding columns with precomputed values to speed up interpreter
         self.write_column(KeccakColumn::PadLength, self.pad_len);
         self.write_column_field(
             KeccakColumn::InvPadLength,
-            F::inverse(&F::from(self.pad_len)).unwrap(),
+            self.inv_pad_len[self.pad_len as usize],
         );
-        self.write_column_field(KeccakColumn::TwoToPad, F::two_pow(self.pad_len));
+        self.write_column_field(
+            KeccakColumn::TwoToPad,
+            self.two_to_pad[self.pad_len as usize],
+        );
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
             self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
-        let pad_blocks = pad_blocks::<F>(self.pad_len as usize);
-        for (idx, value) in pad_blocks.iter().enumerate() {
+        let pad_suffix = self.pad_suffixes[self.pad_len as usize];
+        for (idx, value) in pad_suffix.iter().enumerate() {
             self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
         }
     }

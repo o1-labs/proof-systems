@@ -20,9 +20,9 @@ mod error_term;
 mod example;
 pub mod expressions;
 mod instance_witness;
-mod quadraticization;
 #[cfg(test)]
-mod test;
+mod mock;
+mod quadraticization;
 
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
