@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["LIMB_BITSIZE_LARGE","LIMB_BITSIZE_SMALL","N_LIMBS_LARGE","N_LIMBS_SMALL"],"fn":["constrain_ec_addition","ec_add_circuit","limbs_to_bigints"],"trait":["FECInterpreterEnv"]};

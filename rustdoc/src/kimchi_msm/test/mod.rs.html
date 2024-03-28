@@ -525,7 +525,7 @@
 
     <span class="comment">// Generic function to test with different circuits with the generic prover/verifier.
     // It doesn't use the interpreter to build the witness and compute the constraints.
-    </span><span class="kw">fn </span>test_completeness_generic&lt;<span class="kw">const </span>N: usize, RNG&gt;(
+    </span><span class="kw">pub fn </span>test_completeness_generic&lt;<span class="kw">const </span>N: usize, RNG&gt;(
         constraints: Vec&lt;E&lt;Fp&gt;&gt;,
         evaluations: Witness&lt;N, Vec&lt;Fp&gt;&gt;,
         domain_size: usize,
