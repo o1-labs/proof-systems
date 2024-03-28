@@ -10,7 +10,6 @@ use crate::{
         Lookup, LookupTable,
     },
     witness::Witness,
-    N_LIMBS,
 };
 use kimchi::circuits::domains::EvaluationDomains;
 use std::iter;
