@@ -5,8 +5,10 @@ use crate::{
     },
     curve::KimchiCurve,
     folding::{
-        error_term::Side, expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, Instance,
-        Sponge, Witness,
+        error_term::Side,
+        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+        ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
+        RelaxedWitness, Sponge, Witness,
     },
 };
 use ark_bn254;
@@ -25,11 +27,6 @@ use std::{
     iter::successors,
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
-};
-
-use super::{
-    expressions::FoldingCompatibleExprInner, ExpExtension, FoldingCompatibleExpr, RelaxedInstance,
-    RelaxedWitness,
 };
 
 /// Field = BN254 prime field
@@ -176,6 +173,7 @@ impl Witness<Curve> for TestWitness {
 struct TestStructure<F: Clone> {
     s_add: Vec<F>,
     s_mul: Vec<F>,
+    constants: Vec<F>,
 }
 
 struct TestFoldingEnv {
@@ -301,6 +299,7 @@ impl FoldingConfig for TestFoldingConfig {
         2
     }
 }
+
 fn instance_from_witness(
     witness: &TestWitness,
     srs: &<TestFoldingConfig as FoldingConfig>::Srs,
@@ -517,7 +516,11 @@ mod tests {
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
         let [s_add, s_mul] = circuit();
-        let structure = TestStructure { s_add, s_mul };
+        let structure = TestStructure {
+            s_add,
+            s_mul,
+            constants: vec![],
+        };
 
         let (scheme, final_constraint) = FoldingScheme::<TestFoldingConfig>::new(
             constraints.clone(),

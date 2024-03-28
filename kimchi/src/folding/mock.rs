@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use ark_ec::AffineCurve;
+use ark_ff::Field;
 use itertools::Itertools;
 use mina_curves::pasta::Pallas;
 use num_traits::Zero;
@@ -15,6 +16,13 @@ use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Mock;
+
+impl<F: Field> From<F> for Mock {
+    fn from(_x: F) -> Self {
+        Mock
+    }
+}
+
 impl FoldingColumnTrait for u8 {
     fn is_witness(&self) -> bool {
         true

@@ -155,7 +155,10 @@ mod tests {
     use super::*;
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
     use kimchi::{
-        circuits::expr::{ConstantExprInner, Expr, ExprInner, Op2, Variable},
+        circuits::expr::{
+            ConstantExprInner, ConstantTerm, Constants, Expr, ExprInner, Literal, Op2, Variable,
+        },
+        curve::KimchiCurve,
         folding::{
             expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
             BaseSponge, FoldingCompatibleExpr, FoldingConfig,
@@ -238,6 +241,13 @@ mod tests {
             ChallengeTerm::JointCombiner.into()
         );
 
+        // Create my special constants
+        let constants = Constants {
+            endo_coefficient: Fp::from(3),
+            mds: &Curve::sponge_params().mds,
+            zk_rows: 0,
+        };
+
         // Define variables to be used in larger expressions
         let x = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
             Variable {
@@ -256,6 +266,9 @@ mod tests {
                 col: TestColumn::Z,
                 row: CurrOrNext::Curr,
             },
+        ));
+        let endo = Expr::Atom(ExprInner::<ConstantExprInner<Fp>, TestColumn>::Constant(
+            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient),
         ));
 
         // Define variables with folding expressions
@@ -276,17 +289,30 @@ mod tests {
             }));
 
         // Check conversion of general expressions
-        let xyz = x * y * z;
+        let xyz = x.clone() * y * z;
         let xyz_f = FoldingCompatibleExpr::<TestConfig>::BinOp(
             Op2::Mul,
             Box::new(FoldingCompatibleExpr::<TestConfig>::BinOp(
                 Op2::Mul,
-                Box::new(x_f),
+                Box::new(x_f.clone()),
                 Box::new(y_f),
             )),
             Box::new(z_f),
         );
-
         assert_eq!(FoldingCompatibleExpr::<TestConfig>::from(xyz), xyz_f);
+
+        let x_endo = x + endo;
+        let x_endo_f = FoldingCompatibleExpr::<TestConfig>::BinOp(
+            Op2::Add,
+            Box::new(x_f),
+            Box::new(FoldingCompatibleExpr::<TestConfig>::Atom(
+                FoldingCompatibleExprInner::Constant(constants.endo_coefficient),
+            )),
+        );
+        let x_endo_lit = x_endo.as_literal(&constants);
+        assert_eq!(
+            FoldingCompatibleExpr::<TestConfig>::from(x_endo_lit),
+            x_endo_f
+        );
     }
 }

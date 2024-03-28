@@ -506,7 +506,7 @@ pub fn folding_expression<C: FoldingConfig>(
 impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
-    <Config as FoldingConfig>::Challenge: From<ChallengeTerm>,
+    Config::Challenge: From<ChallengeTerm>,
 {
     fn from(expr: ConstantExprInner<F>) -> Self {
         match expr {
@@ -515,7 +515,9 @@ where
             }
             ConstantExprInner::Constant(c) => match c {
                 ConstantTerm::Literal(f) => FoldingCompatibleExprInner::Constant(f),
-                _ => panic!("ConstantExprInner not supported in folding expressions"),
+                ConstantTerm::EndoCoefficient | ConstantTerm::Mds { row: _, col: _ } => {
+                    panic!("When special constants are involved, don't forget to simplify the expression before.")
+                }
             },
         }
     }
