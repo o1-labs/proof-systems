@@ -94,22 +94,18 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         // Keep track of multiplicities for fixed lookups
-        match lookup.table_id {
-            RangeCheck16Lookup | SparseLookup | ResetLookup | RoundConstantsLookup | PadLookup
-            | ByteLookup => {
-                if lookup.magnitude == Self::one() {
-                    // Check that the lookup value is in the table
-                    if let Some(idx) = LookupTable::is_in_table(
-                        &self.tables[lookup.table_id as usize],
-                        lookup.value,
-                    ) {
-                        self.multiplicities[lookup.table_id as usize][idx] += 1;
-                    } else {
-                        self.errors.push(Error::Lookup(lookup.table_id));
-                    }
+        if lookup.table_id.is_fixed() {
+            // Only when reading. We ignore the other values.
+            if lookup.magnitude == Self::one() {
+                // Check that the lookup value is in the table
+                if let Some(idx) =
+                    LookupTable::is_in_table(&self.tables[lookup.table_id as usize], lookup.value)
+                {
+                    self.multiplicities[lookup.table_id as usize][idx] += 1;
+                } else {
+                    self.errors.push(Error::Lookup(lookup.table_id));
                 }
             }
-            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => (),
         }
     }
 }

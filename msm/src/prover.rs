@@ -1,21 +1,27 @@
 use crate::{
     column_env::ColumnEnvironment,
     expr::E,
+    mvlookup,
     mvlookup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
+    MAX_SUPPORTED_DEGREE,
 };
-use crate::{mvlookup, MAX_SUPPORTED_DEGREE};
 use ark_ff::{Field, One, Zero};
-use ark_poly::Evaluations;
-use ark_poly::{univariate::DensePolynomial, Polynomial, Radix2EvaluationDomain as R2D};
-use kimchi::circuits::domains::EvaluationDomains;
-use kimchi::circuits::expr::{l0_1, Challenges, Constants, Expr};
-use kimchi::plonk_sponge::FrSponge;
-use kimchi::proof::PointEvaluations;
-use kimchi::{curve::KimchiCurve, groupmap::GroupMap};
-use mina_poseidon::sponge::ScalarChallenge;
-use mina_poseidon::FqSponge;
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as R2D,
+};
+use kimchi::{
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{l0_1, Challenges, Constants, Expr},
+    },
+    curve::KimchiCurve,
+    groupmap::GroupMap,
+    plonk_sponge::FrSponge,
+    proof::PointEvaluations,
+};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
     commitment::{absorb_commitment, PolyComm},
@@ -23,8 +29,7 @@ use poly_commitment::{
     OpenProof, SRS,
 };
 use rand::{CryptoRng, RngCore};
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
@@ -56,7 +61,7 @@ pub fn prove<
     constraints: &Vec<E<G::ScalarField>>,
     inputs: ProofInputs<N, G, ID>,
     rng: &mut RNG,
-) -> Result<Proof<N, G, OpeningProof>, ProverError>
+) -> Result<Proof<N, G, OpeningProof, ID>, ProverError>
 where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
@@ -136,6 +141,7 @@ where
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
+        id: std::marker::PhantomData,
     });
 
     // -- end computing the running sum in lookup_aggregation
@@ -329,6 +335,7 @@ where
                     zeta: sum_zeta,
                     zeta_omega: sum_zeta_omega,
                 },
+                id: std::marker::PhantomData,
             })
         } else {
             None
@@ -436,7 +443,7 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<N, G::ScalarField> = {
+    let proof_evals: ProofEvaluations<N, G::ScalarField, ID> = {
         ProofEvaluations {
             witness_evals,
             mvlookup_evals,

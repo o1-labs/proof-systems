@@ -12,9 +12,9 @@ use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
-use mina_poseidon::sponge::DefaultFqSponge;
-use mina_poseidon::FqSponge;
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi as SC, sponge::DefaultFqSponge, FqSponge,
+};
 use o1_utils::ExtendedDensePolynomial as _;
 use rand::Rng;
 use std::time::{Duration, Instant};
