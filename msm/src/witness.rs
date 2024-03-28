@@ -8,7 +8,7 @@ use std::ops::Index;
 /// - `Vec<G::ScalarField>` for the evaluations
 /// - `PolyComm<G>` for the commitments
 /// It can be used to represent the different subcircuits used by the project.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Witness<const N: usize, T> {
     /// A witness row is represented by an array of N witness columns
     /// When T is a vector, then the witness describes the rows of the circuit.
