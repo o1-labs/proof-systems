@@ -3,7 +3,7 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::Zero;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::{
-    circuits::gate::CurrOrNext,
+    circuits::{expr::ChallengeTerm, gate::CurrOrNext},
     folding::{Alphas, FoldingEnv, Instance, Side, Witness},
 };
 use kimchi_msm::witness::Witness as GenericWitness;
@@ -22,6 +22,18 @@ pub(crate) enum Challenge {
     Beta,
     Gamma,
     JointCombiner,
+}
+
+// Needed to transform from expressions to folding expressions
+impl From<ChallengeTerm> for Challenge {
+    fn from(chal: ChallengeTerm) -> Self {
+        match chal {
+            ChallengeTerm::Beta => Challenge::Beta,
+            ChallengeTerm::Gamma => Challenge::Gamma,
+            ChallengeTerm::JointCombiner => Challenge::JointCombiner,
+            ChallengeTerm::Alpha => panic!("Alpha not allowed in folding expressions"),
+        }
+    }
 }
 
 /// Folding instance containing the commitment to a witness of N columns, challenges for the proof, and the alphas
@@ -135,5 +147,146 @@ where
     fn alpha(&self, i: usize, side: Side) -> Fp {
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_poly::{Evaluations, Radix2EvaluationDomain};
+    use kimchi::{
+        circuits::expr::{ConstantExprInner, Expr, ExprInner, Op2, Variable},
+        folding::{
+            expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+            BaseSponge, FoldingCompatibleExpr, FoldingConfig,
+        },
+    };
+    use std::ops::Index;
+
+    use super::{FoldingEnvironment, FoldingInstance, FoldingWitness};
+
+    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+    enum TestColumn {
+        X,
+        Y,
+        Z,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    struct TestStructure;
+
+    // TODO
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    struct TestConfig;
+
+    type TestWitness<T> = kimchi_msm::witness::Witness<3, T>;
+    type TestFoldingWitness = FoldingWitness<3>;
+    type TestFoldingInstance = FoldingInstance<3>;
+    type TestFoldingEnvironment = FoldingEnvironment<3, TestStructure>;
+
+    impl Index<TestColumn> for TestFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        fn index(&self, index: TestColumn) -> &Self::Output {
+            &self.witness[index]
+        }
+    }
+
+    impl FoldingColumnTrait for TestColumn {
+        fn is_witness(&self) -> bool {
+            true
+        }
+    }
+
+    impl<T: Clone> Index<TestColumn> for TestWitness<T> {
+        type Output = T;
+        fn index(&self, index: TestColumn) -> &Self::Output {
+            match index {
+                TestColumn::X => &self.cols[0],
+                TestColumn::Y => &self.cols[1],
+                TestColumn::Z => &self.cols[2],
+            }
+        }
+    }
+
+    impl FoldingConfig for TestConfig {
+        type Column = TestColumn;
+        type Challenge = Challenge;
+        type Curve = Curve;
+        type Srs = poly_commitment::srs::SRS<Curve>;
+        type Sponge = BaseSponge;
+        type Instance = TestFoldingInstance;
+        type Witness = TestFoldingWitness;
+        type Structure = TestStructure;
+        type Env = TestFoldingEnvironment;
+
+        fn rows() -> usize {
+            4
+        }
+    }
+
+    #[test]
+    fn test_conversion() {
+        use super::*;
+        use kimchi::circuits::expr::ChallengeTerm;
+
+        // Check that the conversion from ChallengeTerm to Challenge works as expected
+        assert_eq!(Challenge::Beta, ChallengeTerm::Beta.into());
+        assert_eq!(Challenge::Gamma, ChallengeTerm::Gamma.into());
+        assert_eq!(
+            Challenge::JointCombiner,
+            ChallengeTerm::JointCombiner.into()
+        );
+
+        // Define variables to be used in larger expressions
+        let x = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
+            Variable {
+                col: TestColumn::X,
+                row: CurrOrNext::Curr,
+            },
+        ));
+        let y = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
+            Variable {
+                col: TestColumn::Y,
+                row: CurrOrNext::Curr,
+            },
+        ));
+        let z = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
+            Variable {
+                col: TestColumn::Z,
+                row: CurrOrNext::Curr,
+            },
+        ));
+
+        // Define variables with folding expressions
+        let x_f =
+            FoldingCompatibleExpr::<TestConfig>::Atom(FoldingCompatibleExprInner::Cell(Variable {
+                col: TestColumn::X,
+                row: CurrOrNext::Curr,
+            }));
+        let y_f =
+            FoldingCompatibleExpr::<TestConfig>::Atom(FoldingCompatibleExprInner::Cell(Variable {
+                col: TestColumn::Y,
+                row: CurrOrNext::Curr,
+            }));
+        let z_f =
+            FoldingCompatibleExpr::<TestConfig>::Atom(FoldingCompatibleExprInner::Cell(Variable {
+                col: TestColumn::Z,
+                row: CurrOrNext::Curr,
+            }));
+
+        // Check conversion of general expressions
+        let xyz = x * y * z;
+        let xyz_f = FoldingCompatibleExpr::<TestConfig>::BinOp(
+            Op2::Mul,
+            Box::new(FoldingCompatibleExpr::<TestConfig>::BinOp(
+                Op2::Mul,
+                Box::new(x_f),
+                Box::new(y_f),
+            )),
+            Box::new(z_f),
+        );
+
+        assert_eq!(FoldingCompatibleExpr::<TestConfig>::from(xyz), xyz_f);
     }
 }
