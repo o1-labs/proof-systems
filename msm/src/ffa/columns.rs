@@ -1,5 +1,4 @@
-use crate::columns::Column;
-use crate::columns::ColumnIndexer;
+use crate::columns::{Column, ColumnIndexer};
 
 use crate::N_LIMBS;
 

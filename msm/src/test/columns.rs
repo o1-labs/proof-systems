@@ -1,5 +1,7 @@
-use crate::columns::{Column, ColumnIndexer};
-use crate::N_LIMBS;
+use crate::{
+    columns::{Column, ColumnIndexer},
+    N_LIMBS,
+};
 
 /// Number of columns in the test circuits.
 pub const TEST_N_COLUMNS: usize = 4 * N_LIMBS;

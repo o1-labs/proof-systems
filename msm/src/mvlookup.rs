@@ -131,18 +131,19 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 }
 
 pub mod prover {
-    use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
-    use crate::MAX_SUPPORTED_DEGREE;
+    use crate::{
+        mvlookup::{LookupTableID, MVLookup, MVLookupWitness},
+        MAX_SUPPORTED_DEGREE,
+    };
     use ark_ff::{FftField, Zero};
-    use ark_poly::Evaluations;
-    use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
-    use kimchi::circuits::domains::EvaluationDomains;
-    use kimchi::curve::KimchiCurve;
+    use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+    use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
     use mina_poseidon::FqSponge;
-    use poly_commitment::commitment::{absorb_commitment, PolyComm};
-    use poly_commitment::{OpenProof, SRS as _};
-    use rayon::iter::IntoParallelIterator;
-    use rayon::iter::ParallelIterator;
+    use poly_commitment::{
+        commitment::{absorb_commitment, PolyComm},
+        OpenProof, SRS as _,
+    };
+    use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
     pub struct QuotientPolynomialEnvironment<'a, F: FftField> {
         pub lookup_terms_evals_d8: &'a Vec<Evaluations<F, D<F>>>,

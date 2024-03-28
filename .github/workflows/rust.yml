@@ -12,6 +12,32 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  run_formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_toolchain_version: ["nightly"]
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4.1.1
+
+      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
+        run:
+          |
+            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+            chmod +x ./rustup-init
+            ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+            rm ./rustup-init
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            # overwriting default rust-toolchain
+            echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+
+      - name: Run cargo fmt
+        run: |
+          cargo fmt -- --check
+
   run_checks:
     strategy:
       matrix:
@@ -87,10 +113,6 @@ jobs:
       # Coding guidelines
       #
 
-      - name: Enforce formating
-        run: |
-          eval $(opam env)
-          cargo fmt -- --check
 
       - name: Lint (clippy)
         run: |

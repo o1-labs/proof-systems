@@ -1,7 +1,9 @@
 //! This module implements Poseidon Hash Function primitive
 
-use crate::constants::SpongeConstants;
-use crate::permutation::{full_round, poseidon_block_cipher};
+use crate::{
+    constants::SpongeConstants,
+    permutation::{full_round, poseidon_block_cipher},
+};
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

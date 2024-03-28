@@ -1,7 +1,9 @@
 //! Common parameters and functions for kimchi's foreign field circuits.
 
-use o1_utils::field_helpers::FieldHelpers;
-use o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
+use o1_utils::{
+    field_helpers::FieldHelpers,
+    foreign_field::{ForeignElement, ForeignFieldHelpers},
+};
 
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
