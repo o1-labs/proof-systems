@@ -68,6 +68,7 @@ pub struct Challenges<F> {
 }
 
 /// The collection of constants required to evaluate an `Expr`.
+#[derive(Clone)]
 pub struct Constants<F: 'static> {
     /// The endomorphism coefficient
     pub endo_coefficient: F,
@@ -285,11 +286,12 @@ pub enum ConstantTerm<F> {
     Literal(F),
 }
 
-pub trait Literal: Sized {
+pub trait Literal: Sized + Clone {
     type F;
     fn literal(x: Self::F) -> Self;
     fn to_literal(self) -> Result<Self::F, Self>;
     fn to_literal_ref(&self) -> Option<&Self::F>;
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self;
 }
 
 impl<F: Field> Literal for F {
@@ -303,9 +305,12 @@ impl<F: Field> Literal for F {
     fn to_literal_ref(&self) -> Option<&Self::F> {
         Some(self)
     }
+    fn as_literal(&self, _constants: &Constants<Self::F>) -> Self {
+        *self
+    }
 }
 
-impl<F> Literal for ConstantTerm<F> {
+impl<F: Clone> Literal for ConstantTerm<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
         ConstantTerm::Literal(x)
@@ -322,6 +327,17 @@ impl<F> Literal for ConstantTerm<F> {
             _ => None,
         }
     }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            ConstantTerm::EndoCoefficient => {
+                ConstantTerm::Literal(constants.endo_coefficient.clone())
+            }
+            ConstantTerm::Mds { row, col } => {
+                ConstantTerm::Literal(constants.mds[*row][*col].clone())
+            }
+            ConstantTerm::Literal(_) => self.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -330,7 +346,7 @@ pub enum ConstantExprInner<F> {
     Constant(ConstantTerm<F>),
 }
 
-impl<F> Literal for ConstantExprInner<F> {
+impl<F: Clone> Literal for ConstantExprInner<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
         Self::Constant(ConstantTerm::literal(x))
@@ -348,6 +364,12 @@ impl<F> Literal for ConstantExprInner<F> {
         match self {
             Self::Constant(x) => x.to_literal_ref(),
             _ => None,
+        }
+    }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            Self::Constant(x) => Self::Constant(x.as_literal(constants)),
+            Self::Challenge(_) => self.clone(),
         }
     }
 }
@@ -383,7 +405,7 @@ impl<T> From<T> for Operations<T> {
     }
 }
 
-impl<T: Literal> Literal for Operations<T> {
+impl<T: Literal + Clone> Literal for Operations<T> {
     type F = T::F;
     fn literal(x: Self::F) -> Self {
         Self::Atom(T::literal(x))
@@ -401,6 +423,32 @@ impl<T: Literal> Literal for Operations<T> {
         match self {
             Self::Atom(x) => x.to_literal_ref(),
             _ => None,
+        }
+    }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            Self::Atom(x) => Self::Atom(x.as_literal(constants)),
+            Self::Pow(x, n) => Self::Pow(Box::new(x.as_literal(constants)), *n),
+            Self::Add(x, y) => Self::Add(
+                Box::new(x.as_literal(constants)),
+                Box::new(y.as_literal(constants)),
+            ),
+            Self::Mul(x, y) => Self::Mul(
+                Box::new(x.as_literal(constants)),
+                Box::new(y.as_literal(constants)),
+            ),
+            Self::Sub(x, y) => Self::Sub(
+                Box::new(x.as_literal(constants)),
+                Box::new(y.as_literal(constants)),
+            ),
+            Self::Double(x) => Self::Double(Box::new(x.as_literal(constants))),
+            Self::Square(x) => Self::Square(Box::new(x.as_literal(constants))),
+            Self::Cache(id, x) => Self::Cache(*id, Box::new(x.as_literal(constants))),
+            Self::IfFeature(flag, if_true, if_false) => Self::IfFeature(
+                *flag,
+                Box::new(if_true.as_literal(constants)),
+                Box::new(if_false.as_literal(constants)),
+            ),
         }
     }
 }
@@ -706,7 +754,7 @@ impl<F, Column> From<ChallengeTerm> for Expr<ConstantExpr<F>, Column> {
     }
 }
 
-impl<T: Literal, Column> Literal for ExprInner<T, Column> {
+impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
     fn literal(x: Self::F) -> Self {
         ExprInner::Constant(T::literal(x))
@@ -726,9 +774,17 @@ impl<T: Literal, Column> Literal for ExprInner<T, Column> {
             _ => None,
         }
     }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            ExprInner::Constant(x) => ExprInner::Constant(x.as_literal(constants)),
+            ExprInner::Cell(_)
+            | ExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            | ExprInner::UnnormalizedLagrangeBasis(_) => self.clone(),
+        }
+    }
 }
 
-impl<T: Literal + Clone + PartialEq> Operations<T>
+impl<T: Literal + PartialEq> Operations<T>
 where
     T::F: Field,
 {
@@ -1681,7 +1737,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 }
 
-impl<F: Field, Column: PartialEq> Expr<ConstantExpr<F>, Column> {
+impl<F: Field, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
@@ -2719,7 +2775,7 @@ impl<F: Field> From<u64> for ConstantExpr<F> {
     }
 }
 
-impl<F: Field, Column: PartialEq> Mul<F> for Expr<ConstantExpr<F>, Column> {
+impl<F: Field, Column: PartialEq + Copy> Mul<F> for Expr<ConstantExpr<F>, Column> {
     type Output = Expr<ConstantExpr<F>, Column>;
 
     fn mul(self, y: F) -> Self::Output {

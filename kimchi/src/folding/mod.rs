@@ -2,24 +2,27 @@ use crate::circuits::gate::CurrOrNext;
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use error_term::{compute_error, ExtendedEnv, Side};
+use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
-pub use expressions::{ExpExtension, FoldingCompatibleExpr};
-pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 use instance_witness::{RelaxableInstance, RelaxablePair};
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 
+// Make available outside the crate to avoid code duplication
+pub use error_term::Side;
+pub use example::{Alphas, BaseSponge};
+pub use expressions::{ExpExtension, FoldingCompatibleExpr};
+pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
+
 mod error_term;
 #[allow(dead_code)]
-#[cfg(test)]
 mod example;
 pub mod expressions;
 mod instance_witness;
-mod quadraticization;
 #[cfg(test)]
-mod test;
+mod mock;
+mod quadraticization;
 
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
