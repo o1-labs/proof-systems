@@ -94,6 +94,11 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>constraint;
 <span class="kw">pub mod </span>interpreter;
@@ -102,15 +107,19 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
 
-    <span class="kw">use </span><span class="kw">crate</span>::fec::{
-        columns::FEC_N_COLUMNS,
-        constraint::ConstraintBuilderEnv <span class="kw">as </span>FECConstraintBuilderEnv,
-        interpreter::{<span class="self">self </span><span class="kw">as </span>fec_interpreter, FECInterpreterEnv},
-        witness::WitnessBuilderEnv <span class="kw">as </span>FECWitnessBuilderEnv,
-    };
     <span class="kw">use crate</span>::{
-        columns::Column, lookups::LookupTableIDs, prover::prove, verifier::verify,
-        witness::Witness, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        columns::Column,
+        fec::{
+            columns::FEC_N_COLUMNS,
+            constraint::ConstraintBuilderEnv <span class="kw">as </span>FECConstraintBuilderEnv,
+            interpreter::{<span class="self">self </span><span class="kw">as </span>fec_interpreter, FECInterpreterEnv},
+            witness::WitnessBuilderEnv <span class="kw">as </span>FECWitnessBuilderEnv,
+        },
+        lookups::LookupTableIDs,
+        prover::prove,
+        verifier::verify,
+        witness::Witness,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -177,13 +186,14 @@
         .unwrap();
 
         <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, <span class="number">0</span>&gt;(
-            domain,
-            <span class="kw-2">&amp;</span>srs,
-            <span class="kw-2">&amp;</span>constraints,
-            <span class="kw-2">&amp;</span>proof,
-            Witness::zero_vec(domain_size),
-        );
+        </span><span class="kw">let </span>verifies =
+            verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, <span class="number">0</span>, LookupTableIDs&gt;(
+                domain,
+                <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
+                <span class="kw-2">&amp;</span>proof,
+                Witness::zero_vec(domain_size),
+            );
 
         <span class="macro">assert!</span>(verifies);
     }
