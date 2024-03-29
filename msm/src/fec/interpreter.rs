@@ -1,5 +1,4 @@
-use crate::columns::Column;
-use crate::{LIMB_BITSIZE, N_LIMBS};
+use crate::{columns::Column, LIMB_BITSIZE, N_LIMBS};
 use ark_ff::{FpParameters, PrimeField, Zero};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;

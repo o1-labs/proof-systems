@@ -6,15 +6,19 @@ pub mod witness;
 #[cfg(test)]
 mod tests {
 
-    use crate::fec::{
-        columns::FEC_N_COLUMNS,
-        constraint::ConstraintBuilderEnv as FECConstraintBuilderEnv,
-        interpreter::{self as fec_interpreter, FECInterpreterEnv},
-        witness::WitnessBuilderEnv as FECWitnessBuilderEnv,
-    };
     use crate::{
-        columns::Column, lookups::LookupTableIDs, prover::prove, verifier::verify,
-        witness::Witness, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
+        columns::Column,
+        fec::{
+            columns::FEC_N_COLUMNS,
+            constraint::ConstraintBuilderEnv as FECConstraintBuilderEnv,
+            interpreter::{self as fec_interpreter, FECInterpreterEnv},
+            witness::WitnessBuilderEnv as FECWitnessBuilderEnv,
+        },
+        lookups::LookupTableIDs,
+        prover::prove,
+        verifier::verify,
+        witness::Witness,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
@@ -81,13 +85,14 @@ mod tests {
         .unwrap();
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, 0>(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(domain_size),
-        );
+        let verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, 0, LookupTableIDs>(
+                domain,
+                &srs,
+                &constraints,
+                &proof,
+                Witness::zero_vec(domain_size),
+            );
 
         assert!(verifies);
     }

@@ -10,7 +10,7 @@ use crate::{
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Fp, LIMB_BITSIZE, N_LIMBS},
+    BN254G1Affine, Fp, LIMB_BITSIZE, N_LIMBS,
 };
 
 #[allow(dead_code)]
