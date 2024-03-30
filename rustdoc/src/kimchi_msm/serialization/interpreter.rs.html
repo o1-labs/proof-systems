@@ -261,9 +261,399 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
+<span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
+<span class="kw">use </span>num_integer::Integer;
+<span class="kw">use </span>num_traits::{sign::Signed, Euclid};
 
-<span class="kw">use </span><span class="kw">crate</span>::serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS};
+<span class="kw">use crate</span>::{
+    serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS},
+    LIMB_BITSIZE, N_LIMBS,
+};
+<span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 <span class="kw">pub trait </span>InterpreterEnv&lt;Fp: PrimeField&gt; {
     <span class="kw">type </span>Position;
@@ -272,6 +662,8 @@
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::ops::Neg&lt;Output = <span class="self">Self</span>::Variable&gt;
+        + From&lt;u64&gt;
         + std::fmt::Debug;
 
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
@@ -284,6 +676,15 @@
 
     <span class="doccomment">/// Check that the value is in the range [0, 2^15-1]
     </span><span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Checks input |x| ∈ [0,2^15)
+    </span><span class="kw">fn </span>range_check_abs15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Checks input |x| ∈ [0,2^4)
+    </span><span class="kw">fn </span>range_check_abs4bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Checks x ∈ [0, f &gt;&gt; 15*16)
+    </span><span class="kw">fn </span>range_check_ff_highest&lt;Ff: PrimeField&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Check that the value is in the range [0, 2^4-1]
     </span><span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
@@ -521,5 +922,370 @@
         });
         env.add_constraint(constraint);
     }
+}
+
+<span class="doccomment">/// Alias for LIMB_BITSIZE, used for convenience.
+</span><span class="kw">pub const </span>LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
+<span class="doccomment">/// Alias for N_LIMBS, used for convenience.
+</span><span class="kw">pub const </span>N_LIMBS_SMALL: usize = N_LIMBS;
+
+<span class="doccomment">/// In FEC addition we use bigger limbs, of 75 bits, that are still
+/// nicely decomposable into smaller 15bit ones for range checking.
+</span><span class="kw">pub const </span>LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * <span class="number">5</span>; <span class="comment">// 75 bits
+</span><span class="kw">pub const </span>N_LIMBS_LARGE: usize = <span class="number">4</span>;
+
+<span class="doccomment">/// Interprets bigint `input` as an element of a field modulo `f_bi`,
+/// converts it to `[0,f_bi)` range, and outptus a corresponding
+/// biguint representation.
+</span><span class="kw">fn </span>bigint_to_biguint_f(input: BigInt, f_bi: <span class="kw-2">&amp;</span>BigInt) -&gt; BigUint {
+    <span class="kw">let </span>corrected_import: BigInt = <span class="kw">if </span>input.is_negative() &amp;&amp; input &gt; -f_bi {
+        <span class="kw-2">&amp;</span>input + f_bi
+    } <span class="kw">else if </span>input.is_negative() {
+        Euclid::rem_euclid(<span class="kw-2">&amp;</span>input, f_bi)
+    } <span class="kw">else </span>{
+        input
+    };
+    corrected_import.to_biguint().unwrap()
+}
+
+<span class="doccomment">/// Decompose biguint into `N` limbs of bit size `B`.
+</span><span class="kw">fn </span>limb_decompose_biguint&lt;F: PrimeField, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt;(input: BigUint) -&gt; [F; N] {
+    <span class="kw">let </span>ff_el: ForeignElement&lt;F, B, N&gt; = ForeignElement::from_biguint(input);
+    ff_el.limbs
+}
+
+<span class="doccomment">/// Decomposes a foreign field element into `N` limbs of bit size `B`.
+</span><span class="kw">fn </span>limb_decompose_ff&lt;F: PrimeField, Ff: PrimeField, <span class="kw">const </span>B: usize, <span class="kw">const </span>N: usize&gt;(
+    input: <span class="kw-2">&amp;</span>Ff,
+) -&gt; [F; N] {
+    <span class="kw">let </span>input_bi: BigUint = FieldHelpers::to_biguint(input);
+    limb_decompose_biguint::&lt;F, B, N&gt;(input_bi)
+}
+
+<span class="doccomment">/// Returns all `(i,j)` with `i,j \in [0,list_len]` such that `i + j = n`.
+</span><span class="kw">fn </span>choice2(list_len: usize, n: usize) -&gt; Vec&lt;(usize, usize)&gt; {
+    <span class="kw">use </span>itertools::Itertools;
+    <span class="kw">let </span>indices = Vec::from_iter(<span class="number">0</span>..list_len);
+    indices
+        .clone()
+        .into_iter()
+        .cartesian_product(indices)
+        .filter(|(i1, i2)| i1 + i2 == n)
+        .collect()
+}
+
+<span class="doccomment">/// A convenience helper: given a `list_len` and `n` (arguments of
+/// `choice2`), it creates an array consisting of `f(i,j)` where `i,j
+/// \in [0,list_len]` such that `i + j = n`, and then sums all the
+/// elements in this array.
+</span><span class="kw">fn </span>fold_choice2&lt;Var, Foo&gt;(list_len: usize, n: usize, f: Foo) -&gt; Var
+<span class="kw">where
+    </span>Foo: Fn(usize, usize) -&gt; Var,
+    Var: Clone + std::ops::Add&lt;Var, Output = Var&gt; + From&lt;u64&gt;,
+{
+    <span class="kw">let </span>chosen = choice2(list_len, n);
+    chosen
+        .into_iter()
+        .map(|(j, k)| f(j, k))
+        .fold(Var::from(<span class="number">0u64</span>), |acc, v| acc + v)
+}
+
+<span class="doccomment">/// Helper function for limb recombination.
+///
+/// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
+/// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
+/// chunks `a_i` of size `5` from the first, and recombining them as
+/// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
+</span><span class="kw">fn </span>combine_small_to_large&lt;<span class="kw">const </span>M: usize, <span class="kw">const </span>N: usize, F: PrimeField, Env: InterpreterEnv&lt;F&gt;&gt;(
+    x: [Env::Variable; M],
+) -&gt; [Env::Variable; N] {
+    <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
+    <span class="kw">let </span>disparity: usize = M % <span class="number">5</span>;
+    std::array::from_fn(|i| {
+        <span class="comment">// We have less small limbs in the last large limb
+        </span><span class="kw">let </span>upper_bound = <span class="kw">if </span>disparity != <span class="number">0 </span>&amp;&amp; i == N - <span class="number">1 </span>{
+            disparity
+        } <span class="kw">else </span>{
+            <span class="number">5
+        </span>};
+        (<span class="number">0</span>..upper_bound)
+            .map(|j| x[<span class="number">5 </span>* i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * LIMB_BITSIZE_SMALL)))
+            .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
+    })
+}
+
+<span class="doccomment">/// Helper function for limb recombination for carry specifically.
+/// Each big carry limb is stored as 6 (not 5!) small elements. We
+/// accept 36 small limbs, and return 6 large ones.
+</span><span class="kw">fn </span>combine_carry&lt;F: PrimeField, Env: InterpreterEnv&lt;F&gt;&gt;(
+    x: [Env::Variable; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>],
+) -&gt; [Env::Variable; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] {
+    <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
+    std::array::from_fn(|i| {
+        (<span class="number">0</span>..<span class="number">6</span>)
+            .map(|j| x[<span class="number">6 </span>* i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * LIMB_BITSIZE_SMALL)))
+            .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
+    })
+}
+
+<span class="doccomment">/// This constarins the multiplication part of the circuit.
+</span><span class="kw">pub fn </span>constrain_multiplication&lt;F: PrimeField, Ff: PrimeField, Env: InterpreterEnv&lt;F&gt;&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+) {
+    <span class="kw">let </span>chal_converted_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::ChalConverted(i)));
+    <span class="kw">let </span>coeff_input_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffInput(i)));
+    <span class="kw">let </span>coeff_result_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffResult(i)));
+
+    <span class="kw">let </span>ffield_modulus_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::FFieldModulus(i)));
+    <span class="kw">let </span>quotient_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Quotient(i)));
+    <span class="kw">let </span>carry_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] =
+        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Carry(i)));
+
+    <span class="comment">// u128 covers our limb sizes shifts which is good
+    </span><span class="kw">let </span>constant_u128 = |x: u128| -&gt; Env::Variable { Env::constant(From::from(x)) };
+
+    <span class="comment">// Result variable must be in the field.
+    </span><span class="kw">for </span>(i, x) <span class="kw">in </span>coeff_result_limbs_small.iter().enumerate() {
+        <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
+            <span class="comment">// If it's the highest limb, we need to check that it's representing a field element.
+            </span>env.range_check_ff_highest::&lt;Ff&gt;(x);
+        } <span class="kw">else </span>{
+            env.range_check15(x);
+        }
+    }
+
+    <span class="comment">// Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
+    </span><span class="kw">for </span>x <span class="kw">in </span>quotient_limbs_small.iter() {
+        env.range_check15(x);
+    }
+
+    <span class="comment">// Carry limbs need to be in particular ranges.
+    </span><span class="kw">for </span>(i, x) <span class="kw">in </span>carry_limbs_small.iter().enumerate() {
+        <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
+            <span class="comment">// This should be a diferent range check depending on which big-limb we're processing?
+            // So instead of one type of lookup we will have 5 different ones?
+            </span>env.range_check_abs4bit(x);
+        } <span class="kw">else </span>{
+            env.range_check_abs15bit(x);
+        }
+    }
+
+    <span class="comment">// FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
+
+    </span><span class="kw">let </span>chal_converted_limbs_large = combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(
+        chal_converted_limbs_small.clone(),
+    );
+    <span class="kw">let </span>coeff_input_limbs_large = combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(
+        coeff_input_limbs_small.clone(),
+    );
+    <span class="kw">let </span>coeff_result_limbs_large = combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(
+        coeff_result_limbs_small.clone(),
+    );
+    <span class="kw">let </span>quotient_limbs_large = combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(
+        quotient_limbs_small.clone(),
+    );
+    <span class="kw">let </span>carry_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
+        combine_carry::&lt;F, Env&gt;(carry_limbs_small.clone());
+
+    <span class="kw">let </span>limb_size_large = constant_u128(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
+    <span class="kw">let </span>add_extra_carries =
+        |i: usize, carry_limbs_large: <span class="kw-2">&amp;</span>[Env::Variable; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>]| -&gt; Env::Variable {
+            <span class="kw">if </span>i == <span class="number">0 </span>{
+                -(carry_limbs_large[<span class="number">0</span>].clone() * limb_size_large.clone())
+            } <span class="kw">else if </span>i &lt; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2 </span>{
+                carry_limbs_large[i - <span class="number">1</span>].clone()
+                    - carry_limbs_large[i].clone() * limb_size_large.clone()
+            } <span class="kw">else if </span>i == <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2 </span>{
+                carry_limbs_large[i - <span class="number">1</span>].clone()
+            } <span class="kw">else </span>{
+                <span class="macro">panic!</span>(<span class="string">"add_extra_carries: the index {i:?} is too high"</span>)
+            }
+        };
+
+    <span class="comment">// Equation 1
+    // General form:
+    // \sum_{k,j | k+j = i} xi_j cprev_k - c_i - \sum_{k,j} q_k f_j - c_i * 2^B + c_{i-1} =  0
+    </span><span class="attr">#[allow(clippy::needless_range_loop)]
+    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">1 </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            chal_converted_limbs_large[j].clone() * coeff_input_limbs_large[k].clone()
+        });
+        <span class="kw">if </span>i &lt; N_LIMBS_LARGE {
+            constraint = constraint - coeff_result_limbs_large[i].clone();
+        }
+        constraint = constraint
+            - fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+                quotient_limbs_large[j].clone() * ffield_modulus_limbs_large[k].clone()
+            });
+        constraint = constraint + add_extra_carries(i, <span class="kw-2">&amp;</span>carry_limbs_large);
+
+        env.add_constraint(constraint);
+    }
+}
+
+<span class="doccomment">/// Multiplication sub-circuit of the serialization/bootstrap
+/// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
+/// returns next coefficient c_i.
+</span><span class="attr">#[allow(dead_code)]
+</span><span class="kw">pub fn </span>multiplication_circuit&lt;F: PrimeField, Ff: PrimeField, Env: InterpreterEnv&lt;F&gt;&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    chal: Ff,
+    coeff_input: Ff,
+) -&gt; Ff {
+    <span class="kw">let </span>coeff_result = chal * coeff_input;
+
+    <span class="kw">let </span>two_bi: BigInt = TryFrom::try_from(<span class="number">2</span>).unwrap();
+
+    <span class="kw">let </span>large_limb_size: F = From::from(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
+
+    <span class="comment">// Foreign field modulus
+    </span><span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+    <span class="kw">let </span>f_bi: BigInt = f_bui.to_bigint().unwrap();
+
+    <span class="comment">// Native field modulus (prime)
+    </span><span class="kw">let </span>n_bui: BigUint = TryFrom::try_from(F::Params::MODULUS).unwrap();
+    <span class="kw">let </span>n_bi: BigInt = n_bui.to_bigint().unwrap();
+    <span class="kw">let </span>n_half_bi = <span class="kw-2">&amp;</span>n_bi / <span class="kw-2">&amp;</span>two_bi;
+
+    <span class="kw">let </span>chal_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>chal);
+    <span class="kw">let </span>chal_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(<span class="kw-2">&amp;</span>chal);
+    <span class="kw">let </span>coeff_input_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(<span class="kw-2">&amp;</span>coeff_input);
+    <span class="kw">let </span>coeff_result_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(<span class="kw-2">&amp;</span>coeff_result);
+    <span class="kw">let </span>ff_modulus_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_biguint::&lt;F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(f_bui.clone());
+
+    <span class="kw">let </span>coeff_input_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>coeff_input);
+    <span class="kw">let </span>coeff_result_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(<span class="kw-2">&amp;</span>coeff_result);
+
+    <span class="comment">// No generics for closures
+    </span><span class="kw">let </span>write_array_small =
+        |env: <span class="kw-2">&amp;mut </span>Env,
+         input: [F; N_LIMBS_SMALL],
+         f_column: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Fn(usize) -&gt; SerializationColumn| {
+            input.iter().enumerate().for_each(|(i, var)| {
+                env.copy(<span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var), Env::get_column(f_column(i)));
+            })
+        };
+
+    <span class="kw">let </span>write_array_large =
+        |env: <span class="kw-2">&amp;mut </span>Env,
+         input: [F; N_LIMBS_LARGE],
+         f_column: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Fn(usize) -&gt; SerializationColumn| {
+            input.iter().enumerate().for_each(|(i, var)| {
+                env.copy(<span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var), Env::get_column(f_column(i)));
+            })
+        };
+
+    write_array_small(env, chal_limbs_small, <span class="kw-2">&amp;</span>|i| {
+        SerializationColumn::ChalConverted(i)
+    });
+    write_array_small(env, coeff_input_limbs_small, <span class="kw-2">&amp;</span>|i| {
+        SerializationColumn::CoeffInput(i)
+    });
+    write_array_small(env, coeff_result_limbs_small, <span class="kw-2">&amp;</span>|i| {
+        SerializationColumn::CoeffResult(i)
+    });
+    write_array_large(env, ff_modulus_limbs_large, <span class="kw-2">&amp;</span>|i| {
+        SerializationColumn::FFieldModulus(i)
+    });
+
+    <span class="kw">let </span>chal_bi: BigInt = FieldHelpers::to_bigint_positive(<span class="kw-2">&amp;</span>chal);
+    <span class="kw">let </span>coeff_input_bi: BigInt = FieldHelpers::to_bigint_positive(<span class="kw-2">&amp;</span>coeff_input);
+    <span class="kw">let </span>coeff_result_bi: BigInt = FieldHelpers::to_bigint_positive(<span class="kw-2">&amp;</span>coeff_result);
+
+    <span class="kw">let </span>(quotient_bi, r_bi) = (<span class="kw-2">&amp;</span>chal_bi * coeff_input_bi - coeff_result_bi).div_rem(<span class="kw-2">&amp;</span>f_bi);
+    <span class="macro">assert!</span>(r_bi.is_zero());
+    <span class="macro">assert!</span>(quotient_bi.is_positive());
+
+    <span class="comment">// Used for witness computation
+    </span><span class="kw">let </span>quotient_limbs_large: [F; N_LIMBS_LARGE] =
+        limb_decompose_biguint::&lt;F, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(
+            quotient_bi.to_biguint().unwrap(),
+        );
+
+    <span class="comment">// Written into the columns
+    </span><span class="kw">let </span>quotient_limbs_small: [F; N_LIMBS_SMALL] =
+        limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(
+            quotient_bi.to_biguint().unwrap(),
+        );
+
+    write_array_small(env, quotient_limbs_small, <span class="kw-2">&amp;</span>|i| {
+        SerializationColumn::Quotient(i)
+    });
+
+    <span class="kw">let </span><span class="kw-2">mut </span>carry: F = From::from(<span class="number">0u64</span>);
+
+    <span class="attr">#[allow(clippy::needless_range_loop)]
+    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS_LARGE * <span class="number">2 </span>- <span class="number">1 </span>{
+        <span class="kw">let </span>compute_carry = |res: F| -&gt; F {
+            <span class="comment">// TODO enforce this as an integer division
+            </span><span class="kw">let </span><span class="kw-2">mut </span>res_bi = res.to_bigint_positive();
+            <span class="kw">if </span>res_bi &gt; n_half_bi {
+                res_bi -= <span class="kw-2">&amp;</span>n_bi;
+            }
+            <span class="kw">let </span>(div, rem) = res_bi.div_rem(<span class="kw-2">&amp;</span>large_limb_size.to_bigint_positive());
+            <span class="macro">assert!</span>(
+                rem.is_zero(),
+                <span class="string">"Cannot compute carry for step {i:?}: div {div:?}, rem {rem:?}"
+            </span>);
+            <span class="kw">let </span>carry_f: BigUint = bigint_to_biguint_f(div, <span class="kw-2">&amp;</span>n_bi);
+            F::from_biguint(<span class="kw-2">&amp;</span>carry_f).unwrap()
+        };
+
+        <span class="kw">let </span>assign_carry = |env: <span class="kw-2">&amp;mut </span>Env, newcarry: F, carryvar: <span class="kw-2">&amp;mut </span>F| {
+            <span class="comment">// Last carry should be zero, otherwise we record it
+            </span><span class="kw">if </span>i &lt; N_LIMBS_LARGE * <span class="number">2 </span>- <span class="number">2 </span>{
+                <span class="comment">// Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I think.
+                </span><span class="kw">let </span>newcarry_sign = <span class="kw">if </span>newcarry.to_bigint_positive() &gt; n_half_bi {
+                    F::zero() - F::one()
+                } <span class="kw">else </span>{
+                    F::one()
+                };
+                <span class="kw">let </span>newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
+                <span class="comment">// Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                </span><span class="kw">let </span>newcarry_limbs: [F; <span class="number">6</span>] =
+                    limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, <span class="number">6</span>&gt;(newcarry_abs_bui.clone());
+
+                <span class="kw">for </span>(j, limb) <span class="kw">in </span>newcarry_limbs.iter().enumerate() {
+                    env.copy(
+                        <span class="kw-2">&amp;</span>Env::constant(newcarry_sign * limb),
+                        Env::get_column(SerializationColumn::Carry(<span class="number">6 </span>* i + j)),
+                    );
+                }
+
+                <span class="kw-2">*</span>carryvar = newcarry;
+            } <span class="kw">else </span>{
+                <span class="comment">// should this be in circiut?
+                </span><span class="macro">assert!</span>(newcarry.is_zero(), <span class="string">"Last carry is non-zero"</span>);
+            }
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>res = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            chal_limbs_large[j] * coeff_input_limbs_large[k]
+        });
+        <span class="kw">if </span>i &lt; N_LIMBS_LARGE {
+            res -= <span class="kw-2">&amp;</span>coeff_result_limbs_large[i];
+        }
+        res -= fold_choice2(N_LIMBS_LARGE, i, |j, k| {
+            quotient_limbs_large[j] * ff_modulus_limbs_large[k]
+        });
+        res += carry;
+        <span class="kw">let </span>newcarry = compute_carry(res);
+        assign_carry(env, newcarry, <span class="kw-2">&amp;mut </span>carry);
+    }
+
+    constrain_multiplication::&lt;F, Ff, Env&gt;(env);
+    coeff_result
 }
 </code></pre></div></section></main></body></html>

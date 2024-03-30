@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["deserialize_field_element"],"trait":["InterpreterEnv"]};
+window.SIDEBAR_ITEMS = {"constant":["LIMB_BITSIZE_LARGE","LIMB_BITSIZE_SMALL","N_LIMBS_LARGE","N_LIMBS_SMALL"],"fn":["constrain_multiplication","deserialize_field_element","multiplication_circuit"],"trait":["InterpreterEnv"]};

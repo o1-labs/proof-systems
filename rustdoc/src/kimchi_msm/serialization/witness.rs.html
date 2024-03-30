@@ -366,7 +366,30 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::FieldHelpers;
 
@@ -378,6 +401,7 @@
         Lookup, LookupTable,
     },
     witness::Witness,
+    LIMB_BITSIZE, N_LIMBS,
 };
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>std::iter;
@@ -413,18 +437,18 @@
 }
 
 <span class="comment">// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
-</span><span class="kw">impl</span>&lt;Fp: PrimeField&gt; InterpreterEnv&lt;Fp&gt; <span class="kw">for </span>Env&lt;Fp&gt; {
+</span><span class="kw">impl</span>&lt;F: PrimeField&gt; InterpreterEnv&lt;F&gt; <span class="kw">for </span>Env&lt;F&gt; {
     <span class="kw">type </span>Position = Column;
 
-    <span class="comment">// Requiring an Fp element as we would need to compute values up to 180 bits
+    <span class="comment">// Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
-    </span><span class="kw">type </span>Variable = Fp;
+    </span><span class="kw">type </span>Variable = F;
 
     <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable) {
-        <span class="macro">assert_eq!</span>(cst, Fp::zero());
+        <span class="macro">assert_eq!</span>(cst, F::zero());
     }
 
-    <span class="kw">fn </span>constant(value: Fp) -&gt; <span class="self">Self</span>::Variable {
+    <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable {
         value
     }
 
@@ -437,15 +461,37 @@
         <span class="self">self</span>.witness.cols[i]
     }
 
+    <span class="kw">fn </span>range_check_abs15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="macro">assert!</span>(<span class="kw-2">*</span>value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">15</span>) || <span class="kw-2">*</span>value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">15</span>));
+        <span class="comment">// TODO implement actual lookups
+    </span>}
+
+    <span class="kw">fn </span>range_check_abs4bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="macro">assert!</span>(<span class="kw-2">*</span>value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>) || <span class="kw-2">*</span>value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>));
+        <span class="comment">// TODO implement actual lookups
+    </span>}
+
+    <span class="kw">fn </span>range_check_ff_highest&lt;Ff: PrimeField&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+        <span class="kw">let </span>top_modulus: BigUint = f_bui &gt;&gt; ((N_LIMBS - <span class="number">1</span>) * LIMB_BITSIZE);
+        <span class="kw">let </span>top_modulus_f: F = F::from_biguint(<span class="kw-2">&amp;</span>top_modulus).unwrap();
+        <span class="macro">assert!</span>(
+            <span class="kw-2">*</span>value &lt; top_modulus_f,
+            <span class="string">"The value {:?} was higher than modulus {:?}"</span>,
+            (<span class="kw-2">*</span>value).to_bigint_positive(),
+            top_modulus_f.to_bigint_positive()
+        );
+    }
+
     <span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="kw">let </span>value_biguint = value.to_biguint();
         <span class="macro">assert!</span>(value_biguint &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">15</span>)));
         <span class="comment">// Adding multiplicities
         </span><span class="kw">let </span>value_usize: usize = value_biguint.clone().try_into().unwrap();
-        <span class="self">self</span>.lookup_multiplicities_rangecheck15[value_usize] += Fp::one();
+        <span class="self">self</span>.lookup_multiplicities_rangecheck15[value_usize] += F::one();
         <span class="self">self</span>.rangecheck15_lookups.push(Lookup {
             table_id: LookupTable::RangeCheck15,
-            numerator: Fp::one(),
+            numerator: F::one(),
             value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
         })
     }
@@ -455,10 +501,10 @@
         <span class="macro">assert!</span>(value_biguint &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">4</span>)));
         <span class="comment">// Adding multiplicities
         </span><span class="kw">let </span>value_usize: usize = value_biguint.clone().try_into().unwrap();
-        <span class="self">self</span>.lookup_multiplicities_rangecheck4[value_usize] += Fp::one();
+        <span class="self">self</span>.lookup_multiplicities_rangecheck4[value_usize] += F::one();
         <span class="self">self</span>.rangecheck4_lookups.push(Lookup {
             table_id: LookupTable::RangeCheck4,
-            numerator: Fp::one(),
+            numerator: F::one(),
             value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
         })
     }
@@ -483,7 +529,7 @@
         </span><span class="kw">let </span>x_bytes_u8 = <span class="kw-2">&amp;</span>x.to_bytes()[<span class="number">0</span>..<span class="number">16</span>];
         <span class="kw">let </span>x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         <span class="kw">let </span>res = (x_u128 &gt;&gt; lowest_bit) &amp; ((<span class="number">1 </span>&lt;&lt; (highest_bit - lowest_bit)) - <span class="number">1</span>);
-        <span class="kw">let </span>res_fp: Fp = res.into();
+        <span class="kw">let </span>res_fp: F = res.into();
         <span class="self">self</span>.write_column(position, res_fp);
         res_fp
     }
