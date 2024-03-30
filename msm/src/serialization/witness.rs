@@ -1,4 +1,4 @@
-use ark_ff::PrimeField;
+use ark_ff::{FpParameters, PrimeField};
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
@@ -10,6 +10,7 @@ use crate::{
         Lookup, LookupTable,
     },
     witness::Witness,
+    LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::domains::EvaluationDomains;
 use std::iter;
@@ -45,18 +46,18 @@ pub struct Env<Fp> {
 }
 
 // TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
-impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
+impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
-    // Requiring an Fp element as we would need to compute values up to 180 bits
+    // Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
-    type Variable = Fp;
+    type Variable = F;
 
     fn add_constraint(&mut self, cst: Self::Variable) {
-        assert_eq!(cst, Fp::zero());
+        assert_eq!(cst, F::zero());
     }
 
-    fn constant(value: Fp) -> Self::Variable {
+    fn constant(value: F) -> Self::Variable {
         value
     }
 
@@ -69,15 +70,37 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         self.witness.cols[i]
     }
 
+    fn range_check_abs15bit(&mut self, value: &Self::Variable) {
+        assert!(*value < F::from(1u64 << 15) || *value >= F::zero() - F::from(1u64 << 15));
+        // TODO implement actual lookups
+    }
+
+    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
+        assert!(*value < F::from(1u64 << 4) || *value >= F::zero() - F::from(1u64 << 4));
+        // TODO implement actual lookups
+    }
+
+    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable) {
+        let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+        let top_modulus: BigUint = f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE);
+        let top_modulus_f: F = F::from_biguint(&top_modulus).unwrap();
+        assert!(
+            *value < top_modulus_f,
+            "The value {:?} was higher than modulus {:?}",
+            (*value).to_bigint_positive(),
+            top_modulus_f.to_bigint_positive()
+        );
+    }
+
     fn range_check15(&mut self, value: &Self::Variable) {
         let value_biguint = value.to_biguint();
         assert!(value_biguint < BigUint::from(2u128.pow(15)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities_rangecheck15[value_usize] += Fp::one();
+        self.lookup_multiplicities_rangecheck15[value_usize] += F::one();
         self.rangecheck15_lookups.push(Lookup {
             table_id: LookupTable::RangeCheck15,
-            numerator: Fp::one(),
+            numerator: F::one(),
             value: vec![*value],
         })
     }
@@ -87,10 +110,10 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         assert!(value_biguint < BigUint::from(2u128.pow(4)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities_rangecheck4[value_usize] += Fp::one();
+        self.lookup_multiplicities_rangecheck4[value_usize] += F::one();
         self.rangecheck4_lookups.push(Lookup {
             table_id: LookupTable::RangeCheck4,
-            numerator: Fp::one(),
+            numerator: F::one(),
             value: vec![*value],
         })
     }
@@ -115,7 +138,7 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         let x_bytes_u8 = &x.to_bytes()[0..16];
         let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
-        let res_fp: Fp = res.into();
+        let res_fp: F = res.into();
         self.write_column(position, res_fp);
         res_fp
     }

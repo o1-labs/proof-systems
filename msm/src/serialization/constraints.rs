@@ -137,6 +137,18 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         pos.ix_to_column()
     }
 
+    fn range_check_abs15bit(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
+
+    fn range_check_ff_highest<Ff: PrimeField>(&mut self, _value: &Self::Variable) {
+        // FIXME unmplemented
+    }
+
+    fn range_check_abs4bit(&mut self, _value: &Self::Variable) {
+        // FIXME unimplemented
+    }
+
     fn range_check15(&mut self, value: &Self::Variable) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
         self.rangecheck15_lookups.push(Lookup {
