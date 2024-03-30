@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["SerializationColumn"]};
+window.SIDEBAR_ITEMS = {"constant":["SER_N_COLUMNS"],"enum":["SerializationColumn"]};

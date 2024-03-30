@@ -255,28 +255,15 @@
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
 <a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{mvlookup::LookupTableID, MVLookup};
-
-<span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
-</span><span class="kw">pub const </span>N_INTERMEDIATE_LIMBS: usize = <span class="number">20</span>;
 
 <span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>witness;
+
+<span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
+</span><span class="kw">pub const </span>N_INTERMEDIATE_LIMBS: usize = <span class="number">20</span>;
 
 <span class="attr">#[derive(Clone, Copy, Debug)]
 </span><span class="kw">pub enum </span>LookupTable {
@@ -322,7 +309,8 @@
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            constraints, interpreter::deserialize_field_element, witness, N_INTERMEDIATE_LIMBS,
+            column::SER_N_COLUMNS, constraints, interpreter::deserialize_field_element, witness,
+            N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
@@ -369,15 +357,13 @@
         <span class="comment">// Must be at least 1 &lt;&lt; 15 to support rangecheck15
         </span><span class="kw">const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 
-        <span class="kw">const </span>SERIALIZATION_N_COLUMNS: usize = <span class="number">3 </span>+ N_INTERMEDIATE_LIMBS + N_LIMBS;
-
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(DOMAIN_SIZE).unwrap();
 
         <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
         <span class="kw">let </span><span class="kw-2">mut </span>witness_env = witness::Env::&lt;Fp&gt;::create();
         <span class="comment">// Boxing to avoid stack overflow
-        </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;SERIALIZATION_N_COLUMNS, Vec&lt;Fp&gt;&gt;&gt; = Box::new(Witness {
+        </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;SER_N_COLUMNS, Vec&lt;Fp&gt;&gt;&gt; = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(DOMAIN_SIZE))),
         });
 
@@ -406,14 +392,9 @@
             <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = constraints::Env::&lt;Fp&gt;::create();
             <span class="comment">// Witness
             </span>deserialize_field_element(<span class="kw-2">&amp;mut </span>witness_env, limbs);
-            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">3 </span>{
-                witness.cols[i].push(witness_env.current_kimchi_limbs[i]);
-            }
-            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
-                witness.cols[<span class="number">3 </span>+ i].push(witness_env.msm_limbs[i]);
-            }
-            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N_INTERMEDIATE_LIMBS {
-                witness.cols[<span class="number">3 </span>+ N_LIMBS + i].push(witness_env.intermediate_limbs[i]);
+            <span class="comment">// Filling actually used rows
+            </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..SER_N_COLUMNS {
+                witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
             <span class="comment">// Constraints
@@ -513,26 +494,19 @@
             ScalarSponge,
             Column,
             <span class="kw">_</span>,
-            SERIALIZATION_N_COLUMNS,
+            SER_N_COLUMNS,
             LookupTable,
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
 
-        <span class="kw">let </span>verifies = verify::&lt;
-            <span class="kw">_</span>,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            SERIALIZATION_N_COLUMNS,
-            <span class="number">0</span>,
-            LookupTable,
-        &gt;(
-            domain,
-            <span class="kw-2">&amp;</span>srs,
-            <span class="kw-2">&amp;</span>constraints,
-            <span class="kw-2">&amp;</span>proof,
-            Witness::zero_vec(DOMAIN_SIZE),
-        );
+        <span class="kw">let </span>verifies =
+            verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, SER_N_COLUMNS, <span class="number">0</span>, LookupTable&gt;(
+                domain,
+                <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
+                <span class="kw-2">&amp;</span>proof,
+                Witness::zero_vec(DOMAIN_SIZE),
+            );
         <span class="macro">assert!</span>(verifies)
     }
 }
