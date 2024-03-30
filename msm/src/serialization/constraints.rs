@@ -5,10 +5,10 @@ use kimchi::circuits::{
 };
 
 use crate::{
-    columns::Column,
+    columns::{Column, ColumnIndexer},
     expr::{curr_cell, next_cell, E},
-    serialization::N_INTERMEDIATE_LIMBS,
-    MVLookupTableID as _, N_LIMBS,
+    serialization::column::SerializationColumn,
+    MVLookupTableID as _,
 };
 
 use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
@@ -126,19 +126,15 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         y
     }
 
-    fn get_column_for_kimchi_limb(j: usize) -> Self::Position {
-        assert!(j < 3);
-        Column::X(j)
+    fn read_column(&self, position: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: position,
+            row: CurrOrNext::Curr,
+        }))
     }
 
-    fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
-        assert!(j < N_INTERMEDIATE_LIMBS);
-        Column::X(3 + N_LIMBS + j)
-    }
-
-    fn get_column_for_msm_limb(j: usize) -> Self::Position {
-        assert!(j < N_LIMBS);
-        Column::X(3 + j)
+    fn get_column(pos: SerializationColumn) -> Self::Position {
+        pos.ix_to_column()
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
