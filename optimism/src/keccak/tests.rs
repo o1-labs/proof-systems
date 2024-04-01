@@ -12,6 +12,7 @@ use kimchi::{
 use mina_curves::pasta::Fp;
 use rand::Rng;
 use sha3::{Digest, Keccak256};
+use std::collections::HashMap;
 
 #[test]
 fn test_pad_blocks() {
@@ -149,6 +150,49 @@ fn test_keccak_witness_satisfies_constraints() {
     // Check that the hash matches
     for (i, byte) in output.iter().enumerate() {
         assert_eq!(*byte, hash[i]);
+    }
+}
+
+#[test]
+fn test_regression_number_of_constraints_and_degree() {
+    let mut rng = o1_utils::tests::make_test_rng();
+
+    // Generate random bytelength and preimage for Keccak
+    let bytelength = rng.gen_range(1..1000);
+    let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
+
+    let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+    keccak_env.constraints_env.constraints();
+    keccak_env.constraints_env.lookups();
+
+    // Checking relation constraints
+    {
+        // Check that the number of constraints is correct
+        assert_eq!(keccak_env.constraints_env.constraints.len(), 887);
+
+        let mut constraint_degrees: HashMap<u64, u32> = HashMap::new();
+        keccak_env
+            .constraints_env
+            .constraints
+            .iter()
+            .for_each(|constraint| {
+                let degree = constraint.degree(1, 0);
+                let entry = constraint_degrees.entry(degree).or_insert(0);
+                *entry += 1;
+            });
+        // We have 3 different degrees of constraints
+        assert_eq!(constraint_degrees.len(), 3);
+        // 489 degree-2 constraints
+        assert_eq!(constraint_degrees[&2], 489);
+        // 387 degree-3 constraints
+        assert_eq!(constraint_degrees[&3], 387);
+        // 11 degree-4 constraints
+        assert_eq!(constraint_degrees[&4], 11);
+    }
+
+    // Checking lookup constraints
+    {
+        assert_eq!(keccak_env.constraints_env.lookups.len(), 2361);
     }
 }
 
