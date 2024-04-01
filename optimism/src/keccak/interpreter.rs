@@ -2,7 +2,7 @@
 
 use crate::{
     keccak::{
-        column::{PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+        column::{Flag::*, PAD_BYTES_LEN, ROUND_CONST_LEN},
         grid_index,
         Constraint::{self, *},
         KeccakColumn,
@@ -791,19 +791,19 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
     /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
     fn is_absorb(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagAbsorb)
+        self.variable(KeccakColumn::Selector(Absorb))
     }
     /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
     fn is_squeeze(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagSqueeze)
+        self.variable(KeccakColumn::Selector(Squeeze))
     }
     /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
     fn is_root(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagRoot)
+        self.variable(KeccakColumn::Selector(Root))
     }
-    /// Returns a degree-2 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
     fn is_pad(&self) -> Self::Variable {
-        self.pad_length() * self.variable(KeccakColumn::InvPadLength)
+        self.variable(KeccakColumn::Selector(Pad))
     }
 
     /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
@@ -812,7 +812,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
     /// Returns a variable that encodes the current round number [0..24)
     fn round(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagRound)
+        self.variable(KeccakColumn::RoundNumber)
     }
 
     /// Returns a variable that encodes the bytelength of the padding if any [0..136)

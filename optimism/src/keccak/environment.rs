@@ -206,10 +206,10 @@ impl<F: Field> KeccakEnv<F> {
     fn set_flag_squeeze(&mut self) {
         self.write_column(KeccakColumn::FlagSqueeze, 1);
     }
-    /// Sets the witness corresponding to the `FlagAbsorb` column to 1 and
+    /// Sets the witness corresponding to the absorb selectors to 1 and
     /// updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
     fn set_flag_absorb(&mut self, absorb: Absorb) {
-        self.write_column(KeccakColumn::FlagAbsorb, 1);
+        self.write_column(KeccakColumn::Selector, 1);
         match absorb {
             Absorb::First => self.set_flag_root(),
             Absorb::Last => self.set_flag_pad(),
@@ -220,12 +220,12 @@ impl<F: Field> KeccakEnv<F> {
             Absorb::Middle => (),
         }
     }
-    /// Sets the witness corresponding to the `FlagRoot` column to 1
+    /// Sets the witness corresponding to the `Root` selector to 1
     fn set_flag_root(&mut self) {
-        self.write_column(KeccakColumn::FlagRoot, 1);
+        self.write_column(KeccakColumn::Selector(Root), 1);
     }
-    /// Sets the witness corresponding to the `FlagPad` column to 1, and updates the remaining columns
-    /// related to padding flags such as `PadLength`, `InvPadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
+    /// Sets the witness corresponding to the `Pad` selector to 1, and updates the remaining columns
+    /// related to padding flags such as `PadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
     fn set_flag_pad(&mut self) {
         // Initialize padding columns with precomputed values to speed up interpreter
         self.write_column(KeccakColumn::PadLength, self.pad_len);
