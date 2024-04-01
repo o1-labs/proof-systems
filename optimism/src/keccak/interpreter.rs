@@ -115,7 +115,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
     /// Adds one KeccakConstraint to the environment if the selector holds
-    fn constrain(&mut self, tag: Constraint, flag: Self::Variable, x: Self::Variable);
+    fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable);
 
     /// Adds all 887 constraints/checks to the environment:
     /// - 489 constraints of degree 2
@@ -140,18 +140,18 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         self.constrain_round();
     }
 
-    /// Constrains 144 checks of correctness of mode flags
-    /// - 141 constraints of degree 2
+    /// Constrains 141 checks of correctness of mode flags
+    /// - 138 constraints of degree 2
     /// - 2 constraints of degree 3
     /// - 1 constraint of degree 4
     /// Of which:
-    /// - 142 constraints are sponge-only
+    /// - 139 constraints are sponge-only
     /// - 2 constraints are sponge+round related
     // TODO: when Round and Sponge circuits are separated, the last one will be removed
     //       (in particular, the ones involving round and sponge together)
     fn constrain_flags(&mut self) {
         // Booleanity of sponge flags:
-        // - 139 constraints of degree 2
+        // - 136 constraints of degree 2
         self.constrain_booleanity();
 
         // Mutual exclusivity of flags: 5 constraints:
@@ -161,19 +161,17 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         self.constrain_mutex();
     }
 
-    /// Constrains 139 checks of booleanity for some mode flags.
-    /// - 139 constraints of degree 2
+    /// Constrains 136 checks of booleanity for some mode flags.
+    /// - 136 constraints of degree 2
     /// These involve sponge-only related variables.
     fn constrain_booleanity(&mut self) {
-        // Absorb is either true or false
-        self.constrain(BooleanityAbsorb, Self::is_boolean(self.is_absorb()));
-        // Squeeze is either true or false
-        self.constrain(BooleanitySqueeze, Self::is_boolean(self.is_squeeze()));
-        // Root is either true or false
-        self.constrain(BooleanityRoot, Self::is_boolean(self.is_root()));
         for i in 0..RATE_IN_BYTES {
             // Bytes are either involved on padding or not
-            self.constrain(BooleanityPadding(i), Self::is_boolean(self.in_padding(i)));
+            self.constrain(
+                BooleanityPadding(i),
+                self.is_pad(),
+                Self::is_boolean(self.in_padding(i)),
+            );
         }
     }
 
