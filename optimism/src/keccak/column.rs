@@ -44,24 +44,27 @@ pub(crate) const ROUND_COEFFS_LEN: usize = QUARTERS; // The round constant of ea
 /// (Sponge or Round) that is currently being executed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Column {
+    /// Selectors used to distinguish between different modes of the Keccak step
+    Selector(Flag),
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
     /// Block index inside the hash to enumerate preimage bytes
     BlockIndex,
     /// Hash step identifier to distinguish inside interstep communication
     StepIndex,
-    /// Coeff Round = [0..24)
-    FlagRound,
-    FlagAbsorb,             // Coeff Absorb = 0 | 1
-    FlagSqueeze,            // Coeff Squeeze = 0 | 1
-    FlagRoot,               // Coeff Root = 0 | 1
-    PadLength,              // Coeff Length 0 | 1 ..=136
-    InvPadLength,           // Inverse of PadLength when PadLength != 0
-    TwoToPad,               // 2^PadLength
-    PadBytesFlags(usize),   // 136 boolean values
-    PadSuffix(usize),       // 5 values with padding suffix
-    RoundConstants(usize),  // Round constants
-    Input(usize),           // Curr[0..100) either ThetaStateA or SpongeOldState
+
+    PadLength, // Only nonzero when Selector(Flag::IsAbsorbLast) = 1 : Length 0 | 1 ..=136
+    InvPadLength, // Only nonzero when Selector(Flag::IsAbsorbLast) = 1 : Inverse of PadLength when PadLength != 0
+    TwoToPad,     // Only nonzero when Selector(Flag::IsAbsorbLast) = 1 : 2^PadLength
+    PadBytesFlags(usize), // Only nonzero when Selector(Flag::IsAbsorbLast) = 1 : 136 boolean values
+    PadSuffix(usize), // Only nonzero when Selector(Flag::IsAbsorbLast) = 1 :
+
+    RoundNumber, // Only nonzero when Selector(Flag::IsRound) = 1 : Round 0 | 1 ..=23
+    RoundConstants(usize), // Only nonzero when Selector(Flag::IsRound) = 1 : Round constants
+
+    Input(usize),  // Curr[0..100) either ThetaStateA or SpongeOldState
+    Output(usize), // Next[0..100) either IotaStateG or SpongeXorState
+
     ThetaShiftsC(usize),    // Round Curr[100..180)
     ThetaDenseC(usize),     // Round Curr[180..200)
     ThetaQuotientC(usize),  // Round Curr[200..205)
@@ -76,11 +79,21 @@ pub enum Column {
     PiRhoExpandRotE(usize), // Round Curr[1065..1165)
     ChiShiftsB(usize),      // Round Curr[1165..1565)
     ChiShiftsSum(usize),    // Round Curr[1565..1965)
-    SpongeNewState(usize),  // Sponge Curr[100..200)
-    SpongeZeros(usize),     // Sponge Curr[168..200)
-    SpongeBytes(usize),     // Sponge Curr[200..400)
-    SpongeShifts(usize),    // Sponge Curr[400..800)
-    Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
+
+    SpongeNewState(usize), // Sponge Curr[100..200)
+    SpongeZeros(usize),    // Sponge Curr[168..200)
+    SpongeBytes(usize),    // Sponge Curr[200..400)
+    SpongeShifts(usize),   // Sponge Curr[400..800)
+}
+
+/// These selectors determine the specific behaviour so that Keccak steps
+/// can be split into different instances for folding
+pub enum Flag {
+    IsRound,        // Current step performs a round of the permutation
+    IsAbsorbFirst,  // Current step performs a root absorb
+    IsAbsorbMiddle, // Current step performs an absorb of the sponge
+    IsAbsorbLast,   // Current step performs the padding absorb
+    IsSqueeze,      // Current step performs the squeeze of the sponge
 }
 
 /// The witness columns used by the Keccak circuit.
