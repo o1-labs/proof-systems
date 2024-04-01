@@ -42,15 +42,7 @@ pub enum Error {
 /// All the names for constraints involved in the Keccak circuit
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Constraint {
-    BooleanityAbsorb,
-    BooleanitySqueeze,
-    BooleanityRoot,
     BooleanityPadding(usize),
-    MutexSqueezeRoot,
-    MutexSqueezePad,
-    MutexRoundPad,
-    MutexRoundRoot,
-    MutexAbsorbSqueeze,
     AbsorbZeroPad(usize),
     AbsorbRootZero(usize),
     AbsorbXor(usize),

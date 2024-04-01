@@ -277,36 +277,11 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[0].errors.clear();
 
     // Break booleanity constraints
-    witness_env[0].witness[KeccakColumn::FlagAbsorb] = Fp::from(2u32);
-    witness_env[0].witness[KeccakColumn::FlagSqueeze] = Fp::from(2u32);
-    witness_env[0].witness[KeccakColumn::FlagRoot] = Fp::from(2u32);
     witness_env[0].witness[KeccakColumn::PadBytesFlags(0)] = Fp::from(2u32);
     witness_env[0].constrain_booleanity();
     assert_eq!(
         witness_env[0].errors,
-        vec![
-            Error::Constraint(BooleanityAbsorb),
-            Error::Constraint(BooleanitySqueeze),
-            Error::Constraint(BooleanityRoot),
-            Error::Constraint(BooleanityPadding(0))
-        ]
-    );
-    witness_env[0].errors.clear();
-
-    // Break mutex constraints
-    witness_env[0].witness[KeccakColumn::FlagAbsorb] = Fp::from(1u32);
-    witness_env[0].witness[KeccakColumn::FlagSqueeze] = Fp::from(1u32);
-    witness_env[0].witness[KeccakColumn::FlagRound] = Fp::from(1u32);
-    witness_env[0].constrain_mutex();
-    assert_eq!(
-        witness_env[0].errors,
-        vec![
-            Error::Constraint(MutexSqueezeRoot),
-            Error::Constraint(MutexSqueezePad),
-            Error::Constraint(MutexRoundPad),
-            Error::Constraint(MutexRoundRoot),
-            Error::Constraint(MutexAbsorbSqueeze)
-        ]
+        vec![Error::Constraint(BooleanityPadding(0))]
     );
     witness_env[0].errors.clear();
 
