@@ -26,7 +26,7 @@ const FLAG_ROUND_OFF: usize = 0; // Offset of the Round selector inside the mode
 const FLAG_ROOT_OFF: usize = 1; // Offset of the Root selector inside the mode flags
 const FLAG_ABSORB_OFF: usize = 2; // Offset of the Absorb selector inside the mode flags
 const FLAG_PAD_OFF: usize = 3; // Offset of the Pad selector  inside the mode flags
-const FLAG_PADROOT_OFF: usize = 4; // Offset of the PadRoot selector  inside the mode flags
+const FLAG_ROOTPAD_OFF: usize = 4; // Offset of the RootPad selector  inside the mode flags
 const FLAG_SQUEEZE_OFF: usize = 5; // Offset of the Squeeze selector inside the mode flags
 
 const STATUS_IDXS_OFF: usize = MODE_LEN; // The offset of the columns reserved for the status indices
@@ -113,12 +113,12 @@ pub enum Flag {
 }
 
 /// The columns used by the Keccak circuit.
-/// The Keccak circuit is split into two main modes: Round and Sponge (split into Root, Absorb, Pad, PadRoot, Squeeze).
+/// The Keccak circuit is split into two main modes: Round and Sponge (split into Root, Absorb, Pad, RootPad, Squeeze).
 /// The columns are shared between the Sponge and Round steps
 /// (the total number of columns refers to the maximum of columns used by each mode)
 /// The hash, block, and step indices are shared between both modes.
 /// The row is split into the following entries:
-/// - mode_flags: what kind of mode is running: round, root, absorb, pad, padroot, squeeze. Only 1 of them can be active.
+/// - mode_flags: what kind of mode is running: round, root, absorb, pad, rootpad, squeeze. Only 1 of them can be active.
 /// - hash_index: Which hash this is inside the circuit
 /// - block_index: Which block this is inside the hash
 /// - step_index: Which step this is inside the hash
@@ -272,7 +272,7 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
             Column::Selector(Flag::Root) => &self.mode_flags()[FLAG_ROOT_OFF],
             Column::Selector(Flag::Absorb) => &self.mode_flags()[FLAG_ABSORB_OFF],
             Column::Selector(Flag::Pad) => &self.mode_flags()[FLAG_PAD_OFF],
-            Column::Selector(Flag::PadRoot) => &self.mode_flags()[FLAG_PADROOT_OFF],
+            Column::Selector(Flag::PadRoot) => &self.mode_flags()[FLAG_ROOTPAD_OFF],
             Column::Selector(Flag::Squeeze) => &self.mode_flags()[FLAG_SQUEEZE_OFF],
 
             Column::HashIndex => self.hash_index(),
@@ -389,7 +389,7 @@ impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
             Column::Selector(Flag::Root) => &mut self.mode_flags_mut()[FLAG_ROOT_OFF],
             Column::Selector(Flag::Absorb) => &mut self.mode_flags_mut()[FLAG_ABSORB_OFF],
             Column::Selector(Flag::Pad) => &mut self.mode_flags_mut()[FLAG_PAD_OFF],
-            Column::Selector(Flag::PadRoot) => &mut self.mode_flags_mut()[FLAG_PADROOT_OFF],
+            Column::Selector(Flag::RootPad) => &mut self.mode_flags_mut()[FLAG_ROOTPAD_OFF],
             Column::Selector(Flag::Squeeze) => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],
 
             Column::HashIndex => &mut self.cols[STATUS_IDXS_OFF],

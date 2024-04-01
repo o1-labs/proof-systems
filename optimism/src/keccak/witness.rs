@@ -8,7 +8,9 @@
 //! <https://keccak.team/keccak_specs_summary.html>
 use crate::{
     keccak::{
-        column::KeccakWitness, interpreter::KeccakInterpreter, Constraint, Error, KeccakColumn,
+        column::{Flag::*, KeccakWitness},
+        interpreter::KeccakInterpreter,
+        Constraint, Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, Lookup, LookupTable, LookupTableIDs::*},
 };
@@ -81,6 +83,46 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         self.witness[column]
     }
 
+    fn check(&mut self, tag: Selector, x: Self::Variable) {
+        if x != F::zero() {
+            self.errors.push(Error::Selector(tag));
+        }
+    }
+
+    fn checks(&self) {
+        // BOOLEANITY CHECKS
+        {
+            // Round is either true or false
+            self.check(NotBoolean(Round), Self::is_boolean(self.mode_round()));
+            // Absorb is either true or false
+            self.check(NotBoolean(Absorb), Self::is_boolean(self.mode_absorb()));
+            // Squeeze is either true or false
+            self.check(NotBoolean(Squeeze), Self::is_boolean(self.mode_squeeze()));
+            // Root is either true or false
+            self.check(NotBoolean(Root), Self::is_boolean(self.mode_root()));
+            // Pad is either true or false
+            self.check(NotBoolean(Pad), Self::is_boolean(self.mode_pad()));
+            // RootPad is either true or false
+            self.check(NotBoolean(RootPad), Self::is_boolean(self.mode_rootpad()));
+        }
+
+        // MUTUAL EXCLUSIVITY CHECKS
+        {
+            // Check only one of them is one
+            self.check(
+                NotMutex,
+                self.is_one(
+                    self.mode_round()
+                        + self.mode_absorb()
+                        + self.mode_squeeze()
+                        + self.mode_root()
+                        + self.mode_pad()
+                        + self.mode_rootpad(),
+                ),
+            );
+        }
+    }
+
     /// Checks the constraint `tag` by checking that the input `x` is zero
     fn constrain(&mut self, tag: Constraint, x: Self::Variable) {
         if x != F::zero() {
@@ -109,26 +151,26 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         }
     }
 
-    ///////////////////////
-    // COLUMN OPERATIONS //
-    ///////////////////////
+    /////////////////////////
+    // SELECTOR OPERATIONS //
+    /////////////////////////
 
-    fn is_sponge(&self) -> Self::Variable {
-        Self::xor(self.is_absorb().clone(), self.is_squeeze().clone())
-    }
-    fn is_absorb(&self) -> Self::Variable {
+    fn mode_absorb(&self) -> Self::Variable {
         self.variable(KeccakColumn::Selector(Absorb))
     }
-    fn is_squeeze(&self) -> Self::Variable {
+    fn mode_squeeze(&self) -> Self::Variable {
         self.variable(KeccakColumn::Selector(Squeeze))
     }
-    fn is_root(&self) -> Self::Variable {
+    fn mode_root(&self) -> Self::Variable {
         self.variable(KeccakColumn::Selector(Root))
     }
-    fn is_pad(&self) -> Self::Variable {
+    fn mode_pad(&self) -> Self::Variable {
         self.variable(KeccakColumn::Selector(Pad))
     }
-    fn is_round(&self) -> Self::Variable {
+    fn mode_rootpad(&self) -> Self::Variable {
+        self.variable(KeccakColumn::Selector(RootPad))
+    }
+    fn mode_round(&self) -> Self::Variable {
         self.variable(KeccakColumn::Selector(Round))
     }
 }

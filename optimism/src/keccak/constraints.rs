@@ -70,6 +70,14 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         }))
     }
 
+    fn check(&mut self, tag: Selector, x: Self::Variable) {
+        // No-op in constraint side
+    }
+
+    fn checks(&self) {
+        // No-op in constraint side
+    }
+
     fn constrain(&mut self, _tag: Constraint, x: Self::Variable) {
         self.constraints.push(x);
     }
@@ -82,48 +90,41 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         self.lookups.push(lookup);
     }
 
-    ///////////////////////
-    // COLUMN OPERATIONS //
-    ///////////////////////
+    /////////////////////////
+    // SELECTOR OPERATIONS //
+    /////////////////////////
 
-    fn is_sponge(&self) -> Self::Variable {
+    fn mode_absorb(&self) -> Self::Variable {
         match self.selector {
-            Some(Absorb) | Some(Root) | Some(Pad) | Some(PadRoot) | Some(Squeeze) => {
-                Self::Variable::one()
-            }
+            Some(Absorb) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-
-    fn is_absorb(&self) -> Self::Variable {
-        match self.selector {
-            Some(Absorb) | Some(Root) | Some(Pad) | Some(PadRoot) => Self::Variable::one(),
-            _ => Self::Variable::zero(),
-        }
-    }
-
-    fn is_squeeze(&self) -> Self::Variable {
+    fn mode_squeeze(&self) -> Self::Variable {
         match self.selector {
             Some(Squeeze) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-
-    fn is_root(&self) -> Self::Variable {
+    fn mode_root(&self) -> Self::Variable {
         match self.selector {
-            Some(Root) | Some(PadRoot) => Self::Variable::one(),
+            Some(Root) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-
-    fn is_pad(&self) -> Self::Variable {
+    fn mode_pad(&self) -> Self::Variable {
         match self.selector {
-            Some(Pad) | Some(PadRoot) => Self::Variable::one(),
+            Some(Pad) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-
-    fn is_round(&self) -> Self::Variable {
+    fn mode_rootpad(&self) -> Self::Variable {
+        match self.selector {
+            Some(RootPad) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+    fn mode_round(&self) -> Self::Variable {
         match self.selector {
             Some(Round) => Self::Variable::one(),
             _ => Self::Variable::zero(),

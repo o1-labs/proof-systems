@@ -114,6 +114,12 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Returns the variable corresponding to a given column alias.
     fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
+    /// Check one condition on the selectors
+    fn check(&mut self, tag: Selector, x: Self::Variable);
+
+    /// Checks that the selectors are set correctly
+    fn checks(&self);
+
     /// Adds one KeccakConstraint to the environment if the selector holds
     fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable);
 
@@ -130,6 +136,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// So:
     /// - At most, 474 constraints are added per row
     fn constraints(&mut self) {
+        self.check_selectors();
+
         // CORRECTNESS OF FLAGS: 136 CONSTRAINTS
         // - 136 constraints of degree 2
         // Of which:
@@ -683,6 +691,51 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         );
     }
 
+    ///////////////////////////
+    /// SELECTOR OPERATIONS ///
+    ///////////////////////////
+
+    /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
+    fn is_sponge(&self) -> Self::Variable {
+        Self::xor(self.is_absorb(), self.is_squeeze())
+    }
+    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+    fn is_absorb(&self) -> Self::Variable {
+        Self::or(
+            Self::or(self.mode_root(), self.mode_rootpad()),
+            Self::or(self.mode_pad(), self.mode_absorb()),
+        )
+    }
+    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+    fn is_squeeze(&self) -> Self::Variable {
+        self.mode_squeeze()
+    }
+    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+    fn is_root(&self) -> Self::Variable {
+        Self::or(self.mode_root(), self.mode_rootpad())
+    }
+    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    fn is_pad(&self) -> Self::Variable {
+        Self::or(self.mode_pad(), self.mode_rootpad())
+    }
+    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+    fn is_round(&self) -> Self::Variable {
+        self.mode_round()
+    }
+
+    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+    fn mode_absorb(&self) -> Self::Variable;
+    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+    fn mode_squeeze(&self) -> Self::Variable;
+    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+    fn mode_root(&self) -> Self::Variable;
+    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    fn mode_pad(&self) -> Self::Variable;
+    /// Returns a degree-1 variable that encodes whether the current step is the first and last absorb sponge (1 = yes)
+    fn mode_rootpad(&self) -> Self::Variable;
+    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+    fn mode_round(&self) -> Self::Variable;
+
     /////////////////////////
     /// COLUMN OPERATIONS ///
     /////////////////////////
@@ -754,19 +807,6 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 + Self::two_pow(48) * quarters(x, 3)
         }
     }
-
-    /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
-    fn is_sponge(&self) -> Self::Variable;
-    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
-    fn is_absorb(&self) -> Self::Variable;
-    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
-    fn is_squeeze(&self) -> Self::Variable;
-    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
-    fn is_root(&self) -> Self::Variable;
-    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
-    fn is_pad(&self) -> Self::Variable;
-    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
-    fn is_round(&self) -> Self::Variable;
 
     /// Returns a variable that encodes the current round number [0..24)
     fn round(&self) -> Self::Variable {
