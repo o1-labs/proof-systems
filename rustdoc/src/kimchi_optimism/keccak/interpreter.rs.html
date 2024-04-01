@@ -1101,6 +1101,27 @@
 <a href="#1099" id="1099">1099</a>
 <a href="#1100" id="1100">1100</a>
 <a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
 </span><span class="kw">use crate</span>::{
@@ -1169,12 +1190,12 @@
         <span class="self">Self</span>::is_one(x * x_inv)
     }
 
-    <span class="doccomment">/// Degree-1 variable encoding the XOR of two variables which should be boolean (1 = true)
+    <span class="doccomment">/// Degree-2 variable encoding the XOR of two variables which should be boolean (1 = true)
     </span><span class="kw">fn </span>xor(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         x.clone() + y.clone() - <span class="self">Self</span>::constant(<span class="number">2</span>) * x * y
     }
 
-    <span class="doccomment">/// Degree-1 variable encoding the OR of two variables, which should be boolean (1 = true)
+    <span class="doccomment">/// Degree-2 variable encoding the OR of two variables, which should be boolean (1 = true)
     </span><span class="kw">fn </span>or(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
         x.clone() + y.clone() - x * y
     }
@@ -1221,44 +1242,51 @@
     </span><span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, tag: Constraint, x: <span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Adds all 887 constraints/checks to the environment:
-    /// - 143 constraints of degree 1
-    /// - 739 constraints of degree 2
-    /// - 5 constraints of degree 5
+    /// - 489 constraints of degree 2
+    /// - 387 constraints of degree 3
+    /// - 11 constraints of degree 4
     </span><span class="kw">fn </span>constraints(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// CORRECTNESS OF FLAGS: 144 CONSTRAINTS
-        // - 143 constraints of degree 1
-        // - 1 constraint of degree 2
+        // - 141 constraints of degree 2
+        // - 2 constraint of degree 3
+        // - 1 constraint of degree 4
         </span><span class="self">self</span>.constrain_flags();
 
-        <span class="comment">// SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
-        // - 354 constraints of degree 2
+        <span class="comment">// SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS
+        // - 348 of degree 2
+        // - 1 of degree 3
+        // - 5 of degree 4
         </span><span class="self">self</span>.constrain_sponge();
 
         <span class="comment">// ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
-        // - 384 constraints of degree 2
-        // - 5 constraints of degree 3
+        // - 384 constraints of degree 3
+        // - 5 constraints of degree 4
         </span><span class="self">self</span>.constrain_round();
     }
 
     <span class="doccomment">/// Constrains 144 checks of correctness of mode flags
-    /// - 143 constraints of degree 1
-    /// - 1 constraint of degree 2
+    /// - 141 constraints of degree 2
+    /// - 2 constraints of degree 3
+    /// - 1 constraint of degree 4
     /// Of which:
     /// - 142 constraints are sponge-only
-    /// - 1 constraint is sponge+round related
+    /// - 2 constraints are sponge+round related
     </span><span class="comment">// TODO: when Round and Sponge circuits are separated, the last one will be removed
     //       (in particular, the ones involving round and sponge together)
     </span><span class="kw">fn </span>constrain_flags(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// Booleanity of sponge flags: 139 constraints of degree 1
+        <span class="comment">// Booleanity of sponge flags:
+        // - 139 constraints of degree 2
         </span><span class="self">self</span>.constrain_booleanity();
 
         <span class="comment">// Mutual exclusivity of flags: 5 constraints:
-        // - 4 of degree 1
-        // - 1 of degree 2
+        // - 2 of degree 2
+        // - 2 of degree 3
+        // - 1 of degree 4
         </span><span class="self">self</span>.constrain_mutex();
     }
 
     <span class="doccomment">/// Constrains 139 checks of booleanity for some mode flags.
+    /// - 139 constraints of degree 2
     /// These involve sponge-only related variables.
     </span><span class="kw">fn </span>constrain_booleanity(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Absorb is either true or false
@@ -1274,32 +1302,36 @@
     }
 
     <span class="doccomment">/// Constrains 5 checks of mutual exclusivity between some mode flags.
+    /// - 2 of degree 2
+    /// - 2 of degree 3
+    /// - 1 of degree 4
+    /// Of which
     /// - 3 involve sponge-only related variables
     /// - 2 involves sponge+round variables
     </span><span class="comment">// TODO: when Round and Sponge circuits are separated, the last one will be removed
     //       (in particular, the ones involving round and sponge together)
     </span><span class="kw">fn </span>constrain_mutex(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// Squeeze and Root are not both true
+        <span class="comment">// Degree 2: Squeeze and Root are not both true
         </span><span class="self">self</span>.constrain(
             MutexSqueezeRoot,
             <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_root()),
         );
-        <span class="comment">// Squeeze and Pad are not both true
+        <span class="comment">// Degree 3: Squeeze and Pad are not both true
         </span><span class="self">self</span>.constrain(
             MutexSqueezePad,
             <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_squeeze(), <span class="self">self</span>.is_pad()),
         );
-        <span class="comment">// Round and Pad are not both true
+        <span class="comment">// Degree 4: Round and Pad are not both true
         </span><span class="self">self</span>.constrain(
             MutexRoundPad,
             <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_pad()),
         );
-        <span class="comment">// Round and Root are not both true
+        <span class="comment">// Degree 3: Round and Root are not both true
         </span><span class="self">self</span>.constrain(
             MutexRoundRoot,
             <span class="self">Self</span>::either_zero(<span class="self">self</span>.is_round(), <span class="self">self</span>.is_root()),
         );
-        <span class="comment">// Absorb and Squeeze cannot happen at the same time.
+        <span class="comment">// Degree 2: Absorb and Squeeze cannot happen at the same time.
         // Equivalent to is_boolean(is_sponge())
         </span><span class="self">self</span>.constrain(
             MutexAbsorbSqueeze,
@@ -1309,6 +1341,9 @@
     </span>}
 
     <span class="doccomment">/// Constrains 354 checks of sponge steps
+    /// - 348 of degree 2
+    /// - 1 of degree 3
+    /// - 5 of degree 4
     </span><span class="kw">fn </span>constrain_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="self">self</span>.constrain_absorb();
         <span class="self">self</span>.constrain_squeeze();
@@ -1316,6 +1351,7 @@
     }
 
     <span class="doccomment">/// Constrains 332 checks of absorb sponges
+    /// - 332 of degree 2
     </span><span class="kw">fn </span>constrain_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">for </span>(i, zero) <span class="kw">in </span><span class="self">self</span>.sponge_zeros().iter().enumerate() {
             <span class="comment">// Absorb phase pads with zeros the new state
@@ -1345,6 +1381,8 @@
     }
 
     <span class="doccomment">/// Constrains 6 checks of padding absorb sponges
+    /// - 1 of degree 3
+    /// - 5 of degree 4
     </span><span class="kw">fn </span>constrain_padding(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Check that the padding is located at the end of the message
         </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
@@ -1364,6 +1402,7 @@
     }
 
     <span class="doccomment">/// Constrains 16 checks of squeeze sponges
+    /// - 16 of degree 2
     </span><span class="kw">fn </span>constrain_squeeze(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>sponge_shifts = <span class="self">self</span>.vec_sponge_shifts();
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..QUARTERS * WORDS_IN_HASH {
@@ -1378,27 +1417,30 @@
     }
 
     <span class="doccomment">/// Constrains 389 checks of round steps
-    /// - 384 constraints of degree 2
-    /// - 5 constraints of degree 3
+    /// - 384 constraints of degree 3
+    /// - 5 constraints of degree 4
     </span><span class="kw">fn </span>constrain_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
-        // - 30 constraints of degree 2
-        // - 5 constraints of degree 3
+        // - 30 constraints of degree 3
+        // - 5 constraints of degree 4
         </span><span class="kw">let </span>state_e = <span class="self">self</span>.constrain_theta();
 
-        <span class="comment">// STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
+        <span class="comment">// STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
+        // - 150 of degree 3
         </span><span class="kw">let </span>state_b = <span class="self">self</span>.constrain_pirho(state_e);
 
-        <span class="comment">// STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
+        <span class="comment">// STEP chi: 4 * 5 * 5 * 2 = 200 constraints
+        // - 200 of degree 3
         </span><span class="kw">let </span>state_f = <span class="self">self</span>.constrain_chi(state_b);
 
-        <span class="comment">// STEP iota: 4 constraints of degree 2
+        <span class="comment">// STEP iota: 4 constraints
+        // - 4 of degree 3
         </span><span class="self">self</span>.constrain_iota(state_f);
     }
 
     <span class="doccomment">/// Constrains 35 checks of the theta algorithm in round steps
-    ///  - 30 constraints of degree 2
-    ///  - 5 constraints of degree 3
+    ///  - 30 constraints of degree 3
+    ///  - 5 constraints of degree 4
     </span><span class="comment">// TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     </span><span class="kw">fn </span>constrain_theta(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt; {
         <span class="comment">// Define vectors storing expressions which are not in the witness layout for efficiency
@@ -1456,7 +1498,7 @@
         state_e
     }
 
-    <span class="doccomment">/// Constrains 150 checks (of degree 2) of the pirho algorithm in round steps
+    <span class="doccomment">/// Constrains 150 checks (of degree 3) of the pirho algorithm in round steps
     </span><span class="comment">// TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     </span><span class="kw">fn </span>constrain_pirho(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1503,7 +1545,7 @@
         state_b
     }
 
-    <span class="doccomment">/// Constrains 200 checks (of degree 2) of the chi algorithm in round steps
+    <span class="doccomment">/// Constrains 200 checks (of degree 3) of the chi algorithm in round steps
     </span><span class="comment">// TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     </span><span class="kw">fn </span>constrain_chi(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1551,7 +1593,7 @@
         state_f
     }
 
-    <span class="doccomment">/// Constrains 4 checks (of degree 2) of the iota algorithm in round steps
+    <span class="doccomment">/// Constrains 4 checks (of degree 3) of the iota algorithm in round steps
     </span><span class="comment">// TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     </span><span class="kw">fn </span>constrain_iota(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state_f: Vec&lt;Vec&lt;Vec&lt;<span class="self">Self</span>::Variable&gt;&gt;&gt;) {
         <span class="kw">for </span>(q, c) <span class="kw">in </span><span class="self">self</span>.round_constants().to_vec().iter().enumerate() {
@@ -1867,7 +1909,7 @@
         }
     }
 
-    <span class="doccomment">/// Returns a variable that encodes whether the current step is a sponge (1 = yes)
+    <span class="doccomment">/// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
     </span><span class="kw">fn </span>is_sponge(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">Self</span>::xor(<span class="self">self</span>.is_absorb().clone(), <span class="self">self</span>.is_squeeze().clone())
     }
@@ -1946,7 +1988,7 @@
         }
     }
 
-    <span class="doccomment">/// This function returns a variable that is computed as the accumulated value of the
+    <span class="doccomment">/// This function returns a degree-2 variable that is computed as the accumulated value of the
     /// operation `byte * flag * 2^8` for each byte block and flag block of the new block.
     /// This function will be used in constraints to determine whether the padding is located
     /// at the end of the preimage data, as consecutive bits that are involved in the padding.
