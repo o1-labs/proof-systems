@@ -114,8 +114,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Returns the variable corresponding to a given column alias.
     fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
-    /// Adds one KeccakConstraint to the environment.
-    fn constrain(&mut self, tag: Constraint, x: Self::Variable);
+    /// Adds one KeccakConstraint to the environment if the selector holds
+    fn constrain(&mut self, tag: Constraint, flag: Self::Variable, x: Self::Variable);
 
     /// Adds all 887 constraints/checks to the environment:
     /// - 489 constraints of degree 2
@@ -786,30 +786,18 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
-    fn is_sponge(&self) -> Self::Variable {
-        Self::xor(self.is_absorb().clone(), self.is_squeeze().clone())
-    }
+    fn is_sponge(&self) -> Self::Variable;
     /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
-    fn is_absorb(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Absorb))
-    }
+    fn is_absorb(&self) -> Self::Variable;
     /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
-    fn is_squeeze(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Squeeze))
-    }
+    fn is_squeeze(&self) -> Self::Variable;
     /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
-    fn is_root(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Root))
-    }
+    fn is_root(&self) -> Self::Variable;
     /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
-    fn is_pad(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Pad))
-    }
-
+    fn is_pad(&self) -> Self::Variable;
     /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
-    fn is_round(&self) -> Self::Variable {
-        Self::not(self.is_sponge())
-    }
+    fn is_round(&self) -> Self::Variable;
+
     /// Returns a variable that encodes the current round number [0..24)
     fn round(&self) -> Self::Variable {
         self.variable(KeccakColumn::RoundNumber)

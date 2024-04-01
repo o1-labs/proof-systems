@@ -108,4 +108,27 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
             }
         }
     }
+
+    ///////////////////////
+    // COLUMN OPERATIONS //
+    ///////////////////////
+
+    fn is_sponge(&self) -> Self::Variable {
+        Self::xor(self.is_absorb().clone(), self.is_squeeze().clone())
+    }
+    fn is_absorb(&self) -> Self::Variable {
+        self.variable(KeccakColumn::Selector(Absorb))
+    }
+    fn is_squeeze(&self) -> Self::Variable {
+        self.variable(KeccakColumn::Selector(Squeeze))
+    }
+    fn is_root(&self) -> Self::Variable {
+        self.variable(KeccakColumn::Selector(Root))
+    }
+    fn is_pad(&self) -> Self::Variable {
+        self.variable(KeccakColumn::Selector(Pad))
+    }
+    fn is_round(&self) -> Self::Variable {
+        self.variable(KeccakColumn::Selector(Round))
+    }
 }

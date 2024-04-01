@@ -1,6 +1,9 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
-    keccak::{Constraint, KeccakColumn, E},
+    keccak::{
+        column::Flag::{self, *},
+        Constraint, KeccakColumn, E,
+    },
     lookups::Lookup,
 };
 use ark_ff::Field;
@@ -21,6 +24,8 @@ pub struct Env<Fp> {
     pub constraints: Vec<E<Fp>>,
     /// Variables that are looked up in the circuit
     pub lookups: Vec<Lookup<E<Fp>>>,
+    /// Selector of the current step
+    pub(crate) selector: Option<Flag>,
 }
 
 impl<F: Field> Default for Env<F> {
@@ -28,6 +33,7 @@ impl<F: Field> Default for Env<F> {
         Self {
             constraints: Vec::new(),
             lookups: Vec::new(),
+            selector: None,
         }
     }
 }
@@ -74,5 +80,53 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
         self.lookups.push(lookup);
+    }
+
+    ///////////////////////
+    // COLUMN OPERATIONS //
+    ///////////////////////
+
+    fn is_sponge(&self) -> Self::Variable {
+        match self.selector {
+            Some(Absorb) | Some(Root) | Some(Pad) | Some(PadRoot) | Some(Squeeze) => {
+                Self::Variable::one()
+            }
+            _ => Self::Variable::zero(),
+        }
+    }
+
+    fn is_absorb(&self) -> Self::Variable {
+        match self.selector {
+            Some(Absorb) | Some(Root) | Some(Pad) | Some(PadRoot) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+
+    fn is_squeeze(&self) -> Self::Variable {
+        match self.selector {
+            Some(Squeeze) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+
+    fn is_root(&self) -> Self::Variable {
+        match self.selector {
+            Some(Root) | Some(PadRoot) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+
+    fn is_pad(&self) -> Self::Variable {
+        match self.selector {
+            Some(Pad) | Some(PadRoot) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+
+    fn is_round(&self) -> Self::Variable {
+        match self.selector {
+            Some(Round) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
     }
 }
