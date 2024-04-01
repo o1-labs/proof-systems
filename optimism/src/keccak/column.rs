@@ -473,14 +473,14 @@ impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
                 &mut self.curr_mut()[SPONGE_SHIFTS_OFF + idx]
             }
 
-            Column::RoundNumber => &self.round_flags()[0],
+            Column::RoundNumber => &mut self.round_flags_mut()[0],
             Column::RoundConstants(idx) => {
                 assert!(idx < QUARTERS);
                 &mut self.round_flags_mut()[1 + idx]
             }
 
-            Column::PadLength => &self.pad_flags()[PAD_LEN_OFF],
-            Column::TwoToPad => &self.pad_flags()[PAD_TWO_OFF],
+            Column::PadLength => &mut self.pad_flags_mut()[PAD_LEN_OFF],
+            Column::TwoToPad => &mut self.pad_flags_mut()[PAD_TWO_OFF],
             Column::PadSuffix(idx) => {
                 assert!(idx < PAD_SUFFIX_LEN);
                 &mut self.pad_flags_mut()[PAD_SUFFIX_OFF + idx]
