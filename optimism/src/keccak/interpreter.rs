@@ -140,30 +140,19 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         self.constrain_round();
     }
 
-    /// Constrains 141 checks of correctness of mode flags
-    /// - 138 constraints of degree 2
-    /// - 2 constraints of degree 3
-    /// - 1 constraint of degree 4
+    /// Constrains 136 checks of correctness of mode flags
+    /// - 136 constraints of degree 2
     /// Of which:
-    /// - 139 constraints are sponge-only
-    /// - 2 constraints are sponge+round related
-    // TODO: when Round and Sponge circuits are separated, the last one will be removed
-    //       (in particular, the ones involving round and sponge together)
+    /// - 136 constraints are added only if is_pad() holds
     fn constrain_flags(&mut self) {
         // Booleanity of sponge flags:
         // - 136 constraints of degree 2
         self.constrain_booleanity();
-
-        // Mutual exclusivity of flags: 5 constraints:
-        // - 2 of degree 2
-        // - 2 of degree 3
-        // - 1 of degree 4
-        self.constrain_mutex();
     }
 
     /// Constrains 136 checks of booleanity for some mode flags.
     /// - 136 constraints of degree 2
-    /// These involve sponge-only related variables.
+    /// These involve pad-only related variables.
     fn constrain_booleanity(&mut self) {
         for i in 0..RATE_IN_BYTES {
             // Bytes are either involved on padding or not
@@ -173,45 +162,6 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 Self::is_boolean(self.in_padding(i)),
             );
         }
-    }
-
-    /// Constrains 5 checks of mutual exclusivity between some mode flags.
-    /// - 2 of degree 2
-    /// - 2 of degree 3
-    /// - 1 of degree 4
-    /// Of which
-    /// - 3 involve sponge-only related variables
-    /// - 2 involves sponge+round variables
-    // TODO: when Round and Sponge circuits are separated, the last one will be removed
-    //       (in particular, the ones involving round and sponge together)
-    fn constrain_mutex(&mut self) {
-        // Degree 2: Squeeze and Root are not both true
-        self.constrain(
-            MutexSqueezeRoot,
-            Self::either_zero(self.is_squeeze(), self.is_root()),
-        );
-        // Degree 3: Squeeze and Pad are not both true
-        self.constrain(
-            MutexSqueezePad,
-            Self::either_zero(self.is_squeeze(), self.is_pad()),
-        );
-        // Degree 4: Round and Pad are not both true
-        self.constrain(
-            MutexRoundPad,
-            Self::either_zero(self.is_round(), self.is_pad()),
-        );
-        // Degree 3: Round and Root are not both true
-        self.constrain(
-            MutexRoundRoot,
-            Self::either_zero(self.is_round(), self.is_root()),
-        );
-        // Degree 2: Absorb and Squeeze cannot happen at the same time.
-        // Equivalent to is_boolean(is_sponge())
-        self.constrain(
-            MutexAbsorbSqueeze,
-            Self::either_zero(self.is_absorb(), self.is_squeeze()),
-        );
-        // Trivially, is_sponge and is_round are mutually exclusive
     }
 
     /// Constrains 354 checks of sponge steps
