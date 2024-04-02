@@ -183,7 +183,6 @@ fn test_regression_number_of_constraints_and_degree() {
             let step = keccak_env.constraints_env.step.unwrap();
             // Push constraints for the current step
             keccak_env.constraints_env.constraints();
-            println!("{:?}", step);
             let mut constraint_degrees: HashMap<u64, u32> = HashMap::new();
             keccak_env
                 .constraints_env
