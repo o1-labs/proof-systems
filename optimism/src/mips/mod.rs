@@ -20,6 +20,7 @@ use kimchi::circuits::expr::{ConstantExpr, Expr};
 
 pub mod column;
 pub mod constraints;
+pub mod folding;
 pub mod interpreter;
 pub mod registers;
 pub mod witness;

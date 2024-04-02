@@ -242,7 +242,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
             error_commitment: error,
         } = self;
         let [e0, e1] = error_commitments;
-        let error_commitment = &error - &(&e0.scale(challenge) + &e1.scale(challenge.square()));
+        let error_commitment = &error - (&(&e0.scale(challenge) + &e1.scale(challenge.square())));
         RelaxedInstance {
             instance,
             u,
@@ -251,7 +251,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     }
 
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
-        let challenge_square = challenge * challenge;
+        let challenge_cube = challenge * challenge * challenge;
         let RelaxedInstance {
             instance: ins1,
             u: u1,
@@ -264,7 +264,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
         } = b;
         let instance = <ExtendedInstance<G, I>>::combine(ins1, ins2, challenge);
         let u = u1 + u2 * challenge;
-        let error_commitment = &e1 + &e2.scale(challenge_square);
+        let error_commitment = &e1 + &e2.scale(challenge_cube);
         RelaxedInstance {
             instance,
             u,
@@ -307,10 +307,10 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
             witness: b,
             error_vec: e2,
         } = b;
-        let challenge = challenge * challenge;
+        let challenge_cube = (challenge * challenge) * challenge;
         let witness = <ExtendedWitness<G, W>>::combine(a, b, challenge);
         for (a, b) in e1.evals.iter_mut().zip(e2.evals.into_iter()) {
-            *a += b * challenge;
+            *a += b * challenge_cube;
         }
         let error_vec = e1;
         RelaxedWitness { witness, error_vec }

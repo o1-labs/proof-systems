@@ -8,7 +8,9 @@ use crate::{
             index::LookupSelectors,
             lookups::{LookupPattern, LookupPatterns},
         },
-        polynomials::permutation::eval_vanishes_on_last_n_rows,
+        polynomials::{
+            foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
+        },
         wires::COLUMNS,
     },
     proof::PointEvaluations,
@@ -21,15 +23,12 @@ use itertools::Itertools;
 use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use std::{
     cmp::Ordering,
+    collections::{HashMap, HashSet},
     fmt::{self, Debug},
     iter::FromIterator,
-};
-use std::{
-    collections::{HashMap, HashSet},
-    ops::MulAssign,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
 };
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
@@ -69,6 +68,7 @@ pub struct Challenges<F> {
 }
 
 /// The collection of constants required to evaluate an `Expr`.
+#[derive(Clone)]
 pub struct Constants<F: 'static> {
     /// The endomorphism coefficient
     pub endo_coefficient: F,
@@ -135,6 +135,9 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     /// Return the evaluation of the given column, over the domain.
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
 
+    /// Defines the domain over which the column is evaluated
+    fn column_domain(&self, col: &Self::Column) -> Domain;
+
     fn get_domain(&self, d: Domain) -> D<F>;
 
     /// Return the constants parameters that the expression might use.
@@ -185,6 +188,14 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
         }
     }
 
+    fn column_domain(&self, col: &Self::Column) -> Domain {
+        match *col {
+            Self::Column::Index(GateType::Generic) => Domain::D4,
+            Self::Column::Index(GateType::CompleteAdd) => Domain::D4,
+            _ => Domain::D8,
+        }
+    }
+
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
     }
@@ -230,13 +241,6 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
     domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
 }
 
-pub trait GenericColumn {
-    // TODO These two traits must work together but it is NOT obvious. Change interface.
-    /// Defines the domain over which the column is evaluated, as
-    /// contained in the `ColumnEnvironment`.
-    fn column_domain(&self) -> Domain;
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
@@ -247,6 +251,17 @@ pub struct Variable<Column> {
     pub row: CurrOrNext,
 }
 
+/// Define challenges the verifier coins during the interactive protocol.
+/// It has been defined initially to handle the PLONK IOP, hence:
+/// - `alpha` for the quotient polynomial
+/// - `beta` and `gamma` for the permutation challenges.
+/// The joint combiner is to handle vector lookups, initially designed to be
+/// used with PLOOKUP.
+/// The terms have no built-in semantic in the expression framework, and can be
+/// used for any other four challenges the verifier coins in other polynomial
+/// interactive protocol.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChallengeTerm {
     Alpha,
@@ -255,6 +270,15 @@ pub enum ChallengeTerm {
     JointCombiner,
 }
 
+/// Define the constant terms an expression can use.
+/// It can be any constant term (`Literal`), a matrix (`Mds` - used by the
+/// permutation used by Poseidon for instance), or endomorphism coefficients
+/// (`EndoCoefficient` - used as an optimisation).
+/// As for `challengeTerm`, it has been used initially to implement the PLONK
+/// IOP, with the custom gate Poseidon. However, the terms have no built-in
+/// semantic in the expression framework.
+/// TODO: we should generalize the expression type over challenges and constants.
+/// See <https://github.com/MinaProtocol/mina/issues/15287>
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstantTerm<F> {
     EndoCoefficient,
@@ -262,11 +286,12 @@ pub enum ConstantTerm<F> {
     Literal(F),
 }
 
-pub trait Literal: Sized {
+pub trait Literal: Sized + Clone {
     type F;
     fn literal(x: Self::F) -> Self;
     fn to_literal(self) -> Result<Self::F, Self>;
     fn to_literal_ref(&self) -> Option<&Self::F>;
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self;
 }
 
 impl<F: Field> Literal for F {
@@ -280,9 +305,12 @@ impl<F: Field> Literal for F {
     fn to_literal_ref(&self) -> Option<&Self::F> {
         Some(self)
     }
+    fn as_literal(&self, _constants: &Constants<Self::F>) -> Self {
+        *self
+    }
 }
 
-impl<F> Literal for ConstantTerm<F> {
+impl<F: Clone> Literal for ConstantTerm<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
         ConstantTerm::Literal(x)
@@ -299,6 +327,17 @@ impl<F> Literal for ConstantTerm<F> {
             _ => None,
         }
     }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            ConstantTerm::EndoCoefficient => {
+                ConstantTerm::Literal(constants.endo_coefficient.clone())
+            }
+            ConstantTerm::Mds { row, col } => {
+                ConstantTerm::Literal(constants.mds[*row][*col].clone())
+            }
+            ConstantTerm::Literal(_) => self.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -307,7 +346,7 @@ pub enum ConstantExprInner<F> {
     Constant(ConstantTerm<F>),
 }
 
-impl<F> Literal for ConstantExprInner<F> {
+impl<F: Clone> Literal for ConstantExprInner<F> {
     type F = F;
     fn literal(x: Self::F) -> Self {
         Self::Constant(ConstantTerm::literal(x))
@@ -325,6 +364,12 @@ impl<F> Literal for ConstantExprInner<F> {
         match self {
             Self::Constant(x) => x.to_literal_ref(),
             _ => None,
+        }
+    }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            Self::Constant(x) => Self::Constant(x.as_literal(constants)),
+            Self::Challenge(_) => self.clone(),
         }
     }
 }
@@ -360,7 +405,7 @@ impl<T> From<T> for Operations<T> {
     }
 }
 
-impl<T: Literal> Literal for Operations<T> {
+impl<T: Literal + Clone> Literal for Operations<T> {
     type F = T::F;
     fn literal(x: Self::F) -> Self {
         Self::Atom(T::literal(x))
@@ -378,6 +423,32 @@ impl<T: Literal> Literal for Operations<T> {
         match self {
             Self::Atom(x) => x.to_literal_ref(),
             _ => None,
+        }
+    }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            Self::Atom(x) => Self::Atom(x.as_literal(constants)),
+            Self::Pow(x, n) => Self::Pow(Box::new(x.as_literal(constants)), *n),
+            Self::Add(x, y) => Self::Add(
+                Box::new(x.as_literal(constants)),
+                Box::new(y.as_literal(constants)),
+            ),
+            Self::Mul(x, y) => Self::Mul(
+                Box::new(x.as_literal(constants)),
+                Box::new(y.as_literal(constants)),
+            ),
+            Self::Sub(x, y) => Self::Sub(
+                Box::new(x.as_literal(constants)),
+                Box::new(y.as_literal(constants)),
+            ),
+            Self::Double(x) => Self::Double(Box::new(x.as_literal(constants))),
+            Self::Square(x) => Self::Square(Box::new(x.as_literal(constants))),
+            Self::Cache(id, x) => Self::Cache(*id, Box::new(x.as_literal(constants))),
+            Self::IfFeature(flag, if_true, if_false) => Self::IfFeature(
+                *flag,
+                Box::new(if_true.as_literal(constants)),
+                Box::new(if_false.as_literal(constants)),
+            ),
         }
     }
 }
@@ -683,7 +754,7 @@ impl<F, Column> From<ChallengeTerm> for Expr<ConstantExpr<F>, Column> {
     }
 }
 
-impl<T: Literal, Column> Literal for ExprInner<T, Column> {
+impl<T: Literal, Column: Clone> Literal for ExprInner<T, Column> {
     type F = T::F;
     fn literal(x: Self::F) -> Self {
         ExprInner::Constant(T::literal(x))
@@ -703,9 +774,17 @@ impl<T: Literal, Column> Literal for ExprInner<T, Column> {
             _ => None,
         }
     }
+    fn as_literal(&self, constants: &Constants<Self::F>) -> Self {
+        match self {
+            ExprInner::Constant(x) => ExprInner::Constant(x.as_literal(constants)),
+            ExprInner::Cell(_)
+            | ExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            | ExprInner::UnnormalizedLagrangeBasis(_) => self.clone(),
+        }
+    }
 }
 
-impl<T: Literal + Clone + PartialEq> Operations<T>
+impl<T: Literal + PartialEq> Operations<T>
 where
     T::F: Field,
 {
@@ -1231,7 +1310,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             ) => {
                 let n = res_domain.1.size();
                 let scale = (domain as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 let v: Vec<_> = (0..n)
                     .into_par_iter()
                     .map(|i| {
@@ -1283,7 +1367,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -1302,10 +1391,19 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
+                assert!(
+                    scale1 != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
-                assert!(scale2 != 0);
-
+                assert!(
+                    scale2 != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 let n = res_domain.1.size();
                 let v: Vec<_> = (0..n)
                     .into_par_iter()
@@ -1344,7 +1442,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 Constant(x),
             ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x
                 })
@@ -1358,7 +1461,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
+
                 EvalResult::init(res_domain, |i| {
                     x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
                 })
@@ -1392,7 +1501,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
+
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()] - *e;
                 });
@@ -1410,7 +1525,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -1429,9 +1549,19 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
+                assert!(
+                    scale1 != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
-                assert!(scale2 != 0);
+                assert!(
+                    scale2 != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
 
                 EvalResult::init(res_domain, |i| {
                     es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
@@ -1470,7 +1600,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 shift: s,
             } => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square()
                 })
@@ -1504,7 +1639,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
                 })
@@ -1549,7 +1689,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domainand the evaluation domain of the
+                witnesses are the same"
+                );
+
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -1568,10 +1714,20 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
+                assert!(
+                    scale1 != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
-                assert!(scale2 != 0);
 
+                assert!(
+                    scale2 != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init(res_domain, |i| {
                     es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
                         * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
@@ -1581,7 +1737,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 }
 
-impl<F: Field, Column: PartialEq> Expr<ConstantExpr<F>, Column> {
+impl<F: Field, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
@@ -1704,7 +1860,7 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>, Column> {
+impl<F: FftField, Column: PartialEq + Copy> Expr<ConstantExpr<F>, Column> {
     fn evaluate_constants_(&self, c: &Constants<F>, chals: &Challenges<F>) -> Expr<F, Column> {
         use ExprInner::*;
         use Operations::*;
@@ -1830,7 +1986,7 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
+impl<F: FftField, Column: Copy> Expr<F, Column> {
     /// Evaluate an expression into a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
@@ -1921,7 +2077,12 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
             } => {
                 let res_domain = env.get_domain(d);
                 let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
+                assert!(
+                    scale != 0,
+                    "Check that the implementation of
+                column_domain and the evaluation domain of the
+                witnesses are the same"
+                );
                 EvalResult::init_((d, res_domain), |i| {
                     evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()]
                 })
@@ -2031,7 +2192,7 @@ impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: col.column_domain(),
+                    domain: env.column_domain(col),
                     shift: row.shift(),
                     evals,
                 }
@@ -2123,9 +2284,7 @@ impl<A, Column: Copy> Linearization<A, Column> {
     }
 }
 
-impl<F: FftField, Column: PartialEq + Copy + GenericColumn>
-    Linearization<Expr<ConstantExpr<F>, Column>, Column>
-{
+impl<F: FftField, Column: PartialEq + Copy> Linearization<Expr<ConstantExpr<F>, Column>, Column> {
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
     pub fn evaluate_constants<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
@@ -2172,7 +2331,7 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
     }
 }
 
-impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
+impl<F: FftField, Column: Debug + PartialEq + Copy>
     Linearization<Expr<ConstantExpr<F>, Column>, Column>
 {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
@@ -2616,7 +2775,7 @@ impl<F: Field> From<u64> for ConstantExpr<F> {
     }
 }
 
-impl<F: Field, Column: PartialEq> Mul<F> for Expr<ConstantExpr<F>, Column> {
+impl<F: Field, Column: PartialEq + Copy> Mul<F> for Expr<ConstantExpr<F>, Column> {
     type Output = Expr<ConstantExpr<F>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
@@ -3163,24 +3322,21 @@ pub mod constraints {
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
-                F,
-            >>::two_to_limb(
-            ))
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+                KimchiForeignElement::<F>::two_to_limb(),
+            )
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
-                F,
-            >>::two_to_2limb(
-            ))
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+                KimchiForeignElement::<F>::two_to_2limb(),
+            )
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
-                F,
-            >>::two_to_3limb(
-            ))
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(
+                KimchiForeignElement::<F>::two_to_3limb(),
+            )
         }
 
         fn double(&self) -> Self {
@@ -3230,15 +3386,15 @@ pub mod constraints {
         }
 
         fn two_to_limb() -> Self {
-            <F as ForeignFieldHelpers<F>>::two_to_limb()
+            KimchiForeignElement::<F>::two_to_limb()
         }
 
         fn two_to_2limb() -> Self {
-            <F as ForeignFieldHelpers<F>>::two_to_2limb()
+            KimchiForeignElement::<F>::two_to_2limb()
         }
 
         fn two_to_3limb() -> Self {
-            <F as ForeignFieldHelpers<F>>::two_to_3limb()
+            KimchiForeignElement::<F>::two_to_3limb()
         }
 
         fn double(&self) -> Self {
@@ -3396,8 +3552,7 @@ pub mod test {
         srs::{endos, SRS},
     };
     use rand::{prelude::StdRng, SeedableRng};
-    use std::array;
-    use std::sync::Arc;
+    use std::{array, sync::Arc};
 
     #[test]
     #[should_panic]

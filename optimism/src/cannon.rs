@@ -5,8 +5,7 @@ use base64::{engine::general_purpose, Engine as _};
 use libflate::zlib::{Decoder, Encoder};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write};
 
 pub const PAGE_ADDRESS_SIZE: u32 = 12;
 pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
@@ -289,8 +288,10 @@ impl Meta {
 mod tests {
 
     use super::*;
-    use std::fs::File;
-    use std::io::{BufReader, Write};
+    use std::{
+        fs::File,
+        io::{BufReader, Write},
+    };
 
     #[test]
     fn sp_parser() {

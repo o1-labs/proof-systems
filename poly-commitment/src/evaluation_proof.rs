@@ -1,9 +1,11 @@
-use crate::{commitment::*, srs::endos};
-use crate::{srs::SRS, PolynomialsToCombine, SRS as _};
+use crate::{
+    commitment::*,
+    srs::{endos, SRS},
+    PolynomialsToCombine, SRS as _,
+};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
-use ark_poly::{EvaluationDomain, Evaluations};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Evaluations, UVPolynomial};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::{math, ExtendedDensePolynomial};
 use rand_core::{CryptoRng, RngCore};
@@ -119,7 +121,11 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     if !plnm_evals_part.is_empty() {
         let n = plnm_evals_part.len();
         let max_poly_size = srs_length;
-        let num_chunks = n / max_poly_size;
+        let num_chunks = if n == 0 {
+            1
+        } else {
+            n / max_poly_size + if n % max_poly_size == 0 { 0 } else { 1 }
+        };
         plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
             .interpolate()
             .to_chunked_polynomial(num_chunks, max_poly_size)

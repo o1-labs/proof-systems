@@ -1,19 +1,19 @@
 //! This module computes the witness of a foreign field addition circuit.
 
-use crate::circuits::expr::constraints::compact_limb;
-use crate::circuits::witness::Variables;
 use crate::{
     circuits::{
+        expr::constraints::compact_limb,
         polynomial::COLUMNS,
-        witness::{self, ConstantCell, VariableCell, WitnessCell},
+        polynomials::foreign_field_common::{
+            BigUintForeignFieldHelpers, KimchiForeignElement, HI, LIMB_BITS, LO, MI,
+        },
+        witness::{self, ConstantCell, VariableCell, Variables, WitnessCell},
     },
     variable_map,
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
-use o1_utils::foreign_field::{
-    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, HI, LO, MI,
-};
+use o1_utils::foreign_field::{ForeignElement, ForeignFieldHelpers};
 use std::array;
 
 /// All foreign field operations allowed
@@ -43,17 +43,17 @@ impl FFOps {
 // - the overflow flag
 // - the carry value
 pub(crate) fn compute_ffadd_values<F: PrimeField>(
-    left_input: &ForeignElement<F, 3>,
-    right_input: &ForeignElement<F, 4>,
+    left_input: &ForeignElement<F, LIMB_BITS, 3>,
+    right_input: &ForeignElement<F, LIMB_BITS, 4>,
     opcode: FFOps,
-    foreign_modulus: &ForeignElement<F, 3>,
-) -> (ForeignElement<F, 3>, F, F, F) {
+    foreign_modulus: &ForeignElement<F, LIMB_BITS, 3>,
+) -> (ForeignElement<F, LIMB_BITS, 3>, F, F, F) {
     // Compute bigint version of the inputs
     let left = left_input.to_biguint();
     let right = right_input.to_biguint();
 
     // Clarification:
-    let right_hi = right_input[3] * F::two_to_limb() + right_input[HI]; // This allows to store 2^88 in the high limb
+    let right_hi = right_input[3] * KimchiForeignElement::<F>::two_to_limb() + right_input[HI]; // This allows to store 2^88 in the high limb
 
     let modulus = foreign_modulus.to_biguint();
 
@@ -111,7 +111,7 @@ pub(crate) fn compute_ffadd_values<F: PrimeField>(
         + compact_limb(&right_input[LO], &right_input[MI]) * sign
         - compact_limb(&foreign_modulus[LO], &foreign_modulus[MI]) * field_overflow
         - compact_limb(&result[LO], &result[MI]))
-        / F::two_to_2limb();
+        / KimchiForeignElement::<F>::two_to_2limb();
 
     let carry_top: F =
         result[HI] - left_input[HI] - sign * right_hi + field_overflow * foreign_modulus[HI];
@@ -227,10 +227,10 @@ fn init_bound_rows<F: PrimeField>(
             VariableCell::create("result_lo"),
             VariableCell::create("result_mi"),
             VariableCell::create("result_hi"),
-            ConstantCell::create(F::zero()),        // 0
-            ConstantCell::create(F::zero()),        // 0
-            ConstantCell::create(F::two_to_limb()), // 2^88
-            ConstantCell::create(F::one()),         // field_overflow
+            ConstantCell::create(F::zero()), // 0
+            ConstantCell::create(F::zero()), // 0
+            ConstantCell::create(KimchiForeignElement::<F>::two_to_limb()), // 2^88
+            ConstantCell::create(F::one()),  // field_overflow
             VariableCell::create("carry"),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -275,8 +275,8 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     foreign_field_modulus: &[F; 3],
 ) {
     // Convert to types used by this module
-    let fe = ForeignElement::<F, 3>::new(*limbs);
-    let foreign_field_modulus = ForeignElement::<F, 3>::new(*foreign_field_modulus);
+    let fe = ForeignElement::<F, LIMB_BITS, 3>::new(*limbs);
+    let foreign_field_modulus = ForeignElement::<F, LIMB_BITS, 3>::new(*foreign_field_modulus);
     if foreign_field_modulus.to_biguint() > BigUint::max_foreign_field_modulus::<F>() {
         panic!(
             "foreign_field_modulus exceeds maximum: {} > {}",
@@ -286,7 +286,7 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     }
 
     // Compute values for final bound check, needs a 4 limb right input
-    let right_input = ForeignElement::<F, 4>::from_biguint(BigUint::binary_modulus());
+    let right_input = ForeignElement::<F, LIMB_BITS, 4>::from_biguint(BigUint::binary_modulus());
 
     // Compute the bound and related witness data
     let (bound_output, bound_sign, bound_ovf, bound_carry) =

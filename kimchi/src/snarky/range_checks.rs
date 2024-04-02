@@ -1,10 +1,6 @@
-use super::constraint_system::KimchiConstraint;
-use super::runner::Constraint;
-use crate::FieldVar;
-use crate::RunState;
-use crate::SnarkyResult;
-use ark_ff::BigInteger;
-use ark_ff::PrimeField;
+use super::{constraint_system::KimchiConstraint, runner::Constraint};
+use crate::{circuits::polynomial::COLUMNS, FieldVar, RunState, SnarkyResult};
+use ark_ff::{BigInteger, PrimeField};
 use itertools::Itertools;
 use std::borrow::Cow;
 
@@ -54,18 +50,18 @@ impl<F: PrimeField> RangeCheckLimbs1<F> {
 
 ///for v2
 struct RangeCheckLimbs2<F: PrimeField> {
-    crumbs_low: [F; 18],
+    crumbs_low: [F; 19],
     limbs: [F; 4],
-    crumbs_high: [F; 2],
+    crumbs_high: [F; 1],
 }
 
 impl<F: PrimeField> RangeCheckLimbs2<F> {
     ///extracts the limbs needed for range check from the bits of f
     fn parse(f: F) -> Self {
         let mut bits = f.into_repr().to_bits_le().into_iter();
-        let crumbs_low = parse_limbs::<F, 2, 18>(bits.by_ref());
+        let crumbs_low = parse_limbs::<F, 2, 19>(bits.by_ref());
         let limbs = parse_limbs::<F, 12, 4>(bits.by_ref());
-        let crumbs_high = parse_limbs::<F, 2, 2>(bits);
+        let crumbs_high = parse_limbs::<F, 2, 1>(bits);
         Self {
             crumbs_low,
             limbs,
@@ -73,7 +69,7 @@ impl<F: PrimeField> RangeCheckLimbs2<F> {
         }
     }
     ///produces limbs and crumbs with the expected endianess
-    fn into_repr(mut self) -> ([F; 2], [F; 4], [F; 18]) {
+    fn into_repr(mut self) -> ([F; 1], [F; 4], [F; 19]) {
         self.crumbs_high.reverse();
         self.limbs.reverse();
         self.crumbs_low.reverse();
@@ -105,7 +101,7 @@ pub fn range_check<F: PrimeField>(
         .chain(v0_limbs.0)
         .chain(v0_limbs.1)
         .collect_vec();
-    let r0: [FieldVar<F>; 15] = r0.try_into().unwrap();
+    let r0: [FieldVar<F>; COLUMNS] = r0.try_into().unwrap();
 
     let v1_limbs: ([FieldVar<F>; 6], [FieldVar<F>; 8]) = runner.compute(loc.clone(), |w| {
         let v = w.read_var(&v1);
@@ -121,8 +117,8 @@ pub fn range_check<F: PrimeField>(
         .collect_vec();
 
     type Limbs<F, const N: usize> = [FieldVar<F>; N];
-    let r1: [FieldVar<F>; 15] = r1.try_into().unwrap();
-    let v2_limbs: ((Limbs<F, 2>, Limbs<F, 4>), Limbs<F, 18>) =
+    let r1: [FieldVar<F>; COLUMNS] = r1.try_into().unwrap();
+    let v2_limbs: ((Limbs<F, 1>, Limbs<F, 4>), Limbs<F, 19>) =
         runner.compute(loc.clone(), |w| {
             let v = w.read_var(&v2);
             let limbs = RangeCheckLimbs2::parse(v);
@@ -138,11 +134,10 @@ pub fn range_check<F: PrimeField>(
         .chain([FieldVar::zero()])
         .chain(v2_crumb_high.next())
         .chain(v2_limb)
-        .chain(v2_crumb_high.next())
-        .chain(v2_crumb_low.by_ref().take(7))
+        .chain(v2_crumb_low.by_ref().take(8))
         .collect_vec();
 
-    let r2: [FieldVar<F>; 15] = r2.try_into().unwrap();
+    let r2: [FieldVar<F>; COLUMNS] = r2.try_into().unwrap();
 
     let first_3 = v2_crumb_low.by_ref().take(3).collect_vec();
     let r3 = first_3
@@ -150,7 +145,7 @@ pub fn range_check<F: PrimeField>(
         .chain([v0p0, v0p1, v1p0, v1p1])
         .chain(v2_crumb_low.take(8))
         .collect_vec();
-    let r3: [FieldVar<F>; 15] = r3.try_into().unwrap();
+    let r3: [FieldVar<F>; COLUMNS] = r3.try_into().unwrap();
 
     let rows = [r0, r1, r2, r3].map(|r| r.to_vec()).to_vec();
 
@@ -165,7 +160,6 @@ mod test {
         circuits::expr::constraints::ExprOps, loc, snarky::api::SnarkyCircuit, FieldVar, RunState,
         SnarkyResult,
     };
-    use ark_ff::{BigInteger, PrimeField};
     use mina_curves::pasta::{Fp, Vesta, VestaParameters};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
@@ -200,29 +194,18 @@ mod test {
     }
 
     #[test]
-    fn test_bits() {
-        let f1 = Fp::from(3);
-        let f2 = Fp::from(2);
-        let f1 = f1.into_repr().to_bits_le();
-        let f2 = f2.into_repr().to_bits_le();
-        println!("b: {}", f1[0]);
-        println!("b: {}", f1[1]);
-        println!("b: {}", f2[0]);
-        println!("b: {}", f2[1]);
-    }
-    #[test]
     fn snarky_range_check() {
         // compile
         let test_circuit = TestCircuit {};
 
         let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes().unwrap();
 
-        // print ASM
-        println!("{}", prover_index.asm());
+        let mut rng = o1_utils::tests::make_test_rng();
 
+        use rand::Rng;
         // prove
         {
-            let private_input = Fp::from(2);
+            let private_input: Fp = Fp::from(rng.gen::<u64>());
 
             let debug = true;
             let (proof, _public_output) = prover_index
