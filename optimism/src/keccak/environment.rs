@@ -2,7 +2,7 @@
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
 use crate::keccak::{
-    column::{KeccakWitness, PAD_SUFFIX_LEN},
+    column::{Flag::*, KeccakWitness, PAD_SUFFIX_LEN},
     constraints::Env as ConstraintsEnv,
     grid_index, pad_blocks,
     witness::Env as WitnessEnv,

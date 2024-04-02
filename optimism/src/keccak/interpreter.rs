@@ -2,10 +2,10 @@
 
 use crate::{
     keccak::{
-        column::{Flag::*, PAD_BYTES_LEN, ROUND_CONST_LEN},
+        column::{PAD_BYTES_LEN, ROUND_CONST_LEN},
         grid_index,
         Constraint::{self, *},
-        KeccakColumn,
+        KeccakColumn, Selector,
     },
     lookups::{Lookup, LookupTableIDs::*},
 };
@@ -136,7 +136,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// So:
     /// - At most, 474 constraints are added per row
     fn constraints(&mut self) {
-        self.check_selectors();
+        self.checks();
 
         // CORRECTNESS OF FLAGS: 136 CONSTRAINTS
         // - 136 constraints of degree 2
@@ -218,15 +218,14 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
             self.constrain(
                 AbsorbXor(i),
                 self.is_absorb(),
-                (self.xor_state(i).clone()
-                    - (self.old_state(i).clone() + self.new_state(i).clone())),
+                self.xor_state(i).clone() - (self.old_state(i).clone() + self.new_state(i).clone()),
             );
             // In absorb, Check shifts correspond to the decomposition of the new state
             self.constrain(
                 AbsorbShifts(i),
                 self.is_absorb(),
-                (self.new_state(i).clone()
-                    - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None)),
+                self.new_state(i).clone()
+                    - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None),
             );
         }
     }
@@ -244,14 +243,14 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         self.constrain(
             PadAtEnd,
             self.is_pad(),
-            (self.two_to_pad() - Self::one() - pad_at_end),
+            self.two_to_pad() - Self::one() - pad_at_end,
         );
         // Check that the padding value is correct
         for i in 0..PAD_SUFFIX_LEN {
             self.constrain(
                 PaddingSuffix(i),
                 self.is_pad(),
-                (self.block_in_padding(i) - self.pad_suffix(i)),
+                self.block_in_padding(i) - self.pad_suffix(i),
             );
         }
     }
@@ -267,8 +266,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
             self.constrain(
                 SqueezeShifts(i),
                 self.is_squeeze(),
-                (self.old_state(i).clone()
-                    - Self::from_shifts(&sponge_shifts, Some(i), None, None, None)),
+                self.old_state(i).clone()
+                    - Self::from_shifts(&sponge_shifts, Some(i), None, None, None),
             );
         }
     }
@@ -314,18 +313,18 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
             self.constrain(
                 ThetaWordC(x),
                 self.is_round(),
-                (word_c * Self::two_pow(1)
-                    - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone())),
+                word_c * Self::two_pow(1)
+                    - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone()),
             );
             self.constrain(
                 ThetaRotatedC(x),
                 self.is_round(),
-                (rot_c - (self.quotient_c(x) + rem_c)),
+                rot_c - (self.quotient_c(x) + rem_c),
             );
             self.constrain(
                 ThetaQuotientC(x),
                 self.is_round(),
-                (Self::is_boolean(self.quotient_c(x))),
+                Self::is_boolean(self.quotient_c(x)),
             );
 
             for q in 0..QUARTERS {
@@ -337,8 +336,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 self.constrain(
                     ThetaShiftsC(x, q),
                     self.is_round(),
-                    (state_c[x][q].clone()
-                        - Self::from_shifts(&self.vec_shifts_c(), None, None, Some(x), Some(q))),
+                    state_c[x][q].clone()
+                        - Self::from_shifts(&self.vec_shifts_c(), None, None, Some(x), Some(q)),
                 );
 
                 state_d[x][q] =
@@ -371,27 +370,27 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 self.constrain(
                     PiRhoWordE(y, x),
                     self.is_round(),
-                    (word_e * Self::two_pow(*off)
-                        - (quo_e.clone() * Self::two_pow(64) + rem_e.clone())),
+                    word_e * Self::two_pow(*off)
+                        - (quo_e.clone() * Self::two_pow(64) + rem_e.clone()),
                 );
                 self.constrain(
                     PiRhoRotatedE(y, x),
                     self.is_round(),
-                    (rot_e - (quo_e.clone() + rem_e)),
+                    rot_e - (quo_e.clone() + rem_e),
                 );
 
                 for q in 0..QUARTERS {
                     self.constrain(
                         PiRhoShiftsE(y, x, q),
                         self.is_round(),
-                        (state_e[y][x][q].clone()
+                        state_e[y][x][q].clone()
                             - Self::from_shifts(
                                 &self.vec_shifts_e(),
                                 None,
                                 Some(y),
                                 Some(x),
                                 Some(q),
-                            )),
+                            ),
                     );
                     state_b[(2 * x + 3 * y) % DIM][y][q] = self.expand_rot_e(y, x, q);
                 }
@@ -420,25 +419,25 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                     self.constrain(
                         ChiShiftsB(y, x, q),
                         self.is_round(),
-                        (state_b[y][x][q].clone()
+                        state_b[y][x][q].clone()
                             - Self::from_shifts(
                                 &self.vec_shifts_b(),
                                 None,
                                 Some(y),
                                 Some(x),
                                 Some(q),
-                            )),
+                            ),
                     );
                     self.constrain(
                         ChiShiftsSum(y, x, q),
                         self.is_round(),
-                        (sum - Self::from_shifts(
+                        sum - Self::from_shifts(
                             &self.vec_shifts_sum(),
                             None,
                             Some(y),
                             Some(x),
                             Some(q),
-                        )),
+                        ),
                     );
                     state_f[y][x][q] = self.shifts_b(0, y, x, q) + and;
                 }
@@ -454,7 +453,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
             self.constrain(
                 IotaStateG(q),
                 self.is_round(),
-                (self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone())),
+                self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone()),
             );
         }
     }
@@ -881,7 +880,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Returns the 4 expanded quarters that encode the round constant, as variables
-    fn round_constants(&self) -> [Self::Variable; ROUND_COEFFS_LEN] {
+    fn round_constants(&self) -> [Self::Variable; ROUND_CONST_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::RoundConstants(idx)))
     }
 

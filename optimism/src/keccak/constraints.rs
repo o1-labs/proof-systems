@@ -2,11 +2,11 @@
 use crate::{
     keccak::{
         column::Flag::{self, *},
-        Constraint, KeccakColumn, E,
+        Constraint, KeccakColumn, Selector, E,
     },
     lookups::Lookup,
 };
-use ark_ff::Field;
+use ark_ff::{Field, One, Zero};
 use kimchi::{
     circuits::{
         expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -78,8 +78,10 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         // No-op in constraint side
     }
 
-    fn constrain(&mut self, _tag: Constraint, x: Self::Variable) {
-        self.constraints.push(x);
+    fn constrain(&mut self, _tag: Constraint, if_true: Self::Variable, x: Self::Variable) {
+        if if_true == Self::Variable::one() {
+            self.constraints.push(x);
+        }
     }
 
     ////////////////////////

@@ -37,7 +37,8 @@ const CURR_LEN: usize = ZKVM_KECCAK_COLS_CURR; // The length of the curr chunk i
 const NEXT_OFF: usize = CURR_OFF + CURR_LEN; // The offset of the next chunk inside the witness columns
 const NEXT_LEN: usize = ZKVM_KECCAK_COLS_NEXT; // The length of the next chunk inside the witness columns
 
-const ROUND_CONST_LEN: usize = QUARTERS;
+/// The number of sparse round constants used per round
+pub(crate) const ROUND_CONST_LEN: usize = QUARTERS;
 const ROUND_FLAGS_LEN: usize = ROUND_CONST_LEN + 1;
 const ROUND_COEFFS_OFF: usize = NEXT_OFF + NEXT_LEN; // The offset of the Round coefficients inside the witness columns
 
@@ -49,7 +50,8 @@ const PAD_SUFFIX_OFF: usize = 2; // Offset of the PadSuffix column inside the sp
 /// The padding suffix of 1088 bits is stored as 5 field elements: 1x12 + 4x31 bytes
 pub(crate) const PAD_SUFFIX_LEN: usize = 5;
 const PAD_BYTES_OFF: usize = PAD_SUFFIX_OFF + PAD_SUFFIX_LEN; // Offset of the PadBytesFlags inside the sponge coefficients
-const PAD_BYTES_LEN: usize = RATE_IN_BYTES; // The maximum number of padding bytes involved
+/// The maximum number of padding bytes involved
+pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 
 /// Column aliases used by the Keccak circuit.
 /// The number of aliases is not necessarily equal to the actual number of
@@ -272,7 +274,7 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
             Column::Selector(Flag::Root) => &self.mode_flags()[FLAG_ROOT_OFF],
             Column::Selector(Flag::Absorb) => &self.mode_flags()[FLAG_ABSORB_OFF],
             Column::Selector(Flag::Pad) => &self.mode_flags()[FLAG_PAD_OFF],
-            Column::Selector(Flag::PadRoot) => &self.mode_flags()[FLAG_ROOTPAD_OFF],
+            Column::Selector(Flag::RootPad) => &self.mode_flags()[FLAG_ROOTPAD_OFF],
             Column::Selector(Flag::Squeeze) => &self.mode_flags()[FLAG_SQUEEZE_OFF],
 
             Column::HashIndex => self.hash_index(),

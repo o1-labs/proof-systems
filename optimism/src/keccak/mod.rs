@@ -41,6 +41,7 @@ pub enum Error {
 }
 
 /// All the names for selector misconfigurations of the Keccak circuit
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Selector {
     NotBoolean(Flag),
     NotMutex,
