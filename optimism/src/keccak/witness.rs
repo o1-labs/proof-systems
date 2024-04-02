@@ -31,6 +31,8 @@ pub struct Env<F> {
     pub multiplicities: Vec<Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,
+    /// The round number, if nonzero
+    pub(crate) round: u64,
 }
 
 impl<F: Field> Default for Env<F> {
@@ -54,6 +56,7 @@ impl<F: Field> Default for Env<F> {
                 vec![0; ResetLookup.length()],
             ],
             errors: vec![],
+            round: 0,
         }
     }
 }
@@ -94,7 +97,10 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         // BOOLEANITY CHECKS
         {
             // Round is either true or false
-            self.check(NotBoolean(Round(0)), Self::is_boolean(self.mode_round()));
+            self.check(
+                NotBoolean(Round(self.round)),
+                Self::is_boolean(self.mode_round()),
+            );
             // Absorb is either true or false
             self.check(
                 NotBoolean(Sponge(Absorb(Middle))),
@@ -191,6 +197,6 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     fn mode_round(&self) -> Self::Variable {
         // The actual round number in the selector carries no information for witness nor constraints
         // because in the witness, any usize is mapped to the same index inside the mode flags
-        self.variable(KeccakColumn::Selector(Round(0)))
+        self.variable(KeccakColumn::Selector(Round(self.round)))
     }
 }

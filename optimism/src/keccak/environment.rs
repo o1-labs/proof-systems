@@ -208,6 +208,8 @@ impl<F: Field> KeccakEnv<F> {
 
     /// Assigns the witness values needed in a sponge step (absorb or squeeze)
     fn run_sponge(&mut self, sponge: Sponges) {
+        // Keep track of the round number for ease of debugging
+        self.witness_env.round = 0;
         match sponge {
             Absorb(absorb) => self.run_absorb(absorb),
             Squeeze => self.run_squeeze(),
@@ -292,6 +294,8 @@ impl<F: Field> KeccakEnv<F> {
     /// Assigns the witness values needed in the round step for the given round index
     fn run_round(&mut self, round: u64) {
         self.set_flag_round(round);
+        // Keep track of the round number for ease of debugging
+        self.witness_env.round = round;
 
         let state_a = self.prev_block.clone();
         let state_e = self.run_theta(&state_a);
