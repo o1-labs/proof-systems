@@ -3,8 +3,8 @@ use crate::{
     keccak::{
         column::{
             Absorbs::*,
-            Flags::{self, *},
             Sponges::*,
+            Steps::{self, *},
         },
         Constraint, KeccakColumn, Selector, E,
     },
@@ -28,8 +28,8 @@ pub struct Env<Fp> {
     pub constraints: Vec<E<Fp>>,
     /// Variables that are looked up in the circuit
     pub lookups: Vec<Lookup<E<Fp>>>,
-    /// Selector of the current step
-    pub(crate) selector: Option<Flags>,
+    /// Selector of the current step, corresponds to a Keccak step or None if it just ended or still hasn't started
+    pub step: Option<Steps>,
 }
 
 impl<F: Field> Default for Env<F> {
@@ -37,7 +37,7 @@ impl<F: Field> Default for Env<F> {
         Self {
             constraints: Vec::new(),
             lookups: Vec::new(),
-            selector: None,
+            step: None,
         }
     }
 }
@@ -101,38 +101,40 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     /////////////////////////
 
     fn mode_absorb(&self) -> Self::Variable {
-        match self.selector {
+        match self.step {
             Some(Sponge(Absorb(Middle))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_squeeze(&self) -> Self::Variable {
-        match self.selector {
+        match self.step {
             Some(Sponge(Squeeze)) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_root(&self) -> Self::Variable {
-        match self.selector {
+        match self.step {
             Some(Sponge(Absorb(First))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_pad(&self) -> Self::Variable {
-        match self.selector {
+        match self.step {
             Some(Sponge(Absorb(Last))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_rootpad(&self) -> Self::Variable {
-        match self.selector {
+        match self.step {
             Some(Sponge(Absorb(Only))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_round(&self) -> Self::Variable {
-        match self.selector {
-            Some(Round) => Self::Variable::one(),
+        // The actual round number in the selector carries no information for witness nor constraints
+        // because in the witness, any usize is mapped to the same index inside the mode flags
+        match self.step {
+            Some(Round(_)) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }

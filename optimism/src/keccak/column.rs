@@ -1,6 +1,6 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
-use self::{Absorbs::*, Flags::*, Sponges::*};
+use self::{Absorbs::*, Sponges::*, Steps::*};
 use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
@@ -62,7 +62,7 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Column {
     /// Selectors used to distinguish between different modes of the Keccak step
-    Selector(Flags),
+    Selector(Steps),
 
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
@@ -103,14 +103,17 @@ pub enum Column {
     PadBytesFlags(usize), // Only nonzero when Selector(Flag::Pad) = 1 : 136 boolean values
 }
 
+/// Variants of Keccak steps available for the interpreter.
 /// These selectors determine the specific behaviour so that Keccak steps
 /// can be split into different instances for folding
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Flags {
-    Round,           // Current step performs a round of the permutation
-    Sponge(Sponges), // Current step is a sponge
+pub enum Steps {
+    /// Current step is a sponge
+    Sponge(Sponges),
+    /// Current step performs a round of the permutation.
+    /// The round number stored in the Step is only used for the environment execution.
+    Round(u64),
 }
-
 /// Variants of Keccak sponges
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Sponges {
@@ -283,8 +286,8 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
     /// is used by intermediary values when executing the Round step.
     fn index(&self, index: Column) -> &Self::Output {
         match index {
-            Column::Selector(flag) => match flag {
-                Round => &self.mode_flags()[FLAG_ROUND_OFF],
+            Column::Selector(step) => match step {
+                Round(_) => &self.mode_flags()[FLAG_ROUND_OFF],
                 Sponge(sponge) => match sponge {
                     Absorb(absorb) => match absorb {
                         First => &self.mode_flags()[FLAG_FST_OFF],
@@ -406,8 +409,8 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
 impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
     fn index_mut(&mut self, index: Column) -> &mut Self::Output {
         match index {
-            Column::Selector(flag) => match flag {
-                Round => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
+            Column::Selector(step) => match step {
+                Round(_) => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
                 Sponge(sponge) => match sponge {
                     Absorb(absorb) => match absorb {
                         First => &mut self.mode_flags_mut()[FLAG_FST_OFF],

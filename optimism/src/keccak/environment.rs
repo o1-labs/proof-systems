@@ -4,9 +4,9 @@
 use crate::keccak::{
     column::{
         Absorbs::{self, *},
-        Flags::*,
         KeccakWitness,
         Sponges::{self, *},
+        Steps::*,
         PAD_SUFFIX_LEN,
     },
     constraints::Env as ConstraintsEnv,
@@ -28,13 +28,11 @@ use std::array;
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<F> {
-    /// Environment for the constraints (includes lookups)
+    /// Environment for the constraints (includes lookups and selector (step)).
+    /// The step of the hash that is being executed can be None if just ended
     pub constraints_env: ConstraintsEnv<F>,
     /// Environment for the witness (includes multiplicities)
     pub witness_env: WitnessEnv<F>,
-
-    /// What step of the hash is being executed (or None, if just ended)
-    pub keccak_step: Option<KeccakStep>,
 
     /// Hash index in the circuit
     pub(crate) hash_idx: u64,
@@ -59,20 +57,13 @@ pub struct KeccakEnv<F> {
     pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES],
 }
 
-/// Variants of Keccak steps available for the interpreter
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum KeccakStep {
-    Sponge(Sponges),
-    Round(u64),
-}
-
 impl<F: Field> KeccakEnv<F> {
     /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
     pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
         let mut env = Self {
+            // Must update the flag type at each step from the witness interpretation
             constraints_env: ConstraintsEnv::default(),
             witness_env: WitnessEnv::default(),
-            keccak_step: None,
             hash_idx,
             step_idx: 0,
             block_idx: 0,
@@ -91,11 +82,11 @@ impl<F: Field> KeccakEnv<F> {
         // Update the number of blocks left to be absorbed depending on the length of the preimage
         env.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
 
-        // Configure first step depending on number of blocks remaining
-        env.keccak_step = if env.blocks_left_to_absorb == 1 {
-            Some(KeccakStep::Sponge(Absorb(Only)))
+        // Configure first step depending on number of blocks remaining, updating the selector for the row
+        env.constraints_env.step = if env.blocks_left_to_absorb == 1 {
+            Some(Sponge(Absorb(Only)))
         } else {
-            Some(KeccakStep::Sponge(Absorb(First)))
+            Some(Sponge(Absorb(First)))
         };
         env.step_idx = 0;
 
@@ -136,9 +127,9 @@ impl<F: Field> KeccakEnv<F> {
         // Reset columns to zeros to avoid conflicts between steps
         self.null_state();
 
-        match self.keccak_step.unwrap() {
-            KeccakStep::Sponge(typ) => self.run_sponge(typ),
-            KeccakStep::Round(i) => self.run_round(i),
+        match self.constraints_env.step.unwrap() {
+            Sponge(typ) => self.run_sponge(typ),
+            Round(i) => self.run_round(i),
         }
         self.write_column(KeccakColumn::StepIndex, self.step_idx);
 
@@ -147,22 +138,21 @@ impl<F: Field> KeccakEnv<F> {
 
     /// This function updates the next step of the environment depending on the current step
     pub fn update_step(&mut self) {
-        match self.keccak_step {
+        match self.constraints_env.step {
             Some(step) => match step {
-                KeccakStep::Sponge(sponge) => match sponge {
-                    Absorb(_) => self.keccak_step = Some(KeccakStep::Round(0)),
-
-                    Squeeze => self.keccak_step = None,
+                Sponge(sponge) => match sponge {
+                    Absorb(_) => self.constraints_env.step = Some(Round(0)),
+                    Squeeze => self.constraints_env.step = None,
                 },
-                KeccakStep::Round(round) => {
+                Round(round) => {
                     if round < ROUNDS as u64 - 1 {
-                        self.keccak_step = Some(KeccakStep::Round(round + 1));
+                        self.constraints_env.step = Some(Round(round + 1));
                     } else {
                         self.blocks_left_to_absorb -= 1;
                         match self.blocks_left_to_absorb {
-                            0 => self.keccak_step = Some(KeccakStep::Sponge(Squeeze)),
-                            1 => self.keccak_step = Some(KeccakStep::Sponge(Absorb(Last))),
-                            _ => self.keccak_step = Some(KeccakStep::Sponge(Absorb(Middle))),
+                            0 => self.constraints_env.step = Some(Sponge(Squeeze)),
+                            1 => self.constraints_env.step = Some(Sponge(Absorb(Last))),
+                            _ => self.constraints_env.step = Some(Sponge(Absorb(Middle))),
                         }
                     }
                 }
@@ -175,7 +165,7 @@ impl<F: Field> KeccakEnv<F> {
     /// Updates the witness corresponding to the round selector to 1 and the round value in [1..24)
     fn set_flag_round(&mut self, round: u64) {
         assert!(round < ROUNDS as u64);
-        self.write_column(KeccakColumn::Selector(Round), 1);
+        self.write_column(KeccakColumn::Selector(Round(round)), 1); // Could be Round(_) as it is not used in the column
         self.write_column(KeccakColumn::RoundNumber, round);
     }
     /// Sets the witness corresponding to the squeeze selector to 1

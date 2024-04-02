@@ -1,5 +1,5 @@
 use crate::{
-    keccak::column::{Column as KeccakColumn, Flags, PAD_SUFFIX_LEN},
+    keccak::column::{Column as KeccakColumn, Steps, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
@@ -43,7 +43,7 @@ pub enum Error {
 /// All the names for selector misconfigurations of the Keccak circuit
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Selector {
-    NotBoolean(Flags),
+    NotBoolean(Steps),
     NotMutex,
 }
 

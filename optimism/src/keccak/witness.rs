@@ -8,7 +8,7 @@
 //! <https://keccak.team/keccak_specs_summary.html>
 use crate::{
     keccak::{
-        column::{Absorbs::*, Flags::*, KeccakWitness, Sponges::*},
+        column::{Absorbs::*, KeccakWitness, Sponges::*, Steps::*},
         interpreter::KeccakInterpreter,
         Constraint, Error, KeccakColumn,
         Selector::{self, *},
@@ -94,7 +94,7 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         // BOOLEANITY CHECKS
         {
             // Round is either true or false
-            self.check(NotBoolean(Round), Self::is_boolean(self.mode_round()));
+            self.check(NotBoolean(Round(0)), Self::is_boolean(self.mode_round()));
             // Absorb is either true or false
             self.check(
                 NotBoolean(Sponge(Absorb(Middle))),
@@ -189,6 +189,8 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         self.variable(KeccakColumn::Selector(Sponge(Absorb(Only))))
     }
     fn mode_round(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Round))
+        // The actual round number in the selector carries no information for witness nor constraints
+        // because in the witness, any usize is mapped to the same index inside the mode flags
+        self.variable(KeccakColumn::Selector(Round(0)))
     }
 }
