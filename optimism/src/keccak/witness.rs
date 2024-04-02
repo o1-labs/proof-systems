@@ -8,7 +8,7 @@
 //! <https://keccak.team/keccak_specs_summary.html>
 use crate::{
     keccak::{
-        column::{Flag::*, KeccakWitness},
+        column::{Absorb::*, Flag::*, KeccakWitness, Sponge::*},
         interpreter::KeccakInterpreter,
         Constraint, Error, KeccakColumn,
         Selector::{self, *},
@@ -96,15 +96,30 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
             // Round is either true or false
             self.check(NotBoolean(Round), Self::is_boolean(self.mode_round()));
             // Absorb is either true or false
-            self.check(NotBoolean(Absorb), Self::is_boolean(self.mode_absorb()));
+            self.check(
+                NotBoolean(Sponge(Absorb(Middle))),
+                Self::is_boolean(self.mode_absorb()),
+            );
             // Squeeze is either true or false
-            self.check(NotBoolean(Squeeze), Self::is_boolean(self.mode_squeeze()));
+            self.check(
+                NotBoolean(Sponge(Squeeze)),
+                Self::is_boolean(self.mode_squeeze()),
+            );
             // Root is either true or false
-            self.check(NotBoolean(Root), Self::is_boolean(self.mode_root()));
+            self.check(
+                NotBoolean(Sponge(Absorb(First))),
+                Self::is_boolean(self.mode_root()),
+            );
             // Pad is either true or false
-            self.check(NotBoolean(Pad), Self::is_boolean(self.mode_pad()));
+            self.check(
+                NotBoolean(Sponge(Absorb(Last))),
+                Self::is_boolean(self.mode_pad()),
+            );
             // RootPad is either true or false
-            self.check(NotBoolean(RootPad), Self::is_boolean(self.mode_rootpad()));
+            self.check(
+                NotBoolean(Sponge(Absorb(Only))),
+                Self::is_boolean(self.mode_rootpad()),
+            );
         }
 
         // MUTUAL EXCLUSIVITY CHECKS
@@ -159,19 +174,19 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     /////////////////////////
 
     fn mode_absorb(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Absorb))
+        self.variable(KeccakColumn::Selector(Sponge(Absorb(Middle))))
     }
     fn mode_squeeze(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Squeeze))
+        self.variable(KeccakColumn::Selector(Sponge(Squeeze)))
     }
     fn mode_root(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Root))
+        self.variable(KeccakColumn::Selector(Sponge(Absorb(First))))
     }
     fn mode_pad(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(Pad))
+        self.variable(KeccakColumn::Selector(Sponge(Absorb(Last))))
     }
     fn mode_rootpad(&self) -> Self::Variable {
-        self.variable(KeccakColumn::Selector(RootPad))
+        self.variable(KeccakColumn::Selector(Sponge(Absorb(Only))))
     }
     fn mode_round(&self) -> Self::Variable {
         self.variable(KeccakColumn::Selector(Round))

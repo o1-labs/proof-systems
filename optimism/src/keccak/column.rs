@@ -1,5 +1,6 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
+use self::Sponge::*;
 use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
@@ -23,10 +24,10 @@ pub const ZKVM_KECCAK_COLS: usize =
 const MODE_OFF: usize = 0; // The offset of the selector columns inside the witness
 const MODE_LEN: usize = 6; // The number of columns used by the Keccak circuit to represent the mode flags.
 const FLAG_ROUND_OFF: usize = 0; // Offset of the Round selector inside the mode flags
-const FLAG_ROOT_OFF: usize = 1; // Offset of the Root selector inside the mode flags
-const FLAG_ABSORB_OFF: usize = 2; // Offset of the Absorb selector inside the mode flags
-const FLAG_PAD_OFF: usize = 3; // Offset of the Pad selector  inside the mode flags
-const FLAG_ROOTPAD_OFF: usize = 4; // Offset of the RootPad selector  inside the mode flags
+const FLAG_FST_OFF: usize = 1; // Offset of the Absorb(First) selector inside the mode flags
+const FLAG_MID_OFF: usize = 2; // Offset of the Absorb(Middle) selector inside the mode flags
+const FLAG_LST_OFF: usize = 3; // Offset of the Absorb(Last) selector  inside the mode flags
+const FLAG_ONE_OFF: usize = 4; // Offset of the Absorb(Only) selector  inside the mode flags
 const FLAG_SQUEEZE_OFF: usize = 5; // Offset of the Squeeze selector inside the mode flags
 
 const STATUS_IDXS_OFF: usize = MODE_LEN; // The offset of the columns reserved for the status indices
@@ -106,12 +107,24 @@ pub enum Column {
 /// can be split into different instances for folding
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Flag {
-    Round,   // Current step performs a round of the permutation
-    Root,    // Current step performs a root absorb sponge
-    Absorb,  // Current step performs an absorb of the sponge
-    Pad,     // Current step performs the padding absorb sponge
-    RootPad, // Current step performs the unique absorb of the sponge
-    Squeeze, // Current step performs the squeeze of the sponge
+    Round,          // Current step performs a round of the permutation
+    Sponge(Sponge), // Current step is a sponge
+}
+
+/// Variants of Keccak sponges
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum Sponge {
+    Absorb(Absorb),
+    Squeeze,
+}
+
+/// Order of absorb steps in the computation depending on the number of blocks to absorb
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum Absorb {
+    First,  // Also known as the root absorb
+    Middle, // Any other absorb
+    Last,   // Also known as the padding absorb
+    Only,   // Only one block to absorb (preimage data is less than 136 bytes), both root and pad
 }
 
 /// The columns used by the Keccak circuit.
@@ -270,12 +283,18 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
     /// is used by intermediary values when executing the Round step.
     fn index(&self, index: Column) -> &Self::Output {
         match index {
-            Column::Selector(Flag::Round) => &self.mode_flags()[FLAG_ROUND_OFF],
-            Column::Selector(Flag::Root) => &self.mode_flags()[FLAG_ROOT_OFF],
-            Column::Selector(Flag::Absorb) => &self.mode_flags()[FLAG_ABSORB_OFF],
-            Column::Selector(Flag::Pad) => &self.mode_flags()[FLAG_PAD_OFF],
-            Column::Selector(Flag::RootPad) => &self.mode_flags()[FLAG_ROOTPAD_OFF],
-            Column::Selector(Flag::Squeeze) => &self.mode_flags()[FLAG_SQUEEZE_OFF],
+            Column::Selector(flag) => match flag {
+                Flag::Round => &self.mode_flags()[FLAG_ROUND_OFF],
+                Flag::Sponge(sponge) => match sponge {
+                    Absorb(absorb) => match absorb {
+                        Absorb::First => &self.mode_flags()[FLAG_FST_OFF],
+                        Absorb::Middle => &self.mode_flags()[FLAG_MID_OFF],
+                        Absorb::Last => &self.mode_flags()[FLAG_LST_OFF],
+                        Absorb::Only => &self.mode_flags()[FLAG_ONE_OFF],
+                    },
+                    Squeeze => &self.mode_flags()[FLAG_SQUEEZE_OFF],
+                },
+            },
 
             Column::HashIndex => self.hash_index(),
             Column::BlockIndex => self.block_index(),
@@ -387,12 +406,18 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
 impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
     fn index_mut(&mut self, index: Column) -> &mut Self::Output {
         match index {
-            Column::Selector(Flag::Round) => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
-            Column::Selector(Flag::Root) => &mut self.mode_flags_mut()[FLAG_ROOT_OFF],
-            Column::Selector(Flag::Absorb) => &mut self.mode_flags_mut()[FLAG_ABSORB_OFF],
-            Column::Selector(Flag::Pad) => &mut self.mode_flags_mut()[FLAG_PAD_OFF],
-            Column::Selector(Flag::RootPad) => &mut self.mode_flags_mut()[FLAG_ROOTPAD_OFF],
-            Column::Selector(Flag::Squeeze) => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],
+            Column::Selector(flag) => match flag {
+                Flag::Round => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
+                Flag::Sponge(sponge) => match sponge {
+                    Absorb(absorb) => match absorb {
+                        Absorb::First => &mut self.mode_flags_mut()[FLAG_FST_OFF],
+                        Absorb::Middle => &mut self.mode_flags_mut()[FLAG_MID_OFF],
+                        Absorb::Last => &mut self.mode_flags_mut()[FLAG_LST_OFF],
+                        Absorb::Only => &mut self.mode_flags_mut()[FLAG_ONE_OFF],
+                    },
+                    Squeeze => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],
+                },
+            },
 
             Column::HashIndex => &mut self.cols[STATUS_IDXS_OFF],
             Column::BlockIndex => &mut self.cols[STATUS_IDXS_OFF + 1],

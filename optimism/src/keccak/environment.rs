@@ -2,7 +2,7 @@
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
 use crate::keccak::{
-    column::{Flag::*, KeccakWitness, PAD_SUFFIX_LEN},
+    column::{Absorb, Flag::*, KeccakWitness, Sponge, PAD_SUFFIX_LEN},
     constraints::Env as ConstraintsEnv,
     grid_index, pad_blocks,
     witness::Env as WitnessEnv,
@@ -62,22 +62,6 @@ pub enum KeccakStep {
     Round(u64),
 }
 
-/// Variants of Keccak sponges
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Sponge {
-    Absorb(Absorb),
-    Squeeze,
-}
-
-/// Order of absorb steps in the computation depending on the number of blocks to absorb
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Absorb {
-    First,        // Also known as the root absorb
-    Middle,       // Any other absorb
-    Last,         // Also known as the padding absorb
-    FirstAndLast, // In case there is only one block to absorb (preimage data is less than 136 bytes)
-}
-
 impl<F: Field> KeccakEnv<F> {
     /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
     pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
@@ -112,7 +96,7 @@ impl<F: Field> KeccakEnv<F> {
 
         // Configure first step depending on number of blocks remaining
         env.keccak_step = if env.blocks_left_to_absorb == 1 {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
+            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Only)))
         } else {
             Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
         };
@@ -211,13 +195,13 @@ impl<F: Field> KeccakEnv<F> {
     fn set_flag_absorb(&mut self, absorb: Absorb) {
         self.write_column(KeccakColumn::Selector, 1);
         match absorb {
-            Absorb::First => self.set_flag_root(),
-            Absorb::Last => self.set_flag_pad(),
-            Absorb::FirstAndLast => {
+            First => self.set_flag_root(),
+            Last => self.set_flag_pad(),
+            Only => {
                 self.set_flag_root();
                 self.set_flag_pad()
             }
-            Absorb::Middle => (),
+            Middle => (),
         }
     }
     /// Sets the witness corresponding to the `Root` selector to 1
