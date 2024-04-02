@@ -31,7 +31,7 @@ pub struct Env<F> {
     pub multiplicities: Vec<Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,
-    /// The round number, if nonzero
+    /// The round number [0..23]
     pub(crate) round: u64,
 }
 

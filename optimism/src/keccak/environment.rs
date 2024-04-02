@@ -111,12 +111,15 @@ impl<F: Field> KeccakEnv<F> {
         self.witness_env.witness[column] = value;
     }
 
-    /// Nullifies the Witness environment by resetting it to default values (except for lookup-related)
+    /// Nullifies the Witness and Constraint environments by resetting it to default values (except for table-related)
+    /// This way, each row only adds the constraints of that step (do not nullify the step)
     pub fn null_state(&mut self) {
         self.witness_env.witness = KeccakWitness::default();
         self.witness_env.errors = vec![];
         // The multiplicities are not reset.
         // The fixed tables are not modified.
+        self.constraints_env.constraints = vec![];
+        self.constraints_env.lookups = vec![];
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
@@ -162,7 +165,7 @@ impl<F: Field> KeccakEnv<F> {
         self.step_idx += 1;
     }
 
-    /// Updates the witness corresponding to the round selector to 1 and the round value in [1..24)
+    /// Updates the witness corresponding to the round selector to 1 and the round value in [0..23]
     fn set_flag_round(&mut self, round: u64) {
         assert!(round < ROUNDS as u64);
         self.write_column(KeccakColumn::Selector(Round(round)), 1); // Could be Round(_) as it is not used in the column
@@ -209,7 +212,7 @@ impl<F: Field> KeccakEnv<F> {
     /// Assigns the witness values needed in a sponge step (absorb or squeeze)
     fn run_sponge(&mut self, sponge: Sponges) {
         // Keep track of the round number for ease of debugging
-        self.witness_env.round = 0;
+        self.witness_env.round = 24; // invalid round number used in sponges
         match sponge {
             Absorb(absorb) => self.run_absorb(absorb),
             Squeeze => self.run_squeeze(),

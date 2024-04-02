@@ -181,7 +181,7 @@ impl Keccak {
     /// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
     /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
     pub fn padded_length(bytelength: usize) -> usize {
-        (bytelength / RATE_IN_BYTES + 1) * RATE_IN_BYTES
+        Self::num_blocks(bytelength) * RATE_IN_BYTES
     }
 
     /// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
@@ -200,7 +200,7 @@ impl Keccak {
 
     /// Number of blocks to be absorbed on input a given preimage bytelength
     pub fn num_blocks(bytelength: usize) -> usize {
-        Self::padded_length(bytelength) / RATE_IN_BYTES
+        bytelength / RATE_IN_BYTES + 1
     }
 }
 

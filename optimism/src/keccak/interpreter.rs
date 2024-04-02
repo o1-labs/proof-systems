@@ -127,12 +127,12 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// - 733 constraints of degree 1
     /// - 146 constraints of degree 2
     /// Where:
-    /// - if Flag::Round   -> only 389 constraints added
-    /// - if Flag::Root    -> only 332 constraints added (232 + 100)
-    /// - if Flag::Absorb  -> only 232 constraints added
-    /// - if Flag::Pad     -> only 374 constraints added (232 + 136 + 6)
-    /// - if Flag::PadRoot -> only 474 constraints added (232 + 136 + 100 + 6)
-    /// - if Flag::Squeeze -> only 16  constraints added
+    /// - if Steps::Round(_)                -> only 389 constraints added
+    /// - if Steps::Sponge::Absorb::First   -> only 332 constraints added (232 + 100)
+    /// - if Steps::Sponge::Absorb::Middle  -> only 232 constraints added
+    /// - if Steps::Sponge::Absorb::Last    -> only 374 constraints added (232 + 136 + 6)
+    /// - if Steps::Sponge::Absorb::Only    -> only 474 constraints added (232 + 136 + 100 + 6)
+    /// - if Steps::Sponge::Squeeze         -> only 16  constraints added
     /// So:
     /// - At most, 474 constraints are added per row
     fn constraints(&mut self) {
