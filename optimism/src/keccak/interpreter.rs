@@ -465,16 +465,26 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Adds a given Lookup to the environment if the condition holds
     fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>);
 
-    /// Adds all 2481 lookups to the Keccak constraints environment:
-    /// - 2342 lookups for the step row
+    /// Creates all possible 2361 lookups to the Keccak constraints environment:
+    /// - 2222 lookups for the step row
     /// - 2 lookups for the inter-step channel
     /// - 136 lookups for the syscall channel (preimage bytes)
     /// - 1 lookups for the syscall channel (hash)
+    /// Of which:
+    /// - 1623 lookups if Step::Round          (1741 + 2)
+    /// - 737  lookups if Step::Absorb::First  (600 + 1 + 136)
+    /// - 738  lookups if Step::Absorb::Middle (600 + 2 + 136)
+    /// - 739  lookups if Step::Absorb::Last   (601 + 2 + 136)
+    /// - 738  lookups if Step::Absorb::Only   (601 + 1 + 136)
+    /// - 602 lookups if Step::Squeeze         (600 + 1 + 1)
     fn lookups(&mut self) {
         // SPONGE LOOKUPS
+        // -> adds 600 lookups if is_sponge
+        // -> adds 601 lookups if is_pad
         self.lookups_sponge();
 
         // ROUND LOOKUPS
+        // -> adds 1621 lookups if is_round
         {
             // THETA LOOKUPS
             self.lookups_round_theta();
@@ -488,16 +498,23 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
         // INTER-STEP CHANNEL
         // Write outputs for next step if not a squeeze and read inputs of curr step if not a root
+        // -> adds 1 lookup if is_root
+        // -> adds 1 lookup if is_squeeze
+        // -> adds 2 lookups otherwise
         self.lookup_steps();
 
         // COMMUNICATION CHANNEL: read bytes of current block
+        // -> adds 136 lookups if is_absorb
         self.lookup_syscall_preimage();
 
         // COMMUNICATION CHANNEL: Write hash output
+        // -> adds 1 lookup if is_squeeze
         self.lookup_syscall_hash();
     }
 
     /// When in Absorb mode, reads Lookups containing the 136 bytes of the block of the preimage
+    /// - if is_absorb, adds 136 lookups
+    /// - otherwise, adds 0 lookups
     // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {
@@ -517,6 +534,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// When in Squeeze mode, writes a Lookup containing the 31byte output of the hash (excludes the MSB)
+    /// - if is_squeeze, adds 1 lookup
+    /// - otherwise, adds 0 lookups
     fn lookup_syscall_hash(&mut self) {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
@@ -529,6 +548,9 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
     /// Reads a Lookup containing the input of a step
     /// and writes a Lookup containing the output of the next step
+    /// - if is_root, only adds 1 lookup
+    /// - if is_squeeze, only adds 1 lookup
+    /// - otherwise, adds 2 lookups
     fn lookup_steps(&mut self) {
         // (if not a root) Output of previous step is input of current step
         self.add_lookup(
@@ -578,6 +600,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Adds the 601 lookups required for the sponge
+    /// - 600 lookups if is_sponge()
+    /// - 1 extra lookup if is_pad()
     fn lookups_sponge(&mut self) {
         // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
@@ -611,7 +635,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         }
     }
 
-    /// Adds the 140 lookups required for Theta in the round
+    /// Adds the 120 lookups required for Theta in the round
     fn lookups_round_theta(&mut self) {
         for q in 0..QUARTERS {
             for x in 0..DIM {
@@ -633,7 +657,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         }
     }
 
-    /// Adds the 800 lookups required for PiRho in the round
+    /// Adds the 700 lookups required for PiRho in the round
     fn lookups_round_pirho(&mut self) {
         for q in 0..QUARTERS {
             for x in 0..DIM {

@@ -92,8 +92,10 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        self.lookups.push(lookup);
+    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>) {
+        if if_true == Self::Variable::one() {
+            self.lookups.push(lookup);
+        }
     }
 
     /////////////////////////
