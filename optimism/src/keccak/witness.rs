@@ -147,10 +147,8 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
 
     /// Checks the constraint `tag` by checking that the input `x` is zero
     fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable) {
-        if if_true == Self::Variable::one() {
-            if x != F::zero() {
-                self.errors.push(Error::Constraint(tag));
-            }
+        if if_true == Self::Variable::one() && x != F::zero() {
+            self.errors.push(Error::Constraint(tag));
         }
     }
 
