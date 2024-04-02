@@ -118,7 +118,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     fn check(&mut self, tag: Selector, x: Self::Variable);
 
     /// Checks that the selectors are set correctly
-    fn checks(&self);
+    fn checks(&mut self);
 
     /// Adds one KeccakConstraint to the environment if the selector holds
     fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable);

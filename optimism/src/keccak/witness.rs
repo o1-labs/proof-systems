@@ -8,7 +8,7 @@
 //! <https://keccak.team/keccak_specs_summary.html>
 use crate::{
     keccak::{
-        column::{Absorb::*, Flag::*, KeccakWitness, Sponge::*},
+        column::{Absorbs::*, Flags::*, KeccakWitness, Sponges::*},
         interpreter::KeccakInterpreter,
         Constraint, Error, KeccakColumn,
         Selector::{self, *},
@@ -90,7 +90,7 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         }
     }
 
-    fn checks(&self) {
+    fn checks(&mut self) {
         // BOOLEANITY CHECKS
         {
             // Round is either true or false

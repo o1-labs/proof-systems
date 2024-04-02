@@ -2,7 +2,13 @@
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
 use crate::keccak::{
-    column::{Absorb, Flag::*, KeccakWitness, Sponge, PAD_SUFFIX_LEN},
+    column::{
+        Absorbs::{self, *},
+        Flags::*,
+        KeccakWitness,
+        Sponges::{self, *},
+        PAD_SUFFIX_LEN,
+    },
     constraints::Env as ConstraintsEnv,
     grid_index, pad_blocks,
     witness::Env as WitnessEnv,
@@ -47,18 +53,16 @@ pub struct KeccakEnv<F> {
     /// Byte-length of the 10*1 pad (<=136)
     pub(crate) pad_len: u64,
 
-    /// Precomputed 2^pad_len (including 2^0 = 1)
-    two_to_pad: [F; RATE_IN_BYTES + 1],
-    /// Precomputed inverses of the padding lengths (including dummy 0)
-    inv_pad_len: [F; RATE_IN_BYTES + 1],
+    /// Precomputed 2^pad_len
+    two_to_pad: [F; RATE_IN_BYTES],
     /// Precomputed suffixes for the padding blocks
-    pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES + 1],
+    pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES],
 }
 
 /// Variants of Keccak steps available for the interpreter
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum KeccakStep {
-    Sponge(Sponge),
+    Sponge(Sponges),
     Round(u64),
 }
 
@@ -76,16 +80,9 @@ impl<F: Field> KeccakEnv<F> {
             blocks_left_to_absorb: 0,
             padded: vec![],
             pad_len: 0,
-            two_to_pad: array::from_fn(|i| F::two_pow(i as u64)),
-            // When i = 0, the inverse is undefined, so we use a dummy value
-            inv_pad_len: array::from_fn(|i| F::inverse(&F::from(i as u64)).unwrap_or(F::zero())),
-            pad_suffixes: array::from_fn(|i| {
-                if i == 0 {
-                    [F::zero(); PAD_SUFFIX_LEN]
-                } else {
-                    pad_blocks::<F>(i)
-                }
-            }),
+            // Add 1 to i so that 0 is not included
+            two_to_pad: array::from_fn(|i| F::two_pow(1 + i as u64)),
+            pad_suffixes: array::from_fn(|i| pad_blocks::<F>(1 + i)),
         };
 
         // Store hash index in the witness
@@ -96,9 +93,9 @@ impl<F: Field> KeccakEnv<F> {
 
         // Configure first step depending on number of blocks remaining
         env.keccak_step = if env.blocks_left_to_absorb == 1 {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Only)))
+            Some(KeccakStep::Sponge(Absorb(Only)))
         } else {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
+            Some(KeccakStep::Sponge(Absorb(First)))
         };
         env.step_idx = 0;
 
@@ -153,9 +150,9 @@ impl<F: Field> KeccakEnv<F> {
         match self.keccak_step {
             Some(step) => match step {
                 KeccakStep::Sponge(sponge) => match sponge {
-                    Sponge::Absorb(_) => self.keccak_step = Some(KeccakStep::Round(0)),
+                    Absorb(_) => self.keccak_step = Some(KeccakStep::Round(0)),
 
-                    Sponge::Squeeze => self.keccak_step = None,
+                    Squeeze => self.keccak_step = None,
                 },
                 KeccakStep::Round(round) => {
                     if round < ROUNDS as u64 - 1 {
@@ -163,15 +160,9 @@ impl<F: Field> KeccakEnv<F> {
                     } else {
                         self.blocks_left_to_absorb -= 1;
                         match self.blocks_left_to_absorb {
-                            0 => self.keccak_step = Some(KeccakStep::Sponge(Sponge::Squeeze)),
-                            1 => {
-                                self.keccak_step =
-                                    Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Last)))
-                            }
-                            _ => {
-                                self.keccak_step =
-                                    Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Middle)))
-                            }
+                            0 => self.keccak_step = Some(KeccakStep::Sponge(Squeeze)),
+                            1 => self.keccak_step = Some(KeccakStep::Sponge(Absorb(Last))),
+                            _ => self.keccak_step = Some(KeccakStep::Sponge(Absorb(Middle))),
                         }
                     }
                 }
@@ -181,65 +172,59 @@ impl<F: Field> KeccakEnv<F> {
         self.step_idx += 1;
     }
 
-    /// Updates the witness corresponding to the `FlagRound` column with a value in [0..24)
+    /// Updates the witness corresponding to the round selector to 1 and the round value in [1..24)
     fn set_flag_round(&mut self, round: u64) {
         assert!(round < ROUNDS as u64);
-        self.write_column(KeccakColumn::FlagRound, round);
+        self.write_column(KeccakColumn::Selector(Round), 1);
+        self.write_column(KeccakColumn::RoundNumber, round);
     }
-    /// Sets the witness corresponding to the `FlagSqueeze` column to 1
+    /// Sets the witness corresponding to the squeeze selector to 1
     fn set_flag_squeeze(&mut self) {
-        self.write_column(KeccakColumn::FlagSqueeze, 1);
+        self.write_column(KeccakColumn::Selector(Sponge(Squeeze)), 1);
     }
     /// Sets the witness corresponding to the absorb selectors to 1 and
     /// updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
-    fn set_flag_absorb(&mut self, absorb: Absorb) {
-        self.write_column(KeccakColumn::Selector, 1);
+    fn set_flag_absorb(&mut self, absorb: Absorbs) {
         match absorb {
-            First => self.set_flag_root(),
-            Last => self.set_flag_pad(),
-            Only => {
-                self.set_flag_root();
-                self.set_flag_pad()
+            First => self.write_column(KeccakColumn::Selector(Sponge(Absorb(First))), 1),
+            Last => {
+                self.write_column(KeccakColumn::Selector(Sponge(Absorb(Last))), 1);
+                self.set_flags_pad();
             }
-            Middle => (),
+            Only => {
+                self.write_column(KeccakColumn::Selector(Sponge(Absorb(Only))), 1);
+                self.set_flags_pad()
+            }
+            Middle => self.write_column(KeccakColumn::Selector(Sponge(Absorb(Middle))), 1),
         }
     }
-    /// Sets the witness corresponding to the `Root` selector to 1
-    fn set_flag_root(&mut self) {
-        self.write_column(KeccakColumn::Selector(Root), 1);
-    }
-    /// Sets the witness corresponding to the `Pad` selector to 1, and updates the remaining columns
-    /// related to padding flags such as `PadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
-    fn set_flag_pad(&mut self) {
+    /// Sets the flag columns related to padding flags such as `PadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
+    fn set_flags_pad(&mut self) {
         // Initialize padding columns with precomputed values to speed up interpreter
         self.write_column(KeccakColumn::PadLength, self.pad_len);
         self.write_column_field(
-            KeccakColumn::InvPadLength,
-            self.inv_pad_len[self.pad_len as usize],
-        );
-        self.write_column_field(
             KeccakColumn::TwoToPad,
-            self.two_to_pad[self.pad_len as usize],
+            self.two_to_pad[self.pad_len as usize - 1],
         );
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
             self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
-        let pad_suffix = self.pad_suffixes[self.pad_len as usize];
+        let pad_suffix = self.pad_suffixes[self.pad_len as usize - 1];
         for (idx, value) in pad_suffix.iter().enumerate() {
             self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
         }
     }
 
     /// Assigns the witness values needed in a sponge step (absorb or squeeze)
-    fn run_sponge(&mut self, sponge: Sponge) {
+    fn run_sponge(&mut self, sponge: Sponges) {
         match sponge {
-            Sponge::Absorb(absorb) => self.run_absorb(absorb),
-            Sponge::Squeeze => self.run_squeeze(),
+            Absorb(absorb) => self.run_absorb(absorb),
+            Squeeze => self.run_squeeze(),
         }
     }
     /// Assigns the witness values needed in an absorb step (root, padding, or middle)
-    fn run_absorb(&mut self, absorb: Absorb) {
+    fn run_absorb(&mut self, absorb: Absorbs) {
         self.set_flag_absorb(absorb);
 
         // Compute witness values

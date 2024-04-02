@@ -1,6 +1,6 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
-use self::Sponge::*;
+use self::{Absorbs::*, Flags::*, Sponges::*};
 use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
@@ -62,7 +62,7 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Column {
     /// Selectors used to distinguish between different modes of the Keccak step
-    Selector(Flag),
+    Selector(Flags),
 
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
@@ -106,21 +106,21 @@ pub enum Column {
 /// These selectors determine the specific behaviour so that Keccak steps
 /// can be split into different instances for folding
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Flag {
-    Round,          // Current step performs a round of the permutation
-    Sponge(Sponge), // Current step is a sponge
+pub enum Flags {
+    Round,           // Current step performs a round of the permutation
+    Sponge(Sponges), // Current step is a sponge
 }
 
 /// Variants of Keccak sponges
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Sponge {
-    Absorb(Absorb),
+pub enum Sponges {
+    Absorb(Absorbs),
     Squeeze,
 }
 
 /// Order of absorb steps in the computation depending on the number of blocks to absorb
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Absorb {
+pub enum Absorbs {
     First,  // Also known as the root absorb
     Middle, // Any other absorb
     Last,   // Also known as the padding absorb
@@ -284,13 +284,13 @@ impl<T: Clone> Index<Column> for KeccakWitness<T> {
     fn index(&self, index: Column) -> &Self::Output {
         match index {
             Column::Selector(flag) => match flag {
-                Flag::Round => &self.mode_flags()[FLAG_ROUND_OFF],
-                Flag::Sponge(sponge) => match sponge {
+                Round => &self.mode_flags()[FLAG_ROUND_OFF],
+                Sponge(sponge) => match sponge {
                     Absorb(absorb) => match absorb {
-                        Absorb::First => &self.mode_flags()[FLAG_FST_OFF],
-                        Absorb::Middle => &self.mode_flags()[FLAG_MID_OFF],
-                        Absorb::Last => &self.mode_flags()[FLAG_LST_OFF],
-                        Absorb::Only => &self.mode_flags()[FLAG_ONE_OFF],
+                        First => &self.mode_flags()[FLAG_FST_OFF],
+                        Middle => &self.mode_flags()[FLAG_MID_OFF],
+                        Last => &self.mode_flags()[FLAG_LST_OFF],
+                        Only => &self.mode_flags()[FLAG_ONE_OFF],
                     },
                     Squeeze => &self.mode_flags()[FLAG_SQUEEZE_OFF],
                 },
@@ -407,13 +407,13 @@ impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
     fn index_mut(&mut self, index: Column) -> &mut Self::Output {
         match index {
             Column::Selector(flag) => match flag {
-                Flag::Round => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
-                Flag::Sponge(sponge) => match sponge {
+                Round => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
+                Sponge(sponge) => match sponge {
                     Absorb(absorb) => match absorb {
-                        Absorb::First => &mut self.mode_flags_mut()[FLAG_FST_OFF],
-                        Absorb::Middle => &mut self.mode_flags_mut()[FLAG_MID_OFF],
-                        Absorb::Last => &mut self.mode_flags_mut()[FLAG_LST_OFF],
-                        Absorb::Only => &mut self.mode_flags_mut()[FLAG_ONE_OFF],
+                        First => &mut self.mode_flags_mut()[FLAG_FST_OFF],
+                        Middle => &mut self.mode_flags_mut()[FLAG_MID_OFF],
+                        Last => &mut self.mode_flags_mut()[FLAG_LST_OFF],
+                        Only => &mut self.mode_flags_mut()[FLAG_ONE_OFF],
                     },
                     Squeeze => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],
                 },

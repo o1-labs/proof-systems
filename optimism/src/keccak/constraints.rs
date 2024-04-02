@@ -1,7 +1,11 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
     keccak::{
-        column::Flag::{self, *},
+        column::{
+            Absorbs::*,
+            Flags::{self, *},
+            Sponges::*,
+        },
         Constraint, KeccakColumn, Selector, E,
     },
     lookups::Lookup,
@@ -25,7 +29,7 @@ pub struct Env<Fp> {
     /// Variables that are looked up in the circuit
     pub lookups: Vec<Lookup<E<Fp>>>,
     /// Selector of the current step
-    pub(crate) selector: Option<Flag>,
+    pub(crate) selector: Option<Flags>,
 }
 
 impl<F: Field> Default for Env<F> {
@@ -70,11 +74,11 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         }))
     }
 
-    fn check(&mut self, tag: Selector, x: Self::Variable) {
+    fn check(&mut self, _tag: Selector, _x: Self::Variable) {
         // No-op in constraint side
     }
 
-    fn checks(&self) {
+    fn checks(&mut self) {
         // No-op in constraint side
     }
 
@@ -98,31 +102,31 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
 
     fn mode_absorb(&self) -> Self::Variable {
         match self.selector {
-            Some(Absorb) => Self::Variable::one(),
+            Some(Sponge(Absorb(Middle))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_squeeze(&self) -> Self::Variable {
         match self.selector {
-            Some(Squeeze) => Self::Variable::one(),
+            Some(Sponge(Squeeze)) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_root(&self) -> Self::Variable {
         match self.selector {
-            Some(Root) => Self::Variable::one(),
+            Some(Sponge(Absorb(First))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_pad(&self) -> Self::Variable {
         match self.selector {
-            Some(Pad) => Self::Variable::one(),
+            Some(Sponge(Absorb(Last))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
     fn mode_rootpad(&self) -> Self::Variable {
         match self.selector {
-            Some(RootPad) => Self::Variable::one(),
+            Some(Sponge(Absorb(Only))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
