@@ -94,7 +94,7 @@ impl<T: Clone> IndexMut<Column> for MIPSWitness<T> {
         match index {
             Column::ScratchState(i) => &mut self.cols[i],
             Column::InverseState(i) => &mut self.cols[SCRATCH_SIZE + i],
-            Column::InstructionCounter => &mut self.cols[SCRATCH_SIZE],
+            Column::InstructionCounter => &mut self.cols[SCRATCH_SIZE + INVERSE_SIZE],
         }
     }
 }
