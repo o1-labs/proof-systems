@@ -53,7 +53,7 @@ pub enum Column {
 /// - 4 helpers to check if at least n bytes were read in the current row
 pub type MIPSWitness<T> = Witness<MIPS_COLUMNS, T>;
 
-pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + 2 + MIPS_SELECTORS_SIZE;
+pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + MIPS_SELECTORS_SIZE + 2;
 
 pub trait MIPSWitnessTrait<T> {
     fn scratch(&self) -> &[T];

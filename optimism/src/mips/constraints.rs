@@ -48,6 +48,13 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = Expr<ConstantExpr<Fp>, Column>;
 
+    fn variable(&self, column: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable) {
         self.constraints.push(assert_equals_zero)
     }

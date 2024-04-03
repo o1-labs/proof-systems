@@ -154,6 +154,9 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
+    // Returns the variable in the current row corresponding to a given column alias.
+    fn variable(&self, column: Self::Position) -> Self::Variable;
+
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
 
@@ -162,8 +165,8 @@ pub trait InterpreterEnv {
 
     /// Assert that the value `assert_equals_zero` is 0, and add a constraint in the proof system.
     fn assert_is_zero(&mut self, assert_equals_zero: Self::Variable) {
-        Self::check_is_zero(&assert_equals_zero);
-        self.add_constraint(assert_equals_zero);
+        Self::check_is_zero(&assert_equals_zero); // only in witness mode
+        self.add_constraint(assert_equals_zero); // only in constraint mode
     }
 
     /// Check that the witness values in `x` and `y` are equal; otherwise abort.

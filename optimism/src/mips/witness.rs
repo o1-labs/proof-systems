@@ -67,7 +67,7 @@ pub struct Env<Fp> {
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
-    pub selectors: [Fp; MIPS_SELECTORS_SIZE],
+    pub selectors: [u64; MIPS_SELECTORS_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
@@ -127,6 +127,24 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     type Variable = u64;
+
+    // TODO: update variable() function once scratch_state is [u64; SCRATCH_SIZE]
+    fn variable(&self, column: Self::Position) -> Self::Variable {
+        todo!();
+        /*
+        match column {
+            Column::ScratchState(idx) => self.scratch_state[idx],
+            Column::Selector(ins) => match ins {
+                Instruction::RType(r) => self.selectors[r as usize],
+                Instruction::IType(i) => self.selectors[i as usize + RTypeInstruction::COUNT],
+                Instruction::JType(j) => {
+                    self.selectors[j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT]
+                }
+            },
+            Column::InstructionCounter => self.instructions_counter,
+        }
+        */
+    }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
         // No-op for witness
@@ -796,7 +814,7 @@ impl<Fp: Field> Env<Fp> {
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
-            selectors: [Fp::zero(); MIPS_SELECTORS_SIZE],
+            selectors: [0; MIPS_SELECTORS_SIZE],
             halt: state.exited,
             syscall_env,
             preimage_oracle,
@@ -814,12 +832,7 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
-        self.write_field_column(column, value.into())
-    }
-
-    pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
-            Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::Selector(ins) => match ins {
                 Instruction::RType(r) => self.selectors[r as usize] = value,
                 Instruction::IType(i) => {
@@ -830,7 +843,15 @@ impl<Fp: Field> Env<Fp> {
                         value
                 }
             },
+            _ => self.write_field_column(column, value.into()),
+        }
+    }
+
+    pub fn write_field_column(&mut self, column: Column, value: Fp) {
+        match column {
+            Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
+            _ => panic!("Use write_column for selectors"),
         }
     }
 
