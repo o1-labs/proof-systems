@@ -80,13 +80,8 @@ pub struct Env<Fp> {
     pub hash_counter: u64,
 }
 
-fn fresh_scratch_state<const N: usize>() -> [u64; N] {
+fn fresh_state<const N: usize>() -> [u64; N] {
     array::from_fn(|_| 0)
-}
-
-fn fresh_inverse_state<const N: usize>() -> [u64; N] {
-    // So that we won't try to invert the zero value
-    array::from_fn(|_| 1)
 }
 
 const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
@@ -133,14 +128,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         Column::ScratchState(scratch_idx)
     }
 
-    fn alloc_inverse_or_scratch(&mut self, x: &Self::Variable) -> Self::Position {
-        if *x == 0 {
-            self.alloc_scratch()
-        } else {
-            let inverse_idx = self.inverse_state_idx;
-            self.inverse_state_idx += 1;
-            Column::InverseState(inverse_idx)
-        }
+    fn alloc_inverse(&mut self) -> Self::Position {
+        let inverse_idx = self.inverse_state_idx;
+        self.inverse_state_idx += 1;
+        Column::InverseState(inverse_idx)
     }
 
     type Variable = u64;
@@ -815,8 +806,8 @@ impl<Fp: Field> Env<Fp> {
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
             inverse_state_idx: 0,
-            scratch_state: fresh_scratch_state(),
-            inverse_state: fresh_inverse_state(),
+            scratch_state: fresh_state(),
+            inverse_state: fresh_state(),
             halt: state.exited,
             syscall_env,
             preimage_oracle,
@@ -830,20 +821,20 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn reset_scratch_state(&mut self) {
         self.scratch_state_idx = 0;
-        self.scratch_state = fresh_scratch_state();
+        self.scratch_state = fresh_state();
     }
 
     pub fn reset_inverse_state(&mut self) {
         self.inverse_state_idx = 0;
-        self.inverse_state = fresh_inverse_state();
+        // Using same fresh_state function because no problem if some colums of inverse are set to 0
+        self.inverse_state = fresh_state();
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InverseState(idx) => {
-                // So that we won't try to invert the zero value
-                assert_ne!(value, 0);
+                // No need to check that it is nonzero, because batch inversion will ignore those in any case
                 self.inverse_state[idx] = value
             }
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),

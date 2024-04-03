@@ -166,12 +166,13 @@ pub fn main() -> ExitCode {
                 inverses.extend(mips_current_pre_folding_witness.inverse()[i].clone());
             }
             // Batch inverse the inverse columns before folding
-            //ark_ff::batch_inversion::<Fp>(&mut inverses);
+            ark_ff::batch_inversion::<Fp>(&mut inverses);
             // Reassign the inverses to the witness columns
             for i in 0..INVERSE_SIZE {
                 mips_current_pre_folding_witness.cols[SCRATCH_SIZE + i] =
                     inverses[i * DOMAIN_SIZE..(i + 1) * DOMAIN_SIZE].to_vec();
             }
+
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
