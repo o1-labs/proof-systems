@@ -16,6 +16,8 @@ jobs:
   run_checks:
     strategy:
       matrix:
+        # FIXME: use the latest version of cargo nextest when we get rid of 1.71
+        # and 1.72
         rust_toolchain_version: ["1.71", "1.72"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
@@ -107,7 +109,8 @@ jobs:
       - name: Install latest nextest release
         run: |
           eval $(opam env)
-          cargo install cargo-nextest --locked
+          # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
+          cargo install cargo-nextest@=0.9.67 --locked
 
       - name: Test with latest nextest release (faster than cargo test)
         run: |
