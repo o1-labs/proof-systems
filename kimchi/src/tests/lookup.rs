@@ -22,12 +22,10 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
-    let mut lookup_table_values: Vec<Vec<_>> = table_sizes
+    let lookup_table_values: Vec<Vec<_>> = table_sizes
         .iter()
         .map(|size| (0..*size).map(|_| rand::random()).collect())
         .collect();
-    // Zero table must have a zero row
-    lookup_table_values[0][0] = From::from(0);
     let lookup_tables = lookup_table_values
         .iter()
         .enumerate()
@@ -35,8 +33,10 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
             let index_column = (0..lookup_table_values.len() as u64)
                 .map(Into::into)
                 .collect();
-            LookupTable::create(id as i32, vec![index_column, lookup_table_values.clone()])
-                .expect("setup_lookup_proof: Table creation must succeed")
+            LookupTable {
+                id: id as i32,
+                data: vec![index_column, lookup_table_values.clone()],
+            }
         })
         .collect();
 
@@ -200,7 +200,7 @@ fn test_runtime_table() {
     let len = first_column.len();
 
     let mut runtime_tables_setup = vec![];
-    for table_id in 1..num + 1 {
+    for table_id in 0..num {
         let cfg = RuntimeTableCfg {
             id: table_id,
             first_column: first_column.into_iter().map(Into::into).collect(),
@@ -236,7 +236,7 @@ fn test_runtime_table() {
 
         for row in 0..20 {
             // the first register is the table id. We pick one random table.
-            lookup_cols[0][row] = (rng.gen_range(1..num + 1) as u32).into();
+            lookup_cols[0][row] = (rng.gen_range(0..num) as u32).into();
 
             // create queries into our runtime lookup table.
             // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and

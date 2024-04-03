@@ -736,7 +736,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let lookup_domain_size = {
             // First we sum over the lookup table size
-            let mut lookup_domain_size: usize = lookup_tables.iter().map(|lt| lt.len()).sum();
+            let mut lookup_domain_size: usize = lookup_tables
+                .iter()
+                .map(
+                    |LookupTable { data, id: _ }| {
+                        if data.is_empty() {
+                            0
+                        } else {
+                            data[0].len()
+                        }
+                    },
+                )
+                .sum();
             // After that on the runtime tables
             if let Some(runtime_tables) = runtime_tables.as_ref() {
                 for runtime_table in runtime_tables.iter() {
@@ -846,7 +857,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             &domain,
             zk_rows as usize,
         )
-        .map_err(SetupError::LookupCreation)?;
+        .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
 

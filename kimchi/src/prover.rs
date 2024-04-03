@@ -936,7 +936,7 @@ where
         //~~ * $s_i$
         //~~ * $w_i$
         //~~ * $z$
-        //~~ * lookup (TODO)
+        //~~ * lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
         //~~ * generic selector
         //~~ * poseidon selector
         //~
