@@ -301,7 +301,7 @@ pub enum KimchiConstraint<Var, Field> {
     EcEndoscalar(Vec<EndoscaleScalarRound<Var>>),
     //[[Var; 15]; 4]
     RangeCheck(Vec<Vec<Var>>),
-    FFAdd(FFAdd<Var>),
+    FFAdd(Vec<FFAdd<Var>>),
 }
 
 /* TODO: This is a Unique_id in OCaml. */
@@ -1735,45 +1735,54 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 self.add_row(labels, loc, r3, GateType::Zero, vec![]);
             }
             KimchiConstraint::FFAdd(ffadd) => {
-                let FFAdd {
-                    a,
-                    b,
-                    overflow,
-                    carry,
-                    modulus,
-                    sign,
-                    end,
-                } = ffadd;
-                let mut vars = Vec::with_capacity(15);
-                vars.extend([a.low, a.mid, a.high].map(Some));
-                vars.extend([b.low, b.mid, b.high].map(Some));
-                vars.extend([overflow, carry].map(Some));
-                vars.resize(15, None);
-                let vars = vars
-                    .into_iter()
-                    .map(|v| v.map(|v| self.reduce_to_var(labels, loc, v)))
-                    .collect();
-
-                let mut coeffs = Vec::with_capacity(4);
-
-                coeffs.push(if sign { Field::one() } else { -Field::one() });
-
-                let FFModulus { low, mid, high } = modulus;
-                let modulus: [[u8; 11]; 3] = [low, mid, high].map(|l| l.try_into().unwrap());
-                let modulus: [Field; 3] = modulus.map(|l| Field::from_le_bytes_mod_order(&l));
-                coeffs.extend(modulus);
-
-                self.add_row(labels, loc, vars, GateType::ForeignFieldAdd, coeffs);
-                if let Some(end) = end {
-                    let FFElement { low, mid, high } = end;
-                    let end = [low, mid, high]
-                        .map(|x| self.reduce_to_var(labels, loc, x))
-                        .map(Some);
+                let mut rows = Vec::with_capacity(ffadd.len() + 1);
+                for ffadd in ffadd {
+                    let FFAdd {
+                        a,
+                        b,
+                        overflow,
+                        carry,
+                        modulus,
+                        sign,
+                        end,
+                    } = ffadd;
                     let mut vars = Vec::with_capacity(15);
-                    vars.extend(end);
+                    vars.extend([a.low, a.mid, a.high].map(Some));
+                    vars.extend([b.low, b.mid, b.high].map(Some));
+                    vars.extend([overflow, carry].map(Some));
                     vars.resize(15, None);
+                    let vars = vars
+                        .into_iter()
+                        .map(|v| v.map(|v| self.reduce_to_var(labels, loc, v)))
+                        .collect();
 
-                    self.add_row(labels, loc, vars, GateType::Zero, vec![]);
+                    let mut coeffs = Vec::with_capacity(4);
+
+                    coeffs.push(if sign { Field::one() } else { -Field::one() });
+
+                    let FFModulus { low, mid, high } = modulus;
+                    let modulus: [[u8; 11]; 3] = [low, mid, high].map(|l| l.try_into().unwrap());
+                    let modulus: [Field; 3] = modulus.map(|l| Field::from_le_bytes_mod_order(&l));
+                    coeffs.extend(modulus);
+
+                    // self.add_row(labels, loc, vars, GateType::ForeignFieldAdd, coeffs);
+                    rows.push((vars, GateType::ForeignFieldAdd, coeffs));
+                    //TODO: improve this so that bad inputs aren't possible
+                    if let Some(end) = end {
+                        let FFElement { low, mid, high } = end;
+                        let end = [low, mid, high]
+                            .map(|x| self.reduce_to_var(labels, loc, x))
+                            .map(Some);
+                        let mut vars = Vec::with_capacity(15);
+                        vars.extend(end);
+                        vars.resize(15, None);
+
+                        // self.add_row(labels, loc, vars, GateType::Zero, vec![]);
+                        rows.push((vars, GateType::Zero, vec![]));
+                    }
+                }
+                for (vars, gate, coeffs) in rows {
+                    self.add_row(labels, loc, vars, gate, coeffs);
                 }
             }
         }
