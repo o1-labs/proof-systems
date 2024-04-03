@@ -18,7 +18,7 @@ use crate::{
     },
     preimage_oracle::PreImageOracle,
 };
-use ark_ff::{Field, One, Zero};
+use ark_ff::Field;
 use core::panic;
 use log::{debug, info};
 use std::{
