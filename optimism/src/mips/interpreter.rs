@@ -603,6 +603,10 @@ pub trait InterpreterEnv {
         };
         let x_inv_or_zero = {
             let pos = {
+                // FIXME: can we do this type of check on the constraint side?
+                //        otherwise, inverse and some scratch columns could point to the same indices of the witness,
+                //        so that in the witness side they are flagged as inverse aliases for the final batch inverse,
+                //        but in the constraint side they use the alias in the scratch side
                 if *x == Self::Variable::zero() {
                     self.alloc_scratch()
                 } else {
