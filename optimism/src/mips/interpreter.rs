@@ -135,14 +135,13 @@ pub trait InterpreterEnv {
     /// so 9 inverse columns can at most be allocated at each step.
     /// After every instruction, these columns are "freed"
     /// (can be seen as evaluated to 1).
-    fn alloc_inverse(&mut self) -> Self::Position;
+    fn alloc_inverse_or_scratch(&mut self, x: &Self::Variable) -> Self::Position;
 
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug
-        + PartialEq
         + Zero
         + One;
 
@@ -602,17 +601,11 @@ pub trait InterpreterEnv {
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
-            let pos = {
-                // FIXME: can we do this type of check on the constraint side?
-                //        otherwise, inverse and some scratch columns could point to the same indices of the witness,
-                //        so that in the witness side they are flagged as inverse aliases for the final batch inverse,
-                //        but in the constraint side they use the alias in the scratch side
-                if *x == Self::Variable::zero() {
-                    self.alloc_scratch()
-                } else {
-                    self.alloc_inverse()
-                }
-            };
+            // FIXME: can we do this type of check on the constraint side?
+            //        otherwise, inverse and some scratch columns could point to the same indices of the witness,
+            //        so that in the witness side they are flagged as inverse aliases for the final batch inverse,
+            //        but in the constraint side they use the alias in the scratch side
+            let pos = self.alloc_inverse_or_scratch(x);
             unsafe { self.inverse_or_zero(x, pos) }
         };
         // If x = 0, then res = 1 and x_inv_or_zero = _

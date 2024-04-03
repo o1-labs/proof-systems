@@ -80,13 +80,13 @@ pub struct Env<Fp> {
     pub hash_counter: u64,
 }
 
-fn fresh_scratch_state<Fp: Zero, const N: usize>() -> [Fp; N] {
-    array::from_fn(|_| Fp::zero())
+fn fresh_scratch_state<const N: usize>() -> [u64; N] {
+    array::from_fn(|_| 0)
 }
 
-fn fresh_inverse_state<Fp: One, const N: usize>() -> [Fp; N] {
+fn fresh_inverse_state<const N: usize>() -> [u64; N] {
     // So that we won't try to invert the zero value
-    array::from_fn(|_| Fp::one())
+    array::from_fn(|_| 1)
 }
 
 const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
@@ -133,10 +133,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         Column::ScratchState(scratch_idx)
     }
 
-    fn alloc_inverse(&mut self) -> Self::Position {
-        let inverse_idx = self.inverse_state_idx;
-        self.inverse_state_idx += 1;
-        Column::InverseState(inverse_idx)
+    fn alloc_inverse_or_scratch(&mut self, x: &Self::Variable) -> Self::Position {
+        if *x == 0 {
+            self.alloc_scratch()
+        } else {
+            let inverse_idx = self.inverse_state_idx;
+            self.inverse_state_idx += 1;
+            Column::InverseState(inverse_idx)
+        }
     }
 
     type Variable = u64;

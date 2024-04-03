@@ -50,14 +50,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     // Use one of the available columns. It won't
     // create a new column every time this function is called. The number
     // of columns is defined upfront by crate::mips::witness::INVERSE_SIZE.
-    fn alloc_inverse(&mut self) -> Self::Position {
+    fn alloc_inverse_or_scratch(&mut self, _x: &Self::Variable) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
         // to the index.
         // See crate::INVERSE_SIZE for the maximum number of register accesses
         // the instructions can perform at most.
-        let inverse_idx = self.inverse_state_idx;
-        self.inverse_state_idx += 1;
-        Column::InverseState(inverse_idx)
+        let scratch_idx = self.scratch_state_idx;
+        self.scratch_state_idx += 1;
+        Column::ScratchState(scratch_idx)
     }
 
     type Variable = Expr<ConstantExpr<Fp>, Column>;
