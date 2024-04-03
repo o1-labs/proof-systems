@@ -32,7 +32,7 @@ pub enum Instruction {
     IType(ITypeInstruction),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
 pub enum RTypeInstruction {
     ShiftLeftLogical,             // sll
     ShiftRightLogical,            // srl
@@ -78,13 +78,13 @@ pub enum RTypeInstruction {
     CountLeadingZeros,            // clz
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
 pub enum JTypeInstruction {
     Jump,        // j
     JumpAndLink, // jal
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
 pub enum ITypeInstruction {
     BranchEq,                     // beq
     BranchNeq,                    // bne
