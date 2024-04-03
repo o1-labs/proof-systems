@@ -26,6 +26,9 @@ use std::{
     fs::File,
     io::{BufWriter, Write},
 };
+use strum::EnumCount;
+
+use super::column::MIPS_SELECTORS_SIZE;
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
 pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
@@ -64,6 +67,7 @@ pub struct Env<Fp> {
     pub registers_write_index: Registers<u64>,
     pub scratch_state_idx: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
+    pub selectors: [Fp; MIPS_SELECTORS_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
@@ -792,6 +796,7 @@ impl<Fp: Field> Env<Fp> {
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
+            selectors: [Fp::zero(); MIPS_SELECTORS_SIZE],
             halt: state.exited,
             syscall_env,
             preimage_oracle,
@@ -815,6 +820,16 @@ impl<Fp: Field> Env<Fp> {
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::Selector(ins) => match ins {
+                Instruction::RType(r) => self.selectors[r as usize] = value,
+                Instruction::IType(i) => {
+                    self.selectors[i as usize + RTypeInstruction::COUNT] = value
+                }
+                Instruction::JType(j) => {
+                    self.selectors[j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT] =
+                        value
+                }
+            },
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
         }
     }

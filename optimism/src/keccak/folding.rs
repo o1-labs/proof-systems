@@ -28,6 +28,7 @@ pub(crate) struct KeccakStructure;
 pub(crate) struct KeccakConfig;
 
 impl FoldingColumnTrait for KeccakColumn {
+    // FIXME: check if Selector should be seen as witness columns by folding or not
     fn is_witness(&self) -> bool {
         !matches!(self, KeccakColumn::Selector(_))
     }

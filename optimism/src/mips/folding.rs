@@ -28,9 +28,9 @@ pub(crate) struct MIPSStructure;
 pub(crate) struct MIPSConfig;
 
 impl FoldingColumnTrait for MIPSColumn {
+    // FIXME: check if Selector should be seen as witness columns by folding or not
     fn is_witness(&self) -> bool {
-        // All MIPS columns are witness columns
-        true
+        !matches!(self, MIPSColumn::Selector(_))
     }
 }
 

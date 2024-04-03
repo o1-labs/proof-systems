@@ -25,11 +25,28 @@ pub const SYSCALL_READ: u32 = 4003;
 pub const SYSCALL_WRITE: u32 = 4004;
 pub const SYSCALL_FCNTL: u32 = 4055;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+/// All the 71 MIPS instructions that can be executed by the virtual machine.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Instruction {
+    /// 42 register-register instructions:
+    /// sll, srl, sra, sllv, srlv, srav,
+    /// jr, jalr, syscall (Mmap), syscall (ExitGroup),
+    /// syscall (Read 3), syscall (Read 5), syscall (Read ?),
+    /// syscall (Write 4), syscall (Write 6), syscall (Write ?),
+    /// syscall (Fcntl), syscall (Brk, Clone, ?),
+    /// movz, movn, sync, mfhi, mthi, mflo mtlo,
+    /// mult, multu, div, divu, add, addu, sub, subbu,
+    /// and, or, xor, not, slt, sltu mul, clo, clz
     RType(RTypeInstruction),
-    JType(JTypeInstruction),
+    /// 27 immediate instructions:
+    /// beq, bne, blez, bgtz, bltz, bgez,
+    /// addi, addiu, slti, sltiu, andi, ori,
+    /// xori, lui, lb, lh, lw, lbu, lhu, lwl,
+    /// lwr, sb, sh, sw, sc, swl, swr
     IType(ITypeInstruction),
+    /// 2 jump instructions:
+    /// j, jal
+    JType(JTypeInstruction),
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
