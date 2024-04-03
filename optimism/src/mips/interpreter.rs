@@ -142,6 +142,7 @@ pub trait InterpreterEnv {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug
+        + PartialEq
         + Zero
         + One;
 
@@ -601,7 +602,13 @@ pub trait InterpreterEnv {
             unsafe { self.test_zero(x, pos) }
         };
         let x_inv_or_zero = {
-            let pos = self.alloc_inverse();
+            let pos = {
+                if *x == Self::Variable::zero() {
+                    self.alloc_scratch()
+                } else {
+                    self.alloc_inverse()
+                }
+            };
             unsafe { self.inverse_or_zero(x, pos) }
         };
         // If x = 0, then res = 1 and x_inv_or_zero = _
