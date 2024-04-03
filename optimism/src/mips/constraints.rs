@@ -53,7 +53,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     fn alloc_inverse(&mut self) -> Self::Position {
         // All columns are implemented using a simple index, and a name is given
         // to the index.
-        // See crate::INVERSE_SIZE for the maximum number of register accesses
+        // See crate::SCRATCH_SIZE for the maximum number of register accesses
         // the instructions can perform at most.
         let inverse_idx = self.inverse_state_idx;
         self.inverse_state_idx += 1;
