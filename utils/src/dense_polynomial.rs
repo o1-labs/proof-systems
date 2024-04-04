@@ -57,6 +57,10 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
             chunk_polys.push(DensePolynomial::from_coefficients_vec(vec![]));
         }
 
+        // Ensuring that the number of chunks is the one requested, following
+        // trait documentation
+        assert_eq!(chunk_polys.len(), num_chunks);
+
         ChunkedPolynomial {
             polys: chunk_polys,
             size: chunk_size,

@@ -1,36 +1,22 @@
-use crate::LIMBS_NUM;
-
-// @volhovm: maybe this needs to be a trait
 /// Describe a generic indexed variable X_{i}.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Column {
     X(usize),
+    // Columns related to the lookup protocol
+    /// Partial sums, indexed. This corresponds to the `h_i`
+    LookupPartialSum(usize),
+    /// Multiplicities, indexed. This corresponds to the `m_i`
+    LookupMultiplicity(u32),
+    /// The lookup aggregation, i.e. `phi`
+    LookupAggregation,
+    /// The fixed tables. The parameter is considered to the indexed table.
+    /// u32 has been arbitrarily chosen as it seems to be already large enough
+    LookupFixedTable(u32),
 }
 
 /// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
 pub trait ColumnIndexer {
+    // TODO: rename it in to_column. It is not necessary to have ix_
     fn ix_to_column(self) -> Column;
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-/// Column indexer for MSM columns
-pub enum MSMColumnIndexer {
-    A(usize),
-    B(usize),
-    C(usize),
-}
-
-impl ColumnIndexer for MSMColumnIndexer {
-    fn ix_to_column(self) -> Column {
-        let to_column_inner = |offset, i| {
-            assert!(i < LIMBS_NUM);
-            Column::X(LIMBS_NUM * offset + i)
-        };
-        match self {
-            MSMColumnIndexer::A(i) => to_column_inner(0, i),
-            MSMColumnIndexer::B(i) => to_column_inner(1, i),
-            MSMColumnIndexer::C(i) => to_column_inner(2, i),
-        }
-    }
 }

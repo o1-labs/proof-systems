@@ -2,8 +2,10 @@
 
 use ark_ff::bytes::{FromBytes, ToBytes};
 use serde::{Deserialize, Serialize};
-use std::array;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    array,
+    io::{Read, Result as IoResult, Write},
+};
 
 /// Number of registers
 pub const COLUMNS: usize = 15;

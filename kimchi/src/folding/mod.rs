@@ -2,36 +2,57 @@ use crate::circuits::gate::CurrOrNext;
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use error_term::{compute_error, ExtendedEnv, Side};
+use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
-pub use expressions::{ExpExtension, FoldingCompatibleExpr};
-pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 use instance_witness::{RelaxableInstance, RelaxablePair};
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
+// Make available outside the crate to avoid code duplication
+pub use error_term::Side;
+pub use example::{Alphas, BaseSponge};
+pub use expressions::{ExpExtension, FoldingCompatibleExpr};
+pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 pub mod decomposable_folding;
 mod error_term;
+#[allow(dead_code)]
+mod example;
 pub mod expressions;
 mod instance_witness;
-mod quadraticization;
 #[cfg(test)]
-mod test;
+mod mock;
+mod quadraticization;
 
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
     //in case of using docomposable folding, if not it can be just ()
-    type S: Clone;
+    type S: Clone + Debug + Eq;
+
+    /// The type of an abstract challenge that can be found in the expressions
+    /// provided as constraints.
     type Challenge: Clone + Copy + Debug + Eq + Hash;
+
+    /// The target curve used by the polynomial commitment
     type Curve: CommitmentCurve;
+
     type Srs: SRS<Self::Curve>;
+
+    /// FIXME: use Sponge from kimchi
+    /// The sponge used to create challenges
     type Sponge: Sponge<Self::Curve>;
+
+    /// For Plonk, it will be the commitments to the polynomials and the challenges
     type Instance: Instance<Self::Curve>;
+
+    /// For PlonK, it will be the polynomials in evaluation form that we commit to, i.e. the columns.
+    /// In the generic prover/verifier, it would be kimchi_msm::witness::Witness.
     type Witness: Witness<Self::Curve>;
+
     type Structure;
+
     type Env: FoldingEnv<
         <Self::Curve as AffineCurve>::ScalarField,
         Self::Instance,
@@ -40,14 +61,35 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
         Self::Challenge,
         Structure = Self::Structure,
     >;
+
+    /// Return the size of the circuit, i.e. the number of rows
     fn rows() -> usize;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum EvalLeaf<'a, F> {
     Const(F),
     Col(&'a Vec<F>),
     Result(Vec<F>),
+}
+
+impl<'a, F: std::fmt::Display> std::fmt::Display for EvalLeaf<'a, F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let vec = match self {
+            EvalLeaf::Const(c) => {
+                write!(f, "Const: {}", c)?;
+                return Ok(());
+            }
+            EvalLeaf::Col(a) => a,
+            EvalLeaf::Result(a) => a,
+        };
+        writeln!(f, "[")?;
+        for e in vec.iter() {
+            writeln!(f, "{e}")?;
+        }
+        write!(f, "]")?;
+        Ok(())
+    }
 }
 
 impl<'a, F: std::ops::Add<Output = F> + Clone> std::ops::Add for EvalLeaf<'a, F> {
@@ -164,18 +206,45 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
     }
 }
 
+/// Describe a folding environment.
+/// The type parameters are:
+/// - `F`: The field of the circuit/computation
+/// - `I`: The instance type, i.e the public inputs
+/// - `W`: The type of the witness, i.e. the private inputs
+/// - `Col`: The type of the column
+/// - `Chal`: The type of the challenge
 pub trait FoldingEnv<F, I, W, Col, Chal> {
+    /// Structure which could be storing useful information like selectors, etc.
     type Structure;
-    /// A vec of just zeros of the same length as other columns
-    fn zero_vec(&self) -> Vec<F>;
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
-    fn lagrange_basis(&self, i: usize) -> &Vec<F>;
-    fn challenge(&self, challenge: Chal, side: Side) -> F;
-    fn alpha(&self, i: usize, side: Side) -> F;
+
+    /// Creates a new environment storing the structure, instances and witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
+
+    // TODO: move into `FoldingConfig`
+    // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
+    // vec![F::zero(); Self::rows()]
+    /// Returns a vector of zeros with the same length as the number of rows in the circuit.
+    fn zero_vec(&self) -> Vec<F>;
+
+    /// Returns the evaluations of a given column witness at omega or zeta*omega.
+    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
+
+    // TODO: could be shared across circuits of the same type
+    /// Returns the evaluations of the i-th Lagrangian term.
+    fn lagrange_basis(&self, i: usize) -> &Vec<F>;
+
+    /// Obtains a given challenge from the expanded instance for one side.
+    /// The challenges are stored inside the instances structs.
+    fn challenge(&self, challenge: Chal, side: Side) -> F;
+
+    /// Computes the i-th power of alpha for a given side.
+    /// Folding itself will provide us with the alpha value.
+    fn alpha(&self, i: usize, side: Side) -> F;
 }
 
+/// TODO: Use Sponge trait from kimchi
 pub trait Sponge<G: CommitmentCurve> {
+    /// Compute a challenge from two commitments
     fn challenge(absorbe: &[PolyComm<G>; 2]) -> G::ScalarField;
 }
 

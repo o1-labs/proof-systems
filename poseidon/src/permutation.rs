@@ -1,7 +1,9 @@
 //! The permutation module contains the function implementing the permutation used in Poseidon
 
-use crate::constants::SpongeConstants;
-use crate::poseidon::{sbox, ArithmeticSpongeParams};
+use crate::{
+    constants::SpongeConstants,
+    poseidon::{sbox, ArithmeticSpongeParams},
+};
 use ark_ff::Field;
 
 fn apply_mds_matrix<F: Field, SC: SpongeConstants>(

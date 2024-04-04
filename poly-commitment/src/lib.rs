@@ -11,9 +11,11 @@ mod tests;
 
 pub use commitment::PolyComm;
 
-use crate::commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve};
-use crate::error::CommitmentError;
-use crate::evaluation_proof::DensePolynomialOrEvaluations;
+use crate::{
+    commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve},
+    error::CommitmentError,
+    evaluation_proof::DensePolynomialOrEvaluations,
+};
 use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
 use ark_poly::{
@@ -37,7 +39,6 @@ pub trait SRS<G: CommitmentCurve>: Clone {
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
 
@@ -60,15 +61,13 @@ pub trait SRS<G: CommitmentCurve>: Clone {
 
     /// This function commits a polynomial using the SRS' basis of size `n`.
     /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
-    /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
-    /// as well as an optional bounded commitment (if `max` is set).
-    /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
+    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
+    /// The function returns an unbounded commitment vector
+    /// (which splits the commitment into several commitments of size at most `n`).
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
     ) -> PolyComm<G>;
 
     fn commit_evaluations_non_hiding(
@@ -90,10 +89,9 @@ pub trait SRS<G: CommitmentCurve>: Clone {
 }
 
 #[allow(type_alias_bounds)]
-/// Vector of polynomials with optional degree bound and commitment randomness.
+/// Vector of polynomials with commitment randomness (blinders).
 type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
     DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
-    Option<usize>,
     PolyComm<G::ScalarField>,
 )];
 

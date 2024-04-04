@@ -1,10 +1,13 @@
 use super::framework::TestFramework;
-use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::wires::COLUMNS;
-use crate::proof::RecursionChallenge;
+use crate::{
+    circuits::{
+        polynomials::generic::testing::{create_circuit, fill_in_witness},
+        wires::COLUMNS,
+    },
+    proof::RecursionChallenge,
+};
 use ark_ff::{UniformRand, Zero};
-use ark_poly::univariate::DensePolynomial;
-use ark_poly::UVPolynomial;
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -43,7 +46,7 @@ fn test_recursion() {
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.commit_non_hiding(&b, 1, None)
+            index.srs.commit_non_hiding(&b, 1)
         };
         RecursionChallenge::new(chals, comm)
     };

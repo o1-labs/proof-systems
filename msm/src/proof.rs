@@ -1,125 +1,126 @@
+use crate::{
+    lookups::{LookupTableIDs, LookupWitness},
+    mvlookup::{LookupProof, LookupTableID},
+    witness::Witness,
+    MVLookupWitness,
+};
+
 use ark_ff::UniformRand;
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
+use rand::thread_rng;
+
+use kimchi::{
+    circuits::{
+        domains::EvaluationDomains,
+        expr::{ColumnEvaluations, ExprError},
+    },
+    curve::KimchiCurve,
+    proof::PointEvaluations,
+};
 use poly_commitment::{commitment::PolyComm, OpenProof};
-use rand::{prelude::*, thread_rng};
-use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelIterator};
-
-use crate::mvlookup::{LookupProof, LookupWitness};
-
-/// List all columns of the circuit.
-/// It is parametrized by a type `T` which can be either:
-/// - `Vec<G::ScalarField>` for the evaluations
-/// - `PolyComm<G>` for the commitments
-#[derive(Debug, Clone)]
-pub struct WitnessColumns<T> {
-    pub x: Vec<T>,
-}
-
-impl<'lt, G> IntoIterator for &'lt WitnessColumns<G> {
-    type Item = &'lt G;
-    type IntoIter = std::vec::IntoIter<&'lt G>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        let n = self.x.len();
-        let mut iter_contents = Vec::with_capacity(n);
-        iter_contents.extend(&self.x);
-        iter_contents.into_iter()
-    }
-}
-
-impl<G> IntoParallelIterator for WitnessColumns<G>
-where
-    Vec<G>: IntoParallelIterator,
-{
-    type Iter = <Vec<G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let n = self.x.len();
-        let mut iter_contents = Vec::with_capacity(n);
-        iter_contents.extend(self.x);
-        iter_contents.into_par_iter()
-    }
-}
-
-impl<G: Send + std::fmt::Debug> FromParallelIterator<G> for WitnessColumns<G> {
-    fn from_par_iter<I>(par_iter: I) -> Self
-    where
-        I: IntoParallelIterator<Item = G>,
-    {
-        let iter_contents = par_iter.into_par_iter().collect::<Vec<_>>();
-        WitnessColumns { x: iter_contents }
-    }
-}
-
-impl<'data, G> IntoParallelIterator for &'data WitnessColumns<G>
-where
-    Vec<&'data G>: IntoParallelIterator,
-{
-    type Iter = <Vec<&'data G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<&'data G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let n = self.x.len();
-        let mut iter_contents = Vec::with_capacity(n);
-        iter_contents.extend(self.x.iter());
-        iter_contents.into_par_iter()
-    }
-}
-
-impl<'data, G> IntoParallelIterator for &'data mut WitnessColumns<G>
-where
-    Vec<&'data mut G>: IntoParallelIterator,
-{
-    type Iter = <Vec<&'data mut G> as IntoParallelIterator>::Iter;
-    type Item = <Vec<&'data mut G> as IntoParallelIterator>::Item;
-
-    fn into_par_iter(self) -> Self::Iter {
-        let n = self.x.len();
-        let mut iter_contents = Vec::with_capacity(n);
-        iter_contents.extend(self.x.iter_mut());
-        iter_contents.into_par_iter()
-    }
-}
 
 #[derive(Debug)]
-pub struct Witness<G: KimchiCurve> {
-    pub(crate) evaluations: WitnessColumns<Vec<G::ScalarField>>,
-    pub(crate) mvlookups: Vec<LookupWitness<G::ScalarField>>,
+pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
+    /// Actual values w_i of the witness columns. "Evaluations" as in
+    /// evaluations of polynomial P_w that interpolates w_i.
+    pub evaluations: Witness<N, Vec<G::ScalarField>>,
+    pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
 }
 
 // This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the
 // main.rs. It should be moved to the test API when main.rs is replaced with
 // real production code.
-impl<G: KimchiCurve> Witness<G> {
+impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
     pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
         let mut rng = thread_rng();
-        let random_n = rng.gen_range(1..1000);
-        Witness {
-            evaluations: WitnessColumns {
-                x: (0..random_n)
-                    .map(|_| {
-                        (0..domain.d1.size as usize)
-                            .map(|_| G::ScalarField::rand(&mut rng))
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>(),
-            },
+        let cols: Box<[Vec<G::ScalarField>; N]> = Box::new(std::array::from_fn(|_| {
+            (0..domain.d1.size as usize)
+                .map(|_| G::ScalarField::rand(&mut rng))
+                .collect::<Vec<_>>()
+        }));
+        ProofInputs {
+            evaluations: Witness { cols },
             mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Proof<G: KimchiCurve, OpeningProof: OpenProof<G>> {
-    // Columns/PlonK argument
-    pub(crate) commitments: WitnessColumns<PolyComm<G>>,
-    pub(crate) zeta_evaluations: WitnessColumns<G::ScalarField>,
-    pub(crate) zeta_omega_evaluations: WitnessColumns<G::ScalarField>,
-    // MVLookup argument
-    pub(crate) mvlookup_commitments: Option<LookupProof<PolyComm<G>>>,
-    pub(crate) mvlookup_zeta_evaluations: Option<LookupProof<G::ScalarField>>,
-    pub(crate) mvlookup_zeta_omega_evaluations: Option<LookupProof<G::ScalarField>>,
+pub struct ProofEvaluations<const N: usize, F, ID: LookupTableID> {
+    /// Witness evaluations, including public inputs
+    pub(crate) witness_evals: Witness<N, PointEvaluations<F>>,
+    /// MVLookup argument evaluations
+    pub(crate) mvlookup_evals: Option<LookupProof<PointEvaluations<F>, ID>>,
+    /// Evaluation of Z_H(ζ) (t_0(X) + ζ^n t_1(X) + ...) at ζω.
+    pub(crate) ft_eval1: F,
+}
+
+/// The trait ColumnEvaluations is used by the verifier.
+/// It will return the evaluation of the corresponding column at the
+/// evaluation points coined by the verifier during the protocol.
+impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
+    for ProofEvaluations<N, F, ID>
+{
+    type Column = crate::columns::Column;
+
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
+        let res = match col {
+            Self::Column::X(i) => {
+                if i < N {
+                    self.witness_evals[i].clone()
+                } else {
+                    panic!("Index out of bounds")
+                }
+            }
+            Self::Column::LookupPartialSum(i) => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.h[i].clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            Self::Column::LookupAggregation => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.sum.clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            // FIXME: this requires to have a hashmap for the multiplicities as
+            // the index of the column is the table ID
+            Self::Column::LookupMultiplicity(i) => {
+                if let Some(ref lookup) = self.mvlookup_evals {
+                    lookup.m[i as usize].clone()
+                } else {
+                    panic!("No lookup provided")
+                }
+            }
+            // FIXME: finish implement fixed tables
+            // Use hashmap as for the lookup multiplicity
+            Self::Column::LookupFixedTable(_) => {
+                panic!("Logup is not yet implemented.")
+            }
+        };
+        Ok(res)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProofCommitments<const N: usize, G: KimchiCurve, ID: LookupTableID> {
+    /// Commitments to the N columns of the circuits, also called the 'witnesses'.
+    /// If some columns are considered as public inputs, it is counted in the witness.
+    pub(crate) witness_comms: Witness<N, PolyComm<G>>,
+    /// Commitments to the polynomials used by the lookup argument.
+    /// The values contains the chunked polynomials.
+    pub(crate) mvlookup_comms: Option<LookupProof<PolyComm<G>, ID>>,
+    /// Commitments to the quotient polynomial.
+    /// The value contains the chunked polynomials.
+    pub(crate) t_comm: PolyComm<G>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Proof<const N: usize, G: KimchiCurve, OpeningProof: OpenProof<G>, ID: LookupTableID> {
+    pub(crate) proof_comms: ProofCommitments<N, G, ID>,
+    pub(crate) proof_evals: ProofEvaluations<N, G::ScalarField, ID>,
     pub(crate) opening_proof: OpeningProof,
 }

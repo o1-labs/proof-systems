@@ -150,7 +150,7 @@ where
 
     fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self {
         assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
-        let (cvars1, cvars2) = cvars.split_at(Self::SIZE_IN_FIELD_ELEMENTS);
+        let (cvars1, cvars2) = cvars.split_at(T1::SIZE_IN_FIELD_ELEMENTS);
         let (aux1, aux2) = aux;
         (
             T1::from_cvars_unsafe(cvars1.to_vec(), aux1),

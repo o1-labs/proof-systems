@@ -1,7 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_bigint::{BigUint, RandBigInt};
+use num_bigint::{BigInt, BigUint, RandBigInt, ToBigInt};
 use rand::rngs::StdRng;
 use std::ops::Neg;
 use thiserror::Error;
@@ -106,6 +106,14 @@ pub trait FieldHelpers<F> {
         BigUint::from_bytes_le(&self.to_bytes())
     }
 
+    /// Serialize field element f to a (positive) BigInt directly.
+    fn to_bigint_positive(&self) -> BigInt
+    where
+        F: PrimeField,
+    {
+        Self::to_biguint(self).to_bigint().unwrap()
+    }
+
     /// Create a new field element from this field elements bits
     fn bits_to_field(&self, start: usize, end: usize) -> Result<F>;
 
@@ -136,6 +144,7 @@ impl<F: Field> FieldHelpers<F> for F {
         F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
+    /// Creates a field element from bits (little endian)
     fn from_bits(bits: &[bool]) -> Result<F> {
         let bytes = bits
             .iter()
@@ -160,6 +169,7 @@ impl<F: Field> FieldHelpers<F> for F {
         hex::encode(self.to_bytes())
     }
 
+    /// Converts a field element into bit representation (little endian)
     fn to_bits(&self) -> Vec<bool> {
         self.to_bytes().iter().fold(vec![], |mut bits, byte| {
             let mut byte = *byte;

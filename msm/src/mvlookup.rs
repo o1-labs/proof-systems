@@ -1,30 +1,9 @@
 //! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
 
-use std::iter;
+use ark_ff::Field;
+use kimchi::circuits::expr::{ConstantExpr, ConstantTerm, ExprInner};
 
-use ark_ff::{FftField, Field};
-use kimchi::circuits::domains::EvaluationDomains;
-use rand::{seq::SliceRandom, thread_rng, Rng};
-
-// TODO: Add more built-in lookup tables
-#[derive(Copy, Clone, Debug)]
-pub enum LookupTable {
-    RangeCheck16,
-    /// Custom lookup table
-    /// The index of the table is used as the ID, padded with the number of
-    /// built-in tables.
-    Custom(usize),
-}
-
-impl LookupTable {
-    /// Assign a unique ID to the lookup tables.
-    pub fn into_field<F: Field>(self) -> F {
-        match self {
-            LookupTable::RangeCheck16 => F::one(),
-            LookupTable::Custom(id) => F::from(id as u64) + F::one(),
-        }
-    }
-}
+use crate::expr::E;
 
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
@@ -34,16 +13,72 @@ impl LookupTable {
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct Lookup<F> {
-    pub(crate) table_id: LookupTable,
+pub struct MVLookup<F, ID: LookupTableID> {
+    pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
 }
 
+/// Basic trait for MVLookups
+impl<F, ID> MVLookup<F, ID>
+where
+    F: Clone,
+    ID: LookupTableID,
+{
+    /// Creates a new MVLookup
+    pub fn new(table_id: ID, numerator: F, value: &[F]) -> Self {
+        Self {
+            table_id,
+            numerator,
+            value: value.to_vec(),
+        }
+    }
+}
+
+/// Trait for lookup table variants
+pub trait LookupTableID: Send + Sync + Copy {
+    /// Assign a unique ID, as a u32 value
+    fn to_u32(&self) -> u32;
+
+    /// Assign a unique ID to the lookup tables.
+    fn to_field<F: Field>(&self) -> F {
+        F::from(self.to_u32())
+    }
+
+    /// Identify fixed and RAMLookups with a boolean.
+    /// This can be used to identify the lookups whose table values are fixed,
+    /// like range checks.
+    fn is_fixed(&self) -> bool;
+
+    /// Assign a unique ID to the lookup tables, as an expression.
+    fn to_constraint<F: Field>(&self) -> E<F> {
+        let f = self.to_field();
+        let f = ConstantExpr::from(ConstantTerm::Literal(f));
+        E::Atom(ExprInner::Constant(f))
+    }
+
+    /// Returns the length of each table.
+    fn length(&self) -> usize;
+}
+
+/// A table of values that can be used for a lookup, along with the ID for the table.
+#[derive(Debug, Clone)]
+pub struct LookupTable<F, ID: LookupTableID> {
+    /// Table ID corresponding to this table
+    pub table_id: ID,
+    /// Vector of values inside each entry of the table
+    pub entries: Vec<Vec<F>>,
+}
+
 /// Represents a witness of one instance of the lookup argument
+/// IMPROVEME: Possible to index by a generic const?
+// The parameter N is the number of functions/looked-up values per row. It is
+// used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug)]
-pub struct LookupWitness<F> {
+pub struct MVLookupWitness<F, ID: LookupTableID> {
     /// A list of functions/looked-up values.
+    /// Invariant: for fixed lookup tables, the last value of the vector is the
+    /// lookup table t. The lookup table values must have a negative sign.
     /// The values are represented as:
     /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
     ///   [f_{2}(1), ..., f_{2}(\omega^n)]
@@ -55,90 +90,9 @@ pub struct LookupWitness<F> {
     /// change this structure.
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
-    pub(crate) f: Vec<Vec<Lookup<F>>>,
-    /// The table the lookup is performed on.
-    pub(crate) t: Vec<Lookup<F>>,
+    pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
-}
-
-// This should be used only for testing purposes.
-// It is not only in the test API because it is used at the moment in the
-// main.rs. It should be moved to the test API when main.rs is replaced with
-// real production code.
-impl<F: FftField> LookupWitness<F> {
-    /// Generate a random number of correct lookups in the table RangeCheck16
-    pub fn random(domain: EvaluationDomains<F>) -> Self {
-        let mut rng = thread_rng();
-        // TODO: generate more random f
-        let table_size: u64 = rng.gen_range(1..domain.d1.size);
-        let table_id = rng.gen_range(1..1000);
-        // Build a table of value we can look up
-        let t: Vec<u64> = {
-            // Generate distinct values to avoid to have to handle the
-            // normalized multiplicity polynomial
-            let mut n: Vec<u64> = (1..(table_size * 100)).collect();
-            n.shuffle(&mut rng);
-            n[0..table_size as usize].to_vec()
-        };
-        // permutation argument
-        let f = {
-            let mut f = t.clone();
-            f.shuffle(&mut rng);
-            f
-        };
-        let dummy_value = F::rand(&mut rng);
-        let repeated_dummy_value: Vec<F> = {
-            let r: Vec<F> = iter::repeat(dummy_value)
-                .take((domain.d1.size - table_size) as usize)
-                .collect();
-            r
-        };
-        let t_evals = {
-            let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(t.iter().map(|v| Lookup {
-                table_id: LookupTable::Custom(table_id),
-                numerator: -F::one(),
-                value: vec![F::from(*v)],
-            }));
-            table.extend(
-                repeated_dummy_value
-                    .iter()
-                    .map(|v| Lookup {
-                        table_id: LookupTable::Custom(table_id),
-                        numerator: -F::one(),
-                        value: vec![*v],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
-            );
-            table
-        };
-        let f_evals: Vec<Lookup<F>> = {
-            let mut table = Vec::with_capacity(domain.d1.size as usize);
-            table.extend(f.iter().map(|v| Lookup {
-                table_id: LookupTable::Custom(table_id),
-                numerator: F::one(),
-                value: vec![F::from(*v)],
-            }));
-            table.extend(
-                repeated_dummy_value
-                    .iter()
-                    .map(|v| Lookup {
-                        table_id: LookupTable::Custom(table_id),
-                        numerator: F::one(),
-                        value: vec![*v],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
-            );
-            table
-        };
-        let m = (0..domain.d1.size).map(|_| F::one()).collect();
-        LookupWitness {
-            f: vec![f_evals],
-            t: t_evals,
-            m,
-        }
-    }
 }
 
 /// Represents the proof of the lookup argument
@@ -148,19 +102,21 @@ impl<F: FftField> LookupWitness<F> {
 /// FIXME: We should have a fixed number of m and h. Should we encode that in
 /// the type?
 #[derive(Debug, Clone)]
-pub struct LookupProof<T> {
-    // The multiplicity polynomials
+pub struct LookupProof<T, ID> {
+    /// The multiplicity polynomials
     pub(crate) m: Vec<T>,
-    // The polynomial keeping the sum of each row
+    /// The polynomial keeping the sum of each row
     pub(crate) h: Vec<T>,
-    // The "running-sum" over the rows, coined \phi
+    /// The "running-sum" over the rows, coined `\phi`
     pub(crate) sum: T,
+    // FIXME: use a hashmap for the multiplicity, and get rid of me.
+    pub id: std::marker::PhantomData<ID>,
 }
 
 /// Iterator implementation to abstract the content of the structure.
 /// It can be used to iterate over the commitments (resp. the evaluations)
 /// without requiring to have a look at the inner fields.
-impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
+impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
     type Item = &'lt G;
     type IntoIter = std::vec::IntoIter<&'lt G>;
 
@@ -175,32 +131,47 @@ impl<'lt, G> IntoIterator for &'lt LookupProof<G> {
 }
 
 pub mod prover {
-    use ark_ff::Zero;
-    use ark_poly::Evaluations;
-    use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
-    use kimchi::circuits::domains::EvaluationDomains;
-    use kimchi::curve::KimchiCurve;
+    use crate::{
+        mvlookup::{LookupTableID, MVLookup, MVLookupWitness},
+        MAX_SUPPORTED_DEGREE,
+    };
+    use ark_ff::{FftField, Zero};
+    use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+    use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
     use mina_poseidon::FqSponge;
-    use poly_commitment::commitment::{absorb_commitment, PolyComm};
-    use poly_commitment::{OpenProof, SRS as _};
+    use poly_commitment::{
+        commitment::{absorb_commitment, PolyComm},
+        OpenProof, SRS as _,
+    };
+    use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-    use rayon::iter::IntoParallelIterator;
-    use rayon::iter::ParallelIterator;
-
-    use super::{Lookup, LookupWitness};
+    pub struct QuotientPolynomialEnvironment<'a, F: FftField> {
+        pub lookup_terms_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
+        pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
+        pub lookup_counters_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
+        pub fixed_lookup_tables: &'a Vec<Evaluations<F, D<F>>>,
+    }
 
     pub struct Env<G: KimchiCurve> {
-        pub lookup_counters_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
         pub lookup_counters_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
         pub lookup_counters_comm_d1: Vec<PolyComm<G>>,
 
-        pub lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
         pub lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
         pub lookup_terms_comms_d1: Vec<PolyComm<G>>,
 
-        pub lookup_aggregation_evals_d1: Evaluations<G::ScalarField, D<G::ScalarField>>,
         pub lookup_aggregation_poly_d1: DensePolynomial<G::ScalarField>,
         pub lookup_aggregation_comm_d1: PolyComm<G>,
+
+        // Evaluating over d8 for the quotient polynomial
+        pub lookup_counters_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+        pub lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+        pub lookup_aggregation_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>>,
+
+        /// The combiner used for vector lookups
+        pub joint_combiner: G::ScalarField,
+
+        /// The evaluation point used for the lookup polynomials.
+        pub beta: G::ScalarField,
     }
 
     impl<G: KimchiCurve> Env<G> {
@@ -212,8 +183,9 @@ pub mod prover {
         pub fn create<
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
+            ID: LookupTableID,
         >(
-            lookups: Vec<LookupWitness<G::ScalarField>>,
+            lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -238,6 +210,11 @@ pub mod prover {
                     .map(|evals| evals.interpolate_by_ref())
                     .collect();
 
+            let lookup_counters_evals_d8 = (&lookup_counters_poly_d1)
+                .into_par_iter()
+                .map(|lookup| lookup.evaluate_over_domain_by_ref(domain.d8))
+                .collect::<Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>();
+
             let lookup_counters_comm_d1: Vec<PolyComm<G>> = (&lookup_counters_evals_d1)
                 .into_par_iter()
                 .map(|poly| srs.commit_evaluations_non_hiding(domain.d1, poly))
@@ -258,20 +235,33 @@ pub mod prover {
             // Coin an evaluation point for the rational functions
             let beta = fq_sponge.challenge();
 
-            let lookup_terms_evals: Vec<Vec<G::ScalarField>> = lookups
+            // Contain the evalations of the h_i. We divide the looked-up values
+            // in chunks of (MAX_SUPPORTED_DEGREE - 2)
+            let lookup_terms_evals: Vec<Vec<Vec<G::ScalarField>>> = lookups
                 .into_iter()
                 .map(|lookup| {
-                    let LookupWitness { f, t, m: _ } = lookup;
+                    let MVLookupWitness { f, m: _ } = lookup;
+                    // The number of functions to look up, including the fixed table.
                     let n = f.len();
+                    let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
+                        n / (MAX_SUPPORTED_DEGREE - 2)
+                    } else {
+                        n / (MAX_SUPPORTED_DEGREE - 2) + 1
+                    };
+                    let mut partial_sums =
+                        vec![
+                            Vec::<G::ScalarField>::with_capacity(domain.d1.size as usize);
+                            n_partial_sums
+                        ];
+
                     // We compute first the denominators of all f_i and t. We gather them in
                     // a vector to perform a batch inversion.
-                    // We include t in the denominator, therefore n + 1
-                    let mut denominators = Vec::with_capacity((n + 1) * domain.d1.size as usize);
+                    let mut denominators = Vec::with_capacity(n * domain.d1.size as usize);
                     // Iterate over the rows
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
                         for f_i in f.iter() {
-                            let Lookup {
+                            let MVLookup {
                                 numerator: _,
                                 table_id,
                                 value,
@@ -281,64 +271,56 @@ pub mod prover {
                                 value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
                                     x * vector_lookup_combiner + y
                                 }) * vector_lookup_combiner
-                                    + table_id.into_field::<G::ScalarField>();
+                                    + table_id.to_field::<G::ScalarField>();
 
                             // beta + a_{i}
                             let lookup_denominator = beta + combined_value;
                             denominators.push(lookup_denominator);
                         }
-
-                        // We process t now
-                        let Lookup {
-                            numerator: _,
-                            table_id,
-                            value,
-                        } = &t[j as usize];
-                        let combined_value: G::ScalarField =
-                            value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
-                                x * vector_lookup_combiner + y
-                            }) * vector_lookup_combiner
-                                + table_id.into_field::<G::ScalarField>();
-
-                        let lookup_denominator = beta + combined_value;
-                        denominators.push(lookup_denominator);
                     }
 
                     ark_ff::fields::batch_inversion(&mut denominators);
 
                     // Evals is the sum on the individual columns for each row
-                    let mut evals = Vec::with_capacity(domain.d1.size as usize);
                     let mut denominator_index = 0;
 
                     // We only need to add the numerator now
                     for j in 0..domain.d1.size {
+                        let mut partial_sum_idx = 0;
                         let mut row_acc = G::ScalarField::zero();
                         for f_i in f.iter() {
-                            let Lookup {
+                            let MVLookup {
                                 numerator,
                                 table_id: _,
                                 value: _,
                             } = &f_i[j as usize];
                             row_acc += *numerator * denominators[denominator_index];
                             denominator_index += 1;
+                            if denominator_index % (MAX_SUPPORTED_DEGREE - 2) == 0 {
+                                partial_sums[partial_sum_idx].push(row_acc);
+                                row_acc = G::ScalarField::zero();
+                                partial_sum_idx += 1;
+                            }
                         }
-                        // We process t now
-                        let Lookup {
-                            numerator,
-                            table_id: _,
-                            value: _,
-                        } = &t[j as usize];
-                        row_acc += *numerator * denominators[denominator_index];
-                        denominator_index += 1;
-                        evals.push(row_acc)
+                        if denominator_index % (MAX_SUPPORTED_DEGREE - 2) != 0 {
+                            partial_sums[partial_sum_idx].push(row_acc);
+                        }
                     }
-                    evals
+                    partial_sums
                 })
                 .collect::<Vec<_>>();
 
+            let lookup_terms_evals: Vec<Vec<G::ScalarField>> =
+                lookup_terms_evals.into_iter().flatten().collect();
+
+            // Sanity check to verify that the number of evaluations is correct
+            lookup_terms_evals
+                .iter()
+                .for_each(|evals| assert_eq!(evals.len(), domain.d1.size as usize));
+
             let lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
                 lookup_terms_evals
-                    .into_iter()
+                    .into_par_iter()
                     .map(|lte| {
                         Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                             lte, domain.d1,
@@ -350,6 +332,12 @@ pub mod prover {
                 (&lookup_terms_evals_d1)
                     .into_par_iter()
                     .map(|lte| lte.interpolate_by_ref())
+                    .collect::<Vec<_>>();
+
+            let lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
+                (&lookup_terms_poly_d1)
+                    .into_par_iter()
+                    .map(|lte| lte.evaluate_over_domain_by_ref(domain.d8))
                     .collect::<Vec<_>>();
 
             let lookup_terms_comms_d1: Vec<PolyComm<G>> = (&lookup_terms_evals_d1)
@@ -390,22 +378,30 @@ pub mod prover {
             };
 
             let lookup_aggregation_poly_d1 = lookup_aggregation_evals_d1.interpolate_by_ref();
+
+            let lookup_aggregation_evals_d8 =
+                lookup_aggregation_poly_d1.evaluate_over_domain_by_ref(domain.d8);
+
             let lookup_aggregation_comm_d1 =
                 srs.commit_evaluations_non_hiding(domain.d1, &lookup_aggregation_evals_d1);
 
             absorb_commitment(fq_sponge, &lookup_aggregation_comm_d1);
             Self {
-                lookup_counters_evals_d1,
                 lookup_counters_poly_d1,
                 lookup_counters_comm_d1,
 
-                lookup_terms_evals_d1,
                 lookup_terms_poly_d1,
                 lookup_terms_comms_d1,
 
-                lookup_aggregation_evals_d1,
                 lookup_aggregation_poly_d1,
                 lookup_aggregation_comm_d1,
+
+                lookup_counters_evals_d8,
+                lookup_terms_evals_d8,
+                lookup_aggregation_evals_d8,
+
+                joint_combiner: vector_lookup_combiner,
+                beta,
             }
         }
     }

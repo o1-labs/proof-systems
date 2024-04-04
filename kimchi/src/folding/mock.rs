@@ -1,11 +1,13 @@
 use crate::{
     circuits::gate::CurrOrNext::{self, Curr},
     folding::{
+        error_term::Side,
         expressions::{extract_terms, FoldingColumnTrait},
         FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
     },
 };
 use ark_ec::AffineCurve;
+use ark_ff::Field;
 use itertools::Itertools;
 use mina_curves::pasta::Pallas;
 use num_traits::Zero;
@@ -14,6 +16,13 @@ use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Mock;
+
+impl<F: Field> From<F> for Mock {
+    fn from(_x: F) -> Self {
+        Mock
+    }
+}
+
 impl FoldingColumnTrait for u8 {
     fn is_witness(&self) -> bool {
         true
@@ -46,11 +55,11 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
         todo!()
     }
 
-    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: super::error_term::Side) -> &Vec<F> {
+    fn col(&self, _col: Col, _curr_or_next: CurrOrNext, _side: Side) -> &Vec<F> {
         todo!()
     }
 
-    fn challenge(&self, _challenge: Chal, _side: super::error_term::Side) -> F {
+    fn challenge(&self, _challenge: Chal, _side: Side) -> F {
         todo!()
     }
 
@@ -62,7 +71,7 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
         todo!()
     }
 
-    fn alpha(&self, _i: usize, _side: super::error_term::Side) -> F {
+    fn alpha(&self, _i: usize, _side: Side) -> F {
         todo!()
     }
 }
@@ -98,9 +107,10 @@ impl FoldingConfig for TestConfig {
 #[test]
 //not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
-    use crate::circuits::expr::Variable;
-    use crate::folding::expressions::ExtendedFoldingColumn;
-    use crate::folding::expressions::FoldingExp;
+    use crate::{
+        circuits::expr::Variable,
+        folding::expressions::{ExtendedFoldingColumn, FoldingExp},
+    };
     let col = |col| FoldingExp::Atom(ExtendedFoldingColumn::Inner(Variable { col, row: Curr }));
     let t1: FoldingExp<TestConfig> = (col(0) + col(1)) * (col(2) + col(3));
     let t2 = col(1).double()

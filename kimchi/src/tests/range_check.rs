@@ -4,6 +4,10 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, GateType},
         polynomial::COLUMNS,
         polynomials::{
+            foreign_field_common::{
+                BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayCompact,
+                KimchiForeignElement,
+            },
             generic::GenericGateSpec,
             range_check::{self},
         },
@@ -18,17 +22,9 @@ use ark_ff::{Field, One, Zero};
 use ark_poly::EvaluationDomain;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{
-    foreign_field::{
-        BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayCompact,
-        ForeignFieldHelpers,
-    },
-    FieldHelpers,
-};
-use rand::{rngs::StdRng, SeedableRng};
+use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 
-use std::array;
-use std::sync::Arc;
+use std::{array, sync::Arc};
 
 use crate::{prover_index::ProverIndex, verifier::verify};
 use groupmap::GroupMap;
@@ -49,11 +45,6 @@ type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
-const RNG_SEED: [u8; 32] = [
-    22, 4, 34, 75, 29, 255, 0, 126, 237, 19, 86, 160, 1, 90, 131, 221, 186, 168, 40, 59, 0, 4, 9,
-    0, 33, 210, 215, 172, 130, 24, 164, 12,
-];
-
 fn create_test_prover_index(
     public_size: usize,
     compact: bool,
@@ -64,15 +55,7 @@ fn create_test_prover_index(
         CircuitGate::<Fp>::create_multi_range_check(0)
     };
 
-    new_index_for_test_with_lookups(
-        gates,
-        public_size,
-        0,
-        vec![range_check::gadget::lookup_table()],
-        None,
-        false,
-        None,
-    )
+    new_index_for_test_with_lookups(gates, public_size, 0, vec![], None, false, None)
 }
 
 #[test]
@@ -1049,7 +1032,7 @@ fn verify_range_check1_test_next_row_lookups() {
                 witness[col - 1][row] -= PallasField::one();
                 witness[col - 1 + 2 * row + 2][3] -= PallasField::one();
             } else {
-                witness[col - 1][row] += PallasField::two_to_limb();
+                witness[col - 1][row] += KimchiForeignElement::<PallasField>::two_to_limb();
             }
             witness[col - 1 + 2 * row + 3][3] += PallasField::from(2u64.pow(12));
 
@@ -1152,7 +1135,7 @@ fn verify_64_bit_range_check() {
 
 #[test]
 fn compact_multi_range_check() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     // Create prover index
     let index = create_test_prover_index(0, true);
@@ -1234,7 +1217,7 @@ fn verify_range_check_valid_proof1() {
 
 #[test]
 fn verify_compact_multi_range_check_proof() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
 
     let limbs: [PallasField; 3] =
         array::from_fn(|_| rng.gen_biguint_below(&BigUint::two_to_limb())).to_fields();

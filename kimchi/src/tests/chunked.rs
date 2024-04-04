@@ -1,7 +1,7 @@
 use super::framework::TestFramework;
-use crate::circuits::polynomials::generic::GenericGateSpec;
 use crate::circuits::{
     gate::CircuitGate,
+    polynomials::generic::GenericGateSpec,
     wires::{Wire, COLUMNS},
 };
 use ark_ff::{UniformRand, Zero};

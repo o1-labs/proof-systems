@@ -6,23 +6,22 @@
 //! columns whose values will represent the evaluations of polynomials over a
 //! certain pre-defined domain. The correct execution will be proven using a
 //! polynomial commitment protocol. The polynomials are described in the
-//! structure [crate::mips::proof::WitnessColumns]. These polynomials will be
+//! structure [crate::mips::column::Column]. These polynomials will be
 //! committed and evaluated at certain points following the polynomial protocol,
 //! and it will form the proof of the correct execution that the prover will
 //! build and send to the verifier. The corresponding structure is
-//! [crate::mips::proof::Proof]. The prover will start by computing the
+//! [crate::proof::Proof]. The prover will start by computing the
 //! execution trace using the interpreter implemented in the module
 //! [crate::mips::interpreter], and the evaluations will be kept in the
-//! structure [crate::mips::proof::ProofInputs].
+//! structure [crate::proof::ProofInputs].
 
+use self::column::Column;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
-
-use self::column::Column as MIPSColumn;
 
 pub mod column;
 pub mod constraints;
+pub mod folding;
 pub mod interpreter;
-pub mod proof;
 pub mod registers;
 pub mod witness;
 
@@ -38,4 +37,4 @@ pub mod witness;
 /// `P(X, Y, Z) = q_x X + q_y Y + q_m X Y + q_o Z + q_c`
 /// To represent this multi-variate polynomial using the expression framework,
 /// we would use 3 different columns.
-pub(crate) type E<F> = Expr<ConstantExpr<F>, MIPSColumn>;
+pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;

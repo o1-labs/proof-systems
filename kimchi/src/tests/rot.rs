@@ -31,7 +31,7 @@ use poly_commitment::{
     evaluation_proof::OpeningProof,
     srs::{endos, SRS},
 };
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::Rng;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -42,11 +42,6 @@ type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-
-const RNG_SEED: [u8; 32] = [
-    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
-    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
-];
 
 fn create_rot_gadget<G: KimchiCurve>(rot: u32, side: RotMode) -> Vec<CircuitGate<G::ScalarField>>
 where
@@ -97,7 +92,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let rot = rng.gen_range(1..64);
     // Create
     let gates = create_rot_gadget::<G>(rot, RotMode::Left);
@@ -164,7 +159,7 @@ where
 #[test]
 // Test that a random offset between 1 and 63 work as expected, both left and right
 fn test_rot_random() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     test_rot::<Vesta>(word, rot, RotMode::Left);
@@ -176,7 +171,7 @@ fn test_rot_random() {
 #[test]
 // Test that a bad rotation fails as expected
 fn test_zero_rot() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     test_rot::<Pallas>(word, 0, RotMode::Left);
 }
@@ -184,7 +179,7 @@ fn test_zero_rot() {
 #[test]
 // Test that a bad rotation fails as expected
 fn test_large_rot() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     test_rot::<Pallas>(word, 64, RotMode::Left);
 }
@@ -192,7 +187,7 @@ fn test_large_rot() {
 #[test]
 // Test bad rotation
 fn test_bad_constraints() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rng = &mut o1_utils::tests::make_test_rng();
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
     let (mut witness, cs) = setup_rot::<Vesta>(word, rot, RotMode::Left);
@@ -355,7 +350,6 @@ fn test_rot_finalization() {
     let index = {
         let cs = ConstraintSystem::create(gates.clone())
             .public(num_public_inputs)
-            .lookup(vec![rot::lookup_table()])
             .build()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
