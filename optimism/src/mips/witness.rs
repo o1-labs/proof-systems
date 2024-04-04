@@ -129,7 +129,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     type Variable = u64;
 
     // TODO: update variable() function once scratch_state is [u64; SCRATCH_SIZE]
-    fn variable(&self, column: Self::Position) -> Self::Variable {
+    fn variable(&self, _column: Self::Position) -> Self::Variable {
         todo!();
         /*
         match column {
