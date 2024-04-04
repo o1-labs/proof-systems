@@ -111,7 +111,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     // CONSTRAINTS OPERATIONS //
     ////////////////////////////
 
-    /// Returns the variable corresponding to a given column alias.
+    /// Returns the variable in the current row corresponding to a given column alias.
     fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
     /// Check one condition on the selectors
