@@ -1388,23 +1388,49 @@ where
             ));
 
             //~~ * add the combined table polynomial
-            let table_blinding = if lcs.runtime_selector.is_some() {
-                let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
+            let table_blinding = {
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
+                let table_id_combiner = lookup_context.table_id_combiner.as_ref().unwrap();
+                let max_fixed_lookup_table_size = {
+                    // CAUTION: This is not `lcs.configuration.lookup_info.max_joint_size` because
+                    // the lookup table may be strictly narrower, and as such will not contribute
+                    // the associated blinders.
+                    // For example, using a runtime table with the lookup gate (width 2), but only
+                    // width-1 fixed tables (e.g. range check), it would be incorrect to use the
+                    // wider width (2) because there are no such contributing commitments!
+                    // Note that lookup_table8 is a list of polynomials
+                    lcs.lookup_table8.len()
+                };
+                let base_blinding = {
+                    let fixed_table_blinding = if max_fixed_lookup_table_size == 0 {
+                        G::ScalarField::zero()
+                    } else {
+                        (1..max_fixed_lookup_table_size).fold(G::ScalarField::one(), |acc, _| {
+                            G::ScalarField::one() + *joint_combiner * acc
+                        })
+                    };
+                    fixed_table_blinding + *table_id_combiner
+                };
+                if lcs.runtime_selector.is_some() {
+                    let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
 
-                let unshifted = runtime_comm
-                    .blinders
-                    .unshifted
-                    .iter()
-                    .map(|blinding| *joint_combiner * blinding)
-                    .collect();
+                    let unshifted = runtime_comm
+                        .blinders
+                        .unshifted
+                        .iter()
+                        .map(|blinding| *joint_combiner * blinding + base_blinding)
+                        .collect();
 
-                PolyComm {
-                    unshifted,
-                    shifted: None,
+                    PolyComm {
+                        unshifted,
+                        shifted: None,
+                    }
+                } else {
+                    PolyComm {
+                        unshifted: vec![base_blinding; num_chunks],
+                        shifted: None,
+                    }
                 }
-            } else {
-                non_hiding(num_chunks)
             };
 
             let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();

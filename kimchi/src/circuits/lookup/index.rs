@@ -300,6 +300,11 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     .max()
                     .unwrap_or(0);
 
+                let max_table_width = std::cmp::max(
+                    max_table_width,
+                    lookup_info.max_joint_size.try_into().unwrap(),
+                );
+
                 //~ 5. Create the concatenated table of all the fixed lookup tables.
                 //~    It will be of height the size of the domain,
                 //~    and of width the maximum width of any of the lookup tables.
