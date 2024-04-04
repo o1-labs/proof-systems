@@ -7,7 +7,7 @@ use kimchi_optimism::{
     keccak::column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
     mips::{
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
-        witness::{self as mips_witness, SCRATCH_SIZE},
+        witness::{self as mips_witness},
     },
     preimage_oracle::PreImageOracle,
     proof, DOMAIN_SIZE,
@@ -78,10 +78,10 @@ pub fn main() -> ExitCode {
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
     >::default();
 
-    let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
+    let _mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
         let MIPSWitness { cols } = witness_columns;
         // Resize without deallocating
-        cols.iter_mut().for_each(Vec::clear);
+        cols.iter_mut().for_each(Vec::<Fp>::clear);
     };
 
     let mut mips_current_pre_folding_witness = MIPSWitness {
@@ -144,7 +144,7 @@ pub fn main() -> ExitCode {
         }
 
         // TODO: unify witness of MIPS to include the instruction and the error
-        for i in 0..MIPS_COLUMNS {
+        /*for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
                 mips_current_pre_folding_witness.cols[i].push(env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
@@ -165,7 +165,7 @@ pub fn main() -> ExitCode {
                 &mips_current_pre_folding_witness,
             );
             mips_reset_pre_folding_witness(&mut mips_current_pre_folding_witness);
-        }
+        }*/
     }
     if !mips_current_pre_folding_witness
         .instruction_counter()
