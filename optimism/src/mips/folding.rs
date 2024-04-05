@@ -1,6 +1,6 @@
 use crate::{
     folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
-    mips::{column::MIPS_COLUMNS, Column as MIPSColumn},
+    mips::{column::MIPS_COLUMNS, ColumnAlias as MIPSColumn},
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
