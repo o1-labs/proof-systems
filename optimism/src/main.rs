@@ -4,7 +4,7 @@ use ark_ff::{Fp256, UniformRand, Zero};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::column::{KeccakWitness, KeccakWitnessTrait, ZKVM_KECCAK_COLS},
+    keccak::column::{KeccakWitness, ZKVM_KECCAK_COLS},
     mips::{
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
         witness::{self as mips_witness, SCRATCH_SIZE},
@@ -127,7 +127,7 @@ pub fn main() -> ExitCode {
                 pre_fold_wit.push(*env_wit);
             }
 
-            if keccak_current_pre_folding_witness.step_index().len() == DOMAIN_SIZE {
+            if keccak_current_pre_folding_witness.cols.len() == DOMAIN_SIZE {
                 proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                     domain,
                     &srs,

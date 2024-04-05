@@ -12,7 +12,10 @@ use kimchi::circuits::polynomials::keccak::constants::{
     THETA_EXPAND_ROT_C_LEN, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF,
     THETA_REMAINDER_C_LEN, THETA_REMAINDER_C_OFF, THETA_SHIFTS_C_LEN, THETA_SHIFTS_C_OFF,
 };
-use kimchi_msm::witness::Witness;
+use kimchi_msm::{
+    columns::{Column, ColumnIndexer},
+    witness::Witness,
+};
 use std::ops::{Index, IndexMut};
 
 /// The total number of witness columns used by the Keccak circuit.
@@ -37,13 +40,17 @@ pub(crate) const PAD_SUFFIX_LEN: usize = 5; // The padding suffix of 1088 bits i
 const ROUND_COEFFS_OFF: usize = PAD_SUFFIX_OFF + PAD_SUFFIX_LEN; // The round constants are located after the witness columns used by the Keccak round.
 pub(crate) const ROUND_COEFFS_LEN: usize = QUARTERS; // The round constant of each round is stored in expanded form as quarters
 
+const FLAGS_OFF: usize = STATUS_FLAGS_LEN;
+const CURR_OFF: usize = FLAGS_OFF + MODE_FLAGS_COLS_LEN;
+const NEXT_OFF: usize = CURR_OFF + ZKVM_KECCAK_COLS_CURR;
+
 /// Column aliases used by the Keccak circuit.
 /// The number of aliases is not necessarily equal to the actual number of
 /// columns.
 /// Each alias will be mapped to a column index depending on the step kind
 /// (Sponge or Round) that is currently being executed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Column {
+pub enum ColumnAlias {
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
     /// Block index inside the hash to enumerate preimage bytes
@@ -81,6 +88,118 @@ pub enum Column {
     SpongeBytes(usize),     // Sponge Curr[200..400)
     SpongeShifts(usize),    // Sponge Curr[400..800)
     Output(usize),          // Next[0..100) either IotaStateG or SpongeXorState
+}
+
+impl ColumnAlias {
+    /// Returns the witness column index for the given alias
+    fn ix(&self) -> usize {
+        match *self {
+            ColumnAlias::HashIndex => 0,
+            ColumnAlias::BlockIndex => 1,
+            ColumnAlias::StepIndex => 2,
+
+            ColumnAlias::FlagRound => FLAGS_OFF + FLAG_ROUND_OFF,
+            ColumnAlias::FlagAbsorb => FLAGS_OFF + FLAG_ABSORB_OFF,
+            ColumnAlias::FlagSqueeze => FLAGS_OFF + FLAG_SQUEEZE_OFF,
+            ColumnAlias::FlagRoot => FLAGS_OFF + FLAG_ROOT_OFF,
+            ColumnAlias::PadBytesFlags(i) => {
+                assert!(i < PAD_BYTES_LEN);
+                FLAGS_OFF + PAD_BYTES_OFF + i
+            }
+            ColumnAlias::PadLength => FLAGS_OFF + PAD_LEN_OFF,
+            ColumnAlias::InvPadLength => FLAGS_OFF + PAD_INV_OFF,
+            ColumnAlias::TwoToPad => FLAGS_OFF + PAD_TWO_OFF,
+            ColumnAlias::PadSuffix(i) => {
+                assert!(i < PAD_SUFFIX_LEN);
+                FLAGS_OFF + PAD_SUFFIX_OFF + i
+            }
+            ColumnAlias::RoundConstants(i) => {
+                assert!(i < ROUND_COEFFS_LEN);
+                FLAGS_OFF + ROUND_COEFFS_OFF + i
+            }
+
+            ColumnAlias::Input(i) => {
+                assert!(i < STATE_LEN);
+                CURR_OFF + i
+            }
+            ColumnAlias::ThetaShiftsC(i) => {
+                assert!(i < THETA_SHIFTS_C_LEN);
+                CURR_OFF + THETA_SHIFTS_C_OFF + i
+            }
+            ColumnAlias::ThetaDenseC(i) => {
+                assert!(i < THETA_DENSE_C_LEN);
+                CURR_OFF + THETA_DENSE_C_OFF + i
+            }
+            ColumnAlias::ThetaQuotientC(i) => {
+                assert!(i < THETA_QUOTIENT_C_LEN);
+                CURR_OFF + THETA_QUOTIENT_C_OFF + i
+            }
+            ColumnAlias::ThetaRemainderC(i) => {
+                assert!(i < THETA_REMAINDER_C_LEN);
+                CURR_OFF + THETA_REMAINDER_C_OFF + i
+            }
+            ColumnAlias::ThetaDenseRotC(i) => {
+                assert!(i < THETA_DENSE_ROT_C_LEN);
+                CURR_OFF + THETA_DENSE_ROT_C_OFF + i
+            }
+            ColumnAlias::ThetaExpandRotC(i) => {
+                assert!(i < THETA_EXPAND_ROT_C_LEN);
+                CURR_OFF + THETA_EXPAND_ROT_C_OFF + i
+            }
+            ColumnAlias::PiRhoShiftsE(i) => {
+                assert!(i < PIRHO_SHIFTS_E_LEN);
+                CURR_OFF + PIRHO_SHIFTS_E_OFF + i
+            }
+            ColumnAlias::PiRhoDenseE(i) => {
+                assert!(i < PIRHO_DENSE_E_LEN);
+                CURR_OFF + PIRHO_DENSE_E_OFF + i
+            }
+            ColumnAlias::PiRhoQuotientE(i) => {
+                assert!(i < PIRHO_QUOTIENT_E_LEN);
+                CURR_OFF + PIRHO_QUOTIENT_E_OFF + i
+            }
+            ColumnAlias::PiRhoRemainderE(i) => {
+                assert!(i < PIRHO_REMAINDER_E_LEN);
+                CURR_OFF + PIRHO_REMAINDER_E_OFF + i
+            }
+            ColumnAlias::PiRhoDenseRotE(i) => {
+                assert!(i < PIRHO_DENSE_ROT_E_LEN);
+                CURR_OFF + PIRHO_DENSE_ROT_E_OFF + i
+            }
+            ColumnAlias::PiRhoExpandRotE(i) => {
+                assert!(i < PIRHO_EXPAND_ROT_E_LEN);
+                CURR_OFF + PIRHO_EXPAND_ROT_E_OFF + i
+            }
+            ColumnAlias::ChiShiftsB(i) => {
+                assert!(i < CHI_SHIFTS_B_LEN);
+                CURR_OFF + CHI_SHIFTS_B_OFF + i
+            }
+            ColumnAlias::ChiShiftsSum(i) => {
+                assert!(i < CHI_SHIFTS_SUM_LEN);
+                CURR_OFF + CHI_SHIFTS_SUM_OFF + i
+            }
+            ColumnAlias::SpongeNewState(i) => {
+                assert!(i < SPONGE_NEW_STATE_LEN);
+                CURR_OFF + SPONGE_NEW_STATE_OFF + i
+            }
+            ColumnAlias::SpongeZeros(i) => {
+                assert!(i < SPONGE_ZEROS_LEN);
+                CURR_OFF + SPONGE_ZEROS_OFF + i
+            }
+            ColumnAlias::SpongeBytes(i) => {
+                assert!(i < SPONGE_BYTES_LEN);
+                CURR_OFF + SPONGE_BYTES_OFF + i
+            }
+            ColumnAlias::SpongeShifts(i) => {
+                assert!(i < SPONGE_SHIFTS_LEN);
+                CURR_OFF + SPONGE_SHIFTS_OFF + i
+            }
+            ColumnAlias::Output(i) => {
+                assert!(i < STATE_LEN);
+                NEXT_OFF + i
+            }
+        }
+    }
 }
 
 /// The witness columns used by the Keccak circuit.
@@ -138,293 +257,26 @@ pub enum Column {
 ///
 pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS, T>;
 
-pub trait KeccakWitnessTrait<T> {
-    /// Returns the hash index
-    fn hash_index(&self) -> &T;
-    /// Returns the block index
-    fn block_index(&self) -> &T;
-    /// Returns the step index
-    fn step_index(&self) -> &T;
-    /// Returns the mode flags
-    fn mode_flags(&self) -> &[T];
-    /// Returns the mode flags as a mutable reference
-    fn mode_flags_mut(&mut self) -> &mut [T];
-    /// Returns the `curr` witness columns
-    fn curr(&self) -> &[T];
-    /// Returns the `curr` witness columns as a mutable reference
-    fn curr_mut(&mut self) -> &mut [T];
-    /// Returns the `next` witness columns
-    fn next(&self) -> &[T];
-    /// Returns the `next` witness columns as a mutable reference
-    fn next_mut(&mut self) -> &mut [T];
-    /// Returns a chunk of the `curr` witness columns
-    fn chunk(&self, offset: usize, length: usize) -> &[T];
-}
-
-impl<T: Clone> KeccakWitnessTrait<T> for KeccakWitness<T> {
-    fn hash_index(&self) -> &T {
-        &self.cols[0]
-    }
-
-    fn block_index(&self) -> &T {
-        &self.cols[1]
-    }
-
-    fn step_index(&self) -> &T {
-        &self.cols[2]
-    }
-
-    fn mode_flags(&self) -> &[T] {
-        &self.cols[STATUS_FLAGS_LEN..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN]
-    }
-
-    fn mode_flags_mut(&mut self) -> &mut [T] {
-        &mut self.cols[STATUS_FLAGS_LEN..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN]
-    }
-
-    fn curr(&self) -> &[T] {
-        &self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN
-            ..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
-    }
-
-    fn curr_mut(&mut self) -> &mut [T] {
-        &mut self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN
-            ..STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR]
-    }
-
-    fn next(&self) -> &[T] {
-        &self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
-    }
-
-    fn next_mut(&mut self) -> &mut [T] {
-        &mut self.cols[STATUS_FLAGS_LEN + MODE_FLAGS_COLS_LEN + ZKVM_KECCAK_COLS_CURR..]
-    }
-
-    fn chunk(&self, offset: usize, length: usize) -> &[T] {
-        &self.curr()[offset..offset + length]
-    }
-}
-
-impl<T: Clone> Index<Column> for KeccakWitness<T> {
+impl<T: Clone> Index<ColumnAlias> for KeccakWitness<T> {
     type Output = T;
 
     /// Map the column alias to the actual column index.
     /// Note that the column index depends on the step kind (Sponge or Round).
     /// For instance, the column 800 represents PadLength in the Sponge step, while it
     /// is used by intermediary values when executing the Round step.
-    fn index(&self, index: Column) -> &Self::Output {
-        match index {
-            Column::HashIndex => self.hash_index(),
-            Column::BlockIndex => self.block_index(),
-            Column::StepIndex => self.step_index(),
-            Column::FlagRound => &self.mode_flags()[FLAG_ROUND_OFF],
-            Column::FlagAbsorb => &self.mode_flags()[FLAG_ABSORB_OFF],
-            Column::FlagSqueeze => &self.mode_flags()[FLAG_SQUEEZE_OFF],
-            Column::FlagRoot => &self.mode_flags()[FLAG_ROOT_OFF],
-            Column::PadLength => &self.mode_flags()[PAD_LEN_OFF],
-            Column::InvPadLength => &self.mode_flags()[PAD_INV_OFF],
-            Column::TwoToPad => &self.mode_flags()[PAD_TWO_OFF],
-            Column::PadBytesFlags(idx) => {
-                assert!(idx < PAD_BYTES_LEN);
-                &self.mode_flags()[PAD_BYTES_OFF + idx]
-            }
-            Column::PadSuffix(idx) => {
-                assert!(idx < PAD_SUFFIX_LEN);
-                &self.mode_flags()[PAD_SUFFIX_OFF + idx]
-            }
-            Column::RoundConstants(idx) => {
-                assert!(idx < ROUND_COEFFS_LEN);
-                &self.mode_flags()[ROUND_COEFFS_OFF + idx]
-            }
-            Column::Input(idx) => {
-                assert!(idx < STATE_LEN);
-                &self.curr()[idx]
-            }
-            Column::ThetaShiftsC(idx) => {
-                assert!(idx < THETA_SHIFTS_C_LEN);
-                &self.curr()[THETA_SHIFTS_C_OFF + idx]
-            }
-            Column::ThetaDenseC(idx) => {
-                assert!(idx < THETA_DENSE_C_LEN);
-                &self.curr()[THETA_DENSE_C_OFF + idx]
-            }
-            Column::ThetaQuotientC(idx) => {
-                assert!(idx < THETA_QUOTIENT_C_LEN);
-                &self.curr()[THETA_QUOTIENT_C_OFF + idx]
-            }
-            Column::ThetaRemainderC(idx) => {
-                assert!(idx < THETA_REMAINDER_C_LEN);
-                &self.curr()[THETA_REMAINDER_C_OFF + idx]
-            }
-            Column::ThetaDenseRotC(idx) => {
-                assert!(idx < THETA_DENSE_ROT_C_LEN);
-                &self.curr()[THETA_DENSE_ROT_C_OFF + idx]
-            }
-            Column::ThetaExpandRotC(idx) => {
-                assert!(idx < THETA_EXPAND_ROT_C_LEN);
-                &self.curr()[THETA_EXPAND_ROT_C_OFF + idx]
-            }
-            Column::PiRhoShiftsE(idx) => {
-                assert!(idx < PIRHO_SHIFTS_E_LEN);
-                &self.curr()[PIRHO_SHIFTS_E_OFF + idx]
-            }
-            Column::PiRhoDenseE(idx) => {
-                assert!(idx < PIRHO_DENSE_E_LEN);
-                &self.curr()[PIRHO_DENSE_E_OFF + idx]
-            }
-            Column::PiRhoQuotientE(idx) => {
-                assert!(idx < PIRHO_QUOTIENT_E_LEN);
-                &self.curr()[PIRHO_QUOTIENT_E_OFF + idx]
-            }
-            Column::PiRhoRemainderE(idx) => {
-                assert!(idx < PIRHO_REMAINDER_E_LEN);
-                &self.curr()[PIRHO_REMAINDER_E_OFF + idx]
-            }
-            Column::PiRhoDenseRotE(idx) => {
-                assert!(idx < PIRHO_DENSE_ROT_E_LEN);
-                &self.curr()[PIRHO_DENSE_ROT_E_OFF + idx]
-            }
-            Column::PiRhoExpandRotE(idx) => {
-                assert!(idx < PIRHO_EXPAND_ROT_E_LEN);
-                &self.curr()[PIRHO_EXPAND_ROT_E_OFF + idx]
-            }
-            Column::ChiShiftsB(idx) => {
-                assert!(idx < CHI_SHIFTS_B_LEN);
-                &self.curr()[CHI_SHIFTS_B_OFF + idx]
-            }
-            Column::ChiShiftsSum(idx) => {
-                assert!(idx < CHI_SHIFTS_SUM_LEN);
-                &self.curr()[CHI_SHIFTS_SUM_OFF + idx]
-            }
-            Column::SpongeNewState(idx) => {
-                assert!(idx < SPONGE_NEW_STATE_LEN);
-                &self.curr()[SPONGE_NEW_STATE_OFF + idx]
-            }
-            Column::SpongeZeros(idx) => {
-                assert!(idx < SPONGE_ZEROS_LEN);
-                &self.curr()[SPONGE_ZEROS_OFF + idx]
-            }
-            Column::SpongeBytes(idx) => {
-                assert!(idx < SPONGE_BYTES_LEN);
-                &self.curr()[SPONGE_BYTES_OFF + idx]
-            }
-            Column::SpongeShifts(idx) => {
-                assert!(idx < SPONGE_SHIFTS_LEN);
-                &self.curr()[SPONGE_SHIFTS_OFF + idx]
-            }
-            Column::Output(idx) => {
-                assert!(idx < STATE_LEN);
-                &self.next()[idx]
-            }
-        }
+    fn index(&self, index: ColumnAlias) -> &Self::Output {
+        &self.cols[index.ix()]
     }
 }
 
-impl<T: Clone> IndexMut<Column> for KeccakWitness<T> {
-    fn index_mut(&mut self, index: Column) -> &mut Self::Output {
-        match index {
-            Column::HashIndex => &mut self.cols[0],
-            Column::BlockIndex => &mut self.cols[1],
-            Column::StepIndex => &mut self.cols[2],
-            Column::FlagRound => &mut self.mode_flags_mut()[FLAG_ROUND_OFF],
-            Column::FlagAbsorb => &mut self.mode_flags_mut()[FLAG_ABSORB_OFF],
-            Column::FlagSqueeze => &mut self.mode_flags_mut()[FLAG_SQUEEZE_OFF],
-            Column::FlagRoot => &mut self.mode_flags_mut()[FLAG_ROOT_OFF],
-            Column::PadLength => &mut self.mode_flags_mut()[PAD_LEN_OFF],
-            Column::InvPadLength => &mut self.mode_flags_mut()[PAD_INV_OFF],
-            Column::TwoToPad => &mut self.mode_flags_mut()[PAD_TWO_OFF],
-            Column::PadBytesFlags(idx) => {
-                assert!(idx < PAD_BYTES_LEN);
-                &mut self.mode_flags_mut()[PAD_BYTES_OFF + idx]
-            }
-            Column::PadSuffix(idx) => {
-                assert!(idx < PAD_SUFFIX_LEN);
-                &mut self.mode_flags_mut()[PAD_SUFFIX_OFF + idx]
-            }
-            Column::RoundConstants(idx) => {
-                assert!(idx < ROUND_COEFFS_LEN);
-                &mut self.mode_flags_mut()[ROUND_COEFFS_OFF + idx]
-            }
-            Column::Input(idx) => {
-                assert!(idx < STATE_LEN);
-                &mut self.curr_mut()[idx]
-            }
-            Column::ThetaShiftsC(idx) => {
-                assert!(idx < THETA_SHIFTS_C_LEN);
-                &mut self.curr_mut()[THETA_SHIFTS_C_OFF + idx]
-            }
-            Column::ThetaDenseC(idx) => {
-                assert!(idx < THETA_DENSE_C_LEN);
-                &mut self.curr_mut()[THETA_DENSE_C_OFF + idx]
-            }
-            Column::ThetaQuotientC(idx) => {
-                assert!(idx < THETA_QUOTIENT_C_LEN);
-                &mut self.curr_mut()[THETA_QUOTIENT_C_OFF + idx]
-            }
-            Column::ThetaRemainderC(idx) => {
-                assert!(idx < THETA_REMAINDER_C_LEN);
-                &mut self.curr_mut()[THETA_REMAINDER_C_OFF + idx]
-            }
-            Column::ThetaDenseRotC(idx) => {
-                assert!(idx < THETA_DENSE_ROT_C_LEN);
-                &mut self.curr_mut()[THETA_DENSE_ROT_C_OFF + idx]
-            }
-            Column::ThetaExpandRotC(idx) => {
-                assert!(idx < THETA_EXPAND_ROT_C_LEN);
-                &mut self.curr_mut()[THETA_EXPAND_ROT_C_OFF + idx]
-            }
-            Column::PiRhoShiftsE(idx) => {
-                assert!(idx < PIRHO_SHIFTS_E_LEN);
-                &mut self.curr_mut()[PIRHO_SHIFTS_E_OFF + idx]
-            }
-            Column::PiRhoDenseE(idx) => {
-                assert!(idx < PIRHO_DENSE_E_LEN);
-                &mut self.curr_mut()[PIRHO_DENSE_E_OFF + idx]
-            }
-            Column::PiRhoQuotientE(idx) => {
-                assert!(idx < PIRHO_QUOTIENT_E_LEN);
-                &mut self.curr_mut()[PIRHO_QUOTIENT_E_OFF + idx]
-            }
-            Column::PiRhoRemainderE(idx) => {
-                assert!(idx < PIRHO_REMAINDER_E_LEN);
-                &mut self.curr_mut()[PIRHO_REMAINDER_E_OFF + idx]
-            }
-            Column::PiRhoDenseRotE(idx) => {
-                assert!(idx < PIRHO_DENSE_ROT_E_LEN);
-                &mut self.curr_mut()[PIRHO_DENSE_ROT_E_OFF + idx]
-            }
-            Column::PiRhoExpandRotE(idx) => {
-                assert!(idx < PIRHO_EXPAND_ROT_E_LEN);
-                &mut self.curr_mut()[PIRHO_EXPAND_ROT_E_OFF + idx]
-            }
-            Column::ChiShiftsB(idx) => {
-                assert!(idx < CHI_SHIFTS_B_LEN);
-                &mut self.curr_mut()[CHI_SHIFTS_B_OFF + idx]
-            }
-            Column::ChiShiftsSum(idx) => {
-                assert!(idx < CHI_SHIFTS_SUM_LEN);
-                &mut self.curr_mut()[CHI_SHIFTS_SUM_OFF + idx]
-            }
-            Column::SpongeNewState(idx) => {
-                assert!(idx < SPONGE_NEW_STATE_LEN);
-                &mut self.curr_mut()[SPONGE_NEW_STATE_OFF + idx]
-            }
-            Column::SpongeZeros(idx) => {
-                assert!(idx < SPONGE_ZEROS_LEN);
-                &mut self.curr_mut()[SPONGE_ZEROS_OFF + idx]
-            }
-            Column::SpongeBytes(idx) => {
-                assert!(idx < SPONGE_BYTES_LEN);
-                &mut self.curr_mut()[SPONGE_BYTES_OFF + idx]
-            }
-            Column::SpongeShifts(idx) => {
-                assert!(idx < SPONGE_SHIFTS_LEN);
-                &mut self.curr_mut()[SPONGE_SHIFTS_OFF + idx]
-            }
-            Column::Output(idx) => {
-                assert!(idx < STATE_LEN);
-                &mut self.next_mut()[idx]
-            }
-        }
+impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
+    fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
+        &mut self.cols[index.ix()]
+    }
+}
+
+impl ColumnIndexer for ColumnAlias {
+    fn to_column(self) -> Column {
+        Column::X(self.ix())
     }
 }
