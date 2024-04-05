@@ -6,7 +6,7 @@
 //! columns whose values will represent the evaluations of polynomials over a
 //! certain pre-defined domain. The correct execution will be proven using a
 //! polynomial commitment protocol. The polynomials are described in the
-//! structure [crate::mips::column::Column]. These polynomials will be
+//! structure [crate::mips::column::ColumnAlias]. These polynomials will be
 //! committed and evaluated at certain points following the polynomial protocol,
 //! and it will form the proof of the correct execution that the prover will
 //! build and send to the verifier. The corresponding structure is
