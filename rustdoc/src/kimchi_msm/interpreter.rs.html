@@ -44,7 +44,7 @@
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: Column) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>get_column(ix: ColumnIx) -&gt; Column {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     <span class="doccomment">/// Read the value in the position `ix`

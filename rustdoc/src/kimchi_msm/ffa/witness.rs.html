@@ -164,7 +164,7 @@
 
     <span class="comment">// TODO deduplicate, remove this
     </span><span class="kw">fn </span>column_pos(ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Position {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Variable {

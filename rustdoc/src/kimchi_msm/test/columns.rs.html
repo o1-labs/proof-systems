@@ -59,7 +59,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>TestColumnIndexer {
-    <span class="kw">fn </span>ix_to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
             <span class="macro">assert!</span>(i &lt; N_LIMBS);
             Column::X(N_LIMBS * offset + i)

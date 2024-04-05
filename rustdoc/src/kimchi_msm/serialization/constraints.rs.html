@@ -398,7 +398,7 @@
     }
 
     <span class="kw">fn </span>get_column(pos: SerializationColumn) -&gt; <span class="self">Self</span>::Position {
-        pos.ix_to_column()
+        pos.to_column()
     }
 
     <span class="kw">fn </span>range_check_abs15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {

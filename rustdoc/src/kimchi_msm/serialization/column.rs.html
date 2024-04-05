@@ -99,7 +99,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>SerializationColumn {
-    <span class="kw">fn </span>ix_to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ChalKimchi(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; <span class="number">3</span>);

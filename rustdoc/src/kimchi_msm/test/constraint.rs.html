@@ -104,12 +104,12 @@
 
     <span class="comment">// TODO deduplicate, remove this
     </span><span class="kw">fn </span>column_pos(ix: TestColumnIndexer) -&gt; <span class="self">Self</span>::Position {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: TestColumnIndexer) -&gt; <span class="self">Self</span>::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: ix.ix_to_column(),
+            col: ix.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
