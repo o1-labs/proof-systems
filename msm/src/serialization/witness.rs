@@ -175,43 +175,23 @@ impl<Fp: PrimeField> Env<Fp> {
         }
     }
 
-    pub fn add_rangecheck4_table_value(&mut self, i: usize) {
-        if i < (1 << 4) {
-            self.lookup_t_multiplicities_rangecheck4[i] += Fp::one();
-        } else {
-            self.lookup_t_multiplicities_rangecheck4[0] += Fp::one();
-        }
-    }
-
     pub fn reset(&mut self) {
         *self.lookups.get_mut(&LookupTable::RangeCheck4).unwrap() = Vec::new();
         *self.lookups.get_mut(&LookupTable::RangeCheck15).unwrap() = Vec::new();
     }
 
-    /// Return the normalized multiplicity vector of RangeCheck4 in case the
-    /// table is not injective. Note that it is the case for `RangeCheck4`.
-    pub fn get_rangecheck4_normalized_multipliticies(
+    pub fn get_rangecheck4_multipliticies(
         &self,
         domain: EvaluationDomains<Fp>,
     ) -> Vec<Fp> {
         let mut m = vec![Fp::zero(); 1 << 4];
-        self.lookup_multiplicities
-            .get(&LookupTable::RangeCheck4)
-            .unwrap()
-            .iter()
-            .zip(self.lookup_t_multiplicities_rangecheck4.iter())
-            .enumerate()
-            .for_each(|(i, (m_f, m_t))| m[i] = *m_f / m_t);
-        let repeated_dummy_value: Vec<Fp> = iter::repeat(m[0])
+        let repeated_dummy_value: Vec<Fp> = iter::repeat(Fp::zero())
             .take((domain.d1.size - (1 << 4)) as usize)
             .collect();
         m.extend(repeated_dummy_value);
         m
     }
-    /// Return the normalized multiplicity vector of RangeCheck4 in case the
-    /// table is not injective. Note that it is not the case for `RangeCheck15` as
-    /// we assume the domain size is `1 << 15`.
-    pub fn get_rangecheck15_normalized_multipliticies(
+    pub fn get_rangecheck15_multipliticies(
         &self,
         domain: EvaluationDomains<Fp>,
     ) -> Vec<Fp> {

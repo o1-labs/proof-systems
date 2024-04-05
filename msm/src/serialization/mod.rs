@@ -117,7 +117,7 @@ mod tests {
         let mut rangecheck4: [Vec<Lookup<Fp>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
 
-        for (i, limbs) in field_elements.iter().enumerate() {
+        for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness
             deserialize_field_element(&mut witness_env, *limbs);
             // Filling actually used rows
@@ -145,8 +145,6 @@ mod tests {
                 rangecheck15[j].push(lookup.clone())
             }
 
-            witness_env.add_rangecheck4_table_value(i);
-
             witness_env.reset()
         }
 
@@ -156,7 +154,7 @@ mod tests {
             constraints_env.get_constraints()
         };
 
-        let rangecheck15_m = witness_env.get_rangecheck15_normalized_multipliticies(domain);
+        let rangecheck15_m = witness_env.get_rangecheck15_multipliticies(domain);
         let rangecheck15_t = LookupTable::RangeCheck15
             .entries(domain)
             .into_iter()
@@ -168,7 +166,7 @@ mod tests {
             });
         rangecheck15[N_LIMBS] = rangecheck15_t.collect();
 
-        let rangecheck4_m = witness_env.get_rangecheck4_normalized_multipliticies(domain);
+        let rangecheck4_m = witness_env.get_rangecheck4_multipliticies(domain);
         let rangecheck4_t = LookupTable::RangeCheck4
             .entries(domain)
             .into_iter()
