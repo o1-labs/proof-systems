@@ -62,7 +62,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 
     fn get_column(pos: SerializationColumn) -> Self::Position {
-        pos.ix_to_column()
+        pos.to_column()
     }
 
     fn read_column(&self, ix: Column) -> Self::Variable {

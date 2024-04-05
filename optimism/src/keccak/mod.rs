@@ -1,5 +1,5 @@
 use crate::{
-    keccak::column::{Column as KeccakColumn, PAD_SUFFIX_LEN},
+    keccak::column::{ColumnAlias as KeccakColumn, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;

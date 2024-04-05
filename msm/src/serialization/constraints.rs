@@ -134,7 +134,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 
     fn get_column(pos: SerializationColumn) -> Self::Position {
-        pos.ix_to_column()
+        pos.to_column()
     }
 
     fn range_check_abs15bit(&mut self, _value: &Self::Variable) {
