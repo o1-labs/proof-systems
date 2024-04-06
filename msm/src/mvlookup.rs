@@ -174,18 +174,19 @@ pub fn combine_lookups<F: Field, ID: LookupTableID>(
     };
 
     // Compute (β + f_{i}(X)) for each i.
-    // Note that f_i(X) = x_{0} + r x_{1} + ... r^{N} x_{N} + r^{N + 1} table_id
+    // Note that f_i(X) = table_id + r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
     let denominators = lookups
         .iter()
         .map(|x| {
-            let combined_value = (x
+            // Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
+            let combined_value = x
                 .value
                 .iter()
                 .rev()
                 .fold(E::zero(), |acc, y| acc * joint_combiner.clone() + y.clone())
-                * joint_combiner.clone())
-                + x.table_id.to_constraint();
-            beta.clone() + combined_value
+                * joint_combiner.clone();
+            // add table id + evaluation point
+            beta.clone() + combined_value + x.table_id.to_constraint()
         })
         .collect::<Vec<_>>();
     // Compute `column * (\prod_{i = 1}^{N} (β + f_{i}(X)))`
@@ -416,12 +417,14 @@ pub mod prover {
                                 table_id,
                                 value,
                             } = &f_i[j as usize];
-                            // x + r * y + r^2 * z + ... + r^n table_id
+                            // Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
                             let combined_value: G::ScalarField =
-                                value.iter().rev().fold(G::ScalarField::zero(), |x, y| {
-                                    x * vector_lookup_combiner + y
-                                }) * vector_lookup_combiner
-                                    + table_id.to_field::<G::ScalarField>();
+                                value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
+                                    acc * vector_lookup_combiner + y
+                                }) * vector_lookup_combiner;
+                            // add table id
+                            let combined_value =
+                                combined_value + table_id.to_field::<G::ScalarField>();
 
                             // If last element and fixed lookup tables, we keep
                             // the *combined* value of the table.
