@@ -180,21 +180,17 @@ impl<Fp: PrimeField> Env<Fp> {
         *self.lookups.get_mut(&LookupTable::RangeCheck15).unwrap() = Vec::new();
     }
 
-    pub fn get_rangecheck4_multipliticies(
-        &self,
-        domain: EvaluationDomains<Fp>,
-    ) -> Vec<Fp> {
-        let mut m = vec![Fp::zero(); 1 << 4];
-        let repeated_dummy_value: Vec<Fp> = iter::repeat(Fp::zero())
+    pub fn get_rangecheck4_multipliticies(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
+        let mut m = Vec::with_capacity(domain.d1.size as usize);
+        m.extend(self.lookup_multiplicities[&LookupTable::RangeCheck4].to_vec());
+        let repeated_dummy_value: Vec<Fp> = iter::repeat(-Fp::zero())
             .take((domain.d1.size - (1 << 4)) as usize)
             .collect();
         m.extend(repeated_dummy_value);
+        assert_eq!(m.len(), domain.d1.size as usize);
         m
     }
-    pub fn get_rangecheck15_multipliticies(
-        &self,
-        domain: EvaluationDomains<Fp>,
-    ) -> Vec<Fp> {
+    pub fn get_rangecheck15_multipliticies(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
         assert_eq!(domain.d1.size, 1 << 15);
         self.lookup_multiplicities[&LookupTable::RangeCheck15].to_vec()
     }
