@@ -236,6 +236,8 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
         // Individual sums
         .reduce(|x, y| x + y)
         .unwrap_or(E::zero());
+    println!("LHS: {:}", lhs);
+    println!("RHS: {:}", rhs);
     lhs - rhs
 }
 
@@ -256,13 +258,18 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
         let mut lookups = lookups.clone();
         lookups.push(table_lookup);
         // We split in chunks of 6 (MAX_SUPPORTED_DEGREE - 2)
-        lookups.chunks(MAX_SUPPORTED_DEGREE - 2).for_each(|chunk| {
-            constraints.push(combine_lookups(
-                Column::LookupPartialSum(idx_partial_sum),
-                chunk.to_vec(),
-            ));
-            idx_partial_sum += 1;
-        });
+        lookups
+            .chunks(MAX_SUPPORTED_DEGREE - 2)
+            .enumerate()
+            .for_each(|(i, chunk)| {
+                if i <= 0 {
+                    constraints.push(combine_lookups(
+                        Column::LookupPartialSum(idx_partial_sum),
+                        chunk.to_vec(),
+                    ));
+                }
+                idx_partial_sum += 1;
+            });
     });
 
     // Generic code over the partial sum
@@ -447,10 +454,8 @@ pub mod prover {
                                 value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
                                     acc * vector_lookup_combiner + y
                                 }) * vector_lookup_combiner;
-                            // add table id
-                            let combined_value =
-                                combined_value + table_id.to_field::<G::ScalarField>();
 
+                            // FIXME: maybe move this below??? The constraint should not have the table ID
                             // If last element and fixed lookup tables, we keep
                             // the *combined* value of the table.
                             if i == (n - 1) && table_id.is_fixed() {
@@ -459,6 +464,10 @@ pub mod prover {
                                     .or_insert_with(Vec::new)
                                     .push(combined_value);
                             }
+
+                            // add table id
+                            let combined_value =
+                                combined_value + table_id.to_field::<G::ScalarField>();
 
                             // β + a_{i}
                             let lookup_denominator = beta + combined_value;

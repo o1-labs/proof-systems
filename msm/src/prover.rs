@@ -211,6 +211,7 @@ where
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         // Only for debugging purposes
         for expr in constraints.iter() {
+            println!("Degree of expr: {:?}", expr.degree(1, 0));
             let fail_q_division =
                 ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
             // Check this expression are witness satisfied

@@ -58,6 +58,7 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
                 }
             }
             Self::Column::LookupPartialSum(i) => {
+                println!("Requesting partial sum {:?}", i);
                 if let Some(ref lookup) = self.lookup {
                     Some(&lookup.lookup_terms_evals_d8[i])
                 } else {

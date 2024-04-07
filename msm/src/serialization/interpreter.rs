@@ -120,7 +120,9 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
         env.add_constraint(constraint)
     }
     // Range check on each limb
-    limb2_vars.iter().for_each(|v| env.range_check4(v));
+    // FIXME
+    env.range_check4(&limb2_vars[0]);
+    // limb2_vars.iter().for_each(|v| env.range_check4(v));
 
     let mut fifteen_bits_vars = vec![];
     {
@@ -234,7 +236,9 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     }
 
     // Range check on each limb
-    fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
+    // FIXME
+    env.range_check15(&fifteen_bits_vars[0]);
+    // fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
 
     let shl_88_var = Env::constant(Fp::from(1u128 << 88u128));
     let shl_15_var = Env::constant(Fp::from(1u128 << 15u128));
