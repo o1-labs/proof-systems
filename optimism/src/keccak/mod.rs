@@ -7,6 +7,7 @@ use kimchi::circuits::{
     expr::{ConstantExpr, Expr},
     polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
 };
+use kimchi_msm::columns::Column;
 
 pub mod column;
 pub mod constraints;
@@ -30,7 +31,7 @@ pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 /// Number of words that fit in the hash digest
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
-pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
+pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 
 /// Errors that can occur during the check of the witness
 #[derive(Debug, Clone, PartialEq, Eq)]

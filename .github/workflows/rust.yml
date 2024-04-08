@@ -10,6 +10,8 @@ env:
   CARGO_INCREMENTAL: 1
   # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
   CARGO_TERM_COLOR: always
+  RUST_MIN_STACK: 31457280
+  # 30 MB of stack for Keccak tests
 
 jobs:
   run_formatting:

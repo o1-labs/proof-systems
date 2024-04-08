@@ -1,10 +1,12 @@
 use ark_bn254::FrParameters;
 use ark_ec::bn::Bn;
 use ark_ff::{Fp256, UniformRand, Zero};
+use kimchi_msm::proof::ProofInputs;
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::column::{KeccakWitness, ZKVM_KECCAK_COLS},
+    lookups::LookupTableIDs,
     mips::{
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
         witness::{self as mips_witness, SCRATCH_SIZE},
@@ -73,9 +75,10 @@ pub fn main() -> ExitCode {
 
     let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    let mut mips_folded_witness = proof::ProofInputs::<
+    let mut mips_folded_witness = ProofInputs::<
         MIPS_COLUMNS,
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+        LookupTableIDs,
     >::default();
 
     let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
@@ -90,9 +93,10 @@ pub fn main() -> ExitCode {
 
     // The keccak environment is extracted inside the loop
 
-    let mut keccak_folded_witness = proof::ProofInputs::<
+    let mut keccak_folded_witness = ProofInputs::<
         ZKVM_KECCAK_COLS,
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+        LookupTableIDs,
     >::default();
 
     let keccak_reset_pre_folding_witness =
@@ -182,7 +186,7 @@ pub fn main() -> ExitCode {
             &mips_current_pre_folding_witness,
         );
     }
-
+    /*
     {
         // MIPS
         let mips_proof = proof::prove::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
@@ -224,6 +228,7 @@ pub fn main() -> ExitCode {
         }
     }
 
+    */
     // TODO: Logic
     ExitCode::SUCCESS
 }
