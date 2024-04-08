@@ -2,7 +2,7 @@ use crate::{
     circuits::{
         berkeley_columns,
         constraints::FeatureFlags,
-        gate::{CurrOrNext},
+        gate::CurrOrNext,
         lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
             foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
@@ -844,6 +844,28 @@ impl<Column: Copy> Variable<Column> {
         match self.row {
             CurrOrNext::Curr => Ok(point_evaluations.zeta),
             CurrOrNext::Next => Ok(point_evaluations.zeta_omega),
+        }
+    }
+}
+
+impl<Column: FormattedOutput + Debug> Variable<Column> {
+    pub fn ocaml(&self) -> String {
+        format!("var({:?}, {:?})", self.col, self.row)
+    }
+
+    pub fn latex(&self) -> String {
+        let col = self.col.latex(&mut HashMap::new());
+        match self.row {
+            Curr => col,
+            Next => format!("\\tilde{{{col}}}"),
+        }
+    }
+
+    pub fn text(&self) -> String {
+        let col = self.col.text(&mut HashMap::new());
+        match self.row {
+            Curr => format!("Curr({col})"),
+            Next => format!("Next({col})"),
         }
     }
 }
@@ -2678,7 +2700,7 @@ impl<F: Field, Column: PartialEq + Copy> Mul<F> for Expr<ConstantExpr<F>, Column
 // Display
 //
 
-trait FormattedOutput: Sized {
+pub trait FormattedOutput: Sized {
     fn is_alpha(&self) -> bool;
     fn ocaml(&self, cache: &mut HashMap<CacheId, Self>) -> String;
     fn latex(&self, cache: &mut HashMap<CacheId, Self>) -> String;
@@ -3398,14 +3420,11 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            berkeley_columns::{
-                index, witness_curr, Environment, E,
-            },
+            berkeley_columns::{index, witness_curr, Environment, E},
             constraints::ConstraintSystem,
             domains::EvaluationDomains,
             expr::constraints::ExprOps,
-            gate::CircuitGate,
-            gate::GateType,
+            gate::{CircuitGate, GateType},
             polynomials::generic::GenericGateSpec,
             wires::{Wire, COLUMNS},
         },

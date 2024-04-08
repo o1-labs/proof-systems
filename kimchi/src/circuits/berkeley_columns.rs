@@ -1,26 +1,26 @@
 use crate::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{self, ColumnEvaluations, ConstantExpr, ConstantTerm, Expr, ExprError},
+        expr::{CacheId, ColumnEvaluations, ConstantExpr, ConstantTerm, Expr, ExprError},
         gate::{CurrOrNext, GateType},
         lookup::{index::LookupSelectors, lookups::LookupPattern},
     },
     proof::{PointEvaluations, ProofEvaluations},
 };
 use serde::{Deserialize, Serialize};
-use CurrOrNext::{Curr, Next};
 
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-use crate::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain};
+use crate::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain, FormattedOutput};
 
 use crate::circuits::wires::COLUMNS;
 
 use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-/// A type representing one of the polynomials involved in the PLONK IOP.
+/// A type representing one of the polynomials involved in the PLONK IOP, use in
+/// the Berkeley hardfork.
 pub enum Column {
     Witness(usize),
     Z,
@@ -35,8 +35,18 @@ pub enum Column {
     Permutation(usize),
 }
 
-impl Column {
-    pub fn latex(&self) -> String {
+impl FormattedOutput for Column {
+    fn is_alpha(&self) -> bool {
+        // FIXME. Unused at the moment
+        unimplemented!()
+    }
+
+    fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
+        // FIXME. Unused at the moment
+        unimplemented!()
+    }
+
+    fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Witness(i) => format!("w_{{{i}}}"),
             Column::Z => "Z".to_string(),
@@ -54,7 +64,7 @@ impl Column {
         }
     }
 
-    pub fn text(&self) -> String {
+    fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Witness(i) => format!("w[{i}]"),
             Column::Z => "Z".to_string(),
@@ -69,28 +79,6 @@ impl Column {
             }
             Column::Coefficient(i) => format!("c[{i}]"),
             Column::Permutation(i) => format!("sigma_[{i}]"),
-        }
-    }
-}
-
-impl expr::Variable<Column> {
-    pub fn ocaml(&self) -> String {
-        format!("var({:?}, {:?})", self.col, self.row)
-    }
-
-    pub fn latex(&self) -> String {
-        let col = self.col.latex();
-        match self.row {
-            Curr => col,
-            Next => format!("\\tilde{{{col}}}"),
-        }
-    }
-
-    pub fn text(&self) -> String {
-        let col = self.col.text();
-        match self.row {
-            Curr => format!("Curr({col})"),
-            Next => format!("Next({col})"),
         }
     }
 }
