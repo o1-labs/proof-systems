@@ -3565,15 +3565,6 @@
 <a href="#3563" id="3563">3563</a>
 <a href="#3564" id="3564">3564</a>
 <a href="#3565" id="3565">3565</a>
-<a href="#3566" id="3566">3566</a>
-<a href="#3567" id="3567">3567</a>
-<a href="#3568" id="3568">3568</a>
-<a href="#3569" id="3569">3569</a>
-<a href="#3570" id="3570">3570</a>
-<a href="#3571" id="3571">3571</a>
-<a href="#3572" id="3572">3572</a>
-<a href="#3573" id="3573">3573</a>
-<a href="#3574" id="3574">3574</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -4589,7 +4580,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;
+<span class="kw">impl</span>&lt;F, Column: FormattedOutput + Debug + Clone&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;
 <span class="kw">where
     </span>F: PrimeField,
 {
@@ -6519,7 +6510,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F&gt; Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;
+<span class="kw">impl</span>&lt;F, Column: FormattedOutput + Debug + Clone&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;
 <span class="kw">where
     </span>F: PrimeField,
 {
@@ -6546,10 +6537,7 @@
 
     <span class="doccomment">/// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    </span><span class="kw">fn </span>ocaml(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
-    ) -&gt; String {
+    </span><span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;&gt;) -&gt; String {
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
@@ -6610,10 +6598,7 @@
         res
     }
 
-    <span class="kw">fn </span>latex(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
-    ) -&gt; String {
+    <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;&gt;) -&gt; String {
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
@@ -6657,10 +6642,7 @@
 
     <span class="doccomment">/// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    </span><span class="kw">fn </span>text(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
-    ) -&gt; String {
+    </span><span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;&gt;) -&gt; String {
         <span class="kw">use </span>ExprInner::<span class="kw-2">*</span>;
         <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
