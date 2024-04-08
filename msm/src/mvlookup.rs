@@ -1,6 +1,6 @@
 //! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
 
-use ark_ff::{Field, Zero};
+use ark_ff::{PrimeField, Field, Zero};
 use std::{collections::BTreeMap, hash::Hash};
 
 use kimchi::circuits::expr::{ChallengeTerm, ConstantExpr, ConstantTerm, ExprInner};
@@ -160,7 +160,7 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 ///       \---------------------------------------------------------/
 ///                           rhs
 /// ```
-pub fn combine_lookups<F: Field, ID: LookupTableID>(
+pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
     column: Column,
     lookups: Vec<MVLookup<E<F>, ID>>,
 ) -> E<F> {
@@ -221,7 +221,7 @@ pub fn combine_lookups<F: Field, ID: LookupTableID>(
 
 /// Build the constraints for the lookup protocol.
 /// The constraints are the partial sum and the aggregation of the partial sums.
-pub fn constraint_lookups<F: Field, ID: LookupTableID>(
+pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
     lookups_map: &BTreeMap<ID, Vec<MVLookup<E<F>, ID>>>,
 ) -> Vec<E<F>> {
     let mut constraints: Vec<E<F>> = vec![];
