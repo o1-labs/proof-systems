@@ -14,9 +14,11 @@ pub fn range_check_table<F>() -> LookupTable<F>
 where
     F: Field,
 {
-    let data = vec![(0..RANGE_CHECK_UPPERBOUND).map(F::from).collect()];
-    LookupTable::create(RANGE_CHECK_TABLE_ID, data)
-        .expect("range_check_table creation must succeed")
+    let table = vec![(0..RANGE_CHECK_UPPERBOUND).map(F::from).collect()];
+    LookupTable {
+        id: RANGE_CHECK_TABLE_ID,
+        data: table,
+    }
 }
 
 pub const TABLE_SIZE: usize = RANGE_CHECK_UPPERBOUND as usize;

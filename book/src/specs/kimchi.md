@@ -1641,8 +1641,8 @@ If lookup is used, the following values are added to the common index:
 To create the index, follow these steps:
 
 1. If no lookup is used in the circuit, do not create a lookup index
-2. Get the lookup selectors and lookup tables that are specified implicitly
-3. Concatenate explicit runtime lookup tables with the ones (implicitly) used by gates.
+2. Get the lookup selectors and lookup tables (TODO: how?)
+3. Concatenate runtime lookup tables with the ones used by gates
 4. Get the highest number of columns `max_table_width`
    that a lookup table can have.
 5. Create the concatenated table of all the fixed lookup tables.
@@ -2202,7 +2202,7 @@ The prover then follows the following steps to create the proof:
 	* $s_i$
 	* $w_i$
 	* $z$
-	* lookup (TODO)
+	* lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
 	* generic selector
 	* poseidon selector
 

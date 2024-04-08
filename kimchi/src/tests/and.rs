@@ -255,7 +255,6 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
             );
             witness[col][and_row] += G::ScalarField::one();
         }
-
         if col == 2 {
             assert_eq!(
                 cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
