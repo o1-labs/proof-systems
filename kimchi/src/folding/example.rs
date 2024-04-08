@@ -186,7 +186,7 @@ struct TestFoldingEnv {
     next_witnesses: [TestWitness; 2],
 }
 
-impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for TestFoldingEnv {
+impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> for TestFoldingEnv {
     type Structure = TestStructure<Fp>;
 
     fn new(
@@ -243,6 +243,10 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for Te
     fn alpha(&self, i: usize, side: Side) -> Fp {
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
+    }
+
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
+        unreachable!()
     }
 }
 

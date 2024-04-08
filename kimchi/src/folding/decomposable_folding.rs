@@ -3,33 +3,50 @@
 //! Specifically, an alternative scheme is provided that is created not from a list of constraints,
 //! but from a set of list of constraints, each set associated with a particular selector
 
-use super::FoldingScheme;
-use super::{
-    expressions::FoldingCompatibleExpr,
+use crate::folding::{
+    error_term::{compute_error, ExtendedEnv},
+    expressions::{FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxedInstance, RelaxedWitness},
+    FoldingScheme,
 };
-use crate::folding::{instance_witness::RelaxablePair, FoldingConfig, ScalarField};
-use ark_poly::Radix2EvaluationDomain;
-use poly_commitment::PolyComm;
+use crate::{
+    circuits::expr::Op2,
+    folding::{instance_witness::RelaxablePair, FoldingConfig, ScalarField, Sponge},
+};
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use poly_commitment::{PolyComm, SRS};
 use std::collections::BTreeMap;
-use std::marker::PhantomData;
 
-pub struct DecomposableFoldingScheme<CF: FoldingConfig, S> {
+pub struct DecomposableFoldingScheme<CF: FoldingConfig> {
     inner: FoldingScheme<CF>,
-    todo: PhantomData<S>,
 }
 
-impl<CF: FoldingConfig, S> DecomposableFoldingScheme<CF, S> {
+impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     pub fn new(
         //constraints with a dynamic selector
-        constraints: BTreeMap<S, Vec<FoldingCompatibleExpr<CF>>>,
+        constraints: BTreeMap<CF::S, Vec<FoldingCompatibleExpr<CF>>>,
         //constraints to be applied to every single instance regardless of selectors
         common_constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: CF::Srs,
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         structure: CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
-        todo!()
+        let constraints = constraints
+            .into_iter()
+            .map(|(s, exps)| {
+                exps.into_iter().map(move |exp| {
+                    let s = FoldingCompatibleExprInner::Extensions(super::ExpExtension::Selector(
+                        s.clone(),
+                    ));
+                    let s = Box::new(FoldingCompatibleExpr::Atom(s));
+                    FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
+                })
+            })
+            .flatten()
+            .chain(common_constraints)
+            .collect();
+        let (inner, exp) = FoldingScheme::new(constraints, srs, domain, structure);
+        (DecomposableFoldingScheme { inner }, exp)
     }
 
     #[allow(clippy::type_complexity)]
@@ -40,7 +57,7 @@ impl<CF: FoldingConfig, S> DecomposableFoldingScheme<CF, S> {
         &self,
         a: A,
         b: B,
-        selector: Option<S>,
+        selector: Option<CF::S>,
     ) -> (
         RelaxedInstance<CF::Curve, CF::Instance>,
         RelaxedWitness<CF::Curve, CF::Witness>,
@@ -50,6 +67,45 @@ impl<CF: FoldingConfig, S> DecomposableFoldingScheme<CF, S> {
         A: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
     {
-        todo!()
+        let scheme = &self.inner;
+        let a = a.relax(&scheme.zero_vec, scheme.zero_commitment.clone());
+        let b = b.relax(&scheme.zero_vec, scheme.zero_commitment.clone());
+
+        let u = (a.0.u, b.0.u);
+
+        let (ins1, wit1) = a;
+        let (ins2, wit2) = b;
+        let env = ExtendedEnv::new(
+            &scheme.structure,
+            [ins1, ins2],
+            [wit1, wit2],
+            scheme.domain,
+            selector,
+        );
+        let env = env.compute_extension(&scheme.extended_witness_generator, &scheme.srs);
+        let error = compute_error(&scheme.expression, &env, u);
+        let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, scheme.domain));
+
+        //can use array::each_ref() when stable
+        let error_commitments = [&error_evals[0], &error_evals[1]]
+            .map(|e| scheme.srs.commit_evaluations_non_hiding(scheme.domain, e));
+
+        let error = error_evals.map(|e| e.evals);
+        let challenge = <CF::Sponge>::challenge(&error_commitments);
+        let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
+        let instance =
+            RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
+        let witness = RelaxedWitness::combine_and_sub_error(wit1, wit2, challenge, error);
+        (instance, witness, error_commitments)
+    }
+}
+
+pub(crate) fn check_selector<'a, C: FoldingConfig>(exp: &'a FoldingExp<C>) -> Option<&'a C::S> {
+    match exp {
+        crate::circuits::expr::Operations::Atom(a) => match a {
+            super::expressions::ExtendedFoldingColumn::Selector(s) => Some(s),
+            _ => None,
+        },
+        _ => None,
     }
 }

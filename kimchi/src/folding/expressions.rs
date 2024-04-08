@@ -23,7 +23,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum ExtendedFoldingColumn<C: FoldingConfig> {
+pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Inner(Variable<C::Column>),
     ///for the extra columns added by quadraticization
     WitnessExtended(usize),
@@ -32,6 +32,7 @@ pub(crate) enum ExtendedFoldingColumn<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
     Alpha(usize),
+    Selector(C::S),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -117,8 +118,16 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
                 FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) => {
                     Atom(Ex::UnnormalizedLagrangeBasis(i))
                 }
-                FoldingCompatibleExprInner::Extensions(_) => {
-                    panic!("this should only be created by folding itself")
+                FoldingCompatibleExprInner::Extensions(ext) => {
+                    match ext {
+                        // TODO: this shouldn't be allowed, but is needed for now to add
+                        // decomposable folding without many changes, it should be
+                        // refactored at some point in the future
+                        ExpExtension::Selector(s) => Atom(ExtendedFoldingColumn::Selector(s)),
+                        _ => {
+                            panic!("this should only be created by folding itself")
+                        }
+                    }
                 }
             },
             FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
@@ -182,6 +191,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Constant(_) => Zero,
                 ExtendedFoldingColumn::Challenge(_) => One,
                 ExtendedFoldingColumn::Alpha(_) => One,
+                ExtendedFoldingColumn::Selector(_) => One,
             },
             FoldingExp::Double(e) => e.folding_degree(),
             FoldingExp::Square(e) => &e.folding_degree() * &e.folding_degree(),
@@ -220,6 +230,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Constant(c) => Atom(Constant(c)),
                 ExtendedFoldingColumn::Challenge(c) => Atom(Challenge(c)),
                 ExtendedFoldingColumn::Alpha(i) => Atom(Extensions(ExpExtension::Alpha(i))),
+                ExtendedFoldingColumn::Selector(s) => Atom(Extensions(ExpExtension::Selector(s))),
             },
             FoldingExp::Double(exp) => Double(Box::new(exp.into_compatible())),
             FoldingExp::Square(exp) => Square(Box::new(exp.into_compatible())),

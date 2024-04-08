@@ -29,7 +29,7 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
     //in case of using docomposable folding, if not it can be just ()
-    type S: Clone + Debug + Eq;
+    type S: Clone + Debug + Eq + Hash;
 
     /// The type of an abstract challenge that can be found in the expressions
     /// provided as constraints.
@@ -59,6 +59,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
         Self::Witness,
         Self::Column,
         Self::Challenge,
+        Self::S,
         Structure = Self::Structure,
     >;
 
@@ -213,7 +214,7 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
 /// - `W`: The type of the witness, i.e. the private inputs
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
-pub trait FoldingEnv<F, I, W, Col, Chal> {
+pub trait FoldingEnv<F, I, W, Col, Chal, S> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
@@ -240,6 +241,9 @@ pub trait FoldingEnv<F, I, W, Col, Chal> {
     /// Computes the i-th power of alpha for a given side.
     /// Folding itself will provide us with the alpha value.
     fn alpha(&self, i: usize, side: Side) -> F;
+    /// similar to col(), but folding may ask for a dynamic selector directly instead
+    /// of just column that happens to be a selector
+    fn selector(&self, s: &S, side: Side) -> &Vec<F>;
 }
 
 /// TODO: Use Sponge trait from kimchi
@@ -307,7 +311,13 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
 
         let (ins1, wit1) = a;
         let (ins2, wit2) = b;
-        let env = ExtendedEnv::new(&self.structure, [ins1, ins2], [wit1, wit2], self.domain);
+        let env = ExtendedEnv::new(
+            &self.structure,
+            [ins1, ins2],
+            [wit1, wit2],
+            self.domain,
+            None,
+        );
         let env = env.compute_extension(&self.extended_witness_generator, &self.srs);
         let error = compute_error(&self.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
