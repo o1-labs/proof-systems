@@ -432,6 +432,7 @@ impl<F: Field> KeccakEnv<F> {
         state_g
     }
 
+    #[allow(dead_code)]
     /// Returns the list of constraints used in a specific Keccak step
     pub(crate) fn constraints_of(step: Steps) -> Vec<E<F>> {
         let mut env = ConstraintsEnv {

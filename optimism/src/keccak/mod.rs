@@ -79,9 +79,11 @@ pub enum Constraint {
     IotaStateG(usize),
 }
 
+#[allow(dead_code)]
 /// The Keccak circuit
 pub(crate) type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
+#[allow(dead_code)]
 impl<F: Field> KeccakCircuit<F> {
     /// Create a new Keccak circuit
     pub fn new(domain_size: usize) -> Self {

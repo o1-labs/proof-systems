@@ -1,6 +1,6 @@
 use crate::{
     keccak::{
-        column::{Absorbs::*, KeccakWitness, Sponges::*, Steps::*, ZKVM_KECCAK_COLS},
+        column::{Absorbs::*, Sponges::*, Steps::*, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
         Constraint::*,
