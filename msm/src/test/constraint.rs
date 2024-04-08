@@ -45,12 +45,12 @@ impl<F: PrimeField> TestInterpreterEnv<F> for ConstraintBuilderEnv<F> {
 
     // TODO deduplicate, remove this
     fn column_pos(ix: TestColumnIndexer) -> Self::Position {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     fn read_column(&self, ix: TestColumnIndexer) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: ix.ix_to_column(),
+            col: ix.to_column(),
             row: CurrOrNext::Curr,
         }))
     }

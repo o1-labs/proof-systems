@@ -29,7 +29,7 @@ pub enum SerializationColumn {
 }
 
 impl ColumnIndexer for SerializationColumn {
-    fn ix_to_column(self) -> Column {
+    fn to_column(self) -> Column {
         match self {
             Self::ChalKimchi(j) => {
                 assert!(j < 3);
