@@ -137,6 +137,9 @@ pub trait InterpreterEnv {
         + Zero
         + One;
 
+    // Returns the variable in the current row corresponding to a given column alias.
+    fn variable(&self, column: Self::Position) -> Self::Variable;
+
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
 
