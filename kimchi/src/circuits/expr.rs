@@ -2,7 +2,7 @@ use crate::{
     circuits::{
         berkeley_columns,
         constraints::FeatureFlags,
-        gate::{CurrOrNext, GateType},
+        gate::{CurrOrNext},
         lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
             foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
@@ -3139,6 +3139,7 @@ pub mod constraints {
     use std::fmt;
 
     use super::*;
+    use crate::circuits::berkeley_columns::{coeff, witness};
 
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
@@ -3358,42 +3359,6 @@ pub mod constraints {
     }
 }
 
-//
-// Helpers
-//
-
-/// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F>, berkeley_columns::Column>;
-
-/// Convenience function to create a constant as [Expr].
-pub fn constant<F>(x: F) -> E<F> {
-    ConstantTerm::Literal(x).into()
-}
-
-/// Helper function to quickly create an expression for a witness.
-pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
-    E::<F>::cell(berkeley_columns::Column::Witness(i), row)
-}
-
-/// Same as [witness] but for the current row.
-pub fn witness_curr<F>(i: usize) -> E<F> {
-    witness(i, CurrOrNext::Curr)
-}
-
-/// Same as [witness] but for the next row.
-pub fn witness_next<F>(i: usize) -> E<F> {
-    witness(i, CurrOrNext::Next)
-}
-
-/// Handy function to quickly create an expression for a gate.
-pub fn index<F>(g: GateType) -> E<F> {
-    E::<F>::cell(berkeley_columns::Column::Index(g), CurrOrNext::Curr)
-}
-
-pub fn coeff<F>(i: usize) -> E<F> {
-    E::<F>::cell(berkeley_columns::Column::Coefficient(i), CurrOrNext::Curr)
-}
-
 /// Auto clone macro - Helps make constraints more readable
 /// by eliminating requirement to .clone() all the time
 #[macro_export]
@@ -3422,7 +3387,10 @@ pub use auto_clone_array;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, FeatureFlag, E};
+    pub use super::{
+        berkeley_columns::{coeff, constant, index, witness, witness_curr, witness_next, E},
+        FeatureFlag,
+    };
 }
 
 #[cfg(test)]
@@ -3430,11 +3398,14 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            berkeley_columns::Environment,
+            berkeley_columns::{
+                index, witness_curr, Environment, E,
+            },
             constraints::ConstraintSystem,
             domains::EvaluationDomains,
             expr::constraints::ExprOps,
             gate::CircuitGate,
+            gate::GateType,
             polynomials::generic::GenericGateSpec,
             wires::{Wire, COLUMNS},
         },

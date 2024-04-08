@@ -1,7 +1,7 @@
 use crate::{
     circuits::{
         domains::EvaluationDomains,
-        expr::{self, ColumnEvaluations, ExprError},
+        expr::{self, ColumnEvaluations, ConstantExpr, ConstantTerm, Expr, ExprError},
         gate::{CurrOrNext, GateType},
         lookup::{index::LookupSelectors, lookups::LookupPattern},
     },
@@ -260,4 +260,40 @@ pub struct Environment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
     pub lookup: Option<LookupEnvironment<'a, F>>,
+}
+
+//
+// Helpers
+//
+
+/// An alias for the intended usage of the expression type in constructing constraints.
+pub type E<F> = Expr<ConstantExpr<F>, Column>;
+
+/// Convenience function to create a constant as [Expr].
+pub fn constant<F>(x: F) -> E<F> {
+    ConstantTerm::Literal(x).into()
+}
+
+/// Helper function to quickly create an expression for a witness.
+pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Witness(i), row)
+}
+
+/// Same as [witness] but for the current row.
+pub fn witness_curr<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Curr)
+}
+
+/// Same as [witness] but for the next row.
+pub fn witness_next<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Next)
+}
+
+/// Handy function to quickly create an expression for a gate.
+pub fn index<F>(g: GateType) -> E<F> {
+    E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
+}
+
+pub fn coeff<F>(i: usize) -> E<F> {
+    E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
 }
