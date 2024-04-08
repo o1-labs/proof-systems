@@ -3,11 +3,9 @@ use crate::{
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
-use kimchi::circuits::{
-    expr::{ConstantExpr, Expr},
-    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
+use kimchi::circuits::polynomials::keccak::constants::{
+    DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
-use kimchi_msm::columns::Column;
 
 pub mod column;
 pub mod constraints;

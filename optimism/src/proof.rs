@@ -1,23 +1,11 @@
-use crate::{lookups::LookupTableIDs, DOMAIN_SIZE};
-use ark_ff::Zero;
-use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
-use kimchi::{
-    circuits::domains::EvaluationDomains, curve::KimchiCurve, groupmap::GroupMap,
-    plonk_sponge::FrSponge,
-};
+use crate::lookups::LookupTableIDs;
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve, plonk_sponge::FrSponge};
 use kimchi_msm::{proof::ProofInputs, witness::Witness};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use poly_commitment::{
-    commitment::{
-        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
-    },
-    evaluation_proof::DensePolynomialOrEvaluations,
-    OpenProof, SRS as _,
-};
-use rand::thread_rng;
+use poly_commitment::{commitment::absorb_commitment, OpenProof, SRS as _};
 use rayon::iter::{
-    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
-    IntoParallelRefMutIterator, ParallelIterator,
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
 
 /// This function folds the witness of the current circuit with the accumulated Keccak instance

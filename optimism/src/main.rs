@@ -1,7 +1,10 @@
 use ark_bn254::FrParameters;
 use ark_ec::bn::Bn;
 use ark_ff::{Fp256, UniformRand, Zero};
-use kimchi_msm::proof::ProofInputs;
+use kimchi::o1_utils;
+use kimchi_msm::{
+    columns::Column, proof::ProofInputs, prover::prove, verifier::verify, witness::Witness,
+};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
@@ -63,6 +66,8 @@ pub fn main() -> ExitCode {
 
     let domain =
         kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(DOMAIN_SIZE).unwrap();
+
+    let mut rng = o1_utils::tests::make_test_rng();
 
     let srs = {
         // Trusted setup toxic waste
@@ -186,27 +191,37 @@ pub fn main() -> ExitCode {
             &mips_current_pre_folding_witness,
         );
     }
-    /*
+
     {
         // MIPS
-        let mips_proof = proof::prove::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
-            domain,
-            &srs,
-            mips_folded_witness,
-        );
+        // TODO: use actual constraints, not just an empty vector
+        let mips_result = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            MIPS_COLUMNS,
+            LookupTableIDs,
+        >(domain, &srs, &vec![], mips_folded_witness, &mut rng);
+        let mips_proof = mips_result.unwrap();
         println!("Generated a MIPS proof:\n{:?}", mips_proof);
-        let verifies = proof::verify::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
-            domain,
-            &srs,
-            &mips_proof,
-        );
-        if verifies {
+        let mips_verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, MIPS_COLUMNS, 0, LookupTableIDs>(
+                domain,
+                &srs,
+                &vec![],
+                &mips_proof,
+                Witness::zero_vec(DOMAIN_SIZE),
+            );
+        if mips_verifies {
             println!("The MIPS proof verifies")
         } else {
             println!("The MIPS proof doesn't verify")
         }
     }
-
+    /*
     {
         // KECCAK
         let keccak_proof =

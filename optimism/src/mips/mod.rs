@@ -16,7 +16,6 @@
 //! structure [crate::proof::ProofInputs].
 
 use self::column::ColumnAlias;
-use kimchi::circuits::expr::{ConstantExpr, Expr};
 
 pub mod column;
 pub mod constraints;
