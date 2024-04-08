@@ -2943,7 +2943,7 @@ impl<T: FormattedOutput + Clone> FormattedOutput for Operations<T> {
     }
 }
 
-impl<F> Expr<ConstantExpr<F>, berkeley_columns::Column>
+impl<F, Column: FormattedOutput + Debug + Clone> Expr<ConstantExpr<F>, Column>
 where
     F: PrimeField,
 {
@@ -2970,10 +2970,7 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn ocaml(
-        &self,
-        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
-    ) -> String {
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
         use ExprInner::*;
         use Operations::*;
         match self {
@@ -3034,10 +3031,7 @@ where
         res
     }
 
-    fn latex(
-        &self,
-        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
-    ) -> String {
+    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
         use ExprInner::*;
         use Operations::*;
         match self {
@@ -3081,10 +3075,7 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn text(
-        &self,
-        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
-    ) -> String {
+    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
         use ExprInner::*;
         use Operations::*;
         match self {
