@@ -2,16 +2,11 @@ use crate::{
     circuits::{
         berkeley_columns,
         constraints::FeatureFlags,
-        domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        lookup::{
-            index::LookupSelectors,
-            lookups::{LookupPattern, LookupPatterns},
-        },
+        lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
             foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
         },
-        wires::COLUMNS,
     },
     proof::PointEvaluations,
 };
@@ -78,52 +73,6 @@ pub struct Constants<F: 'static> {
     pub zk_rows: u64,
 }
 
-/// The polynomials specific to the lookup argument.
-///
-/// All are evaluations over the D8 domain
-pub struct LookupEnvironment<'a, F: FftField> {
-    /// The sorted lookup table polynomials.
-    pub sorted: &'a Vec<Evaluations<F, D<F>>>,
-    /// The lookup aggregation polynomials.
-    pub aggreg: &'a Evaluations<F, D<F>>,
-    /// The lookup-type selector polynomials.
-    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
-    /// The evaluations of the combined lookup table polynomial.
-    pub table: &'a Evaluations<F, D<F>>,
-    /// The evaluations of the optional runtime selector polynomial.
-    pub runtime_selector: Option<&'a Evaluations<F, D<F>>>,
-    /// The evaluations of the optional runtime table.
-    pub runtime_table: Option<&'a Evaluations<F, D<F>>>,
-}
-
-/// The collection of polynomials (all in evaluation form) and constants
-/// required to evaluate an expression as a polynomial.
-///
-/// All are evaluations.
-pub struct Environment<'a, F: FftField> {
-    /// The witness column polynomials
-    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The coefficient column polynomials
-    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The polynomial that vanishes on the zero-knowledge rows and the row before.
-    pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
-    /// The permutation aggregation polynomial.
-    pub z: &'a Evaluations<F, D<F>>,
-    /// The index selector polynomials.
-    pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
-    /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
-    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
-    pub l0_1: F,
-    /// Constant values required
-    pub constants: Constants<F>,
-    /// Challenges from the IOP.
-    pub challenges: Challenges<F>,
-    /// The domains used in the PLONK argument.
-    pub domain: EvaluationDomains<F>,
-    /// Lookup specific polynomials
-    pub lookup: Option<LookupEnvironment<'a, F>>,
-}
-
 pub trait ColumnEnvironment<'a, F: FftField> {
     /// The generic type of column the environment can use.
     /// In other words, with the multi-variate polynomial analogy, it is the
@@ -153,64 +102,6 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     /// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     fn l0_1(&self) -> F;
-}
-
-impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
-    type Column = berkeley_columns::Column;
-
-    fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
-        use berkeley_columns::Column::*;
-        let lookup = self.lookup.as_ref();
-        match col {
-            Witness(i) => Some(&self.witness[*i]),
-            Coefficient(i) => Some(&self.coefficient[*i]),
-            Z => Some(self.z),
-            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
-            LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
-            LookupAggreg => lookup.map(|l| l.aggreg),
-            LookupTable => lookup.map(|l| l.table),
-            LookupRuntimeSelector => lookup.and_then(|l| l.runtime_selector),
-            LookupRuntimeTable => lookup.and_then(|l| l.runtime_table),
-            Index(t) => match self.index.get(t) {
-                None => None,
-                Some(e) => Some(e),
-            },
-            Permutation(_) => None,
-        }
-    }
-
-    fn get_domain(&self, d: Domain) -> D<F> {
-        match d {
-            Domain::D1 => self.domain.d1,
-            Domain::D2 => self.domain.d2,
-            Domain::D4 => self.domain.d4,
-            Domain::D8 => self.domain.d8,
-        }
-    }
-
-    fn column_domain(&self, col: &Self::Column) -> Domain {
-        match *col {
-            Self::Column::Index(GateType::Generic) => Domain::D4,
-            Self::Column::Index(GateType::CompleteAdd) => Domain::D4,
-            _ => Domain::D8,
-        }
-    }
-
-    fn get_constants(&self) -> &Constants<F> {
-        &self.constants
-    }
-
-    fn get_challenges(&self) -> &Challenges<F> {
-        &self.challenges
-    }
-
-    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
-        self.vanishes_on_zero_knowledge_and_previous_rows
-    }
-
-    fn l0_1(&self) -> F {
-        self.l0_1
-    }
 }
 
 // In this file, we define...
@@ -3539,8 +3430,13 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
-            polynomials::generic::GenericGateSpec, wires::Wire,
+            berkeley_columns::Environment,
+            constraints::ConstraintSystem,
+            domains::EvaluationDomains,
+            expr::constraints::ExprOps,
+            gate::CircuitGate,
+            polynomials::generic::GenericGateSpec,
+            wires::{Wire, COLUMNS},
         },
         curve::KimchiCurve,
         prover_index::ProverIndex,

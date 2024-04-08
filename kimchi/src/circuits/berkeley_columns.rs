@@ -1,13 +1,23 @@
 use crate::{
     circuits::{
+        domains::EvaluationDomains,
         expr::{self, ColumnEvaluations, ExprError},
         gate::{CurrOrNext, GateType},
-        lookup::lookups::LookupPattern,
+        lookup::{index::LookupSelectors, lookups::LookupPattern},
     },
     proof::{PointEvaluations, ProofEvaluations},
 };
 use serde::{Deserialize, Serialize};
 use CurrOrNext::{Curr, Next};
+
+use ark_ff::FftField;
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+
+use crate::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain};
+
+use crate::circuits::wires::COLUMNS;
+
+use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
@@ -146,4 +156,108 @@ impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
             Index(_) => Err(ExprError::MissingIndexEvaluation(col)),
         }
     }
+}
+
+impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
+    type Column = Column;
+
+    fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
+        use Column::*;
+        let lookup = self.lookup.as_ref();
+        match col {
+            Witness(i) => Some(&self.witness[*i]),
+            Coefficient(i) => Some(&self.coefficient[*i]),
+            Z => Some(self.z),
+            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
+            LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
+            LookupAggreg => lookup.map(|l| l.aggreg),
+            LookupTable => lookup.map(|l| l.table),
+            LookupRuntimeSelector => lookup.and_then(|l| l.runtime_selector),
+            LookupRuntimeTable => lookup.and_then(|l| l.runtime_table),
+            Index(t) => match self.index.get(t) {
+                None => None,
+                Some(e) => Some(e),
+            },
+            Permutation(_) => None,
+        }
+    }
+
+    fn get_domain(&self, d: Domain) -> D<F> {
+        match d {
+            Domain::D1 => self.domain.d1,
+            Domain::D2 => self.domain.d2,
+            Domain::D4 => self.domain.d4,
+            Domain::D8 => self.domain.d8,
+        }
+    }
+
+    fn column_domain(&self, col: &Self::Column) -> Domain {
+        match *col {
+            Self::Column::Index(GateType::Generic) => Domain::D4,
+            Self::Column::Index(GateType::CompleteAdd) => Domain::D4,
+            _ => Domain::D8,
+        }
+    }
+
+    fn get_constants(&self) -> &Constants<F> {
+        &self.constants
+    }
+
+    fn get_challenges(&self) -> &Challenges<F> {
+        &self.challenges
+    }
+
+    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
+        self.vanishes_on_zero_knowledge_and_previous_rows
+    }
+
+    fn l0_1(&self) -> F {
+        self.l0_1
+    }
+}
+
+/// The polynomials specific to the lookup argument.
+///
+/// All are evaluations over the D8 domain
+pub struct LookupEnvironment<'a, F: FftField> {
+    /// The sorted lookup table polynomials.
+    pub sorted: &'a Vec<Evaluations<F, D<F>>>,
+    /// The lookup aggregation polynomials.
+    pub aggreg: &'a Evaluations<F, D<F>>,
+    /// The lookup-type selector polynomials.
+    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
+    /// The evaluations of the combined lookup table polynomial.
+    pub table: &'a Evaluations<F, D<F>>,
+    /// The evaluations of the optional runtime selector polynomial.
+    pub runtime_selector: Option<&'a Evaluations<F, D<F>>>,
+    /// The evaluations of the optional runtime table.
+    pub runtime_table: Option<&'a Evaluations<F, D<F>>>,
+}
+
+/// The collection of polynomials (all in evaluation form) and constants
+/// required to evaluate an expression as a polynomial.
+///
+/// All are evaluations.
+pub struct Environment<'a, F: FftField> {
+    /// The witness column polynomials
+    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
+    /// The coefficient column polynomials
+    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
+    /// The polynomial that vanishes on the zero-knowledge rows and the row before.
+    pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
+    /// The permutation aggregation polynomial.
+    pub z: &'a Evaluations<F, D<F>>,
+    /// The index selector polynomials.
+    pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
+    /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
+    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
+    pub l0_1: F,
+    /// Constant values required
+    pub constants: Constants<F>,
+    /// Challenges from the IOP.
+    pub challenges: Challenges<F>,
+    /// The domains used in the PLONK argument.
+    pub domain: EvaluationDomains<F>,
+    /// Lookup specific polynomials
+    pub lookup: Option<LookupEnvironment<'a, F>>,
 }

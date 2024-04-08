@@ -3,8 +3,9 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
+        berkeley_columns::{Environment, LookupEnvironment},
         constraints::zk_rows_strict_lower_bound,
-        expr::{self, l0_1, Challenges, Constants, Environment, LookupEnvironment},
+        expr::{self, l0_1, Challenges, Constants},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
