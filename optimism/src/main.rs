@@ -221,29 +221,45 @@ pub fn main() -> ExitCode {
             println!("The MIPS proof doesn't verify")
         }
     }
-    /*
+
     {
         // KECCAK
-        let keccak_proof =
-            proof::prove::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
-                domain,
-                &srs,
-                keccak_folded_witness,
-            );
+        // TODO: use actual constraints, not just an empty vector
+        // FIXME: when folding is applied, the list of constraints will be adapated to satisfy the folded witness
+        let keccak_result = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            ZKVM_KECCAK_COLS,
+            LookupTableIDs,
+        >(domain, &srs, &vec![], keccak_folded_witness, &mut rng);
+        let keccak_proof = keccak_result.unwrap();
         println!("Generated a proof:\n{:?}", keccak_proof);
-        let verifies = proof::verify::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
+        let keccak_verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            ZKVM_KECCAK_COLS,
+            0,
+            LookupTableIDs,
+        >(
             domain,
             &srs,
+            &vec![],
             &keccak_proof,
+            Witness::zero_vec(DOMAIN_SIZE),
         );
-        if verifies {
-            println!("The KECCAK proof verifies")
+        if keccak_verifies {
+            println!("The MIPS proof verifies")
         } else {
-            println!("The KECCAK proof doesn't verify")
+            println!("The MIPS proof doesn't verify")
         }
     }
 
-    */
     // TODO: Logic
     ExitCode::SUCCESS
 }
