@@ -114,7 +114,7 @@ impl<F: Field> KeccakCircuit<F> {
     }
 
     /// Add a witness row to the circuit
-    pub(crate) fn add_witness(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
+    pub(crate) fn push_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
         // Make sure we are using the same round number to refer to round steps
         let mut step = step;
         if let Round(_) = step {

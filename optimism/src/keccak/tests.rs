@@ -487,13 +487,24 @@ fn test_keccak_prover() {
         let bytelength = rng.gen_range(RATE_IN_BYTES..RATE_IN_BYTES * 2);
         let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
 
-        let mut keccak_circuit = KeccakCircuit::<Fp> {
-            witness: HashMap::new(),
-            constraints: HashMap::new(),
-            lookups: HashMap::new(),
-        };
+        // Keep track of the constraints and lookups of the sub-circuits
+        let mut keccak_circuit = KeccakCircuit::<Fp>::new(domain_size);
 
-        // Store the constraints and lookups for each step
+        // Initialize the environment and run the interpreter
+        let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+
+        // We want to use domain_size rows, even if that is an incomplete Keccak execution
+        while keccak_env.constraints_env.step.is_some() {
+            let step = keccak_env.constraints_env.step.unwrap();
+            // Run the interpreter, which sets the witness columns
+            keccak_env.step();
+            // Check witness satisfies constraints
+            keccak_env.witness_env.constraints();
+
+            // Add the witness row to the circuit
+            keccak_circuit.push_row(step, &keccak_env.witness_env.witness.cols);
+        }
+
         for step in [
             Round(0),
             Sponge(Absorb(First)),
@@ -502,54 +513,12 @@ fn test_keccak_prover() {
             Sponge(Absorb(Only)),
             Sponge(Squeeze),
         ] {
-            keccak_circuit
-                .constraints
-                .insert(step, KeccakEnv::constraints_of(step));
-            keccak_circuit
-                .lookups
-                .insert(step, KeccakEnv::lookups_of(step));
+            test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
+                keccak_circuit.constraints[&step].clone(),
+                keccak_circuit.witness[&step].clone(),
+                domain_size,
+                &mut rng,
+            );
         }
-
-        // Initialize the environment and run the interpreter
-        let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-
-        // Keep track of the constraints of the circuit.
-        // All rows run all the constraints.
-        // TODO: adapt this test when the witness is split into subcircuits.
-        keccak_env.constraints_env.constraints();
-
-        // No MVLookups for now
-
-        // Initialize the witness
-        let mut witness = KeccakWitness {
-            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
-        };
-
-        let mut row = 0;
-        // We want to use domain_size rows, even if that is an incomplete Keccak execution
-        while row < domain_size {
-            assert!(keccak_env.constraints_env.step.is_some());
-            // Run the interpreter, which sets the witness columns
-            keccak_env.step();
-            // Check witness satisfies constraints
-            keccak_env.witness_env.constraints();
-
-            // Push this row of the witness to the full circuit witness
-            witness
-                .cols
-                .iter_mut()
-                .zip(keccak_env.witness_env.witness.cols.iter())
-                .for_each(|(wit_col, step_col)| {
-                    wit_col.push(*step_col);
-                });
-            row += 1;
-        }
-
-        test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
-            keccak_env.constraints_env.constraints.clone(),
-            witness.clone(),
-            domain_size,
-            &mut rng,
-        );
     });
 }
