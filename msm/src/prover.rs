@@ -212,7 +212,7 @@ where
         // Only for debugging purposes
         for expr in constraints.iter() {
             let fail_q_division =
-                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
+                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
             // Check this expression are witness satisfied
             let (_, res) = expr
                 .evaluations(&column_env)
