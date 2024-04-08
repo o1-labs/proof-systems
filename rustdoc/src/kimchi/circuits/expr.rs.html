@@ -4580,7 +4580,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F, Column: FormattedOutput + Debug + Clone&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;
+<span class="kw">impl</span>&lt;F&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;
 <span class="kw">where
     </span>F: PrimeField,
 {
