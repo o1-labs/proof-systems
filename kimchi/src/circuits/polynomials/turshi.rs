@@ -82,9 +82,9 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        berkeley_columns::Column,
+        berkeley_columns::{Column, E},
         constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, Cache, E},
+        expr::{self, constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire, COLUMNS},
     },

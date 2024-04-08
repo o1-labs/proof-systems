@@ -2,16 +2,11 @@ use crate::{
     circuits::{
         berkeley_columns,
         constraints::FeatureFlags,
-        domains::EvaluationDomains,
-        gate::{CurrOrNext, GateType},
-        lookup::{
-            index::LookupSelectors,
-            lookups::{LookupPattern, LookupPatterns},
-        },
+        gate::CurrOrNext,
+        lookup::lookups::{LookupPattern, LookupPatterns},
         polynomials::{
             foreign_field_common::KimchiForeignElement, permutation::eval_vanishes_on_last_n_rows,
         },
-        wires::COLUMNS,
     },
     proof::PointEvaluations,
 };
@@ -78,52 +73,6 @@ pub struct Constants<F: 'static> {
     pub zk_rows: u64,
 }
 
-/// The polynomials specific to the lookup argument.
-///
-/// All are evaluations over the D8 domain
-pub struct LookupEnvironment<'a, F: FftField> {
-    /// The sorted lookup table polynomials.
-    pub sorted: &'a Vec<Evaluations<F, D<F>>>,
-    /// The lookup aggregation polynomials.
-    pub aggreg: &'a Evaluations<F, D<F>>,
-    /// The lookup-type selector polynomials.
-    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
-    /// The evaluations of the combined lookup table polynomial.
-    pub table: &'a Evaluations<F, D<F>>,
-    /// The evaluations of the optional runtime selector polynomial.
-    pub runtime_selector: Option<&'a Evaluations<F, D<F>>>,
-    /// The evaluations of the optional runtime table.
-    pub runtime_table: Option<&'a Evaluations<F, D<F>>>,
-}
-
-/// The collection of polynomials (all in evaluation form) and constants
-/// required to evaluate an expression as a polynomial.
-///
-/// All are evaluations.
-pub struct Environment<'a, F: FftField> {
-    /// The witness column polynomials
-    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The coefficient column polynomials
-    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The polynomial that vanishes on the zero-knowledge rows and the row before.
-    pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
-    /// The permutation aggregation polynomial.
-    pub z: &'a Evaluations<F, D<F>>,
-    /// The index selector polynomials.
-    pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
-    /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
-    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
-    pub l0_1: F,
-    /// Constant values required
-    pub constants: Constants<F>,
-    /// Challenges from the IOP.
-    pub challenges: Challenges<F>,
-    /// The domains used in the PLONK argument.
-    pub domain: EvaluationDomains<F>,
-    /// Lookup specific polynomials
-    pub lookup: Option<LookupEnvironment<'a, F>>,
-}
-
 pub trait ColumnEnvironment<'a, F: FftField> {
     /// The generic type of column the environment can use.
     /// In other words, with the multi-variate polynomial analogy, it is the
@@ -153,64 +102,6 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     /// Return the value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     fn l0_1(&self) -> F;
-}
-
-impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
-    type Column = berkeley_columns::Column;
-
-    fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
-        use berkeley_columns::Column::*;
-        let lookup = self.lookup.as_ref();
-        match col {
-            Witness(i) => Some(&self.witness[*i]),
-            Coefficient(i) => Some(&self.coefficient[*i]),
-            Z => Some(self.z),
-            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
-            LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
-            LookupAggreg => lookup.map(|l| l.aggreg),
-            LookupTable => lookup.map(|l| l.table),
-            LookupRuntimeSelector => lookup.and_then(|l| l.runtime_selector),
-            LookupRuntimeTable => lookup.and_then(|l| l.runtime_table),
-            Index(t) => match self.index.get(t) {
-                None => None,
-                Some(e) => Some(e),
-            },
-            Permutation(_) => None,
-        }
-    }
-
-    fn get_domain(&self, d: Domain) -> D<F> {
-        match d {
-            Domain::D1 => self.domain.d1,
-            Domain::D2 => self.domain.d2,
-            Domain::D4 => self.domain.d4,
-            Domain::D8 => self.domain.d8,
-        }
-    }
-
-    fn column_domain(&self, col: &Self::Column) -> Domain {
-        match *col {
-            Self::Column::Index(GateType::Generic) => Domain::D4,
-            Self::Column::Index(GateType::CompleteAdd) => Domain::D4,
-            _ => Domain::D8,
-        }
-    }
-
-    fn get_constants(&self) -> &Constants<F> {
-        &self.constants
-    }
-
-    fn get_challenges(&self) -> &Challenges<F> {
-        &self.challenges
-    }
-
-    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
-        self.vanishes_on_zero_knowledge_and_previous_rows
-    }
-
-    fn l0_1(&self) -> F {
-        self.l0_1
-    }
 }
 
 // In this file, we define...
@@ -953,6 +844,28 @@ impl<Column: Copy> Variable<Column> {
         match self.row {
             CurrOrNext::Curr => Ok(point_evaluations.zeta),
             CurrOrNext::Next => Ok(point_evaluations.zeta_omega),
+        }
+    }
+}
+
+impl<Column: FormattedOutput + Debug> Variable<Column> {
+    pub fn ocaml(&self) -> String {
+        format!("var({:?}, {:?})", self.col, self.row)
+    }
+
+    pub fn latex(&self) -> String {
+        let col = self.col.latex(&mut HashMap::new());
+        match self.row {
+            Curr => col,
+            Next => format!("\\tilde{{{col}}}"),
+        }
+    }
+
+    pub fn text(&self) -> String {
+        let col = self.col.text(&mut HashMap::new());
+        match self.row {
+            Curr => format!("Curr({col})"),
+            Next => format!("Next({col})"),
         }
     }
 }
@@ -2787,7 +2700,7 @@ impl<F: Field, Column: PartialEq + Copy> Mul<F> for Expr<ConstantExpr<F>, Column
 // Display
 //
 
-trait FormattedOutput: Sized {
+pub trait FormattedOutput: Sized {
     fn is_alpha(&self) -> bool;
     fn ocaml(&self, cache: &mut HashMap<CacheId, Self>) -> String;
     fn latex(&self, cache: &mut HashMap<CacheId, Self>) -> String;
@@ -3248,6 +3161,7 @@ pub mod constraints {
     use std::fmt;
 
     use super::*;
+    use crate::circuits::berkeley_columns::{coeff, witness};
 
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
@@ -3467,42 +3381,6 @@ pub mod constraints {
     }
 }
 
-//
-// Helpers
-//
-
-/// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F>, berkeley_columns::Column>;
-
-/// Convenience function to create a constant as [Expr].
-pub fn constant<F>(x: F) -> E<F> {
-    ConstantTerm::Literal(x).into()
-}
-
-/// Helper function to quickly create an expression for a witness.
-pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
-    E::<F>::cell(berkeley_columns::Column::Witness(i), row)
-}
-
-/// Same as [witness] but for the current row.
-pub fn witness_curr<F>(i: usize) -> E<F> {
-    witness(i, CurrOrNext::Curr)
-}
-
-/// Same as [witness] but for the next row.
-pub fn witness_next<F>(i: usize) -> E<F> {
-    witness(i, CurrOrNext::Next)
-}
-
-/// Handy function to quickly create an expression for a gate.
-pub fn index<F>(g: GateType) -> E<F> {
-    E::<F>::cell(berkeley_columns::Column::Index(g), CurrOrNext::Curr)
-}
-
-pub fn coeff<F>(i: usize) -> E<F> {
-    E::<F>::cell(berkeley_columns::Column::Coefficient(i), CurrOrNext::Curr)
-}
-
 /// Auto clone macro - Helps make constraints more readable
 /// by eliminating requirement to .clone() all the time
 #[macro_export]
@@ -3531,7 +3409,10 @@ pub use auto_clone_array;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, FeatureFlag, E};
+    pub use super::{
+        berkeley_columns::{coeff, constant, index, witness, witness_curr, witness_next, E},
+        FeatureFlag,
+    };
 }
 
 #[cfg(test)]
@@ -3539,8 +3420,13 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
-            polynomials::generic::GenericGateSpec, wires::Wire,
+            berkeley_columns::{index, witness_curr, Environment, E},
+            constraints::ConstraintSystem,
+            domains::EvaluationDomains,
+            expr::constraints::ExprOps,
+            gate::{CircuitGate, GateType},
+            polynomials::generic::GenericGateSpec,
+            wires::{Wire, COLUMNS},
         },
         curve::KimchiCurve,
         prover_index::ProverIndex,
