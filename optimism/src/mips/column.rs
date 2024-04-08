@@ -21,7 +21,7 @@ pub(crate) const MIPS_SELECTORS_SIZE: usize = 71;
 /// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum Column {
+pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     // There are 71 MIPS instructions
@@ -84,33 +84,33 @@ impl<T: Clone> MIPSWitnessTrait<T> for MIPSWitness<T> {
     }
 }
 
-impl<T: Clone> Index<Column> for MIPSWitness<T> {
+impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
     type Output = T;
 
     /// Map the column alias to the actual column index.
     /// Note that the column index depends on the step kind (Sponge or Round).
     /// For instance, the column 800 represents PadLength in the Sponge step, while it
     /// is used by intermediary values when executing the Round step.
-    fn index(&self, index: Column) -> &Self::Output {
+    fn index(&self, index: ColumnAlias) -> &Self::Output {
         match index {
-            Column::ScratchState(i) => &self.scratch()[i],
-            Column::Selector(i) => match i {
+            ColumnAlias::ScratchState(i) => &self.scratch()[i],
+            ColumnAlias::Selector(i) => match i {
                 Instruction::RType(r) => &self.selector()[r as usize],
                 Instruction::IType(i) => &self.selector()[i as usize + RTypeInstruction::COUNT],
                 Instruction::JType(j) => {
                     &self.selector()[j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT]
                 }
             },
-            Column::InstructionCounter => self.instruction_counter(),
+            ColumnAlias::InstructionCounter => self.instruction_counter(),
         }
     }
 }
 
-impl<T: Clone> IndexMut<Column> for MIPSWitness<T> {
-    fn index_mut(&mut self, index: Column) -> &mut Self::Output {
+impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
+    fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
         match index {
-            Column::ScratchState(i) => &mut self.cols[i],
-            Column::Selector(i) => match i {
+            ColumnAlias::ScratchState(i) => &mut self.cols[i],
+            ColumnAlias::Selector(i) => match i {
                 Instruction::RType(r) => &mut self.selector_mut()[r as usize],
                 Instruction::IType(i) => {
                     &mut self.selector_mut()[i as usize + RTypeInstruction::COUNT]
@@ -118,7 +118,7 @@ impl<T: Clone> IndexMut<Column> for MIPSWitness<T> {
                 Instruction::JType(j) => &mut self.selector_mut()
                     [j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT],
             },
-            Column::InstructionCounter => &mut self.cols[SCRATCH_SIZE],
+            ColumnAlias::InstructionCounter => &mut self.cols[SCRATCH_SIZE],
         }
     }
 }

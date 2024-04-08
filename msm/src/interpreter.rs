@@ -16,7 +16,7 @@ pub trait InterpreterEnv<ColumnIx: ColumnIndexer, Fp: PrimeField> {
     fn copy(&mut self, x: &Self::Variable, position: Column) -> Self::Variable;
 
     fn get_column(ix: ColumnIx) -> Column {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     /// Read the value in the position `ix`
