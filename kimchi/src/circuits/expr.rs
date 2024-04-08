@@ -1013,7 +1013,7 @@ impl<C, Column> Expr<C, Column> {
     }
 }
 
-impl<F> fmt::Display for Expr<ConstantExpr<F>, berkeley_columns::Column>
+impl<F, Column: FormattedOutput + Debug + Clone> fmt::Display for Expr<ConstantExpr<F>, Column>
 where
     F: PrimeField,
 {
