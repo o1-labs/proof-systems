@@ -30,7 +30,7 @@ pub mod proof;
 pub mod ramlookup;
 
 use kimchi::circuits::expr::{ConstantExpr, Expr};
-use kimchi_msm::columns::Column;
+use kimchi_msm::{columns::Column, witness::Witness};
 use lookups::Lookup;
 use std::collections::HashMap;
 
@@ -52,7 +52,7 @@ pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 
 pub(crate) struct Circuit<const N: usize, SELECTOR, F> {
     /// The witness for a given selector
-    pub(crate) witness: HashMap<SELECTOR, [Vec<F>; N]>,
+    pub(crate) witness: HashMap<SELECTOR, Witness<N, Vec<F>>>,
     /// The vector of constraints for a given selector
     pub(crate) constraints: HashMap<SELECTOR, Vec<E<F>>>,
     /// The vector of lookups for a given selector

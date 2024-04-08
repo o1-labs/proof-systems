@@ -18,6 +18,8 @@ use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
 
+use super::KeccakCircuit;
+
 pub type Fp = ark_bn254::Fr;
 
 #[test]
@@ -484,6 +486,29 @@ fn test_keccak_prover() {
         // Generate 2 blocks of preimage data
         let bytelength = rng.gen_range(RATE_IN_BYTES..RATE_IN_BYTES * 2);
         let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
+
+        let mut keccak_circuit = KeccakCircuit::<Fp> {
+            witness: HashMap::new(),
+            constraints: HashMap::new(),
+            lookups: HashMap::new(),
+        };
+
+        // Store the constraints and lookups for each step
+        for step in [
+            Round(0),
+            Sponge(Absorb(First)),
+            Sponge(Absorb(Middle)),
+            Sponge(Absorb(Last)),
+            Sponge(Absorb(Only)),
+            Sponge(Squeeze),
+        ] {
+            keccak_circuit
+                .constraints
+                .insert(step, KeccakEnv::constraints_of(step));
+            keccak_circuit
+                .lookups
+                .insert(step, KeccakEnv::lookups_of(step));
+        }
 
         // Initialize the environment and run the interpreter
         let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);

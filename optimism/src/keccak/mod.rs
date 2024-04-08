@@ -1,11 +1,23 @@
+use std::collections::HashMap;
+
 use crate::{
-    keccak::column::{ColumnAlias as KeccakColumn, Steps, PAD_SUFFIX_LEN},
+    keccak::column::{
+        Absorbs::*,
+        ColumnAlias as KeccakColumn,
+        Sponges::*,
+        Steps::{self, *},
+        PAD_SUFFIX_LEN,
+    },
     lookups::LookupTableIDs,
+    Circuit,
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
+use kimchi_msm::witness::Witness;
+
+use self::{column::ZKVM_KECCAK_COLS, environment::KeccakEnv};
 
 pub mod column;
 pub mod constraints;
@@ -65,6 +77,55 @@ pub enum Constraint {
     ChiShiftsB(usize, usize, usize),
     ChiShiftsSum(usize, usize, usize),
     IotaStateG(usize),
+}
+
+/// The Keccak circuit
+pub(crate) type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
+
+impl<F: Field> KeccakCircuit<F> {
+    /// Create a new Keccak circuit
+    pub fn new(domain_size: usize) -> Self {
+        let mut circuit = Self {
+            witness: HashMap::new(),
+            constraints: Default::default(),
+            lookups: Default::default(),
+        };
+
+        for step in [
+            Round(0),
+            Sponge(Absorb(First)),
+            Sponge(Absorb(Middle)),
+            Sponge(Absorb(Last)),
+            Sponge(Absorb(Only)),
+            Sponge(Squeeze),
+        ] {
+            circuit.witness.insert(
+                step,
+                Witness {
+                    cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
+                },
+            );
+            circuit
+                .constraints
+                .insert(step, KeccakEnv::constraints_of(step));
+            circuit.lookups.insert(step, KeccakEnv::lookups_of(step));
+        }
+        circuit
+    }
+
+    /// Add a witness row to the circuit
+    pub(crate) fn add_witness(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
+        // Make sure we are using the same round number to refer to round steps
+        let mut step = step;
+        if let Round(_) = step {
+            step = Round(0);
+        }
+        self.witness.entry(step).and_modify(|wit| {
+            for (i, value) in row.iter().enumerate() {
+                wit.cols[i].push(*value);
+            }
+        });
+    }
 }
 
 // This function maps a 4D index into a 1D index depending on the length of the grid
