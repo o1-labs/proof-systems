@@ -1,7 +1,8 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
-    keccak::{Constraint, KeccakColumn, E},
+    keccak::{Constraint, KeccakColumn},
     lookups::Lookup,
+    E,
 };
 use ark_ff::Field;
 use kimchi::{
