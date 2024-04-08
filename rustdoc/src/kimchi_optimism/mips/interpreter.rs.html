@@ -2534,6 +2534,9 @@
 <a href="#2532" id="2532">2532</a>
 <a href="#2533" id="2533">2533</a>
 <a href="#2534" id="2534">2534</a>
+<a href="#2535" id="2535">2535</a>
+<a href="#2536" id="2536">2536</a>
+<a href="#2537" id="2537">2537</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -2672,6 +2675,9 @@
         + std::fmt::Debug
         + Zero
         + One;
+
+    <span class="comment">// Returns the variable in the current row corresponding to a given column alias.
+    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     </span><span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable);
