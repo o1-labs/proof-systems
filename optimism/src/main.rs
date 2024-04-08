@@ -254,9 +254,9 @@ pub fn main() -> ExitCode {
             Witness::zero_vec(DOMAIN_SIZE),
         );
         if keccak_verifies {
-            println!("The MIPS proof verifies")
+            println!("The Keccak proof verifies")
         } else {
-            println!("The MIPS proof doesn't verify")
+            println!("The Keccak proof doesn't verify")
         }
     }
 
