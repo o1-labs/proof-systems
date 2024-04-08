@@ -443,6 +443,7 @@ impl<F: Field> KeccakEnv<F> {
         env.constraints
     }
 
+    #[allow(dead_code)]
     /// Returns the list of lookups used in a specific Keccak step
     fn lookups_of(step: Steps) -> Vec<Lookup<E<F>>> {
         let mut env = ConstraintsEnv {

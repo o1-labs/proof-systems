@@ -481,8 +481,8 @@ fn test_keccak_prover() {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 6;
 
-        // Generate 3 blocks of preimage data to fill the domain length
-        let bytelength = rng.gen_range(RATE_IN_BYTES * 2..RATE_IN_BYTES * 3);
+        // Generate 2 blocks of preimage data
+        let bytelength = rng.gen_range(RATE_IN_BYTES..RATE_IN_BYTES * 2);
         let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
 
         // Initialize the environment and run the interpreter

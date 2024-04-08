@@ -31,6 +31,9 @@ pub mod ramlookup;
 
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 use kimchi_msm::columns::Column;
+use lookups::Lookup;
+use std::collections::HashMap;
+
 pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 
 /// Type to represent a constraint on the individual columns of the execution
@@ -46,3 +49,12 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 /// To represent this multi-variate polynomial using the expression framework,
 /// we would use 3 different columns.
 pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
+
+pub(crate) struct Circuit<const N: usize, SELECTOR, F> {
+    /// The witness for a given selector
+    pub(crate) witness: HashMap<SELECTOR, [Vec<F>; N]>,
+    /// The vector of constraints for a given selector
+    pub(crate) constraints: HashMap<SELECTOR, Vec<E<F>>>,
+    /// The vector of lookups for a given selector
+    pub(crate) lookups: HashMap<SELECTOR, Vec<Lookup<E<F>>>>,
+}
