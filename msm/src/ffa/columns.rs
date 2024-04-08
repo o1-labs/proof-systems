@@ -1,5 +1,4 @@
-use crate::columns::Column;
-use crate::columns::ColumnIndexer;
+use crate::columns::{Column, ColumnIndexer};
 
 use crate::N_LIMBS;
 
@@ -22,7 +21,7 @@ pub enum FFAColumnIndexer {
 }
 
 impl ColumnIndexer for FFAColumnIndexer {
-    fn ix_to_column(self) -> Column {
+    fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);
             Column::X(N_LIMBS * offset + i)

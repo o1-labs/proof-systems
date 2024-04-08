@@ -12,6 +12,7 @@ use kimchi::{
 use mina_curves::pasta::Fp;
 use rand::Rng;
 use sha3::{Digest, Keccak256};
+use std::collections::HashMap;
 
 #[test]
 fn test_pad_blocks() {
@@ -153,6 +154,49 @@ fn test_keccak_witness_satisfies_constraints() {
 }
 
 #[test]
+fn test_regression_number_of_constraints_and_degree() {
+    let mut rng = o1_utils::tests::make_test_rng();
+
+    // Generate random bytelength and preimage for Keccak
+    let bytelength = rng.gen_range(1..1000);
+    let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
+
+    let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+    keccak_env.constraints_env.constraints();
+    keccak_env.constraints_env.lookups();
+
+    // Checking relation constraints
+    {
+        // Check that the number of constraints is correct
+        assert_eq!(keccak_env.constraints_env.constraints.len(), 887);
+
+        let mut constraint_degrees: HashMap<u64, u32> = HashMap::new();
+        keccak_env
+            .constraints_env
+            .constraints
+            .iter()
+            .for_each(|constraint| {
+                let degree = constraint.degree(1, 0);
+                let entry = constraint_degrees.entry(degree).or_insert(0);
+                *entry += 1;
+            });
+        // We have 3 different degrees of constraints
+        assert_eq!(constraint_degrees.len(), 3);
+        // 489 degree-2 constraints
+        assert_eq!(constraint_degrees[&2], 489);
+        // 387 degree-3 constraints
+        assert_eq!(constraint_degrees[&3], 387);
+        // 11 degree-4 constraints
+        assert_eq!(constraint_degrees[&4], 11);
+    }
+
+    // Checking lookup constraints
+    {
+        assert_eq!(keccak_env.constraints_env.lookups.len(), 2361);
+    }
+}
+
+#[test]
 fn test_keccak_witness_satisfies_lookups() {
     let mut rng = o1_utils::tests::make_test_rng();
 
@@ -199,15 +243,37 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     // NEGATIVIZE THE WITNESS
 
     // Break padding constraints
-    witness_env[0].witness[KeccakColumn::PadBytesFlags(0)] = Fp::from(1u32);
-    witness_env[0].constrain_padding();
+    assert_eq!(witness_env[0].is_pad(), Fp::one());
+    // Padding can only occur in suffix[3] and suffix[4] because length is 100 bytes
+    assert_eq!(witness_env[0].pad_suffix(0), Fp::zero());
+    assert_eq!(witness_env[0].pad_suffix(1), Fp::zero());
+    assert_eq!(witness_env[0].pad_suffix(2), Fp::zero());
+    // Check that the padding blocks are corrrect
+    assert_eq!(witness_env[0].block_in_padding(0), Fp::zero());
+    assert_eq!(witness_env[0].block_in_padding(1), Fp::zero());
+    assert_eq!(witness_env[0].block_in_padding(2), Fp::zero());
+    // Force claim pad in PadBytesFlags(0), involved in suffix(0)
     assert_eq!(
-        witness_env[0].errors,
-        vec![
-            Error::Constraint(PadAtEnd),
-            Error::Constraint(PaddingSuffix(0))
-        ]
+        witness_env[0].witness[KeccakColumn::PadBytesFlags(0)],
+        Fp::zero()
     );
+    witness_env[0].witness[KeccakColumn::PadBytesFlags(0)] = Fp::from(1u32);
+    // Now that PadBytesFlags(0) is 1, then block_in_padding(0) should be 0b10*
+    println!("{:?}", witness_env[0].block_in_padding(0).to_hex());
+    witness_env[0].constrain_padding();
+    // When the byte(0) is different than 0 then the padding suffix constraint also fails
+    if witness_env[0].sponge_bytes()[0] != Fp::zero() {
+        assert_eq!(
+            witness_env[0].errors,
+            vec![
+                Error::Constraint(PadAtEnd),
+                Error::Constraint(PaddingSuffix(0))
+            ]
+        );
+    } else {
+        assert_eq!(witness_env[0].errors, vec![Error::Constraint(PadAtEnd)]);
+    }
+
     witness_env[0].errors.clear();
 
     // Break booleanity constraints

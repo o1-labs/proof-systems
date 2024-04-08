@@ -5,9 +5,11 @@ use crate::cannon::{
 use command_fds::{CommandFdExt, FdMapping};
 use log::debug;
 use os_pipe::{PipeReader, PipeWriter};
-use std::io::{Read, Write};
-use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-use std::process::{Child, Command};
+use std::{
+    io::{Read, Write},
+    os::fd::{AsRawFd, FromRawFd, OwnedFd},
+    process::{Child, Command},
+};
 
 pub struct PreImageOracle {
     pub cmd: Command,

@@ -1,5 +1,4 @@
-use ark_ff::PrimeField;
-use ark_ff::Zero;
+use ark_ff::{PrimeField, Zero};
 
 use crate::{
     columns::{Column, ColumnIndexer},
@@ -10,7 +9,7 @@ use crate::{
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    {BN254G1Affine, Fp},
+    BN254G1Affine, Fp,
 };
 
 #[allow(dead_code)]
@@ -50,7 +49,7 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for WitnessBuilderEnv<F> {
 
     // TODO deduplicate, remove this
     fn column_pos(ix: FFAColumnIndexer) -> Self::Position {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable {

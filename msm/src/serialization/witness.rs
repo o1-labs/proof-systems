@@ -1,24 +1,27 @@
-use ark_ff::PrimeField;
+use ark_ff::{FpParameters, PrimeField};
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 
-use crate::columns::Column;
-use crate::serialization::interpreter::InterpreterEnv;
-use crate::serialization::{Lookup, LookupTable};
-use crate::N_LIMBS;
+use crate::{
+    columns::{Column, ColumnIndexer},
+    serialization::{
+        column::{SerializationColumn, SER_N_COLUMNS},
+        interpreter::InterpreterEnv,
+        Lookup, LookupTable,
+    },
+    witness::Witness,
+    LIMB_BITSIZE, N_LIMBS,
+};
 use kimchi::circuits::domains::EvaluationDomains;
 use std::iter;
 
-use super::N_INTERMEDIATE_LIMBS;
-
+// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
+// TODO `WitnessEnv`
 /// Environment for the serializer interpreter
 pub struct Env<Fp> {
-    pub current_kimchi_limbs: [Fp; 3],
-    /// The LIMB_NUM limbs that is used to encode a field element for the MSM
-    pub msm_limbs: [Fp; N_LIMBS],
-    /// Used for the decomposition in base 4 of the last limb of the foreign
-    /// field Kimchi gate
-    pub intermediate_limbs: [Fp; N_INTERMEDIATE_LIMBS],
+    /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
+    /// `get_witness` method.
+    pub witness: Witness<SER_N_COLUMNS, Fp>,
 
     /// Keep track of the RangeCheck4 lookup multiplicities
     // Boxing to avoid stack overflow
@@ -42,29 +45,51 @@ pub struct Env<Fp> {
     pub rangecheck15_lookups: Vec<Lookup<Fp>>,
 }
 
-impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
+// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
+impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
-    // Requiring an Fp element as we would need to compute values up to 180 bits
+    // Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
-    type Variable = Fp;
+    type Variable = F;
 
     fn add_constraint(&mut self, cst: Self::Variable) {
-        assert_eq!(cst, Fp::zero());
+        assert_eq!(cst, F::zero());
     }
 
-    fn constant(value: Fp) -> Self::Variable {
+    fn constant(value: F) -> Self::Variable {
         value
     }
 
-    fn get_column_for_kimchi_limb(j: usize) -> Self::Position {
-        assert!(j < 3);
-        Column::X(j)
+    fn get_column(pos: SerializationColumn) -> Self::Position {
+        pos.to_column()
     }
 
-    fn get_column_for_intermediate_limb(j: usize) -> Self::Position {
-        assert!(j < N_INTERMEDIATE_LIMBS);
-        Column::X(3 + N_LIMBS + j)
+    fn read_column(&self, ix: Column) -> Self::Variable {
+        let Column::X(i) = ix else { todo!() };
+        self.witness.cols[i]
+    }
+
+    fn range_check_abs15bit(&mut self, value: &Self::Variable) {
+        assert!(*value < F::from(1u64 << 15) || *value >= F::zero() - F::from(1u64 << 15));
+        // TODO implement actual lookups
+    }
+
+    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
+        assert!(*value < F::from(1u64 << 4) || *value >= F::zero() - F::from(1u64 << 4));
+        // TODO implement actual lookups
+    }
+
+    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable) {
+        let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+        let top_modulus: BigUint = f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE);
+        let top_modulus_f: F = F::from_biguint(&top_modulus).unwrap();
+        assert!(
+            *value < top_modulus_f,
+            "The value {:?} was higher than modulus {:?}",
+            (*value).to_bigint_positive(),
+            top_modulus_f.to_bigint_positive()
+        );
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
@@ -72,10 +97,10 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         assert!(value_biguint < BigUint::from(2u128.pow(15)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities_rangecheck15[value_usize] += Fp::one();
+        self.lookup_multiplicities_rangecheck15[value_usize] += F::one();
         self.rangecheck15_lookups.push(Lookup {
             table_id: LookupTable::RangeCheck15,
-            numerator: Fp::one(),
+            numerator: F::one(),
             value: vec![*value],
         })
     }
@@ -85,10 +110,10 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         assert!(value_biguint < BigUint::from(2u128.pow(4)));
         // Adding multiplicities
         let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities_rangecheck4[value_usize] += Fp::one();
+        self.lookup_multiplicities_rangecheck4[value_usize] += F::one();
         self.rangecheck4_lookups.push(Lookup {
             table_id: LookupTable::RangeCheck4,
-            numerator: Fp::one(),
+            numerator: F::one(),
             value: vec![*value],
         })
     }
@@ -96,11 +121,6 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, *x);
         *x
-    }
-
-    fn get_column_for_msm_limb(j: usize) -> Self::Position {
-        assert!(j < N_LIMBS);
-        Column::X(3 + j)
     }
 
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
@@ -118,7 +138,7 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
         let x_bytes_u8 = &x.to_bytes()[0..16];
         let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
-        let res_fp: Fp = res.into();
+        let res_fp: F = res.into();
         self.write_column(position, res_fp);
         res_fp
     }
@@ -127,17 +147,7 @@ impl<Fp: PrimeField> InterpreterEnv<Fp> for Env<Fp> {
 impl<Fp: PrimeField> Env<Fp> {
     pub fn write_column(&mut self, position: Column, value: Fp) {
         match position {
-            Column::X(i) => {
-                if i < 3 {
-                    self.current_kimchi_limbs[i] = value
-                } else if i < 3 + N_LIMBS {
-                    self.msm_limbs[i - 3] = value;
-                } else if i < 3 + N_LIMBS + N_INTERMEDIATE_LIMBS {
-                    self.intermediate_limbs[i - 3 - N_LIMBS] = value;
-                } else {
-                    panic!("Invalid column index")
-                }
-            }
+            Column::X(i) => self.witness.cols[i] = value,
             Column::LookupPartialSum(_) => {
                 panic!(
                     "This is a lookup related column. The environment is
@@ -211,9 +221,9 @@ impl<Fp: PrimeField> Env<Fp> {
 impl<Fp: PrimeField> Env<Fp> {
     pub fn create() -> Self {
         Self {
-            current_kimchi_limbs: [Fp::zero(); 3],
-            msm_limbs: [Fp::zero(); N_LIMBS],
-            intermediate_limbs: [Fp::zero(); N_INTERMEDIATE_LIMBS],
+            witness: Witness {
+                cols: Box::new([Fp::zero(); SER_N_COLUMNS]),
+            },
 
             lookup_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
             lookup_t_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
@@ -229,15 +239,14 @@ impl<Fp: PrimeField> Env<Fp> {
 mod tests {
     use std::str::FromStr;
 
-    use crate::serialization::N_INTERMEDIATE_LIMBS;
-    use crate::{LIMB_BITSIZE, N_LIMBS};
+    use crate::{serialization::N_INTERMEDIATE_LIMBS, LIMB_BITSIZE, N_LIMBS};
 
     use super::Env;
-    use crate::serialization::interpreter::deserialize_field_element;
-    use ark_ff::BigInteger;
-    use ark_ff::FpParameters as _;
-    use ark_ff::PrimeField;
-    use ark_ff::{One, UniformRand, Zero};
+    use crate::serialization::{
+        column::SerializationColumn,
+        interpreter::{deserialize_field_element, InterpreterEnv},
+    };
+    use ark_ff::{BigInteger, FpParameters as _, One, PrimeField, UniformRand, Zero};
     use mina_curves::pasta::Fp;
     use num_bigint::BigUint;
     use o1_utils::{tests::make_test_rng, FieldHelpers};
@@ -274,9 +283,13 @@ mod tests {
         deserialize_field_element(&mut dummy_env, [limb0, limb1, limb2]);
 
         // Check limb are copied into the environment
-        assert_eq!(Fp::from(limb0), dummy_env.current_kimchi_limbs[0]);
-        assert_eq!(Fp::from(limb1), dummy_env.current_kimchi_limbs[1]);
-        assert_eq!(Fp::from(limb2), dummy_env.current_kimchi_limbs[2]);
+        let limbs_to_assert = [limb0, limb1, limb2];
+        for (i, limb) in limbs_to_assert.iter().enumerate() {
+            assert_eq!(
+                Fp::from(*limb),
+                dummy_env.read_column_direct(SerializationColumn::ChalKimchi(i))
+            );
+        }
 
         // Check intermediate limbs
         {
@@ -289,14 +302,16 @@ mod tests {
                     .take(4)
                     .collect::<Vec<bool>>();
                 let t = Fp::from_bits(le_bits).unwrap();
+                let intermediate_v =
+                    dummy_env.read_column_direct(SerializationColumn::ChalIntermediate(j));
                 assert_eq!(
                     t,
-                    dummy_env.intermediate_limbs[j],
+                    intermediate_v,
                     "{}",
                     format_args!(
                         "Intermediate limb {j}. Exp value is {:?}, computed is {:?}",
                         t.to_biguint(),
-                        dummy_env.intermediate_limbs[j].to_biguint()
+                        intermediate_v.to_biguint()
                     )
                 )
             }
@@ -311,14 +326,15 @@ mod tests {
                 .take(LIMB_BITSIZE)
                 .collect::<Vec<bool>>();
             let t = Fp::from_bits(le_bits).unwrap();
+            let converted_v = dummy_env.read_column_direct(SerializationColumn::ChalConverted(i));
             assert_eq!(
                 t,
-                dummy_env.msm_limbs[i],
+                converted_v,
                 "{}",
                 format_args!(
                     "MSM limb {i}. Exp value is {:?}, computed is {:?}",
                     t.to_biguint(),
-                    dummy_env.msm_limbs[i].to_biguint()
+                    converted_v.to_biguint()
                 )
             )
         }

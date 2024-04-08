@@ -1,8 +1,10 @@
-use kimchi::folding::expressions::FoldingColumnTrait;
-
-use kimchi_msm::witness::Witness;
+use std::ops::{Index, IndexMut};
 
 use super::witness::SCRATCH_SIZE;
+use kimchi_msm::{
+    columns::{Column, ColumnIndexer},
+    witness::Witness,
+};
 
 pub(crate) const MIPS_HASH_COUNTER_OFFSET: usize = 80;
 pub(crate) const MIPS_IS_SYSCALL_OFFSET: usize = 81;
@@ -15,18 +17,11 @@ pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
 
 /// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Column {
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     InstructionCounter,
-}
-
-impl FoldingColumnTrait for Column {
-    fn is_witness(&self) -> bool {
-        // All MIPS columns are witness columns
-        true
-    }
 }
 
 /// Represents one line of the execution trace of the virtual machine
@@ -72,5 +67,39 @@ impl<T: Clone> MIPSWitnessTrait<T> for MIPSWitness<T> {
 
     fn error(&mut self) -> &T {
         &self.cols[SCRATCH_SIZE + 1]
+    }
+}
+
+impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
+    type Output = T;
+
+    /// Map the column alias to the actual column index.
+    /// Note that the column index depends on the step kind (Sponge or Round).
+    /// For instance, the column 800 represents PadLength in the Sponge step, while it
+    /// is used by intermediary values when executing the Round step.
+    fn index(&self, index: ColumnAlias) -> &Self::Output {
+        match index {
+            ColumnAlias::ScratchState(i) => &self.scratch()[i],
+            ColumnAlias::InstructionCounter => self.instruction_counter(),
+        }
+    }
+}
+
+impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
+    fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
+        match index {
+            ColumnAlias::ScratchState(i) => &mut self.cols[i],
+            ColumnAlias::InstructionCounter => &mut self.cols[SCRATCH_SIZE],
+        }
+    }
+}
+
+impl ColumnIndexer for ColumnAlias {
+    fn to_column(self) -> Column {
+        // TODO: what happens with error? It does not have a corresponding alias
+        match self {
+            ColumnAlias::ScratchState(i) => Column::X(i),
+            ColumnAlias::InstructionCounter => Column::X(SCRATCH_SIZE),
+        }
     }
 }

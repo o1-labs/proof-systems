@@ -1,8 +1,7 @@
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, Zero};
 
-use crate::commitment::CommitmentCurve;
-use crate::PolyComm;
+use crate::{commitment::CommitmentCurve, PolyComm};
 
 impl<C> PolyComm<C>
 where

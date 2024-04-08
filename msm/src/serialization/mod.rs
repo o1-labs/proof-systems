@@ -1,12 +1,12 @@
 use crate::{mvlookup::LookupTableID, MVLookup};
 
-/// The number of intermediate limbs of 4 bits required for the circuit
-pub const N_INTERMEDIATE_LIMBS: usize = 20;
-
 pub mod column;
 pub mod constraints;
 pub mod interpreter;
 pub mod witness;
+
+/// The number of intermediate limbs of 4 bits required for the circuit
+pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
 #[derive(Clone, Copy, Debug)]
 pub enum LookupTable {
@@ -22,6 +22,11 @@ impl LookupTableID for LookupTable {
         }
     }
 
+    /// All tables are fixed tables.
+    fn is_fixed(&self) -> bool {
+        true
+    }
+
     fn length(&self) -> usize {
         match self {
             Self::RangeCheck15 => 1 << 15,
@@ -34,6 +39,7 @@ pub type Lookup<F> = MVLookup<F, LookupTable>;
 
 #[cfg(test)]
 mod tests {
+    use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::Rng as _;
@@ -47,14 +53,31 @@ mod tests {
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            constraints, interpreter::deserialize_field_element, witness, N_INTERMEDIATE_LIMBS,
+            column::SER_N_COLUMNS, constraints, interpreter as ser_interpreter,
+            interpreter::deserialize_field_element, witness, N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
-        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
 
     use ark_ff::{FftField, Field, PrimeField};
+
+    #[test]
+    /// Builds the FF addition circuit with random values. The witness
+    /// environment enforces the constraints internally, so it is
+    /// enough to just build the circuit to ensure it is satisfied.
+    fn build_multiplication_circuit() {
+        let mut rng = o1_utils::tests::make_test_rng();
+
+        let mut witness_env = witness::Env::<Fp>::create();
+
+        // Does only one row because multi-row support in serialization is not generic yet
+        let chal: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+        let prev_coeff: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+
+        ser_interpreter::multiplication_circuit(&mut witness_env, chal, prev_coeff);
+    }
 
     impl LookupTable {
         fn into_lookup_vector<F: FftField + PrimeField + Field>(
@@ -94,15 +117,13 @@ mod tests {
         // Must be at least 1 << 15 to support rangecheck15
         const DOMAIN_SIZE: usize = 1 << 15;
 
-        const SERIALIZATION_N_COLUMNS: usize = 3 + N_INTERMEDIATE_LIMBS + N_LIMBS;
-
         let domain = EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let mut witness_env = witness::Env::<Fp>::create();
         // Boxing to avoid stack overflow
-        let mut witness: Box<Witness<SERIALIZATION_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
+        let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
         });
 
@@ -131,14 +152,9 @@ mod tests {
             let mut constraint_env = constraints::Env::<Fp>::create();
             // Witness
             deserialize_field_element(&mut witness_env, limbs);
-            for i in 0..3 {
-                witness.cols[i].push(witness_env.current_kimchi_limbs[i]);
-            }
-            for i in 0..N_LIMBS {
-                witness.cols[3 + i].push(witness_env.msm_limbs[i]);
-            }
-            for i in 0..N_INTERMEDIATE_LIMBS {
-                witness.cols[3 + N_LIMBS + i].push(witness_env.intermediate_limbs[i]);
+            // Filling actually used rows
+            for j in 0..SER_N_COLUMNS {
+                witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
             // Constraints
@@ -238,13 +254,13 @@ mod tests {
             ScalarSponge,
             Column,
             _,
-            SERIALIZATION_N_COLUMNS,
+            SER_N_COLUMNS,
             LookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
 
         let verifies =
-            verify::<_, OpeningProof, BaseSponge, ScalarSponge, SERIALIZATION_N_COLUMNS, 0>(
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, SER_N_COLUMNS, 0, LookupTable>(
                 domain,
                 &srs,
                 &constraints,

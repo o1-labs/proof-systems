@@ -6,8 +6,10 @@
 use crate::field_helpers::FieldHelpers;
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
-use std::fmt::{Debug, Formatter};
-use std::ops::{Index, IndexMut};
+use std::{
+    fmt::{Debug, Formatter},
+    ops::{Index, IndexMut},
+};
 
 /// Represents a foreign field element
 #[derive(Clone, PartialEq, Eq)]

@@ -45,19 +45,17 @@ impl<F: PrimeField> FFAInterpreterEnv<F> for ConstraintBuilderEnv<F> {
 
     // TODO deduplicate, remove this
     fn column_pos(ix: FFAColumnIndexer) -> Self::Position {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: ix.ix_to_column(),
+            col: ix.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
 
-    fn range_check_abs1(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
-    }
+    fn range_check_abs1(&mut self, _value: &Self::Variable) {}
 
     fn range_check_15bit(&mut self, _value: &Self::Variable) {
         // FIXME unimplemented

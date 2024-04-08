@@ -29,7 +29,7 @@ mod tests {
 
     // Generic function to test with different circuits with the generic prover/verifier.
     // It doesn't use the interpreter to build the witness and compute the constraints.
-    fn test_completeness_generic<const N: usize, RNG>(
+    pub fn test_completeness_generic<const N: usize, RNG>(
         constraints: Vec<E<Fp>>,
         evaluations: Witness<N, Vec<Fp>>,
         domain_size: usize,
@@ -97,7 +97,7 @@ mod tests {
             }
         }
 
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0, LookupTableIDs>(
             domain,
             &srs,
             &constraints,
@@ -146,7 +146,7 @@ mod tests {
                 rng,
             )
             .unwrap();
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0>(
+        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0, LookupTableIDs>(
             domain,
             &srs,
             &constraints,

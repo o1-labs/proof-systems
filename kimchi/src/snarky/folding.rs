@@ -1,18 +1,15 @@
 use self::instance::{Instance, RelaxedInstance};
-use super::poseidon::DuplexState;
-use super::prelude::*;
+use super::{poseidon::DuplexState, prelude::*};
 use crate::{
     curve::KimchiCurve,
     loc,
-    snarky::api::SnarkyCircuit,
-    snarky::{cvar::FieldVar, runner::RunState},
+    snarky::{api::SnarkyCircuit, cvar::FieldVar, runner::RunState},
 };
 use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, One, PrimeField};
 use mina_curves::pasta::Fp;
 use poly_commitment::{evaluation_proof::OpeningProof, OpenProof};
-use std::marker::PhantomData;
-use std::ops::Add;
+use std::{marker::PhantomData, ops::Add};
 
 mod instance;
 

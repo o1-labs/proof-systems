@@ -66,12 +66,12 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         Self::is_one(x * x_inv)
     }
 
-    /// Degree-1 variable encoding the XOR of two variables which should be boolean (1 = true)
+    /// Degree-2 variable encoding the XOR of two variables which should be boolean (1 = true)
     fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x.clone() + y.clone() - Self::constant(2) * x * y
     }
 
-    /// Degree-1 variable encoding the OR of two variables, which should be boolean (1 = true)
+    /// Degree-2 variable encoding the OR of two variables, which should be boolean (1 = true)
     fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable {
         x.clone() + y.clone() - x * y
     }
@@ -118,44 +118,51 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     fn constrain(&mut self, tag: Constraint, x: Self::Variable);
 
     /// Adds all 887 constraints/checks to the environment:
-    /// - 143 constraints of degree 1
-    /// - 739 constraints of degree 2
-    /// - 5 constraints of degree 5
+    /// - 489 constraints of degree 2
+    /// - 387 constraints of degree 3
+    /// - 11 constraints of degree 4
     fn constraints(&mut self) {
         // CORRECTNESS OF FLAGS: 144 CONSTRAINTS
-        // - 143 constraints of degree 1
-        // - 1 constraint of degree 2
+        // - 141 constraints of degree 2
+        // - 2 constraint of degree 3
+        // - 1 constraint of degree 4
         self.constrain_flags();
 
-        // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS OF DEGREE 2
-        // - 354 constraints of degree 2
+        // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS
+        // - 348 of degree 2
+        // - 1 of degree 3
+        // - 5 of degree 4
         self.constrain_sponge();
 
         // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
-        // - 384 constraints of degree 2
-        // - 5 constraints of degree 3
+        // - 384 constraints of degree 3
+        // - 5 constraints of degree 4
         self.constrain_round();
     }
 
     /// Constrains 144 checks of correctness of mode flags
-    /// - 143 constraints of degree 1
-    /// - 1 constraint of degree 2
+    /// - 141 constraints of degree 2
+    /// - 2 constraints of degree 3
+    /// - 1 constraint of degree 4
     /// Of which:
     /// - 142 constraints are sponge-only
-    /// - 1 constraint is sponge+round related
+    /// - 2 constraints are sponge+round related
     // TODO: when Round and Sponge circuits are separated, the last one will be removed
     //       (in particular, the ones involving round and sponge together)
     fn constrain_flags(&mut self) {
-        // Booleanity of sponge flags: 139 constraints of degree 1
+        // Booleanity of sponge flags:
+        // - 139 constraints of degree 2
         self.constrain_booleanity();
 
         // Mutual exclusivity of flags: 5 constraints:
-        // - 4 of degree 1
-        // - 1 of degree 2
+        // - 2 of degree 2
+        // - 2 of degree 3
+        // - 1 of degree 4
         self.constrain_mutex();
     }
 
     /// Constrains 139 checks of booleanity for some mode flags.
+    /// - 139 constraints of degree 2
     /// These involve sponge-only related variables.
     fn constrain_booleanity(&mut self) {
         // Absorb is either true or false
@@ -171,32 +178,36 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Constrains 5 checks of mutual exclusivity between some mode flags.
+    /// - 2 of degree 2
+    /// - 2 of degree 3
+    /// - 1 of degree 4
+    /// Of which
     /// - 3 involve sponge-only related variables
     /// - 2 involves sponge+round variables
     // TODO: when Round and Sponge circuits are separated, the last one will be removed
     //       (in particular, the ones involving round and sponge together)
     fn constrain_mutex(&mut self) {
-        // Squeeze and Root are not both true
+        // Degree 2: Squeeze and Root are not both true
         self.constrain(
             MutexSqueezeRoot,
             Self::either_zero(self.is_squeeze(), self.is_root()),
         );
-        // Squeeze and Pad are not both true
+        // Degree 3: Squeeze and Pad are not both true
         self.constrain(
             MutexSqueezePad,
             Self::either_zero(self.is_squeeze(), self.is_pad()),
         );
-        // Round and Pad are not both true
+        // Degree 4: Round and Pad are not both true
         self.constrain(
             MutexRoundPad,
             Self::either_zero(self.is_round(), self.is_pad()),
         );
-        // Round and Root are not both true
+        // Degree 3: Round and Root are not both true
         self.constrain(
             MutexRoundRoot,
             Self::either_zero(self.is_round(), self.is_root()),
         );
-        // Absorb and Squeeze cannot happen at the same time.
+        // Degree 2: Absorb and Squeeze cannot happen at the same time.
         // Equivalent to is_boolean(is_sponge())
         self.constrain(
             MutexAbsorbSqueeze,
@@ -206,6 +217,9 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Constrains 354 checks of sponge steps
+    /// - 348 of degree 2
+    /// - 1 of degree 3
+    /// - 5 of degree 4
     fn constrain_sponge(&mut self) {
         self.constrain_absorb();
         self.constrain_squeeze();
@@ -213,6 +227,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Constrains 332 checks of absorb sponges
+    /// - 332 of degree 2
     fn constrain_absorb(&mut self) {
         for (i, zero) in self.sponge_zeros().iter().enumerate() {
             // Absorb phase pads with zeros the new state
@@ -242,6 +257,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Constrains 6 checks of padding absorb sponges
+    /// - 1 of degree 3
+    /// - 5 of degree 4
     fn constrain_padding(&mut self) {
         // Check that the padding is located at the end of the message
         let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
@@ -261,6 +278,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Constrains 16 checks of squeeze sponges
+    /// - 16 of degree 2
     fn constrain_squeeze(&mut self) {
         let sponge_shifts = self.vec_sponge_shifts();
         for i in 0..QUARTERS * WORDS_IN_HASH {
@@ -275,27 +293,30 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Constrains 389 checks of round steps
-    /// - 384 constraints of degree 2
-    /// - 5 constraints of degree 3
+    /// - 384 constraints of degree 3
+    /// - 5 constraints of degree 4
     fn constrain_round(&mut self) {
         // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
-        // - 30 constraints of degree 2
-        // - 5 constraints of degree 3
+        // - 30 constraints of degree 3
+        // - 5 constraints of degree 4
         let state_e = self.constrain_theta();
 
-        // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints of degree 2
+        // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
+        // - 150 of degree 3
         let state_b = self.constrain_pirho(state_e);
 
-        // STEP chi: 4 * 5 * 5 * 2 = 200 constraints of degree 2
+        // STEP chi: 4 * 5 * 5 * 2 = 200 constraints
+        // - 200 of degree 3
         let state_f = self.constrain_chi(state_b);
 
-        // STEP iota: 4 constraints of degree 2
+        // STEP iota: 4 constraints
+        // - 4 of degree 3
         self.constrain_iota(state_f);
     }
 
     /// Constrains 35 checks of the theta algorithm in round steps
-    ///  - 30 constraints of degree 2
-    ///  - 5 constraints of degree 3
+    ///  - 30 constraints of degree 3
+    ///  - 5 constraints of degree 4
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     fn constrain_theta(&mut self) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
@@ -353,7 +374,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         state_e
     }
 
-    /// Constrains 150 checks (of degree 2) of the pirho algorithm in round steps
+    /// Constrains 150 checks (of degree 3) of the pirho algorithm in round steps
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     fn constrain_pirho(
         &mut self,
@@ -400,7 +421,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         state_b
     }
 
-    /// Constrains 200 checks (of degree 2) of the chi algorithm in round steps
+    /// Constrains 200 checks (of degree 3) of the chi algorithm in round steps
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     fn constrain_chi(
         &mut self,
@@ -448,7 +469,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         state_f
     }
 
-    /// Constrains 4 checks (of degree 2) of the iota algorithm in round steps
+    /// Constrains 4 checks (of degree 3) of the iota algorithm in round steps
     // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
     fn constrain_iota(&mut self, state_f: Vec<Vec<Vec<Self::Variable>>>) {
         for (q, c) in self.round_constants().to_vec().iter().enumerate() {
@@ -764,7 +785,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         }
     }
 
-    /// Returns a variable that encodes whether the current step is a sponge (1 = yes)
+    /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
     fn is_sponge(&self) -> Self::Variable {
         Self::xor(self.is_absorb().clone(), self.is_squeeze().clone())
     }
@@ -843,7 +864,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         }
     }
 
-    /// This function returns a variable that is computed as the accumulated value of the
+    /// This function returns a degree-2 variable that is computed as the accumulated value of the
     /// operation `byte * flag * 2^8` for each byte block and flag block of the new block.
     /// This function will be used in constraints to determine whether the padding is located
     /// at the end of the preimage data, as consecutive bits that are involved in the padding.

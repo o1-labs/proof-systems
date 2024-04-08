@@ -1,5 +1,7 @@
-use crate::columns::{Column, ColumnIndexer};
-use crate::N_LIMBS;
+use crate::{
+    columns::{Column, ColumnIndexer},
+    N_LIMBS,
+};
 
 /// Number of columns in the test circuits.
 pub const TEST_N_COLUMNS: usize = 4 * N_LIMBS;
@@ -19,7 +21,7 @@ pub enum TestColumnIndexer {
 }
 
 impl ColumnIndexer for TestColumnIndexer {
-    fn ix_to_column(self) -> Column {
+    fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);
             Column::X(N_LIMBS * offset + i)

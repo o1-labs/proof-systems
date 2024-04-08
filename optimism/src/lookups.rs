@@ -57,6 +57,14 @@ impl LookupTableID for LookupTableIDs {
             }
         }
     }
+
+    fn is_fixed(&self) -> bool {
+        match self {
+            PadLookup | RoundConstantsLookup | ByteLookup | RangeCheck16Lookup | SparseLookup
+            | ResetLookup => true,
+            MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => false,
+        }
+    }
 }
 
 /// The lookups struct based on RAMLookups for the VM table IDs
