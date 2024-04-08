@@ -195,6 +195,7 @@ pub fn main() -> ExitCode {
     {
         // MIPS
         // TODO: use actual constraints, not just an empty vector
+        // FIXME: this means create separate MIPS witnesses and prove the corresponding constraints for each
         let mips_result = prove::<
             _,
             OpeningProof,
@@ -225,7 +226,8 @@ pub fn main() -> ExitCode {
     {
         // KECCAK
         // TODO: use actual constraints, not just an empty vector
-        // FIXME: when folding is applied, the list of constraints will be adapated to satisfy the folded witness
+        // FIXME: this means create separate Keccak witnesses and prove the corresponding constraints for each
+        // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
         let keccak_result = prove::<
             _,
             OpeningProof,
