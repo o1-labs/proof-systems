@@ -160,6 +160,7 @@
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Range check gate
 
 </span><span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField};
@@ -168,7 +169,8 @@
     alphas::Alphas,
     circuits::{
         argument::Argument,
-        expr::{Cache, E},
+        berkeley_columns::E,
+        expr::Cache,
         gate::{CircuitGate, Connect, GateType},
         lookup::{
             <span class="self">self</span>,

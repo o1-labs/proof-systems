@@ -1771,13 +1771,15 @@
 <a href="#1769" id="1769">1769</a>
 <a href="#1770" id="1770">1770</a>
 <a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements prover's zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
     circuits::{
         argument::{Argument, ArgumentType},
+        berkeley_columns::{Environment, LookupEnvironment},
         constraints::zk_rows_strict_lower_bound,
-        expr::{<span class="self">self</span>, l0_1, Challenges, Constants, Environment, LookupEnvironment},
+        expr::{<span class="self">self</span>, l0_1, Challenges, Constants},
         gate::GateType,
         lookup::{<span class="self">self</span>, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{

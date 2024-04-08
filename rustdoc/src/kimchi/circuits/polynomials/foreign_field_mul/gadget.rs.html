@@ -129,6 +129,7 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
 </span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
@@ -139,7 +140,8 @@
     alphas::Alphas,
     circuits::{
         argument::Argument,
-        expr::{Cache, E},
+        berkeley_columns::E,
+        expr::Cache,
         gate::{CircuitGate, GateType},
         lookup::{
             <span class="self">self</span>,
