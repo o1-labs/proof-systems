@@ -6,9 +6,10 @@ use crate::{
             Sponges::*,
             Steps::{self, *},
         },
-        Constraint, KeccakColumn, Selector, E,
+        Constraint, KeccakColumn, Selector,
     },
     lookups::Lookup,
+    E,
 };
 use ark_ff::{Field, One, Zero};
 use kimchi::{
@@ -18,6 +19,7 @@ use kimchi::{
     },
     o1_utils::Two,
 };
+use kimchi_msm::columns::ColumnIndexer;
 
 use super::interpreter::KeccakInterpreter;
 
@@ -69,7 +71,7 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         // Despite `KeccakWitness` containing both `curr` and `next` fields,
         // the Keccak step spans across one row only.
         Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
+            col: column.to_column(),
             row: CurrOrNext::Curr,
         }))
     }

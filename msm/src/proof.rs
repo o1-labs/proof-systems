@@ -2,12 +2,9 @@ use crate::{
     lookups::{LookupTableIDs, LookupWitness},
     mvlookup::{LookupProof, LookupTableID},
     witness::Witness,
-    MVLookupWitness,
+    MVLookupWitness, DOMAIN_SIZE,
 };
-
-use ark_ff::UniformRand;
-use rand::thread_rng;
-
+use ark_ff::{UniformRand, Zero};
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
@@ -17,6 +14,7 @@ use kimchi::{
     proof::PointEvaluations,
 };
 use poly_commitment::{commitment::PolyComm, OpenProof};
+use rand::thread_rng;
 
 #[derive(Debug)]
 pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
@@ -26,11 +24,11 @@ pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
 }
 
-// This should be used only for testing purposes.
-// It is not only in the test API because it is used at the moment in the
-// main.rs. It should be moved to the test API when main.rs is replaced with
-// real production code.
 impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
+    // This should be used only for testing purposes.
+    // It is not only in the test API because it is used at the moment in the
+    // main.rs. It should be moved to the test API when main.rs is replaced with
+    // real production code.
     pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
         let mut rng = thread_rng();
         let cols: Box<[Vec<G::ScalarField>; N]> = Box::new(std::array::from_fn(|_| {
@@ -41,6 +39,19 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
+        }
+    }
+}
+
+impl<const N: usize, G: KimchiCurve, ID: LookupTableID> Default for ProofInputs<N, G, ID> {
+    fn default() -> Self {
+        ProofInputs {
+            evaluations: Witness {
+                cols: Box::new(std::array::from_fn(|_| {
+                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                })),
+            },
+            mvlookups: vec![],
         }
     }
 }

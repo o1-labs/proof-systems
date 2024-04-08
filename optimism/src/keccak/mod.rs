@@ -3,9 +3,8 @@ use crate::{
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
-use kimchi::circuits::{
-    expr::{ConstantExpr, Expr},
-    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
+use kimchi::circuits::polynomials::keccak::constants::{
+    DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
 
 pub mod column;
@@ -29,8 +28,6 @@ pub(crate) const ZKVM_KECCAK_COLS_CURR: usize = KECCAK_COLS;
 pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 /// Number of words that fit in the hash digest
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
-
-pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 
 /// Errors that can occur during the check of the witness
 #[derive(Debug, Clone, PartialEq, Eq)]
