@@ -124,6 +124,24 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u64;
 
+    // TODO: update variable() function once scratch_state is [u64; SCRATCH_SIZE]
+    fn variable(&self, _column: Self::Position) -> Self::Variable {
+        todo!();
+        /*
+        match column {
+            Column::ScratchState(idx) => self.scratch_state[idx],
+            Column::Selector(ins) => match ins {
+                Instruction::RType(r) => self.selectors[r as usize],
+                Instruction::IType(i) => self.selectors[i as usize + RTypeInstruction::COUNT],
+                Instruction::JType(j) => {
+                    self.selectors[j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT]
+                }
+            },
+            Column::InstructionCounter => self.instructions_counter,
+        }
+        */
+    }
+
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
         // No-op for witness
         // Do not assert that _assert_equals_zero is zero here! Some variables may have
