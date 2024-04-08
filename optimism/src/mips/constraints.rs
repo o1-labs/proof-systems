@@ -48,6 +48,13 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = Expr<ConstantExpr<Fp>, Column>;
 
+    fn variable(&self, column: Self::Position) -> Self::Variable {
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: column,
+            row: CurrOrNext::Curr,
+        }))
+    }
+
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable) {
         self.constraints.push(assert_equals_zero)
     }
@@ -69,10 +76,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn instruction_counter(&self) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: Column::InstructionCounter,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(Column::InstructionCounter)
     }
 
     unsafe fn fetch_register(
@@ -80,10 +84,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: output,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(output)
     }
 
     unsafe fn push_register_if(
@@ -100,10 +101,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _idx: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: output,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(output)
     }
 
     unsafe fn push_register_access_if(
@@ -120,10 +118,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _addr: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: output,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(output)
     }
 
     unsafe fn push_memory(&mut self, _addr: &Self::Variable, _value: Self::Variable) {
@@ -135,10 +130,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _addr: &Self::Variable,
         output: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: output,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(output)
     }
 
     unsafe fn push_memory_access(&mut self, _addr: &Self::Variable, _value: Self::Variable) {
@@ -156,10 +148,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _lowest_bit: u32,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn shift_left(
@@ -168,10 +157,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn shift_right(
@@ -180,10 +166,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn shift_right_arithmetic(
@@ -192,10 +175,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _by: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn test_zero(
@@ -203,10 +183,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn inverse_or_zero(
@@ -214,10 +191,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn test_less_than(
@@ -226,10 +200,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn test_less_than_signed(
@@ -238,10 +209,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn and_witness(
@@ -250,10 +218,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn nor_witness(
@@ -262,10 +227,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn or_witness(
@@ -274,10 +236,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn xor_witness(
@@ -286,10 +245,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn add_witness(
@@ -300,14 +256,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         overflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
         (
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: out_position,
-                row: CurrOrNext::Curr,
-            })),
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: overflow_position,
-                row: CurrOrNext::Curr,
-            })),
+            self.variable(out_position),
+            self.variable(overflow_position),
         )
     }
 
@@ -319,14 +269,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         underflow_position: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
         (
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: out_position,
-                row: CurrOrNext::Curr,
-            })),
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: underflow_position,
-                row: CurrOrNext::Curr,
-            })),
+            self.variable(out_position),
+            self.variable(underflow_position),
         )
     }
 
@@ -336,10 +280,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     unsafe fn mul_hi_lo_signed(
@@ -349,16 +290,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_hi: Self::Position,
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        (
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_hi,
-                row: CurrOrNext::Curr,
-            })),
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_lo,
-                row: CurrOrNext::Curr,
-            })),
-        )
+        (self.variable(position_hi), self.variable(position_lo))
     }
 
     unsafe fn mul_hi_lo(
@@ -368,16 +300,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_hi: Self::Position,
         position_lo: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
-        (
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_hi,
-                row: CurrOrNext::Curr,
-            })),
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_lo,
-                row: CurrOrNext::Curr,
-            })),
-        )
+        (self.variable(position_hi), self.variable(position_lo))
     }
 
     unsafe fn divmod_signed(
@@ -388,14 +311,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
         (
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_quotient,
-                row: CurrOrNext::Curr,
-            })),
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_remainder,
-                row: CurrOrNext::Curr,
-            })),
+            self.variable(position_quotient),
+            self.variable(position_remainder),
         )
     }
 
@@ -407,14 +324,8 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable) {
         (
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_quotient,
-                row: CurrOrNext::Curr,
-            })),
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: position_remainder,
-                row: CurrOrNext::Curr,
-            })),
+            self.variable(position_quotient),
+            self.variable(position_remainder),
         )
     }
 
@@ -423,17 +334,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         _x: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }))
+        self.variable(position)
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        let res = Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
-            row: CurrOrNext::Curr,
-        }));
+        let res = self.variable(position);
         self.constraints.push(x.clone() - res.clone());
         res
     }
@@ -452,49 +357,26 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     ) -> Self::Variable {
         // The (at most) 4-byte chunk that has been read from the preimage
         let bytes: [_; MIPS_CHUNK_BYTES_LENGTH] = array::from_fn(|i| {
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i),
-                row: CurrOrNext::Curr,
-            }))
+            self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_BYTES_OFFSET + i))
         });
         // Whether the preimage chunk read has at least n bytes (1, 2, 3, or 4)
         // FIXME: can it be zero?
         let has_n_bytes: [_; MIPS_CHUNK_BYTES_LENGTH] = array::from_fn(|i| {
-            Expr::Atom(ExprInner::Cell(Variable {
-                col: Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i),
-                row: CurrOrNext::Curr,
-            }))
+            self.variable(Self::Position::ScratchState(MIPS_HAS_N_BYTES_OFFSET + i))
         });
         // Whether this step has read any bytes of the preimage or not (bytelength otherwise)
-        let reading_preimage = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::ScratchState(MIPS_READING_PREIMAGE_OFFSET),
-            row: CurrOrNext::Curr,
-        }));
+        let reading_preimage =
+            self.variable(Self::Position::ScratchState(MIPS_READING_PREIMAGE_OFFSET));
         // How many hashes have been performed so far in the circuit
-        let hash_counter = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::ScratchState(MIPS_HASH_COUNTER_OFFSET),
-            row: CurrOrNext::Curr,
-        }));
+        let hash_counter = self.variable(Self::Position::ScratchState(MIPS_HASH_COUNTER_OFFSET));
         // How many bytes remain to be read from the preimage
-        let preimage_left = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET),
-            row: CurrOrNext::Curr,
-        }));
+        let preimage_left = self.variable(Self::Position::ScratchState(MIPS_PREIMAGE_LEFT_OFFSET));
         // How many bytes have been read from the preimage so far
-        let byte_counter = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET),
-            row: CurrOrNext::Curr,
-        }));
+        let byte_counter = self.variable(Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET));
         // How many bytes have been read from the preimage in this row
-        let row_bytes = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::ScratchState(REGISTER_PREIMAGE_OFFSET),
-            row: CurrOrNext::Curr,
-        }));
+        let row_bytes = self.variable(Self::Position::ScratchState(REGISTER_PREIMAGE_OFFSET));
         // The chunk of at most 4 bytes that has been read from the preimage
-        let this_chunk = Expr::Atom(ExprInner::Cell(Variable {
-            col: pos,
-            row: CurrOrNext::Curr,
-        }));
+        let this_chunk = self.variable(pos);
 
         // EXTRA CONSTRAINTS
         {
@@ -613,19 +495,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // COMMUNICATION CHANNEL: Read hash output
         let preimage_key = (0..8).fold(Expr::from(0), |acc, i| {
             acc * Expr::from(2u64.pow(32))
-                + Expr::Atom(ExprInner::Cell(Variable {
-                    col: Self::Position::ScratchState(REGISTER_PREIMAGE_KEY_START + i),
-                    row: CurrOrNext::Curr,
-                }))
+                + self.variable(Self::Position::ScratchState(
+                    REGISTER_PREIMAGE_KEY_START + i,
+                ))
         });
 
         // If no more bytes left to be read, and syscall row, then the end of the preimage is true
         // Otherwise, there was no a syscall in this row or there is still more to read
         // FIXME: can the condition be a degree-3 variable?
-        let is_syscall = Expr::Atom(ExprInner::Cell(Variable {
-            col: Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET),
-            row: CurrOrNext::Curr,
-        }));
+        let is_syscall = self.variable(Self::Position::ScratchState(MIPS_BYTES_READ_OFFSET));
+
         let end_of_preimage = is_syscall * reading_preimage * preimage_left;
         self.add_lookup(Lookup::read_if(
             end_of_preimage,
