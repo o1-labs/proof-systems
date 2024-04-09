@@ -136,7 +136,7 @@ impl<F: PrimeField> Env<F> {
         assert!(self.lookups[&LookupTable::RangeCheck4].len() == 20);
 
         let _lookup_constraint = constraint_lookups(&self.lookups);
-        // FIXME: LookupMultiplicity must still be correctly implemented in column_env.
+        // FIXME: it seems the constraints are not correctly checked.
         // Activate lookup constraints after by decommenting the following line
         // constraints.extend(_lookup_constraint);
         constraints
