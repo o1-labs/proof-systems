@@ -156,9 +156,9 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>) {
         // Keep track of multiplicities for fixed lookups
-        if lookup.table_id.is_fixed() {
+        if if_true == Self::Variable::one() && lookup.table_id.is_fixed() {
             // Only when reading. We ignore the other values.
             if lookup.magnitude == Self::one() {
                 // Check that the lookup value is in the table

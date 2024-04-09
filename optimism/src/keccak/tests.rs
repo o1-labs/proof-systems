@@ -158,7 +158,7 @@ fn test_keccak_witness_satisfies_constraints() {
 }
 
 #[test]
-fn test_regression_number_of_constraints_and_degree() {
+fn test_regression_number_of_lookups_and_constraints_and_degree() {
     let mut rng = o1_utils::tests::make_test_rng();
 
     // Generate random bytelength and preimage for Keccak of 1, 2 or 3 blocks
@@ -168,89 +168,91 @@ fn test_regression_number_of_constraints_and_degree() {
 
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
-    // Checking lookup constraints (for now, all of them)
-    {
-        // Add the lookups (for now, all of them)
+    // Execute the interpreter to obtain constraints for each step
+    while keccak_env.constraints_env.step.is_some() {
+        // Current step to be executed
+        let step = keccak_env.constraints_env.step.unwrap();
+
+        // Push constraints for the current step
+        keccak_env.constraints_env.constraints();
+        // Push lookups for the current step
         keccak_env.constraints_env.lookups();
-        assert_eq!(keccak_env.constraints_env.lookups.len(), 2361);
-    }
 
-    // Checking relation constraints for each step selector
-    {
-        // Execute the interpreter to obtain constraints for each step
-        while keccak_env.constraints_env.step.is_some() {
-            // Current step to be executed
-            let step = keccak_env.constraints_env.step.unwrap();
-            // Push constraints for the current step
-            keccak_env.constraints_env.constraints();
-            let mut constraint_degrees: HashMap<u64, u32> = HashMap::new();
-            keccak_env
-                .constraints_env
-                .constraints
-                .iter()
-                .for_each(|constraint| {
-                    let degree = constraint.degree(1, 0);
-                    let entry = constraint_degrees.entry(degree).or_insert(0);
-                    *entry += 1;
-                });
+        // Checking relation constraints for each step selector
+        let mut constraint_degrees: HashMap<u64, u32> = HashMap::new();
+        keccak_env
+            .constraints_env
+            .constraints
+            .iter()
+            .for_each(|constraint| {
+                let degree = constraint.degree(1, 0);
+                let entry = constraint_degrees.entry(degree).or_insert(0);
+                *entry += 1;
+            });
 
-            // Check that the number of constraints is correct for that step type
-            // Check that the degrees of the constraints are correct
+        // Check that the number of constraints is correct for that step type
+        // Check that the degrees of the constraints are correct
+        // Checking lookup constraints
 
-            match step {
-                Sponge(Absorb(First)) => {
-                    assert_eq!(keccak_env.constraints_env.constraints.len(), 332);
-                    // We have 1 different degrees of constraints in Absorbs::First
-                    assert_eq!(constraint_degrees.len(), 1);
-                    // 332 degree-1 constraints
-                    assert_eq!(constraint_degrees[&1], 332);
-                }
-                Sponge(Absorb(Middle)) => {
-                    assert_eq!(keccak_env.constraints_env.constraints.len(), 232);
-                    // We have 1 different degrees of constraints in Absorbs::Middle
-                    assert_eq!(constraint_degrees.len(), 1);
-                    // 232 degree-1 constraints
-                    assert_eq!(constraint_degrees[&1], 232);
-                }
-                Sponge(Absorb(Last)) => {
-                    assert_eq!(keccak_env.constraints_env.constraints.len(), 374);
-                    // We have 2 different degrees of constraints in Squeeze
-                    assert_eq!(constraint_degrees.len(), 2);
-                    // 232 degree-2 constraints
-                    assert_eq!(constraint_degrees[&1], 233);
-                    // 136 degree-2 constraints
-                    assert_eq!(constraint_degrees[&2], 141);
-                }
-                Sponge(Absorb(Only)) => {
-                    assert_eq!(keccak_env.constraints_env.constraints.len(), 474);
-                    // We have 2 different degrees of constraints in Squeeze
-                    assert_eq!(constraint_degrees.len(), 2);
-                    // 232 degree-2 constraints
-                    assert_eq!(constraint_degrees[&1], 333);
-                    // 136 degree-2 constraints
-                    assert_eq!(constraint_degrees[&2], 141);
-                }
-                Sponge(Squeeze) => {
-                    assert_eq!(keccak_env.constraints_env.constraints.len(), 16);
-                    // We have 1 different degrees of constraints in Squeeze
-                    assert_eq!(constraint_degrees.len(), 1);
-                    // 16 degree-1 constraints
-                    assert_eq!(constraint_degrees[&1], 16);
-                }
-                Round(_) => {
-                    assert_eq!(keccak_env.constraints_env.constraints.len(), 389);
-                    // We have 2 different degrees of constraints in Round
-                    assert_eq!(constraint_degrees.len(), 2);
-                    // 384 degree-1 constraints
-                    assert_eq!(constraint_degrees[&1], 384);
-                    // 5 degree-2 constraints
-                    assert_eq!(constraint_degrees[&2], 5);
-                }
+        match step {
+            Sponge(Absorb(First)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 737);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 332);
+                // We have 1 different degrees of constraints in Absorbs::First
+                assert_eq!(constraint_degrees.len(), 1);
+                // 332 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 332);
             }
-            // Execute the step updating the witness
-            // (no need to happen before constraints if we are not checking the witness)
-            keccak_env.step(); // This updates the step for the next
+            Sponge(Absorb(Middle)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 738);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 232);
+                // We have 1 different degrees of constraints in Absorbs::Middle
+                assert_eq!(constraint_degrees.len(), 1);
+                // 232 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 232);
+            }
+            Sponge(Absorb(Last)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 739);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 374);
+                // We have 2 different degrees of constraints in Squeeze
+                assert_eq!(constraint_degrees.len(), 2);
+                // 232 degree-2 constraints
+                assert_eq!(constraint_degrees[&1], 233);
+                // 136 degree-2 constraints
+                assert_eq!(constraint_degrees[&2], 141);
+            }
+            Sponge(Absorb(Only)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 738);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 474);
+                // We have 2 different degrees of constraints in Squeeze
+                assert_eq!(constraint_degrees.len(), 2);
+                // 232 degree-2 constraints
+                assert_eq!(constraint_degrees[&1], 333);
+                // 136 degree-2 constraints
+                assert_eq!(constraint_degrees[&2], 141);
+            }
+            Sponge(Squeeze) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 602);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 16);
+                // We have 1 different degrees of constraints in Squeeze
+                assert_eq!(constraint_degrees.len(), 1);
+                // 16 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 16);
+            }
+            Round(_) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 1623);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 389);
+                // We have 2 different degrees of constraints in Round
+                assert_eq!(constraint_degrees.len(), 2);
+                // 384 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 384);
+                // 5 degree-2 constraints
+                assert_eq!(constraint_degrees[&2], 5);
+            }
         }
+        // Execute the step updating the witness
+        // (no need to happen before constraints if we are not checking the witness)
+        keccak_env.step(); // This updates the step for the next
     }
 }
 
