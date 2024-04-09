@@ -141,8 +141,6 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
 </span><span class="kw">use crate</span>::{
     keccak::{
@@ -237,10 +235,8 @@
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, if_true: <span class="self">Self</span>::Variable, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="kw">if </span>if_true == <span class="self">Self</span>::Variable::one() {
-            <span class="self">self</span>.lookups.push(lookup);
-        }
+    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="self">self</span>.lookups.push(lookup);
     }
 
     <span class="comment">/////////////////////////

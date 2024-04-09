@@ -358,9 +358,9 @@
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, if_true: <span class="self">Self</span>::Variable, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
         <span class="comment">// Keep track of multiplicities for fixed lookups
-        </span><span class="kw">if </span>if_true == <span class="self">Self</span>::Variable::one() &amp;&amp; lookup.table_id.is_fixed() {
+        </span><span class="kw">if </span>lookup.table_id.is_fixed() {
             <span class="comment">// Only when reading. We ignore the other values.
             </span><span class="kw">if </span>lookup.magnitude == <span class="self">Self</span>::one() {
                 <span class="comment">// Check that the lookup value is in the table
