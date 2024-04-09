@@ -282,15 +282,78 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
-</span><span class="kw">use </span><span class="kw">crate</span>::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
+</span><span class="kw">use </span><span class="self">self</span>::{Absorbs::<span class="kw-2">*</span>, Sponges::<span class="kw-2">*</span>, Steps::<span class="kw-2">*</span>};
+<span class="kw">use </span><span class="kw">crate</span>::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
     PIRHO_EXPAND_ROT_E_OFF, PIRHO_QUOTIENT_E_LEN, PIRHO_QUOTIENT_E_OFF, PIRHO_REMAINDER_E_LEN,
     PIRHO_REMAINDER_E_OFF, PIRHO_SHIFTS_E_LEN, PIRHO_SHIFTS_E_OFF, QUARTERS, RATE_IN_BYTES,
-    SPONGE_BYTES_LEN, SPONGE_BYTES_OFF, SPONGE_NEW_STATE_LEN, SPONGE_NEW_STATE_OFF,
+    SPONGE_BYTES_LEN, SPONGE_BYTES_OFF, SPONGE_COLS, SPONGE_NEW_STATE_LEN, SPONGE_NEW_STATE_OFF,
     SPONGE_SHIFTS_LEN, SPONGE_SHIFTS_OFF, SPONGE_ZEROS_LEN, SPONGE_ZEROS_OFF, STATE_LEN,
     THETA_DENSE_C_LEN, THETA_DENSE_C_OFF, THETA_DENSE_ROT_C_LEN, THETA_DENSE_ROT_C_OFF,
     THETA_EXPAND_ROT_C_LEN, THETA_EXPAND_ROT_C_OFF, THETA_QUOTIENT_C_LEN, THETA_QUOTIENT_C_OFF,
@@ -302,31 +365,41 @@
 };
 <span class="kw">use </span>std::ops::{Index, IndexMut};
 
-<span class="doccomment">/// The total number of witness columns used by the Keccak circuit.
-</span><span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize =
-    ZKVM_KECCAK_COLS_CURR + ZKVM_KECCAK_COLS_NEXT + MODE_FLAGS_COLS_LEN + STATUS_FLAGS_LEN;
+<span class="doccomment">/// The maximum total number of witness columns used by the Keccak circuit.
+/// Note that in round steps, the columns used to store padding information are not needed.
+</span><span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize = MODE_LEN + STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
 
-<span class="comment">// The number of columns used by the Keccak circuit to represent the status flags.
-</span><span class="kw">const </span>STATUS_FLAGS_LEN: usize = <span class="number">3</span>;
-<span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
-</span><span class="kw">const </span>MODE_FLAGS_COLS_LEN: usize = ROUND_COEFFS_OFF + ROUND_COEFFS_LEN;
-<span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>; <span class="comment">// Offset of the FlagRound column inside the mode flags
-</span><span class="kw">const </span>FLAG_ABSORB_OFF: usize = <span class="number">1</span>; <span class="comment">// Offset of the FlagAbsorb column inside the mode flags
-</span><span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = <span class="number">2</span>; <span class="comment">// Offset of the FlagSqueeze column inside the mode flags
-</span><span class="kw">const </span>FLAG_ROOT_OFF: usize = <span class="number">3</span>; <span class="comment">// Offset of the FlagRoot column inside the mode flags
-</span><span class="kw">const </span>PAD_BYTES_OFF: usize = <span class="number">4</span>; <span class="comment">// Offset of the PadBytesFlags inside the sponge coefficients
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_BYTES_LEN: usize = RATE_IN_BYTES; <span class="comment">// The maximum number of padding bytes involved
-</span><span class="kw">const </span>PAD_LEN_OFF: usize = PAD_BYTES_OFF + PAD_BYTES_LEN; <span class="comment">// Offset of the PadLength column inside the sponge coefficients
-</span><span class="kw">const </span>PAD_INV_OFF: usize = PAD_LEN_OFF + <span class="number">1</span>; <span class="comment">// Offset of the InvPadLength column inside the sponge coefficients
-</span><span class="kw">const </span>PAD_TWO_OFF: usize = PAD_INV_OFF + <span class="number">1</span>; <span class="comment">// Offset of the TwoToPad column inside the sponge coefficients
-</span><span class="kw">const </span>PAD_SUFFIX_OFF: usize = PAD_TWO_OFF + <span class="number">1</span>; <span class="comment">// Offset of the PadSuffix column inside the sponge coefficients
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_SUFFIX_LEN: usize = <span class="number">5</span>; <span class="comment">// The padding suffix of 1088 bits is stored as 5 field elements: 1x12 + 4x31 bytes
-</span><span class="kw">const </span>ROUND_COEFFS_OFF: usize = PAD_SUFFIX_OFF + PAD_SUFFIX_LEN; <span class="comment">// The round constants are located after the witness columns used by the Keccak round.
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ROUND_COEFFS_LEN: usize = QUARTERS; <span class="comment">// The round constant of each round is stored in expanded form as quarters
+<span class="kw">const </span>MODE_OFF: usize = <span class="number">0</span>; <span class="comment">// The offset of the selector columns inside the witness
+</span><span class="kw">const </span>MODE_LEN: usize = <span class="number">6</span>; <span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
+</span><span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>; <span class="comment">// Offset of the Round selector inside the mode flags
+</span><span class="kw">const </span>FLAG_FST_OFF: usize = <span class="number">1</span>; <span class="comment">// Offset of the Absorb(First) selector inside the mode flags
+</span><span class="kw">const </span>FLAG_MID_OFF: usize = <span class="number">2</span>; <span class="comment">// Offset of the Absorb(Middle) selector inside the mode flags
+</span><span class="kw">const </span>FLAG_LST_OFF: usize = <span class="number">3</span>; <span class="comment">// Offset of the Absorb(Last) selector  inside the mode flags
+</span><span class="kw">const </span>FLAG_ONE_OFF: usize = <span class="number">4</span>; <span class="comment">// Offset of the Absorb(Only) selector  inside the mode flags
+</span><span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = <span class="number">5</span>; <span class="comment">// Offset of the Squeeze selector inside the mode flags
 
-</span><span class="kw">const </span>FLAGS_OFF: usize = STATUS_FLAGS_LEN;
-<span class="kw">const </span>CURR_OFF: usize = FLAGS_OFF + MODE_FLAGS_COLS_LEN;
-<span class="kw">const </span>NEXT_OFF: usize = CURR_OFF + ZKVM_KECCAK_COLS_CURR;
+</span><span class="kw">const </span>STATUS_OFF: usize = MODE_OFF + MODE_LEN; <span class="comment">// The offset of the columns reserved for the status indices
+</span><span class="kw">const </span>STATUS_LEN: usize = <span class="number">3</span>; <span class="comment">// The number of columns used by the Keccak circuit to represent the status flags.
+
+</span><span class="kw">const </span>CURR_OFF: usize = STATUS_OFF + STATUS_LEN; <span class="comment">// The offset of the curr chunk inside the witness columns
+</span><span class="kw">const </span>CURR_LEN: usize = ZKVM_KECCAK_COLS_CURR; <span class="comment">// The length of the curr chunk inside the witness columns
+</span><span class="kw">const </span>NEXT_OFF: usize = CURR_OFF + CURR_LEN; <span class="comment">// The offset of the next chunk inside the witness columns
+</span><span class="kw">const </span>NEXT_LEN: usize = ZKVM_KECCAK_COLS_NEXT; <span class="comment">// The length of the next chunk inside the witness columns
+
+</span><span class="doccomment">/// The number of sparse round constants used per round
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>ROUND_CONST_LEN: usize = QUARTERS;
+<span class="kw">const </span>RC_OFF: usize = NEXT_OFF + NEXT_LEN; <span class="comment">// The offset of the Round coefficients inside the witness columns
+</span><span class="kw">const </span>RC_LEN: usize = ROUND_CONST_LEN + <span class="number">1</span>; <span class="comment">// The round constants plus the round number
+
+</span><span class="kw">const </span>PAD_FLAGS_OFF: usize = MODE_LEN + STATUS_LEN + SPONGE_COLS; <span class="comment">// Offset of the Pad flags inside the witness columns. Starts after sponge columns are finished.
+</span><span class="kw">const </span>PAD_LEN_OFF: usize = <span class="number">0</span>; <span class="comment">// Offset of the PadLength column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_TWO_OFF: usize = <span class="number">1</span>; <span class="comment">// Offset of the TwoToPad column inside the sponge coefficients
+</span><span class="kw">const </span>PAD_SUFFIX_OFF: usize = <span class="number">2</span>; <span class="comment">// Offset of the PadSuffix column inside the sponge coefficients
+</span><span class="doccomment">/// The padding suffix of 1088 bits is stored as 5 field elements: 1x12 + 4x31 bytes
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_SUFFIX_LEN: usize = <span class="number">5</span>;
+<span class="kw">const </span>PAD_BYTES_OFF: usize = PAD_SUFFIX_OFF + PAD_SUFFIX_LEN; <span class="comment">// Offset of the PadBytesFlags inside the sponge coefficients
+</span><span class="doccomment">/// The maximum number of padding bytes involved
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 
 <span class="doccomment">/// Column aliases used by the Keccak circuit.
 /// The number of aliases is not necessarily equal to the actual number of
@@ -335,24 +408,19 @@
 /// (Sponge or Round) that is currently being executed.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 </span><span class="kw">pub enum </span>ColumnAlias {
+    <span class="doccomment">/// Selectors used to distinguish between different modes of the Keccak step
+    </span>Selector(Steps),
+
     <span class="doccomment">/// Hash identifier to distinguish inside the syscalls communication channel
     </span>HashIndex,
     <span class="doccomment">/// Block index inside the hash to enumerate preimage bytes
     </span>BlockIndex,
     <span class="doccomment">/// Hash step identifier to distinguish inside interstep communication
     </span>StepIndex,
-    <span class="doccomment">/// Coeff Round = [0..24)
-    </span>FlagRound,
-    FlagAbsorb,             <span class="comment">// Coeff Absorb = 0 | 1
-    </span>FlagSqueeze,            <span class="comment">// Coeff Squeeze = 0 | 1
-    </span>FlagRoot,               <span class="comment">// Coeff Root = 0 | 1
-    </span>PadLength,              <span class="comment">// Coeff Length 0 | 1 ..=136
-    </span>InvPadLength,           <span class="comment">// Inverse of PadLength when PadLength != 0
-    </span>TwoToPad,               <span class="comment">// 2^PadLength
-    </span>PadBytesFlags(usize),   <span class="comment">// 136 boolean values
-    </span>PadSuffix(usize),       <span class="comment">// 5 values with padding suffix
-    </span>RoundConstants(usize),  <span class="comment">// Round constants
-    </span>Input(usize),           <span class="comment">// Curr[0..100) either ThetaStateA or SpongeOldState
+
+    Input(usize),  <span class="comment">// Curr[0..100) either ThetaStateA or SpongeOldState
+    </span>Output(usize), <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
+
     </span>ThetaShiftsC(usize),    <span class="comment">// Round Curr[100..180)
     </span>ThetaDenseC(usize),     <span class="comment">// Round Curr[180..200)
     </span>ThetaQuotientC(usize),  <span class="comment">// Round Curr[200..205)
@@ -367,45 +435,84 @@
     </span>PiRhoExpandRotE(usize), <span class="comment">// Round Curr[1065..1165)
     </span>ChiShiftsB(usize),      <span class="comment">// Round Curr[1165..1565)
     </span>ChiShiftsSum(usize),    <span class="comment">// Round Curr[1565..1965)
-    </span>SpongeNewState(usize),  <span class="comment">// Sponge Curr[100..200)
-    </span>SpongeZeros(usize),     <span class="comment">// Sponge Curr[168..200)
-    </span>SpongeBytes(usize),     <span class="comment">// Sponge Curr[200..400)
-    </span>SpongeShifts(usize),    <span class="comment">// Sponge Curr[400..800)
-    </span>Output(usize),          <span class="comment">// Next[0..100) either IotaStateG or SpongeXorState
+
+    </span>SpongeNewState(usize), <span class="comment">// Sponge Curr[100..200)
+    </span>SpongeZeros(usize),    <span class="comment">// Sponge Curr[168..200)
+    </span>SpongeBytes(usize),    <span class="comment">// Sponge Curr[200..400)
+    </span>SpongeShifts(usize),   <span class="comment">// Sponge Curr[400..800)
+
+    </span>RoundNumber, <span class="comment">// Only nonzero when Selector(Flag::Round) = 1 : Round 0 | 1 ..=23
+    </span>RoundConstants(usize), <span class="comment">// Only nonzero when Selector(Flag::Round) = 1 : Round constants
+
+    </span>PadLength,            <span class="comment">// Only nonzero when Selector(Flag::Pad) = 1 : Length 0 | 1 ..=136
+    </span>TwoToPad,             <span class="comment">// Only nonzero when Selector(Flag::Pad) = 1 : 2^PadLength
+    </span>PadSuffix(usize),     <span class="comment">// Only nonzero when Selector(Flag::Pad) = 1 : 5 field elements
+    </span>PadBytesFlags(usize), <span class="comment">// Only nonzero when Selector(Flag::Pad) = 1 : 136 boolean values
 </span>}
 
-<span class="kw">impl </span>ColumnAlias {
+<span class="doccomment">/// Variants of Keccak steps available for the interpreter.
+/// These selectors determine the specific behaviour so that Keccak steps
+/// can be split into different instances for folding
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+</span><span class="kw">pub enum </span>Steps {
+    <span class="doccomment">/// Current step is a sponge
+    </span>Sponge(Sponges),
+    <span class="doccomment">/// Current step performs a round of the permutation.
+    /// The round number stored in the Step is only used for the environment execution.
+    </span>Round(u64),
+}
+<span class="doccomment">/// Variants of Keccak sponges
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+</span><span class="kw">pub enum </span>Sponges {
+    Absorb(Absorbs),
+    Squeeze,
+}
+
+<span class="doccomment">/// Order of absorb steps in the computation depending on the number of blocks to absorb
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+</span><span class="kw">pub enum </span>Absorbs {
+    First,  <span class="comment">// Also known as the root absorb
+    </span>Middle, <span class="comment">// Any other absorb
+    </span>Last,   <span class="comment">// Also known as the padding absorb
+    </span>Only,   <span class="comment">// Only one block to absorb (preimage data is less than 136 bytes), both root and pad
+</span>}
+
+<span class="doccomment">/// The columns used by the Keccak circuit.
+/// The Keccak circuit is split into two main modes: Round and Sponge (split into Root, Absorb, Pad, RootPad, Squeeze).
+/// The columns are shared between the Sponge and Round steps
+/// (the total number of columns refers to the maximum of columns used by each mode)
+/// The hash, block, and step indices are shared between both modes.
+</span><span class="kw">impl </span>ColumnAlias {
     <span class="doccomment">/// Returns the witness column index for the given alias
+    </span><span class="comment">// TODO: move selector columns outside the main witness
     </span><span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="kw-2">*</span><span class="self">self </span>{
-            ColumnAlias::HashIndex =&gt; <span class="number">0</span>,
-            ColumnAlias::BlockIndex =&gt; <span class="number">1</span>,
-            ColumnAlias::StepIndex =&gt; <span class="number">2</span>,
+            ColumnAlias::Selector(step) =&gt; <span class="kw">match </span>step {
+                Round(<span class="kw">_</span>) =&gt; FLAG_ROUND_OFF,
+                Sponge(sponge) =&gt; <span class="kw">match </span>sponge {
+                    Absorb(absorb) =&gt; <span class="kw">match </span>absorb {
+                        First =&gt; FLAG_FST_OFF,
+                        Middle =&gt; FLAG_MID_OFF,
+                        Last =&gt; FLAG_LST_OFF,
+                        Only =&gt; FLAG_ONE_OFF,
+                    },
+                    Squeeze =&gt; FLAG_SQUEEZE_OFF,
+                },
+            },
 
-            ColumnAlias::FlagRound =&gt; FLAGS_OFF + FLAG_ROUND_OFF,
-            ColumnAlias::FlagAbsorb =&gt; FLAGS_OFF + FLAG_ABSORB_OFF,
-            ColumnAlias::FlagSqueeze =&gt; FLAGS_OFF + FLAG_SQUEEZE_OFF,
-            ColumnAlias::FlagRoot =&gt; FLAGS_OFF + FLAG_ROOT_OFF,
-            ColumnAlias::PadBytesFlags(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; PAD_BYTES_LEN);
-                FLAGS_OFF + PAD_BYTES_OFF + i
-            }
-            ColumnAlias::PadLength =&gt; FLAGS_OFF + PAD_LEN_OFF,
-            ColumnAlias::InvPadLength =&gt; FLAGS_OFF + PAD_INV_OFF,
-            ColumnAlias::TwoToPad =&gt; FLAGS_OFF + PAD_TWO_OFF,
-            ColumnAlias::PadSuffix(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; PAD_SUFFIX_LEN);
-                FLAGS_OFF + PAD_SUFFIX_OFF + i
-            }
-            ColumnAlias::RoundConstants(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; ROUND_COEFFS_LEN);
-                FLAGS_OFF + ROUND_COEFFS_OFF + i
-            }
+            ColumnAlias::HashIndex =&gt; STATUS_OFF,
+            ColumnAlias::BlockIndex =&gt; STATUS_OFF + <span class="number">1</span>,
+            ColumnAlias::StepIndex =&gt; STATUS_OFF + <span class="number">2</span>,
 
             ColumnAlias::Input(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; STATE_LEN);
                 CURR_OFF + i
             }
+            ColumnAlias::Output(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; STATE_LEN);
+                NEXT_OFF + i
+            }
+
             ColumnAlias::ThetaShiftsC(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; THETA_SHIFTS_C_LEN);
                 CURR_OFF + THETA_SHIFTS_C_OFF + i
@@ -462,6 +569,7 @@
                 <span class="macro">assert!</span>(i &lt; CHI_SHIFTS_SUM_LEN);
                 CURR_OFF + CHI_SHIFTS_SUM_OFF + i
             }
+
             ColumnAlias::SpongeNewState(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; SPONGE_NEW_STATE_LEN);
                 CURR_OFF + SPONGE_NEW_STATE_OFF + i
@@ -478,9 +586,22 @@
                 <span class="macro">assert!</span>(i &lt; SPONGE_SHIFTS_LEN);
                 CURR_OFF + SPONGE_SHIFTS_OFF + i
             }
-            ColumnAlias::Output(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; STATE_LEN);
-                NEXT_OFF + i
+
+            ColumnAlias::RoundNumber =&gt; RC_OFF,
+            ColumnAlias::RoundConstants(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; ROUND_CONST_LEN);
+                RC_OFF + <span class="number">1 </span>+ i
+            }
+
+            ColumnAlias::PadLength =&gt; PAD_FLAGS_OFF + PAD_LEN_OFF,
+            ColumnAlias::TwoToPad =&gt; PAD_FLAGS_OFF + PAD_TWO_OFF,
+            ColumnAlias::PadSuffix(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; PAD_SUFFIX_LEN);
+                PAD_FLAGS_OFF + PAD_SUFFIX_OFF + i
+            }
+            ColumnAlias::PadBytesFlags(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; PAD_BYTES_LEN);
+                PAD_FLAGS_OFF + PAD_BYTES_OFF + i
             }
         }
     }
@@ -491,53 +612,56 @@
 /// The columns are shared between the Sponge and Round steps.
 /// The hash and step indices are shared between both modes.
 /// The row is split into the following entries:
+/// - mode_flags: what kind of mode is running: round, root, absorb, pad, rootpad, squeeze. Only 1 of them can be active.
 /// - hash_index: Which hash this is inside the circuit
+/// - block_index: Which block this is inside the hash
 /// - step_index: Which step this is inside the hash
-/// - mode_flags: Round, Absorb, Squeeze, Root, PadLength, InvPadLength, TwoToPad, PadBytesFlags, PadSuffix, RoundConstants
-/// - curr: Contains 1969 witnesses used in the current step including Input
-/// - next: Contains the Output
+/// - curr: Contains 1965 witnesses used in the current step including Input
+/// - next: Contains the 100 Output witnesses
+/// - round_flags: contain 5 elements with information about the current round step
+/// - pad_flags: PadLength, TwoToPad, PadBytesFlags, PadSuffix
 ///
 ///   Keccak Witness Columns: KeccakWitness.cols
-///  ----------------------------------------------
-/// | 0 | 1 | 2 | 3..154 | 155..2119 | 2120..2219 |
-///  ----------------------------------------------
-///   0 -&gt; hash_index
-///   1 -&gt; block_index
-///   2 -&gt; step_index
-///   3..154 -&gt; mode_flags
-///          -&gt; 3: FlagRound
-///          -&gt; 4: FlagAbsorb
-///          -&gt; 5: FlagSqueeze
-///          -&gt; 6: FlagRoot
-///          -&gt; 7..142: PadBytesFlags
-///          -&gt; 143: PadLength
-///          -&gt; 144: InvPadLength
-///          -&gt; 145: TwoToPad
-///          -&gt; 146..150: PadSuffix
-///          -&gt; 151..154: RoundConstants
-///   155..2123 -&gt; curr
-///         155                                                                        2119
-///          &lt;--------------------------------if_round&lt;----------------------------------&gt;
-///          &lt;-------------if_sponge-------------&gt;
-///         155                                 954
-///          -&gt; SPONGE:                          | -&gt; ROUND:
-///         -&gt; 155..254: Input == SpongeOldState | -&gt; 155..254: Input == ThetaStateA
-///         -&gt; 255..354: SpongeNewState          | -&gt; 255..334: ThetaShiftsC
-///                    : 323..354 -&gt; SpongeZeros | -&gt; 335..354: ThetaDenseC
-///         -&gt; 355..554: SpongeBytes             | -&gt; 355..359: ThetaQuotientC
-///         -&gt; 555..954: SpongeShifts            | -&gt; 360..379: ThetaRemainderC
-///                                              | -&gt; 380..399: ThetaDenseRotC
-///                                              | -&gt; 400..419: ThetaExpandRotC
-///                                              | -&gt; 420..819: PiRhoShiftsE
-///                                              | -&gt; 820..919: PiRhoDenseE
-///                                              | -&gt; 920..1019: PiRhoQuotientE
-///                                              | -&gt; 1020..1119: PiRhoRemainderE
-///                                              | -&gt; 1120..1219: PiRhoDenseRotE
-///                                              | -&gt; 1220..1319: PiRhoExpandRotE
-///                                              | -&gt; 1320..1719: ChiShiftsB
-///                                              | -&gt; 1720..2119: ChiShiftsSum
-///   2119..2219 -&gt; next
-///        -&gt; 2124..2219: Output (if Round, then IotaStateG, if Sponge then SpongeXorState)
+///  -------------------------------------------------------
+/// | 0..=5 | 6 | 7 | 8 | 9..1973 | 1974..2073 | 2074..2078 |
+///  -------------------------------------------------------
+///   0..=5 -&gt; mode_flags
+///   6     -&gt; hash_index
+///   7     -&gt; block_index
+///   8     -&gt; step_index
+///   9..=1973 -&gt; curr
+///            9                                                                        1973
+///            &lt;--------------------------------if_round&lt;----------------------------------&gt;
+///            &lt;-------------if_sponge--------------&gt;
+///            9                                   808
+///           -&gt; SPONGE:                             | -&gt; ROUND:
+///           -&gt; 9..=108: Input == SpongeOldState    | -&gt; 9..=108: Input == ThetaStateA
+///           -&gt; 109..=208: SpongeNewState           | -&gt; 109..=188: ThetaShiftsC
+///                       : 176..=207 -&gt; SpongeZeros | -&gt; 189..=208: ThetaDenseC
+///           -&gt; 209..=408: SpongeBytes              | -&gt; 209..=213: ThetaQuotientC
+///           -&gt; 409..=808: SpongeShifts             | -&gt; 214..=233: ThetaRemainderC
+///                                                  | -&gt; 234..=253: ThetaDenseRotC
+///                                                  | -&gt; 254..=273: ThetaExpandRotC
+///                                                  | -&gt; 274..=673: PiRhoShiftsE
+///                                                  | -&gt; 674..=773: PiRhoDenseE
+///                                                  | -&gt; 774..=873: PiRhoQuotientE
+///                                                  | -&gt; 874..=973: PiRhoRemainderE
+///                                                  | -&gt; 974..=1073: PiRhoDenseRotE
+///                                                  | -&gt; 1074..=1173: PiRhoExpandRotE
+///                                                  | -&gt; 1174..=1573: ChiShiftsB
+///                                                  | -&gt; 1574..=1973: ChiShiftsSum
+///   1974..=2073 -&gt; next
+///               -&gt; 1974..=2073: Output (if Round, then IotaStateG, if Sponge then SpongeXorState)
+///
+///   2074..=2078 -&gt; round_flags
+///               -&gt; 2074: RoundNumber
+///               -&gt; 2075..=2078: RoundConstants
+///
+///   809..=951 -&gt; pad_flags
+///             -&gt; 809: PadLength
+///             -&gt; 810: TwoToPad
+///             -&gt; 811..=815: PadSuffix
+///             -&gt; 816..=951: PadBytesFlags
 ///
 </span><span class="kw">pub type </span>KeccakWitness&lt;T&gt; = Witness&lt;ZKVM_KECCAK_COLS, T&gt;;
 

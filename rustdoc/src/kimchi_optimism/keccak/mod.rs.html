@@ -112,7 +112,7 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    keccak::column::{ColumnAlias <span class="kw">as </span>KeccakColumn, PAD_SUFFIX_LEN},
+    keccak::column::{ColumnAlias <span class="kw">as </span>KeccakColumn, Steps, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 <span class="kw">use </span>ark_ff::Field;
@@ -148,22 +148,22 @@
 <span class="doccomment">/// Errors that can occur during the check of the witness
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Error {
+    Selector(Selector),
     Constraint(Constraint),
     Lookup(LookupTableIDs),
+}
+
+<span class="doccomment">/// All the names for selector misconfigurations of the Keccak circuit
+</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>Selector {
+    NotBoolean(Steps),
+    NotMutex,
 }
 
 <span class="doccomment">/// All the names for constraints involved in the Keccak circuit
 </span><span class="attr">#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Constraint {
-    BooleanityAbsorb,
-    BooleanitySqueeze,
-    BooleanityRoot,
     BooleanityPadding(usize),
-    MutexSqueezeRoot,
-    MutexSqueezePad,
-    MutexRoundPad,
-    MutexRoundRoot,
-    MutexAbsorbSqueeze,
     AbsorbZeroPad(usize),
     AbsorbRootZero(usize),
     AbsorbXor(usize),

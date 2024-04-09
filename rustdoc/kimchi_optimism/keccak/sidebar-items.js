@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Constraint","Error"],"fn":["pad_blocks"],"mod":["column","constraints","environment","folding","interpreter","witness"]};
+window.SIDEBAR_ITEMS = {"enum":["Constraint","Error","Selector"],"fn":["pad_blocks"],"mod":["column","constraints","environment","folding","interpreter","witness"]};

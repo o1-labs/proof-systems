@@ -78,12 +78,84 @@
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
 </span><span class="kw">use crate</span>::{
-    keccak::{Constraint, KeccakColumn, E},
+    keccak::{
+        column::{
+            Absorbs::<span class="kw-2">*</span>,
+            Sponges::<span class="kw-2">*</span>,
+            Steps::{<span class="self">self</span>, <span class="kw-2">*</span>},
+        },
+        Constraint, KeccakColumn, Selector, E,
+    },
     lookups::Lookup,
 };
-<span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>kimchi::{
     circuits::{
         expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -101,6 +173,8 @@
     </span><span class="kw">pub </span>constraints: Vec&lt;E&lt;Fp&gt;&gt;,
     <span class="doccomment">/// Variables that are looked up in the circuit
     </span><span class="kw">pub </span>lookups: Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;,
+    <span class="doccomment">/// Selector of the current step, corresponds to a Keccak step or None if it just ended or still hasn't started
+    </span><span class="kw">pub </span>step: <span class="prelude-ty">Option</span>&lt;Steps&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: Field&gt; Default <span class="kw">for </span>Env&lt;F&gt; {
@@ -108,6 +182,7 @@
         <span class="self">Self </span>{
             constraints: Vec::new(),
             lookups: Vec::new(),
+            step: <span class="prelude-val">None</span>,
         }
     }
 }
@@ -144,16 +219,71 @@
         }))
     }
 
-    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _tag: Constraint, x: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.constraints.push(x);
+    <span class="kw">fn </span>check(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _tag: Selector, _x: <span class="self">Self</span>::Variable) {
+        <span class="comment">// No-op in constraint side
+    </span>}
+
+    <span class="kw">fn </span>checks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// No-op in constraint side
+    </span>}
+
+    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _tag: Constraint, if_true: <span class="self">Self</span>::Variable, x: <span class="self">Self</span>::Variable) {
+        <span class="kw">if </span>if_true == <span class="self">Self</span>::Variable::one() {
+            <span class="self">self</span>.constraints.push(x);
+        }
     }
 
     <span class="comment">////////////////////////
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="self">self</span>.lookups.push(lookup);
+    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, if_true: <span class="self">Self</span>::Variable, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;) {
+        <span class="kw">if </span>if_true == <span class="self">Self</span>::Variable::one() {
+            <span class="self">self</span>.lookups.push(lookup);
+        }
+    }
+
+    <span class="comment">/////////////////////////
+    // SELECTOR OPERATIONS //
+    /////////////////////////
+
+    </span><span class="kw">fn </span>mode_absorb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">match </span><span class="self">self</span>.step {
+            <span class="prelude-val">Some</span>(Sponge(Absorb(Middle))) =&gt; <span class="self">Self</span>::Variable::one(),
+            <span class="kw">_ </span>=&gt; <span class="self">Self</span>::Variable::zero(),
+        }
+    }
+    <span class="kw">fn </span>mode_squeeze(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">match </span><span class="self">self</span>.step {
+            <span class="prelude-val">Some</span>(Sponge(Squeeze)) =&gt; <span class="self">Self</span>::Variable::one(),
+            <span class="kw">_ </span>=&gt; <span class="self">Self</span>::Variable::zero(),
+        }
+    }
+    <span class="kw">fn </span>mode_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">match </span><span class="self">self</span>.step {
+            <span class="prelude-val">Some</span>(Sponge(Absorb(First))) =&gt; <span class="self">Self</span>::Variable::one(),
+            <span class="kw">_ </span>=&gt; <span class="self">Self</span>::Variable::zero(),
+        }
+    }
+    <span class="kw">fn </span>mode_pad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">match </span><span class="self">self</span>.step {
+            <span class="prelude-val">Some</span>(Sponge(Absorb(Last))) =&gt; <span class="self">Self</span>::Variable::one(),
+            <span class="kw">_ </span>=&gt; <span class="self">Self</span>::Variable::zero(),
+        }
+    }
+    <span class="kw">fn </span>mode_rootpad(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">match </span><span class="self">self</span>.step {
+            <span class="prelude-val">Some</span>(Sponge(Absorb(Only))) =&gt; <span class="self">Self</span>::Variable::one(),
+            <span class="kw">_ </span>=&gt; <span class="self">Self</span>::Variable::zero(),
+        }
+    }
+    <span class="kw">fn </span>mode_round(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="comment">// The actual round number in the selector carries no information for witness nor constraints
+        // because in the witness, any usize is mapped to the same index inside the mode flags
+        </span><span class="kw">match </span><span class="self">self</span>.step {
+            <span class="prelude-val">Some</span>(Round(<span class="kw">_</span>)) =&gt; <span class="self">Self</span>::Variable::one(),
+            <span class="kw">_ </span>=&gt; <span class="self">Self</span>::Variable::zero(),
+        }
     }
 }
 </code></pre></div></section></main></body></html>

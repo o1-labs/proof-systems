@@ -610,7 +610,7 @@
     /// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
     /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
     </span><span class="kw">pub fn </span>padded_length(bytelength: usize) -&gt; usize {
-        (bytelength / RATE_IN_BYTES + <span class="number">1</span>) * RATE_IN_BYTES
+        <span class="self">Self</span>::num_blocks(bytelength) * RATE_IN_BYTES
     }
 
     <span class="doccomment">/// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
@@ -629,8 +629,8 @@
 
     <span class="doccomment">/// Number of blocks to be absorbed on input a given preimage bytelength
     </span><span class="kw">pub fn </span>num_blocks(bytelength: usize) -&gt; usize {
-        <span class="self">Self</span>::padded_length(bytelength) / RATE_IN_BYTES
-    }
+        bytelength / RATE_IN_BYTES + <span class="number">1
+    </span>}
 }
 
 <span class="attr">#[cfg(test)]
