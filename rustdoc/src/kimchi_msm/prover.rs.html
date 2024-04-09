@@ -463,6 +463,10 @@
 <a href="#461" id="461">461</a>
 <a href="#462" id="462">462</a>
 <a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -578,7 +582,7 @@
 
     <span class="comment">// -- Start MVLookup
     </span><span class="kw">let </span>lookup_env = <span class="kw">if </span>!inputs.mvlookups.is_empty() {
-        <span class="prelude-val">Some</span>(Env::create::&lt;OpeningProof, EFqSponge, ID&gt;(
+        <span class="prelude-val">Some</span>(Env::create::&lt;OpeningProof, EFqSponge&gt;(
             inputs.mvlookups,
             domain,
             <span class="kw-2">&amp;mut </span>fq_sponge,
@@ -606,7 +610,7 @@
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
-        id: std::marker::PhantomData,
+        fixed_tables: lookup_env.fixed_lookup_tables_comms_d1.clone(),
     });
 
     <span class="comment">// -- end computing the running sum in lookup_aggregation
@@ -663,11 +667,10 @@
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 mvlookup::prover::QuotientPolynomialEnvironment {
-                    lookup_terms_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_counters_evals_d8,
+                    lookup_terms_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_terms_evals_d8,
                     lookup_aggregation_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_evals_d8,
                     lookup_counters_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_counters_evals_d8,
-                    <span class="comment">// FIXME
-                    </span>fixed_lookup_tables: <span class="kw-2">&amp;</span>coefficient_evals_env,
+                    fixed_tables_evals_d8: <span class="kw-2">&amp;</span>lookup_env.fixed_lookup_tables_evals_d8,
                 }
             }),
             domain,
@@ -678,7 +681,7 @@
         <span class="comment">// Only for debugging purposes
         </span><span class="kw">for </span>expr <span class="kw">in </span>constraints.iter() {
             <span class="kw">let </span>fail_q_division =
-                ProverError::ConstraintNotSatisfied(<span class="macro">format!</span>(<span class="string">"Unsatisfied expression: {:?}"</span>, expr));
+                ProverError::ConstraintNotSatisfied(<span class="macro">format!</span>(<span class="string">"Unsatisfied expression: {:}"</span>, expr));
             <span class="comment">// Check this expression are witness satisfied
             </span><span class="kw">let </span>(<span class="kw">_</span>, res) = expr
                 .evaluations(<span class="kw-2">&amp;</span>column_env)
@@ -768,44 +771,40 @@
             .collect::&lt;Witness&lt;N, PointEvaluations&lt;<span class="kw">_</span>&gt;&gt;&gt;()
     };
 
-    <span class="kw">let </span>mvlookup_evals = {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup_env) = lookup_env {
-            <span class="kw">let </span>evals = |point| {
-                <span class="kw">let </span>eval = |poly: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;| poly.evaluate(point);
-                <span class="kw">let </span>m = (<span class="kw-2">&amp;</span>lookup_env.lookup_counters_poly_d1)
-                    .into_par_iter()
-                    .map(eval)
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                <span class="kw">let </span>h = (<span class="kw-2">&amp;</span>lookup_env.lookup_terms_poly_d1)
-                    .into_par_iter()
-                    .map(eval)
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                <span class="kw">let </span>sum = eval(<span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_poly_d1);
-                (m, h, sum)
-            };
-            <span class="kw">let </span>(m_zeta, h_zeta, sum_zeta) = evals(<span class="kw-2">&amp;</span>zeta);
-            <span class="kw">let </span>(m_zeta_omega, h_zeta_omega, sum_zeta_omega) = evals(<span class="kw-2">&amp;</span>zeta_omega);
-            <span class="prelude-val">Some</span>(LookupProof {
-                m: m_zeta
-                    .into_iter()
-                    .zip(m_zeta_omega)
-                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
-                    .collect(),
-                h: h_zeta
-                    .into_iter()
-                    .zip(h_zeta_omega)
-                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
-                    .collect(),
-                sum: PointEvaluations {
-                    zeta: sum_zeta,
-                    zeta_omega: sum_zeta_omega,
-                },
-                id: std::marker::PhantomData,
+    <span class="comment">// IMPROVEME: move this into the mvlookup module
+    </span><span class="kw">let </span>mvlookup_evals = lookup_env.as_ref().map(|lookup_env| LookupProof {
+        m: lookup_env
+            .lookup_counters_poly_d1
+            .iter()
+            .map(|(id, poly)| {
+                <span class="kw">let </span>zeta = poly.evaluate(<span class="kw-2">&amp;</span>zeta);
+                <span class="kw">let </span>zeta_omega = poly.evaluate(<span class="kw-2">&amp;</span>zeta_omega);
+                (<span class="kw-2">*</span>id, PointEvaluations { zeta, zeta_omega })
             })
-        } <span class="kw">else </span>{
-            <span class="prelude-val">None
-        </span>}
-    };
+            .collect(),
+        h: (<span class="kw-2">&amp;</span>lookup_env.lookup_terms_poly_d1)
+            .into_par_iter()
+            .map(|poly| PointEvaluations {
+                zeta: poly.evaluate(<span class="kw-2">&amp;</span>zeta),
+                zeta_omega: poly.evaluate(<span class="kw-2">&amp;</span>zeta_omega),
+            })
+            .collect(),
+        sum: PointEvaluations {
+            zeta: lookup_env.lookup_aggregation_poly_d1.evaluate(<span class="kw-2">&amp;</span>zeta),
+            zeta_omega: lookup_env.lookup_aggregation_poly_d1.evaluate(<span class="kw-2">&amp;</span>zeta_omega),
+        },
+        fixed_tables: {
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .iter()
+                .map(|(id, poly)| {
+                    <span class="kw">let </span>zeta = poly.evaluate(<span class="kw-2">&amp;</span>zeta);
+                    <span class="kw">let </span>zeta_omega = poly.evaluate(<span class="kw-2">&amp;</span>zeta_omega);
+                    (<span class="kw-2">*</span>id, PointEvaluations { zeta, zeta_omega })
+                })
+                .collect()
+        },
+    });
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
@@ -877,8 +876,9 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup_env) = lookup_env {
         <span class="comment">// -- first m(X)
         </span>polynomials.extend(
-            (<span class="kw-2">&amp;</span>lookup_env.lookup_counters_poly_d1)
-                .into_par_iter()
+            lookup_env
+                .lookup_counters_poly_d1
+                .values()
                 .map(|poly| (coefficients_form(poly), non_hiding(<span class="number">1</span>)))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
@@ -894,6 +894,14 @@
             coefficients_form(<span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_poly_d1),
             non_hiding(<span class="number">1</span>),
         ));
+        <span class="comment">// -- Adding fixed lookup tables
+        </span>polynomials.extend(
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .values()
+                .map(|poly| (coefficients_form(poly), non_hiding(<span class="number">1</span>)))
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+        );
     }
     polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>ft), non_hiding(<span class="number">1</span>)));
 

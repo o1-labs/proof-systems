@@ -123,17 +123,24 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the MVLookup protocol for the MSM project.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
 <span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>rand::{seq::SliceRandom, thread_rng, Rng};
-<span class="kw">use </span>std::iter;
+<span class="kw">use </span>std::{cmp::Ord, iter};
 
 <span class="doccomment">/// Lookup tables used in the MSM project
 </span><span class="comment">// TODO: Add more built-in lookup tables
-</span><span class="attr">#[derive(Copy, Clone, Debug)]
+</span><span class="attr">#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 </span><span class="kw">pub enum </span>LookupTableIDs {
     RangeCheck16,
     <span class="doccomment">/// Custom lookup table
@@ -147,6 +154,13 @@
         <span class="kw">match </span><span class="self">self </span>{
             LookupTableIDs::RangeCheck16 =&gt; <span class="number">1_u32</span>,
             LookupTableIDs::Custom(id) =&gt; id + <span class="number">1</span>,
+        }
+    }
+
+    <span class="kw">fn </span>from_u32(id: u32) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>id {
+            <span class="number">1 </span>=&gt; LookupTableIDs::RangeCheck16,
+            <span class="kw">_ </span>=&gt; LookupTableIDs::Custom(id - <span class="number">1</span>),
         }
     }
 

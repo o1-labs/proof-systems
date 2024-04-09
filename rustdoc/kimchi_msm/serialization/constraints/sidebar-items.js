@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["combine_lookups"],"struct":["Env"]};
+window.SIDEBAR_ITEMS = {"struct":["Env"]};

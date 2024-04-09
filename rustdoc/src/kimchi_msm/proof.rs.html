@@ -214,19 +214,19 @@
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
             }
-            <span class="comment">// FIXME: this requires to have a hashmap for the multiplicities as
-            // the index of the column is the table ID
-            </span><span class="self">Self</span>::Column::LookupMultiplicity(i) =&gt; {
+            <span class="self">Self</span>::Column::LookupMultiplicity(id) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.mvlookup_evals {
-                    lookup.m[i <span class="kw">as </span>usize].clone()
+                    lookup.m[<span class="kw-2">&amp;</span>ID::from_u32(id)].clone()
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
             }
-            <span class="comment">// FIXME: finish implement fixed tables
-            // Use hashmap as for the lookup multiplicity
-            </span><span class="self">Self</span>::Column::LookupFixedTable(<span class="kw">_</span>) =&gt; {
-                <span class="macro">panic!</span>(<span class="string">"Logup is not yet implemented."</span>)
+            <span class="self">Self</span>::Column::LookupFixedTable(id) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.mvlookup_evals {
+                    lookup.fixed_tables[<span class="kw-2">&amp;</span>ID::from_u32(id)].clone()
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
+                }
             }
         };
         <span class="prelude-val">Ok</span>(res)

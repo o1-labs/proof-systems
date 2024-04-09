@@ -63,6 +63,12 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre></div><pre class="rust"><code><span class="comment">// @volhovm Not sure a whole file is necessary for just one type
 // alias, but maybe more code will come.
 // Consider moving to lib.rs
@@ -125,5 +131,11 @@
         col,
         row: CurrOrNext::Next,
     }))
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_debug_can_be_called_on_expr() {
+    <span class="kw">use crate</span>::{columns::Column::<span class="kw-2">*</span>, Fp};
+    <span class="macro">println!</span>(<span class="string">"{:}"</span>, curr_cell::&lt;Fp&gt;(X(<span class="number">0</span>)) + curr_cell(X(<span class="number">1</span>)))
 }
 </code></pre></div></section></main></body></html>

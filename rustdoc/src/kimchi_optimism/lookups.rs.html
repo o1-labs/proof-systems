@@ -218,6 +218,22 @@
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
@@ -233,7 +249,7 @@
 <span class="kw">use </span>kimchi_msm::{LookupTableID, MVLookupTable};
 
 <span class="doccomment">/// All of the possible lookup table IDs used in the zkVM
-</span><span class="attr">#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+</span><span class="attr">#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 </span><span class="kw">pub enum </span>LookupTableIDs {
     <span class="comment">// PadLookup ID is 0 because this is the only fixed table whose first entry is not 0.
     // This way, it is guaranteed that the 0 value is not always in the tables after the
@@ -264,6 +280,22 @@
 <span class="kw">impl </span>LookupTableID <span class="kw">for </span>LookupTableIDs {
     <span class="kw">fn </span>to_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw-2">*</span><span class="self">self </span><span class="kw">as </span>u32
+    }
+
+    <span class="kw">fn </span>from_u32(value: u32) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>value {
+            <span class="number">0 </span>=&gt; PadLookup,
+            <span class="number">1 </span>=&gt; RoundConstantsLookup,
+            <span class="number">2 </span>=&gt; ByteLookup,
+            <span class="number">3 </span>=&gt; RangeCheck16Lookup,
+            <span class="number">4 </span>=&gt; SparseLookup,
+            <span class="number">5 </span>=&gt; ResetLookup,
+            <span class="number">6 </span>=&gt; MemoryLookup,
+            <span class="number">7 </span>=&gt; RegisterLookup,
+            <span class="number">8 </span>=&gt; SyscallLookup,
+            <span class="number">9 </span>=&gt; KeccakStepLookup,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Invalid table ID"</span>),
+        }
     }
 
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {

@@ -260,6 +260,13 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup::LookupTableID;
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
@@ -368,7 +375,7 @@
             <span class="comment">// First, we absorb the multiplicity polynomials
             </span>mvlookup_comms
                 .m
-                .iter()
+                .values()
                 .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
             <span class="comment">// To generate the challenges
@@ -380,7 +387,14 @@
                 .h
                 .iter()
                 .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
-            absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>mvlookup_comms.sum);
+
+            mvlookup_comms
+                .fixed_tables
+                .values()
+                .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
+
+            <span class="comment">// And at the end, the aggregation
+            </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>mvlookup_comms.sum);
             (<span class="prelude-val">Some</span>(joint_combiner), beta)
         } <span class="kw">else </span>{
             (<span class="prelude-val">None</span>, G::ScalarField::zero())
