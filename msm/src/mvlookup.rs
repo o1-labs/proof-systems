@@ -160,6 +160,26 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 ///       \---------------------------------------------------------/
 ///                           rhs
 /// ```
+/// It is because h(X) (column) is defined as:
+/// ```text
+/// h(X) = \sum_{i = 1}^{n} (m_i(X) / (β + f_{i}(X))
+/// ```
+/// For instance, if i = 2, we have
+/// ```text
+/// h(X) = m_1(X) / (β + f_1(X)) + m_2(X) / (β + f_{2}(X))
+///        m_1(X) * (β + f_2(X)) + m_2(X) * (β + f_{1}(X))
+///      = ----------------------------------------------
+///                  (β + f_2(X)) * (β + f_1(X))
+/// ```
+/// which is equivalent to
+/// ```text
+/// h(X) * (β + f_2(X)) * (β + f_1(X)) = m_1(X) * (β + f_2(X)) + m_2(X) * (β + f_{1}(X))
+/// ```
+/// When we have f_1(X) a looked-up value, t(X) a fixed table and m_2(X) being
+/// the multiplicities, we have
+/// ```text
+/// h(X) * (β + t(X)) * (β + f(X)) = (β + t(X)) + m(X) * (β + f(X))
+/// ```
 pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
     column: Column,
     lookups: Vec<MVLookup<E<F>, ID>>,
