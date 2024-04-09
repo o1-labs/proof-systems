@@ -3,15 +3,16 @@
 //! Specifically, an alternative is provided such that the scheme is created
 //! from a set of list of constraints, each set associated with a particular selector, as opposed to a single list of constraints.
 
-use crate::folding::{
-    error_term::{compute_error, ExtendedEnv},
-    expressions::{FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
-    instance_witness::{RelaxedInstance, RelaxedWitness},
-    FoldingScheme,
-};
 use crate::{
-    circuits::expr::Op2,
-    folding::{instance_witness::RelaxablePair, FoldingConfig, ScalarField, Sponge},
+    circuits::expr::{Op2, Operations},
+    folding::{
+        error_term::{compute_error, ExtendedEnv},
+        expressions::{
+            ExtendedFoldingColumn, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp,
+        },
+        instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
+        FoldingConfig, FoldingScheme, ScalarField, Sponge,
+    },
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use poly_commitment::{PolyComm, SRS};
@@ -33,7 +34,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     ) -> (Self, FoldingCompatibleExpr<CF>) {
         let constraints = constraints
             .into_iter()
-            .map(|(s, exps)| {
+            .flat_map(|(s, exps)| {
                 exps.into_iter().map(move |exp| {
                     let s = FoldingCompatibleExprInner::Extensions(super::ExpExtension::Selector(
                         s.clone(),
@@ -42,7 +43,6 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
                     FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
                 })
             })
-            .flatten()
             .chain(common_constraints)
             .collect();
         let (inner, exp) = FoldingScheme::new(constraints, srs, domain, structure);
@@ -100,12 +100,9 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     }
 }
 
-pub(crate) fn check_selector<'a, C: FoldingConfig>(exp: &'a FoldingExp<C>) -> Option<&'a C::S> {
+pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::S> {
     match exp {
-        crate::circuits::expr::Operations::Atom(a) => match a {
-            super::expressions::ExtendedFoldingColumn::Selector(s) => Some(s),
-            _ => None,
-        },
+        Operations::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
         _ => None,
     }
 }
