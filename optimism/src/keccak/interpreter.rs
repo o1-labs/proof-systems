@@ -273,8 +273,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Constrains 389 checks of round steps
-    /// - 384 constraints of degree 3
-    /// - 5 constraints of degree 4
+    /// - 384 constraints of degree 1
+    /// - 5 constraints of degree 2
     /// Of which:
     /// - 389 constraints are added only if is_round() holds
     fn constrain_round(&mut self) {

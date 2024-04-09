@@ -1,16 +1,26 @@
 use crate::{
     circuits::{
-        expr::{self, ColumnEvaluations, ExprError},
+        domains::EvaluationDomains,
+        expr::{CacheId, ColumnEvaluations, ConstantExpr, ConstantTerm, Expr, ExprError},
         gate::{CurrOrNext, GateType},
-        lookup::lookups::LookupPattern,
+        lookup::{index::LookupSelectors, lookups::LookupPattern},
     },
     proof::{PointEvaluations, ProofEvaluations},
 };
 use serde::{Deserialize, Serialize};
-use CurrOrNext::{Curr, Next};
+
+use ark_ff::FftField;
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+
+use crate::circuits::expr::{Challenges, ColumnEnvironment, Constants, Domain, FormattedOutput};
+
+use crate::circuits::wires::COLUMNS;
+
+use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-/// A type representing one of the polynomials involved in the PLONK IOP.
+/// A type representing one of the polynomials involved in the PLONK IOP, use in
+/// the Berkeley hardfork.
 pub enum Column {
     Witness(usize),
     Z,
@@ -25,8 +35,18 @@ pub enum Column {
     Permutation(usize),
 }
 
-impl Column {
-    pub fn latex(&self) -> String {
+impl FormattedOutput for Column {
+    fn is_alpha(&self) -> bool {
+        // FIXME. Unused at the moment
+        unimplemented!()
+    }
+
+    fn ocaml(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
+        // FIXME. Unused at the moment
+        unimplemented!()
+    }
+
+    fn latex(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Witness(i) => format!("w_{{{i}}}"),
             Column::Z => "Z".to_string(),
@@ -44,7 +64,7 @@ impl Column {
         }
     }
 
-    pub fn text(&self) -> String {
+    fn text(&self, _cache: &mut HashMap<CacheId, Self>) -> String {
         match self {
             Column::Witness(i) => format!("w[{i}]"),
             Column::Z => "Z".to_string(),
@@ -59,28 +79,6 @@ impl Column {
             }
             Column::Coefficient(i) => format!("c[{i}]"),
             Column::Permutation(i) => format!("sigma_[{i}]"),
-        }
-    }
-}
-
-impl expr::Variable<Column> {
-    pub fn ocaml(&self) -> String {
-        format!("var({:?}, {:?})", self.col, self.row)
-    }
-
-    pub fn latex(&self) -> String {
-        let col = self.col.latex();
-        match self.row {
-            Curr => col,
-            Next => format!("\\tilde{{{col}}}"),
-        }
-    }
-
-    pub fn text(&self) -> String {
-        let col = self.col.text();
-        match self.row {
-            Curr => format!("Curr({col})"),
-            Next => format!("Next({col})"),
         }
     }
 }
@@ -146,4 +144,144 @@ impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
             Index(_) => Err(ExprError::MissingIndexEvaluation(col)),
         }
     }
+}
+
+impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
+    type Column = Column;
+
+    fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
+        use Column::*;
+        let lookup = self.lookup.as_ref();
+        match col {
+            Witness(i) => Some(&self.witness[*i]),
+            Coefficient(i) => Some(&self.coefficient[*i]),
+            Z => Some(self.z),
+            LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
+            LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
+            LookupAggreg => lookup.map(|l| l.aggreg),
+            LookupTable => lookup.map(|l| l.table),
+            LookupRuntimeSelector => lookup.and_then(|l| l.runtime_selector),
+            LookupRuntimeTable => lookup.and_then(|l| l.runtime_table),
+            Index(t) => match self.index.get(t) {
+                None => None,
+                Some(e) => Some(e),
+            },
+            Permutation(_) => None,
+        }
+    }
+
+    fn get_domain(&self, d: Domain) -> D<F> {
+        match d {
+            Domain::D1 => self.domain.d1,
+            Domain::D2 => self.domain.d2,
+            Domain::D4 => self.domain.d4,
+            Domain::D8 => self.domain.d8,
+        }
+    }
+
+    fn column_domain(&self, col: &Self::Column) -> Domain {
+        match *col {
+            Self::Column::Index(GateType::Generic) => Domain::D4,
+            Self::Column::Index(GateType::CompleteAdd) => Domain::D4,
+            _ => Domain::D8,
+        }
+    }
+
+    fn get_constants(&self) -> &Constants<F> {
+        &self.constants
+    }
+
+    fn get_challenges(&self) -> &Challenges<F> {
+        &self.challenges
+    }
+
+    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
+        self.vanishes_on_zero_knowledge_and_previous_rows
+    }
+
+    fn l0_1(&self) -> F {
+        self.l0_1
+    }
+}
+
+/// The polynomials specific to the lookup argument.
+///
+/// All are evaluations over the D8 domain
+pub struct LookupEnvironment<'a, F: FftField> {
+    /// The sorted lookup table polynomials.
+    pub sorted: &'a Vec<Evaluations<F, D<F>>>,
+    /// The lookup aggregation polynomials.
+    pub aggreg: &'a Evaluations<F, D<F>>,
+    /// The lookup-type selector polynomials.
+    pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
+    /// The evaluations of the combined lookup table polynomial.
+    pub table: &'a Evaluations<F, D<F>>,
+    /// The evaluations of the optional runtime selector polynomial.
+    pub runtime_selector: Option<&'a Evaluations<F, D<F>>>,
+    /// The evaluations of the optional runtime table.
+    pub runtime_table: Option<&'a Evaluations<F, D<F>>>,
+}
+
+/// The collection of polynomials (all in evaluation form) and constants
+/// required to evaluate an expression as a polynomial.
+///
+/// All are evaluations.
+pub struct Environment<'a, F: FftField> {
+    /// The witness column polynomials
+    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
+    /// The coefficient column polynomials
+    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
+    /// The polynomial that vanishes on the zero-knowledge rows and the row before.
+    pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
+    /// The permutation aggregation polynomial.
+    pub z: &'a Evaluations<F, D<F>>,
+    /// The index selector polynomials.
+    pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
+    /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
+    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
+    pub l0_1: F,
+    /// Constant values required
+    pub constants: Constants<F>,
+    /// Challenges from the IOP.
+    pub challenges: Challenges<F>,
+    /// The domains used in the PLONK argument.
+    pub domain: EvaluationDomains<F>,
+    /// Lookup specific polynomials
+    pub lookup: Option<LookupEnvironment<'a, F>>,
+}
+
+//
+// Helpers
+//
+
+/// An alias for the intended usage of the expression type in constructing constraints.
+pub type E<F> = Expr<ConstantExpr<F>, Column>;
+
+/// Convenience function to create a constant as [Expr].
+pub fn constant<F>(x: F) -> E<F> {
+    ConstantTerm::Literal(x).into()
+}
+
+/// Helper function to quickly create an expression for a witness.
+pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Witness(i), row)
+}
+
+/// Same as [witness] but for the current row.
+pub fn witness_curr<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Curr)
+}
+
+/// Same as [witness] but for the next row.
+pub fn witness_next<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Next)
+}
+
+/// Handy function to quickly create an expression for a gate.
+pub fn index<F>(g: GateType) -> E<F> {
+    E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
+}
+
+pub fn coeff<F>(i: usize) -> E<F> {
+    E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
 }
