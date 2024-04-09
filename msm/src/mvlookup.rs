@@ -401,7 +401,9 @@ pub mod prover {
             // It will be used to compute the running sum in lookup_aggregation
             // Coin a combiner to perform vector lookup.
             // The row sums h are defined as
-            // h(ω^i) = \sum_{j = 0}^{m} (1/(β + f_{j}(ω^i))) - (1 / (β + t(ω^i)))
+            // --           n            1                    1
+            // h(ω^i) = ∑        -------------------- - --------------
+            //            j = 0    (β + f_{j}(ω^i))      (β + t(ω^i))
             let vector_lookup_combiner = fq_sponge.challenge();
 
             // Coin an evaluation point for the rational functions
