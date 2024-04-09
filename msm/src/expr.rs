@@ -64,7 +64,6 @@ pub fn next_cell<F: Field>(col: Column) -> E<F> {
 
 #[test]
 fn test_debug_can_be_called_on_expr() {
-    use crate::columns::Column::*;
-    use crate::Fp;
+    use crate::{columns::Column::*, Fp};
     println!("{:}", curr_cell::<Fp>(X(0)) + curr_cell(X(1)))
 }

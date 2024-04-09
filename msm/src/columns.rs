@@ -55,4 +55,3 @@ impl FormattedOutput for Column {
 pub trait ColumnIndexer {
     fn to_column(self) -> Column;
 }
-
