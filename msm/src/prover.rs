@@ -99,7 +99,17 @@ where
     };
 
     let witness_comms: Witness<N, PolyComm<G>> = {
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+        let comm = {
+            |poly: &DensePolynomial<G::ScalarField>| {
+                let mut comm = srs.commit_non_hiding(poly, 1);
+                // In case the column polynomial is all zeroes, we want to mask the commitment
+                comm = srs
+                    .mask_custom(comm.clone(), &comm.map(|_| G::ScalarField::one()))
+                    .unwrap()
+                    .commitment;
+                comm
+            }
+        };
         (&witness_polys)
             .into_par_iter()
             .map(comm)

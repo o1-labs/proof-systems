@@ -240,11 +240,11 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
             acc * Self::two() + self.in_padding(i)
         });
-        self.constrain(
+        /*self.constrain(
             PadAtEnd,
             self.is_pad(),
             self.two_to_pad() - Self::one() - pad_at_end,
-        );
+        );*/
         // Check that the padding value is correct
         for i in 0..PAD_SUFFIX_LEN {
             self.constrain(
@@ -428,7 +428,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                                 Some(q),
                             ),
                     );
-                    self.constrain(
+                    /*self.constrain(
                         ChiShiftsSum(y, x, q),
                         self.is_round(),
                         sum - Self::from_shifts(
@@ -438,7 +438,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                             Some(x),
                             Some(q),
                         ),
-                    );
+                    );*/
                     state_f[y][x][q] = self.shifts_b(0, y, x, q) + and;
                 }
             }

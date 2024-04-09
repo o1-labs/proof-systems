@@ -124,9 +124,29 @@ impl<F: Field> KeccakCircuit<F> {
         }
         self.witness.entry(step).and_modify(|wit| {
             for (i, value) in row.iter().enumerate() {
-                wit.cols[i].push(*value);
+                if wit.cols[i].len() < wit.cols[i].capacity() {
+                    wit.cols[i].push(*value);
+                }
             }
         });
+    }
+
+    /// Pads the rows of the witnesses until reaching the domain size
+    pub(crate) fn pad_rows(&mut self) {
+        for step in [
+            Round(0),
+            Sponge(Absorb(First)),
+            Sponge(Absorb(Middle)),
+            Sponge(Absorb(Last)),
+            Sponge(Absorb(Only)),
+            Sponge(Squeeze),
+        ] {
+            let rows_left =
+                self.witness[&step].cols[0].capacity() - self.witness[&step].cols[0].len();
+            for _ in 0..rows_left {
+                self.push_row(step, &[F::zero(); ZKVM_KECCAK_COLS]);
+            }
+        }
     }
 }
 
