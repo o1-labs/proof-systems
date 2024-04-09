@@ -113,7 +113,7 @@ where
 
     // -- Start MVLookup
     let lookup_env = if !inputs.mvlookups.is_empty() {
-        Some(Env::create::<OpeningProof, EFqSponge, ID>(
+        Some(Env::create::<OpeningProof, EFqSponge>(
             inputs.mvlookups,
             domain,
             &mut fq_sponge,
@@ -141,7 +141,7 @@ where
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
-        id: std::marker::PhantomData,
+        fixed_tables: lookup_env.fixed_lookup_tables_comms_d1.clone(),
     });
 
     // -- end computing the running sum in lookup_aggregation
@@ -198,11 +198,10 @@ where
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 mvlookup::prover::QuotientPolynomialEnvironment {
-                    lookup_terms_evals_d8: &lookup_env.lookup_counters_evals_d8,
+                    lookup_terms_evals_d8: &lookup_env.lookup_terms_evals_d8,
                     lookup_aggregation_evals_d8: &lookup_env.lookup_aggregation_evals_d8,
                     lookup_counters_evals_d8: &lookup_env.lookup_counters_evals_d8,
-                    // FIXME
-                    fixed_lookup_tables: &coefficient_evals_env,
+                    fixed_tables_evals_d8: &lookup_env.fixed_lookup_tables_evals_d8,
                 }
             }),
             domain,
@@ -213,7 +212,7 @@ where
         // Only for debugging purposes
         for expr in constraints.iter() {
             let fail_q_division =
-                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:?}", expr));
+                ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
             // Check this expression are witness satisfied
             let (_, res) = expr
                 .evaluations(&column_env)
@@ -303,44 +302,40 @@ where
             .collect::<Witness<N, PointEvaluations<_>>>()
     };
 
-    let mvlookup_evals = {
-        if let Some(ref lookup_env) = lookup_env {
-            let evals = |point| {
-                let eval = |poly: &DensePolynomial<G::ScalarField>| poly.evaluate(point);
-                let m = (&lookup_env.lookup_counters_poly_d1)
-                    .into_par_iter()
-                    .map(eval)
-                    .collect::<Vec<_>>();
-                let h = (&lookup_env.lookup_terms_poly_d1)
-                    .into_par_iter()
-                    .map(eval)
-                    .collect::<Vec<_>>();
-                let sum = eval(&lookup_env.lookup_aggregation_poly_d1);
-                (m, h, sum)
-            };
-            let (m_zeta, h_zeta, sum_zeta) = evals(&zeta);
-            let (m_zeta_omega, h_zeta_omega, sum_zeta_omega) = evals(&zeta_omega);
-            Some(LookupProof {
-                m: m_zeta
-                    .into_iter()
-                    .zip(m_zeta_omega)
-                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
-                    .collect(),
-                h: h_zeta
-                    .into_iter()
-                    .zip(h_zeta_omega)
-                    .map(|(zeta, zeta_omega)| PointEvaluations { zeta, zeta_omega })
-                    .collect(),
-                sum: PointEvaluations {
-                    zeta: sum_zeta,
-                    zeta_omega: sum_zeta_omega,
-                },
-                id: std::marker::PhantomData,
+    // IMPROVEME: move this into the mvlookup module
+    let mvlookup_evals = lookup_env.as_ref().map(|lookup_env| LookupProof {
+        m: lookup_env
+            .lookup_counters_poly_d1
+            .iter()
+            .map(|(id, poly)| {
+                let zeta = poly.evaluate(&zeta);
+                let zeta_omega = poly.evaluate(&zeta_omega);
+                (*id, PointEvaluations { zeta, zeta_omega })
             })
-        } else {
-            None
-        }
-    };
+            .collect(),
+        h: (&lookup_env.lookup_terms_poly_d1)
+            .into_par_iter()
+            .map(|poly| PointEvaluations {
+                zeta: poly.evaluate(&zeta),
+                zeta_omega: poly.evaluate(&zeta_omega),
+            })
+            .collect(),
+        sum: PointEvaluations {
+            zeta: lookup_env.lookup_aggregation_poly_d1.evaluate(&zeta),
+            zeta_omega: lookup_env.lookup_aggregation_poly_d1.evaluate(&zeta_omega),
+        },
+        fixed_tables: {
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .iter()
+                .map(|(id, poly)| {
+                    let zeta = poly.evaluate(&zeta);
+                    let zeta_omega = poly.evaluate(&zeta_omega);
+                    (*id, PointEvaluations { zeta, zeta_omega })
+                })
+                .collect()
+        },
+    });
 
     ////////////////////////////////////////////////////////////////////////////
     // Round 4: Opening proof w/o linearization polynomial
@@ -412,8 +407,9 @@ where
     if let Some(ref lookup_env) = lookup_env {
         // -- first m(X)
         polynomials.extend(
-            (&lookup_env.lookup_counters_poly_d1)
-                .into_par_iter()
+            lookup_env
+                .lookup_counters_poly_d1
+                .values()
                 .map(|poly| (coefficients_form(poly), non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
@@ -429,6 +425,14 @@ where
             coefficients_form(&lookup_env.lookup_aggregation_poly_d1),
             non_hiding(1),
         ));
+        // -- Adding fixed lookup tables
+        polynomials.extend(
+            lookup_env
+                .fixed_lookup_tables_poly_d1
+                .values()
+                .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                .collect::<Vec<_>>(),
+        );
     }
     polynomials.push((coefficients_form(&ft), non_hiding(1)));
 

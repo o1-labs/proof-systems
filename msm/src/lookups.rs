@@ -4,11 +4,11 @@ use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
 use ark_ff::FftField;
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
-use std::iter;
+use std::{cmp::Ord, iter};
 
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LookupTableIDs {
     RangeCheck16,
     /// Custom lookup table
@@ -22,6 +22,13 @@ impl LookupTableID for LookupTableIDs {
         match self {
             LookupTableIDs::RangeCheck16 => 1_u32,
             LookupTableIDs::Custom(id) => id + 1,
+        }
+    }
+
+    fn from_u32(id: u32) -> Self {
+        match id {
+            1 => LookupTableIDs::RangeCheck16,
+            _ => LookupTableIDs::Custom(id - 1),
         }
     }
 

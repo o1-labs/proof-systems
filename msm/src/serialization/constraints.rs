@@ -1,86 +1,17 @@
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::PrimeField;
 use kimchi::circuits::{
-    expr::{ChallengeTerm, ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
+    expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+use std::collections::BTreeMap;
 
-use crate::{
-    columns::{Column, ColumnIndexer},
-    expr::{curr_cell, next_cell, E},
-    serialization::column::SerializationColumn,
-    MVLookupTableID as _,
-};
+use crate::{columns::Column, expr::E};
 
 use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
-
-/// Compute the following constraint:
-/// ```text
-///                     lhs
-///    |------------------------------------------|
-///    |                           denominators   |
-///    |                         /--------------\ |
-/// column * (\prod_{i = 1}^{N} (\beta + f_{i}(X))) =
-/// \sum_{i = 1}^{N} m_{i} * \prod_{j = 1, j \neq i}^{N} (\beta + f_{j}(X))
-///    |             |--------------------------------------------------|
-///    |                             Inner part of rhs                  |
-///    |                                                                |
-///    |                                                               /
-///     \                                                             /
-///      \                                                           /
-///       \---------------------------------------------------------/
-///                           rhs
-/// ```
-pub fn combine_lookups<F: Field>(column: Column, lookups: Vec<Lookup<E<F>>>) -> E<F> {
-    let joint_combiner = {
-        let joint_combiner = ConstantExpr::from(ChallengeTerm::JointCombiner);
-        E::Atom(ExprInner::Constant(joint_combiner))
-    };
-    let beta = {
-        let beta = ConstantExpr::from(ChallengeTerm::Beta);
-        E::Atom(ExprInner::Constant(beta))
-    };
-
-    // Compute (\beta + f_{i}(X)) for each i.
-    // Note that f_i(X) = x_{0} + r x_{1} + ... r^{N} x_{N} + r^{N + 1} table_id
-    let denominators = lookups
-        .iter()
-        .map(|x| {
-            let combined_value = (x
-                .value
-                .iter()
-                .rev()
-                .fold(E::zero(), |acc, y| acc * joint_combiner.clone() + y.clone())
-                * joint_combiner.clone())
-                + x.table_id.to_constraint();
-            beta.clone() + combined_value
-        })
-        .collect::<Vec<_>>();
-    // Compute `column * (\prod_{i = 1}^{N} (\beta + f_{i}(X)))`
-    let lhs = denominators
-        .iter()
-        .fold(curr_cell(column), |acc, x| acc * x.clone());
-    let rhs = lookups
-        .into_iter()
-        .enumerate()
-        .map(|(i, x)| {
-            denominators.iter().enumerate().fold(
-                // Compute individual \sum_{j = 1, j \neq i}^{N} (\beta + f_{j}(X))
-                // This is the inner part of rhs. It multiplies with m_{i}
-                x.numerator,
-                |acc, (j, y)| {
-                    if i == j {
-                        acc
-                    } else {
-                        acc * y.clone()
-                    }
-                },
-            )
-        })
-        // Individual sums
-        .reduce(|x, y| x + y)
-        .unwrap_or(E::zero());
-    lhs - rhs
-}
+use crate::{
+    columns::ColumnIndexer, mvlookup::constraint_lookups,
+    serialization::column::SerializationColumn,
+};
 
 pub struct Env<Fp> {
     /// An indexed set of constraints.
@@ -89,8 +20,7 @@ pub struct Env<Fp> {
     /// folding for instance.
     pub constraints: Vec<(usize, Expr<ConstantExpr<Fp>, Column>)>,
     pub constrain_index: usize,
-    pub rangecheck4_lookups: Vec<Lookup<E<Fp>>>,
-    pub rangecheck15_lookups: Vec<Lookup<E<Fp>>>,
+    pub lookups: BTreeMap<LookupTable, Vec<Lookup<E<Fp>>>>,
 }
 
 impl<Fp: PrimeField> Env<Fp> {
@@ -98,8 +28,7 @@ impl<Fp: PrimeField> Env<Fp> {
         Self {
             constraints: vec![],
             constrain_index: 0,
-            rangecheck4_lookups: vec![],
-            rangecheck15_lookups: vec![],
+            lookups: BTreeMap::new(),
         }
     }
 }
@@ -150,21 +79,11 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
-        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        self.rangecheck15_lookups.push(Lookup {
-            table_id: LookupTable::RangeCheck15,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: vec![value.clone()],
-        })
+        self.add_lookup(LookupTable::RangeCheck15, value);
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
-        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        self.rangecheck4_lookups.push(Lookup {
-            table_id: LookupTable::RangeCheck4,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: vec![value.clone()],
-        })
+        self.add_lookup(LookupTable::RangeCheck4, value);
     }
 
     fn constant(value: F) -> Self::Variable {
@@ -193,70 +112,34 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 }
 
-impl<Fp: PrimeField> Env<Fp> {
-    #[allow(dead_code)]
-    // FIXME: not mut
-    fn constrain_lookups(&mut self) -> Vec<E<Fp>> {
-        assert_eq!(self.rangecheck4_lookups.len(), 20);
-        assert_eq!(self.rangecheck15_lookups.len(), 17);
+impl<F: PrimeField> Env<F> {
+    fn add_lookup(&mut self, table_id: LookupTable, value: &E<F>) {
+        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        let lookup = Lookup {
+            table_id,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: vec![value.clone()],
+        };
+        self.lookups.entry(table_id).or_default().push(lookup);
+    }
 
-        {
-            let rc4_t_lookup = Lookup {
-                table_id: LookupTable::RangeCheck4,
-                numerator: curr_cell(Column::LookupMultiplicity(
-                    LookupTable::RangeCheck4.to_u32(),
-                )),
-                value: vec![curr_cell(Column::LookupFixedTable(
-                    LookupTable::RangeCheck4.to_u32(),
-                ))],
-            };
-            self.rangecheck4_lookups.push(rc4_t_lookup);
-        }
+    pub fn get_constraints(&self) -> Vec<E<F>> {
+        let mut constraints: Vec<E<F>> = vec![];
 
-        {
-            let rc15_t_lookup = Lookup {
-                table_id: LookupTable::RangeCheck15,
-                numerator: curr_cell(Column::LookupMultiplicity(
-                    LookupTable::RangeCheck15.to_u32(),
-                )),
-                value: vec![curr_cell(Column::LookupFixedTable(
-                    LookupTable::RangeCheck15.to_u32(),
-                ))],
-            };
-            self.rangecheck15_lookups.push(rc15_t_lookup);
-        }
+        let relation_constraints: Vec<E<F>> = self
+            .constraints
+            .iter()
+            .map(|(_, cst)| cst.clone())
+            .collect();
+        constraints.extend(relation_constraints);
 
-        // This can be generalized for any table. We can have a hashmap or an
-        // array of lookups
-        // Computing individual "boat"
-        let mut constraints = vec![];
-        let mut idx = 0;
-        for chunk in self.rangecheck4_lookups.chunks(6) {
-            constraints.push(combine_lookups(
-                Column::LookupPartialSum(idx),
-                chunk.to_vec(),
-            ));
-            idx += 1;
-        }
+        assert!(self.lookups[&LookupTable::RangeCheck15].len() == 17);
+        assert!(self.lookups[&LookupTable::RangeCheck4].len() == 20);
 
-        for chunk in self.rangecheck15_lookups.chunks(6) {
-            constraints.push(combine_lookups(
-                Column::LookupPartialSum(idx),
-                chunk.to_vec(),
-            ));
-            idx += 1;
-        }
-
-        // Generic code over the partial sum
-        // Compute \phi(\omega X) - \phi(X) - \sum_{i = 1}^{N} h_i(X)
-        {
-            let constraint =
-                next_cell(Column::LookupAggregation) - curr_cell(Column::LookupAggregation);
-            let constraint = (0..idx).fold(constraint, |acc, i| {
-                acc - curr_cell(Column::LookupPartialSum(i))
-            });
-            constraints.push(constraint);
-        }
+        let _lookup_constraint = constraint_lookups(&self.lookups);
+        // FIXME: it seems the constraints are not correctly checked.
+        // Activate lookup constraints after by decommenting the following line
+        // constraints.extend(_lookup_constraint);
         constraints
     }
 }
