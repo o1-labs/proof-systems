@@ -20,7 +20,7 @@ pub enum LookupTableIDs {
     // randomization with the joint combiner is applied.
     /// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     PadLookup = 0,
-    /// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
+    /// 24-row table with all possible values for round and their round constant in expanded form (in big endian) [0..=23]
     RoundConstantsLookup = 1,
     /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
     ByteLookup = 2,

@@ -2,10 +2,10 @@
 
 use crate::{
     keccak::{
-        column::{PAD_BYTES_LEN, ROUND_COEFFS_LEN},
+        column::{PAD_BYTES_LEN, ROUND_CONST_LEN},
         grid_index,
         Constraint::{self, *},
-        KeccakColumn,
+        KeccakColumn, Selector,
     },
     lookups::{Lookup, LookupTableIDs::*},
 };
@@ -114,151 +114,127 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// Returns the variable corresponding to a given column alias.
     fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
-    /// Adds one KeccakConstraint to the environment.
-    fn constrain(&mut self, tag: Constraint, x: Self::Variable);
+    /// Check one condition on the selectors
+    fn check(&mut self, tag: Selector, x: Self::Variable);
 
-    /// Adds all 887 constraints/checks to the environment:
-    /// - 489 constraints of degree 2
-    /// - 387 constraints of degree 3
-    /// - 11 constraints of degree 4
+    /// Checks that the selectors are set correctly
+    fn checks(&mut self);
+
+    /// Adds one KeccakConstraint to the environment if the selector holds
+    fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable);
+
+    /// Creates all 879 constraints/checks to the environment:
+    /// - 733 constraints of degree 1
+    /// - 146 constraints of degree 2
+    /// Where:
+    /// - if Steps::Round(_)                -> only 389 constraints added
+    /// - if Steps::Sponge::Absorb::First   -> only 332 constraints added (232 + 100)
+    /// - if Steps::Sponge::Absorb::Middle  -> only 232 constraints added
+    /// - if Steps::Sponge::Absorb::Last    -> only 374 constraints added (232 + 136 + 6)
+    /// - if Steps::Sponge::Absorb::Only    -> only 474 constraints added (232 + 136 + 100 + 6)
+    /// - if Steps::Sponge::Squeeze         -> only 16  constraints added
+    /// So:
+    /// - At most, 474 constraints are added per row
     fn constraints(&mut self) {
-        // CORRECTNESS OF FLAGS: 144 CONSTRAINTS
-        // - 141 constraints of degree 2
-        // - 2 constraint of degree 3
-        // - 1 constraint of degree 4
+        self.checks();
+
+        // CORRECTNESS OF FLAGS: 136 CONSTRAINTS
+        // - 136 constraints of degree 2
+        // Of which:
+        // - 136 constraints are added only if is_pad() holds
         self.constrain_flags();
 
         // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS
-        // - 348 of degree 2
-        // - 1 of degree 3
-        // - 5 of degree 4
+        // - 349 of degree 1
+        // - 5 of degree 2
+        // Of which:
+        // - 232 constraints are added only if is_absorb() holds
+        // - 100 constraints are added only if is_root() holds
+        // - 6 constraints are added only if is_pad() holds
+        // - 16 constraints are added only if is_squeeze() holds
         self.constrain_sponge();
 
         // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
-        // - 384 constraints of degree 3
-        // - 5 constraints of degree 4
+        // - 384 constraints of degree 1
+        // - 5 constraints of degree 2
+        // Of which:
+        // - 389 constraints are added only if is_round() holds
         self.constrain_round();
     }
 
-    /// Constrains 144 checks of correctness of mode flags
-    /// - 141 constraints of degree 2
-    /// - 2 constraints of degree 3
-    /// - 1 constraint of degree 4
+    /// Constrains 136 checks of correctness of mode flags
+    /// - 136 constraints of degree 2
     /// Of which:
-    /// - 142 constraints are sponge-only
-    /// - 2 constraints are sponge+round related
-    // TODO: when Round and Sponge circuits are separated, the last one will be removed
-    //       (in particular, the ones involving round and sponge together)
+    /// - 136 constraints are added only if is_pad() holds
     fn constrain_flags(&mut self) {
         // Booleanity of sponge flags:
-        // - 139 constraints of degree 2
+        // - 136 constraints of degree 2
         self.constrain_booleanity();
-
-        // Mutual exclusivity of flags: 5 constraints:
-        // - 2 of degree 2
-        // - 2 of degree 3
-        // - 1 of degree 4
-        self.constrain_mutex();
     }
 
-    /// Constrains 139 checks of booleanity for some mode flags.
-    /// - 139 constraints of degree 2
-    /// These involve sponge-only related variables.
+    /// Constrains 136 checks of booleanity for some mode flags.
+    /// - 136 constraints of degree 2
+    /// Of which,
+    /// - 136 constraints are added only if is_pad() holds
     fn constrain_booleanity(&mut self) {
-        // Absorb is either true or false
-        self.constrain(BooleanityAbsorb, Self::is_boolean(self.is_absorb()));
-        // Squeeze is either true or false
-        self.constrain(BooleanitySqueeze, Self::is_boolean(self.is_squeeze()));
-        // Root is either true or false
-        self.constrain(BooleanityRoot, Self::is_boolean(self.is_root()));
         for i in 0..RATE_IN_BYTES {
             // Bytes are either involved on padding or not
-            self.constrain(BooleanityPadding(i), Self::is_boolean(self.in_padding(i)));
+            self.constrain(
+                BooleanityPadding(i),
+                self.is_pad(),
+                Self::is_boolean(self.in_padding(i)),
+            );
         }
-    }
-
-    /// Constrains 5 checks of mutual exclusivity between some mode flags.
-    /// - 2 of degree 2
-    /// - 2 of degree 3
-    /// - 1 of degree 4
-    /// Of which
-    /// - 3 involve sponge-only related variables
-    /// - 2 involves sponge+round variables
-    // TODO: when Round and Sponge circuits are separated, the last one will be removed
-    //       (in particular, the ones involving round and sponge together)
-    fn constrain_mutex(&mut self) {
-        // Degree 2: Squeeze and Root are not both true
-        self.constrain(
-            MutexSqueezeRoot,
-            Self::either_zero(self.is_squeeze(), self.is_root()),
-        );
-        // Degree 3: Squeeze and Pad are not both true
-        self.constrain(
-            MutexSqueezePad,
-            Self::either_zero(self.is_squeeze(), self.is_pad()),
-        );
-        // Degree 4: Round and Pad are not both true
-        self.constrain(
-            MutexRoundPad,
-            Self::either_zero(self.is_round(), self.is_pad()),
-        );
-        // Degree 3: Round and Root are not both true
-        self.constrain(
-            MutexRoundRoot,
-            Self::either_zero(self.is_round(), self.is_root()),
-        );
-        // Degree 2: Absorb and Squeeze cannot happen at the same time.
-        // Equivalent to is_boolean(is_sponge())
-        self.constrain(
-            MutexAbsorbSqueeze,
-            Self::either_zero(self.is_absorb(), self.is_squeeze()),
-        );
-        // Trivially, is_sponge and is_round are mutually exclusive
     }
 
     /// Constrains 354 checks of sponge steps
-    /// - 348 of degree 2
-    /// - 1 of degree 3
-    /// - 5 of degree 4
+    /// - 349 of degree 1
+    /// - 5 of degree 2
+    /// Of which:
+    /// - 232 constraints are added only if is_absorb() holds
+    /// - 100 constraints are added only if is_root() holds
+    /// - 6 constraints are added only if is_pad() holds
+    /// - 16 constraints are added only if is_squeeze() holds
     fn constrain_sponge(&mut self) {
         self.constrain_absorb();
-        self.constrain_squeeze();
         self.constrain_padding();
+        self.constrain_squeeze();
     }
 
     /// Constrains 332 checks of absorb sponges
-    /// - 332 of degree 2
+    /// - 332 of degree 1
+    /// Of which:
+    /// - 232 constraints are added only if is_absorb() holds
+    /// - 100 constraints are added only if is_root() holds
     fn constrain_absorb(&mut self) {
         for (i, zero) in self.sponge_zeros().iter().enumerate() {
             // Absorb phase pads with zeros the new state
-            self.constrain(AbsorbZeroPad(i), self.is_absorb() * zero.clone());
+            self.constrain(AbsorbZeroPad(i), self.is_absorb(), zero.clone());
         }
         for i in 0..QUARTERS * DIM * DIM {
             // In first absorb, root state is all zeros
-            self.constrain(
-                AbsorbRootZero(i),
-                self.is_root() * self.old_state(i).clone(),
-            );
+            self.constrain(AbsorbRootZero(i), self.is_root(), self.old_state(i).clone());
             // Absorbs the new block by performing XOR with the old state
             self.constrain(
                 AbsorbXor(i),
-                self.is_absorb()
-                    * (self.xor_state(i).clone()
-                        - (self.old_state(i).clone() + self.new_state(i).clone())),
+                self.is_absorb(),
+                self.xor_state(i).clone() - (self.old_state(i).clone() + self.new_state(i).clone()),
             );
             // In absorb, Check shifts correspond to the decomposition of the new state
             self.constrain(
                 AbsorbShifts(i),
-                self.is_absorb()
-                    * (self.new_state(i).clone()
-                        - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None)),
+                self.is_absorb(),
+                self.new_state(i).clone()
+                    - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None),
             );
         }
     }
 
     /// Constrains 6 checks of padding absorb sponges
-    /// - 1 of degree 3
-    /// - 5 of degree 4
+    /// - 1 of degree 1
+    /// - 5 of degree 2
+    /// Of which:
+    /// - 6 constraints are added only if is_pad() holds
     fn constrain_padding(&mut self) {
         // Check that the padding is located at the end of the message
         let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
@@ -266,58 +242,63 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         });
         self.constrain(
             PadAtEnd,
-            self.is_pad() * (self.two_to_pad() - Self::one() - pad_at_end),
+            self.is_pad(),
+            self.two_to_pad() - Self::one() - pad_at_end,
         );
         // Check that the padding value is correct
         for i in 0..PAD_SUFFIX_LEN {
             self.constrain(
                 PaddingSuffix(i),
-                self.is_pad() * (self.block_in_padding(i) - self.pad_suffix(i)),
+                self.is_pad(),
+                self.block_in_padding(i) - self.pad_suffix(i),
             );
         }
     }
 
     /// Constrains 16 checks of squeeze sponges
-    /// - 16 of degree 2
+    /// - 16 of degree 1
+    /// Of which:
+    /// - 16 constraints are added only if is_squeeze() holds
     fn constrain_squeeze(&mut self) {
         let sponge_shifts = self.vec_sponge_shifts();
         for i in 0..QUARTERS * WORDS_IN_HASH {
             // In squeeze, check shifts correspond to the 256-bit prefix digest of the old state (current)
             self.constrain(
                 SqueezeShifts(i),
-                self.is_squeeze()
-                    * (self.old_state(i).clone()
-                        - Self::from_shifts(&sponge_shifts, Some(i), None, None, None)),
+                self.is_squeeze(),
+                self.old_state(i).clone()
+                    - Self::from_shifts(&sponge_shifts, Some(i), None, None, None),
             );
         }
     }
 
     /// Constrains 389 checks of round steps
-    /// - 384 constraints of degree 3
-    /// - 5 constraints of degree 4
+    /// - 384 constraints of degree 1
+    /// - 5 constraints of degree 2
+    /// Of which:
+    /// - 389 constraints are added only if is_round() holds
     fn constrain_round(&mut self) {
         // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
-        // - 30 constraints of degree 3
-        // - 5 constraints of degree 4
+        // - 30 constraints of degree 1
+        // - 5 constraints of degree 2
         let state_e = self.constrain_theta();
 
         // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
-        // - 150 of degree 3
+        // - 150 of degree 1
         let state_b = self.constrain_pirho(state_e);
 
         // STEP chi: 4 * 5 * 5 * 2 = 200 constraints
-        // - 200 of degree 3
+        // - 200 of degree 1
         let state_f = self.constrain_chi(state_b);
 
         // STEP iota: 4 constraints
-        // - 4 of degree 3
+        // - 4 of degree 1
         self.constrain_iota(state_f);
     }
 
     /// Constrains 35 checks of the theta algorithm in round steps
-    ///  - 30 constraints of degree 3
-    ///  - 5 constraints of degree 4
-    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    ///  - 30 constraints of degree 1
+    ///  - 5 constraints of degree 2
     fn constrain_theta(&mut self) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
         let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
@@ -331,17 +312,19 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
             self.constrain(
                 ThetaWordC(x),
-                self.is_round()
-                    * (word_c * Self::two_pow(1)
-                        - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone())),
+                self.is_round(),
+                word_c * Self::two_pow(1)
+                    - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone()),
             );
             self.constrain(
                 ThetaRotatedC(x),
-                self.is_round() * (rot_c - (self.quotient_c(x) + rem_c)),
+                self.is_round(),
+                rot_c - (self.quotient_c(x) + rem_c),
             );
             self.constrain(
                 ThetaQuotientC(x),
-                self.is_round() * (Self::is_boolean(self.quotient_c(x))),
+                self.is_round(),
+                Self::is_boolean(self.quotient_c(x)),
             );
 
             for q in 0..QUARTERS {
@@ -352,15 +335,9 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                     + self.state_a(4, x, q);
                 self.constrain(
                     ThetaShiftsC(x, q),
-                    self.is_round()
-                        * (state_c[x][q].clone()
-                            - Self::from_shifts(
-                                &self.vec_shifts_c(),
-                                None,
-                                None,
-                                Some(x),
-                                Some(q),
-                            )),
+                    self.is_round(),
+                    state_c[x][q].clone()
+                        - Self::from_shifts(&self.vec_shifts_c(), None, None, Some(x), Some(q)),
                 );
 
                 state_d[x][q] =
@@ -374,8 +351,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         state_e
     }
 
-    /// Constrains 150 checks (of degree 3) of the pirho algorithm in round steps
-    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    /// Constrains 150 checks of the pirho algorithm in round steps
+    /// - 150 of degree 1
     fn constrain_pirho(
         &mut self,
         state_e: Vec<Vec<Vec<Self::Variable>>>,
@@ -392,27 +369,28 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
                 self.constrain(
                     PiRhoWordE(y, x),
-                    self.is_round()
-                        * (word_e * Self::two_pow(*off)
-                            - (quo_e.clone() * Self::two_pow(64) + rem_e.clone())),
+                    self.is_round(),
+                    word_e * Self::two_pow(*off)
+                        - (quo_e.clone() * Self::two_pow(64) + rem_e.clone()),
                 );
                 self.constrain(
                     PiRhoRotatedE(y, x),
-                    self.is_round() * (rot_e - (quo_e.clone() + rem_e)),
+                    self.is_round(),
+                    rot_e - (quo_e.clone() + rem_e),
                 );
 
                 for q in 0..QUARTERS {
                     self.constrain(
                         PiRhoShiftsE(y, x, q),
-                        self.is_round()
-                            * (state_e[y][x][q].clone()
-                                - Self::from_shifts(
-                                    &self.vec_shifts_e(),
-                                    None,
-                                    Some(y),
-                                    Some(x),
-                                    Some(q),
-                                )),
+                        self.is_round(),
+                        state_e[y][x][q].clone()
+                            - Self::from_shifts(
+                                &self.vec_shifts_e(),
+                                None,
+                                Some(y),
+                                Some(x),
+                                Some(q),
+                            ),
                     );
                     state_b[(2 * x + 3 * y) % DIM][y][q] = self.expand_rot_e(y, x, q);
                 }
@@ -421,8 +399,8 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         state_b
     }
 
-    /// Constrains 200 checks (of degree 3) of the chi algorithm in round steps
-    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    /// Constrains 200 checks of the chi algorithm in round steps
+    /// - 200 of degree 1
     fn constrain_chi(
         &mut self,
         state_b: Vec<Vec<Vec<Self::Variable>>>,
@@ -440,27 +418,26 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
                     self.constrain(
                         ChiShiftsB(y, x, q),
-                        self.is_round()
-                            * (state_b[y][x][q].clone()
-                                - Self::from_shifts(
-                                    &self.vec_shifts_b(),
-                                    None,
-                                    Some(y),
-                                    Some(x),
-                                    Some(q),
-                                )),
+                        self.is_round(),
+                        state_b[y][x][q].clone()
+                            - Self::from_shifts(
+                                &self.vec_shifts_b(),
+                                None,
+                                Some(y),
+                                Some(x),
+                                Some(q),
+                            ),
                     );
                     self.constrain(
                         ChiShiftsSum(y, x, q),
-                        self.is_round()
-                            * (sum
-                                - Self::from_shifts(
-                                    &self.vec_shifts_sum(),
-                                    None,
-                                    Some(y),
-                                    Some(x),
-                                    Some(q),
-                                )),
+                        self.is_round(),
+                        sum - Self::from_shifts(
+                            &self.vec_shifts_sum(),
+                            None,
+                            Some(y),
+                            Some(x),
+                            Some(q),
+                        ),
                     );
                     state_f[y][x][q] = self.shifts_b(0, y, x, q) + and;
                 }
@@ -469,14 +446,14 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         state_f
     }
 
-    /// Constrains 4 checks (of degree 3) of the iota algorithm in round steps
-    // TODO: when circuits are split into Round and Sponge, these constraints will have 1 less degree
+    /// Constrains 4 checks of the iota algorithm in round steps
+    /// - 4 of degree 1
     fn constrain_iota(&mut self, state_f: Vec<Vec<Vec<Self::Variable>>>) {
         for (q, c) in self.round_constants().to_vec().iter().enumerate() {
             self.constrain(
                 IotaStateG(q),
-                self.is_round()
-                    * (self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone())),
+                self.is_round(),
+                self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone()),
             );
         }
     }
@@ -713,6 +690,51 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         );
     }
 
+    ///////////////////////////
+    /// SELECTOR OPERATIONS ///
+    ///////////////////////////
+
+    /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
+    fn is_sponge(&self) -> Self::Variable {
+        Self::xor(self.is_absorb(), self.is_squeeze())
+    }
+    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+    fn is_absorb(&self) -> Self::Variable {
+        Self::or(
+            Self::or(self.mode_root(), self.mode_rootpad()),
+            Self::or(self.mode_pad(), self.mode_absorb()),
+        )
+    }
+    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+    fn is_squeeze(&self) -> Self::Variable {
+        self.mode_squeeze()
+    }
+    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+    fn is_root(&self) -> Self::Variable {
+        Self::or(self.mode_root(), self.mode_rootpad())
+    }
+    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    fn is_pad(&self) -> Self::Variable {
+        Self::or(self.mode_pad(), self.mode_rootpad())
+    }
+    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+    fn is_round(&self) -> Self::Variable {
+        self.mode_round()
+    }
+
+    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
+    fn mode_absorb(&self) -> Self::Variable;
+    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
+    fn mode_squeeze(&self) -> Self::Variable;
+    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
+    fn mode_root(&self) -> Self::Variable;
+    /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
+    fn mode_pad(&self) -> Self::Variable;
+    /// Returns a degree-1 variable that encodes whether the current step is the first and last absorb sponge (1 = yes)
+    fn mode_rootpad(&self) -> Self::Variable;
+    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
+    fn mode_round(&self) -> Self::Variable;
+
     /////////////////////////
     /// COLUMN OPERATIONS ///
     /////////////////////////
@@ -785,34 +807,9 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         }
     }
 
-    /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
-    fn is_sponge(&self) -> Self::Variable {
-        Self::xor(self.is_absorb().clone(), self.is_squeeze().clone())
-    }
-    /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
-    fn is_absorb(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagAbsorb)
-    }
-    /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
-    fn is_squeeze(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagSqueeze)
-    }
-    /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
-    fn is_root(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagRoot)
-    }
-    /// Returns a degree-2 variable that encodes whether the current step is the last absorb sponge (1 = yes)
-    fn is_pad(&self) -> Self::Variable {
-        self.pad_length() * self.variable(KeccakColumn::InvPadLength)
-    }
-
-    /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
-    fn is_round(&self) -> Self::Variable {
-        Self::not(self.is_sponge())
-    }
     /// Returns a variable that encodes the current round number [0..24)
     fn round(&self) -> Self::Variable {
-        self.variable(KeccakColumn::FlagRound)
+        self.variable(KeccakColumn::RoundNumber)
     }
 
     /// Returns a variable that encodes the bytelength of the padding if any [0..136)
@@ -883,7 +880,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     }
 
     /// Returns the 4 expanded quarters that encode the round constant, as variables
-    fn round_constants(&self) -> [Self::Variable; ROUND_COEFFS_LEN] {
+    fn round_constants(&self) -> [Self::Variable; ROUND_CONST_LEN] {
         array::from_fn(|idx| self.variable(KeccakColumn::RoundConstants(idx)))
     }
 

@@ -111,7 +111,7 @@ pub fn main() -> ExitCode {
 
         if let Some(ref mut keccak_env) = env.keccak_env {
             // Run all steps of hash
-            while keccak_env.keccak_step.is_some() {
+            while keccak_env.constraints_env.step.is_some() {
                 keccak_env.step();
             }
 

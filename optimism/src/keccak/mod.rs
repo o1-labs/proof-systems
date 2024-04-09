@@ -1,5 +1,5 @@
 use crate::{
-    keccak::column::{ColumnAlias as KeccakColumn, PAD_SUFFIX_LEN},
+    keccak::column::{ColumnAlias as KeccakColumn, Steps, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
@@ -35,22 +35,22 @@ pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
 /// Errors that can occur during the check of the witness
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
+    Selector(Selector),
     Constraint(Constraint),
     Lookup(LookupTableIDs),
+}
+
+/// All the names for selector misconfigurations of the Keccak circuit
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Selector {
+    NotBoolean(Steps),
+    NotMutex,
 }
 
 /// All the names for constraints involved in the Keccak circuit
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Constraint {
-    BooleanityAbsorb,
-    BooleanitySqueeze,
-    BooleanityRoot,
     BooleanityPadding(usize),
-    MutexSqueezeRoot,
-    MutexSqueezePad,
-    MutexRoundPad,
-    MutexRoundRoot,
-    MutexAbsorbSqueeze,
     AbsorbZeroPad(usize),
     AbsorbRootZero(usize),
     AbsorbXor(usize),
