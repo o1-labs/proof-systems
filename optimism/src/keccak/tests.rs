@@ -508,11 +508,11 @@ fn test_keccak_prover() {
 
         for step in [
             Round(0),
-            //Sponge(Absorb(First)),
-            //Sponge(Absorb(Middle)),
-            //Sponge(Absorb(Last)),
-            //Sponge(Absorb(Only)),
-            //Sponge(Squeeze),
+            Sponge(Absorb(First)),
+            Sponge(Absorb(Middle)),
+            Sponge(Absorb(Last)),
+            Sponge(Absorb(Only)),
+            Sponge(Squeeze),
         ] {
             test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
                 keccak_circuit.constraints[&step].clone(),
