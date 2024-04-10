@@ -9,7 +9,7 @@ use crate::{
         PAD_SUFFIX_LEN,
     },
     lookups::LookupTableIDs,
-    Circuit,
+    Circuit, CircuitTrait,
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
@@ -84,9 +84,8 @@ pub enum Constraint {
 pub(crate) type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
 #[allow(dead_code)]
-impl<F: Field> KeccakCircuit<F> {
-    /// Create a new Keccak circuit
-    pub fn new(domain_size: usize) -> Self {
+impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F> for KeccakCircuit<F> {
+    fn new(domain_size: usize) -> Self {
         let mut circuit = Self {
             witness: HashMap::new(),
             constraints: Default::default(),
@@ -115,8 +114,7 @@ impl<F: Field> KeccakCircuit<F> {
         circuit
     }
 
-    /// Add a witness row to the circuit
-    pub(crate) fn push_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
+    fn push_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
         // Make sure we are using the same round number to refer to round steps
         let mut step = step;
         if let Round(_) = step {
@@ -131,8 +129,7 @@ impl<F: Field> KeccakCircuit<F> {
         });
     }
 
-    /// Pads the rows of the witnesses until reaching the domain size
-    pub(crate) fn pad_rows(&mut self) {
+    fn pad_rows(&mut self) {
         for step in [
             Round(0),
             Sponge(Absorb(First)),

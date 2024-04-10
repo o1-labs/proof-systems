@@ -7,6 +7,7 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
+    CircuitTrait,
 };
 use ark_ff::{One, Zero};
 use kimchi::{

@@ -58,3 +58,14 @@ pub(crate) struct Circuit<const N: usize, SELECTOR, F> {
     /// The vector of lookups for a given selector
     pub(crate) lookups: HashMap<SELECTOR, Vec<Lookup<E<F>>>>,
 }
+
+trait CircuitTrait<const N: usize, SELECTOR, F> {
+    /// Create a new Keccak circuit
+    fn new(domain_size: usize) -> Self;
+
+    /// Add a witness row to the circuit
+    fn push_row(&mut self, step: SELECTOR, row: &[F; N]);
+
+    /// Pads the rows of the witnesses until reaching the domain size
+    fn pad_rows(&mut self);
+}
