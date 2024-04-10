@@ -1,4 +1,6 @@
-use crate::{mvlookup::LookupTableID, MVLookup};
+use crate::{mvlookup::LookupTableID, Ff1, Ff2, MVLookup, LIMB_BITSIZE, N_LIMBS};
+use ark_ff::{FpParameters, PrimeField};
+use num_bigint::BigUint;
 
 pub mod column;
 pub mod constraints;
@@ -12,6 +14,9 @@ pub const N_INTERMEDIATE_LIMBS: usize = 20;
 pub enum LookupTable {
     RangeCheck15,
     RangeCheck4,
+    RangeCheck4Abs,
+    RangeCheckFf1Highest,
+    RangeCheckFf2Highest,
 }
 
 impl LookupTableID for LookupTable {
@@ -19,6 +24,9 @@ impl LookupTableID for LookupTable {
         match self {
             Self::RangeCheck15 => 1,
             Self::RangeCheck4 => 2,
+            Self::RangeCheck4Abs => 3,
+            Self::RangeCheckFf1Highest => 4,
+            Self::RangeCheckFf2Highest => 5,
         }
     }
 
@@ -26,6 +34,9 @@ impl LookupTableID for LookupTable {
         match value {
             1 => Self::RangeCheck15,
             2 => Self::RangeCheck4,
+            3 => Self::RangeCheck4Abs,
+            4 => Self::RangeCheckFf1Highest,
+            5 => Self::RangeCheckFf2Highest,
             _ => panic!("Invalid lookup table id"),
         }
     }
@@ -39,7 +50,17 @@ impl LookupTableID for LookupTable {
         match self {
             Self::RangeCheck15 => 1 << 15,
             Self::RangeCheck4 => 1 << 4,
+            Self::RangeCheck4Abs => 1 << 5,
+            Self::RangeCheckFf1Highest => TryFrom::try_from(Self::ff_modulus::<Ff1>()).unwrap(),
+            Self::RangeCheckFf2Highest => TryFrom::try_from(Self::ff_modulus::<Ff2>()).unwrap(),
         }
+    }
+}
+
+impl LookupTable {
+    fn ff_modulus<Ff: PrimeField>() -> BigUint {
+        let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::Params::MODULUS).unwrap();
+        f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE)
     }
 }
 
@@ -65,19 +86,48 @@ mod tests {
         },
         verifier::verify,
         witness::Witness,
-        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        BaseSponge, Ff1, Ff2, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
 
-    use ark_ff::FftField;
+    use ark_ff::PrimeField;
+    use o1_utils::FieldHelpers;
 
     impl LookupTable {
-        fn entries<F: FftField>(&self, domain: EvaluationDomains<F>) -> Vec<F> {
+        fn entries_ff_modulus<F: PrimeField, Ff: PrimeField>(
+            domain: EvaluationDomains<F>,
+        ) -> Vec<F> {
+            let top_modulus_f = F::from_biguint(&Self::ff_modulus::<Ff>()).unwrap();
+            (0..domain.d1.size)
+                .map(|i| {
+                    if F::from(i) < top_modulus_f {
+                        F::from(i)
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect()
+        }
+
+        fn entries<F: PrimeField>(&self, domain: EvaluationDomains<F>) -> Vec<F> {
             assert!(domain.d1.size >= (1 << 15));
             match self {
                 Self::RangeCheck15 => (0..domain.d1.size).map(|i| F::from(i)).collect(),
                 Self::RangeCheck4 => (0..domain.d1.size)
                     .map(|i| if i < (1 << 4) { F::from(i) } else { F::zero() })
                     .collect(),
+                Self::RangeCheck4Abs => (0..domain.d1.size)
+                    .map(|i| {
+                        if i < (1 << 4) {
+                            F::from(i)
+                        } else if i < 2 * (i << 4) {
+                            F::from((1 << 4) - i)
+                        } else {
+                            F::zero()
+                        }
+                    })
+                    .collect(),
+                Self::RangeCheckFf1Highest => Self::entries_ff_modulus::<F, Ff1>(domain),
+                Self::RangeCheckFf2Highest => Self::entries_ff_modulus::<F, Ff2>(domain),
             }
         }
     }
