@@ -64,15 +64,7 @@ fn create_test_prover_index(
         CircuitGate::<Fp>::create_multi_range_check(0)
     };
 
-    new_index_for_test_with_lookups(
-        gates,
-        public_size,
-        0,
-        vec![range_check::gadget::lookup_table()],
-        None,
-        false,
-        None,
-    )
+    new_index_for_test_with_lookups(gates, public_size, 0, vec![], None, false, None)
 }
 
 #[test]

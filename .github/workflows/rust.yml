@@ -28,7 +28,7 @@ jobs:
     name: Run some basic checks and tests
     steps:
       - name: Checkout PR
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
 
       # as action-rs does not seem to be maintained anymore, building from
       # scratch the environment using rustup
@@ -62,7 +62,7 @@ jobs:
       - name: Install cargo-spec for specifications
         run: |
           eval $(opam env)
-          cargo install cargo-spec
+          cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
         run: |
