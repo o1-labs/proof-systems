@@ -83,6 +83,15 @@ pub enum Constraint {
 /// The Keccak circuit
 pub(crate) type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
+const STEPS: [Steps; 6] = [
+    Round(0),
+    Sponge(Absorb(First)),
+    Sponge(Absorb(Middle)),
+    Sponge(Absorb(Last)),
+    Sponge(Absorb(Only)),
+    Sponge(Squeeze),
+];
+
 #[allow(dead_code)]
 impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
@@ -92,14 +101,7 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
             lookups: Default::default(),
         };
 
-        for step in [
-            Round(0),
-            Sponge(Absorb(First)),
-            Sponge(Absorb(Middle)),
-            Sponge(Absorb(Last)),
-            Sponge(Absorb(Only)),
-            Sponge(Squeeze),
-        ] {
+        for step in STEPS {
             circuit.witness.insert(
                 step,
                 Witness {
@@ -130,14 +132,7 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
     }
 
     fn pad_rows(&mut self) {
-        for step in [
-            Round(0),
-            Sponge(Absorb(First)),
-            Sponge(Absorb(Middle)),
-            Sponge(Absorb(Last)),
-            Sponge(Absorb(Only)),
-            Sponge(Squeeze),
-        ] {
+        for step in STEPS {
             let rows_left =
                 self.witness[&step].cols[0].capacity() - self.witness[&step].cols[0].len();
             for _ in 0..rows_left {
