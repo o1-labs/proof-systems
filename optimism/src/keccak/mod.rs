@@ -84,8 +84,8 @@ pub enum Constraint {
 pub(crate) type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
 #[allow(dead_code)]
-impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F> for KeccakCircuit<F> {
-    fn new(domain_size: usize) -> Self {
+impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
+    fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
             witness: HashMap::new(),
             constraints: Default::default(),

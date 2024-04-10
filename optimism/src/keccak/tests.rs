@@ -490,11 +490,11 @@ fn test_keccak_prover() {
         let bytelength = rng.gen_range(2 * RATE_IN_BYTES..RATE_IN_BYTES * 3);
         let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
 
-        // Keep track of the constraints and lookups of the sub-circuits
-        let mut keccak_circuit = KeccakCircuit::<Fp>::new(domain_size);
-
         // Initialize the environment and run the interpreter
         let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+
+        // Keep track of the constraints and lookups of the sub-circuits
+        let mut keccak_circuit = KeccakCircuit::<Fp>::new(domain_size, &mut keccak_env);
 
         // We want to use domain_size rows, even if that is an incomplete Keccak execution
         while keccak_env.constraints_env.step.is_some() {
