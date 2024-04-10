@@ -17,6 +17,7 @@ pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 mod error_term;
 #[allow(dead_code)]
+#[cfg(feature = "bn254")]
 mod example;
 pub mod expressions;
 mod instance_witness;
