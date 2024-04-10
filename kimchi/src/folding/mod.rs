@@ -11,6 +11,7 @@ use std::{fmt::Debug, hash::Hash};
 
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
+#[cfg(feature = "bn254")]
 pub use example::{Alphas, BaseSponge};
 pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
