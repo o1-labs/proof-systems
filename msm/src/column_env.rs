@@ -1,7 +1,7 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-use crate::{mvlookup, witness::Witness};
+use crate::{mvlookup, mvlookup::LookupTableID, witness::Witness};
 use kimchi::circuits::{
     domains::EvaluationDomains,
     expr::{Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain},
@@ -11,7 +11,7 @@ use kimchi::circuits::{
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct ColumnEnvironment<'a, const N: usize, F: FftField> {
+pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID> {
     /// The witness column polynomials
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The coefficient column polynomials
@@ -29,10 +29,12 @@ pub struct ColumnEnvironment<'a, const N: usize, F: FftField> {
     /// Lookup specific polynomials
     // TODO: rename in additive lookup or "logup"
     // We do not use multi-variate lookups, only the additive part
-    pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F>>,
+    pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F, ID>>,
 }
 
-impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, F> {
+impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, F>
+    for ColumnEnvironment<'a, N, F, ID>
+{
     type Column = crate::columns::Column;
 
     fn get_column(
@@ -69,15 +71,19 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(i) => {
+            Self::Column::LookupMultiplicity(id) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d8[i as usize])
+                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(id)])
                 } else {
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupFixedTable(_) => {
-                panic!("Logup is not yet implemented.")
+            Self::Column::LookupFixedTable(id) => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(&lookup.fixed_tables_evals_d8[&ID::from_u32(id)])
+                } else {
+                    panic!("No lookup provided")
+                }
             }
         }
     }

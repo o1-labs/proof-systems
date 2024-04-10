@@ -106,7 +106,7 @@ where
             // First, we absorb the multiplicity polynomials
             mvlookup_comms
                 .m
-                .iter()
+                .values()
                 .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
             // To generate the challenges
@@ -118,6 +118,13 @@ where
                 .h
                 .iter()
                 .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+
+            mvlookup_comms
+                .fixed_tables
+                .values()
+                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+
+            // And at the end, the aggregation
             absorb_commitment(&mut fq_sponge, &mvlookup_comms.sum);
             (Some(joint_combiner), beta)
         } else {

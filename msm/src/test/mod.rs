@@ -95,7 +95,7 @@ pub fn test_completeness_generic<const N: usize, RNG>(
 // TODO: use interpreter/witness/constraint files to define witness/cosntraints
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
 
     use super::*;
     use crate::{

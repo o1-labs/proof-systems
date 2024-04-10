@@ -8,7 +8,7 @@ pub mod witness;
 /// The number of intermediate limbs of 4 bits required for the circuit
 pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LookupTable {
     RangeCheck15,
     RangeCheck4,
@@ -19,6 +19,14 @@ impl LookupTableID for LookupTable {
         match self {
             Self::RangeCheck15 => 1,
             Self::RangeCheck4 => 2,
+        }
+    }
+
+    fn from_u32(value: u32) -> Self {
+        match value {
+            1 => Self::RangeCheck15,
+            2 => Self::RangeCheck4,
+            _ => panic!("Invalid lookup table id"),
         }
     }
 
@@ -39,7 +47,6 @@ pub type Lookup<F> = MVLookup<F, LookupTable>;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::Rng as _;
@@ -53,60 +60,24 @@ mod tests {
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            column::SER_N_COLUMNS, constraints, interpreter as ser_interpreter,
-            interpreter::deserialize_field_element, witness, N_INTERMEDIATE_LIMBS,
+            column::SER_N_COLUMNS, constraints, interpreter::deserialize_field_element, witness,
+            N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
 
-    use ark_ff::{FftField, Field, PrimeField};
-
-    #[test]
-    /// Builds the FF addition circuit with random values. The witness
-    /// environment enforces the constraints internally, so it is
-    /// enough to just build the circuit to ensure it is satisfied.
-    fn build_multiplication_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
-
-        let mut witness_env = witness::Env::<Fp>::create();
-
-        // Does only one row because multi-row support in serialization is not generic yet
-        let chal: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
-        let prev_coeff: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
-
-        ser_interpreter::multiplication_circuit(&mut witness_env, chal, prev_coeff);
-    }
+    use ark_ff::FftField;
 
     impl LookupTable {
-        fn into_lookup_vector<F: FftField + PrimeField + Field>(
-            self,
-            domain: EvaluationDomains<F>,
-        ) -> Vec<Lookup<F>> {
+        fn entries<F: FftField>(&self, domain: EvaluationDomains<F>) -> Vec<F> {
             assert!(domain.d1.size >= (1 << 15));
             match self {
-                Self::RangeCheck15 => (0..(1 << 15))
-                    .map(|i| Lookup {
-                        table_id: LookupTable::RangeCheck15,
-                        numerator: -F::one(),
-                        value: vec![F::from(i as u64)],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
-                Self::RangeCheck4 => (0..(1 << 15))
-                    .map(|i| {
-                        if i < (1 << 4) {
-                            F::from(i as u64)
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .map(|x| Lookup {
-                        table_id: LookupTable::RangeCheck4,
-                        numerator: -F::one(),
-                        value: vec![x],
-                    })
-                    .collect::<Vec<Lookup<F>>>(),
+                Self::RangeCheck15 => (0..domain.d1.size).map(|i| F::from(i)).collect(),
+                Self::RangeCheck4 => (0..domain.d1.size)
+                    .map(|i| if i < (1 << 4) { F::from(i) } else { F::zero() })
+                    .collect(),
             }
         }
     }
@@ -141,91 +112,70 @@ mod tests {
             field_elements.push([x, y, z])
         }
 
-        let mut constraints = vec![];
-
         // Adding one for the fixed table.
         let mut rangecheck15: [Vec<Lookup<Fp>>; N_LIMBS + 1] = std::array::from_fn(|_| vec![]);
         let mut rangecheck4: [Vec<Lookup<Fp>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
 
-        for (i, limbs) in field_elements.into_iter().enumerate() {
-            let mut constraint_env = constraints::Env::<Fp>::create();
+        for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness
-            deserialize_field_element(&mut witness_env, limbs);
+            deserialize_field_element(&mut witness_env, *limbs);
             // Filling actually used rows
             for j in 0..SER_N_COLUMNS {
                 witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
-            // Constraints
-            deserialize_field_element(&mut constraint_env, limbs);
-            // FIXME: do not use clone.
-            // FIXME: this is ugly, but only to make it work for now.
-            // It does suppose the same constraint aalways have the same index.
-            // Totally wrong assumption according to the current env implementation.
-            for (idx, cst) in constraint_env.constraints.iter() {
-                if *idx >= constraints.len() {
-                    constraints.push(cst.clone())
-                }
-            }
-
-            for (j, lookup) in witness_env.rangecheck4_lookups.iter().enumerate() {
+            for (j, lookup) in witness_env
+                .lookups
+                .get(&LookupTable::RangeCheck4)
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
                 rangecheck4[j].push(lookup.clone())
             }
 
-            for (j, lookup) in witness_env.rangecheck15_lookups.iter().enumerate() {
+            for (j, lookup) in witness_env
+                .lookups
+                .get(&LookupTable::RangeCheck15)
+                .unwrap()
+                .iter()
+                .enumerate()
+            {
                 rangecheck15[j].push(lookup.clone())
             }
-
-            witness_env.add_rangecheck4_table_value(i);
 
             witness_env.reset()
         }
 
-        let rangecheck15_m = witness_env.get_rangecheck15_normalized_multipliticies(domain);
+        let constraints = {
+            let mut constraints_env = constraints::Env::<Fp>::create();
+            deserialize_field_element(&mut constraints_env, field_elements[0]);
+            constraints_env.get_constraints()
+        };
+
+        let rangecheck15_m = witness_env.get_rangecheck15_multipliticies(domain);
         let rangecheck15_t = LookupTable::RangeCheck15
-            .into_lookup_vector(domain)
+            .entries(domain)
             .into_iter()
             .enumerate()
-            .map(
-                |(
-                    i,
-                    Lookup {
-                        table_id,
-                        numerator,
-                        value,
-                    },
-                )| {
-                    Lookup {
-                        table_id,
-                        numerator: numerator * rangecheck15_m[i],
-                        value,
-                    }
-                },
-            );
+            .map(|(i, v)| Lookup {
+                table_id: LookupTable::RangeCheck15,
+                numerator: -rangecheck15_m[i],
+                value: vec![v],
+            });
         rangecheck15[N_LIMBS] = rangecheck15_t.collect();
 
-        let rangecheck4_m = witness_env.get_rangecheck4_normalized_multipliticies(domain);
+        let rangecheck4_m = witness_env.get_rangecheck4_multipliticies(domain);
         let rangecheck4_t = LookupTable::RangeCheck4
-            .into_lookup_vector(domain)
+            .entries(domain)
             .into_iter()
             .enumerate()
-            .map(
-                |(
-                    i,
-                    Lookup {
-                        table_id,
-                        numerator,
-                        value,
-                    },
-                )| {
-                    Lookup {
-                        table_id,
-                        numerator: numerator * rangecheck4_m[i],
-                        value,
-                    }
-                },
-            );
+            .map(|(i, v)| Lookup {
+                table_id: LookupTable::RangeCheck4,
+                numerator: -rangecheck4_m[i],
+                value: vec![v],
+            });
         rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
 
         let lookup_witness_rangecheck4: MVLookupWitness<Fp, LookupTable> = {
