@@ -43,7 +43,7 @@ fn test_recursion() {
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.commit_non_hiding(&b, 1, None)
+            index.srs.commit_non_hiding(&b, 1)
         };
         RecursionChallenge::new(chals, comm)
     };

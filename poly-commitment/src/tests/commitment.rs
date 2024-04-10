@@ -27,8 +27,6 @@ use std::time::{Duration, Instant};
 pub struct Commitment {
     /// the commitment itself, potentially in chunks
     chunked_commitment: PolyComm<Vesta>,
-    /// an optional degree bound
-    bound: Option<usize>,
 }
 
 /// An evaluated commitment (given a number of evaluation points)
@@ -76,7 +74,6 @@ impl AggregatedEvaluationProof {
     /// This function converts an aggregated evaluation proof into something the verify API understands
     pub fn verify_type(
         &self,
-        srs: &SRS<Vesta>,
     ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
     {
         let mut coms = vec![];
@@ -85,39 +82,15 @@ impl AggregatedEvaluationProof {
             coms.push(Evaluation {
                 commitment: eval_com.commit.chunked_commitment.clone(),
                 evaluations: eval_com.chunked_evals.clone(),
-                degree_bound: eval_com.commit.bound,
             });
         }
 
         let combined_inner_product = {
             let es: Vec<_> = coms
                 .iter()
-                .map(
-                    |Evaluation {
-                         commitment,
-                         evaluations,
-                         degree_bound,
-                     }| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*degree_bound)?;
-                            let x = commitment.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evaluations.clone(), bound)
-                    },
-                )
+                .map(|Evaluation { evaluations, .. }| evaluations.clone())
                 .collect();
-            combined_inner_product(
-                &self.eval_points,
-                &self.polymask,
-                &self.evalmask,
-                &es,
-                srs.g.len(),
-            )
+            combined_inner_product(&self.polymask, &self.evalmask, &es)
         };
 
         BatchEvaluationProof {
@@ -156,20 +129,15 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         // create 11 polynomials of random degree (of at most 500)
         // and commit to them
         let mut commitments = vec![];
-        for i in 0..11 {
+        for _ in 0..11 {
             let len: usize = rng.gen();
             let len = len % 500;
+            // TODO @volhovm maybe remove the second case.
+            // every other polynomial is upperbounded
             let poly = if len == 0 {
                 DensePolynomial::<Fp>::zero()
             } else {
                 DensePolynomial::<Fp>::rand(len, &mut rng)
-            };
-
-            // every other polynomial is upperbounded
-            let bound = if i % 2 == 0 {
-                Some(poly.coeffs.len())
-            } else {
-                None
             };
 
             // create commitments for each polynomial, and evaluate each polynomial at the 7 random points
@@ -177,21 +145,24 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
             let BlindedCommitment {
                 commitment: chunked_commitment,
                 blinders: chunked_blinding,
-            } = srs.commit(&poly, num_chunks, bound, &mut rng);
+            } = srs.commit(&poly, num_chunks, &mut rng);
             time_commit += timer.elapsed();
 
             let mut chunked_evals = vec![];
             for point in eval_points.clone() {
+                let n = poly.len();
+                let num_chunks = if n == 0 {
+                    1
+                } else {
+                    n / srs.g.len() + if n % srs.g.len() == 0 { 0 } else { 1 }
+                };
                 chunked_evals.push(
-                    poly.to_chunked_polynomial(1, srs.g.len())
+                    poly.to_chunked_polynomial(num_chunks, srs.g.len())
                         .evaluate_chunks(point),
                 );
             }
 
-            let commit = Commitment {
-                chunked_commitment,
-                bound,
-            };
+            let commit = Commitment { chunked_commitment };
 
             let eval_commit = EvaluatedCommitment {
                 commit,
@@ -209,13 +180,11 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         #[allow(clippy::type_complexity)]
         let mut polynomials: Vec<(
             DensePolynomialOrEvaluations<Fp, Radix2EvaluationDomain<Fp>>,
-            Option<usize>,
             PolyComm<_>,
         )> = vec![];
         for c in &commitments {
             polynomials.push((
                 DensePolynomialOrEvaluations::DensePolynomial(&c.poly),
-                c.eval_commit.commit.bound,
                 c.chunked_blinding.clone(),
             ));
         }
@@ -257,7 +226,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let timer = Instant::now();
 
     // batch verify all the proofs
-    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type(&srs)).collect();
+    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
     assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
 
     // TODO: move to bench
