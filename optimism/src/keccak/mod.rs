@@ -11,6 +11,7 @@ use kimchi::circuits::{
 pub mod column;
 pub mod constraints;
 pub mod environment;
+#[cfg(feature = "bn254")]
 pub mod folding;
 pub mod interpreter;
 #[cfg(test)]
