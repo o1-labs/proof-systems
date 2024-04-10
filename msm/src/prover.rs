@@ -266,7 +266,7 @@ where
             .unwrap_or_else(fail_final_q_division);
         // As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
-        // equals on H.
+        // equal on H.
         if !res.is_zero() {
             fail_final_q_division();
         }
@@ -406,11 +406,14 @@ where
     let non_hiding = |d1_size| PolyComm {
         elems: vec![G::ScalarField::zero(); d1_size],
     };
+    let hiding = |d1_size| PolyComm {
+        elems: vec![G::ScalarField::one(); d1_size],
+    };
 
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = (&witness_polys)
         .into_par_iter()
-        .map(|poly| (coefficients_form(poly), non_hiding(1)))
+        .map(|poly| (coefficients_form(poly), hiding(1)))
         .collect();
 
     // Adding MVLookup
