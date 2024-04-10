@@ -18,7 +18,7 @@ use std::{collections::BTreeMap, iter};
 // TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
 // TODO `WitnessEnv`
 /// Environment for the serializer interpreter
-pub struct Env<Fp> {
+pub struct Env<Fp: PrimeField, Ff: PrimeField> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
     pub witness: Witness<SER_N_COLUMNS, Fp>,
@@ -29,14 +29,14 @@ pub struct Env<Fp> {
     pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
 
     /// Keep track of the lookup multiplicities.
-    pub lookup_multiplicities: BTreeMap<LookupTable, Vec<Fp>>,
+    pub lookup_multiplicities: BTreeMap<LookupTable<Ff>, Vec<Fp>>,
 
     /// Keep track of the lookups for each row.
-    pub lookups: BTreeMap<LookupTable, Vec<Lookup<Fp>>>,
+    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<Fp, Ff>>>,
 }
 
 // TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
-impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
+impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     type Position = Column;
 
     // Requiring an F element as we would need to compute values up to 180 bits
@@ -67,10 +67,26 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
 
     fn range_check_abs4bit(&mut self, value: &Self::Variable) {
         assert!(*value < F::from(1u64 << 4) || *value >= F::zero() - F::from(1u64 << 4));
-        // TODO implement actual lookups
+        // Adding multiplicities
+        let value_ix: usize = if *value < F::from(1u64 << 4) {
+            TryFrom::try_from(value.to_biguint()).unwrap()
+        } else {
+            TryFrom::try_from((*value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
+        };
+        self.lookup_multiplicities
+            .get_mut(&LookupTable::RangeCheck4Abs)
+            .unwrap()[value_ix] += F::one();
+        self.lookups
+            .get_mut(&LookupTable::RangeCheck4Abs)
+            .unwrap()
+            .push(Lookup {
+                table_id: LookupTable::RangeCheck4Abs,
+                numerator: F::one(),
+                value: vec![*value],
+            })
     }
 
-    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable) {
+    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
         let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
         let top_modulus: BigUint = f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE);
         let top_modulus_f: F = F::from_biguint(&top_modulus).unwrap();
@@ -144,7 +160,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 }
 
-impl<Fp: PrimeField> Env<Fp> {
+impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     pub fn write_column(&mut self, position: Column, value: Fp) {
         match position {
             Column::X(i) => self.witness.cols[i] = value,
@@ -196,7 +212,7 @@ impl<Fp: PrimeField> Env<Fp> {
     }
 }
 
-impl<Fp: PrimeField> Env<Fp> {
+impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     pub fn create() -> Self {
         let mut lookups = BTreeMap::new();
         lookups.insert(LookupTable::RangeCheck4, Vec::new());
@@ -222,7 +238,7 @@ impl<Fp: PrimeField> Env<Fp> {
 mod tests {
     use std::str::FromStr;
 
-    use crate::{serialization::N_INTERMEDIATE_LIMBS, LIMB_BITSIZE, N_LIMBS};
+    use crate::{serialization::N_INTERMEDIATE_LIMBS, Ff1, LIMB_BITSIZE, N_LIMBS};
 
     use super::Env;
     use crate::serialization::{
@@ -262,7 +278,7 @@ mod tests {
             let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        let mut dummy_env = Env::<Fp>::create();
+        let mut dummy_env = Env::<Fp, Ff1>::create();
         deserialize_field_element(&mut dummy_env, [limb0, limb1, limb2]);
 
         // Check limb are copied into the environment

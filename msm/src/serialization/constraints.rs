@@ -13,17 +13,17 @@ use crate::{
     serialization::column::SerializationColumn,
 };
 
-pub struct Env<Fp> {
+pub struct Env<Fp: PrimeField, Ff: PrimeField> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
     pub constraints: Vec<(usize, Expr<ConstantExpr<Fp>, Column>)>,
     pub constrain_index: usize,
-    pub lookups: BTreeMap<LookupTable, Vec<Lookup<E<Fp>>>>,
+    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<Fp>, Ff>>>,
 }
 
-impl<Fp: PrimeField> Env<Fp> {
+impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     pub fn create() -> Self {
         Self {
             constraints: vec![],
@@ -33,7 +33,7 @@ impl<Fp: PrimeField> Env<Fp> {
     }
 }
 
-impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
+impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     type Position = Column;
 
     type Variable = E<F>;
@@ -70,7 +70,7 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
         // FIXME unimplemented
     }
 
-    fn range_check_ff_highest<Ff: PrimeField>(&mut self, _value: &Self::Variable) {
+    fn range_check_ff_highest(&mut self, _value: &Self::Variable) {
         // FIXME unmplemented
     }
 
@@ -112,8 +112,8 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 }
 
-impl<F: PrimeField> Env<F> {
-    fn add_lookup(&mut self, table_id: LookupTable, value: &E<F>) {
+impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+    fn add_lookup(&mut self, table_id: LookupTable<Ff>, value: &E<F>) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
         let lookup = Lookup {
             table_id,

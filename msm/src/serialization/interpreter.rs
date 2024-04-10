@@ -9,7 +9,7 @@ use crate::{
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-pub trait InterpreterEnv<Fp: PrimeField> {
+pub trait InterpreterEnv<Fp: PrimeField, Ff: PrimeField> {
     type Position;
 
     type Variable: Clone
@@ -38,7 +38,7 @@ pub trait InterpreterEnv<Fp: PrimeField> {
     fn range_check_abs4bit(&mut self, value: &Self::Variable);
 
     /// Checks x ∈ [0, f >> 15*16)
-    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable);
+    fn range_check_ff_highest(&mut self, value: &Self::Variable);
 
     /// Check that the value is in the range [0, 2^4-1]
     fn range_check4(&mut self, _value: &Self::Variable);
@@ -83,7 +83,7 @@ pub trait InterpreterEnv<Fp: PrimeField> {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
+pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: InterpreterEnv<Fp, Ff>>(
     env: &mut Env,
     limbs: [u128; 3],
 ) {
@@ -354,7 +354,13 @@ where
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
 /// chunks `a_i` of size `5` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-fn combine_small_to_large<const M: usize, const N: usize, F: PrimeField, Env: InterpreterEnv<F>>(
+fn combine_small_to_large<
+    const M: usize,
+    const N: usize,
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv<F, Ff>,
+>(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -377,7 +383,7 @@ fn combine_small_to_large<const M: usize, const N: usize, F: PrimeField, Env: In
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<F: PrimeField, Env: InterpreterEnv<F>>(
+fn combine_carry<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -389,7 +395,7 @@ fn combine_carry<F: PrimeField, Env: InterpreterEnv<F>>(
 }
 
 /// This constarins the multiplication part of the circuit.
-pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
+pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     env: &mut Env,
 ) {
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
@@ -413,7 +419,7 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.range_check_ff_highest::<Ff>(x);
+            env.range_check_ff_highest(x);
         } else {
             env.range_check15(x);
         }
@@ -437,20 +443,21 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
 
     // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
 
-    let chal_converted_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
-        chal_converted_limbs_small.clone(),
-    );
-    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+    let chal_converted_limbs_large =
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
+            chal_converted_limbs_small.clone(),
+        );
+    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
         coeff_input_limbs_small.clone(),
     );
-    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
         coeff_result_limbs_small.clone(),
     );
-    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
         quotient_limbs_small.clone(),
     );
     let carry_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry_limbs_small.clone());
+        combine_carry::<_, _, Env>(carry_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
     let add_extra_carries =
@@ -492,7 +499,7 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
 /// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
 /// returns next coefficient c_i.
 #[allow(dead_code)]
-pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
+pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     env: &mut Env,
     chal: Ff,
     coeff_input: Ff,
