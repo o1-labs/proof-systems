@@ -36,6 +36,7 @@ impl FoldingColumnTrait for MIPSColumn {
 
 impl FoldingConfig for MIPSConfig {
     type Column = MIPSColumn;
+    type S = ();
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;

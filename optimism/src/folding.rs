@@ -91,7 +91,7 @@ pub(crate) struct FoldingEnvironment<const N: usize, S> {
 }
 
 impl<const N: usize, Col, S: Clone>
-    FoldingEnv<Fp, FoldingInstance<N>, FoldingWitness<N>, Col, Challenge>
+    FoldingEnv<Fp, FoldingInstance<N>, FoldingWitness<N>, Col, Challenge, ()>
     for FoldingEnvironment<N, S>
 where
     FoldingWitness<N>: Index<Col, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
@@ -147,6 +147,10 @@ where
     fn alpha(&self, i: usize, side: Side) -> Fp {
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
+    }
+
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
+        todo!()
     }
 }
 
@@ -214,6 +218,7 @@ mod tests {
 
     impl FoldingConfig for TestConfig {
         type Column = TestColumn;
+        type S = ();
         type Challenge = Challenge;
         type Curve = Curve;
         type Srs = poly_commitment::srs::SRS<Curve>;
