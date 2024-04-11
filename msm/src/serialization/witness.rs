@@ -13,7 +13,7 @@ use crate::{
     LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::domains::EvaluationDomains;
-use std::{collections::BTreeMap, iter};
+use std::{collections::BTreeMap, iter, marker::PhantomData};
 
 // TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
 // TODO `WitnessEnv`
@@ -88,14 +88,26 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
 
     fn range_check_ff_highest(&mut self, value: &Self::Variable) {
         let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
-        let top_modulus: BigUint = f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE);
-        let top_modulus_f: F = F::from_biguint(&top_modulus).unwrap();
+        let top_modulus_f: F = F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
         assert!(
             *value < top_modulus_f,
             "The value {:?} was higher than modulus {:?}",
             (*value).to_bigint_positive(),
             top_modulus_f.to_bigint_positive()
         );
+
+        let value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
+        self.lookup_multiplicities
+            .get_mut(&LookupTable::RangeCheckFfHighest(PhantomData))
+            .unwrap()[value_ix] += F::one();
+        self.lookups
+            .get_mut(&LookupTable::RangeCheckFfHighest(PhantomData))
+            .unwrap()
+            .push(Lookup {
+                table_id: LookupTable::RangeCheckFfHighest(PhantomData),
+                numerator: F::one(),
+                value: vec![*value],
+            })
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {

@@ -67,15 +67,18 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     }
 
     fn range_check_abs15bit(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
+        // FIXME unimplemented, it's a 16 bit lookup
     }
 
-    fn range_check_ff_highest(&mut self, _value: &Self::Variable) {
-        // FIXME unmplemented
+    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
+        self.add_lookup(
+            LookupTable::RangeCheckFfHighest(core::marker::PhantomData),
+            value,
+        );
     }
 
-    fn range_check_abs4bit(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented
+    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
+        self.add_lookup(LookupTable::RangeCheck4Abs, value);
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
