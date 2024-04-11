@@ -96,6 +96,7 @@ pub const STEPS: [Steps; 6] = [
 impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
+            domain_size,
             witness: HashMap::new(),
             constraints: Default::default(),
             lookups: Default::default(),
@@ -139,6 +140,17 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
                 self.push_row(step, &[F::zero(); ZKVM_KECCAK_COLS]);
             }
         }
+    }
+
+    fn reset(&mut self, step: Steps) {
+        self.witness.insert(
+            step,
+            Witness {
+                cols: Box::new(std::array::from_fn(|_| {
+                    Vec::with_capacity(self.domain_size)
+                })),
+            },
+        );
     }
 }
 

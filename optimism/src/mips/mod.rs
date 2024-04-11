@@ -126,6 +126,7 @@ pub const INSTRUCTIONS: [Instruction;
 impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircuit<F> {
     fn new(domain_size: usize, env: &mut Env<F>) -> Self {
         let mut circuit = Self {
+            domain_size,
             witness: HashMap::new(),
             constraints: Default::default(),
             lookups: Default::default(),
@@ -165,5 +166,16 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
                 self.push_row(step, &[F::zero(); MIPS_COLUMNS]);
             }
         }
+    }
+
+    fn reset(&mut self, instr: Instruction) {
+        self.witness.insert(
+            instr,
+            Witness {
+                cols: Box::new(std::array::from_fn(|_| {
+                    Vec::with_capacity(self.domain_size)
+                })),
+            },
+        );
     }
 }

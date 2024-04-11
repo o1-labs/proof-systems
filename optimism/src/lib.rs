@@ -51,6 +51,8 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 
 pub struct Circuit<const N: usize, SELECTOR, F> {
+    /// The domain size of the circuit
+    pub domain_size: usize,
     /// The witness for a given selector
     pub witness: HashMap<SELECTOR, Witness<N, Vec<F>>>,
     /// The vector of constraints for a given selector
@@ -68,4 +70,7 @@ pub trait CircuitTrait<const N: usize, SELECTOR, F, Env> {
 
     /// Pads the rows of the witnesses until reaching the domain size
     fn pad_rows(&mut self);
+
+    /// Resets the witness after folding
+    fn reset(&mut self, step: SELECTOR);
 }

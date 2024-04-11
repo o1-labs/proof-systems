@@ -99,18 +99,6 @@ pub fn main() -> ExitCode {
     let mut mips_circuit = MIPSCircuit::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
     let mut keccak_circuit = KeccakCircuit::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
-    // Define functions to reset the witness after folding
-    let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
-        let MIPSWitness { cols } = witness_columns;
-        // Resize without deallocating
-        cols.iter_mut().for_each(Vec::clear);
-    };
-    let keccak_reset_pre_folding_witness =
-        |keccak_columns: &mut KeccakWitness<Vec<Fp256<FrParameters>>>| {
-            // Resize without deallocating
-            keccak_columns.cols.iter_mut().for_each(Vec::clear);
-        };
-
     // Initialize folded instances of the sub circuits
     let mut mips_folded_instance = HashMap::new();
     for instr in mips::INSTRUCTIONS {
@@ -155,7 +143,7 @@ pub fn main() -> ExitCode {
                         &mut keccak_folded_instance[&step],
                         &keccak_circuit.witness[&step],
                     );
-                    keccak_reset_pre_folding_witness(&mut keccak_current_pre_folding_witness);
+                    keccak_circuit.reset(step);
                 }
             }
 
@@ -185,7 +173,7 @@ pub fn main() -> ExitCode {
                 &mut mips_folded_witness,
                 &mips_current_pre_folding_witness,
             );
-            mips_reset_pre_folding_witness(&mut mips_current_pre_folding_witness);
+            mips_circuit.reset(instr);
         }
     }
     if !mips_current_pre_folding_witness
