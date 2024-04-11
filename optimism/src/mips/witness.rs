@@ -1032,7 +1032,14 @@ impl<Fp: Field> Env<Fp> {
         (opcode, instruction)
     }
 
-    pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
+    /// Execute a single step of the MIPS program.
+    /// Returns the instruction that was executed.
+    pub fn step(
+        &mut self,
+        config: &VmConfiguration,
+        metadata: &Meta,
+        start: &Start,
+    ) -> Instruction {
         self.reset_scratch_state();
         let (opcode, _instruction) = self.decode_instruction();
 
@@ -1046,7 +1053,7 @@ impl<Fp: Field> Env<Fp> {
                 "Halted as requested at step={} instruction={:?}",
                 self.instruction_counter, opcode
             );
-            return;
+            return opcode;
         }
 
         interpreter::interpret_instruction(self, opcode);
@@ -1059,6 +1066,7 @@ impl<Fp: Field> Env<Fp> {
                 self.instruction_counter, opcode
             );
         }
+        opcode
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {

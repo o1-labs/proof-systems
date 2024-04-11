@@ -78,7 +78,8 @@ pub fn main() -> ExitCode {
         srs
     };
 
-    let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut mips_wit_env =
+        mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
 
     let mut mips_folded_witness = ProofInputs::<
         MIPS_COLUMNS,
@@ -115,10 +116,10 @@ pub fn main() -> ExitCode {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
         };
 
-    while !env.halt {
-        env.step(&configuration, &meta, &start);
+    while !mips_wit_env.halt {
+        let instr = mips_wit_env.step(&configuration, &meta, &start);
 
-        if let Some(ref mut keccak_env) = env.keccak_env {
+        if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
             // Run all steps of hash
             while keccak_env.constraints_env.step.is_some() {
                 keccak_env.step();
@@ -149,16 +150,16 @@ pub fn main() -> ExitCode {
             // TODO: create READ lookup tables
 
             // When the Keccak interpreter is finished, we can reset the environment
-            env.keccak_env = None;
+            mips_wit_env.keccak_env = None;
         }
 
         // TODO: unify witness of MIPS to include the instruction and the error
         for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
-                mips_current_pre_folding_witness.cols[i].push(env.scratch_state[i]);
+                mips_current_pre_folding_witness.cols[i].push(mips_wit_env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
                 mips_current_pre_folding_witness.cols[i]
-                    .push(ark_bn254::Fr::from(env.instruction_counter));
+                    .push(ark_bn254::Fr::from(mips_wit_env.instruction_counter));
             } else {
                 // TODO: error
                 mips_current_pre_folding_witness.cols[i]
