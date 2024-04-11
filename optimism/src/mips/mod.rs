@@ -46,7 +46,7 @@ pub mod witness;
 
 #[allow(dead_code)]
 /// The Keccak circuit
-pub(crate) type MIPSCircuit<F> = Circuit<MIPS_COLUMNS, Instruction, F>;
+pub type MIPSCircuit<F> = Circuit<MIPS_COLUMNS, Instruction, F>;
 
 const INSTRUCTIONS: [Instruction;
     RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT] = [
@@ -123,7 +123,6 @@ const INSTRUCTIONS: [Instruction;
     IType(StoreWordRight),
 ];
 
-#[allow(dead_code)]
 impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircuit<F> {
     fn new(domain_size: usize, env: &mut Env<F>) -> Self {
         let mut circuit = Self {

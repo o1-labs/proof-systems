@@ -63,24 +63,30 @@ pub struct KeccakEnv<F> {
     pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES],
 }
 
-impl<F: Field> KeccakEnv<F> {
-    /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
-    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
-        let mut env = Self {
-            // Must update the flag type at each step from the witness interpretation
+impl<F: Field> Default for KeccakEnv<F> {
+    fn default() -> Self {
+        Self {
             constraints_env: ConstraintsEnv::default(),
             witness_env: WitnessEnv::default(),
-            hash_idx,
+            hash_idx: 0,
             step_idx: 0,
             block_idx: 0,
             prev_block: vec![],
             blocks_left_to_absorb: 0,
             padded: vec![],
             pad_len: 0,
-            // Add 1 to i so that 0 is not included
             two_to_pad: array::from_fn(|i| F::two_pow(1 + i as u64)),
             pad_suffixes: array::from_fn(|i| pad_blocks::<F>(1 + i)),
-        };
+        }
+    }
+}
+
+impl<F: Field> KeccakEnv<F> {
+    /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
+    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
+        // Must update the flag type at each step from the witness interpretation
+        let mut env = KeccakEnv::default();
+        env.hash_idx = hash_idx;
 
         // Store hash index in the witness
         env.write_column(KeccakColumn::HashIndex, env.hash_idx);

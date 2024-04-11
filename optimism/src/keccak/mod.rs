@@ -81,7 +81,7 @@ pub enum Constraint {
 
 #[allow(dead_code)]
 /// The Keccak circuit
-pub(crate) type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
+pub type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
 const STEPS: [Steps; 6] = [
     Round(0),

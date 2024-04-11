@@ -8,14 +8,21 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::column::{KeccakWitness, ZKVM_KECCAK_COLS},
+    keccak::{
+        column::{KeccakWitness, ZKVM_KECCAK_COLS},
+        environment::KeccakEnv,
+        KeccakCircuit,
+    },
     lookups::LookupTableIDs,
     mips::{
+        self,
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
+        constraints::{self as mips_constraints, Env},
         witness::{self as mips_witness, SCRATCH_SIZE},
+        MIPSCircuit,
     },
     preimage_oracle::PreImageOracle,
-    proof, DOMAIN_SIZE,
+    proof, CircuitTrait, DOMAIN_SIZE,
 };
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -64,57 +71,56 @@ pub fn main() -> ExitCode {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let domain =
-        kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(DOMAIN_SIZE).unwrap();
+    let domain = kimchi::circuits::domains::EvaluationDomains::<Fp>::create(DOMAIN_SIZE).unwrap();
 
     let mut rng = o1_utils::tests::make_test_rng();
 
     let srs = {
         // Trusted setup toxic waste
-        let x = ark_bn254::Fr::rand(&mut rand::rngs::OsRng);
+        let x = Fp::rand(&mut rand::rngs::OsRng);
 
         let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, DOMAIN_SIZE);
         srs.full_srs.add_lagrange_basis(domain.d1);
         srs
     };
 
-    let mut mips_wit_env =
-        mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
+    // Initialize the environments
+    // The Keccak environment is extracted inside the loop
+    let mut mips_wit_env = mips_witness::Env::<Fp>::create(cannon::PAGE_SIZE as usize, state, po);
+    let mut mips_con_env = mips_constraints::Env::<Fp> {
+        scratch_state_idx: 0,
+        constraints: Vec::new(),
+        lookups: Vec::new(),
+    };
+    // The keccak environment is extracted inside the loop
 
-    let mut mips_folded_witness = ProofInputs::<
-        MIPS_COLUMNS,
-        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
-        LookupTableIDs,
-    >::default();
+    // Initialize the circuits. Includes pre-folding witnesses.
+    let mut mips_circuit = MIPSCircuit::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
+    let mut keccak_circuit = KeccakCircuit::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
+    // Define functions to reset the witness after folding
     let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
         let MIPSWitness { cols } = witness_columns;
         // Resize without deallocating
         cols.iter_mut().for_each(Vec::clear);
     };
-
-    let mut mips_current_pre_folding_witness = MIPSWitness {
-        cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
-    };
-
-    // The keccak environment is extracted inside the loop
-
-    let mut keccak_folded_witness = ProofInputs::<
-        ZKVM_KECCAK_COLS,
-        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
-        LookupTableIDs,
-    >::default();
-
     let keccak_reset_pre_folding_witness =
         |keccak_columns: &mut KeccakWitness<Vec<Fp256<FrParameters>>>| {
             // Resize without deallocating
             keccak_columns.cols.iter_mut().for_each(Vec::clear);
         };
 
-    let mut keccak_current_pre_folding_witness: KeccakWitness<Vec<Fp256<FrParameters>>> =
-        KeccakWitness {
-            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
-        };
+    // Initialize folded instances of ProofInputs
+    let mut mips_folded_witness = ProofInputs::<
+        MIPS_COLUMNS,
+        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+        LookupTableIDs,
+    >::default();
+    let mut keccak_folded_witness = ProofInputs::<
+        ZKVM_KECCAK_COLS,
+        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+        LookupTableIDs,
+    >::default();
 
     while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
@@ -159,11 +165,10 @@ pub fn main() -> ExitCode {
                 mips_current_pre_folding_witness.cols[i].push(mips_wit_env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
                 mips_current_pre_folding_witness.cols[i]
-                    .push(ark_bn254::Fr::from(mips_wit_env.instruction_counter));
+                    .push(Fp::from(mips_wit_env.instruction_counter));
             } else {
                 // TODO: error
-                mips_current_pre_folding_witness.cols[i]
-                    .push(ark_bn254::Fr::rand(&mut rand::rngs::OsRng));
+                mips_current_pre_folding_witness.cols[i].push(Fp::rand(&mut rand::rngs::OsRng));
             }
         }
 
@@ -183,7 +188,7 @@ pub fn main() -> ExitCode {
     {
         let remaining = DOMAIN_SIZE - mips_current_pre_folding_witness.instruction_counter().len();
         for col in mips_current_pre_folding_witness.cols.iter_mut() {
-            col.extend((0..remaining).map(|_| ark_bn254::Fr::zero()));
+            col.extend((0..remaining).map(|_| Fp::zero()));
         }
         proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
             domain,

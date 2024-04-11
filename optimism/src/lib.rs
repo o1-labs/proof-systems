@@ -50,7 +50,7 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 /// we would use 3 different columns.
 pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 
-pub(crate) struct Circuit<const N: usize, SELECTOR, F> {
+pub struct Circuit<const N: usize, SELECTOR, F> {
     /// The witness for a given selector
     pub(crate) witness: HashMap<SELECTOR, Witness<N, Vec<F>>>,
     /// The vector of constraints for a given selector
@@ -59,7 +59,7 @@ pub(crate) struct Circuit<const N: usize, SELECTOR, F> {
     pub(crate) lookups: HashMap<SELECTOR, Vec<Lookup<E<F>>>>,
 }
 
-trait CircuitTrait<const N: usize, SELECTOR, F, Env> {
+pub trait CircuitTrait<const N: usize, SELECTOR, F, Env> {
     /// Create a new circuit
     fn new(domain_size: usize, env: &mut Env) -> Self;
 
