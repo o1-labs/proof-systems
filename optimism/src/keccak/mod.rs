@@ -132,13 +132,22 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
         });
     }
 
-    fn pad_rows(&mut self) {
-        for step in STEPS {
-            let rows_left =
-                self.witness[&step].cols[0].capacity() - self.witness[&step].cols[0].len();
-            for _ in 0..rows_left {
-                self.push_row(step, &[F::zero(); ZKVM_KECCAK_COLS]);
+    fn pad(&mut self, step: Steps) -> bool {
+        let rows_left = self.domain_size - self.witness[&step].cols[0].len();
+        if rows_left == 0 {
+            return false;
+        }
+        self.witness.entry(step).and_modify(|wit| {
+            for col in wit.cols.iter_mut() {
+                col.extend((0..rows_left).map(|_| F::zero()));
             }
+        });
+        true
+    }
+
+    fn pad_witnesses(&mut self) {
+        for step in STEPS {
+            self.pad(step);
         }
     }
 

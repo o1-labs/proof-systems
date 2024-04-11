@@ -158,13 +158,22 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
         });
     }
 
-    fn pad_rows(&mut self) {
-        for step in INSTRUCTIONS {
-            let rows_left =
-                self.witness[&step].cols[0].capacity() - self.witness[&step].cols[0].len();
-            for _ in 0..rows_left {
-                self.push_row(step, &[F::zero(); MIPS_COLUMNS]);
+    fn pad(&mut self, instr: Instruction) -> bool {
+        let rows_left = self.domain_size - self.witness[&instr].cols[0].len();
+        if rows_left == 0 {
+            return false;
+        }
+        self.witness.entry(instr).and_modify(|wit| {
+            for col in wit.cols.iter_mut() {
+                col.extend((0..rows_left).map(|_| F::zero()));
             }
+        });
+        true
+    }
+
+    fn pad_witnesses(&mut self) {
+        for instr in INSTRUCTIONS {
+            self.pad(instr);
         }
     }
 

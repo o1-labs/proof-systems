@@ -507,7 +507,7 @@ fn test_keccak_prover() {
             // Add the witness row to the circuit
             keccak_circuit.push_row(step, &keccak_env.witness_env.witness.cols);
         }
-        keccak_circuit.pad_rows();
+        keccak_circuit.pad_witnesses();
 
         for step in [
             Round(0),

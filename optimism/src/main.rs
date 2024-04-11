@@ -136,7 +136,7 @@ pub fn main() -> ExitCode {
                 keccak_circuit.push_row(step, &keccak_env.witness_env.witness.cols);
 
                 // If the witness is full, fold it and reset the pre-folding witness
-                if keccak_circuit.witness[&step].cols.len() == DOMAIN_SIZE {
+                if keccak_circuit.witness[&step].cols[0].len() == DOMAIN_SIZE {
                     proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
@@ -146,9 +146,6 @@ pub fn main() -> ExitCode {
                     keccak_circuit.reset(step);
                 }
             }
-
-            // TODO: create READ lookup tables
-
             // When the Keccak interpreter is finished, we can reset the environment
             mips_wit_env.keccak_env = None;
         }
@@ -156,40 +153,49 @@ pub fn main() -> ExitCode {
         // TODO: unify witness of MIPS to include the instruction and the error
         for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
-                mips_current_pre_folding_witness.cols[i].push(mips_wit_env.scratch_state[i]);
+                mips_circuit.witness[&instr].cols[i].push(mips_wit_env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
-                mips_current_pre_folding_witness.cols[i]
+                mips_circuit.witness[&instr].cols[i]
                     .push(Fp::from(mips_wit_env.instruction_counter));
             } else {
                 // TODO: error
-                mips_current_pre_folding_witness.cols[i].push(Fp::rand(&mut rand::rngs::OsRng));
+                mips_circuit.witness[&instr].cols[i].push(Fp::rand(&mut rand::rngs::OsRng));
             }
         }
 
-        if mips_current_pre_folding_witness.instruction_counter().len() == DOMAIN_SIZE {
+        if mips_circuit.witness[&instr].instruction_counter().len() == DOMAIN_SIZE {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut mips_folded_witness,
-                &mips_current_pre_folding_witness,
+                &mut mips_folded_instance[&instr],
+                &mips_circuit.witness[&instr],
             );
             mips_circuit.reset(instr);
         }
     }
-    if !mips_current_pre_folding_witness
-        .instruction_counter()
-        .is_empty()
-    {
-        let remaining = DOMAIN_SIZE - mips_current_pre_folding_witness.instruction_counter().len();
-        for col in mips_current_pre_folding_witness.cols.iter_mut() {
-            col.extend((0..remaining).map(|_| Fp::zero()));
+
+    // Pad any possible remaining rows if the execution was not a multiple of the domain size
+    for instr in mips::INSTRUCTIONS {
+        let needs_folding = mips_circuit.pad(instr);
+        if needs_folding {
+            proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
+                domain,
+                &srs,
+                &mut mips_folded_instance[&instr],
+                &mips_circuit.witness[&instr],
+            );
         }
-        proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
-            domain,
-            &srs,
-            &mut mips_folded_witness,
-            &mips_current_pre_folding_witness,
-        );
+    }
+    for step in keccak::STEPS {
+        let needs_folding = keccak_circuit.pad(step);
+        if needs_folding {
+            proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
+                domain,
+                &srs,
+                &mut keccak_folded_instance[&step],
+                &keccak_circuit.witness[&step],
+            );
+        }
     }
 
     {
@@ -205,7 +211,7 @@ pub fn main() -> ExitCode {
             _,
             MIPS_COLUMNS,
             LookupTableIDs,
-        >(domain, &srs, &vec![], mips_folded_witness, &mut rng);
+        >(domain, &srs, &vec![], mips_folded_instance, &mut rng);
         let mips_proof = mips_result.unwrap();
         println!("Generated a MIPS proof:\n{:?}", mips_proof);
         let mips_verifies =
@@ -237,7 +243,7 @@ pub fn main() -> ExitCode {
             _,
             ZKVM_KECCAK_COLS,
             LookupTableIDs,
-        >(domain, &srs, &vec![], keccak_folded_witness, &mut rng);
+        >(domain, &srs, &vec![], keccak_folded_instance, &mut rng);
         let keccak_proof = keccak_result.unwrap();
         println!("Generated a proof:\n{:?}", keccak_proof);
         let keccak_verifies = verify::<
