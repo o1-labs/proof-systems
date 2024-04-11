@@ -29,10 +29,13 @@ pub mod proof;
 /// The RAM lookup argument.
 pub mod ramlookup;
 
-use kimchi::circuits::expr::{ConstantExpr, Expr};
-use kimchi_msm::{columns::Column, witness::Witness};
+use kimchi::{
+    circuits::expr::{ConstantExpr, Expr},
+    curve::KimchiCurve,
+};
+use kimchi_msm::{columns::Column, proof::ProofInputs, witness::Witness, LookupTableID};
 use lookups::Lookup;
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 
@@ -50,21 +53,22 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 /// we would use 3 different columns.
 pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 
-pub struct Circuit<const N: usize, SELECTOR, F> {
-    /// The witness for a given selector
-    pub(crate) witness: HashMap<SELECTOR, Witness<N, Vec<F>>>,
+pub struct Circuit<const N: usize, G: KimchiCurve, ID: LookupTableID, SELECTOR> {
+    /// The proof inputs for folding instances.
+    /// Includes witness evaluations and mvlookups.
+    pub(crate) proof_inputs: HashMap<SELECTOR, ProofInputs<N, G, ID>>,
     /// The vector of constraints for a given selector
-    pub(crate) constraints: HashMap<SELECTOR, Vec<E<F>>>,
+    pub(crate) constraints: HashMap<SELECTOR, Vec<E<G::ScalarField>>>,
     /// The vector of lookups for a given selector
-    pub(crate) lookups: HashMap<SELECTOR, Vec<Lookup<E<F>>>>,
+    pub(crate) lookups: HashMap<SELECTOR, Vec<Lookup<E<G::ScalarField>>>>,
 }
 
-pub trait CircuitTrait<const N: usize, SELECTOR, F, Env> {
+pub trait CircuitTrait<const N: usize, G: KimchiCurve, ID: LookupTableID, SELECTOR, Env> {
     /// Create a new circuit
     fn new(domain_size: usize, env: &mut Env) -> Self;
 
     /// Add a witness row to the circuit
-    fn push_row(&mut self, step: SELECTOR, row: &[F; N]);
+    fn push_row(&mut self, step: SELECTOR, row: &[G::ScalarField; N]);
 
     /// Pads the rows of the witnesses until reaching the domain size
     fn pad_rows(&mut self);
