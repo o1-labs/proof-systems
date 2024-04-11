@@ -200,71 +200,90 @@ pub fn main() -> ExitCode {
 
     {
         // MIPS
-        // TODO: use actual constraints, not just an empty vector
-        // FIXME: this means create separate MIPS witnesses and prove the corresponding constraints for each
-        let mips_result = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            Column,
-            _,
-            MIPS_COLUMNS,
-            LookupTableIDs,
-        >(domain, &srs, &vec![], mips_folded_instance, &mut rng);
-        let mips_proof = mips_result.unwrap();
-        println!("Generated a MIPS proof:\n{:?}", mips_proof);
-        let mips_verifies =
-            verify::<_, OpeningProof, BaseSponge, ScalarSponge, MIPS_COLUMNS, 0, LookupTableIDs>(
+        for instr in mips::INSTRUCTIONS {
+            let mips_result = prove::<
+                _,
+                OpeningProof,
+                BaseSponge,
+                ScalarSponge,
+                Column,
+                _,
+                MIPS_COLUMNS,
+                LookupTableIDs,
+            >(
+                domain,
+                &srs,
+                &vec![],
+                mips_folded_instance[&instr],
+                &mut rng,
+            );
+            let mips_proof = mips_result.unwrap();
+            println!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
+            let mips_verifies = verify::<
+                _,
+                OpeningProof,
+                BaseSponge,
+                ScalarSponge,
+                MIPS_COLUMNS,
+                0,
+                LookupTableIDs,
+            >(
                 domain,
                 &srs,
                 &vec![],
                 &mips_proof,
                 Witness::zero_vec(DOMAIN_SIZE),
             );
-        if mips_verifies {
-            println!("The MIPS proof verifies")
-        } else {
-            println!("The MIPS proof doesn't verify")
+            if mips_verifies {
+                println!("The MIPS {:?} proof verifies", instr)
+            } else {
+                println!("The MIPS {:?} proof doesn't verify", instr)
+            }
         }
     }
 
     {
         // KECCAK
-        // TODO: use actual constraints, not just an empty vector
-        // FIXME: this means create separate Keccak witnesses and prove the corresponding constraints for each
         // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
-        let keccak_result = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            Column,
-            _,
-            ZKVM_KECCAK_COLS,
-            LookupTableIDs,
-        >(domain, &srs, &vec![], keccak_folded_instance, &mut rng);
-        let keccak_proof = keccak_result.unwrap();
-        println!("Generated a proof:\n{:?}", keccak_proof);
-        let keccak_verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            ZKVM_KECCAK_COLS,
-            0,
-            LookupTableIDs,
-        >(
-            domain,
-            &srs,
-            &vec![],
-            &keccak_proof,
-            Witness::zero_vec(DOMAIN_SIZE),
-        );
-        if keccak_verifies {
-            println!("The Keccak proof verifies")
-        } else {
-            println!("The Keccak proof doesn't verify")
+        for step in keccak::STEPS {
+            let keccak_result = prove::<
+                _,
+                OpeningProof,
+                BaseSponge,
+                ScalarSponge,
+                Column,
+                _,
+                ZKVM_KECCAK_COLS,
+                LookupTableIDs,
+            >(
+                domain,
+                &srs,
+                &vec![],
+                keccak_folded_instance[&step],
+                &mut rng,
+            );
+            let keccak_proof = keccak_result.unwrap();
+            println!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
+            let keccak_verifies = verify::<
+                _,
+                OpeningProof,
+                BaseSponge,
+                ScalarSponge,
+                ZKVM_KECCAK_COLS,
+                0,
+                LookupTableIDs,
+            >(
+                domain,
+                &srs,
+                &vec![],
+                &keccak_proof,
+                Witness::zero_vec(DOMAIN_SIZE),
+            );
+            if keccak_verifies {
+                println!("The Keccak {:?} proof verifies", step)
+            } else {
+                println!("The Keccak {:?} proof doesn't verify", step)
+            }
         }
     }
 
