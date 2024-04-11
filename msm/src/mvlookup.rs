@@ -83,7 +83,7 @@ pub struct LookupTable<F, ID: LookupTableID> {
 /// IMPROVEME: Possible to index by a generic const?
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MVLookupWitness<F, ID: LookupTableID> {
     /// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the

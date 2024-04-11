@@ -140,7 +140,7 @@ pub fn main() -> ExitCode {
                     proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
-                        &mut keccak_folded_instance[&step],
+                        &mut keccak_folded_instance.get_mut(&step).unwrap(),
                         &keccak_circuit.witness[&step],
                     );
                     keccak_circuit.reset(step);
@@ -153,13 +153,15 @@ pub fn main() -> ExitCode {
         // TODO: unify witness of MIPS to include the instruction and the error
         for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
-                mips_circuit.witness[&instr].cols[i].push(mips_wit_env.scratch_state[i]);
+                mips_circuit.witness.get_mut(&instr).unwrap().cols[i]
+                    .push(mips_wit_env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
-                mips_circuit.witness[&instr].cols[i]
+                mips_circuit.witness.get_mut(&instr).unwrap().cols[i]
                     .push(Fp::from(mips_wit_env.instruction_counter));
             } else {
                 // TODO: error
-                mips_circuit.witness[&instr].cols[i].push(Fp::rand(&mut rand::rngs::OsRng));
+                mips_circuit.witness.get_mut(&instr).unwrap().cols[i]
+                    .push(Fp::rand(&mut rand::rngs::OsRng));
             }
         }
 
@@ -167,7 +169,7 @@ pub fn main() -> ExitCode {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut mips_folded_instance[&instr],
+                &mut mips_folded_instance.get_mut(&instr).unwrap(),
                 &mips_circuit.witness[&instr],
             );
             mips_circuit.reset(instr);
@@ -181,7 +183,7 @@ pub fn main() -> ExitCode {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut mips_folded_instance[&instr],
+                &mut mips_folded_instance.get_mut(&instr).unwrap(),
                 &mips_circuit.witness[&instr],
             );
         }
@@ -192,7 +194,7 @@ pub fn main() -> ExitCode {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut keccak_folded_instance[&step],
+                &mut keccak_folded_instance.get_mut(&step).unwrap(),
                 &keccak_circuit.witness[&step],
             );
         }
@@ -214,7 +216,7 @@ pub fn main() -> ExitCode {
                 domain,
                 &srs,
                 &vec![],
-                mips_folded_instance[&instr],
+                mips_folded_instance[&instr].clone(),
                 &mut rng,
             );
             let mips_proof = mips_result.unwrap();
@@ -259,7 +261,7 @@ pub fn main() -> ExitCode {
                 domain,
                 &srs,
                 &vec![],
-                keccak_folded_instance[&step],
+                keccak_folded_instance[&step].clone(),
                 &mut rng,
             );
             let keccak_proof = keccak_result.unwrap();
