@@ -141,29 +141,22 @@ pub fn main() -> ExitCode {
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
             // Run all steps of hash
             while keccak_env.constraints_env.step.is_some() {
+                let step = keccak_env.constraints_env.step.unwrap();
+                // Run the interpreter, which sets the witness columns
                 keccak_env.step();
-            }
+                // Add the witness row to the Keccak circuit for this step
+                keccak_circuit.push_row(step, &keccak_env.witness_env.witness.cols);
 
-            // Update the witness with the Keccak step columns before resetting the environment
-            // TODO: simplify the contents of the KeccakWitness or create an iterator for it
-            for (env_wit, pre_fold_wit) in keccak_env
-                .witness_env
-                .witness
-                .cols
-                .iter()
-                .zip(keccak_current_pre_folding_witness.cols.iter_mut())
-            {
-                pre_fold_wit.push(*env_wit);
-            }
-
-            if keccak_current_pre_folding_witness.cols.len() == DOMAIN_SIZE {
-                proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
-                    domain,
-                    &srs,
-                    &mut keccak_folded_witness,
-                    &keccak_current_pre_folding_witness,
-                );
-                keccak_reset_pre_folding_witness(&mut keccak_current_pre_folding_witness);
+                // If the witness is full, fold it and reset the pre-folding witness
+                if keccak_circuit.witness[&step].cols.len() == DOMAIN_SIZE {
+                    proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
+                        domain,
+                        &srs,
+                        &mut keccak_folded_instance[&step],
+                        &keccak_circuit.witness[&step],
+                    );
+                    keccak_reset_pre_folding_witness(&mut keccak_current_pre_folding_witness);
+                }
             }
 
             // TODO: create READ lookup tables

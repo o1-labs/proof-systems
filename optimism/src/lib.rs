@@ -52,11 +52,11 @@ pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 
 pub struct Circuit<const N: usize, SELECTOR, F> {
     /// The witness for a given selector
-    pub(crate) witness: HashMap<SELECTOR, Witness<N, Vec<F>>>,
+    pub witness: HashMap<SELECTOR, Witness<N, Vec<F>>>,
     /// The vector of constraints for a given selector
-    pub(crate) constraints: HashMap<SELECTOR, Vec<E<F>>>,
+    pub constraints: HashMap<SELECTOR, Vec<E<F>>>,
     /// The vector of lookups for a given selector
-    pub(crate) lookups: HashMap<SELECTOR, Vec<Lookup<E<F>>>>,
+    pub lookups: HashMap<SELECTOR, Vec<Lookup<E<F>>>>,
 }
 
 pub trait CircuitTrait<const N: usize, SELECTOR, F, Env> {
