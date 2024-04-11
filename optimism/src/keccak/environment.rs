@@ -134,6 +134,15 @@ impl<F: Field> KeccakEnv<F> {
         self.constraints_env.lookups = vec![];
     }
 
+    /// Returns the selector of the current step
+    pub fn selector(&self) -> Steps {
+        let mut step = self.constraints_env.step.unwrap();
+        if let Round(_) = step {
+            step = Round(0);
+        }
+        step
+    }
+
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
     /// and updates the environment accordingly (including the witness and inter-step lookups).
     /// When it finishes, it updates the value of the current step, so that the next call to

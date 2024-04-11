@@ -1,6 +1,5 @@
-use ark_bn254::FrParameters;
 use ark_ec::bn::Bn;
-use ark_ff::{Fp256, UniformRand, Zero};
+use ark_ff::UniformRand;
 use kimchi::o1_utils;
 use kimchi_msm::{
     columns::Column, proof::ProofInputs, prover::prove, verifier::verify, witness::Witness,
@@ -8,17 +7,12 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::{
-        self,
-        column::{KeccakWitness, ZKVM_KECCAK_COLS},
-        environment::KeccakEnv,
-        KeccakCircuit,
-    },
+    keccak::{self, column::ZKVM_KECCAK_COLS, environment::KeccakEnv, KeccakCircuit},
     lookups::LookupTableIDs,
     mips::{
         self,
-        column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
-        constraints::{self as mips_constraints, Env},
+        column::{MIPSWitnessTrait, MIPS_COLUMNS},
+        constraints::{self as mips_constraints},
         witness::{self as mips_witness, SCRATCH_SIZE},
         MIPSCircuit,
     },
@@ -129,7 +123,8 @@ pub fn main() -> ExitCode {
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
             // Run all steps of hash
             while keccak_env.constraints_env.step.is_some() {
-                let step = keccak_env.constraints_env.step.unwrap();
+                // Get the current step that will be
+                let step = keccak_env.selector();
                 // Run the interpreter, which sets the witness columns
                 keccak_env.step();
                 // Add the witness row to the Keccak circuit for this step
@@ -215,7 +210,7 @@ pub fn main() -> ExitCode {
             >(
                 domain,
                 &srs,
-                &vec![],
+                &mips_circuit.constraints[&instr],
                 mips_folded_instance[&instr].clone(),
                 &mut rng,
             );
@@ -232,7 +227,7 @@ pub fn main() -> ExitCode {
             >(
                 domain,
                 &srs,
-                &vec![],
+                &mips_circuit.constraints[&instr],
                 &mips_proof,
                 Witness::zero_vec(DOMAIN_SIZE),
             );
@@ -260,7 +255,7 @@ pub fn main() -> ExitCode {
             >(
                 domain,
                 &srs,
-                &vec![],
+                &keccak_circuit.constraints[&step],
                 keccak_folded_instance[&step].clone(),
                 &mut rng,
             );
@@ -277,7 +272,7 @@ pub fn main() -> ExitCode {
             >(
                 domain,
                 &srs,
-                &vec![],
+                &keccak_circuit.constraints[&step],
                 &keccak_proof,
                 Witness::zero_vec(DOMAIN_SIZE),
             );
