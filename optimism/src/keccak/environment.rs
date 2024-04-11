@@ -85,8 +85,10 @@ impl<F: Field> KeccakEnv<F> {
     /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
     pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
         // Must update the flag type at each step from the witness interpretation
-        let mut env = KeccakEnv::default();
-        env.hash_idx = hash_idx;
+        let mut env = KeccakEnv::<F> {
+            hash_idx,
+            ..Default::default()
+        };
 
         // Store hash index in the witness
         env.write_column(KeccakColumn::HashIndex, env.hash_idx);

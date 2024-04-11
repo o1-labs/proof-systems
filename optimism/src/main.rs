@@ -135,7 +135,7 @@ pub fn main() -> ExitCode {
                     proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
-                        &mut keccak_folded_instance.get_mut(&step).unwrap(),
+                        keccak_folded_instance.get_mut(&step).unwrap(),
                         &keccak_circuit.witness[&step],
                     );
                     keccak_circuit.reset(step);
@@ -164,7 +164,7 @@ pub fn main() -> ExitCode {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut mips_folded_instance.get_mut(&instr).unwrap(),
+                mips_folded_instance.get_mut(&instr).unwrap(),
                 &mips_circuit.witness[&instr],
             );
             mips_circuit.reset(instr);
@@ -178,7 +178,7 @@ pub fn main() -> ExitCode {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut mips_folded_instance.get_mut(&instr).unwrap(),
+                mips_folded_instance.get_mut(&instr).unwrap(),
                 &mips_circuit.witness[&instr],
             );
         }
@@ -189,7 +189,7 @@ pub fn main() -> ExitCode {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
-                &mut keccak_folded_instance.get_mut(&step).unwrap(),
+                keccak_folded_instance.get_mut(&step).unwrap(),
                 &keccak_circuit.witness[&step],
             );
         }
