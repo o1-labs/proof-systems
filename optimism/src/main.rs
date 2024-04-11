@@ -9,6 +9,7 @@ use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::{
+        self,
         column::{KeccakWitness, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
         KeccakCircuit,
@@ -29,7 +30,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use poly_commitment::pairing_proof::PairingProof;
-use std::{fs::File, io::BufReader, process::ExitCode};
+use std::{collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 
 type Fp = ark_bn254::Fr;
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -110,17 +111,29 @@ pub fn main() -> ExitCode {
             keccak_columns.cols.iter_mut().for_each(Vec::clear);
         };
 
-    // Initialize folded instances of ProofInputs
-    let mut mips_folded_witness = ProofInputs::<
-        MIPS_COLUMNS,
-        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
-        LookupTableIDs,
-    >::default();
-    let mut keccak_folded_witness = ProofInputs::<
-        ZKVM_KECCAK_COLS,
-        ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
-        LookupTableIDs,
-    >::default();
+    // Initialize folded instances of the sub circuits
+    let mut mips_folded_instance = HashMap::new();
+    for instr in mips::INSTRUCTIONS {
+        mips_folded_instance.insert(
+            instr,
+            ProofInputs::<
+                MIPS_COLUMNS,
+                ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+                LookupTableIDs,
+            >::default(),
+        );
+    }
+    let mut keccak_folded_instance = HashMap::new();
+    for step in keccak::STEPS {
+        keccak_folded_instance.insert(
+            step,
+            ProofInputs::<
+                ZKVM_KECCAK_COLS,
+                ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+                LookupTableIDs,
+            >::default(),
+        );
+    }
 
     while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);

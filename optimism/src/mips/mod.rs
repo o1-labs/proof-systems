@@ -48,7 +48,7 @@ pub mod witness;
 /// The Keccak circuit
 pub type MIPSCircuit<F> = Circuit<MIPS_COLUMNS, Instruction, F>;
 
-const INSTRUCTIONS: [Instruction;
+pub const INSTRUCTIONS: [Instruction;
     RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT] = [
     RType(ShiftLeftLogical),
     RType(ShiftRightLogical),

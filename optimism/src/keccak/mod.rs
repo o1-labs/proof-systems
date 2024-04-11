@@ -83,7 +83,7 @@ pub enum Constraint {
 /// The Keccak circuit
 pub type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
-const STEPS: [Steps; 6] = [
+pub const STEPS: [Steps; 6] = [
     Round(0),
     Sponge(Absorb(First)),
     Sponge(Absorb(Middle)),
