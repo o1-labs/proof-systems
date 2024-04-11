@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
-use crate::{mvlookup::LookupTableID, MVLookup, LIMB_BITSIZE, N_LIMBS};
-use ark_ff::{FpParameters, PrimeField};
-use num_bigint::BigUint;
+use crate::{mvlookup::LookupTableID, MVLookup};
+use ark_ff::PrimeField;
 
 pub mod column;
 pub mod constraints;
@@ -50,17 +49,15 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
             Self::RangeCheck15 => 1 << 15,
             Self::RangeCheck4 => 1 << 4,
             Self::RangeCheck4Abs => 1 << 5,
-            Self::RangeCheckFfHighest(_) => TryFrom::try_from(Self::ff_modulus()).unwrap(),
+            Self::RangeCheckFfHighest(_) => TryFrom::try_from(
+                crate::serialization::interpreter::ff_modulus_highest_limb::<Ff>(),
+            )
+            .unwrap(),
         }
     }
 }
 
-impl<Ff: PrimeField> LookupTable<Ff> {
-    pub fn ff_modulus() -> BigUint {
-        let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::Params::MODULUS).unwrap();
-        f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE)
-    }
-}
+impl<Ff: PrimeField> LookupTable<Ff> {}
 
 pub type Lookup<F, Ff> = MVLookup<F, LookupTable<Ff>>;
 
@@ -79,8 +76,10 @@ mod tests {
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            column::SER_N_COLUMNS, constraints, interpreter::deserialize_field_element, witness,
-            N_INTERMEDIATE_LIMBS,
+            column::SER_N_COLUMNS,
+            constraints,
+            interpreter::{deserialize_field_element, ff_modulus_highest_limb},
+            witness, N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
@@ -91,8 +90,8 @@ mod tests {
     use o1_utils::FieldHelpers;
 
     impl<Ff: PrimeField> LookupTable<Ff> {
-        fn entries_ff_modulus<F: PrimeField>(domain: EvaluationDomains<F>) -> Vec<F> {
-            let top_modulus_f = F::from_biguint(&Self::ff_modulus()).unwrap();
+        fn entries_ff_highest<F: PrimeField>(domain: EvaluationDomains<F>) -> Vec<F> {
+            let top_modulus_f = F::from_biguint(&ff_modulus_highest_limb::<Ff>()).unwrap();
             (0..domain.d1.size)
                 .map(|i| {
                     if F::from(i) < top_modulus_f {
@@ -124,7 +123,7 @@ mod tests {
                         }
                     })
                     .collect(),
-                Self::RangeCheckFfHighest(_) => Self::entries_ff_modulus::<F>(domain),
+                Self::RangeCheckFfHighest(_) => Self::entries_ff_highest::<F>(domain),
             }
         }
     }

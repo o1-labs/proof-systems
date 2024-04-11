@@ -64,6 +64,12 @@ pub trait InterpreterEnv<Fp: PrimeField, Ff: PrimeField> {
     }
 }
 
+/// Returns the highest limb of the foreign field modulus. Is used by the lookups.
+pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
+    let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::Params::MODULUS).unwrap();
+    f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE)
+}
+
 /// Deserialize a field element of the scalar field of Vesta or Pallas given as
 /// a sequence of 3 limbs of 88 bits.
 /// It will deserialize into limbs of 15 bits.
