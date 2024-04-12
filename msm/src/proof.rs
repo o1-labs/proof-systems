@@ -44,6 +44,8 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
 }
 
 impl<const N: usize, G: KimchiCurve, ID: LookupTableID> Default for ProofInputs<N, G, ID> {
+    /// Creates a default proof instance. Note that such an empty "zero" instance will not satisfy any constraint.
+    /// E.g. some constraints that have constants inside of them (A - const = 0) cannot be satisfied by it.
     fn default() -> Self {
         ProofInputs {
             evaluations: Witness {
