@@ -2537,6 +2537,42 @@
 <a href="#2535" id="2535">2535</a>
 <a href="#2536" id="2536">2536</a>
 <a href="#2537" id="2537">2537</a>
+<a href="#2538" id="2538">2538</a>
+<a href="#2539" id="2539">2539</a>
+<a href="#2540" id="2540">2540</a>
+<a href="#2541" id="2541">2541</a>
+<a href="#2542" id="2542">2542</a>
+<a href="#2543" id="2543">2543</a>
+<a href="#2544" id="2544">2544</a>
+<a href="#2545" id="2545">2545</a>
+<a href="#2546" id="2546">2546</a>
+<a href="#2547" id="2547">2547</a>
+<a href="#2548" id="2548">2548</a>
+<a href="#2549" id="2549">2549</a>
+<a href="#2550" id="2550">2550</a>
+<a href="#2551" id="2551">2551</a>
+<a href="#2552" id="2552">2552</a>
+<a href="#2553" id="2553">2553</a>
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a>
+<a href="#2556" id="2556">2556</a>
+<a href="#2557" id="2557">2557</a>
+<a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
+<a href="#2562" id="2562">2562</a>
+<a href="#2563" id="2563">2563</a>
+<a href="#2564" id="2564">2564</a>
+<a href="#2565" id="2565">2565</a>
+<a href="#2566" id="2566">2566</a>
+<a href="#2567" id="2567">2567</a>
+<a href="#2568" id="2568">2568</a>
+<a href="#2569" id="2569">2569</a>
+<a href="#2570" id="2570">2570</a>
+<a href="#2571" id="2571">2571</a>
+<a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -2546,6 +2582,7 @@
     },
 };
 <span class="kw">use </span>ark_ff::{One, Zero};
+<span class="kw">use </span>strum::{EnumCount, IntoEnumIterator};
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
 
 <span class="kw">pub const </span>FD_STDIN: u32 = <span class="number">0</span>;
@@ -2564,16 +2601,17 @@
 <span class="kw">pub const </span>SYSCALL_WRITE: u32 = <span class="number">4004</span>;
 <span class="kw">pub const </span>SYSCALL_FCNTL: u32 = <span class="number">4055</span>;
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
 </span><span class="kw">pub enum </span>Instruction {
     RType(RTypeInstruction),
     JType(JTypeInstruction),
     IType(ITypeInstruction),
 }
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
 </span><span class="kw">pub enum </span>RTypeInstruction {
-    ShiftLeftLogical,             <span class="comment">// sll
+    <span class="attr">#[default]
+    </span>ShiftLeftLogical, <span class="comment">// sll
     </span>ShiftRightLogical,            <span class="comment">// srl
     </span>ShiftRightArithmetic,         <span class="comment">// sra
     </span>ShiftLeftLogicalVariable,     <span class="comment">// sllv
@@ -2617,15 +2655,17 @@
     </span>CountLeadingZeros,            <span class="comment">// clz
 </span>}
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
 </span><span class="kw">pub enum </span>JTypeInstruction {
-    Jump,        <span class="comment">// j
+    <span class="attr">#[default]
+    </span>Jump, <span class="comment">// j
     </span>JumpAndLink, <span class="comment">// jal
 </span>}
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
 </span><span class="kw">pub enum </span>ITypeInstruction {
-    BranchEq,                     <span class="comment">// beq
+    <span class="attr">#[default]
+    </span>BranchEq, <span class="comment">// beq
     </span>BranchNeq,                    <span class="comment">// bne
     </span>BranchLeqZero,                <span class="comment">// blez
     </span>BranchGtZero,                 <span class="comment">// bgtz
@@ -2653,6 +2693,38 @@
     </span>StoreWordLeft,                <span class="comment">// swl
     </span>StoreWordRight,               <span class="comment">// swr
 </span>}
+
+<span class="kw">impl </span>IntoIterator <span class="kw">for </span>Instruction {
+    <span class="kw">type </span>Item = Instruction;
+    <span class="kw">type </span>IntoIter = std::vec::IntoIter&lt;<span class="self">Self</span>::Item&gt;;
+
+    <span class="doccomment">/// Iterate over the instruction variants
+    </span><span class="kw">fn </span>into_iter(<span class="self">self</span>) -&gt; <span class="self">Self</span>::IntoIter {
+        <span class="kw">match </span><span class="self">self </span>{
+            Instruction::RType(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(RTypeInstruction::COUNT);
+                <span class="kw">for </span>rtype <span class="kw">in </span>RTypeInstruction::iter() {
+                    iter_contents.push(Instruction::RType(rtype));
+                }
+                iter_contents.into_iter()
+            }
+            Instruction::JType(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(JTypeInstruction::COUNT);
+                <span class="kw">for </span>jtype <span class="kw">in </span>JTypeInstruction::iter() {
+                    iter_contents.push(Instruction::JType(jtype));
+                }
+                iter_contents.into_iter()
+            }
+            Instruction::IType(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = Vec::with_capacity(ITypeInstruction::COUNT);
+                <span class="kw">for </span>itype <span class="kw">in </span>ITypeInstruction::iter() {
+                    iter_contents.push(Instruction::IType(itype));
+                }
+                iter_contents.into_iter()
+            }
+        }
+    }
+}
 
 <span class="kw">pub trait </span>InterpreterEnv {
     <span class="doccomment">/// A position can be seen as an indexed variable

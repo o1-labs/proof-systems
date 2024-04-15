@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Constraint","Error","Selector"],"fn":["pad_blocks"],"mod":["column","constraints","environment","interpreter","witness"]};
+window.SIDEBAR_ITEMS = {"constant":["STEPS"],"enum":["Constraint","Error","Selector"],"fn":["pad_blocks"],"mod":["column","constraints","environment","interpreter","witness"],"type":["KeccakCircuit"]};

@@ -192,6 +192,19 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use crate</span>::{
@@ -203,7 +216,7 @@
         PAD_SUFFIX_LEN,
     },
     lookups::LookupTableIDs,
-    Circuit,
+    Circuit, CircuitTrait,
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
@@ -276,26 +289,28 @@
 
 <span class="attr">#[allow(dead_code)]
 </span><span class="doccomment">/// The Keccak circuit
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>KeccakCircuit&lt;F&gt; = Circuit&lt;ZKVM_KECCAK_COLS, Steps, F&gt;;
+</span><span class="kw">pub type </span>KeccakCircuit&lt;F&gt; = Circuit&lt;ZKVM_KECCAK_COLS, Steps, F&gt;;
+
+<span class="kw">pub const </span>STEPS: [Steps; <span class="number">6</span>] = [
+    Round(<span class="number">0</span>),
+    Sponge(Absorb(First)),
+    Sponge(Absorb(Middle)),
+    Sponge(Absorb(Last)),
+    Sponge(Absorb(Only)),
+    Sponge(Squeeze),
+];
 
 <span class="attr">#[allow(dead_code)]
-</span><span class="kw">impl</span>&lt;F: Field&gt; KeccakCircuit&lt;F&gt; {
-    <span class="doccomment">/// Create a new Keccak circuit
-    </span><span class="kw">pub fn </span>new(domain_size: usize) -&gt; <span class="self">Self </span>{
+</span><span class="kw">impl</span>&lt;F: Field&gt; CircuitTrait&lt;ZKVM_KECCAK_COLS, Steps, F, KeccakEnv&lt;F&gt;&gt; <span class="kw">for </span>KeccakCircuit&lt;F&gt; {
+    <span class="kw">fn </span>new(domain_size: usize, _env: <span class="kw-2">&amp;mut </span>KeccakEnv&lt;F&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>circuit = <span class="self">Self </span>{
+            domain_size,
             witness: HashMap::new(),
             constraints: Default::default(),
             lookups: Default::default(),
         };
 
-        <span class="kw">for </span>step <span class="kw">in </span>[
-            Round(<span class="number">0</span>),
-            Sponge(Absorb(First)),
-            Sponge(Absorb(Middle)),
-            Sponge(Absorb(Last)),
-            Sponge(Absorb(Only)),
-            Sponge(Squeeze),
-        ] {
+        <span class="kw">for </span>step <span class="kw">in </span>STEPS {
             circuit.witness.insert(
                 step,
                 Witness {
@@ -310,8 +325,7 @@
         circuit
     }
 
-    <span class="doccomment">/// Add a witness row to the circuit
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps, row: <span class="kw-2">&amp;</span>[F; ZKVM_KECCAK_COLS]) {
+    <span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps, row: <span class="kw-2">&amp;</span>[F; ZKVM_KECCAK_COLS]) {
         <span class="comment">// Make sure we are using the same round number to refer to round steps
         </span><span class="kw">let </span><span class="kw-2">mut </span>step = step;
         <span class="kw">if let </span>Round(<span class="kw">_</span>) = step {
@@ -326,22 +340,34 @@
         });
     }
 
-    <span class="doccomment">/// Pads the rows of the witnesses until reaching the domain size
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>pad_rows(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>step <span class="kw">in </span>[
-            Round(<span class="number">0</span>),
-            Sponge(Absorb(First)),
-            Sponge(Absorb(Middle)),
-            Sponge(Absorb(Last)),
-            Sponge(Absorb(Only)),
-            Sponge(Squeeze),
-        ] {
-            <span class="kw">let </span>rows_left =
-                <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>step].cols[<span class="number">0</span>].capacity() - <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>step].cols[<span class="number">0</span>].len();
-            <span class="kw">for _ in </span><span class="number">0</span>..rows_left {
-                <span class="self">self</span>.push_row(step, <span class="kw-2">&amp;</span>[F::zero(); ZKVM_KECCAK_COLS]);
-            }
+    <span class="kw">fn </span>pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) -&gt; bool {
+        <span class="kw">let </span>rows_left = <span class="self">self</span>.domain_size - <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>step].cols[<span class="number">0</span>].len();
+        <span class="kw">if </span>rows_left == <span class="number">0 </span>{
+            <span class="kw">return </span><span class="bool-val">false</span>;
         }
+        <span class="self">self</span>.witness.entry(step).and_modify(|wit| {
+            <span class="kw">for </span>col <span class="kw">in </span>wit.cols.iter_mut() {
+                col.extend((<span class="number">0</span>..rows_left).map(|<span class="kw">_</span>| F::zero()));
+            }
+        });
+        <span class="bool-val">true
+    </span>}
+
+    <span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">for </span>step <span class="kw">in </span>STEPS {
+            <span class="self">self</span>.pad(step);
+        }
+    }
+
+    <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) {
+        <span class="self">self</span>.witness.insert(
+            step,
+            Witness {
+                cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| {
+                    Vec::with_capacity(<span class="self">self</span>.domain_size)
+                })),
+            },
+        );
     }
 }
 
