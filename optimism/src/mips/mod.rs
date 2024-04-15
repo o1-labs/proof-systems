@@ -37,6 +37,8 @@ pub mod constraints;
 pub mod folding;
 pub mod interpreter;
 pub mod registers;
+#[cfg(test)]
+pub mod tests;
 pub mod witness;
 
 #[allow(dead_code)]
@@ -52,7 +54,7 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
             lookups: Default::default(),
         };
 
-        for instr in Instruction::iter() {
+        for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
             circuit.witness.insert(
                 instr,
                 Witness {
@@ -92,7 +94,7 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
     }
 
     fn pad_witnesses(&mut self) {
-        for instr in Instruction::iter() {
+        for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
             self.pad(instr);
         }
     }

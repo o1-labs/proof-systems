@@ -96,7 +96,7 @@ pub fn main() -> ExitCode {
 
     // Initialize folded instances of the sub circuits
     let mut mips_folded_instance = HashMap::new();
-    for instr in Instruction::iter() {
+    for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         mips_folded_instance.insert(
             instr,
             ProofInputs::<
@@ -175,7 +175,7 @@ pub fn main() -> ExitCode {
     }
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
-    for instr in Instruction::iter() {
+    for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         let needs_folding = mips_circuit.pad(instr);
         if needs_folding {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
@@ -200,7 +200,7 @@ pub fn main() -> ExitCode {
 
     {
         // MIPS
-        for instr in Instruction::iter() {
+        for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
             let mips_result = prove::<
                 _,
                 OpeningProof,

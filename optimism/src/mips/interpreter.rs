@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use ark_ff::{One, Zero};
+use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -32,7 +33,7 @@ pub enum Instruction {
     IType(ITypeInstruction),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Default)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
 pub enum RTypeInstruction {
     #[default]
     ShiftLeftLogical, // sll
@@ -79,14 +80,14 @@ pub enum RTypeInstruction {
     CountLeadingZeros,            // clz
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Default)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
 pub enum JTypeInstruction {
     #[default]
     Jump, // j
     JumpAndLink, // jal
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Default)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
 pub enum ITypeInstruction {
     #[default]
     BranchEq, // beq
@@ -116,6 +117,38 @@ pub enum ITypeInstruction {
     Store32Conditional,           // sc
     StoreWordLeft,                // swl
     StoreWordRight,               // swr
+}
+
+impl IntoIterator for Instruction {
+    type Item = Instruction;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    /// Iterate over the instruction variants
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Instruction::RType(_) => {
+                let mut iter_contents = Vec::with_capacity(RTypeInstruction::COUNT);
+                for rtype in RTypeInstruction::iter() {
+                    iter_contents.push(Instruction::RType(rtype));
+                }
+                iter_contents.into_iter()
+            }
+            Instruction::JType(_) => {
+                let mut iter_contents = Vec::with_capacity(JTypeInstruction::COUNT);
+                for jtype in JTypeInstruction::iter() {
+                    iter_contents.push(Instruction::JType(jtype));
+                }
+                iter_contents.into_iter()
+            }
+            Instruction::IType(_) => {
+                let mut iter_contents = Vec::with_capacity(ITypeInstruction::COUNT);
+                for itype in ITypeInstruction::iter() {
+                    iter_contents.push(Instruction::IType(itype));
+                }
+                iter_contents.into_iter()
+            }
+        }
+    }
 }
 
 pub trait InterpreterEnv {
