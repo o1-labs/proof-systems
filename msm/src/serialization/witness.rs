@@ -208,7 +208,7 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
         *self.lookups.get_mut(&LookupTable::RangeCheck15).unwrap() = Vec::new();
     }
 
-    pub fn get_rangecheck4_multipliticies(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
+    pub fn get_rangecheck4_multiplicities(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
         let mut m = Vec::with_capacity(domain.d1.size as usize);
         m.extend(self.lookup_multiplicities[&LookupTable::RangeCheck4].to_vec());
         let repeated_dummy_value: Vec<Fp> = iter::repeat(-Fp::zero())
@@ -218,9 +218,22 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
         assert_eq!(m.len(), domain.d1.size as usize);
         m
     }
-    pub fn get_rangecheck15_multipliticies(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
+
+    pub fn get_rangecheck15_multiplicities(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
         assert_eq!(domain.d1.size, 1 << 15);
         self.lookup_multiplicities[&LookupTable::RangeCheck15].to_vec()
+    }
+
+    pub fn get_rangecheck_multiplicities(
+        &self,
+        domain: EvaluationDomains<Fp>,
+        table_id: LookupTable<Ff>,
+    ) -> Vec<Fp> {
+        match table_id {
+            LookupTable::RangeCheck4 => self.get_rangecheck4_multiplicities(domain),
+            LookupTable::RangeCheck15 => self.get_rangecheck15_multiplicities(domain),
+            _ => panic!("Multiplicity support not implemented"),
+        }
     }
 }
 

@@ -63,9 +63,12 @@ pub type Lookup<F, Ff> = MVLookup<F, LookupTable<Ff>>;
 
 #[cfg(test)]
 mod tests {
+    use ark_ff::PrimeField;
     use kimchi::circuits::domains::EvaluationDomains;
+    use o1_utils::FieldHelpers;
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::Rng as _;
+    use std::collections::BTreeMap;
 
     use super::{Lookup, LookupTable};
 
@@ -85,9 +88,6 @@ mod tests {
         witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
-
-    use ark_ff::PrimeField;
-    use o1_utils::FieldHelpers;
 
     impl<Ff: PrimeField> LookupTable<Ff> {
         fn entries_ff_highest<F: PrimeField>(domain: EvaluationDomains<F>) -> Vec<F> {
@@ -158,10 +158,16 @@ mod tests {
             field_elements.push([x, y, z])
         }
 
-        // Adding one for the fixed table.
-        let mut rangecheck15: [Vec<Lookup<Fp, Ff1>>; N_LIMBS + 1] = std::array::from_fn(|_| vec![]);
-        let mut rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
+        // An extra element in the array stands for the fixed table.
+        let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
+        let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
+        let rangecheck15: [Vec<Lookup<Fp, Ff1>>; N_LIMBS + 1] = std::array::from_fn(|_| vec![]);
+        let mut rangecheck_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
+            BTreeMap::new();
+        rangecheck_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
+        rangecheck_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
+        rangecheck_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
 
         for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness
@@ -171,24 +177,16 @@ mod tests {
                 witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
-            for (j, lookup) in witness_env
-                .lookups
-                .get(&LookupTable::RangeCheck4)
-                .unwrap()
-                .iter()
-                .enumerate()
-            {
-                rangecheck4[j].push(lookup.clone())
-            }
-
-            for (j, lookup) in witness_env
-                .lookups
-                .get(&LookupTable::RangeCheck15)
-                .unwrap()
-                .iter()
-                .enumerate()
-            {
-                rangecheck15[j].push(lookup.clone())
+            for (table_id, table) in rangecheck_tables.iter_mut() {
+                for (j, lookup) in witness_env
+                    .lookups
+                    .get(table_id)
+                    .unwrap()
+                    .iter()
+                    .enumerate()
+                {
+                    table[j].push(lookup.clone())
+                }
             }
 
             witness_env.reset()
@@ -200,47 +198,33 @@ mod tests {
             constraints_env.get_constraints()
         };
 
-        let rangecheck15_m = witness_env.get_rangecheck15_multipliticies(domain);
-        let rangecheck15_t = LookupTable::<Ff1>::RangeCheck15
-            .entries(domain)
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| Lookup {
-                table_id: LookupTable::RangeCheck15,
-                numerator: -rangecheck15_m[i],
-                value: vec![v],
-            });
-        rangecheck15[N_LIMBS] = rangecheck15_t.collect();
+        let mut rangecheck_multiplicities: BTreeMap<LookupTable<Ff1>, Vec<Fp>> = BTreeMap::new();
+        for (table_id, table) in rangecheck_tables.iter_mut() {
+            let rangecheck_m = witness_env.get_rangecheck15_multiplicities(domain);
+            rangecheck_multiplicities.insert(*table_id, rangecheck_m.clone());
+            let rangecheck_t = LookupTable::<Ff1>::RangeCheck15
+                .entries(domain)
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| Lookup {
+                    table_id: *table_id,
+                    numerator: -rangecheck_m[i],
+                    value: vec![v],
+                });
+            *(table.last_mut().unwrap()) = rangecheck_t.collect();
+        }
 
-        let rangecheck4_m = witness_env.get_rangecheck4_multipliticies(domain);
-        let rangecheck4_t = LookupTable::<Ff1>::RangeCheck4
-            .entries(domain)
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| Lookup {
-                table_id: LookupTable::RangeCheck4,
-                numerator: -rangecheck4_m[i],
-                value: vec![v],
-            });
-        rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
-
-        let lookup_witness_rangecheck4: MVLookupWitness<Fp, LookupTable<Ff1>> = {
-            MVLookupWitness {
-                f: rangecheck4.to_vec(),
-                m: rangecheck4_m,
-            }
-        };
-
-        let lookup_witness_rangecheck15: MVLookupWitness<Fp, LookupTable<Ff1>> = {
-            MVLookupWitness {
-                f: rangecheck15.to_vec(),
-                m: rangecheck15_m,
-            }
-        };
+        let mvlookups: Vec<MVLookupWitness<Fp, LookupTable<Ff1>>> = rangecheck_tables
+            .iter()
+            .map(|(table_id, table)| MVLookupWitness {
+                f: table.clone(),
+                m: rangecheck_multiplicities[table_id].clone(),
+            })
+            .collect();
 
         let proof_inputs = ProofInputs {
             evaluations: *witness,
-            mvlookups: vec![lookup_witness_rangecheck15, lookup_witness_rangecheck4],
+            mvlookups,
         };
 
         let proof = prove::<
