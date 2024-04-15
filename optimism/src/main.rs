@@ -19,6 +19,7 @@ use kimchi_optimism::{
     preimage_oracle::PreImageOracle,
     proof, CircuitTrait, DOMAIN_SIZE,
 };
+use log::debug;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -201,6 +202,7 @@ pub fn main() -> ExitCode {
     {
         // MIPS
         for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
+            debug!("Checking MIPS circuit {:?}", instr);
             let mips_result = prove::<
                 _,
                 OpeningProof,
@@ -218,7 +220,7 @@ pub fn main() -> ExitCode {
                 &mut rng,
             );
             let mips_proof = mips_result.unwrap();
-            eprintln!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
+            debug!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
             let mips_verifies = verify::<
                 _,
                 OpeningProof,
@@ -235,9 +237,9 @@ pub fn main() -> ExitCode {
                 Witness::zero_vec(DOMAIN_SIZE),
             );
             if mips_verifies {
-                eprintln!("The MIPS {:?} proof verifies", instr)
+                debug!("The MIPS {:?} proof verifies", instr)
             } else {
-                eprintln!("The MIPS {:?} proof doesn't verify", instr)
+                debug!("The MIPS {:?} proof doesn't verify", instr)
             }
         }
     }
@@ -246,6 +248,7 @@ pub fn main() -> ExitCode {
         // KECCAK
         // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
         for step in keccak::STEPS {
+            debug!("Checking Keccak circuit {:?}", step);
             let keccak_result = prove::<
                 _,
                 OpeningProof,
@@ -263,7 +266,7 @@ pub fn main() -> ExitCode {
                 &mut rng,
             );
             let keccak_proof = keccak_result.unwrap();
-            eprintln!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
+            debug!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
             let keccak_verifies = verify::<
                 _,
                 OpeningProof,
@@ -280,9 +283,9 @@ pub fn main() -> ExitCode {
                 Witness::zero_vec(DOMAIN_SIZE),
             );
             if keccak_verifies {
-                eprintln!("The Keccak {:?} proof verifies", step)
+                debug!("The Keccak {:?} proof verifies", step)
             } else {
-                eprintln!("The Keccak {:?} proof doesn't verify", step)
+                debug!("The Keccak {:?} proof doesn't verify", step)
             }
         }
     }

@@ -65,6 +65,7 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
             interpret_instruction(env, instr);
             circuit.constraints.insert(instr, env.constraints.clone());
             circuit.lookups.insert(instr, env.lookups.clone());
+            env.scratch_state_idx = 0; // Reset the scratch state index for the next instruction
             env.constraints = vec![]; // Clear the constraints for the next instruction
             env.lookups = vec![]; // Clear the lookups for the next instruction
         }
