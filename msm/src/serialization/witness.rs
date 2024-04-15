@@ -28,6 +28,8 @@ pub struct Env<Fp: PrimeField, Ff: PrimeField> {
     /// Keep track of the RangeCheck4 table multiplicities.
     /// The value `0` is used as a (repeated) dummy value.
     // Boxing to avoid stack overflow
+    // @volhovm: I understand this is TODO/unused, so I did not create a
+    // rangecheck4abs counterpart for it.
     pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
 
     /// Keep track of the lookup multiplicities.
@@ -75,17 +77,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         } else {
             TryFrom::try_from((*value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
         };
-        self.lookup_multiplicities
-            .get_mut(&LookupTable::RangeCheck4Abs)
-            .unwrap()[value_ix] += F::one();
-        self.lookups
-            .get_mut(&LookupTable::RangeCheck4Abs)
-            .unwrap()
-            .push(Lookup {
-                table_id: LookupTable::RangeCheck4Abs,
-                numerator: F::one(),
-                value: vec![*value],
-            })
+        self.record_range_check(LookupTable::RangeCheck4Abs, value, value_ix);
     }
 
     fn range_check_ff_highest(&mut self, value: &Self::Variable) {
@@ -99,53 +91,27 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         );
 
         let value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
-        self.lookup_multiplicities
-            .get_mut(&LookupTable::RangeCheckFfHighest(PhantomData))
-            .unwrap()[value_ix] += F::one();
-        self.lookups
-            .get_mut(&LookupTable::RangeCheckFfHighest(PhantomData))
-            .unwrap()
-            .push(Lookup {
-                table_id: LookupTable::RangeCheckFfHighest(PhantomData),
-                numerator: F::one(),
-                value: vec![*value],
-            })
+        self.record_range_check(
+            LookupTable::RangeCheckFfHighest(PhantomData),
+            value,
+            value_ix,
+        );
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
         let value_biguint = value.to_biguint();
         assert!(value_biguint < BigUint::from(2u128.pow(15)));
         // Adding multiplicities
-        let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities
-            .get_mut(&LookupTable::RangeCheck15)
-            .unwrap()[value_usize] += F::one();
-        self.lookups
-            .get_mut(&LookupTable::RangeCheck15)
-            .unwrap()
-            .push(Lookup {
-                table_id: LookupTable::RangeCheck15,
-                numerator: F::one(),
-                value: vec![*value],
-            })
+        let value_ix: usize = value_biguint.clone().try_into().unwrap();
+        self.record_range_check(LookupTable::RangeCheck15, value, value_ix);
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
         let value_biguint = value.to_biguint();
         assert!(value_biguint < BigUint::from(2u128.pow(4)));
         // Adding multiplicities
-        let value_usize: usize = value_biguint.clone().try_into().unwrap();
-        self.lookup_multiplicities
-            .get_mut(&LookupTable::RangeCheck4)
-            .unwrap()[value_usize] += F::one();
-        self.lookups
-            .get_mut(&LookupTable::RangeCheck4)
-            .unwrap()
-            .push(Lookup {
-                table_id: LookupTable::RangeCheck4,
-                numerator: F::one(),
-                value: vec![*value],
-            })
+        let value_ix: usize = value_biguint.clone().try_into().unwrap();
+        self.record_range_check(LookupTable::RangeCheck4, value, value_ix);
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -247,6 +213,21 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
             lookup_t_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
             lookups,
         }
+    }
+
+    // Commonly used by range checking functions.
+    fn record_range_check(
+        &mut self,
+        table_id: LookupTable<Ff>,
+        value: &<Self as InterpreterEnv<Fp, Ff>>::Variable,
+        value_ix: usize,
+    ) {
+        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += Fp::one();
+        self.lookups.get_mut(&table_id).unwrap().push(Lookup {
+            table_id,
+            numerator: Fp::one(),
+            value: vec![*value],
+        })
     }
 }
 
