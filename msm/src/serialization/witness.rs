@@ -212,32 +212,20 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
         // TODO do we need to reset multiplicities?
     }
 
-    pub fn get_rangecheck4_multiplicities(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
-        let mut m = Vec::with_capacity(domain.d1.size as usize);
-        m.extend(self.lookup_multiplicities[&LookupTable::RangeCheck4].to_vec());
-        let repeated_dummy_value: Vec<Fp> = iter::repeat(-Fp::zero())
-            .take((domain.d1.size - (1 << 4)) as usize)
-            .collect();
-        m.extend(repeated_dummy_value);
-        assert_eq!(m.len(), domain.d1.size as usize);
-        m
-    }
-
-    pub fn get_rangecheck15_multiplicities(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
-        assert_eq!(domain.d1.size, 1 << 15);
-        self.lookup_multiplicities[&LookupTable::RangeCheck15].to_vec()
-    }
-
+    /// Getting multiplicities for range check tables less or equal than 15 bits.
     pub fn get_rangecheck_multiplicities(
         &self,
         domain: EvaluationDomains<Fp>,
         table_id: LookupTable<Ff>,
     ) -> Vec<Fp> {
-        match table_id {
-            LookupTable::RangeCheck4 => self.get_rangecheck4_multiplicities(domain),
-            LookupTable::RangeCheck15 => self.get_rangecheck15_multiplicities(domain),
-            _ => panic!("Multiplicity support not implemented"),
-        }
+        let mut m = Vec::with_capacity(domain.d1.size as usize);
+        m.extend(self.lookup_multiplicities[&table_id].to_vec());
+        let repeated_dummy_value: Vec<Fp> = iter::repeat(-Fp::zero())
+            .take((domain.d1.size as usize) - table_id.length())
+            .collect();
+        m.extend(repeated_dummy_value);
+        assert_eq!(m.len(), domain.d1.size as usize);
+        m
     }
 }
 
