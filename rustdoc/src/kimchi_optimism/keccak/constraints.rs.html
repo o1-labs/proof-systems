@@ -143,6 +143,8 @@
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the constraints for one Keccak step.
 </span><span class="kw">use crate</span>::{
     keccak::{
@@ -151,9 +153,10 @@
             Sponges::<span class="kw-2">*</span>,
             Steps::{<span class="self">self</span>, <span class="kw-2">*</span>},
         },
-        Constraint, KeccakColumn, Selector, E,
+        Constraint, KeccakColumn, Selector,
     },
     lookups::Lookup,
+    E,
 };
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>kimchi::{
@@ -163,6 +166,7 @@
     },
     o1_utils::Two,
 };
+<span class="kw">use </span>kimchi_msm::columns::ColumnIndexer;
 
 <span class="kw">use </span><span class="kw">super</span>::interpreter::KeccakInterpreter;
 
@@ -214,7 +218,7 @@
         <span class="comment">// Despite `KeccakWitness` containing both `curr` and `next` fields,
         // the Keccak step spans across one row only.
         </span>Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
+            col: column.to_column(),
             row: CurrOrNext::Curr,
         }))
     }

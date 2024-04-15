@@ -304,7 +304,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    constraint_exprs: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
+    constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
     proof: <span class="kw-2">&amp;</span>Proof&lt;N, G, OpeningProof, ID&gt;,
     public_inputs: Witness&lt;NPUB, Vec&lt;G::ScalarField&gt;&gt;,
 ) -&gt; bool
@@ -488,7 +488,7 @@
     };
 
     <span class="kw">let </span>combined_expr =
-        Expr::combine_constraints(<span class="number">0</span>..(constraint_exprs.len() <span class="kw">as </span>u32), constraint_exprs.clone());
+        Expr::combine_constraints(<span class="number">0</span>..(constraints.len() <span class="kw">as </span>u32), constraints.clone());
     <span class="kw">let </span>ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,

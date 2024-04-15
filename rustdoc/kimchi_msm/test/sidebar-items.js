@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["columns","constraint","interpreter","witness"]};
+window.SIDEBAR_ITEMS = {"fn":["test_completeness_generic"],"mod":["columns","constraint","interpreter","witness"]};

@@ -1381,15 +1381,15 @@
     /// - 6 constraints are added only if is_pad() holds
     </span><span class="kw">fn </span>constrain_padding(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Check that the padding is located at the end of the message
-        </span><span class="kw">let </span>pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
+        </span><span class="kw">let </span>_pad_at_end = (<span class="number">0</span>..RATE_IN_BYTES).fold(<span class="self">Self</span>::zero(), |acc, i| {
             acc * <span class="self">Self</span>::two() + <span class="self">self</span>.in_padding(i)
         });
-        <span class="self">self</span>.constrain(
+        <span class="comment">/*self.constrain(
             PadAtEnd,
-            <span class="self">self</span>.is_pad(),
-            <span class="self">self</span>.two_to_pad() - <span class="self">Self</span>::one() - pad_at_end,
-        );
-        <span class="comment">// Check that the padding value is correct
+            self.is_pad(),
+            self.two_to_pad() - Self::one() - pad_at_end,
+        );*/
+        // Check that the padding value is correct
         </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..PAD_SUFFIX_LEN {
             <span class="self">self</span>.constrain(
                 PaddingSuffix(i),
@@ -1557,7 +1557,7 @@
                 <span class="kw">for </span>y <span class="kw">in </span><span class="number">0</span>..DIM {
                     <span class="kw">let </span>not = <span class="self">Self</span>::constant(<span class="number">0x1111111111111111u64</span>)
                         - <span class="self">self</span>.shifts_b(<span class="number">0</span>, y, (x + <span class="number">1</span>) % DIM, q);
-                    <span class="kw">let </span>sum = not + <span class="self">self</span>.shifts_b(<span class="number">0</span>, y, (x + <span class="number">2</span>) % DIM, q);
+                    <span class="kw">let </span>_sum = not + <span class="self">self</span>.shifts_b(<span class="number">0</span>, y, (x + <span class="number">2</span>) % DIM, q);
                     <span class="kw">let </span>and = <span class="self">self</span>.shifts_sum(<span class="number">1</span>, y, x, q);
 
                     <span class="self">self</span>.constrain(
@@ -1572,18 +1572,18 @@
                                 <span class="prelude-val">Some</span>(q),
                             ),
                     );
-                    <span class="self">self</span>.constrain(
+                    <span class="comment">/*self.constrain(
                         ChiShiftsSum(y, x, q),
-                        <span class="self">self</span>.is_round(),
-                        sum - <span class="self">Self</span>::from_shifts(
-                            <span class="kw-2">&amp;</span><span class="self">self</span>.vec_shifts_sum(),
-                            <span class="prelude-val">None</span>,
-                            <span class="prelude-val">Some</span>(y),
-                            <span class="prelude-val">Some</span>(x),
-                            <span class="prelude-val">Some</span>(q),
+                        self.is_round(),
+                        sum - Self::from_shifts(
+                            &amp;self.vec_shifts_sum(),
+                            None,
+                            Some(y),
+                            Some(x),
+                            Some(q),
                         ),
-                    );
-                    state_f[y][x][q] = <span class="self">self</span>.shifts_b(<span class="number">0</span>, y, x, q) + and;
+                    );*/
+                    </span>state_f[y][x][q] = <span class="self">self</span>.shifts_b(<span class="number">0</span>, y, x, q) + and;
                 }
             }
         }

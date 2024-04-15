@@ -522,24 +522,26 @@
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            ColumnAlias <span class="kw">as </span>Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
+            ColumnAlias <span class="kw">as </span>MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
             MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
             MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::InterpreterEnv,
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
-        E,
     },
+    E,
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+<span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer <span class="kw">as _</span>};
 <span class="kw">use </span>std::array;
 
 <span class="doccomment">/// The environment keeping the constraints between the different polynomials
@@ -555,7 +557,7 @@
     <span class="doccomment">/// In the concrete implementation for the constraints, the interpreter will
     /// work over columns. The position in this case can be seen as a new
     /// variable/input of our circuit.
-    </span><span class="kw">type </span>Position = Column;
+    </span><span class="kw">type </span>Position = MIPSColumn;
 
     <span class="comment">// Use one of the available columns. It won't
     // create a new column every time this function is called. The number
@@ -567,14 +569,14 @@
         // can use.
         </span><span class="kw">let </span>scratch_idx = <span class="self">self</span>.scratch_state_idx;
         <span class="self">self</span>.scratch_state_idx += <span class="number">1</span>;
-        Column::ScratchState(scratch_idx)
+        MIPSColumn::ScratchState(scratch_idx)
     }
 
     <span class="kw">type </span>Variable = Expr&lt;ConstantExpr&lt;Fp&gt;, Column&gt;;
 
     <span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
+            col: column.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
@@ -600,7 +602,7 @@
     }
 
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.variable(Column::InstructionCounter)
+        <span class="self">self</span>.variable(MIPSColumn::InstructionCounter)
     }
 
     <span class="kw">unsafe fn </span>fetch_register(

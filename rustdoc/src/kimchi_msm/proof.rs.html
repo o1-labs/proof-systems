@@ -126,16 +126,26 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     lookups::{LookupTableIDs, LookupWitness},
     mvlookup::{LookupProof, LookupTableID},
     witness::Witness,
-    MVLookupWitness,
+    MVLookupWitness, DOMAIN_SIZE,
 };
-
-<span class="kw">use </span>ark_ff::UniformRand;
-<span class="kw">use </span>rand::thread_rng;
-
+<span class="kw">use </span>ark_ff::{UniformRand, Zero};
 <span class="kw">use </span>kimchi::{
     circuits::{
         domains::EvaluationDomains,
@@ -145,6 +155,7 @@
     proof::PointEvaluations,
 };
 <span class="kw">use </span>poly_commitment::{commitment::PolyComm, OpenProof};
+<span class="kw">use </span>rand::thread_rng;
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID&gt; {
@@ -154,12 +165,12 @@
     <span class="kw">pub </span>mvlookups: Vec&lt;MVLookupWitness&lt;G::ScalarField, ID&gt;&gt;,
 }
 
-<span class="comment">// This should be used only for testing purposes.
-// It is not only in the test API because it is used at the moment in the
-// main.rs. It should be moved to the test API when main.rs is replaced with
-// real production code.
-</span><span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; ProofInputs&lt;N, G, LookupTableIDs&gt; {
-    <span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;G::ScalarField&gt;) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; ProofInputs&lt;N, G, LookupTableIDs&gt; {
+    <span class="comment">// This should be used only for testing purposes.
+    // It is not only in the test API because it is used at the moment in the
+    // main.rs. It should be moved to the test API when main.rs is replaced with
+    // real production code.
+    </span><span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;G::ScalarField&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
         <span class="kw">let </span>cols: Box&lt;[Vec&lt;G::ScalarField&gt;; N]&gt; = Box::new(std::array::from_fn(|<span class="kw">_</span>| {
             (<span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize)
@@ -169,6 +180,21 @@
         ProofInputs {
             evaluations: Witness { cols },
             mvlookups: <span class="macro">vec!</span>[LookupWitness::&lt;G::ScalarField&gt;::random(domain)],
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID&gt; Default <span class="kw">for </span>ProofInputs&lt;N, G, ID&gt; {
+    <span class="doccomment">/// Creates a default proof instance. Note that such an empty "zero" instance will not satisfy any constraint.
+    /// E.g. some constraints that have constants inside of them (A - const = 0) cannot be satisfied by it.
+    </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        ProofInputs {
+            evaluations: Witness {
+                cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| {
+                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
+                })),
+            },
+            mvlookups: <span class="macro">vec!</span>[],
         }
     }
 }
