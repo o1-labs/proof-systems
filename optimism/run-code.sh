@@ -11,8 +11,8 @@ set -u
 
 source $FILENAME
 
-./run-op-program.sh
+#./run-op-program.sh
 
-./run-cannon.sh
+#./run-cannon.sh
 
 ./run-vm.sh

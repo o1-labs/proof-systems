@@ -25,7 +25,7 @@ pub const SYSCALL_READ: u32 = 4003;
 pub const SYSCALL_WRITE: u32 = 4004;
 pub const SYSCALL_FCNTL: u32 = 4055;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
 pub enum Instruction {
     RType(RTypeInstruction),
     JType(JTypeInstruction),
@@ -113,6 +113,22 @@ pub enum ITypeInstruction {
     Store32Conditional,           // sc
     StoreWordLeft,                // swl
     StoreWordRight,               // swr
+}
+
+impl Default for RTypeInstruction {
+    fn default() -> Self {
+        RTypeInstruction::ShiftLeftLogical
+    }
+}
+impl Default for JTypeInstruction {
+    fn default() -> Self {
+        JTypeInstruction::Jump
+    }
+}
+impl Default for ITypeInstruction {
+    fn default() -> Self {
+        ITypeInstruction::BranchEq
+    }
 }
 
 pub trait InterpreterEnv {

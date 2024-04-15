@@ -19,7 +19,7 @@ use std::collections::HashMap;
 
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;
-use strum::EnumCount;
+use strum::{EnumCount, IntoEnumIterator};
 
 use crate::{
     mips::{
@@ -48,81 +48,6 @@ pub mod witness;
 /// The Keccak circuit
 pub type MIPSCircuit<F> = Circuit<MIPS_COLUMNS, Instruction, F>;
 
-pub const INSTRUCTIONS: [Instruction;
-    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT] = [
-    RType(ShiftLeftLogical),
-    RType(ShiftRightLogical),
-    RType(ShiftRightArithmetic),
-    RType(ShiftLeftLogicalVariable),
-    RType(ShiftRightLogicalVariable),
-    RType(ShiftRightArithmeticVariable),
-    RType(JumpRegister),
-    RType(JumpAndLinkRegister),
-    RType(SyscallMmap),
-    RType(SyscallExitGroup),
-    RType(SyscallReadHint),
-    RType(SyscallReadPreimage),
-    RType(SyscallReadOther),
-    RType(SyscallWriteHint),
-    RType(SyscallWritePreimage),
-    RType(SyscallWriteOther),
-    RType(SyscallFcntl),
-    RType(SyscallOther),
-    RType(MoveZero),
-    RType(MoveNonZero),
-    RType(Sync),
-    RType(MoveFromHi),
-    RType(MoveToHi),
-    RType(MoveFromLo),
-    RType(MoveToLo),
-    RType(Multiply),
-    RType(MultiplyUnsigned),
-    RType(Div),
-    RType(DivUnsigned),
-    RType(Add),
-    RType(AddUnsigned),
-    RType(Sub),
-    RType(SubUnsigned),
-    RType(And),
-    RType(Or),
-    RType(Xor),
-    RType(Nor),
-    RType(SetLessThan),
-    RType(SetLessThanUnsigned),
-    RType(MultiplyToRegister),
-    RType(CountLeadingOnes),
-    RType(CountLeadingZeros),
-    JType(Jump),
-    JType(JumpAndLink),
-    IType(BranchEq),
-    IType(BranchNeq),
-    IType(BranchLeqZero),
-    IType(BranchGtZero),
-    IType(BranchLtZero),
-    IType(BranchGeqZero),
-    IType(AddImmediate),
-    IType(AddImmediateUnsigned),
-    IType(SetLessThanImmediate),
-    IType(SetLessThanImmediateUnsigned),
-    IType(AndImmediate),
-    IType(OrImmediate),
-    IType(XorImmediate),
-    IType(LoadUpperImmediate),
-    IType(Load8),
-    IType(Load16),
-    IType(Load32),
-    IType(Load8Unsigned),
-    IType(Load16Unsigned),
-    IType(LoadWordLeft),
-    IType(LoadWordRight),
-    IType(Store8),
-    IType(Store16),
-    IType(Store32),
-    IType(Store32Conditional),
-    IType(StoreWordLeft),
-    IType(StoreWordRight),
-];
-
 impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircuit<F> {
     fn new(domain_size: usize, env: &mut Env<F>) -> Self {
         let mut circuit = Self {
@@ -132,7 +57,7 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
             lookups: Default::default(),
         };
 
-        for instr in INSTRUCTIONS {
+        for instr in Instruction::iter() {
             circuit.witness.insert(
                 instr,
                 Witness {
@@ -172,7 +97,7 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
     }
 
     fn pad_witnesses(&mut self) {
-        for instr in INSTRUCTIONS {
+        for instr in Instruction::iter() {
             self.pad(instr);
         }
     }

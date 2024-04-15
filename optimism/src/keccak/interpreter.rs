@@ -413,7 +413,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 for y in 0..DIM {
                     let not = Self::constant(0x1111111111111111u64)
                         - self.shifts_b(0, y, (x + 1) % DIM, q);
-                    let _sum = not + self.shifts_b(0, y, (x + 2) % DIM, q);
+                    let sum = not + self.shifts_b(0, y, (x + 2) % DIM, q);
                     let and = self.shifts_sum(1, y, x, q);
 
                     self.constrain(

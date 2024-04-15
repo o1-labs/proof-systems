@@ -12,7 +12,8 @@ use kimchi_optimism::{
     mips::{
         self,
         column::{MIPSWitnessTrait, MIPS_COLUMNS},
-        constraints::{self as mips_constraints},
+        constraints as mips_constraints,
+        interpreter::Instruction,
         witness::{self as mips_witness, SCRATCH_SIZE},
         MIPSCircuit,
     },
@@ -25,6 +26,7 @@ use mina_poseidon::{
 };
 use poly_commitment::pairing_proof::PairingProof;
 use std::{collections::HashMap, fs::File, io::BufReader, process::ExitCode};
+use strum::IntoEnumIterator;
 
 type Fp = ark_bn254::Fr;
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -95,7 +97,7 @@ pub fn main() -> ExitCode {
 
     // Initialize folded instances of the sub circuits
     let mut mips_folded_instance = HashMap::new();
-    for instr in mips::INSTRUCTIONS {
+    for instr in Instruction::iter() {
         mips_folded_instance.insert(
             instr,
             ProofInputs::<
@@ -117,7 +119,8 @@ pub fn main() -> ExitCode {
         );
     }
 
-    while !mips_wit_env.halt {
+    let mut i = 0;
+    while i < 6000000 && !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
 
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
@@ -169,10 +172,11 @@ pub fn main() -> ExitCode {
             );
             mips_circuit.reset(instr);
         }
+        i += 1;
     }
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
-    for instr in mips::INSTRUCTIONS {
+    for instr in Instruction::iter() {
         let needs_folding = mips_circuit.pad(instr);
         if needs_folding {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
@@ -197,7 +201,7 @@ pub fn main() -> ExitCode {
 
     {
         // MIPS
-        for instr in mips::INSTRUCTIONS {
+        for instr in Instruction::iter() {
             let mips_result = prove::<
                 _,
                 OpeningProof,
@@ -215,7 +219,7 @@ pub fn main() -> ExitCode {
                 &mut rng,
             );
             let mips_proof = mips_result.unwrap();
-            println!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
+            eprintln!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
             let mips_verifies = verify::<
                 _,
                 OpeningProof,
@@ -232,9 +236,9 @@ pub fn main() -> ExitCode {
                 Witness::zero_vec(DOMAIN_SIZE),
             );
             if mips_verifies {
-                println!("The MIPS {:?} proof verifies", instr)
+                eprintln!("The MIPS {:?} proof verifies", instr)
             } else {
-                println!("The MIPS {:?} proof doesn't verify", instr)
+                eprintln!("The MIPS {:?} proof doesn't verify", instr)
             }
         }
     }
@@ -260,7 +264,7 @@ pub fn main() -> ExitCode {
                 &mut rng,
             );
             let keccak_proof = keccak_result.unwrap();
-            println!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
+            eprintln!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
             let keccak_verifies = verify::<
                 _,
                 OpeningProof,
@@ -277,9 +281,9 @@ pub fn main() -> ExitCode {
                 Witness::zero_vec(DOMAIN_SIZE),
             );
             if keccak_verifies {
-                println!("The Keccak {:?} proof verifies", step)
+                eprintln!("The Keccak {:?} proof verifies", step)
             } else {
-                println!("The Keccak {:?} proof doesn't verify", step)
+                eprintln!("The Keccak {:?} proof doesn't verify", step)
             }
         }
     }

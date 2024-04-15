@@ -68,7 +68,8 @@ pub trait CircuitTrait<const N: usize, SELECTOR, F, Env> {
     /// Add a witness row to the circuit
     fn push_row(&mut self, step: SELECTOR, row: &[F; N]);
 
-    /// Pads the rows of one selector until reaching the domain size
+    /// Pads the rows of one selector until reaching the domain size if needed.
+    /// Returns true if padding was performed, false otherwise.
     fn pad(&mut self, step: SELECTOR) -> bool;
 
     /// Pads the rows of the witnesses until reaching the domain size
