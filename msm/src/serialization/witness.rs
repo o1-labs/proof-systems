@@ -1,9 +1,11 @@
 use ark_ff::{FpParameters, PrimeField};
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
+use strum::IntoEnumIterator;
 
 use crate::{
     columns::{Column, ColumnIndexer},
+    mvlookup::LookupTableID,
     serialization::{
         column::{SerializationColumn, SER_N_COLUMNS},
         interpreter::InterpreterEnv,
@@ -204,8 +206,10 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     }
 
     pub fn reset(&mut self) {
-        *self.lookups.get_mut(&LookupTable::RangeCheck4).unwrap() = Vec::new();
-        *self.lookups.get_mut(&LookupTable::RangeCheck15).unwrap() = Vec::new();
+        for table in self.lookups.values_mut() {
+            *table = Vec::new();
+        }
+        // TODO do we need to reset multiplicities?
     }
 
     pub fn get_rangecheck4_multiplicities(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
@@ -240,12 +244,11 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
 impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     pub fn create() -> Self {
         let mut lookups = BTreeMap::new();
-        lookups.insert(LookupTable::RangeCheck4, Vec::new());
-        lookups.insert(LookupTable::RangeCheck15, Vec::new());
-
         let mut lookup_multiplicities = BTreeMap::new();
-        lookup_multiplicities.insert(LookupTable::RangeCheck4, vec![Fp::zero(); 1 << 4]);
-        lookup_multiplicities.insert(LookupTable::RangeCheck15, vec![Fp::zero(); 1 << 15]);
+        for table_id in LookupTable::<Ff>::iter() {
+            lookups.insert(table_id, Vec::new());
+            lookup_multiplicities.insert(table_id, vec![Fp::zero(); table_id.length()]);
+        }
 
         Self {
             witness: Witness {
