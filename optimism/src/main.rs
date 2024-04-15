@@ -10,7 +10,6 @@ use kimchi_optimism::{
     keccak::{self, column::ZKVM_KECCAK_COLS, environment::KeccakEnv, KeccakCircuit},
     lookups::LookupTableIDs,
     mips::{
-        self,
         column::{MIPSWitnessTrait, MIPS_COLUMNS},
         constraints as mips_constraints,
         interpreter::Instruction,

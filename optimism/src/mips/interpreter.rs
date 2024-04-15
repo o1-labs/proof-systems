@@ -32,9 +32,10 @@ pub enum Instruction {
     IType(ITypeInstruction),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Default)]
 pub enum RTypeInstruction {
-    ShiftLeftLogical,             // sll
+    #[default]
+    ShiftLeftLogical, // sll
     ShiftRightLogical,            // srl
     ShiftRightArithmetic,         // sra
     ShiftLeftLogicalVariable,     // sllv
@@ -78,15 +79,17 @@ pub enum RTypeInstruction {
     CountLeadingZeros,            // clz
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Default)]
 pub enum JTypeInstruction {
-    Jump,        // j
+    #[default]
+    Jump, // j
     JumpAndLink, // jal
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Default)]
 pub enum ITypeInstruction {
-    BranchEq,                     // beq
+    #[default]
+    BranchEq, // beq
     BranchNeq,                    // bne
     BranchLeqZero,                // blez
     BranchGtZero,                 // bgtz
@@ -113,22 +116,6 @@ pub enum ITypeInstruction {
     Store32Conditional,           // sc
     StoreWordLeft,                // swl
     StoreWordRight,               // swr
-}
-
-impl Default for RTypeInstruction {
-    fn default() -> Self {
-        RTypeInstruction::ShiftLeftLogical
-    }
-}
-impl Default for JTypeInstruction {
-    fn default() -> Self {
-        JTypeInstruction::Jump
-    }
-}
-impl Default for ITypeInstruction {
-    fn default() -> Self {
-        ITypeInstruction::BranchEq
-    }
 }
 
 pub trait InterpreterEnv {

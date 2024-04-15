@@ -19,23 +19,18 @@ use std::collections::HashMap;
 
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;
-use strum::{EnumCount, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
 use crate::{
     mips::{
         column::MIPS_COLUMNS,
         constraints::Env,
-        interpreter::Instruction::{self, *},
+        interpreter::Instruction::{self},
     },
     Circuit, CircuitTrait,
 };
 
-use self::interpreter::{
-    interpret_instruction,
-    ITypeInstruction::{self, *},
-    JTypeInstruction::{self, *},
-    RTypeInstruction::{self, *},
-};
+use self::interpreter::interpret_instruction;
 
 pub mod column;
 pub mod constraints;
