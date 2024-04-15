@@ -9,7 +9,7 @@ use crate::{
         PAD_SUFFIX_LEN,
     },
     lookups::LookupTableIDs,
-    Circuit,
+    Circuit, CircuitTrait,
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
@@ -82,26 +82,28 @@ pub enum Constraint {
 
 #[allow(dead_code)]
 /// The Keccak circuit
-pub(crate) type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
+pub type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
+
+pub const STEPS: [Steps; 6] = [
+    Round(0),
+    Sponge(Absorb(First)),
+    Sponge(Absorb(Middle)),
+    Sponge(Absorb(Last)),
+    Sponge(Absorb(Only)),
+    Sponge(Squeeze),
+];
 
 #[allow(dead_code)]
-impl<F: Field> KeccakCircuit<F> {
-    /// Create a new Keccak circuit
-    pub fn new(domain_size: usize) -> Self {
+impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
+    fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
+            domain_size,
             witness: HashMap::new(),
             constraints: Default::default(),
             lookups: Default::default(),
         };
 
-        for step in [
-            Round(0),
-            Sponge(Absorb(First)),
-            Sponge(Absorb(Middle)),
-            Sponge(Absorb(Last)),
-            Sponge(Absorb(Only)),
-            Sponge(Squeeze),
-        ] {
+        for step in STEPS {
             circuit.witness.insert(
                 step,
                 Witness {
@@ -116,8 +118,7 @@ impl<F: Field> KeccakCircuit<F> {
         circuit
     }
 
-    /// Add a witness row to the circuit
-    pub(crate) fn push_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
+    fn push_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
         // Make sure we are using the same round number to refer to round steps
         let mut step = step;
         if let Round(_) = step {
@@ -132,22 +133,34 @@ impl<F: Field> KeccakCircuit<F> {
         });
     }
 
-    /// Pads the rows of the witnesses until reaching the domain size
-    pub(crate) fn pad_rows(&mut self) {
-        for step in [
-            Round(0),
-            Sponge(Absorb(First)),
-            Sponge(Absorb(Middle)),
-            Sponge(Absorb(Last)),
-            Sponge(Absorb(Only)),
-            Sponge(Squeeze),
-        ] {
-            let rows_left =
-                self.witness[&step].cols[0].capacity() - self.witness[&step].cols[0].len();
-            for _ in 0..rows_left {
-                self.push_row(step, &[F::zero(); ZKVM_KECCAK_COLS]);
-            }
+    fn pad(&mut self, step: Steps) -> bool {
+        let rows_left = self.domain_size - self.witness[&step].cols[0].len();
+        if rows_left == 0 {
+            return false;
         }
+        self.witness.entry(step).and_modify(|wit| {
+            for col in wit.cols.iter_mut() {
+                col.extend((0..rows_left).map(|_| F::zero()));
+            }
+        });
+        true
+    }
+
+    fn pad_witnesses(&mut self) {
+        for step in STEPS {
+            self.pad(step);
+        }
+    }
+
+    fn reset(&mut self, step: Steps) {
+        self.witness.insert(
+            step,
+            Witness {
+                cols: Box::new(std::array::from_fn(|_| {
+                    Vec::with_capacity(self.domain_size)
+                })),
+            },
+        );
     }
 }
 
