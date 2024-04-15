@@ -1,18 +1,22 @@
 //! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
-use crate::keccak::{
-    column::{
-        Absorbs::{self, *},
-        KeccakWitness,
-        Sponges::{self, *},
-        Steps::*,
-        PAD_SUFFIX_LEN,
+use crate::{
+    keccak::{
+        column::{
+            Absorbs::{self, *},
+            KeccakWitness,
+            Sponges::{self, *},
+            Steps::*,
+            PAD_SUFFIX_LEN,
+        },
+        constraints::Env as ConstraintsEnv,
+        grid_index, pad_blocks,
+        witness::Env as WitnessEnv,
+        KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
     },
-    constraints::Env as ConstraintsEnv,
-    grid_index, pad_blocks,
-    witness::Env as WitnessEnv,
-    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    lookups::Lookup,
+    E,
 };
 use ark_ff::Field;
 use kimchi::{
@@ -24,6 +28,8 @@ use kimchi::{
     o1_utils::Two,
 };
 use std::array;
+
+use super::{column::Steps, interpreter::KeccakInterpreter};
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
@@ -424,5 +430,29 @@ impl<F: Field> KeccakEnv<F> {
         }
 
         state_g
+    }
+
+    #[allow(dead_code)]
+    /// Returns the list of constraints used in a specific Keccak step
+    pub(crate) fn constraints_of(step: Steps) -> Vec<E<F>> {
+        let mut env = ConstraintsEnv {
+            constraints: vec![],
+            lookups: vec![],
+            step: Some(step),
+        };
+        env.constraints();
+        env.constraints
+    }
+
+    #[allow(dead_code)]
+    /// Returns the list of lookups used in a specific Keccak step
+    pub(crate) fn lookups_of(step: Steps) -> Vec<Lookup<E<F>>> {
+        let mut env = ConstraintsEnv {
+            constraints: vec![],
+            lookups: vec![],
+            step: Some(step),
+        };
+        env.lookups();
+        env.lookups
     }
 }

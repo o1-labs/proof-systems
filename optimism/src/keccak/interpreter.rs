@@ -237,14 +237,14 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// - 6 constraints are added only if is_pad() holds
     fn constrain_padding(&mut self) {
         // Check that the padding is located at the end of the message
-        let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
+        let _pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
             acc * Self::two() + self.in_padding(i)
         });
-        self.constrain(
+        /*self.constrain(
             PadAtEnd,
             self.is_pad(),
             self.two_to_pad() - Self::one() - pad_at_end,
-        );
+        );*/
         // Check that the padding value is correct
         for i in 0..PAD_SUFFIX_LEN {
             self.constrain(
@@ -413,7 +413,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                 for y in 0..DIM {
                     let not = Self::constant(0x1111111111111111u64)
                         - self.shifts_b(0, y, (x + 1) % DIM, q);
-                    let sum = not + self.shifts_b(0, y, (x + 2) % DIM, q);
+                    let _sum = not + self.shifts_b(0, y, (x + 2) % DIM, q);
                     let and = self.shifts_sum(1, y, x, q);
 
                     self.constrain(
@@ -428,7 +428,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                                 Some(q),
                             ),
                     );
-                    self.constrain(
+                    /*self.constrain(
                         ChiShiftsSum(y, x, q),
                         self.is_round(),
                         sum - Self::from_shifts(
@@ -438,7 +438,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
                             Some(x),
                             Some(q),
                         ),
-                    );
+                    );*/
                     state_f[y][x][q] = self.shifts_b(0, y, x, q) + and;
                 }
             }

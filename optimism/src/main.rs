@@ -1,10 +1,15 @@
 use ark_bn254::FrParameters;
 use ark_ec::bn::Bn;
 use ark_ff::{Fp256, UniformRand, Zero};
+use kimchi::o1_utils;
+use kimchi_msm::{
+    columns::Column, proof::ProofInputs, prover::prove, verifier::verify, witness::Witness,
+};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::column::{KeccakWitness, ZKVM_KECCAK_COLS},
+    lookups::LookupTableIDs,
     mips::{
         column::{MIPSWitness, MIPSWitnessTrait, MIPS_COLUMNS},
         witness::{self as mips_witness, SCRATCH_SIZE},
@@ -62,6 +67,8 @@ pub fn main() -> ExitCode {
     let domain =
         kimchi::circuits::domains::EvaluationDomains::<ark_bn254::Fr>::create(DOMAIN_SIZE).unwrap();
 
+    let mut rng = o1_utils::tests::make_test_rng();
+
     let srs = {
         // Trusted setup toxic waste
         let x = ark_bn254::Fr::rand(&mut rand::rngs::OsRng);
@@ -73,9 +80,10 @@ pub fn main() -> ExitCode {
 
     let mut env = mips_witness::Env::<ark_bn254::Fr>::create(cannon::PAGE_SIZE as usize, state, po);
 
-    let mut mips_folded_witness = proof::ProofInputs::<
+    let mut mips_folded_witness = ProofInputs::<
         MIPS_COLUMNS,
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+        LookupTableIDs,
     >::default();
 
     let mips_reset_pre_folding_witness = |witness_columns: &mut MIPSWitness<Vec<_>>| {
@@ -90,9 +98,10 @@ pub fn main() -> ExitCode {
 
     // The keccak environment is extracted inside the loop
 
-    let mut keccak_folded_witness = proof::ProofInputs::<
+    let mut keccak_folded_witness = ProofInputs::<
         ZKVM_KECCAK_COLS,
         ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+        LookupTableIDs,
     >::default();
 
     let keccak_reset_pre_folding_witness =
@@ -185,18 +194,29 @@ pub fn main() -> ExitCode {
 
     {
         // MIPS
-        let mips_proof = proof::prove::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
-            domain,
-            &srs,
-            mips_folded_witness,
-        );
+        // TODO: use actual constraints, not just an empty vector
+        // FIXME: this means create separate MIPS witnesses and prove the corresponding constraints for each
+        let mips_result = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            MIPS_COLUMNS,
+            LookupTableIDs,
+        >(domain, &srs, &vec![], mips_folded_witness, &mut rng);
+        let mips_proof = mips_result.unwrap();
         println!("Generated a MIPS proof:\n{:?}", mips_proof);
-        let verifies = proof::verify::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
-            domain,
-            &srs,
-            &mips_proof,
-        );
-        if verifies {
+        let mips_verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, MIPS_COLUMNS, 0, LookupTableIDs>(
+                domain,
+                &srs,
+                &vec![],
+                &mips_proof,
+                Witness::zero_vec(DOMAIN_SIZE),
+            );
+        if mips_verifies {
             println!("The MIPS proof verifies")
         } else {
             println!("The MIPS proof doesn't verify")
@@ -205,22 +225,40 @@ pub fn main() -> ExitCode {
 
     {
         // KECCAK
-        let keccak_proof =
-            proof::prove::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
-                domain,
-                &srs,
-                keccak_folded_witness,
-            );
+        // TODO: use actual constraints, not just an empty vector
+        // FIXME: this means create separate Keccak witnesses and prove the corresponding constraints for each
+        // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
+        let keccak_result = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            Column,
+            _,
+            ZKVM_KECCAK_COLS,
+            LookupTableIDs,
+        >(domain, &srs, &vec![], keccak_folded_witness, &mut rng);
+        let keccak_proof = keccak_result.unwrap();
         println!("Generated a proof:\n{:?}", keccak_proof);
-        let verifies = proof::verify::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
+        let keccak_verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            ZKVM_KECCAK_COLS,
+            0,
+            LookupTableIDs,
+        >(
             domain,
             &srs,
+            &vec![],
             &keccak_proof,
+            Witness::zero_vec(DOMAIN_SIZE),
         );
-        if verifies {
-            println!("The KECCAK proof verifies")
+        if keccak_verifies {
+            println!("The Keccak proof verifies")
         } else {
-            println!("The KECCAK proof doesn't verify")
+            println!("The Keccak proof doesn't verify")
         }
     }
 

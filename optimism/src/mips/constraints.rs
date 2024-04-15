@@ -2,20 +2,21 @@ use crate::{
     lookups::{Lookup, LookupTableIDs},
     mips::{
         column::{
-            ColumnAlias as Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
+            ColumnAlias as MIPSColumn, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
             MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
             MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::InterpreterEnv,
         registers::{REGISTER_PREIMAGE_KEY_START, REGISTER_PREIMAGE_OFFSET},
-        E,
     },
+    E,
 };
 use ark_ff::Field;
 use kimchi::circuits::{
     expr::{ConstantExpr, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+use kimchi_msm::columns::{Column, ColumnIndexer as _};
 use std::array;
 
 /// The environment keeping the constraints between the different polynomials
@@ -31,7 +32,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// In the concrete implementation for the constraints, the interpreter will
     /// work over columns. The position in this case can be seen as a new
     /// variable/input of our circuit.
-    type Position = Column;
+    type Position = MIPSColumn;
 
     // Use one of the available columns. It won't
     // create a new column every time this function is called. The number
@@ -43,14 +44,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // can use.
         let scratch_idx = self.scratch_state_idx;
         self.scratch_state_idx += 1;
-        Column::ScratchState(scratch_idx)
+        MIPSColumn::ScratchState(scratch_idx)
     }
 
     type Variable = Expr<ConstantExpr<Fp>, Column>;
 
     fn variable(&self, column: Self::Position) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
+            col: column.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
@@ -76,7 +77,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn instruction_counter(&self) -> Self::Variable {
-        self.variable(Column::InstructionCounter)
+        self.variable(MIPSColumn::InstructionCounter)
     }
 
     unsafe fn fetch_register(
