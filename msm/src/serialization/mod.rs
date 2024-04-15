@@ -69,7 +69,7 @@ mod tests {
     use o1_utils::FieldHelpers;
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::Rng as _;
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, marker::PhantomData};
 
     use super::{Lookup, LookupTable};
 
@@ -164,11 +164,16 @@ mod tests {
             std::array::from_fn(|_| vec![]);
         let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
         let rangecheck15: [Vec<Lookup<Fp, Ff1>>; N_LIMBS + 1] = std::array::from_fn(|_| vec![]);
+        let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] = std::array::from_fn(|_| vec![]);
         let mut rangecheck_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
             BTreeMap::new();
         rangecheck_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
         rangecheck_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
         rangecheck_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
+        rangecheck_tables.insert(
+            LookupTable::RangeCheckFfHighest(PhantomData),
+            rangecheckffhighest.to_vec(),
+        );
 
         for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness
@@ -217,9 +222,22 @@ mod tests {
 
         let mvlookups: Vec<MVLookupWitness<Fp, LookupTable<Ff1>>> = rangecheck_tables
             .iter()
-            .map(|(table_id, table)| MVLookupWitness {
-                f: table.clone(),
-                m: rangecheck_multiplicities[table_id].clone(),
+            .filter_map(|(table_id, table)| {
+                println!(
+                    "Adding table to mvlookups, table id: {:?}, len: {:?}, table[0].len: {:?}",
+                    table_id,
+                    table.len(),
+                    table[0].len()
+                );
+                // Only add a table if it's used. Otherwise lookups fail.
+                if !table.is_empty() && !table[0].is_empty() {
+                    Some(MVLookupWitness {
+                        f: table.clone(),
+                        m: rangecheck_multiplicities[table_id].clone(),
+                    })
+                } else {
+                    None
+                }
             })
             .collect();
 
