@@ -8,6 +8,7 @@ pub mod cannon;
 /// A CLI mimicking the Cannon CLI.
 pub mod cannon_cli;
 
+#[cfg(feature = "bn254")]
 /// Integration with folding. Contains common trait implementations to be used by each circuit.
 pub mod folding;
 

@@ -79,7 +79,10 @@ impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
     /// is used by intermediary values when executing the Round step.
     fn index(&self, index: ColumnAlias) -> &Self::Output {
         match index {
-            ColumnAlias::ScratchState(i) => &self.scratch()[i],
+            ColumnAlias::ScratchState(i) => {
+                assert!(i < SCRATCH_SIZE);
+                &self.scratch()[i]
+            }
             ColumnAlias::InstructionCounter => self.instruction_counter(),
         }
     }
@@ -88,7 +91,10 @@ impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
 impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
     fn index_mut(&mut self, index: ColumnAlias) -> &mut Self::Output {
         match index {
-            ColumnAlias::ScratchState(i) => &mut self.cols[i],
+            ColumnAlias::ScratchState(i) => {
+                assert!(i < SCRATCH_SIZE);
+                &mut self.cols[i]
+            }
             ColumnAlias::InstructionCounter => &mut self.cols[SCRATCH_SIZE],
         }
     }
@@ -98,7 +104,10 @@ impl ColumnIndexer for ColumnAlias {
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
         match self {
-            ColumnAlias::ScratchState(i) => Column::X(i),
+            ColumnAlias::ScratchState(i) => {
+                assert!(i < SCRATCH_SIZE);
+                Column::X(i)
+            }
             ColumnAlias::InstructionCounter => Column::X(SCRATCH_SIZE),
         }
     }
