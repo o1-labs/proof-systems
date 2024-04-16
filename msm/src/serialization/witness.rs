@@ -222,6 +222,7 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
         value: &<Self as InterpreterEnv<Fp, Ff>>::Variable,
         value_ix: usize,
     ) {
+        //println!("Recording range check for table_id {table_id:?}, value {value:?}");
         self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += Fp::one();
         self.lookups.get_mut(&table_id).unwrap().push(Lookup {
             table_id,
@@ -276,7 +277,14 @@ mod tests {
             limb0.to_biguint().try_into().unwrap()
         };
         let mut dummy_env = Env::<Fp, Ff1>::create();
-        deserialize_field_element(&mut dummy_env, [limb0, limb1, limb2]);
+        deserialize_field_element(
+            &mut dummy_env,
+            [
+                BigUint::from(limb0),
+                BigUint::from(limb1),
+                BigUint::from(limb2),
+            ],
+        );
 
         // Check limb are copied into the environment
         let limbs_to_assert = [limb0, limb1, limb2];

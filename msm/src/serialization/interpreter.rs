@@ -91,21 +91,21 @@ pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
 /// is 254bits long.
 pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: InterpreterEnv<Fp, Ff>>(
     env: &mut Env,
-    limbs: [u128; 3],
+    limbs: [BigUint; 3],
 ) {
     // Use this to constrain later
     let kimchi_limbs0 = Env::get_column(SerializationColumn::ChalKimchi(0));
     let kimchi_limbs1 = Env::get_column(SerializationColumn::ChalKimchi(1));
     let kimchi_limbs2 = Env::get_column(SerializationColumn::ChalKimchi(2));
 
-    let input_limb0 = Env::constant(limbs[0].into());
-    let input_limb1 = Env::constant(limbs[1].into());
-    let input_limb2 = Env::constant(limbs[2].into());
+    let input_limb0 = Env::constant(Fp::from(limbs[0].clone()));
+    let input_limb1 = Env::constant(Fp::from(limbs[1].clone()));
+    let input_limb2 = Env::constant(Fp::from(limbs[2].clone()));
 
     // FIXME: should we assert this in the circuit?
-    assert!(limbs[0] < 2u128.pow(88));
-    assert!(limbs[1] < 2u128.pow(88));
-    assert!(limbs[2] < 2u128.pow(79));
+    assert!(limbs[0] < BigUint::from(2u128.pow(88)));
+    assert!(limbs[1] < BigUint::from(2u128.pow(88)));
+    assert!(limbs[2] < BigUint::from(2u128.pow(79)));
 
     let limb0_var = env.copy(&input_limb0, kimchi_limbs0);
     let limb1_var = env.copy(&input_limb1, kimchi_limbs1);
@@ -161,9 +161,9 @@ pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: Interprete
 
     {
         let c5 = Env::get_column(SerializationColumn::ChalConverted(5));
-        let res = (limbs[0] >> 75) & ((1 << (88 - 75)) - 1);
-        let res_prime = limbs[1] & ((1 << 2) - 1);
-        let res = res + (res_prime << (15 - 2));
+        let res = (limbs[0].clone() >> 75) & BigUint::from((1u128 << (88 - 75)) - 1);
+        let res_prime = limbs[1].clone() & BigUint::from((1u128 << 2) - 1);
+        let res: BigUint = res + (res_prime << (15 - 2));
         let res = Env::constant(Fp::from(res));
         let c5_var = env.copy(&res, c5);
         fifteen_bits_vars.push(c5_var);
@@ -201,9 +201,9 @@ pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: Interprete
 
     {
         let c11 = Env::get_column(SerializationColumn::ChalConverted(11));
-        let res = (limbs[1] >> 77) & ((1 << (88 - 77)) - 1);
-        let res_prime = limbs[2] & ((1 << 4) - 1);
-        let res = res + (res_prime << (15 - 4));
+        let res = (limbs[1].clone() >> 77) & BigUint::from((1u128 << (88 - 77)) - 1);
+        let res_prime = limbs[2].clone() & BigUint::from((1u128 << 4) - 1);
+        let res: BigUint = res + (res_prime << (15 - 4));
         let res = Env::constant(res.into());
         let c11_var = env.copy(&res, c11);
         fifteen_bits_vars.push(c11_var);
@@ -509,6 +509,7 @@ pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv
     env: &mut Env,
     chal: Ff,
     coeff_input: Ff,
+    write_chal_converted: bool,
 ) -> Ff {
     let coeff_result = chal * coeff_input;
 
@@ -560,9 +561,11 @@ pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv
             })
         };
 
-    write_array_small(env, chal_limbs_small, &|i| {
-        SerializationColumn::ChalConverted(i)
-    });
+    if write_chal_converted {
+        write_array_small(env, chal_limbs_small, &|i| {
+            SerializationColumn::ChalConverted(i)
+        });
+    }
     write_array_small(env, coeff_input_limbs_small, &|i| {
         SerializationColumn::CoeffInput(i)
     });

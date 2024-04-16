@@ -136,8 +136,14 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
             .collect();
         constraints.extend(relation_constraints);
 
-        assert!(self.lookups[&LookupTable::RangeCheck15].len() == 17);
+        // @volhovm The numbers here depend on the circuit, so these
+        // asserts should be ultimately moved to a higher level
+        assert!(self.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
         assert!(self.lookups[&LookupTable::RangeCheck4].len() == 20);
+        assert!(self.lookups[&LookupTable::RangeCheck4Abs].len() == 6);
+        assert!(
+            self.lookups[&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)].len() == 1
+        );
 
         let _lookup_constraint = constraint_lookups(&self.lookups);
         // FIXME: it seems the constraints are not correctly checked.

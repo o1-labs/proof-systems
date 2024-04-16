@@ -64,7 +64,7 @@ pub type Lookup<F, Ff> = MVLookup<F, LookupTable<Ff>>;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::PrimeField;
+    use ark_ff::{PrimeField, UniformRand};
     use kimchi::circuits::domains::EvaluationDomains;
     use o1_utils::FieldHelpers;
     use poly_commitment::pairing_proof::PairingSRS;
@@ -82,7 +82,10 @@ mod tests {
         serialization::{
             column::SER_N_COLUMNS,
             constraints,
-            interpreter::{deserialize_field_element, ff_modulus_highest_limb},
+            interpreter::{
+                constrain_multiplication, deserialize_field_element, ff_modulus_highest_limb,
+                limb_decompose_ff, multiplication_circuit,
+            },
             witness, N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
@@ -147,23 +150,28 @@ mod tests {
 
         // Boxing to avoid stack overflow
         let mut field_elements = vec![];
+
         // FIXME: we do use always the same values here, because we have a
         // constant check (X - c), different for each row. And there is no
         // constant support/public input yet in the quotient polynomial.
-        let (x, y, z) = (
-            rng.gen_range(0..1000000),
-            rng.gen_range(0..1000000),
-            rng.gen_range(0..1000000),
-        );
+        let input_chal: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+        let [input1, input2, input3]: [Fp; 3] = limb_decompose_ff::<Fp, Ff1, 88, 3>(&input_chal);
+        //let (x, y, z) = (
+        //    rng.gen_range(0..1000000),
+        //    rng.gen_range(0..1000000),
+        //    rng.gen_range(0..1000000),
+        //);
         for _ in 0..DOMAIN_SIZE {
-            field_elements.push([x, y, z])
+            field_elements.push([input1, input2, input3])
         }
+        let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
         // An extra element in the array stands for the fixed table.
         let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
         let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
-        let rangecheck15: [Vec<Lookup<Fp, Ff1>>; N_LIMBS + 1] = std::array::from_fn(|_| vec![]);
+        let rangecheck15: [Vec<Lookup<Fp, Ff1>>; (3 * N_LIMBS - 1) + 1] =
+            std::array::from_fn(|_| vec![]);
         let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] = std::array::from_fn(|_| vec![]);
         let mut rangecheck_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
             BTreeMap::new();
@@ -177,13 +185,15 @@ mod tests {
 
         for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness
-            deserialize_field_element(&mut witness_env, *limbs);
+            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
+            multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
             // Filling actually used rows
             for j in 0..SER_N_COLUMNS {
                 witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
             for (table_id, table) in rangecheck_tables.iter_mut() {
+                println!("Processing table id {:?}", table_id);
                 for (j, lookup) in witness_env
                     .lookups
                     .get(table_id)
@@ -200,7 +210,8 @@ mod tests {
 
         let constraints = {
             let mut constraints_env = constraints::Env::<Fp, Ff1>::create();
-            deserialize_field_element(&mut constraints_env, field_elements[0]);
+            deserialize_field_element(&mut constraints_env, field_elements[0].map(Into::into));
+            constrain_multiplication(&mut constraints_env);
             constraints_env.get_constraints()
         };
 
