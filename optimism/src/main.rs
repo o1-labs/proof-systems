@@ -119,8 +119,7 @@ pub fn main() -> ExitCode {
         );
     }
 
-    let mut i = 0;
-    while i < 6000000 && !mips_wit_env.halt {
+    while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
 
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
@@ -172,7 +171,6 @@ pub fn main() -> ExitCode {
             );
             mips_circuit.reset(instr);
         }
-        i += 1;
     }
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
