@@ -9,7 +9,8 @@
 use crate::{
     keccak::{
         column::{Absorbs::*, KeccakWitness, Sponges::*, Steps::*},
-        interpreter::KeccakInterpreter,
+        helpers::{ArithHelpers, BoolHelpers, LookupHelpers},
+        interpreter::{Interpreter, KeccakInterpreter},
         Constraint, Error, KeccakColumn,
         Selector::{self, *},
     },
@@ -61,11 +62,18 @@ impl<F: Field> Default for Env<F> {
     }
 }
 
-impl<F: Field> KeccakInterpreter<F> for Env<F> {
+impl<F: Field> ArithHelpers<F> for Env<F> {
+    fn two_pow(x: u64) -> <Env<F> as Interpreter<F>>::Variable {
+        Self::constant_field(F::two_pow(x))
+    }
+}
+
+impl<F: Field> BoolHelpers<F> for Env<F> {}
+
+impl<F: Field> LookupHelpers<F> for Env<F> {}
+
+impl<F: Field> Interpreter<F> for Env<F> {
     type Variable = F;
-    ///////////////////////////
-    // ARITHMETIC OPERATIONS //
-    ///////////////////////////
 
     fn constant(x: u64) -> Self::Variable {
         Self::constant_field(F::from(x))
@@ -75,19 +83,37 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         x
     }
 
-    fn two_pow(x: u64) -> Self::Variable {
-        Self::constant_field(F::two_pow(x))
-    }
-
-    ////////////////////////////
-    // CONSTRAINTS OPERATIONS //
-    ////////////////////////////
-
     fn variable(&self, column: KeccakColumn) -> Self::Variable {
         self.witness[column]
     }
 
-    fn check(&mut self, tag: Selector, x: Self::Variable) {
+    /// Checks the constraint `tag` by checking that the input `x` is zero
+    fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable) {
+        if if_true == Self::Variable::one() && x != F::zero() {
+            self.errors.push(Error::Constraint(tag));
+        }
+    }
+
+    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>) {
+        // Keep track of multiplicities for fixed lookups
+        if if_true == Self::Variable::one() && lookup.table_id.is_fixed() {
+            // Only when reading. We ignore the other values.
+            if lookup.magnitude == Self::one() {
+                // Check that the lookup value is in the table
+                if let Some(idx) =
+                    LookupTable::is_in_table(&self.tables[lookup.table_id as usize], lookup.value)
+                {
+                    self.multiplicities[lookup.table_id as usize][idx] += 1;
+                } else {
+                    self.errors.push(Error::Lookup(lookup.table_id));
+                }
+            }
+        }
+    }
+}
+
+impl<F: Field> KeccakInterpreter<F> for Env<F> {
+    fn check(&mut self, tag: Selector, x: <Env<F> as Interpreter<F>>::Variable) {
         if x != F::zero() {
             self.errors.push(Error::Selector(tag));
         }
@@ -145,54 +171,26 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         }
     }
 
-    /// Checks the constraint `tag` by checking that the input `x` is zero
-    fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable) {
-        if if_true == Self::Variable::one() && x != F::zero() {
-            self.errors.push(Error::Constraint(tag));
-        }
-    }
-
-    ////////////////////////
-    // LOOKUPS OPERATIONS //
-    ////////////////////////
-
-    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>) {
-        // Keep track of multiplicities for fixed lookups
-        if if_true == Self::Variable::one() && lookup.table_id.is_fixed() {
-            // Only when reading. We ignore the other values.
-            if lookup.magnitude == Self::one() {
-                // Check that the lookup value is in the table
-                if let Some(idx) =
-                    LookupTable::is_in_table(&self.tables[lookup.table_id as usize], lookup.value)
-                {
-                    self.multiplicities[lookup.table_id as usize][idx] += 1;
-                } else {
-                    self.errors.push(Error::Lookup(lookup.table_id));
-                }
-            }
-        }
-    }
-
     /////////////////////////
     // SELECTOR OPERATIONS //
     /////////////////////////
 
-    fn mode_absorb(&self) -> Self::Variable {
+    fn mode_absorb(&self) -> <Env<F> as Interpreter<F>>::Variable {
         self.variable(KeccakColumn::Selector(Sponge(Absorb(Middle))))
     }
-    fn mode_squeeze(&self) -> Self::Variable {
+    fn mode_squeeze(&self) -> <Env<F> as Interpreter<F>>::Variable {
         self.variable(KeccakColumn::Selector(Sponge(Squeeze)))
     }
-    fn mode_root(&self) -> Self::Variable {
+    fn mode_root(&self) -> <Env<F> as Interpreter<F>>::Variable {
         self.variable(KeccakColumn::Selector(Sponge(Absorb(First))))
     }
-    fn mode_pad(&self) -> Self::Variable {
+    fn mode_pad(&self) -> <Env<F> as Interpreter<F>>::Variable {
         self.variable(KeccakColumn::Selector(Sponge(Absorb(Last))))
     }
-    fn mode_rootpad(&self) -> Self::Variable {
+    fn mode_rootpad(&self) -> <Env<F> as Interpreter<F>>::Variable {
         self.variable(KeccakColumn::Selector(Sponge(Absorb(Only))))
     }
-    fn mode_round(&self) -> Self::Variable {
+    fn mode_round(&self) -> <Env<F> as Interpreter<F>>::Variable {
         // The actual round number in the selector carries no information for witness nor constraints
         // because in the witness, any usize is mapped to the same index inside the mode flags
         self.variable(KeccakColumn::Selector(Round(self.round)))

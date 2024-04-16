@@ -24,6 +24,7 @@ pub mod constraints;
 pub mod environment;
 #[cfg(feature = "bn254")]
 pub mod folding;
+pub mod helpers;
 pub mod interpreter;
 #[cfg(test)]
 pub mod tests;
