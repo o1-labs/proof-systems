@@ -209,7 +209,7 @@ impl MPrism for KekFooComplexLens {
 
 /// Attempt to define a generic interpreter.
 /// It is not used yet.
-pub trait InterpreterEnv<CIx: ColIndexer, F: PrimeField> {
+pub trait ColumnAccessCap<CIx: ColIndexer, F: PrimeField> {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
@@ -223,12 +223,12 @@ pub trait InterpreterEnv<CIx: ColIndexer, F: PrimeField> {
     fn constant(&self, value: F) -> Self::Variable;
 }
 
-pub struct SubInterpreter<
+pub struct SubEnv<
     'a,
     F: PrimeField,
     CIx1: ColIndexer,
     CIx2: ColIndexer,
-    Env1: InterpreterEnv<CIx1, F>,
+    Env1: ColumnAccessCap<CIx1, F>,
     L: MPrism<Source = CIx1, Target = CIx2>,
 > {
     env: &'a mut Env1,
@@ -241,12 +241,12 @@ impl<
         F: PrimeField,
         CIx1: ColIndexer,
         CIx2: ColIndexer,
-        Env1: InterpreterEnv<CIx1, F>,
+        Env1: ColumnAccessCap<CIx1, F>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > SubInterpreter<'a, F, CIx1, CIx2, Env1, L>
+    > SubEnv<'a, F, CIx1, CIx2, Env1, L>
 {
     pub fn new(env: &'a mut Env1, lens: L) -> Self {
-        SubInterpreter {
+        SubEnv {
             env,
             lens,
             field_phantom: Default::default(),
@@ -259,9 +259,9 @@ impl<
         F: PrimeField,
         CIx1: ColIndexer,
         CIx2: ColIndexer,
-        Env1: InterpreterEnv<CIx1, F>,
+        Env1: ColumnAccessCap<CIx1, F>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > InterpreterEnv<CIx2, F> for SubInterpreter<'a, F, CIx1, CIx2, Env1, L>
+    > ColumnAccessCap<CIx2, F> for SubEnv<'a, F, CIx1, CIx2, Env1, L>
 {
     type Variable = Env1::Variable;
 
@@ -285,7 +285,7 @@ impl<
 pub fn constrain_foo<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: InterpreterEnv<FooColIndexer, F>,
+    Env: ColumnAccessCap<FooColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
     unimplemented!()
@@ -294,26 +294,26 @@ where
 pub fn constrain_bla<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: InterpreterEnv<BlaColIndexer, F>,
+    Env: ColumnAccessCap<BlaColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
-    constrain_foo(&mut SubInterpreter::new(env, BlaFoo1Lens {}));
-    constrain_foo(&mut SubInterpreter::new(env, BlaFoo2Lens {}));
+    constrain_foo(&mut SubEnv::new(env, BlaFoo1Lens {}));
+    constrain_foo(&mut SubEnv::new(env, BlaFoo2Lens {}));
     unimplemented!()
 }
 
 pub fn constrain_kek<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: InterpreterEnv<KekColIndexer, F>,
+    Env: ColumnAccessCap<KekColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, KekColIndexer::Kek1(0));
-    constrain_bla(&mut SubInterpreter::new(env, KekBla1Lens {}));
-    constrain_foo(&mut SubInterpreter::new(
+    constrain_bla(&mut SubEnv::new(env, KekBla1Lens {}));
+    constrain_foo(&mut SubEnv::new(
         env,
         compose(KekBla1Lens {}, BlaFoo1Lens {}),
     ));
-    constrain_foo(&mut SubInterpreter::new(env, KekFooComplexLens {}));
+    constrain_foo(&mut SubEnv::new(env, KekFooComplexLens {}));
 
     unimplemented!()
 }
