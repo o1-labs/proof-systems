@@ -113,6 +113,7 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements a zero-knowledge virtual machine (zkVM) for the MIPS
 //! architecture.
 //! A zkVM is used by a prover to convince a verifier that the execution trace
@@ -180,7 +181,8 @@
             interpret_instruction(env, instr);
             circuit.constraints.insert(instr, env.constraints.clone());
             circuit.lookups.insert(instr, env.lookups.clone());
-            env.constraints = <span class="macro">vec!</span>[]; <span class="comment">// Clear the constraints for the next instruction
+            env.scratch_state_idx = <span class="number">0</span>; <span class="comment">// Reset the scratch state index for the next instruction
+            </span>env.constraints = <span class="macro">vec!</span>[]; <span class="comment">// Clear the constraints for the next instruction
             </span>env.lookups = <span class="macro">vec!</span>[]; <span class="comment">// Clear the lookups for the next instruction
         </span>}
         circuit

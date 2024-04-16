@@ -105,6 +105,15 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span><span class="kw">super</span>::witness::SCRATCH_SIZE;
@@ -186,7 +195,10 @@
     /// is used by intermediary values when executing the Round step.
     </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: ColumnAlias) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
-            ColumnAlias::ScratchState(i) =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.scratch()[i],
+            ColumnAlias::ScratchState(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
+                <span class="kw-2">&amp;</span><span class="self">self</span>.scratch()[i]
+            }
             ColumnAlias::InstructionCounter =&gt; <span class="self">self</span>.instruction_counter(),
         }
     }
@@ -195,7 +207,10 @@
 <span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;ColumnAlias&gt; <span class="kw">for </span>MIPSWitness&lt;T&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: ColumnAlias) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
-            ColumnAlias::ScratchState(i) =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[i],
+            ColumnAlias::ScratchState(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[i]
+            }
             ColumnAlias::InstructionCounter =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[SCRATCH_SIZE],
         }
     }
@@ -205,7 +220,10 @@
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
         </span><span class="kw">match </span><span class="self">self </span>{
-            ColumnAlias::ScratchState(i) =&gt; Column::X(i),
+            ColumnAlias::ScratchState(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
+                Column::X(i)
+            }
             ColumnAlias::InstructionCounter =&gt; Column::X(SCRATCH_SIZE),
         }
     }

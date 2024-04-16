@@ -1,4 +1,3 @@
 (function() {var type_impls = {
-"kimchi_msm":[],
-"kimchi_optimism":[]
+"kimchi_msm":[]
 };if (window.register_type_impls) {window.register_type_impls(type_impls);} else {window.pending_type_impls = type_impls;}})()
