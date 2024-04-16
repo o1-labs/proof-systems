@@ -7,7 +7,7 @@ use std::fmt::Debug;
 
 /// This trait contains helper functions for the lookups used in the Keccak circuit
 /// using the zkVM lookup tables
-pub trait LookupHelpers<F: One + Debug + Zero>
+pub trait LogupHelpers<F: One + Debug + Zero>
 where
     Self: Interpreter<F>,
 {
@@ -44,6 +44,14 @@ where
     /// Adds a lookup to the RoundConstants table
     fn lookup_round_constants(&mut self, flag: Self::Variable, value: Vec<Self::Variable>) {
         self.add_lookup(flag, Lookup::read_one(RoundConstantsLookup, value));
+    }
+
+    fn read_syscall(&mut self, flag: Self::Variable, value: Vec<Self::Variable>) {
+        self.add_lookup(flag, Lookup::read_one(SyscallLookup, value));
+    }
+
+    fn write_syscall(&mut self, flag: Self::Variable, value: Vec<Self::Variable>) {
+        self.add_lookup(flag, Lookup::write_one(SyscallLookup, value));
     }
 }
 

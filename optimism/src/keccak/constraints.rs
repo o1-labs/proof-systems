@@ -6,7 +6,7 @@ use crate::{
             Sponges::*,
             Steps::{self, *},
         },
-        helpers::{ArithHelpers, BoolHelpers, LookupHelpers},
+        helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
         interpreter::{Interpreter, KeccakInterpreter},
         Constraint, KeccakColumn, Selector,
     },
@@ -52,7 +52,7 @@ impl<F: Field> ArithHelpers<F> for Env<F> {
 
 impl<F: Field> BoolHelpers<F> for Env<F> {}
 
-impl<F: Field> LookupHelpers<F> for Env<F> {}
+impl<F: Field> LogupHelpers<F> for Env<F> {}
 
 impl<F: Field> Interpreter<F> for Env<F> {
     type Variable = E<F>;

@@ -2,7 +2,7 @@
 
 use super::{
     column::PAD_SUFFIX_LEN,
-    helpers::{ArithHelpers, BoolHelpers, LookupHelpers},
+    helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
     WORDS_IN_HASH,
 };
 use crate::{
@@ -60,7 +60,7 @@ pub trait Interpreter<F: One + Debug + Zero> {
 
 pub trait KeccakInterpreter<F: One + Debug + Zero>
 where
-    Self: Interpreter<F> + LookupHelpers<F> + BoolHelpers<F> + ArithHelpers<F>,
+    Self: Interpreter<F> + LogupHelpers<F> + BoolHelpers<F> + ArithHelpers<F>,
 {
     ////////////////////////////
     // CONSTRAINTS OPERATIONS //
@@ -470,17 +470,14 @@ where
     // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {
-            self.add_lookup(
+            self.read_syscall(
                 self.is_absorb(),
-                Lookup::read_one(
-                    SyscallLookup,
-                    vec![
-                        self.hash_index(),
-                        self.block_index() * Self::constant(RATE_IN_BYTES as u64)
-                            + Self::constant(i as u64),
-                        self.sponge_byte(i),
-                    ],
-                ),
+                vec![
+                    self.hash_index(),
+                    self.block_index() * Self::constant(RATE_IN_BYTES as u64)
+                        + Self::constant(i as u64),
+                    self.sponge_byte(i),
+                ],
             );
         }
     }
@@ -492,10 +489,7 @@ where
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        self.add_lookup(
-            self.is_squeeze(),
-            Lookup::write_one(SyscallLookup, vec![self.hash_index(), bytes31]),
-        );
+        self.write_syscall(self.is_squeeze(), vec![self.hash_index(), bytes31]);
     }
 
     /// Reads a Lookup containing the input of a step

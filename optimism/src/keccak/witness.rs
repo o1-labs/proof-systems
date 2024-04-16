@@ -9,7 +9,7 @@
 use crate::{
     keccak::{
         column::{Absorbs::*, KeccakWitness, Sponges::*, Steps::*},
-        helpers::{ArithHelpers, BoolHelpers, LookupHelpers},
+        helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
         interpreter::{Interpreter, KeccakInterpreter},
         Constraint, Error, KeccakColumn,
         Selector::{self, *},
@@ -70,7 +70,7 @@ impl<F: Field> ArithHelpers<F> for Env<F> {
 
 impl<F: Field> BoolHelpers<F> for Env<F> {}
 
-impl<F: Field> LookupHelpers<F> for Env<F> {}
+impl<F: Field> LogupHelpers<F> for Env<F> {}
 
 impl<F: Field> Interpreter<F> for Env<F> {
     type Variable = F;
