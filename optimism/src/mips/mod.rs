@@ -10,31 +10,105 @@
 //! committed and evaluated at certain points following the polynomial protocol,
 //! and it will form the proof of the correct execution that the prover will
 //! build and send to the verifier. The corresponding structure is
-//! [crate::proof::Proof]. The prover will start by computing the
+//! Proof. The prover will start by computing the
 //! execution trace using the interpreter implemented in the module
 //! [crate::mips::interpreter], and the evaluations will be kept in the
-//! structure [crate::proof::ProofInputs].
+//! structure ProofInputs.
 
-use self::column::ColumnAlias;
-use kimchi::circuits::expr::{ConstantExpr, Expr};
+use std::collections::HashMap;
+
+use ark_ff::Field;
+use kimchi_msm::witness::Witness;
+use strum::IntoEnumIterator;
+
+use crate::{
+    mips::{
+        column::MIPS_COLUMNS,
+        constraints::Env,
+        interpreter::Instruction::{self},
+    },
+    Circuit, CircuitTrait,
+};
+
+use self::interpreter::interpret_instruction;
 
 pub mod column;
 pub mod constraints;
+#[cfg(feature = "bn254")]
 pub mod folding;
 pub mod interpreter;
 pub mod registers;
+#[cfg(test)]
+pub mod tests;
 pub mod witness;
 
-/// Type to represent a constraint on the individual columns of the execution
-/// trace.
-/// As a reminder, a constraint can be formally defined as a multi-variate
-/// polynomial over a finite field. The variables of the polynomial are defined
-/// as `crate::column::MIPSColumn`.
-/// The `expression` framework defined in `kimchi::circuits::expr` is used to
-/// describe the multi-variate polynomials.
-/// For instance, a vanilla 3-wires PlonK constraint can be defined using the
-/// multi-variate polynomial of degree 2
-/// `P(X, Y, Z) = q_x X + q_y Y + q_m X Y + q_o Z + q_c`
-/// To represent this multi-variate polynomial using the expression framework,
-/// we would use 3 different columns.
-pub(crate) type E<F> = Expr<ConstantExpr<F>, ColumnAlias>;
+#[allow(dead_code)]
+/// The Keccak circuit
+pub type MIPSCircuit<F> = Circuit<MIPS_COLUMNS, Instruction, F>;
+
+impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircuit<F> {
+    fn new(domain_size: usize, env: &mut Env<F>) -> Self {
+        let mut circuit = Self {
+            domain_size,
+            witness: HashMap::new(),
+            constraints: Default::default(),
+            lookups: Default::default(),
+        };
+
+        for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
+            circuit.witness.insert(
+                instr,
+                Witness {
+                    cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
+                },
+            );
+            interpret_instruction(env, instr);
+            circuit.constraints.insert(instr, env.constraints.clone());
+            circuit.lookups.insert(instr, env.lookups.clone());
+            env.scratch_state_idx = 0; // Reset the scratch state index for the next instruction
+            env.constraints = vec![]; // Clear the constraints for the next instruction
+            env.lookups = vec![]; // Clear the lookups for the next instruction
+        }
+        circuit
+    }
+
+    fn push_row(&mut self, instr: Instruction, row: &[F; MIPS_COLUMNS]) {
+        self.witness.entry(instr).and_modify(|wit| {
+            for (i, value) in row.iter().enumerate() {
+                if wit.cols[i].len() < wit.cols[i].capacity() {
+                    wit.cols[i].push(*value);
+                }
+            }
+        });
+    }
+
+    fn pad(&mut self, instr: Instruction) -> bool {
+        let rows_left = self.domain_size - self.witness[&instr].cols[0].len();
+        if rows_left == 0 {
+            return false;
+        }
+        self.witness.entry(instr).and_modify(|wit| {
+            for col in wit.cols.iter_mut() {
+                col.extend((0..rows_left).map(|_| F::zero()));
+            }
+        });
+        true
+    }
+
+    fn pad_witnesses(&mut self) {
+        for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
+            self.pad(instr);
+        }
+    }
+
+    fn reset(&mut self, instr: Instruction) {
+        self.witness.insert(
+            instr,
+            Witness {
+                cols: Box::new(std::array::from_fn(|_| {
+                    Vec::with_capacity(self.domain_size)
+                })),
+            },
+        );
+    }
+}

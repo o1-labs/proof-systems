@@ -1,12 +1,22 @@
 //! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
-use crate::keccak::{
-    column::{KeccakWitness, PAD_SUFFIX_LEN},
-    constraints::Env as ConstraintsEnv,
-    grid_index, pad_blocks,
-    witness::Env as WitnessEnv,
-    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+use crate::{
+    keccak::{
+        column::{
+            Absorbs::{self, *},
+            KeccakWitness,
+            Sponges::{self, *},
+            Steps::*,
+            PAD_SUFFIX_LEN,
+        },
+        constraints::Env as ConstraintsEnv,
+        grid_index, pad_blocks,
+        witness::Env as WitnessEnv,
+        KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    },
+    lookups::Lookup,
+    E,
 };
 use ark_ff::Field;
 use kimchi::{
@@ -19,16 +29,16 @@ use kimchi::{
 };
 use std::array;
 
+use super::{column::Steps, interpreter::KeccakInterpreter};
+
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<F> {
-    /// Environment for the constraints (includes lookups)
+    /// Environment for the constraints (includes lookups and selector (step)).
+    /// The step of the hash that is being executed can be None if just ended
     pub constraints_env: ConstraintsEnv<F>,
     /// Environment for the witness (includes multiplicities)
     pub witness_env: WitnessEnv<F>,
-
-    /// What step of the hash is being executed (or None, if just ended)
-    pub keccak_step: Option<KeccakStep>,
 
     /// Hash index in the circuit
     pub(crate) hash_idx: u64,
@@ -47,61 +57,37 @@ pub struct KeccakEnv<F> {
     /// Byte-length of the 10*1 pad (<=136)
     pub(crate) pad_len: u64,
 
-    /// Precomputed 2^pad_len (including 2^0 = 1)
-    two_to_pad: [F; RATE_IN_BYTES + 1],
-    /// Precomputed inverses of the padding lengths (including dummy 0)
-    inv_pad_len: [F; RATE_IN_BYTES + 1],
+    /// Precomputed 2^pad_len
+    two_to_pad: [F; RATE_IN_BYTES],
     /// Precomputed suffixes for the padding blocks
-    pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES + 1],
+    pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES],
 }
 
-/// Variants of Keccak steps available for the interpreter
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum KeccakStep {
-    Sponge(Sponge),
-    Round(u64),
-}
-
-/// Variants of Keccak sponges
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Sponge {
-    Absorb(Absorb),
-    Squeeze,
-}
-
-/// Order of absorb steps in the computation depending on the number of blocks to absorb
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum Absorb {
-    First,        // Also known as the root absorb
-    Middle,       // Any other absorb
-    Last,         // Also known as the padding absorb
-    FirstAndLast, // In case there is only one block to absorb (preimage data is less than 136 bytes)
-}
-
-impl<F: Field> KeccakEnv<F> {
-    /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
-    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
-        let mut env = Self {
+impl<F: Field> Default for KeccakEnv<F> {
+    fn default() -> Self {
+        Self {
             constraints_env: ConstraintsEnv::default(),
             witness_env: WitnessEnv::default(),
-            keccak_step: None,
-            hash_idx,
+            hash_idx: 0,
             step_idx: 0,
             block_idx: 0,
             prev_block: vec![],
             blocks_left_to_absorb: 0,
             padded: vec![],
             pad_len: 0,
-            two_to_pad: array::from_fn(|i| F::two_pow(i as u64)),
-            // When i = 0, the inverse is undefined, so we use a dummy value
-            inv_pad_len: array::from_fn(|i| F::inverse(&F::from(i as u64)).unwrap_or(F::zero())),
-            pad_suffixes: array::from_fn(|i| {
-                if i == 0 {
-                    [F::zero(); PAD_SUFFIX_LEN]
-                } else {
-                    pad_blocks::<F>(i)
-                }
-            }),
+            two_to_pad: array::from_fn(|i| F::two_pow(1 + i as u64)),
+            pad_suffixes: array::from_fn(|i| pad_blocks::<F>(1 + i)),
+        }
+    }
+}
+
+impl<F: Field> KeccakEnv<F> {
+    /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
+    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
+        // Must update the flag type at each step from the witness interpretation
+        let mut env = KeccakEnv::<F> {
+            hash_idx,
+            ..Default::default()
         };
 
         // Store hash index in the witness
@@ -110,11 +96,11 @@ impl<F: Field> KeccakEnv<F> {
         // Update the number of blocks left to be absorbed depending on the length of the preimage
         env.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
 
-        // Configure first step depending on number of blocks remaining
-        env.keccak_step = if env.blocks_left_to_absorb == 1 {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::FirstAndLast)))
+        // Configure first step depending on number of blocks remaining, updating the selector for the row
+        env.constraints_env.step = if env.blocks_left_to_absorb == 1 {
+            Some(Sponge(Absorb(Only)))
         } else {
-            Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::First)))
+            Some(Sponge(Absorb(First)))
         };
         env.step_idx = 0;
 
@@ -139,12 +125,24 @@ impl<F: Field> KeccakEnv<F> {
         self.witness_env.witness[column] = value;
     }
 
-    /// Nullifies the Witness environment by resetting it to default values (except for lookup-related)
+    /// Nullifies the Witness and Constraint environments by resetting it to default values (except for table-related)
+    /// This way, each row only adds the constraints of that step (do not nullify the step)
     pub fn null_state(&mut self) {
         self.witness_env.witness = KeccakWitness::default();
         self.witness_env.errors = vec![];
         // The multiplicities are not reset.
         // The fixed tables are not modified.
+        self.constraints_env.constraints = vec![];
+        self.constraints_env.lookups = vec![];
+    }
+
+    /// Returns the selector of the current step
+    pub fn selector(&self) -> Steps {
+        let mut step = self.constraints_env.step.unwrap();
+        if let Round(_) = step {
+            step = Round(0);
+        }
+        step
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
@@ -155,9 +153,9 @@ impl<F: Field> KeccakEnv<F> {
         // Reset columns to zeros to avoid conflicts between steps
         self.null_state();
 
-        match self.keccak_step.unwrap() {
-            KeccakStep::Sponge(typ) => self.run_sponge(typ),
-            KeccakStep::Round(i) => self.run_round(i),
+        match self.constraints_env.step.unwrap() {
+            Sponge(typ) => self.run_sponge(typ),
+            Round(i) => self.run_round(i),
         }
         self.write_column(KeccakColumn::StepIndex, self.step_idx);
 
@@ -166,28 +164,21 @@ impl<F: Field> KeccakEnv<F> {
 
     /// This function updates the next step of the environment depending on the current step
     pub fn update_step(&mut self) {
-        match self.keccak_step {
+        match self.constraints_env.step {
             Some(step) => match step {
-                KeccakStep::Sponge(sponge) => match sponge {
-                    Sponge::Absorb(_) => self.keccak_step = Some(KeccakStep::Round(0)),
-
-                    Sponge::Squeeze => self.keccak_step = None,
+                Sponge(sponge) => match sponge {
+                    Absorb(_) => self.constraints_env.step = Some(Round(0)),
+                    Squeeze => self.constraints_env.step = None,
                 },
-                KeccakStep::Round(round) => {
+                Round(round) => {
                     if round < ROUNDS as u64 - 1 {
-                        self.keccak_step = Some(KeccakStep::Round(round + 1));
+                        self.constraints_env.step = Some(Round(round + 1));
                     } else {
                         self.blocks_left_to_absorb -= 1;
                         match self.blocks_left_to_absorb {
-                            0 => self.keccak_step = Some(KeccakStep::Sponge(Sponge::Squeeze)),
-                            1 => {
-                                self.keccak_step =
-                                    Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Last)))
-                            }
-                            _ => {
-                                self.keccak_step =
-                                    Some(KeccakStep::Sponge(Sponge::Absorb(Absorb::Middle)))
-                            }
+                            0 => self.constraints_env.step = Some(Sponge(Squeeze)),
+                            1 => self.constraints_env.step = Some(Sponge(Absorb(Last))),
+                            _ => self.constraints_env.step = Some(Sponge(Absorb(Middle))),
                         }
                     }
                 }
@@ -197,65 +188,61 @@ impl<F: Field> KeccakEnv<F> {
         self.step_idx += 1;
     }
 
-    /// Updates the witness corresponding to the `FlagRound` column with a value in [0..24)
+    /// Updates the witness corresponding to the round selector to 1 and the round value in [0..23]
     fn set_flag_round(&mut self, round: u64) {
         assert!(round < ROUNDS as u64);
-        self.write_column(KeccakColumn::FlagRound, round);
+        self.write_column(KeccakColumn::Selector(Round(round)), 1); // Could be Round(_) as it is not used in the column
+        self.write_column(KeccakColumn::RoundNumber, round);
     }
-    /// Sets the witness corresponding to the `FlagSqueeze` column to 1
+    /// Sets the witness corresponding to the squeeze selector to 1
     fn set_flag_squeeze(&mut self) {
-        self.write_column(KeccakColumn::FlagSqueeze, 1);
+        self.write_column(KeccakColumn::Selector(Sponge(Squeeze)), 1);
     }
-    /// Sets the witness corresponding to the `FlagAbsorb` column to 1 and
+    /// Sets the witness corresponding to the absorb selectors to 1 and
     /// updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
-    fn set_flag_absorb(&mut self, absorb: Absorb) {
-        self.write_column(KeccakColumn::FlagAbsorb, 1);
+    fn set_flag_absorb(&mut self, absorb: Absorbs) {
         match absorb {
-            Absorb::First => self.set_flag_root(),
-            Absorb::Last => self.set_flag_pad(),
-            Absorb::FirstAndLast => {
-                self.set_flag_root();
-                self.set_flag_pad()
+            First => self.write_column(KeccakColumn::Selector(Sponge(Absorb(First))), 1),
+            Last => {
+                self.write_column(KeccakColumn::Selector(Sponge(Absorb(Last))), 1);
+                self.set_flags_pad();
             }
-            Absorb::Middle => (),
+            Only => {
+                self.write_column(KeccakColumn::Selector(Sponge(Absorb(Only))), 1);
+                self.set_flags_pad()
+            }
+            Middle => self.write_column(KeccakColumn::Selector(Sponge(Absorb(Middle))), 1),
         }
     }
-    /// Sets the witness corresponding to the `FlagRoot` column to 1
-    fn set_flag_root(&mut self) {
-        self.write_column(KeccakColumn::FlagRoot, 1);
-    }
-    /// Sets the witness corresponding to the `FlagPad` column to 1, and updates the remaining columns
-    /// related to padding flags such as `PadLength`, `InvPadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
-    fn set_flag_pad(&mut self) {
+    /// Sets the flag columns related to padding flags such as `PadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
+    fn set_flags_pad(&mut self) {
         // Initialize padding columns with precomputed values to speed up interpreter
         self.write_column(KeccakColumn::PadLength, self.pad_len);
         self.write_column_field(
-            KeccakColumn::InvPadLength,
-            self.inv_pad_len[self.pad_len as usize],
-        );
-        self.write_column_field(
             KeccakColumn::TwoToPad,
-            self.two_to_pad[self.pad_len as usize],
+            self.two_to_pad[self.pad_len as usize - 1],
         );
         let pad_range = RATE_IN_BYTES - self.pad_len as usize..RATE_IN_BYTES;
         for i in pad_range {
             self.write_column(KeccakColumn::PadBytesFlags(i), 1);
         }
-        let pad_suffix = self.pad_suffixes[self.pad_len as usize];
+        let pad_suffix = self.pad_suffixes[self.pad_len as usize - 1];
         for (idx, value) in pad_suffix.iter().enumerate() {
             self.write_column_field(KeccakColumn::PadSuffix(idx), *value);
         }
     }
 
     /// Assigns the witness values needed in a sponge step (absorb or squeeze)
-    fn run_sponge(&mut self, sponge: Sponge) {
+    fn run_sponge(&mut self, sponge: Sponges) {
+        // Keep track of the round number for ease of debugging
+        self.witness_env.round = 24; // invalid round number used in sponges
         match sponge {
-            Sponge::Absorb(absorb) => self.run_absorb(absorb),
-            Sponge::Squeeze => self.run_squeeze(),
+            Absorb(absorb) => self.run_absorb(absorb),
+            Squeeze => self.run_squeeze(),
         }
     }
     /// Assigns the witness values needed in an absorb step (root, padding, or middle)
-    fn run_absorb(&mut self, absorb: Absorb) {
+    fn run_absorb(&mut self, absorb: Absorbs) {
         self.set_flag_absorb(absorb);
 
         // Compute witness values
@@ -333,6 +320,8 @@ impl<F: Field> KeccakEnv<F> {
     /// Assigns the witness values needed in the round step for the given round index
     fn run_round(&mut self, round: u64) {
         self.set_flag_round(round);
+        // Keep track of the round number for ease of debugging
+        self.witness_env.round = round;
 
         let state_a = self.prev_block.clone();
         let state_e = self.run_theta(&state_a);
@@ -458,5 +447,29 @@ impl<F: Field> KeccakEnv<F> {
         }
 
         state_g
+    }
+
+    #[allow(dead_code)]
+    /// Returns the list of constraints used in a specific Keccak step
+    pub(crate) fn constraints_of(step: Steps) -> Vec<E<F>> {
+        let mut env = ConstraintsEnv {
+            constraints: vec![],
+            lookups: vec![],
+            step: Some(step),
+        };
+        env.constraints();
+        env.constraints
+    }
+
+    #[allow(dead_code)]
+    /// Returns the list of lookups used in a specific Keccak step
+    pub(crate) fn lookups_of(step: Steps) -> Vec<Lookup<E<F>>> {
+        let mut env = ConstraintsEnv {
+            constraints: vec![],
+            lookups: vec![],
+            step: Some(step),
+        };
+        env.lookups();
+        env.lookups
     }
 }

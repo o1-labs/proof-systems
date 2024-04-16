@@ -1,9 +1,17 @@
 //! This module contains the constraints for one Keccak step.
 use crate::{
-    keccak::{Constraint, KeccakColumn, E},
+    keccak::{
+        column::{
+            Absorbs::*,
+            Sponges::*,
+            Steps::{self, *},
+        },
+        Constraint, KeccakColumn, Selector,
+    },
     lookups::Lookup,
+    E,
 };
-use ark_ff::Field;
+use ark_ff::{Field, One, Zero};
 use kimchi::{
     circuits::{
         expr::{ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
@@ -11,6 +19,7 @@ use kimchi::{
     },
     o1_utils::Two,
 };
+use kimchi_msm::columns::ColumnIndexer;
 
 use super::interpreter::KeccakInterpreter;
 
@@ -21,6 +30,8 @@ pub struct Env<Fp> {
     pub constraints: Vec<E<Fp>>,
     /// Variables that are looked up in the circuit
     pub lookups: Vec<Lookup<E<Fp>>>,
+    /// Selector of the current step, corresponds to a Keccak step or None if it just ended or still hasn't started
+    pub step: Option<Steps>,
 }
 
 impl<F: Field> Default for Env<F> {
@@ -28,6 +39,7 @@ impl<F: Field> Default for Env<F> {
         Self {
             constraints: Vec::new(),
             lookups: Vec::new(),
+            step: None,
         }
     }
 }
@@ -59,20 +71,75 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         // Despite `KeccakWitness` containing both `curr` and `next` fields,
         // the Keccak step spans across one row only.
         Expr::Atom(ExprInner::Cell(Variable {
-            col: column,
+            col: column.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
 
-    fn constrain(&mut self, _tag: Constraint, x: Self::Variable) {
-        self.constraints.push(x);
+    fn check(&mut self, _tag: Selector, _x: Self::Variable) {
+        // No-op in constraint side
+    }
+
+    fn checks(&mut self) {
+        // No-op in constraint side
+    }
+
+    fn constrain(&mut self, _tag: Constraint, if_true: Self::Variable, x: Self::Variable) {
+        if if_true == Self::Variable::one() {
+            self.constraints.push(x);
+        }
     }
 
     ////////////////////////
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
-        self.lookups.push(lookup);
+    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>) {
+        if if_true == Self::Variable::one() {
+            self.lookups.push(lookup);
+        }
+    }
+
+    /////////////////////////
+    // SELECTOR OPERATIONS //
+    /////////////////////////
+
+    fn mode_absorb(&self) -> Self::Variable {
+        match self.step {
+            Some(Sponge(Absorb(Middle))) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+    fn mode_squeeze(&self) -> Self::Variable {
+        match self.step {
+            Some(Sponge(Squeeze)) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+    fn mode_root(&self) -> Self::Variable {
+        match self.step {
+            Some(Sponge(Absorb(First))) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+    fn mode_pad(&self) -> Self::Variable {
+        match self.step {
+            Some(Sponge(Absorb(Last))) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+    fn mode_rootpad(&self) -> Self::Variable {
+        match self.step {
+            Some(Sponge(Absorb(Only))) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
+    }
+    fn mode_round(&self) -> Self::Variable {
+        // The actual round number in the selector carries no information for witness nor constraints
+        // because in the witness, any usize is mapped to the same index inside the mode flags
+        match self.step {
+            Some(Round(_)) => Self::Variable::one(),
+            _ => Self::Variable::zero(),
+        }
     }
 }
