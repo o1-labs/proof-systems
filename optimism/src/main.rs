@@ -7,21 +7,22 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
+    circuit::CircuitTrait,
     keccak::{
+        circuit::KeccakCircuit,
         column::{Steps, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
-        KeccakCircuit,
     },
     lookups::LookupTableIDs,
     mips::{
+        circuit::MIPSCircuit,
         column::{MIPSWitnessTrait, MIPS_COLUMNS},
         constraints as mips_constraints,
         interpreter::Instruction,
         witness::{self as mips_witness, SCRATCH_SIZE},
-        MIPSCircuit,
     },
     preimage_oracle::PreImageOracle,
-    proof, CircuitTrait, DOMAIN_SIZE,
+    proof, DOMAIN_SIZE,
 };
 use log::debug;
 use mina_poseidon::{

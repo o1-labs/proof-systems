@@ -1,13 +1,19 @@
 use crate::{
+    circuit::CircuitTrait,
     keccak::{
-        column::{Absorbs::*, Sponges::*, Steps::*, ZKVM_KECCAK_COLS},
+        circuit::KeccakCircuit,
+        column::{
+            Absorbs::*,
+            Sponges::*,
+            Steps::{self, *},
+            ZKVM_KECCAK_COLS,
+        },
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
         Constraint::*,
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    CircuitTrait,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -19,8 +25,6 @@ use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
-
-use super::{column::Steps, KeccakCircuit};
 
 pub type Fp = ark_bn254::Fr;
 
