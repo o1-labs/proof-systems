@@ -9,7 +9,7 @@ use crate::{
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-pub trait InterpreterEnv<Fp: PrimeField> {
+pub trait InterpreterEnv<F: PrimeField> {
     type Position;
 
     type Variable: Clone
@@ -43,7 +43,7 @@ pub trait InterpreterEnv<Fp: PrimeField> {
     /// Check that the value is in the range [0, 2^4-1]
     fn range_check4(&mut self, _value: &Self::Variable);
 
-    fn constant(value: Fp) -> Self::Variable;
+    fn constant(value: F) -> Self::Variable;
 
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
@@ -83,7 +83,7 @@ pub trait InterpreterEnv<Fp: PrimeField> {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
+pub fn deserialize_field_element<F: PrimeField, Env: InterpreterEnv<F>>(
     env: &mut Env,
     limbs: [u128; 3],
 ) {
@@ -158,7 +158,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
         let res = (limbs[0] >> 75) & ((1 << (88 - 75)) - 1);
         let res_prime = limbs[1] & ((1 << 2) - 1);
         let res = res + (res_prime << (15 - 2));
-        let res = Env::constant(Fp::from(res));
+        let res = Env::constant(F::from(res));
         let c5_var = env.copy(&res, c5);
         fifteen_bits_vars.push(c5_var);
     }
@@ -236,8 +236,8 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
     // Range check on each limb
     fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
 
-    let shl_88_var = Env::constant(Fp::from(1u128 << 88u128));
-    let shl_15_var = Env::constant(Fp::from(1u128 << 15u128));
+    let shl_88_var = Env::constant(F::from(1u128 << 88u128));
+    let shl_15_var = Env::constant(F::from(1u128 << 15u128));
 
     // -- Start second constraint
     {
@@ -250,7 +250,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
 
         // Substracting 15 bits values
         let (constraint, _) = (0..=11).fold(
-            (constraint, Env::constant(Fp::one())),
+            (constraint, Env::constant(F::one())),
             |(acc, shl_var), i| {
                 (
                     acc - fifteen_bits_vars[i].clone() * shl_var.clone(),
@@ -267,11 +267,11 @@ pub fn deserialize_field_element<Fp: PrimeField, Env: InterpreterEnv<Fp>>(
         // c12 + c13 * 2^15 + c14 * 2^30 + c15 * 2^45 + c16 * 2^60
         let constraint = fifteen_bits_vars[12].clone();
         let constraint = (1..=4).fold(constraint, |acc, i| {
-            acc + fifteen_bits_vars[12 + i].clone() * Env::constant(Fp::from(1u128 << (15 * i)))
+            acc + fifteen_bits_vars[12 + i].clone() * Env::constant(F::from(1u128 << (15 * i)))
         });
 
         let constraint = (1..=19).fold(constraint, |acc, i| {
-            let var = limb2_vars[i].clone() * Env::constant(Fp::from(1u128 << (4 * (i - 1))));
+            let var = limb2_vars[i].clone() * Env::constant(F::from(1u128 << (4 * (i - 1))));
             acc - var
         });
         env.add_constraint(constraint);
