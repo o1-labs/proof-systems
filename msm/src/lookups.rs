@@ -1,6 +1,6 @@
-//! Instantiate the MVLookup protocol for the MSM project.
+//! Instantiate the Logup protocol for the MSM project.
 
-use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
+use crate::logup::{Logup, LogupWitness, LookupTableID};
 use ark_ff::FftField;
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
@@ -45,11 +45,11 @@ impl LookupTableID for LookupTableIDs {
     }
 }
 
-/// Additive lookups used in the MSM project based on MVLookup
-pub type Lookup<F> = MVLookup<F, LookupTableIDs>;
+/// Additive lookups used in the MSM project based on Logup
+pub type Lookup<F> = Logup<F, LookupTableIDs>;
 
 /// Represents a witness of one instance of the lookup argument of the MSM project
-pub type LookupWitness<F> = MVLookupWitness<F, LookupTableIDs>;
+pub type LookupWitness<F> = LogupWitness<F, LookupTableIDs>;
 
 // This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the

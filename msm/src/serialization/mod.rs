@@ -1,4 +1,4 @@
-use crate::{mvlookup::LookupTableID, MVLookup};
+use crate::{logup::LookupTableID, Logup};
 
 pub mod column;
 pub mod constraints;
@@ -43,7 +43,7 @@ impl LookupTableID for LookupTable {
     }
 }
 
-pub type Lookup<F> = MVLookup<F, LookupTable>;
+pub type Lookup<F> = Logup<F, LookupTable>;
 
 #[cfg(test)]
 mod tests {
@@ -55,7 +55,7 @@ mod tests {
 
     use crate::{
         columns::Column,
-        mvlookup::MVLookupWitness,
+        logup::LogupWitness,
         precomputed_srs::get_bn254_srs,
         proof::ProofInputs,
         prover::prove,
@@ -178,15 +178,15 @@ mod tests {
             });
         rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
 
-        let lookup_witness_rangecheck4: MVLookupWitness<Fp, LookupTable> = {
-            MVLookupWitness {
+        let logup_witness_rangecheck4: LogupWitness<Fp, LookupTable> = {
+            LogupWitness {
                 f: rangecheck4.to_vec(),
                 m: rangecheck4_m,
             }
         };
 
-        let lookup_witness_rangecheck15: MVLookupWitness<Fp, LookupTable> = {
-            MVLookupWitness {
+        let logup_witness_rangecheck15: LogupWitness<Fp, LookupTable> = {
+            LogupWitness {
                 f: rangecheck15.to_vec(),
                 m: rangecheck15_m,
             }
@@ -194,7 +194,7 @@ mod tests {
 
         let proof_inputs = ProofInputs {
             evaluations: *witness,
-            mvlookups: vec![lookup_witness_rangecheck15, lookup_witness_rangecheck4],
+            logups: vec![logup_witness_rangecheck15, logup_witness_rangecheck4],
         };
 
         let proof = prove::<

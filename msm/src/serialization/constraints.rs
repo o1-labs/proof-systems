@@ -9,8 +9,7 @@ use crate::{columns::Column, expr::E};
 
 use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
 use crate::{
-    columns::ColumnIndexer, mvlookup::constraint_lookups,
-    serialization::column::SerializationColumn,
+    columns::ColumnIndexer, logup::constraint_lookups, serialization::column::SerializationColumn,
 };
 
 pub struct Env<Fp> {

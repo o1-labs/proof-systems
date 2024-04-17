@@ -1,8 +1,8 @@
 use crate::{
+    logup::{LookupProof, LookupTableID},
     lookups::{LookupTableIDs, LookupWitness},
-    mvlookup::{LookupProof, LookupTableID},
     witness::Witness,
-    MVLookupWitness, DOMAIN_SIZE,
+    LogupWitness, DOMAIN_SIZE,
 };
 use ark_ff::{UniformRand, Zero};
 use kimchi::{
@@ -21,7 +21,7 @@ pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     /// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N, Vec<G::ScalarField>>,
-    pub mvlookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
+    pub logups: Vec<LogupWitness<G::ScalarField, ID>>,
 }
 
 impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
@@ -38,7 +38,7 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
         }));
         ProofInputs {
             evaluations: Witness { cols },
-            mvlookups: vec![LookupWitness::<G::ScalarField>::random(domain)],
+            logups: vec![LookupWitness::<G::ScalarField>::random(domain)],
         }
     }
 }
@@ -53,7 +53,7 @@ impl<const N: usize, G: KimchiCurve, ID: LookupTableID> Default for ProofInputs<
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 })),
             },
-            mvlookups: vec![],
+            logups: vec![],
         }
     }
 }
@@ -62,8 +62,8 @@ impl<const N: usize, G: KimchiCurve, ID: LookupTableID> Default for ProofInputs<
 pub struct ProofEvaluations<const N: usize, F, ID: LookupTableID> {
     /// Witness evaluations, including public inputs
     pub(crate) witness_evals: Witness<N, PointEvaluations<F>>,
-    /// MVLookup argument evaluations
-    pub(crate) mvlookup_evals: Option<LookupProof<PointEvaluations<F>, ID>>,
+    /// Logup argument evaluations
+    pub(crate) logup_evals: Option<LookupProof<PointEvaluations<F>, ID>>,
     /// Evaluation of Z_H(ζ) (t_0(X) + ζ^n t_1(X) + ...) at ζω.
     pub(crate) ft_eval1: F,
 }
@@ -86,28 +86,28 @@ impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
                 }
             }
             Self::Column::LookupPartialSum(i) => {
-                if let Some(ref lookup) = self.mvlookup_evals {
+                if let Some(ref lookup) = self.logup_evals {
                     lookup.h[i].clone()
                 } else {
                     panic!("No lookup provided")
                 }
             }
             Self::Column::LookupAggregation => {
-                if let Some(ref lookup) = self.mvlookup_evals {
+                if let Some(ref lookup) = self.logup_evals {
                     lookup.sum.clone()
                 } else {
                     panic!("No lookup provided")
                 }
             }
             Self::Column::LookupMultiplicity(id) => {
-                if let Some(ref lookup) = self.mvlookup_evals {
+                if let Some(ref lookup) = self.logup_evals {
                     lookup.m[&ID::from_u32(id)].clone()
                 } else {
                     panic!("No lookup provided")
                 }
             }
             Self::Column::LookupFixedTable(id) => {
-                if let Some(ref lookup) = self.mvlookup_evals {
+                if let Some(ref lookup) = self.logup_evals {
                     lookup.fixed_tables[&ID::from_u32(id)].clone()
                 } else {
                     panic!("No lookup provided")
@@ -123,9 +123,9 @@ pub struct ProofCommitments<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     /// Commitments to the N columns of the circuits, also called the 'witnesses'.
     /// If some columns are considered as public inputs, it is counted in the witness.
     pub(crate) witness_comms: Witness<N, PolyComm<G>>,
-    /// Commitments to the polynomials used by the lookup argument.
+    /// Commitments to the polynomials used by the lookup argument, coined "logup".
     /// The values contains the chunked polynomials.
-    pub(crate) mvlookup_comms: Option<LookupProof<PolyComm<G>, ID>>,
+    pub(crate) logup_comms: Option<LookupProof<PolyComm<G>, ID>>,
     /// Commitments to the quotient polynomial.
     /// The value contains the chunked polynomials.
     pub(crate) t_comm: PolyComm<G>,

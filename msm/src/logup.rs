@@ -1,4 +1,11 @@
-//! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
+//! Implement a variant of the logarithmic lookups based on the equations
+//! described in the paper [Multivariate lookups based on logarithmic
+//! derivatives](https://eprint.iacr.org/2022/1530.pdf)
+//! The variant is mostly based on the observation that the polynomial
+//! identities can be verified using the "Idealised low-degree protocols"
+//! described in the section 4 of the [PlonK
+//! paper](https://eprint.iacr.org/2019/953.pdf) and "the quotient polynomial"
+//! instead of using the sumcheck protocol.
 
 use ark_ff::{Field, PrimeField, Zero};
 use std::{collections::BTreeMap, hash::Hash};
@@ -14,24 +21,24 @@ use crate::{
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
 /// The structure represents the individual fraction of the sum described in the
-/// MVLookup protocol (for instance Eq. 8).
+/// Logup protocol (for instance Eq. 8).
 /// The table ID is added to the random linear combination formed with the
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct MVLookup<F, ID: LookupTableID> {
+pub struct Logup<F, ID: LookupTableID> {
     pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
 }
 
-/// Basic trait for MVLookups
-impl<F, ID> MVLookup<F, ID>
+/// Basic trait for logarithmic lookups.
+impl<F, ID> Logup<F, ID>
 where
     F: Clone,
     ID: LookupTableID,
 {
-    /// Creates a new MVLookup
+    /// Creates a new Logup
     pub fn new(table_id: ID, numerator: F, value: &[F]) -> Self {
         Self {
             table_id,
@@ -84,7 +91,7 @@ pub struct LookupTable<F, ID: LookupTableID> {
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug, Clone)]
-pub struct MVLookupWitness<F, ID: LookupTableID> {
+pub struct LogupWitness<F, ID: LookupTableID> {
     /// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
@@ -99,7 +106,7 @@ pub struct MVLookupWitness<F, ID: LookupTableID> {
     /// change this structure.
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
-    pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
+    pub(crate) f: Vec<Vec<Logup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
 }
@@ -182,7 +189,7 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 /// ```
 pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
     column: Column,
-    lookups: Vec<MVLookup<E<F>, ID>>,
+    lookups: Vec<Logup<E<F>, ID>>,
 ) -> E<F> {
     let joint_combiner = {
         let joint_combiner = ConstantExpr::from(ChallengeTerm::JointCombiner);
@@ -242,12 +249,12 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
 /// Build the constraints for the lookup protocol.
 /// The constraints are the partial sum and the aggregation of the partial sums.
 pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
-    lookups_map: &BTreeMap<ID, Vec<MVLookup<E<F>, ID>>>,
+    lookups_map: &BTreeMap<ID, Vec<Logup<E<F>, ID>>>,
 ) -> Vec<E<F>> {
     let mut constraints: Vec<E<F>> = vec![];
     let mut idx_partial_sum = 0;
     lookups_map.iter().for_each(|(id, lookups)| {
-        let table_lookup = MVLookup {
+        let table_lookup = Logup {
             table_id: *id,
             numerator: curr_cell(Column::LookupMultiplicity(id.to_u32())),
             value: vec![curr_cell(Column::LookupFixedTable(id.to_u32()))],
@@ -280,7 +287,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
 
 pub mod prover {
     use crate::{
-        mvlookup::{LookupTableID, MVLookup, MVLookupWitness},
+        logup::{Logup, LogupWitness, LookupTableID},
         MAX_SUPPORTED_DEGREE,
     };
     use ark_ff::{FftField, Zero};
@@ -329,7 +336,7 @@ pub mod prover {
     }
 
     impl<G: KimchiCurve, ID: LookupTableID> Env<G, ID> {
-        /// Create an environment for the prover to create a proof for the MVLookup protocol.
+        /// Create an environment for the prover to create a proof for the Logup protocol.
         /// The protocol does suppose that the individual lookup terms are
         /// committed as part of the columns.
         /// Therefore, the protocol only focus on commiting to the "grand
@@ -338,7 +345,7 @@ pub mod prover {
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
         >(
-            lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
+            lookups: Vec<LogupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -416,7 +423,7 @@ pub mod prover {
             let lookup_terms_evals: Vec<Vec<Vec<G::ScalarField>>> = lookups
                 .into_iter()
                 .map(|lookup| {
-                    let MVLookupWitness { f, m: _ } = lookup;
+                    let LogupWitness { f, m: _ } = lookup;
                     // The number of functions to look up, including the fixed table.
                     let n = f.len();
                     let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
@@ -437,7 +444,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
                         for (i, f_i) in f.iter().enumerate() {
-                            let MVLookup {
+                            let Logup {
                                 numerator: _,
                                 table_id,
                                 value,
@@ -476,7 +483,7 @@ pub mod prover {
                         let mut partial_sum_idx = 0;
                         let mut row_acc = G::ScalarField::zero();
                         for f_i in f.iter() {
-                            let MVLookup {
+                            let Logup {
                                 numerator,
                                 table_id: _,
                                 value: _,

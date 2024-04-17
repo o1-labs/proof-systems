@@ -33,7 +33,7 @@ pub fn test_completeness_generic<const N: usize, RNG>(
 
     let proof_inputs = ProofInputs {
         evaluations,
-        mvlookups: vec![],
+        logups: vec![],
     };
 
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
@@ -132,7 +132,7 @@ mod tests {
 
         let proof_inputs = ProofInputs {
             evaluations: evaluations_prime,
-            mvlookups: vec![],
+            logups: vec![],
         };
 
         let proof =
