@@ -135,10 +135,8 @@ impl<F: PrimeField> Env<F> {
         assert!(self.lookups[&LookupTable::RangeCheck15].len() == 17);
         assert!(self.lookups[&LookupTable::RangeCheck4].len() == 20);
 
-        let _lookup_constraint = constraint_lookups(&self.lookups);
-        // FIXME: it seems the constraints are not correctly checked.
-        // Activate lookup constraints after by decommenting the following line
-        // constraints.extend(_lookup_constraint);
+        let lookup_constraint = constraint_lookups(&self.lookups);
+        constraints.extend(lookup_constraint);
         constraints
     }
 }
