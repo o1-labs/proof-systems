@@ -15,24 +15,23 @@ use crate::{
 use kimchi::circuits::domains::EvaluationDomains;
 use std::{collections::BTreeMap, iter};
 
-// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
 // TODO `WitnessEnv`
 /// Environment for the serializer interpreter
-pub struct Env<Fp> {
+pub struct Env<F> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    pub witness: Witness<SER_N_COLUMNS, Fp>,
+    pub witness: Witness<SER_N_COLUMNS, F>,
 
     /// Keep track of the RangeCheck4 table multiplicities.
     /// The value `0` is used as a (repeated) dummy value.
     // Boxing to avoid stack overflow
-    pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
+    pub lookup_t_multiplicities_rangecheck4: Box<[F; 1 << 4]>,
 
     /// Keep track of the lookup multiplicities.
-    pub lookup_multiplicities: BTreeMap<LookupTable, Vec<Fp>>,
+    pub lookup_multiplicities: BTreeMap<LookupTable, Vec<F>>,
 
     /// Keep track of the lookups for each row.
-    pub lookups: BTreeMap<LookupTable, Vec<Lookup<Fp>>>,
+    pub lookups: BTreeMap<LookupTable, Vec<Lookup<F>>>,
 }
 
 // TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
