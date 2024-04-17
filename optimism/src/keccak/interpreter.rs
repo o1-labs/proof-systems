@@ -1,5 +1,10 @@
 //! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
+use super::{
+    column::PAD_SUFFIX_LEN,
+    helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
+    WORDS_IN_HASH,
+};
 use crate::{
     keccak::{
         column::{PAD_BYTES_LEN, ROUND_CONST_LEN},
@@ -27,10 +32,8 @@ use kimchi::{
 };
 use std::{array, fmt::Debug};
 
-use super::{column::PAD_SUFFIX_LEN, WORDS_IN_HASH};
-
 /// This trait includes functionalities needed to obtain the variables of the Keccak circuit needed for constraints and witness
-pub trait KeccakInterpreter<F: One + Debug + Zero> {
+pub trait Interpreter<F: One + Debug + Zero> {
     type Variable: std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
@@ -39,89 +42,35 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         + One
         + Zero;
 
-    ////////////////////////
-    // BOOLEAN OPERATIONS //
-    ////////////////////////
-
-    /// Degree-2 variable encoding whether the input is a boolean value (0 = yes)
-    fn is_boolean(x: Self::Variable) -> Self::Variable {
-        x.clone() * (x - Self::Variable::one())
-    }
-
-    /// Degree-1 variable encoding the negation of the input
-    /// Note: it only works as expected if the input is a boolean value
-    fn not(x: Self::Variable) -> Self::Variable {
-        Self::Variable::one() - x
-    }
-
-    /// Degree-1 variable encoding whether the input is the value one (0 = yes)
-    fn is_one(x: Self::Variable) -> Self::Variable {
-        Self::not(x)
-    }
-
-    /// Degree-2 variable encoding whether the first input is nonzero (0 = yes).
-    /// It requires the second input to be the multiplicative inverse of the first.
-    /// Note: if the first input is zero, there is no multiplicative inverse.
-    fn is_nonzero(x: Self::Variable, x_inv: Self::Variable) -> Self::Variable {
-        Self::is_one(x * x_inv)
-    }
-
-    /// Degree-2 variable encoding the XOR of two variables which should be boolean (1 = true)
-    fn xor(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        x.clone() + y.clone() - Self::constant(2) * x * y
-    }
-
-    /// Degree-2 variable encoding the OR of two variables, which should be boolean (1 = true)
-    fn or(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        x.clone() + y.clone() - x * y
-    }
-
-    /// Degree-2 variable encoding whether at least one of the two inputs is zero (0 = yes)
-    fn either_zero(x: Self::Variable, y: Self::Variable) -> Self::Variable {
-        x * y
-    }
-
-    //////////////////////////
-    // ARITHMETIC OPERATIONS //
-    ///////////////////////////
-
     /// Creates a variable from a constant integer
     fn constant(x: u64) -> Self::Variable;
 
     /// Creates a variable from a constant field element
     fn constant_field(x: F) -> Self::Variable;
 
-    /// Returns a variable representing the value zero
-    fn zero() -> Self::Variable {
-        Self::constant(0)
-    }
-    /// Returns a variable representing the value one
-    fn one() -> Self::Variable {
-        Self::constant(1)
-    }
-    /// Returns a variable representing the value two
-    fn two() -> Self::Variable {
-        Self::constant(2)
-    }
+    /// Returns the variable corresponding to a given column alias.
+    fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
-    /// Returns a variable representing the value 2^x
-    fn two_pow(x: u64) -> Self::Variable;
+    /// Adds one KeccakConstraint to the environment if the selector holds
+    fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable);
 
+    /// Adds a given Lookup to the environment if the condition holds
+    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>);
+}
+
+pub trait KeccakInterpreter<F: One + Debug + Zero>
+where
+    Self: Interpreter<F> + LogupHelpers<F> + BoolHelpers<F> + ArithHelpers<F>,
+{
     ////////////////////////////
     // CONSTRAINTS OPERATIONS //
     ////////////////////////////
-
-    /// Returns the variable corresponding to a given column alias.
-    fn variable(&self, column: KeccakColumn) -> Self::Variable;
 
     /// Check one condition on the selectors
     fn check(&mut self, tag: Selector, x: Self::Variable);
 
     /// Checks that the selectors are set correctly
     fn checks(&mut self);
-
-    /// Adds one KeccakConstraint to the environment if the selector holds
-    fn constrain(&mut self, tag: Constraint, if_true: Self::Variable, x: Self::Variable);
 
     /// Creates all 879 constraints/checks to the environment:
     /// - 733 constraints of degree 1
@@ -166,7 +115,10 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// - 136 constraints of degree 2
     /// Of which:
     /// - 136 constraints are added only if is_pad() holds
-    fn constrain_flags(&mut self) {
+    fn constrain_flags(&mut self)
+    where
+        Self: Interpreter<F>,
+    {
         // Booleanity of sponge flags:
         // - 136 constraints of degree 2
         self.constrain_booleanity();
@@ -176,7 +128,10 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     /// - 136 constraints of degree 2
     /// Of which,
     /// - 136 constraints are added only if is_pad() holds
-    fn constrain_booleanity(&mut self) {
+    fn constrain_booleanity(&mut self)
+    where
+        Self: Interpreter<F>,
+    {
         for i in 0..RATE_IN_BYTES {
             // Bytes are either involved on padding or not
             self.constrain(
@@ -462,9 +417,6 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    /// Adds a given Lookup to the environment if the condition holds
-    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>);
-
     /// Creates all possible 2361 lookups to the Keccak constraints environment:
     /// - 2222 lookups for the step row
     /// - 2 lookups for the inter-step channel
@@ -518,17 +470,14 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
     // TODO: optimize this by using a single lookup reusing PadSuffix
     fn lookup_syscall_preimage(&mut self) {
         for i in 0..RATE_IN_BYTES {
-            self.add_lookup(
+            self.read_syscall(
                 self.is_absorb(),
-                Lookup::read_one(
-                    SyscallLookup,
-                    vec![
-                        self.hash_index(),
-                        self.block_index() * Self::constant(RATE_IN_BYTES as u64)
-                            + Self::constant(i as u64),
-                        self.sponge_byte(i),
-                    ],
-                ),
+                vec![
+                    self.hash_index(),
+                    self.block_index() * Self::constant(RATE_IN_BYTES as u64)
+                        + Self::constant(i as u64),
+                    self.sponge_byte(i),
+                ],
             );
         }
     }
@@ -540,10 +489,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        self.add_lookup(
-            self.is_squeeze(),
-            Lookup::write_one(SyscallLookup, vec![self.hash_index(), bytes31]),
-        );
+        self.write_syscall(self.is_squeeze(), vec![self.hash_index(), bytes31]);
     }
 
     /// Reads a Lookup containing the input of a step
@@ -562,41 +508,6 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
             Self::not(self.is_squeeze()),
             Lookup::write_one(KeccakStepLookup, self.output_of_step()),
         );
-    }
-
-    /// Adds a lookup to the RangeCheck16 table
-    fn lookup_rc16(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(flag, Lookup::read_one(RangeCheck16Lookup, vec![value]));
-    }
-
-    /// Adds a lookup to the Reset table
-    fn lookup_reset(
-        &mut self,
-        flag: Self::Variable,
-        dense: Self::Variable,
-        sparse: Self::Variable,
-    ) {
-        self.add_lookup(flag, Lookup::read_one(ResetLookup, vec![dense, sparse]));
-    }
-
-    /// Adds a lookup to the Shift table
-    fn lookup_sparse(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(flag, Lookup::read_one(SparseLookup, vec![value]));
-    }
-
-    /// Adds a lookup to the Byte table
-    fn lookup_byte(&mut self, flag: Self::Variable, value: Self::Variable) {
-        self.add_lookup(flag, Lookup::read_one(ByteLookup, vec![value]));
-    }
-
-    /// Adds a lookup to the Pad table
-    fn lookup_pad(&mut self, flag: Self::Variable, value: Vec<Self::Variable>) {
-        self.add_lookup(flag, Lookup::read_one(PadLookup, value));
-    }
-
-    /// Adds a lookup to the RoundConstants table
-    fn lookup_round_constants(&mut self, flag: Self::Variable, value: Vec<Self::Variable>) {
-        self.add_lookup(flag, Lookup::read_one(RoundConstantsLookup, value));
     }
 
     /// Adds the 601 lookups required for the sponge
@@ -1022,7 +933,7 @@ pub trait KeccakInterpreter<F: One + Debug + Zero> {
 
     /// Returns the 100 variables corresponding to PiRhoDenseE
     fn vec_dense_e(&self) -> [Self::Variable; PIRHO_DENSE_E_LEN] {
-        array::from_fn(|idx| self.variable(KeccakColumn::PiRhoDenseE(idx)))
+        array::from_fn(|idx: usize| self.variable(KeccakColumn::PiRhoDenseE(idx)))
     }
     /// Returns the (y,x,q)-th variable of PiRhoDenseE
     fn dense_e(&self, y: usize, x: usize, q: usize) -> Self::Variable {
