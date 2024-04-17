@@ -287,7 +287,7 @@ where
     // Round 3: Evaluations at zeta and zeta_omega
     ////////////////////////////////////////////////////////////////////////////
 
-    //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+    //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
     absorb_commitment(&mut fq_sponge, &t_comm);
 
     //~ 1. Sample $\zeta'$ with the Fq-Sponge.

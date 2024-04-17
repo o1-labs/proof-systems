@@ -298,7 +298,7 @@ Here we describe basic gadgets that we build using a combination of the gates de
 
 In this section we specify the setup that goes into creating two indexes from a circuit:
 
-* A [*prover index*](#prover-index), necessary for the prover to to create proofs.
+* A [*prover index*](#prover-index), necessary for the prover to create proofs.
 * A [*verifier index*](#verifier-index), necessary for the verifier to verify proofs.
 
 ```admonish
