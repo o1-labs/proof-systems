@@ -427,7 +427,7 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
     // Carry limbs need to be in particular ranges.
     for (i, x) in carry_limbs_small.iter().enumerate() {
         if i % 6 == 5 {
-            // This should be a diferent range check depending on which big-limb we're processing?
+            // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
             env.range_check_abs4bit(x);
         } else {
