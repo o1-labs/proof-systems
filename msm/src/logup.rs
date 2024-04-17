@@ -1,11 +1,133 @@
-//! Implement a variant of the logarithmic lookups based on the equations
-//! described in the paper [Multivariate lookups based on logarithmic
-//! derivatives](https://eprint.iacr.org/2022/1530.pdf)
+//! Implement a variant of the logarithmic derivative lookups based on the
+//! equations described in the paper ["Multivariate lookups based on logarithmic
+//! derivatives"](https://eprint.iacr.org/2022/1530.pdf).
+//!
 //! The variant is mostly based on the observation that the polynomial
 //! identities can be verified using the "Idealised low-degree protocols"
-//! described in the section 4 of the [PlonK
-//! paper](https://eprint.iacr.org/2019/953.pdf) and "the quotient polynomial"
-//! instead of using the sumcheck protocol.
+//! described in the section 4 of the
+//! ["PlonK"](https://eprint.iacr.org/2019/953.pdf) paper and "the quotient
+//! polynomial" described in the round 3 of the PlonK protocol, instead of using
+//! the sumcheck protocol.
+//!
+//! The protocol is based on the following observations:
+//!
+//! The sequence (a_i) is included in (b_i) if and only if the following
+//! equation holds:
+//! ```text
+//!   k       1        l      m_i
+//!   ∑    -------  =  ∑    -------                          (1)
+//!  i=1   β + a_i    i=1   β + b_i
+//! ```
+//! where m_i is the number of times a_i appears in the sequence b_i.
+//!
+//! The sequence (b_i) will refer to the table values and the sequence (a_i) the
+//! values the prover looks up.
+//!
+//! For readability, the table values are represented as the evaluations over a
+//! subgroup H of the field F of a
+//! polynomial t(X), and the looked-up values by the evaluations of a polynomial
+//! f(X). If we suppose the subgroup H is defined as {1, ω, ω^2, ..., ω^{n-1}},
+//! the equation (1) becomes:
+//!
+//! ```text
+//!   n        1          n      m(ω^i)
+//!   ∑    ----------  =  ∑    ----------                    (2)
+//!  i=1   β + f(ω^i)    i=1   β + t(ω^i)
+//! ```
+//!
+//! In the codebase, the multiplicities m_i are called the "lookup counters".
+//!
+//! The protocol can be generalized to multiple "looked-up" polynomials f_1,
+//! ..., f_k (called the "lookup terms" in the codebase) and the equation (2) becomes:
+//!
+//! ```text
+//!   n    k           1          n       m(ω^i)
+//!   ∑    ∑     ------------  =  ∑    -----------           (3)
+//!  i=1  j=1    β + f_j(ω^i)    i=1    β + t(ω^i)
+//! ```
+//!
+//! which can be rewritten as:
+//! ```text
+//!   n  (  k         1             m(ω^i)    )
+//!   ∑  (  ∑   ------------   - -----------  )  = 0         (4)
+//!  i=1 ( j=1  β + f_j(ω^i)      β + t(ω^i)  )
+//!      \                                   /
+//!       -----------------------------------
+//!                "inner sums", h(ω^i)
+//! ```
+//!
+//! The equation says that if we sum/accumulate the "inner sums" over the
+//! subgroup H, we will get a zero value. Note the analogy with the
+//! "multiplicative" accumulator used in the lookup argument called
+//! ["Plookup"](https://eprint.iacr.org/2020/315.pdf).
+//!
+//! We will define an accumulator ϕ : H -> F (called the "lookup aggregation" in
+//! the codebase) which will contain the "running
+//! inner sums" which will be equal to zero to start, and when we finished
+//! accumulating, it must equal zero. Note that the initial and final values can
+//! be anything. The idea of the equation 4 is that all the values have been
+//! read and written to the accumulator the right number of times, with respect
+//! to the multiplicities m.
+//! More precisely, we will have:
+//! ```text
+//! - φ(1) = 0
+//!                                           h(ω^j)
+//!                            /----------------------------------\
+//!                           (  k         1             m(ω^j)    )
+//! - φ(ω^{j + 1}) = φ(ω^j) + (  ∑   ------------   - -----------  )
+//!                           ( i=1  β + f_i(ω^j)      β + t(ω^j)  )
+//!
+//! - φ(ω^n) = φ(1) = 0
+//! ```
+//!
+//! We will split the inner sums into chunks of size (MAX_SUPPORTED_DEGREE - 2)
+//! to avoid having a too large degree for the quotient polynomial.
+//! As a reminder, the paper ["Multivariate lookups based on logarithmic
+//! derivatives"](https://eprint.iacr.org/2022/1530.pdf) uses the sumcheck
+//! protocol to compute the partial sums (equations 16 and 17). However, we use
+//! the PlonK polynomial IOP and therefore, we will use the quotient polynomial,
+//! and the computation of the partial sums will be translated into a constraint
+//! in a new power of alpha.
+//!
+//! Note that the inner sum h(X) can be constrainted as followed:
+//! ```text
+//!         k                   k  /          k                 \
+//! h(X) *  ᴨ  (β + f_{i}(X)) = ∑  | m_{i} *  ᴨ  (β + f_{j}(X)) |     (5)
+//!        i=1                 i=1 |         j=1                |
+//!                                \         j≠i                /
+//! ```
+//! More than one "inner sum" can be created in the case that `k + 2` is higher
+//! than the maximum degree supported.
+//! The quotient polynomial, defined at round 3 of the [PlonK
+//! protocol](https://eprint.iacr.org/2019/953.pdf), will be something like:
+//!
+//! ```text
+//!         ... + α^i [φ(ω X) - φ(X) - h(X)] + α^(i + 1) (5) + ...
+//!  t(X) = ------------------------------------------------------
+//!                              Z_H(X)
+//! ```
+//!
+//! `k` can then be seen as the number of lookups we can make per row. The
+//! additional cost when we reach the maximum degree supported is to add a new
+//! constraint and add a new column.
+//! For rows with less than `k` lookups, the prover will add a dummy value,
+//! which will be a value known to be in the table, and the multiplicity must be
+//! increased appropriately.
+//!
+//! To handle more than one table, we will use a table ID and transform the
+//! single value lookup into a vector lookup, using a random combiner.
+//! The protocol can also handle vector lookups, by using the random combiner.
+//! The looked-up values therefore become functions f_j: H x H x ... x H -> F
+//! and is transformed into a f'_j: H -> F using a random combiner `r`.
+//!
+//! To summarize, the prover will:
+//! - commit to the multiplicities m.
+//! - commit to the lookup terms f (which include the table t).
+//! - commit to the inner sums h.
+//! - commit to the running sum φ.
+//! - add constraints to the quotient polynomial.
+//! - evaluate all polynomials at the evaluation points ζ and ζω (because we
+//! access the "next" row for the accumulator in the quotient polynomial).
 
 use ark_ff::{Field, PrimeField, Zero};
 use std::{collections::BTreeMap, hash::Hash};
