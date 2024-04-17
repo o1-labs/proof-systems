@@ -16,6 +16,7 @@ use kimchi::circuits::polynomials::keccak::constants::{
     DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
 use kimchi_msm::witness::Witness;
+use strum::IntoEnumIterator;
 
 use self::{column::ZKVM_KECCAK_COLS, environment::KeccakEnv};
 
@@ -85,15 +86,6 @@ pub enum Constraint {
 /// The Keccak circuit
 pub type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
-pub const STEPS: [Steps; 6] = [
-    Round(0),
-    Sponge(Absorb(First)),
-    Sponge(Absorb(Middle)),
-    Sponge(Absorb(Last)),
-    Sponge(Absorb(Only)),
-    Sponge(Squeeze),
-];
-
 #[allow(dead_code)]
 impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
@@ -104,7 +96,7 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
             lookups: Default::default(),
         };
 
-        for step in STEPS {
+        for step in Steps::iter().flat_map(|x| x.into_iter()) {
             circuit.witness.insert(
                 step,
                 Witness {
@@ -148,7 +140,7 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
     }
 
     fn pad_witnesses(&mut self) {
-        for step in STEPS {
+        for step in Steps::iter().flat_map(|x| x.into_iter()) {
             self.pad(step);
         }
     }
