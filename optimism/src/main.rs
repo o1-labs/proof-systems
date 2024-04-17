@@ -9,8 +9,8 @@ use kimchi_optimism::{
     cannon_cli,
     circuit::CircuitTrait,
     keccak::{
-        circuit::{KeccakCircuit, STEPS},
-        column::ZKVM_KECCAK_COLS,
+        circuit::KeccakCircuit,
+        column::{Steps, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
     },
     lookups::LookupTableIDs,
@@ -113,7 +113,7 @@ pub fn main() -> ExitCode {
         );
     }
     let mut keccak_folded_instance = HashMap::new();
-    for step in STEPS {
+    for step in Steps::iter().flat_map(|x| x.into_iter()) {
         keccak_folded_instance.insert(
             step,
             ProofInputs::<
@@ -190,7 +190,7 @@ pub fn main() -> ExitCode {
             );
         }
     }
-    for step in STEPS {
+    for step in Steps::iter().flat_map(|x| x.into_iter()) {
         let needs_folding = keccak_circuit.pad(step);
         if needs_folding {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
@@ -250,7 +250,7 @@ pub fn main() -> ExitCode {
     {
         // KECCAK
         // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
-        for step in STEPS {
+        for step in Steps::iter().flat_map(|x| x.into_iter()) {
             debug!("Checking Keccak circuit {:?}", step);
             let keccak_result = prove::<
                 _,

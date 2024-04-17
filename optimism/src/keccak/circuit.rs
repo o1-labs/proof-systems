@@ -2,12 +2,11 @@ use std::collections::HashMap;
 
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;
+use strum::IntoEnumIterator;
 
 use crate::{
     circuit::{Circuit, CircuitTrait},
     keccak::column::{
-        Absorbs::*,
-        Sponges::*,
         Steps::{self, *},
         ZKVM_KECCAK_COLS,
     },
@@ -18,16 +17,6 @@ use super::environment::KeccakEnv;
 /// The Keccak circuit
 pub type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
 
-pub const STEPS: [Steps; 6] = [
-    Round(0),
-    Sponge(Absorb(First)),
-    Sponge(Absorb(Middle)),
-    Sponge(Absorb(Last)),
-    Sponge(Absorb(Only)),
-    Sponge(Squeeze),
-];
-
-#[allow(dead_code)]
 impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
@@ -37,7 +26,7 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
             lookups: Default::default(),
         };
 
-        for step in STEPS {
+        for step in Steps::iter().flat_map(|step| step.into_iter()) {
             circuit.witness.insert(
                 step,
                 Witness {
@@ -81,7 +70,7 @@ impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for Keccak
     }
 
     fn pad_witnesses(&mut self) {
-        for step in STEPS {
+        for step in Steps::iter().flat_map(|step| step.into_iter()) {
             self.pad(step);
         }
     }
