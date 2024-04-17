@@ -10,7 +10,7 @@ use kimchi::{
     },
     o1_utils::{FieldHelpers, Two},
 };
-use kimchi_msm::{LookupTableID, MVLookupTable};
+use kimchi_msm::{LogupTable, LookupTableID};
 
 /// All of the possible lookup table IDs used in the zkVM
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -86,8 +86,8 @@ impl LookupTableID for LookupTableIDs {
 /// The lookups struct based on RAMLookups for the VM table IDs
 pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
 
-/// The lookup table struct based on MVLookupTable for the VM table IDs
-pub(crate) type LookupTable<F> = MVLookupTable<F, LookupTableIDs>;
+/// The lookup table struct based on LogupTable for the VM table IDs
+pub(crate) type LookupTable<F> = LogupTable<F, LookupTableIDs>;
 
 /// Trait that creates all the fixed lookup tables used in the VM
 pub(crate) trait FixedLookupTables<F> {

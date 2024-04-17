@@ -4,19 +4,19 @@ use mina_poseidon::{
 };
 use poly_commitment::pairing_proof::PairingProof;
 
-pub use mvlookup::{
-    LookupProof as MVLookupProof, LookupTable as MVLookupTable, LookupTableID as MVLookupTableID,
-    LookupTableID, MVLookup, MVLookupWitness,
+pub use logup::{
+    Logup, LogupWitness, LookupProof as LogupProof, LookupTable as LogupTable,
+    LookupTableID as LogupTableID, LookupTableID,
 };
 
 pub mod column_env;
 pub mod columns;
 pub mod expr;
 pub mod interpreter;
-/// Instantiations of MVLookups for the MSM project
+/// Generic definitions of Logups
+pub mod logup;
+/// Instantiations of Logups for the MSM project
 pub mod lookups;
-/// Generic definitions of MVLookups
-pub mod mvlookup;
 pub mod precomputed_srs;
 pub mod proof;
 pub mod prover;
@@ -104,7 +104,7 @@ mod tests {
     fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
 
-        // Include tests for completeness for MVLookup as the random witness
+        // Include tests for completeness for Logup as the random witness
         // includes all arguments
         let domain_size = 1 << 8;
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_soundness_mvlookup() {
+    fn test_soundness_logup() {
         let mut rng = o1_utils::tests::make_test_rng();
 
         // We generate two different witness and two different proofs.
@@ -292,7 +292,7 @@ mod tests {
         let mut inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // Take one random f_i (FIXME: taking first one for now)
-        let looked_up_values = inputs.mvlookups[0].f[0].clone();
+        let looked_up_values = inputs.logups[0].f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
         let wrong_looked_up_value = Lookup {
             table_id: looked_up_values[0].table_id,
@@ -300,7 +300,7 @@ mod tests {
             value: vec![Fp::rand(&mut rng)],
         };
         // Overwriting the first looked up value
-        inputs.mvlookups[0].f[0][0] = wrong_looked_up_value;
+        inputs.logups[0].f[0][0] = wrong_looked_up_value;
         // generate the proof
         let proof =
             prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(

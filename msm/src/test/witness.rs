@@ -93,7 +93,7 @@ impl WitnessBuilderEnv<Fp> {
             evaluations: Witness {
                 cols: Box::new(cols),
             },
-            mvlookups: vec![],
+            logups: vec![],
         }
     }
 

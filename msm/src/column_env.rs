@@ -1,7 +1,7 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-use crate::{mvlookup, mvlookup::LookupTableID, witness::Witness};
+use crate::{logup, logup::LookupTableID, witness::Witness};
 use kimchi::circuits::{
     domains::EvaluationDomains,
     expr::{Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain},
@@ -27,9 +27,7 @@ pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID>
     pub domain: EvaluationDomains<F>,
 
     /// Lookup specific polynomials
-    // TODO: rename in additive lookup or "logup"
-    // We do not use multi-variate lookups, only the additive part
-    pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F, ID>>,
+    pub lookup: Option<logup::prover::QuotientPolynomialEnvironment<'a, F, ID>>,
 }
 
 impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, F>
