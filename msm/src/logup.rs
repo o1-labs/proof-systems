@@ -605,7 +605,7 @@ pub mod prover {
                                 fixed_lookup_tables
                                     .entry(*table_id)
                                     .or_insert_with(Vec::new)
-                                    .push(combined_value);
+                                    .push(value[0]);
                             }
 
                             // β + a_{i}
