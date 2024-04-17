@@ -195,7 +195,7 @@ impl PreImageOracle {
     //       | length <8> | hint <length> |
     //       +----------------------------+
     //
-    // 2. Get back a single ack byte informing the the hint has been processed.
+    // 2. Get back a single ack byte informing the hint has been processed.
     pub fn hint(&mut self, hint: Hint) {
         let RW(ReadWrite { reader, writer }) = &mut self.hint_client;
 
