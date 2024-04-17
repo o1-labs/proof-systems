@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["STEPS"],"type":["KeccakCircuit"]};
+window.SIDEBAR_ITEMS = {"type":["KeccakCircuit"]};
