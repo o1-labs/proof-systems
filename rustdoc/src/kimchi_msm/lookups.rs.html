@@ -130,9 +130,9 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the MVLookup protocol for the MSM project.
+</pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the Logup protocol for the MSM project.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
+</span><span class="kw">use </span><span class="kw">crate</span>::logup::{Logup, LogupWitness, LookupTableID};
 <span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>rand::{seq::SliceRandom, thread_rng, Rng};
@@ -177,11 +177,11 @@
     </span>}
 }
 
-<span class="doccomment">/// Additive lookups used in the MSM project based on MVLookup
-</span><span class="kw">pub type </span>Lookup&lt;F&gt; = MVLookup&lt;F, LookupTableIDs&gt;;
+<span class="doccomment">/// Additive lookups used in the MSM project based on Logup
+</span><span class="kw">pub type </span>Lookup&lt;F&gt; = Logup&lt;F, LookupTableIDs&gt;;
 
 <span class="doccomment">/// Represents a witness of one instance of the lookup argument of the MSM project
-</span><span class="kw">pub type </span>LookupWitness&lt;F&gt; = MVLookupWitness&lt;F, LookupTableIDs&gt;;
+</span><span class="kw">pub type </span>LookupWitness&lt;F&gt; = LogupWitness&lt;F, LookupTableIDs&gt;;
 
 <span class="comment">// This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the

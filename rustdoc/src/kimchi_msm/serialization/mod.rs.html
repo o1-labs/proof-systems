@@ -222,7 +222,7 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{mvlookup::LookupTableID, MVLookup};
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup};
 
 <span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
@@ -267,7 +267,7 @@
     }
 }
 
-<span class="kw">pub type </span>Lookup&lt;F&gt; = MVLookup&lt;F, LookupTable&gt;;
+<span class="kw">pub type </span>Lookup&lt;F&gt; = Logup&lt;F, LookupTable&gt;;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
@@ -279,7 +279,7 @@
 
     <span class="kw">use crate</span>::{
         columns::Column,
-        mvlookup::MVLookupWitness,
+        logup::LogupWitness,
         precomputed_srs::get_bn254_srs,
         proof::ProofInputs,
         prover::prove,
@@ -402,15 +402,15 @@
             });
         rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
 
-        <span class="kw">let </span>lookup_witness_rangecheck4: MVLookupWitness&lt;Fp, LookupTable&gt; = {
-            MVLookupWitness {
+        <span class="kw">let </span>logup_witness_rangecheck4: LogupWitness&lt;Fp, LookupTable&gt; = {
+            LogupWitness {
                 f: rangecheck4.to_vec(),
                 m: rangecheck4_m,
             }
         };
 
-        <span class="kw">let </span>lookup_witness_rangecheck15: MVLookupWitness&lt;Fp, LookupTable&gt; = {
-            MVLookupWitness {
+        <span class="kw">let </span>logup_witness_rangecheck15: LogupWitness&lt;Fp, LookupTable&gt; = {
+            LogupWitness {
                 f: rangecheck15.to_vec(),
                 m: rangecheck15_m,
             }
@@ -418,7 +418,7 @@
 
         <span class="kw">let </span>proof_inputs = ProofInputs {
             evaluations: <span class="kw-2">*</span>witness,
-            mvlookups: <span class="macro">vec!</span>[lookup_witness_rangecheck15, lookup_witness_rangecheck4],
+            logups: <span class="macro">vec!</span>[logup_witness_rangecheck15, logup_witness_rangecheck4],
         };
 
         <span class="kw">let </span>proof = prove::&lt;

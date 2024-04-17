@@ -267,7 +267,7 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mvlookup::LookupTableID;
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::logup::LookupTableID;
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
 <span class="kw">use </span>rand::thread_rng;
@@ -367,13 +367,13 @@
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
-    // MVLookup
+    // Logup
     ////////////////////////////////////////////////////////////////////////////
 
     </span><span class="kw">let </span>(joint_combiner, beta) = {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_comms) = <span class="kw-2">&amp;</span>proof_comms.mvlookup_comms {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(logup_comms) = <span class="kw-2">&amp;</span>proof_comms.logup_comms {
             <span class="comment">// First, we absorb the multiplicity polynomials
-            </span>mvlookup_comms
+            </span>logup_comms
                 .m
                 .values()
                 .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
@@ -383,18 +383,18 @@
             <span class="kw">let </span>beta = fq_sponge.challenge();
 
             <span class="comment">// And now, we absorb the commitments to the other polynomials
-            </span>mvlookup_comms
+            </span>logup_comms
                 .h
                 .iter()
                 .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
-            mvlookup_comms
+            logup_comms
                 .fixed_tables
                 .values()
                 .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
             <span class="comment">// And at the end, the aggregation
-            </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>mvlookup_comms.sum);
+            </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>logup_comms.sum);
             (<span class="prelude-val">Some</span>(joint_combiner), beta)
         } <span class="kw">else </span>{
             (<span class="prelude-val">None</span>, G::ScalarField::zero())
@@ -431,11 +431,11 @@
             }),
     );
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(mvlookup_comms) = <span class="kw-2">&amp;</span>proof_comms.mvlookup_comms {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(logup_comms) = <span class="kw-2">&amp;</span>proof_comms.logup_comms {
         coms_and_evaluations.extend(
-            mvlookup_comms
+            logup_comms
                 .into_iter()
-                .zip(proof_evals.mvlookup_evals.as_ref().unwrap())
+                .zip(proof_evals.logup_evals.as_ref().unwrap())
                 .map(|(commitment, point_eval)| Evaluation {
                     commitment: commitment.clone(),
                     evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[point_eval.zeta], <span class="macro">vec!</span>[point_eval.zeta_omega]],
@@ -453,10 +453,10 @@
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
-    <span class="kw">if </span>proof_comms.mvlookup_comms.is_some() {
-        <span class="comment">// MVLookup FS
+    <span class="kw">if </span>proof_comms.logup_comms.is_some() {
+        <span class="comment">// Logup FS
         </span><span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in
-            </span>proof_evals.mvlookup_evals.as_ref().unwrap().into_iter()
+            </span>proof_evals.logup_evals.as_ref().unwrap().into_iter()
         {
             fr_sponge.absorb(zeta);
             fr_sponge.absorb(zeta_omega);

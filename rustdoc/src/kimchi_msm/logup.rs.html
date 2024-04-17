@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `msm/src/mvlookup.rs`."><title>mvlookup.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `msm/src/logup.rs`."><title>logup.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi_msm/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -646,7 +646,21 @@
 <a href="#644" id="644">644</a>
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! Implement the protocol MVLookup &lt;https://eprint.iacr.org/2022/1530.pdf&gt;
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Implement a variant of the logarithmic lookups based on the equations
+//! described in the paper [Multivariate lookups based on logarithmic
+//! derivatives](https://eprint.iacr.org/2022/1530.pdf)
+//! The variant is mostly based on the observation that the polynomial
+//! identities can be verified using the "Idealised low-degree protocols"
+//! described in the section 4 of the [PlonK
+//! paper](https://eprint.iacr.org/2019/953.pdf) and "the quotient polynomial"
+//! instead of using the sumcheck protocol.
 
 </span><span class="kw">use </span>ark_ff::{Field, PrimeField, Zero};
 <span class="kw">use </span>std::{collections::BTreeMap, hash::Hash};
@@ -662,24 +676,24 @@
 <span class="doccomment">/// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
 /// The structure represents the individual fraction of the sum described in the
-/// MVLookup protocol (for instance Eq. 8).
+/// Logup protocol (for instance Eq. 8).
 /// The table ID is added to the random linear combination formed with the
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>MVLookup&lt;F, ID: LookupTableID&gt; {
+</span><span class="kw">pub struct </span>Logup&lt;F, ID: LookupTableID&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) table_id: ID,
     <span class="kw">pub</span>(<span class="kw">crate</span>) numerator: F,
     <span class="kw">pub</span>(<span class="kw">crate</span>) value: Vec&lt;F&gt;,
 }
 
-<span class="doccomment">/// Basic trait for MVLookups
-</span><span class="kw">impl</span>&lt;F, ID&gt; MVLookup&lt;F, ID&gt;
+<span class="doccomment">/// Basic trait for logarithmic lookups.
+</span><span class="kw">impl</span>&lt;F, ID&gt; Logup&lt;F, ID&gt;
 <span class="kw">where
     </span>F: Clone,
     ID: LookupTableID,
 {
-    <span class="doccomment">/// Creates a new MVLookup
+    <span class="doccomment">/// Creates a new Logup
     </span><span class="kw">pub fn </span>new(table_id: ID, numerator: F, value: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             table_id,
@@ -732,7 +746,7 @@
 </span><span class="comment">// The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>MVLookupWitness&lt;F, ID: LookupTableID&gt; {
+</span><span class="kw">pub struct </span>LogupWitness&lt;F, ID: LookupTableID&gt; {
     <span class="doccomment">/// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
@@ -747,7 +761,7 @@
     /// change this structure.
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) f: Vec&lt;Vec&lt;MVLookup&lt;F, ID&gt;&gt;&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) f: Vec&lt;Vec&lt;Logup&lt;F, ID&gt;&gt;&gt;,
     <span class="doccomment">/// The multiplicity polynomial
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: Vec&lt;F&gt;,
 }
@@ -830,7 +844,7 @@
 /// ```
 </span><span class="kw">pub fn </span>combine_lookups&lt;F: PrimeField, ID: LookupTableID&gt;(
     column: Column,
-    lookups: Vec&lt;MVLookup&lt;E&lt;F&gt;, ID&gt;&gt;,
+    lookups: Vec&lt;Logup&lt;E&lt;F&gt;, ID&gt;&gt;,
 ) -&gt; E&lt;F&gt; {
     <span class="kw">let </span>joint_combiner = {
         <span class="kw">let </span>joint_combiner = ConstantExpr::from(ChallengeTerm::JointCombiner);
@@ -890,12 +904,12 @@
 <span class="doccomment">/// Build the constraints for the lookup protocol.
 /// The constraints are the partial sum and the aggregation of the partial sums.
 </span><span class="kw">pub fn </span>constraint_lookups&lt;F: PrimeField, ID: LookupTableID&gt;(
-    lookups_map: <span class="kw-2">&amp;</span>BTreeMap&lt;ID, Vec&lt;MVLookup&lt;E&lt;F&gt;, ID&gt;&gt;&gt;,
+    lookups_map: <span class="kw-2">&amp;</span>BTreeMap&lt;ID, Vec&lt;Logup&lt;E&lt;F&gt;, ID&gt;&gt;&gt;,
 ) -&gt; Vec&lt;E&lt;F&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
     <span class="kw">let </span><span class="kw-2">mut </span>idx_partial_sum = <span class="number">0</span>;
     lookups_map.iter().for_each(|(id, lookups)| {
-        <span class="kw">let </span>table_lookup = MVLookup {
+        <span class="kw">let </span>table_lookup = Logup {
             table_id: <span class="kw-2">*</span>id,
             numerator: curr_cell(Column::LookupMultiplicity(id.to_u32())),
             value: <span class="macro">vec!</span>[curr_cell(Column::LookupFixedTable(id.to_u32()))],
@@ -928,7 +942,7 @@
 
 <span class="kw">pub mod </span>prover {
     <span class="kw">use crate</span>::{
-        mvlookup::{LookupTableID, MVLookup, MVLookupWitness},
+        logup::{Logup, LogupWitness, LookupTableID},
         MAX_SUPPORTED_DEGREE,
     };
     <span class="kw">use </span>ark_ff::{FftField, Zero};
@@ -977,7 +991,7 @@
     }
 
     <span class="kw">impl</span>&lt;G: KimchiCurve, ID: LookupTableID&gt; Env&lt;G, ID&gt; {
-        <span class="doccomment">/// Create an environment for the prover to create a proof for the MVLookup protocol.
+        <span class="doccomment">/// Create an environment for the prover to create a proof for the Logup protocol.
         /// The protocol does suppose that the individual lookup terms are
         /// committed as part of the columns.
         /// Therefore, the protocol only focus on commiting to the "grand
@@ -986,7 +1000,7 @@
             OpeningProof: OpenProof&lt;G&gt;,
             Sponge: FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
         &gt;(
-            lookups: Vec&lt;MVLookupWitness&lt;G::ScalarField, ID&gt;&gt;,
+            lookups: Vec&lt;LogupWitness&lt;G::ScalarField, ID&gt;&gt;,
             domain: EvaluationDomains&lt;G::ScalarField&gt;,
             fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
             srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
@@ -1064,7 +1078,7 @@
             <span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; = lookups
                 .into_iter()
                 .map(|lookup| {
-                    <span class="kw">let </span>MVLookupWitness { f, m: <span class="kw">_ </span>} = lookup;
+                    <span class="kw">let </span>LogupWitness { f, m: <span class="kw">_ </span>} = lookup;
                     <span class="comment">// The number of functions to look up, including the fixed table.
                     </span><span class="kw">let </span>n = f.len();
                     <span class="kw">let </span>n_partial_sums = <span class="kw">if </span>n % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
@@ -1085,7 +1099,7 @@
                     </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
                         <span class="comment">// Iterate over individual columns (i.e. f_i and t)
                         </span><span class="kw">for </span>(i, f_i) <span class="kw">in </span>f.iter().enumerate() {
-                            <span class="kw">let </span>MVLookup {
+                            <span class="kw">let </span>Logup {
                                 numerator: <span class="kw">_</span>,
                                 table_id,
                                 value,
@@ -1124,7 +1138,7 @@
                         <span class="kw">let </span><span class="kw-2">mut </span>partial_sum_idx = <span class="number">0</span>;
                         <span class="kw">let </span><span class="kw-2">mut </span>row_acc = G::ScalarField::zero();
                         <span class="kw">for </span>f_i <span class="kw">in </span>f.iter() {
-                            <span class="kw">let </span>MVLookup {
+                            <span class="kw">let </span>Logup {
                                 numerator,
                                 table_id: <span class="kw">_</span>,
                                 value: <span class="kw">_</span>,

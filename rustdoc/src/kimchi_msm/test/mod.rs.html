@@ -527,7 +527,7 @@
 
     <span class="kw">let </span>proof_inputs = ProofInputs {
         evaluations,
-        mvlookups: <span class="macro">vec!</span>[],
+        logups: <span class="macro">vec!</span>[],
     };
 
     <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
@@ -626,7 +626,7 @@
 
         <span class="kw">let </span>proof_inputs = ProofInputs {
             evaluations: evaluations_prime,
-            mvlookups: <span class="macro">vec!</span>[],
+            logups: <span class="macro">vec!</span>[],
         };
 
         <span class="kw">let </span>proof =

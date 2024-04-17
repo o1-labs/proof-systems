@@ -330,19 +330,19 @@
 };
 <span class="kw">use </span>poly_commitment::pairing_proof::PairingProof;
 
-<span class="kw">pub use </span>mvlookup::{
-    LookupProof <span class="kw">as </span>MVLookupProof, LookupTable <span class="kw">as </span>MVLookupTable, LookupTableID <span class="kw">as </span>MVLookupTableID,
-    LookupTableID, MVLookup, MVLookupWitness,
+<span class="kw">pub use </span>logup::{
+    Logup, LogupWitness, LookupProof <span class="kw">as </span>LogupProof, LookupTable <span class="kw">as </span>LogupTable,
+    LookupTableID <span class="kw">as </span>LogupTableID, LookupTableID,
 };
 
 <span class="kw">pub mod </span>column_env;
 <span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>expr;
 <span class="kw">pub mod </span>interpreter;
-<span class="doccomment">/// Instantiations of MVLookups for the MSM project
+<span class="doccomment">/// Generic definitions of Logups
+</span><span class="kw">pub mod </span>logup;
+<span class="doccomment">/// Instantiations of Logups for the MSM project
 </span><span class="kw">pub mod </span>lookups;
-<span class="doccomment">/// Generic definitions of MVLookups
-</span><span class="kw">pub mod </span>mvlookup;
 <span class="kw">pub mod </span>precomputed_srs;
 <span class="kw">pub mod </span>proof;
 <span class="kw">pub mod </span>prover;
@@ -430,7 +430,7 @@
     </span><span class="kw">fn </span>test_completeness() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
 
-        <span class="comment">// Include tests for completeness for MVLookup as the random witness
+        <span class="comment">// Include tests for completeness for Logup as the random witness
         // includes all arguments
         </span><span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
@@ -602,7 +602,7 @@
 
     <span class="attr">#[test]
     #[ignore]
-    </span><span class="kw">fn </span>test_soundness_mvlookup() {
+    </span><span class="kw">fn </span>test_soundness_logup() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
 
         <span class="comment">// We generate two different witness and two different proofs.
@@ -618,7 +618,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>inputs = ProofInputs::random(domain);
         <span class="kw">let </span>constraints = <span class="macro">vec!</span>[];
         <span class="comment">// Take one random f_i (FIXME: taking first one for now)
-        </span><span class="kw">let </span>looked_up_values = inputs.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>].clone();
+        </span><span class="kw">let </span>looked_up_values = inputs.logups[<span class="number">0</span>].f[<span class="number">0</span>].clone();
         <span class="comment">// We change a random looked up element (FIXME: first one for now)
         </span><span class="kw">let </span>wrong_looked_up_value = Lookup {
             table_id: looked_up_values[<span class="number">0</span>].table_id,
@@ -626,7 +626,7 @@
             value: <span class="macro">vec!</span>[Fp::rand(<span class="kw-2">&amp;mut </span>rng)],
         };
         <span class="comment">// Overwriting the first looked up value
-        </span>inputs.mvlookups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
+        </span>inputs.logups[<span class="number">0</span>].f[<span class="number">0</span>][<span class="number">0</span>] = wrong_looked_up_value;
         <span class="comment">// generate the proof
         </span><span class="kw">let </span>proof =
             prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(

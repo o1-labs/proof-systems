@@ -144,7 +144,6 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -156,8 +155,7 @@
 
 <span class="kw">use super</span>::{interpreter::InterpreterEnv, Lookup, LookupTable};
 <span class="kw">use crate</span>::{
-    columns::ColumnIndexer, mvlookup::constraint_lookups,
-    serialization::column::SerializationColumn,
+    columns::ColumnIndexer, logup::constraint_lookups, serialization::column::SerializationColumn,
 };
 
 <span class="kw">pub struct </span>Env&lt;F&gt; {

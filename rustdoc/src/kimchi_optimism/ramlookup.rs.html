@@ -118,7 +118,7 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, One, Zero};
-<span class="kw">use </span>kimchi_msm::{LookupTableID, MVLookup};
+<span class="kw">use </span>kimchi_msm::{Logup, LookupTableID};
 
 <span class="doccomment">/// Enum representing the two different modes of a RAMLookup
 </span><span class="attr">#[derive(Copy, Clone, Debug)]
@@ -161,7 +161,7 @@
         }
     }
 
-    <span class="doccomment">/// Returns the numerator corresponding to this lookup in the MVLookup argument
+    <span class="doccomment">/// Returns the numerator corresponding to this lookup in the Logup argument
     </span><span class="kw">pub fn </span>numerator(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; T {
         <span class="kw">match </span><span class="self">self</span>.mode {
             LookupMode::Read =&gt; T::zero() - <span class="self">self</span>.magnitude.clone(),
@@ -169,9 +169,9 @@
         }
     }
 
-    <span class="doccomment">/// Transforms the current RAMLookup into an equivalent MVLookup
-    </span><span class="kw">pub fn </span>into_mvlookup(<span class="self">self</span>) -&gt; MVLookup&lt;T, ID&gt; {
-        MVLookup::new(<span class="self">self</span>.table_id, <span class="self">self</span>.numerator(), <span class="kw-2">&amp;</span><span class="self">self</span>.value)
+    <span class="doccomment">/// Transforms the current RAMLookup into an equivalent Logup
+    </span><span class="kw">pub fn </span>into_logup(<span class="self">self</span>) -&gt; Logup&lt;T, ID&gt; {
+        Logup::new(<span class="self">self</span>.table_id, <span class="self">self</span>.numerator(), <span class="kw-2">&amp;</span><span class="self">self</span>.value)
     }
 
     <span class="doccomment">/// Reads one value when `if_is_true` is 1.

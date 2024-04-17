@@ -483,8 +483,8 @@
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
-    mvlookup,
-    mvlookup::{prover::Env, LookupProof, LookupTableID},
+    logup,
+    logup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
     MAX_SUPPORTED_DEGREE,
@@ -603,10 +603,10 @@
         .into_iter()
         .for_each(|comm| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm));
 
-    <span class="comment">// -- Start MVLookup
-    </span><span class="kw">let </span>lookup_env = <span class="kw">if </span>!inputs.mvlookups.is_empty() {
+    <span class="comment">// -- Start Logup
+    </span><span class="kw">let </span>lookup_env = <span class="kw">if </span>!inputs.logups.is_empty() {
         <span class="prelude-val">Some</span>(Env::create::&lt;OpeningProof, EFqSponge&gt;(
-            inputs.mvlookups,
+            inputs.logups,
             domain,
             <span class="kw-2">&amp;mut </span>fq_sponge,
             srs,
@@ -627,9 +627,9 @@
         </span>}
     };
 
-    <span class="comment">// Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
+    <span class="comment">// Don't need to be absorbed. Already absorbed in logup::prover::Env::create
     // FIXME: remove clone
-    </span><span class="kw">let </span>mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+    </span><span class="kw">let </span>logup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
@@ -637,7 +637,7 @@
     });
 
     <span class="comment">// -- end computing the running sum in lookup_aggregation
-    // -- End of MVLookup
+    // -- End of Logup
 
     </span><span class="kw">let </span>witness_evals: Witness&lt;N, Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = {
         <span class="kw">let </span>domain_eval = <span class="kw">if </span>max_degree &lt;= <span class="number">4 </span>{
@@ -689,7 +689,7 @@
             coefficients: <span class="kw-2">&amp;</span>coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
-                mvlookup::prover::QuotientPolynomialEnvironment {
+                logup::prover::QuotientPolynomialEnvironment {
                     lookup_terms_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_terms_evals_d8,
                     lookup_aggregation_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_aggregation_evals_d8,
                     lookup_counters_evals_d8: <span class="kw-2">&amp;</span>lookup_env.lookup_counters_evals_d8,
@@ -794,8 +794,8 @@
             .collect::&lt;Witness&lt;N, PointEvaluations&lt;<span class="kw">_</span>&gt;&gt;&gt;()
     };
 
-    <span class="comment">// IMPROVEME: move this into the mvlookup module
-    </span><span class="kw">let </span>mvlookup_evals = lookup_env.as_ref().map(|lookup_env| LookupProof {
+    <span class="comment">// IMPROVEME: move this into the logup module
+    </span><span class="kw">let </span>logup_evals = lookup_env.as_ref().map(|lookup_env| LookupProof {
         m: lookup_env
             .lookup_counters_poly_d1
             .iter()
@@ -844,7 +844,7 @@
     }
 
     <span class="kw">if </span>lookup_env.is_some() {
-        <span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in </span>mvlookup_evals.as_ref().unwrap().into_iter() {
+        <span class="kw">for </span>PointEvaluations { zeta, zeta_omega } <span class="kw">in </span>logup_evals.as_ref().unwrap().into_iter() {
             fr_sponge.absorb(zeta);
             fr_sponge.absorb(zeta_omega);
         }
@@ -898,7 +898,7 @@
         .map(|poly| (coefficients_form(poly), hiding(<span class="number">1</span>)))
         .collect();
 
-    <span class="comment">// Adding MVLookup
+    <span class="comment">// Adding Logup
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup_env) = lookup_env {
         <span class="comment">// -- first m(X)
         </span>polynomials.extend(
@@ -945,7 +945,7 @@
     <span class="kw">let </span>proof_evals: ProofEvaluations&lt;N, G::ScalarField, ID&gt; = {
         ProofEvaluations {
             witness_evals,
-            mvlookup_evals,
+            logup_evals,
             ft_eval1,
         }
     };
@@ -953,7 +953,7 @@
     <span class="prelude-val">Ok</span>(Proof {
         proof_comms: ProofCommitments {
             witness_comms,
-            mvlookup_comms,
+            logup_comms,
             t_comm,
         },
         proof_evals,

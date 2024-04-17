@@ -142,12 +142,10 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-<span class="kw">use crate</span>::{mvlookup, mvlookup::LookupTableID, witness::Witness};
+<span class="kw">use crate</span>::{logup, logup::LookupTableID, witness::Witness};
 <span class="kw">use </span>kimchi::circuits::{
     domains::EvaluationDomains,
     expr::{Challenges, ColumnEnvironment <span class="kw">as </span>TColumnEnvironment, Constants, Domain},
@@ -173,9 +171,7 @@
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
 
     <span class="doccomment">/// Lookup specific polynomials
-    </span><span class="comment">// TODO: rename in additive lookup or "logup"
-    // We do not use multi-variate lookups, only the additive part
-    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;mvlookup::prover::QuotientPolynomialEnvironment&lt;<span class="lifetime">'a</span>, F, ID&gt;&gt;,
+    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;logup::prover::QuotientPolynomialEnvironment&lt;<span class="lifetime">'a</span>, F, ID&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="kw">const </span>N: usize, F: FftField, ID: LookupTableID&gt; TColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt;
