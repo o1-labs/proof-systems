@@ -1,5 +1,7 @@
 use crate::{
+    circuit::CircuitTrait,
     keccak::{
+        circuit::KeccakCircuit,
         column::{Absorbs::*, Sponges::*, Steps::*, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
@@ -7,7 +9,6 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    CircuitTrait,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -18,8 +19,6 @@ use kimchi_msm::test::test_completeness_generic;
 use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
-
-use super::KeccakCircuit;
 
 pub type Fp = ark_bn254::Fr;
 

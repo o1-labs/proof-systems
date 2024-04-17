@@ -1,24 +1,17 @@
-use std::collections::HashMap;
-
 use crate::{
     keccak::column::{
-        Absorbs::*,
         ColumnAlias as KeccakColumn,
-        Sponges::*,
-        Steps::{self, *},
+        Steps::{self},
         PAD_SUFFIX_LEN,
     },
     lookups::LookupTableIDs,
-    Circuit, CircuitTrait,
 };
 use ark_ff::Field;
 use kimchi::circuits::polynomials::keccak::constants::{
     DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
-use kimchi_msm::witness::Witness;
 
-use self::{column::ZKVM_KECCAK_COLS, environment::KeccakEnv};
-
+pub mod circuit;
 pub mod column;
 pub mod constraints;
 pub mod environment;
@@ -79,90 +72,6 @@ pub enum Constraint {
     ChiShiftsB(usize, usize, usize),
     ChiShiftsSum(usize, usize, usize),
     IotaStateG(usize),
-}
-
-#[allow(dead_code)]
-/// The Keccak circuit
-pub type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
-
-pub const STEPS: [Steps; 6] = [
-    Round(0),
-    Sponge(Absorb(First)),
-    Sponge(Absorb(Middle)),
-    Sponge(Absorb(Last)),
-    Sponge(Absorb(Only)),
-    Sponge(Squeeze),
-];
-
-#[allow(dead_code)]
-impl<F: Field> CircuitTrait<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
-    fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
-        let mut circuit = Self {
-            domain_size,
-            witness: HashMap::new(),
-            constraints: Default::default(),
-            lookups: Default::default(),
-        };
-
-        for step in STEPS {
-            circuit.witness.insert(
-                step,
-                Witness {
-                    cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
-                },
-            );
-            circuit
-                .constraints
-                .insert(step, KeccakEnv::constraints_of(step));
-            circuit.lookups.insert(step, KeccakEnv::lookups_of(step));
-        }
-        circuit
-    }
-
-    fn push_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
-        // Make sure we are using the same round number to refer to round steps
-        let mut step = step;
-        if let Round(_) = step {
-            step = Round(0);
-        }
-        self.witness.entry(step).and_modify(|wit| {
-            for (i, value) in row.iter().enumerate() {
-                if wit.cols[i].len() < wit.cols[i].capacity() {
-                    wit.cols[i].push(*value);
-                }
-            }
-        });
-    }
-
-    fn pad(&mut self, step: Steps) -> bool {
-        let rows_left = self.domain_size - self.witness[&step].cols[0].len();
-        if rows_left == 0 {
-            return false;
-        }
-        self.witness.entry(step).and_modify(|wit| {
-            for col in wit.cols.iter_mut() {
-                col.extend((0..rows_left).map(|_| F::zero()));
-            }
-        });
-        true
-    }
-
-    fn pad_witnesses(&mut self) {
-        for step in STEPS {
-            self.pad(step);
-        }
-    }
-
-    fn reset(&mut self, step: Steps) {
-        self.witness.insert(
-            step,
-            Witness {
-                cols: Box::new(std::array::from_fn(|_| {
-                    Vec::with_capacity(self.domain_size)
-                })),
-            },
-        );
-    }
 }
 
 // This function maps a 4D index into a 1D index depending on the length of the grid
