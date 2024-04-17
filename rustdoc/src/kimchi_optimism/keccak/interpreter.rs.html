@@ -1053,98 +1053,14 @@
 <a href="#1051" id="1051">1051</a>
 <a href="#1052" id="1052">1052</a>
 <a href="#1053" id="1053">1053</a>
-<a href="#1054" id="1054">1054</a>
-<a href="#1055" id="1055">1055</a>
-<a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
-<a href="#1059" id="1059">1059</a>
-<a href="#1060" id="1060">1060</a>
-<a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
-<a href="#1064" id="1064">1064</a>
-<a href="#1065" id="1065">1065</a>
-<a href="#1066" id="1066">1066</a>
-<a href="#1067" id="1067">1067</a>
-<a href="#1068" id="1068">1068</a>
-<a href="#1069" id="1069">1069</a>
-<a href="#1070" id="1070">1070</a>
-<a href="#1071" id="1071">1071</a>
-<a href="#1072" id="1072">1072</a>
-<a href="#1073" id="1073">1073</a>
-<a href="#1074" id="1074">1074</a>
-<a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
-<a href="#1093" id="1093">1093</a>
-<a href="#1094" id="1094">1094</a>
-<a href="#1095" id="1095">1095</a>
-<a href="#1096" id="1096">1096</a>
-<a href="#1097" id="1097">1097</a>
-<a href="#1098" id="1098">1098</a>
-<a href="#1099" id="1099">1099</a>
-<a href="#1100" id="1100">1100</a>
-<a href="#1101" id="1101">1101</a>
-<a href="#1102" id="1102">1102</a>
-<a href="#1103" id="1103">1103</a>
-<a href="#1104" id="1104">1104</a>
-<a href="#1105" id="1105">1105</a>
-<a href="#1106" id="1106">1106</a>
-<a href="#1107" id="1107">1107</a>
-<a href="#1108" id="1108">1108</a>
-<a href="#1109" id="1109">1109</a>
-<a href="#1110" id="1110">1110</a>
-<a href="#1111" id="1111">1111</a>
-<a href="#1112" id="1112">1112</a>
-<a href="#1113" id="1113">1113</a>
-<a href="#1114" id="1114">1114</a>
-<a href="#1115" id="1115">1115</a>
-<a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a>
-<a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
-<a href="#1121" id="1121">1121</a>
-<a href="#1122" id="1122">1122</a>
-<a href="#1123" id="1123">1123</a>
-<a href="#1124" id="1124">1124</a>
-<a href="#1125" id="1125">1125</a>
-<a href="#1126" id="1126">1126</a>
-<a href="#1127" id="1127">1127</a>
-<a href="#1128" id="1128">1128</a>
-<a href="#1129" id="1129">1129</a>
-<a href="#1130" id="1130">1130</a>
-<a href="#1131" id="1131">1131</a>
-<a href="#1132" id="1132">1132</a>
-<a href="#1133" id="1133">1133</a>
-<a href="#1134" id="1134">1134</a>
-<a href="#1135" id="1135">1135</a>
-<a href="#1136" id="1136">1136</a>
-<a href="#1137" id="1137">1137</a>
-<a href="#1138" id="1138">1138</a>
-<a href="#1139" id="1139">1139</a>
-<a href="#1140" id="1140">1140</a>
-<a href="#1141" id="1141">1141</a>
-<a href="#1142" id="1142">1142</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
-</span><span class="kw">use crate</span>::{
+</span><span class="kw">use super</span>::{
+    column::PAD_SUFFIX_LEN,
+    helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
+    WORDS_IN_HASH,
+};
+<span class="kw">use crate</span>::{
     keccak::{
         column::{PAD_BYTES_LEN, ROUND_CONST_LEN},
         grid_index,
@@ -1171,10 +1087,8 @@
 };
 <span class="kw">use </span>std::{array, fmt::Debug};
 
-<span class="kw">use super</span>::{column::PAD_SUFFIX_LEN, WORDS_IN_HASH};
-
 <span class="doccomment">/// This trait includes functionalities needed to obtain the variables of the Keccak circuit needed for constraints and witness
-</span><span class="kw">pub trait </span>KeccakInterpreter&lt;F: One + Debug + Zero&gt; {
+</span><span class="kw">pub trait </span>Interpreter&lt;F: One + Debug + Zero&gt; {
     <span class="kw">type </span>Variable: std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
@@ -1183,89 +1097,35 @@
         + One
         + Zero;
 
-    <span class="comment">////////////////////////
-    // BOOLEAN OPERATIONS //
-    ////////////////////////
-
-    </span><span class="doccomment">/// Degree-2 variable encoding whether the input is a boolean value (0 = yes)
-    </span><span class="kw">fn </span>is_boolean(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        x.clone() * (x - <span class="self">Self</span>::Variable::one())
-    }
-
-    <span class="doccomment">/// Degree-1 variable encoding the negation of the input
-    /// Note: it only works as expected if the input is a boolean value
-    </span><span class="kw">fn </span>not(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::Variable::one() - x
-    }
-
-    <span class="doccomment">/// Degree-1 variable encoding whether the input is the value one (0 = yes)
-    </span><span class="kw">fn </span>is_one(x: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::not(x)
-    }
-
-    <span class="doccomment">/// Degree-2 variable encoding whether the first input is nonzero (0 = yes).
-    /// It requires the second input to be the multiplicative inverse of the first.
-    /// Note: if the first input is zero, there is no multiplicative inverse.
-    </span><span class="kw">fn </span>is_nonzero(x: <span class="self">Self</span>::Variable, x_inv: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::is_one(x * x_inv)
-    }
-
-    <span class="doccomment">/// Degree-2 variable encoding the XOR of two variables which should be boolean (1 = true)
-    </span><span class="kw">fn </span>xor(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        x.clone() + y.clone() - <span class="self">Self</span>::constant(<span class="number">2</span>) * x * y
-    }
-
-    <span class="doccomment">/// Degree-2 variable encoding the OR of two variables, which should be boolean (1 = true)
-    </span><span class="kw">fn </span>or(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        x.clone() + y.clone() - x * y
-    }
-
-    <span class="doccomment">/// Degree-2 variable encoding whether at least one of the two inputs is zero (0 = yes)
-    </span><span class="kw">fn </span>either_zero(x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
-        x * y
-    }
-
-    <span class="comment">//////////////////////////
-    // ARITHMETIC OPERATIONS //
-    ///////////////////////////
-
-    </span><span class="doccomment">/// Creates a variable from a constant integer
+    <span class="doccomment">/// Creates a variable from a constant integer
     </span><span class="kw">fn </span>constant(x: u64) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Creates a variable from a constant field element
     </span><span class="kw">fn </span>constant_field(x: F) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Returns a variable representing the value zero
-    </span><span class="kw">fn </span>zero() -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::constant(<span class="number">0</span>)
-    }
-    <span class="doccomment">/// Returns a variable representing the value one
-    </span><span class="kw">fn </span>one() -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::constant(<span class="number">1</span>)
-    }
-    <span class="doccomment">/// Returns a variable representing the value two
-    </span><span class="kw">fn </span>two() -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">Self</span>::constant(<span class="number">2</span>)
-    }
+    <span class="doccomment">/// Returns the variable corresponding to a given column alias.
+    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: KeccakColumn) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Returns a variable representing the value 2^x
-    </span><span class="kw">fn </span>two_pow(x: u64) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Adds one KeccakConstraint to the environment if the selector holds
+    </span><span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, tag: Constraint, if_true: <span class="self">Self</span>::Variable, x: <span class="self">Self</span>::Variable);
 
+    <span class="doccomment">/// Adds a given Lookup to the environment if the condition holds
+    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, if_true: <span class="self">Self</span>::Variable, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
+}
+
+<span class="kw">pub trait </span>KeccakInterpreter&lt;F: One + Debug + Zero&gt;
+<span class="kw">where
+    </span><span class="self">Self</span>: Interpreter&lt;F&gt; + LogupHelpers&lt;F&gt; + BoolHelpers&lt;F&gt; + ArithHelpers&lt;F&gt;,
+{
     <span class="comment">////////////////////////////
     // CONSTRAINTS OPERATIONS //
     ////////////////////////////
 
-    </span><span class="doccomment">/// Returns the variable corresponding to a given column alias.
-    </span><span class="kw">fn </span>variable(<span class="kw-2">&amp;</span><span class="self">self</span>, column: KeccakColumn) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Check one condition on the selectors
+    </span><span class="doccomment">/// Check one condition on the selectors
     </span><span class="kw">fn </span>check(<span class="kw-2">&amp;mut </span><span class="self">self</span>, tag: Selector, x: <span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Checks that the selectors are set correctly
     </span><span class="kw">fn </span>checks(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
-
-    <span class="doccomment">/// Adds one KeccakConstraint to the environment if the selector holds
-    </span><span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, tag: Constraint, if_true: <span class="self">Self</span>::Variable, x: <span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Creates all 879 constraints/checks to the environment:
     /// - 733 constraints of degree 1
@@ -1310,7 +1170,10 @@
     /// - 136 constraints of degree 2
     /// Of which:
     /// - 136 constraints are added only if is_pad() holds
-    </span><span class="kw">fn </span>constrain_flags(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    </span><span class="kw">fn </span>constrain_flags(<span class="kw-2">&amp;mut </span><span class="self">self</span>)
+    <span class="kw">where
+        </span><span class="self">Self</span>: Interpreter&lt;F&gt;,
+    {
         <span class="comment">// Booleanity of sponge flags:
         // - 136 constraints of degree 2
         </span><span class="self">self</span>.constrain_booleanity();
@@ -1320,7 +1183,10 @@
     /// - 136 constraints of degree 2
     /// Of which,
     /// - 136 constraints are added only if is_pad() holds
-    </span><span class="kw">fn </span>constrain_booleanity(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    </span><span class="kw">fn </span>constrain_booleanity(<span class="kw-2">&amp;mut </span><span class="self">self</span>)
+    <span class="kw">where
+        </span><span class="self">Self</span>: Interpreter&lt;F&gt;,
+    {
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
             <span class="comment">// Bytes are either involved on padding or not
             </span><span class="self">self</span>.constrain(
@@ -1606,10 +1472,7 @@
     // LOOKUPS OPERATIONS //
     ////////////////////////
 
-    </span><span class="doccomment">/// Adds a given Lookup to the environment if the condition holds
-    </span><span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, if_true: <span class="self">Self</span>::Variable, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
-
-    <span class="doccomment">/// Creates all possible 2361 lookups to the Keccak constraints environment:
+    </span><span class="doccomment">/// Creates all possible 2361 lookups to the Keccak constraints environment:
     /// - 2222 lookups for the step row
     /// - 2 lookups for the inter-step channel
     /// - 136 lookups for the syscall channel (preimage bytes)
@@ -1662,17 +1525,14 @@
     </span><span class="comment">// TODO: optimize this by using a single lookup reusing PadSuffix
     </span><span class="kw">fn </span>lookup_syscall_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..RATE_IN_BYTES {
-            <span class="self">self</span>.add_lookup(
+            <span class="self">self</span>.read_syscall(
                 <span class="self">self</span>.is_absorb(),
-                Lookup::read_one(
-                    SyscallLookup,
-                    <span class="macro">vec!</span>[
-                        <span class="self">self</span>.hash_index(),
-                        <span class="self">self</span>.block_index() * <span class="self">Self</span>::constant(RATE_IN_BYTES <span class="kw">as </span>u64)
-                            + <span class="self">Self</span>::constant(i <span class="kw">as </span>u64),
-                        <span class="self">self</span>.sponge_byte(i),
-                    ],
-                ),
+                <span class="macro">vec!</span>[
+                    <span class="self">self</span>.hash_index(),
+                    <span class="self">self</span>.block_index() * <span class="self">Self</span>::constant(RATE_IN_BYTES <span class="kw">as </span>u64)
+                        + <span class="self">Self</span>::constant(i <span class="kw">as </span>u64),
+                    <span class="self">self</span>.sponge_byte(i),
+                ],
             );
         }
     }
@@ -1684,10 +1544,7 @@
         <span class="kw">let </span>bytes31 = (<span class="number">1</span>..<span class="number">32</span>).fold(<span class="self">Self</span>::zero(), |acc, i| {
             acc * <span class="self">Self</span>::two_pow(<span class="number">8</span>) + <span class="self">self</span>.sponge_byte(i)
         });
-        <span class="self">self</span>.add_lookup(
-            <span class="self">self</span>.is_squeeze(),
-            Lookup::write_one(SyscallLookup, <span class="macro">vec!</span>[<span class="self">self</span>.hash_index(), bytes31]),
-        );
+        <span class="self">self</span>.write_syscall(<span class="self">self</span>.is_squeeze(), <span class="macro">vec!</span>[<span class="self">self</span>.hash_index(), bytes31]);
     }
 
     <span class="doccomment">/// Reads a Lookup containing the input of a step
@@ -1706,41 +1563,6 @@
             <span class="self">Self</span>::not(<span class="self">self</span>.is_squeeze()),
             Lookup::write_one(KeccakStepLookup, <span class="self">self</span>.output_of_step()),
         );
-    }
-
-    <span class="doccomment">/// Adds a lookup to the RangeCheck16 table
-    </span><span class="kw">fn </span>lookup_rc16(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(flag, Lookup::read_one(RangeCheck16Lookup, <span class="macro">vec!</span>[value]));
-    }
-
-    <span class="doccomment">/// Adds a lookup to the Reset table
-    </span><span class="kw">fn </span>lookup_reset(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        flag: <span class="self">Self</span>::Variable,
-        dense: <span class="self">Self</span>::Variable,
-        sparse: <span class="self">Self</span>::Variable,
-    ) {
-        <span class="self">self</span>.add_lookup(flag, Lookup::read_one(ResetLookup, <span class="macro">vec!</span>[dense, sparse]));
-    }
-
-    <span class="doccomment">/// Adds a lookup to the Shift table
-    </span><span class="kw">fn </span>lookup_sparse(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(flag, Lookup::read_one(SparseLookup, <span class="macro">vec!</span>[value]));
-    }
-
-    <span class="doccomment">/// Adds a lookup to the Byte table
-    </span><span class="kw">fn </span>lookup_byte(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(flag, Lookup::read_one(ByteLookup, <span class="macro">vec!</span>[value]));
-    }
-
-    <span class="doccomment">/// Adds a lookup to the Pad table
-    </span><span class="kw">fn </span>lookup_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="self">self</span>.add_lookup(flag, Lookup::read_one(PadLookup, value));
-    }
-
-    <span class="doccomment">/// Adds a lookup to the RoundConstants table
-    </span><span class="kw">fn </span>lookup_round_constants(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable, value: Vec&lt;<span class="self">Self</span>::Variable&gt;) {
-        <span class="self">self</span>.add_lookup(flag, Lookup::read_one(RoundConstantsLookup, value));
     }
 
     <span class="doccomment">/// Adds the 601 lookups required for the sponge
@@ -2166,7 +1988,7 @@
 
     <span class="doccomment">/// Returns the 100 variables corresponding to PiRhoDenseE
     </span><span class="kw">fn </span>vec_dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="self">Self</span>::Variable; PIRHO_DENSE_E_LEN] {
-        array::from_fn(|idx| <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseE(idx)))
+        array::from_fn(|idx: usize| <span class="self">self</span>.variable(KeccakColumn::PiRhoDenseE(idx)))
     }
     <span class="doccomment">/// Returns the (y,x,q)-th variable of PiRhoDenseE
     </span><span class="kw">fn </span>dense_e(<span class="kw-2">&amp;</span><span class="self">self</span>, y: usize, x: usize, q: usize) -&gt; <span class="self">Self</span>::Variable {

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["KeccakInterpreter"]};
+window.SIDEBAR_ITEMS = {"trait":["Interpreter","KeccakInterpreter"]};
