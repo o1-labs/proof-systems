@@ -661,7 +661,7 @@
 };
 <span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-<span class="kw">pub trait </span>InterpreterEnv&lt;Fp: PrimeField&gt; {
+<span class="kw">pub trait </span>InterpreterEnv&lt;F: PrimeField&gt; {
     <span class="kw">type </span>Position;
 
     <span class="kw">type </span>Variable: Clone
@@ -695,7 +695,7 @@
     <span class="doccomment">/// Check that the value is in the range [0, 2^4-1]
     </span><span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
-    <span class="kw">fn </span>constant(value: Fp) -&gt; <span class="self">Self</span>::Variable;
+    <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
@@ -735,7 +735,7 @@
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-</span><span class="kw">pub fn </span>deserialize_field_element&lt;Fp: PrimeField, Env: InterpreterEnv&lt;Fp&gt;&gt;(
+</span><span class="kw">pub fn </span>deserialize_field_element&lt;F: PrimeField, Env: InterpreterEnv&lt;F&gt;&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     limbs: [u128; <span class="number">3</span>],
 ) {
@@ -810,7 +810,7 @@
         <span class="kw">let </span>res = (limbs[<span class="number">0</span>] &gt;&gt; <span class="number">75</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">88 </span>- <span class="number">75</span>)) - <span class="number">1</span>);
         <span class="kw">let </span>res_prime = limbs[<span class="number">1</span>] &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">2</span>) - <span class="number">1</span>);
         <span class="kw">let </span>res = res + (res_prime &lt;&lt; (<span class="number">15 </span>- <span class="number">2</span>));
-        <span class="kw">let </span>res = Env::constant(Fp::from(res));
+        <span class="kw">let </span>res = Env::constant(F::from(res));
         <span class="kw">let </span>c5_var = env.copy(<span class="kw-2">&amp;</span>res, c5);
         fifteen_bits_vars.push(c5_var);
     }
@@ -888,8 +888,8 @@
     <span class="comment">// Range check on each limb
     </span>fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
 
-    <span class="kw">let </span>shl_88_var = Env::constant(Fp::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">88u128</span>));
-    <span class="kw">let </span>shl_15_var = Env::constant(Fp::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">15u128</span>));
+    <span class="kw">let </span>shl_88_var = Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">88u128</span>));
+    <span class="kw">let </span>shl_15_var = Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">15u128</span>));
 
     <span class="comment">// -- Start second constraint
     </span>{
@@ -902,7 +902,7 @@
 
         <span class="comment">// Substracting 15 bits values
         </span><span class="kw">let </span>(constraint, <span class="kw">_</span>) = (<span class="number">0</span>..=<span class="number">11</span>).fold(
-            (constraint, Env::constant(Fp::one())),
+            (constraint, Env::constant(F::one())),
             |(acc, shl_var), i| {
                 (
                     acc - fifteen_bits_vars[i].clone() * shl_var.clone(),
@@ -919,11 +919,11 @@
         // c12 + c13 * 2^15 + c14 * 2^30 + c15 * 2^45 + c16 * 2^60
         </span><span class="kw">let </span>constraint = fifteen_bits_vars[<span class="number">12</span>].clone();
         <span class="kw">let </span>constraint = (<span class="number">1</span>..=<span class="number">4</span>).fold(constraint, |acc, i| {
-            acc + fifteen_bits_vars[<span class="number">12 </span>+ i].clone() * Env::constant(Fp::from(<span class="number">1u128 </span>&lt;&lt; (<span class="number">15 </span>* i)))
+            acc + fifteen_bits_vars[<span class="number">12 </span>+ i].clone() * Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; (<span class="number">15 </span>* i)))
         });
 
         <span class="kw">let </span>constraint = (<span class="number">1</span>..=<span class="number">19</span>).fold(constraint, |acc, i| {
-            <span class="kw">let </span>var = limb2_vars[i].clone() * Env::constant(Fp::from(<span class="number">1u128 </span>&lt;&lt; (<span class="number">4 </span>* (i - <span class="number">1</span>))));
+            <span class="kw">let </span>var = limb2_vars[i].clone() * Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; (<span class="number">4 </span>* (i - <span class="number">1</span>))));
             acc - var
         });
         env.add_constraint(constraint);

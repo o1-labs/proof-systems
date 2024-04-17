@@ -160,17 +160,17 @@
     serialization::column::SerializationColumn,
 };
 
-<span class="kw">pub struct </span>Env&lt;Fp&gt; {
+<span class="kw">pub struct </span>Env&lt;F&gt; {
     <span class="doccomment">/// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
-    </span><span class="kw">pub </span>constraints: Vec&lt;(usize, Expr&lt;ConstantExpr&lt;Fp&gt;, Column&gt;)&gt;,
+    </span><span class="kw">pub </span>constraints: Vec&lt;(usize, Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;)&gt;,
     <span class="kw">pub </span>constrain_index: usize,
-    <span class="kw">pub </span>lookups: BTreeMap&lt;LookupTable, Vec&lt;Lookup&lt;E&lt;Fp&gt;&gt;&gt;&gt;,
+    <span class="kw">pub </span>lookups: BTreeMap&lt;LookupTable, Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;Fp: PrimeField&gt; Env&lt;Fp&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField&gt; Env&lt;F&gt; {
     <span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],

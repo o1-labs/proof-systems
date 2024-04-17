@@ -2644,7 +2644,7 @@
         <span class="comment">//~ 1. commit (hiding) to the quotient polynomial $t$
         </span><span class="kw">let </span>t_comm = { index.srs.commit(<span class="kw-2">&amp;</span>quotient_poly, <span class="number">7 </span>* num_chunks, rng) };
 
-        <span class="comment">//~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+        <span class="comment">//~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
         </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>t_comm.commitment);
 
         <span class="comment">//~ 1. Sample $\zeta'$ with the Fq-Sponge.

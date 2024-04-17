@@ -491,7 +491,7 @@
     //       | length &lt;8&gt; | hint &lt;length&gt; |
     //       +----------------------------+
     //
-    // 2. Get back a single ack byte informing the the hint has been processed.
+    // 2. Get back a single ack byte informing the hint has been processed.
     </span><span class="kw">pub fn </span>hint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hint: Hint) {
         <span class="kw">let </span>RW(ReadWrite { reader, writer }) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.hint_client;
 
