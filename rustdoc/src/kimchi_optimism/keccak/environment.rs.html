@@ -473,8 +473,6 @@
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
@@ -926,8 +924,7 @@
         state_g
     }
 
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="doccomment">/// Returns the list of constraints used in a specific Keccak step
+    <span class="doccomment">/// Returns the list of constraints used in a specific Keccak step
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>constraints_of(step: Steps) -&gt; Vec&lt;E&lt;F&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>env = ConstraintsEnv {
             constraints: <span class="macro">vec!</span>[],
@@ -938,8 +935,7 @@
         env.constraints
     }
 
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="doccomment">/// Returns the list of lookups used in a specific Keccak step
+    <span class="doccomment">/// Returns the list of lookups used in a specific Keccak step
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>lookups_of(step: Steps) -&gt; Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>env = ConstraintsEnv {
             constraints: <span class="macro">vec!</span>[],
