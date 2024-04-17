@@ -38,7 +38,8 @@
 //! In the codebase, the multiplicities m_i are called the "lookup counters".
 //!
 //! The protocol can be generalized to multiple "looked-up" polynomials f_1,
-//! ..., f_k (called the "lookup terms" in the codebase) and the equation (2) becomes:
+//! ..., f_k (embedded in the structure `LogupWitness` in the codebase) and the
+//! equation (2) becomes:
 //!
 //! ```text
 //!   n    k           1          n       m(ω^i)
@@ -56,7 +57,8 @@
 //!                "inner sums", h(ω^i)
 //! ```
 //!
-//! The equation says that if we sum/accumulate the "inner sums" over the
+//! The equation says that if we sum/accumulate the "inner sums" (called the
+//! "lookup terms" in the codebase) over the
 //! subgroup H, we will get a zero value. Note the analogy with the
 //! "multiplicative" accumulator used in the lookup argument called
 //! ["Plookup"](https://eprint.iacr.org/2020/315.pdf).
@@ -122,13 +124,16 @@
 //!
 //! To summarize, the prover will:
 //! - commit to the multiplicities m.
-//! - commit to the lookup terms f (which include the table t).
-//! - commit to the inner sums h.
+//! - commit to individual looked-up values f (which include the table t) which
+//! should be already included in the PlonK protocol as columns.
+//! - coin an evaluation point β.
+//! - coin a random combiner j (used to aggregate the table ID and concatenate
+//! vector lookups, if any).
+//! - commit to the inner sums/lookup terms h.
 //! - commit to the running sum φ.
 //! - add constraints to the quotient polynomial.
 //! - evaluate all polynomials at the evaluation points ζ and ζω (because we
 //! access the "next" row for the accumulator in the quotient polynomial).
-
 use ark_ff::{Field, PrimeField, Zero};
 use std::{collections::BTreeMap, hash::Hash};
 
@@ -423,21 +428,35 @@ pub mod prover {
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
     use std::collections::BTreeMap;
 
+    /// The structure used by the prover the compute the quotient polynomial.
+    /// The structure contains the evaluations of the inner sums, the
+    /// multiplicities, the aggregation and the fixed tables, over the domain d8.
     pub struct QuotientPolynomialEnvironment<'a, F: FftField, ID: LookupTableID> {
+        /// The evaluations of the partial sums, over d8.
         pub lookup_terms_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
+        /// The evaluations of the aggregation, over d8.
         pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
+        /// The evaluations of the multiplicities, over d8, indexed by the table ID.
         pub lookup_counters_evals_d8: &'a BTreeMap<ID, Evaluations<F, D<F>>>,
+        /// The evaluations of the fixed tables, over d8, indexed by the table ID.
         pub fixed_tables_evals_d8: &'a BTreeMap<ID, Evaluations<F, D<F>>>,
     }
 
+    /// Represents the environment for the logup argument.
     pub struct Env<G: KimchiCurve, ID: LookupTableID> {
+        /// The polynomial of the multiplicities, indexed by the table ID.
         pub lookup_counters_poly_d1: BTreeMap<ID, DensePolynomial<G::ScalarField>>,
+        /// The commitments to the multiplicities, indexed by the table ID.
         pub lookup_counters_comm_d1: BTreeMap<ID, PolyComm<G>>,
 
+        /// The polynomials of the inner sums.
         pub lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
+        /// The commitments of the inner sums.
         pub lookup_terms_comms_d1: Vec<PolyComm<G>>,
 
+        /// The aggregation polynomial.
         pub lookup_aggregation_poly_d1: DensePolynomial<G::ScalarField>,
+        /// The commitment to the aggregation polynomial.
         pub lookup_aggregation_comm_d1: PolyComm<G>,
 
         // Evaluating over d8 for the quotient polynomial
