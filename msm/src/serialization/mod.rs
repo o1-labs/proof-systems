@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{mvlookup::LookupTableID, MVLookup};
+use crate::{logup::LookupTableID, Logup};
 use ark_ff::PrimeField;
 use strum_macros::EnumIter;
 
@@ -60,7 +60,7 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
 
 impl<Ff: PrimeField> LookupTable<Ff> {}
 
-pub type Lookup<F, Ff> = MVLookup<F, LookupTable<Ff>>;
+pub type Lookup<F, Ff> = Logup<F, LookupTable<Ff>>;
 
 #[cfg(test)]
 mod tests {
@@ -68,14 +68,13 @@ mod tests {
     use kimchi::circuits::domains::EvaluationDomains;
     use o1_utils::FieldHelpers;
     use poly_commitment::pairing_proof::PairingSRS;
-    use rand::Rng as _;
     use std::{collections::BTreeMap, marker::PhantomData};
 
     use super::{Lookup, LookupTable};
 
     use crate::{
         columns::Column,
-        mvlookup::MVLookupWitness,
+        logup::LogupWitness,
         precomputed_srs::get_bn254_srs,
         proof::ProofInputs,
         prover::prove,
@@ -231,18 +230,18 @@ mod tests {
             *(table.last_mut().unwrap()) = rangecheck_t.collect();
         }
 
-        let mvlookups: Vec<MVLookupWitness<Fp, LookupTable<Ff1>>> = rangecheck_tables
+        let logups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = rangecheck_tables
             .iter()
             .filter_map(|(table_id, table)| {
                 println!(
-                    "Adding table to mvlookups, table id: {:?}, len: {:?}, table[0].len: {:?}",
+                    "Adding table to logups, table id: {:?}, len: {:?}, table[0].len: {:?}",
                     table_id,
                     table.len(),
                     table[0].len()
                 );
                 // Only add a table if it's used. Otherwise lookups fail.
                 if !table.is_empty() && !table[0].is_empty() {
-                    Some(MVLookupWitness {
+                    Some(LogupWitness {
                         f: table.clone(),
                         m: rangecheck_multiplicities[table_id].clone(),
                     })
@@ -254,7 +253,7 @@ mod tests {
 
         let proof_inputs = ProofInputs {
             evaluations: *witness,
-            mvlookups,
+            logups,
         };
 
         let proof = prove::<

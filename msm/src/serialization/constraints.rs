@@ -9,21 +9,20 @@ use crate::{columns::Column, expr::E};
 
 use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
 use crate::{
-    columns::ColumnIndexer, mvlookup::constraint_lookups,
-    serialization::column::SerializationColumn,
+    columns::ColumnIndexer, logup::constraint_lookups, serialization::column::SerializationColumn,
 };
 
-pub struct Env<Fp: PrimeField, Ff: PrimeField> {
+pub struct Env<F: PrimeField, Ff: PrimeField> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
-    pub constraints: Vec<(usize, Expr<ConstantExpr<Fp>, Column>)>,
+    pub constraints: Vec<(usize, Expr<ConstantExpr<F>, Column>)>,
     pub constrain_index: usize,
-    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<Fp>, Ff>>>,
+    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<F>, Ff>>>,
 }
 
-impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
+impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     pub fn create() -> Self {
         Self {
             constraints: vec![],

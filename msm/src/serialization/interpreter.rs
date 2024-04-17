@@ -9,7 +9,7 @@ use crate::{
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-pub trait InterpreterEnv<Fp: PrimeField, Ff: PrimeField> {
+pub trait InterpreterEnv<F: PrimeField, Ff: PrimeField> {
     type Position;
 
     type Variable: Clone
@@ -43,7 +43,7 @@ pub trait InterpreterEnv<Fp: PrimeField, Ff: PrimeField> {
     /// Check that the value is in the range [0, 2^4-1]
     fn range_check4(&mut self, _value: &Self::Variable);
 
-    fn constant(value: Fp) -> Self::Variable;
+    fn constant(value: F) -> Self::Variable;
 
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
     /// the result in `position`.
@@ -89,7 +89,7 @@ pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: InterpreterEnv<Fp, Ff>>(
+pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     env: &mut Env,
     limbs: [BigUint; 3],
 ) {
@@ -98,9 +98,9 @@ pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: Interprete
     let kimchi_limbs1 = Env::get_column(SerializationColumn::ChalKimchi(1));
     let kimchi_limbs2 = Env::get_column(SerializationColumn::ChalKimchi(2));
 
-    let input_limb0 = Env::constant(Fp::from(limbs[0].clone()));
-    let input_limb1 = Env::constant(Fp::from(limbs[1].clone()));
-    let input_limb2 = Env::constant(Fp::from(limbs[2].clone()));
+    let input_limb0 = Env::constant(F::from(limbs[0].clone()));
+    let input_limb1 = Env::constant(F::from(limbs[1].clone()));
+    let input_limb2 = Env::constant(F::from(limbs[2].clone()));
 
     // FIXME: should we assert this in the circuit?
     assert!(limbs[0] < BigUint::from(2u128.pow(88)));
@@ -164,7 +164,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: Interprete
         let res = (limbs[0].clone() >> 75) & BigUint::from((1u128 << (88 - 75)) - 1);
         let res_prime = limbs[1].clone() & BigUint::from((1u128 << 2) - 1);
         let res: BigUint = res + (res_prime << (15 - 2));
-        let res = Env::constant(Fp::from(res));
+        let res = Env::constant(F::from(res));
         let c5_var = env.copy(&res, c5);
         fifteen_bits_vars.push(c5_var);
     }
@@ -242,8 +242,8 @@ pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: Interprete
     // Range check on each limb
     fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
 
-    let shl_88_var = Env::constant(Fp::from(1u128 << 88u128));
-    let shl_15_var = Env::constant(Fp::from(1u128 << 15u128));
+    let shl_88_var = Env::constant(F::from(1u128 << 88u128));
+    let shl_15_var = Env::constant(F::from(1u128 << 15u128));
 
     // -- Start second constraint
     {
@@ -256,7 +256,7 @@ pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: Interprete
 
         // Substracting 15 bits values
         let (constraint, _) = (0..=11).fold(
-            (constraint, Env::constant(Fp::one())),
+            (constraint, Env::constant(F::one())),
             |(acc, shl_var), i| {
                 (
                     acc - fifteen_bits_vars[i].clone() * shl_var.clone(),
@@ -273,11 +273,11 @@ pub fn deserialize_field_element<Fp: PrimeField, Ff: PrimeField, Env: Interprete
         // c12 + c13 * 2^15 + c14 * 2^30 + c15 * 2^45 + c16 * 2^60
         let constraint = fifteen_bits_vars[12].clone();
         let constraint = (1..=4).fold(constraint, |acc, i| {
-            acc + fifteen_bits_vars[12 + i].clone() * Env::constant(Fp::from(1u128 << (15 * i)))
+            acc + fifteen_bits_vars[12 + i].clone() * Env::constant(F::from(1u128 << (15 * i)))
         });
 
         let constraint = (1..=19).fold(constraint, |acc, i| {
-            let var = limb2_vars[i].clone() * Env::constant(Fp::from(1u128 << (4 * (i - 1))));
+            let var = limb2_vars[i].clone() * Env::constant(F::from(1u128 << (4 * (i - 1))));
             acc - var
         });
         env.add_constraint(constraint);
@@ -439,7 +439,7 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
     // Carry limbs need to be in particular ranges.
     for (i, x) in carry_limbs_small.iter().enumerate() {
         if i % 6 == 5 {
-            // This should be a diferent range check depending on which big-limb we're processing?
+            // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
             env.range_check_abs4bit(x);
         } else {

@@ -1,8 +1,8 @@
 use crate::{
     column_env::ColumnEnvironment,
     expr::E,
-    mvlookup,
-    mvlookup::{prover::Env, LookupProof, LookupTableID},
+    logup,
+    logup::{prover::Env, LookupProof, LookupTableID},
     proof::{Proof, ProofCommitments, ProofEvaluations, ProofInputs},
     witness::Witness,
     MAX_SUPPORTED_DEGREE,
@@ -99,7 +99,17 @@ where
     };
 
     let witness_comms: Witness<N, PolyComm<G>> = {
-        let comm = |poly: &DensePolynomial<G::ScalarField>| srs.commit_non_hiding(poly, 1);
+        let comm = {
+            |poly: &DensePolynomial<G::ScalarField>| {
+                let mut comm = srs.commit_non_hiding(poly, 1);
+                // In case the column polynomial is all zeroes, we want to mask the commitment
+                comm = srs
+                    .mask_custom(comm.clone(), &comm.map(|_| G::ScalarField::one()))
+                    .unwrap()
+                    .commitment;
+                comm
+            }
+        };
         (&witness_polys)
             .into_par_iter()
             .map(comm)
@@ -111,10 +121,10 @@ where
         .into_iter()
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
-    // -- Start MVLookup
-    let lookup_env = if !inputs.mvlookups.is_empty() {
+    // -- Start Logup
+    let lookup_env = if !inputs.logups.is_empty() {
         Some(Env::create::<OpeningProof, EFqSponge>(
-            inputs.mvlookups,
+            inputs.logups,
             domain,
             &mut fq_sponge,
             srs,
@@ -135,9 +145,9 @@ where
         }
     };
 
-    // Don't need to be absorbed. Already absorbed in mvlookup::prover::Env::create
+    // Don't need to be absorbed. Already absorbed in logup::prover::Env::create
     // FIXME: remove clone
-    let mvlookup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
+    let logup_comms = Option::map(lookup_env.as_ref(), |lookup_env| LookupProof {
         m: lookup_env.lookup_counters_comm_d1.clone(),
         h: lookup_env.lookup_terms_comms_d1.clone(),
         sum: lookup_env.lookup_aggregation_comm_d1.clone(),
@@ -145,7 +155,7 @@ where
     });
 
     // -- end computing the running sum in lookup_aggregation
-    // -- End of MVLookup
+    // -- End of Logup
 
     let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = {
         let domain_eval = if max_degree <= 4 {
@@ -197,7 +207,7 @@ where
             coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
-                mvlookup::prover::QuotientPolynomialEnvironment {
+                logup::prover::QuotientPolynomialEnvironment {
                     lookup_terms_evals_d8: &lookup_env.lookup_terms_evals_d8,
                     lookup_aggregation_evals_d8: &lookup_env.lookup_aggregation_evals_d8,
                     lookup_counters_evals_d8: &lookup_env.lookup_counters_evals_d8,
@@ -256,7 +266,7 @@ where
             .unwrap_or_else(fail_final_q_division);
         // As the constraints must be verified on H, the rest of the division
         // must be equal to 0 as the constraints polynomial and Z_H(X) are both
-        // equals on H.
+        // equal on H.
         if !res.is_zero() {
             fail_final_q_division();
         }
@@ -277,7 +287,7 @@ where
     // Round 3: Evaluations at zeta and zeta_omega
     ////////////////////////////////////////////////////////////////////////////
 
-    //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+    //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
     absorb_commitment(&mut fq_sponge, &t_comm);
 
     //~ 1. Sample $\zeta'$ with the Fq-Sponge.
@@ -302,8 +312,8 @@ where
             .collect::<Witness<N, PointEvaluations<_>>>()
     };
 
-    // IMPROVEME: move this into the mvlookup module
-    let mvlookup_evals = lookup_env.as_ref().map(|lookup_env| LookupProof {
+    // IMPROVEME: move this into the logup module
+    let logup_evals = lookup_env.as_ref().map(|lookup_env| LookupProof {
         m: lookup_env
             .lookup_counters_poly_d1
             .iter()
@@ -352,7 +362,7 @@ where
     }
 
     if lookup_env.is_some() {
-        for PointEvaluations { zeta, zeta_omega } in mvlookup_evals.as_ref().unwrap().into_iter() {
+        for PointEvaluations { zeta, zeta_omega } in logup_evals.as_ref().unwrap().into_iter() {
             fr_sponge.absorb(zeta);
             fr_sponge.absorb(zeta_omega);
         }
@@ -396,14 +406,17 @@ where
     let non_hiding = |d1_size| PolyComm {
         elems: vec![G::ScalarField::zero(); d1_size],
     };
+    let hiding = |d1_size| PolyComm {
+        elems: vec![G::ScalarField::one(); d1_size],
+    };
 
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = (&witness_polys)
         .into_par_iter()
-        .map(|poly| (coefficients_form(poly), non_hiding(1)))
+        .map(|poly| (coefficients_form(poly), hiding(1)))
         .collect();
 
-    // Adding MVLookup
+    // Adding Logup
     if let Some(ref lookup_env) = lookup_env {
         // -- first m(X)
         polynomials.extend(
@@ -450,7 +463,7 @@ where
     let proof_evals: ProofEvaluations<N, G::ScalarField, ID> = {
         ProofEvaluations {
             witness_evals,
-            mvlookup_evals,
+            logup_evals,
             ft_eval1,
         }
     };
@@ -458,7 +471,7 @@ where
     Ok(Proof {
         proof_comms: ProofCommitments {
             witness_comms,
-            mvlookup_comms,
+            logup_comms,
             t_comm,
         },
         proof_evals,

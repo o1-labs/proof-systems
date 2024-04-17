@@ -1,18 +1,22 @@
 //! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
-use crate::keccak::{
-    column::{
-        Absorbs::{self, *},
-        KeccakWitness,
-        Sponges::{self, *},
-        Steps::*,
-        PAD_SUFFIX_LEN,
+use crate::{
+    keccak::{
+        column::{
+            Absorbs::{self, *},
+            KeccakWitness,
+            Sponges::{self, *},
+            Steps::*,
+            PAD_SUFFIX_LEN,
+        },
+        constraints::Env as ConstraintsEnv,
+        grid_index, pad_blocks,
+        witness::Env as WitnessEnv,
+        KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
     },
-    constraints::Env as ConstraintsEnv,
-    grid_index, pad_blocks,
-    witness::Env as WitnessEnv,
-    KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
+    lookups::Lookup,
+    E,
 };
 use ark_ff::Field;
 use kimchi::{
@@ -24,6 +28,8 @@ use kimchi::{
     o1_utils::Two,
 };
 use std::array;
+
+use super::{column::Steps, interpreter::KeccakInterpreter};
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
@@ -57,23 +63,31 @@ pub struct KeccakEnv<F> {
     pad_suffixes: [[F; PAD_SUFFIX_LEN]; RATE_IN_BYTES],
 }
 
-impl<F: Field> KeccakEnv<F> {
-    /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
-    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
-        let mut env = Self {
-            // Must update the flag type at each step from the witness interpretation
+impl<F: Field> Default for KeccakEnv<F> {
+    fn default() -> Self {
+        Self {
             constraints_env: ConstraintsEnv::default(),
             witness_env: WitnessEnv::default(),
-            hash_idx,
+            hash_idx: 0,
             step_idx: 0,
             block_idx: 0,
             prev_block: vec![],
             blocks_left_to_absorb: 0,
             padded: vec![],
             pad_len: 0,
-            // Add 1 to i so that 0 is not included
             two_to_pad: array::from_fn(|i| F::two_pow(1 + i as u64)),
             pad_suffixes: array::from_fn(|i| pad_blocks::<F>(1 + i)),
+        }
+    }
+}
+
+impl<F: Field> KeccakEnv<F> {
+    /// Starts a new Keccak environment for a given hash index and bytestring of preimage data
+    pub fn new(hash_idx: u64, preimage: &[u8]) -> Self {
+        // Must update the flag type at each step from the witness interpretation
+        let mut env = KeccakEnv::<F> {
+            hash_idx,
+            ..Default::default()
         };
 
         // Store hash index in the witness
@@ -120,6 +134,15 @@ impl<F: Field> KeccakEnv<F> {
         // The fixed tables are not modified.
         self.constraints_env.constraints = vec![];
         self.constraints_env.lookups = vec![];
+    }
+
+    /// Returns the selector of the current step
+    pub fn selector(&self) -> Steps {
+        let mut step = self.constraints_env.step.unwrap();
+        if let Round(_) = step {
+            step = Round(0);
+        }
+        step
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
@@ -424,5 +447,29 @@ impl<F: Field> KeccakEnv<F> {
         }
 
         state_g
+    }
+
+    #[allow(dead_code)]
+    /// Returns the list of constraints used in a specific Keccak step
+    pub(crate) fn constraints_of(step: Steps) -> Vec<E<F>> {
+        let mut env = ConstraintsEnv {
+            constraints: vec![],
+            lookups: vec![],
+            step: Some(step),
+        };
+        env.constraints();
+        env.constraints
+    }
+
+    #[allow(dead_code)]
+    /// Returns the list of lookups used in a specific Keccak step
+    pub(crate) fn lookups_of(step: Steps) -> Vec<Lookup<E<F>>> {
+        let mut env = ConstraintsEnv {
+            constraints: vec![],
+            lookups: vec![],
+            step: Some(step),
+        };
+        env.lookups();
+        env.lookups
     }
 }

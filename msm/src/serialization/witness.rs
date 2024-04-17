@@ -5,7 +5,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     columns::{Column, ColumnIndexer},
-    mvlookup::LookupTableID,
+    logup::LookupTableID,
     serialization::{
         column::{SerializationColumn, SER_N_COLUMNS},
         interpreter::InterpreterEnv,
@@ -17,29 +17,27 @@ use crate::{
 use kimchi::circuits::domains::EvaluationDomains;
 use std::{collections::BTreeMap, iter, marker::PhantomData};
 
-// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
 // TODO `WitnessEnv`
 /// Environment for the serializer interpreter
-pub struct Env<Fp: PrimeField, Ff: PrimeField> {
+pub struct Env<F: PrimeField, Ff: PrimeField> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    pub witness: Witness<SER_N_COLUMNS, Fp>,
+    pub witness: Witness<SER_N_COLUMNS, F>,
 
     /// Keep track of the RangeCheck4 table multiplicities.
     /// The value `0` is used as a (repeated) dummy value.
     // Boxing to avoid stack overflow
     // @volhovm: I understand this is TODO/unused, so I did not create a
     // rangecheck4abs counterpart for it.
-    pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
+    pub lookup_t_multiplicities_rangecheck4: Box<[F; 1 << 4]>,
 
     /// Keep track of the lookup multiplicities.
-    pub lookup_multiplicities: BTreeMap<LookupTable<Ff>, Vec<Fp>>,
+    pub lookup_multiplicities: BTreeMap<LookupTable<Ff>, Vec<F>>,
 
     /// Keep track of the lookups for each row.
-    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<Fp, Ff>>>,
+    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<F, Ff>>>,
 }
 
-// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
 impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     type Position = Column;
 
@@ -140,8 +138,8 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     }
 }
 
-impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
-    pub fn write_column(&mut self, position: Column, value: Fp) {
+impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+    pub fn write_column(&mut self, position: Column, value: F) {
         match position {
             Column::X(i) => self.witness.cols[i] = value,
             Column::LookupPartialSum(_) => {
@@ -181,12 +179,12 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     /// Getting multiplicities for range check tables less or equal than 15 bits.
     pub fn get_rangecheck_multiplicities(
         &self,
-        domain: EvaluationDomains<Fp>,
+        domain: EvaluationDomains<F>,
         table_id: LookupTable<Ff>,
-    ) -> Vec<Fp> {
+    ) -> Vec<F> {
         let mut m = Vec::with_capacity(domain.d1.size as usize);
         m.extend(self.lookup_multiplicities[&table_id].to_vec());
-        let repeated_dummy_value: Vec<Fp> = iter::repeat(-Fp::zero())
+        let repeated_dummy_value: Vec<F> = iter::repeat(-F::zero())
             .take((domain.d1.size as usize) - table_id.length())
             .collect();
         m.extend(repeated_dummy_value);
@@ -195,22 +193,22 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     }
 }
 
-impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
+impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     pub fn create() -> Self {
         let mut lookups = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
         for table_id in LookupTable::<Ff>::iter() {
             lookups.insert(table_id, Vec::new());
-            lookup_multiplicities.insert(table_id, vec![Fp::zero(); table_id.length()]);
+            lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
         }
 
         Self {
             witness: Witness {
-                cols: Box::new([Fp::zero(); SER_N_COLUMNS]),
+                cols: Box::new([F::zero(); SER_N_COLUMNS]),
             },
 
             lookup_multiplicities,
-            lookup_t_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
+            lookup_t_multiplicities_rangecheck4: Box::new([F::zero(); 1 << 4]),
             lookups,
         }
     }
@@ -219,14 +217,14 @@ impl<Fp: PrimeField, Ff: PrimeField> Env<Fp, Ff> {
     fn record_range_check(
         &mut self,
         table_id: LookupTable<Ff>,
-        value: &<Self as InterpreterEnv<Fp, Ff>>::Variable,
+        value: &<Self as InterpreterEnv<F, Ff>>::Variable,
         value_ix: usize,
     ) {
         //println!("Recording range check for table_id {table_id:?}, value {value:?}");
-        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += Fp::one();
+        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
         self.lookups.get_mut(&table_id).unwrap().push(Lookup {
             table_id,
-            numerator: Fp::one(),
+            numerator: F::one(),
             value: vec![*value],
         })
     }
