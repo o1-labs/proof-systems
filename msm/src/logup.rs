@@ -383,7 +383,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
     lookups_map.iter().for_each(|(id, lookups)| {
         let table_lookup = Logup {
             table_id: *id,
-            numerator: curr_cell(Column::LookupMultiplicity(id.to_u32())),
+            numerator: -curr_cell(Column::LookupMultiplicity(id.to_u32())),
             value: vec![curr_cell(Column::LookupFixedTable(id.to_u32()))],
         };
         // FIXME: do not clone
