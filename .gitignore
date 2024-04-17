@@ -36,3 +36,5 @@ optimism/op-program-db*
 optimism/state.json
 meta.json
 state.json
+
+!katex-header.html

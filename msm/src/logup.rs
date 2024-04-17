@@ -1,11 +1,16 @@
 //! Implement a variant of the logarithmic lookups based on the equations
 //! described in the paper [Multivariate lookups based on logarithmic
-//! derivatives](https://eprint.iacr.org/2022/1530.pdf)
+//! derivatives](https://eprint.iacr.org/2022/1530.pdf).
+
 //! The variant is mostly based on the observation that the polynomial
 //! identities can be verified using the "Idealised low-degree protocols"
 //! described in the section 4 of the [PlonK
 //! paper](https://eprint.iacr.org/2019/953.pdf) and "the quotient polynomial"
 //! instead of using the sumcheck protocol.
+
+//! The protocol is based on the following observations:
+//! The sequence a_i is included in b_i if and only if the following equation holds:
+//! $$\sum_{i = 1}^{n} \frac{m_i}{\beta + f_i} = 0$$
 
 use ark_ff::{Field, PrimeField, Zero};
 use std::{collections::BTreeMap, hash::Hash};
