@@ -1079,7 +1079,7 @@
     <span class="comment">// Carry limbs need to be in particular ranges.
     </span><span class="kw">for </span>(i, x) <span class="kw">in </span>carry_limbs_small.iter().enumerate() {
         <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
-            <span class="comment">// This should be a diferent range check depending on which big-limb we're processing?
+            <span class="comment">// This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
             </span>env.range_check_abs4bit(x);
         } <span class="kw">else </span>{
