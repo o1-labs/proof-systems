@@ -1,13 +1,111 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Generic definitions of Logups Implement a variant of the logarithmic lookups based on the equations described in the paper Multivariate lookups based on logarithmic derivatives The variant is mostly based on the observation that the polynomial identities can be verified using the “Idealised low-degree protocols” described in the section 4 of the PlonK paper and “the quotient polynomial” instead of using the sumcheck protocol."><title>kimchi_msm::logup - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../kimchi_msm/index.html">kimchi_msm</a><span class="version">0.1.0</span></h2></div><h2 class="location"><a href="#">Module logup</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section><h2><a href="../index.html">In crate kimchi_msm</a></h2></div></nav><div class="sidebar-resizer"></div>
-    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi_msm/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">kimchi_msm</a>::<wbr><a class="mod" href="#">logup</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/kimchi_msm/logup.rs.html#1-653">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Generic definitions of Logups
-Implement a variant of the logarithmic lookups based on the equations
-described in the paper <a href="https://eprint.iacr.org/2022/1530.pdf">Multivariate lookups based on logarithmic
-derivatives</a>
-The variant is mostly based on the observation that the polynomial
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Implement a variant of the logarithmic derivative lookups based on the equations described in the paper “Multivariate lookups based on logarithmic derivatives”."><title>kimchi_msm::logup - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../kimchi_msm/index.html">kimchi_msm</a><span class="version">0.1.0</span></h2></div><h2 class="location"><a href="#">Module logup</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></section><h2><a href="../index.html">In crate kimchi_msm</a></h2></div></nav><div class="sidebar-resizer"></div>
+    <main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../kimchi_msm/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">kimchi_msm</a>::<wbr><a class="mod" href="#">logup</a><button id="copy-path" title="Copy item path to clipboard"><img src="../../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../../src/kimchi_msm/logup.rs.html#1-775">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Implement a variant of the logarithmic derivative lookups based on the
+equations described in the paper <a href="https://eprint.iacr.org/2022/1530.pdf">“Multivariate lookups based on logarithmic
+derivatives”</a>.</p>
+<p>The variant is mostly based on the observation that the polynomial
 identities can be verified using the “Idealised low-degree protocols”
-described in the section 4 of the <a href="https://eprint.iacr.org/2019/953.pdf">PlonK
-paper</a> and “the quotient polynomial”
-instead of using the sumcheck protocol.</p>
+described in the section 4 of the
+<a href="https://eprint.iacr.org/2019/953.pdf">“PlonK”</a> paper and “the quotient
+polynomial” described in the round 3 of the PlonK protocol, instead of using
+the sumcheck protocol.</p>
+<p>The protocol is based on the following observations:</p>
+<p>The sequence (a_i) is included in (b_i) if and only if the following
+equation holds:</p>
+<div class="example-wrap"><pre class="language-text"><code>  k       1        l      m_i
+  ∑    -------  =  ∑    -------                          (1)
+ i=1   β + a_i    i=1   β + b_i
+</code></pre></div>
+<p>where m_i is the number of times a_i appears in the sequence b_i.</p>
+<p>The sequence (b_i) will refer to the table values and the sequence (a_i) the
+values the prover looks up.</p>
+<p>For readability, the table values are represented as the evaluations over a
+subgroup H of the field F of a
+polynomial t(X), and the looked-up values by the evaluations of a polynomial
+f(X). If we suppose the subgroup H is defined as {1, ω, ω^2, …, ω^{n-1}},
+the equation (1) becomes:</p>
+<div class="example-wrap"><pre class="language-text"><code>  n        1          n      m(ω^i)
+  ∑    ----------  =  ∑    ----------                    (2)
+ i=1   β + f(ω^i)    i=1   β + t(ω^i)
+</code></pre></div>
+<p>In the codebase, the multiplicities m_i are called the “lookup counters”.</p>
+<p>The protocol can be generalized to multiple “looked-up” polynomials f_1,
+…, f_k (called the “lookup terms” in the codebase) and the equation (2) becomes:</p>
+<div class="example-wrap"><pre class="language-text"><code>  n    k           1          n       m(ω^i)
+  ∑    ∑     ------------  =  ∑    -----------           (3)
+ i=1  j=1    β + f_j(ω^i)    i=1    β + t(ω^i)
+</code></pre></div>
+<p>which can be rewritten as:</p>
+<div class="example-wrap"><pre class="language-text"><code>  n  (  k         1             m(ω^i)    )
+  ∑  (  ∑   ------------   - -----------  )  = 0         (4)
+ i=1 ( j=1  β + f_j(ω^i)      β + t(ω^i)  )
+     \                                   /
+      -----------------------------------
+               &quot;inner sums&quot;, h(ω^i)
+</code></pre></div>
+<p>The equation says that if we sum/accumulate the “inner sums” over the
+subgroup H, we will get a zero value. Note the analogy with the
+“multiplicative” accumulator used in the lookup argument called
+<a href="https://eprint.iacr.org/2020/315.pdf">“Plookup”</a>.</p>
+<p>We will define an accumulator ϕ : H -&gt; F (called the “lookup aggregation” in
+the codebase) which will contain the “running
+inner sums” which will be equal to zero to start, and when we finished
+accumulating, it must equal zero. Note that the initial and final values can
+be anything. The idea of the equation 4 is that all the values have been
+read and written to the accumulator the right number of times, with respect
+to the multiplicities m.
+More precisely, we will have:</p>
+<div class="example-wrap"><pre class="language-text"><code>- φ(1) = 0
+                                          h(ω^j)
+                           /----------------------------------\
+                          (  k         1             m(ω^j)    )
+- φ(ω^{j + 1}) = φ(ω^j) + (  ∑   ------------   - -----------  )
+                          ( i=1  β + f_i(ω^j)      β + t(ω^j)  )
+
+- φ(ω^n) = φ(1) = 0
+</code></pre></div>
+<p>We will split the inner sums into chunks of size (MAX_SUPPORTED_DEGREE - 2)
+to avoid having a too large degree for the quotient polynomial.
+As a reminder, the paper <a href="https://eprint.iacr.org/2022/1530.pdf">“Multivariate lookups based on logarithmic
+derivatives”</a> uses the sumcheck
+protocol to compute the partial sums (equations 16 and 17). However, we use
+the PlonK polynomial IOP and therefore, we will use the quotient polynomial,
+and the computation of the partial sums will be translated into a constraint
+in a new power of alpha.</p>
+<p>Note that the inner sum h(X) can be constrainted as followed:</p>
+<div class="example-wrap"><pre class="language-text"><code>        k                   k  /          k                 \
+h(X) *  ᴨ  (β + f_{i}(X)) = ∑  | m_{i} *  ᴨ  (β + f_{j}(X)) |     (5)
+       i=1                 i=1 |         j=1                |
+                               \         j≠i                /
+</code></pre></div>
+<p>More than one “inner sum” can be created in the case that <code>k + 2</code> is higher
+than the maximum degree supported.
+The quotient polynomial, defined at round 3 of the <a href="https://eprint.iacr.org/2019/953.pdf">PlonK
+protocol</a>, will be something like:</p>
+<div class="example-wrap"><pre class="language-text"><code>        ... + α^i [φ(ω X) - φ(X) - h(X)] + α^(i + 1) (5) + ...
+ t(X) = ------------------------------------------------------
+                             Z_H(X)
+</code></pre></div>
+<p><code>k</code> can then be seen as the number of lookups we can make per row. The
+additional cost when we reach the maximum degree supported is to add a new
+constraint and add a new column.
+For rows with less than <code>k</code> lookups, the prover will add a dummy value,
+which will be a value known to be in the table, and the multiplicity must be
+increased appropriately.</p>
+<p>To handle more than one table, we will use a table ID and transform the
+single value lookup into a vector lookup, using a random combiner.
+The protocol can also handle vector lookups, by using the random combiner.
+The looked-up values therefore become functions f_j: H x H x … x H -&gt; F
+and is transformed into a f’_j: H -&gt; F using a random combiner <code>r</code>.</p>
+<p>To summarize, the prover will:</p>
+<ul>
+<li>commit to the multiplicities m.</li>
+<li>commit to the lookup terms f (which include the table t).</li>
+<li>commit to the inner sums h.</li>
+<li>commit to the running sum φ.</li>
+<li>add constraints to the quotient polynomial.</li>
+<li>evaluate all polynomials at the evaluation points ζ and ζω (because we
+access the “next” row for the accumulator in the quotient polynomial).</li>
+</ul>
 </div></details><h2 id="modules" class="section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="prover/index.html" title="mod kimchi_msm::logup::prover">prover</a></div></li></ul><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Logup.html" title="struct kimchi_msm::logup::Logup">Logup</a></div><div class="desc docblock-short">Generic structure to represent a (vector) lookup the table with ID
 <code>table_id</code>.
 The structure represents the individual fraction of the sum described in the
