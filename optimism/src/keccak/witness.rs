@@ -6,6 +6,8 @@
 //!
 //! For a pseudo code implementation of Keccap-f, see
 //! <https://keccak.team/keccak_specs_summary.html>
+use std::collections::HashMap;
+
 use crate::{
     keccak::{
         column::{Absorbs::*, KeccakWitness, Sponges::*, Steps::*},
@@ -14,7 +16,10 @@ use crate::{
         Constraint, Error, KeccakColumn,
         Selector::{self, *},
     },
-    lookups::{FixedLookupTables, Lookup, LookupTable, LookupTableIDs::*},
+    lookups::{
+        FixedLookupTables, Lookup, LookupTable,
+        LookupTableIDs::{self, *},
+    },
 };
 use ark_ff::Field;
 use kimchi::o1_utils::Two;
@@ -27,9 +32,9 @@ pub struct Env<F> {
     /// The full state of the Keccak gate (witness)
     pub witness: KeccakWitness<F>,
     /// The fixed tables used in the Keccak gate
-    pub tables: Vec<LookupTable<F>>,
+    pub tables: HashMap<LookupTableIDs, LookupTable<F>>,
     /// The multiplicities of each lookup entry. Should not be cleared between steps.
-    pub multiplicities: Vec<Vec<u32>>,
+    pub multiplicities: HashMap<LookupTableIDs, Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,
     /// The round number [0..23]
@@ -40,22 +45,26 @@ impl<F: Field> Default for Env<F> {
     fn default() -> Self {
         Self {
             witness: KeccakWitness::default(),
-            tables: vec![
-                LookupTable::table_pad(),
-                LookupTable::table_round_constants(),
-                LookupTable::table_byte(),
-                LookupTable::table_range_check_16(),
-                LookupTable::table_sparse(),
-                LookupTable::table_reset(),
-            ],
-            multiplicities: vec![
-                vec![0; PadLookup.length()],
-                vec![0; RoundConstantsLookup.length()],
-                vec![0; ByteLookup.length()],
-                vec![0; RangeCheck16Lookup.length()],
-                vec![0; SparseLookup.length()],
-                vec![0; ResetLookup.length()],
-            ],
+            tables: {
+                let mut t = HashMap::new();
+                t.insert(PadLookup, LookupTable::table_pad());
+                t.insert(RoundConstantsLookup, LookupTable::table_round_constants());
+                t.insert(ByteLookup, LookupTable::table_byte());
+                t.insert(RangeCheck16Lookup, LookupTable::table_range_check_16());
+                t.insert(SparseLookup, LookupTable::table_sparse());
+                t.insert(ResetLookup, LookupTable::table_reset());
+                t
+            },
+            multiplicities: {
+                let mut m = HashMap::new();
+                m.insert(PadLookup, vec![0; PadLookup.length()]);
+                m.insert(RoundConstantsLookup, vec![0; RoundConstantsLookup.length()]);
+                m.insert(ByteLookup, vec![0; ByteLookup.length()]);
+                m.insert(RangeCheck16Lookup, vec![0; RangeCheck16Lookup.length()]);
+                m.insert(SparseLookup, vec![0; SparseLookup.length()]);
+                m.insert(ResetLookup, vec![0; ResetLookup.length()]);
+                m
+            },
             errors: vec![],
             round: 0,
         }
@@ -100,10 +109,11 @@ impl<F: Field> Interpreter<F> for Env<F> {
             // Only when reading. We ignore the other values.
             if lookup.magnitude == Self::one() {
                 // Check that the lookup value is in the table
-                if let Some(idx) =
-                    LookupTable::is_in_table(&self.tables[lookup.table_id as usize], lookup.value)
-                {
-                    self.multiplicities[lookup.table_id as usize][idx] += 1;
+                if let Some(idx) = LookupTable::is_in_table(
+                    &self.tables.get_mut(&lookup.table_id).unwrap(),
+                    lookup.value,
+                ) {
+                    self.multiplicities.get_mut(&lookup.table_id).unwrap()[idx] += 1;
                 } else {
                     self.errors.push(Error::Lookup(lookup.table_id));
                 }
