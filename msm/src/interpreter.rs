@@ -102,7 +102,7 @@ pub enum BlaColIndexer {
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Default, EnumIter)]
 pub enum BlaLookupTable {
-    SumFooRangeCheck(FooLookupTable),
+    SubFooRangeCheck(FooLookupTable),
     #[default]
     RangeCheckBla1,
     RangeCheckBla2,
@@ -195,6 +195,24 @@ impl MPrism for BlaFoo1Lens {
 
     fn re_get(&self, target: Self::Target) -> Self::Source {
         BlaColIndexer::SubFoo1(target)
+    }
+}
+
+pub struct BlaFoo1LTLens {}
+
+impl MPrism for BlaFoo1LTLens {
+    type Source = BlaLookupTable;
+    type Target = FooLookupTable;
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            BlaLookupTable::SubFooRangeCheck(lookup_id) => Some(lookup_id),
+            _ => None,
+        }
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        BlaLookupTable::SubFooRangeCheck(target)
     }
 }
 
@@ -298,6 +316,16 @@ pub struct SubEnv<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, 
     phantom: core::marker::PhantomData<(F, CIx1)>,
 }
 
+/// These two wrappers are needed because rust trait system is not smart enough.
+pub struct SubEnvCol<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>(
+    SubEnv<'a, F, CIx1, Env1, L>,
+);
+
+/// These two wrappers are needed because rust trait system is not smart enough.
+pub struct SubEnvLT<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>(
+    SubEnv<'a, F, CIx1, Env1, L>,
+);
+
 impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>
     SubEnv<'a, F, CIx1, Env1, L>
 {
@@ -307,6 +335,22 @@ impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>
             lens,
             phantom: Default::default(),
         }
+    }
+}
+
+impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>
+    SubEnvCol<'a, F, CIx1, Env1, L>
+{
+    pub fn new(env: &'a mut Env1, lens: L) -> Self {
+        SubEnvCol(SubEnv::new(env, lens))
+    }
+}
+
+impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>
+    SubEnvLT<'a, F, CIx1, Env1, L>
+{
+    pub fn new(env: &'a mut Env1, lens: L) -> Self {
+        SubEnvLT(SubEnv::new(env, lens))
     }
 }
 
@@ -353,26 +397,96 @@ impl<
         F: PrimeField,
         CIx1: ColIndexer,
         CIx2: ColIndexer,
-        LT: LookupTableID,
-        Env1: FixedLookupCap<CIx1, F, LT>,
+        Env1: ColAccessCap<CIx1, F>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > FixedLookupCap<CIx2, F, LT> for SubEnv<'a, F, CIx1, Env1, L>
+    > ColAccessCap<CIx2, F> for SubEnvCol<'a, F, CIx1, Env1, L>
 {
-    fn lookup_fixed(&mut self, lookup_id: LT, value: Self::Variable) {
-        self.env.lookup_fixed(lookup_id, value)
+    type Variable = Env1::Variable;
+
+    fn assert_zero(&mut self, cst: Self::Variable) {
+        self.0.assert_zero(cst);
+    }
+
+    fn constant(&self, value: F) -> Self::Variable {
+        self.0.constant(value)
+    }
+
+    fn read_column(&self, ix: CIx2) -> Self::Variable {
+        self.0.read_column(ix)
     }
 }
 
-//pub struct SubEnvLT<
-//    'a,
-//    LT1: LookupTableID,
-//    LT2: LookupTableID,
-//    Env,
-//    L: MPrism<Source = LT1, Target = LT2>,
-//> {
-//    env: &'a mut Env,
-//    lens: L,
-//}
+impl<
+        'a,
+        F: PrimeField,
+        CIx1: ColIndexer,
+        CIx2: ColIndexer,
+        Env1: ColWriteCap<CIx1, F>,
+        L: MPrism<Source = CIx1, Target = CIx2>,
+    > ColWriteCap<CIx2, F> for SubEnvCol<'a, F, CIx1, Env1, L>
+{
+    fn write_column(&mut self, ix: CIx2, value: Self::Variable) {
+        self.0.write_column(ix, value);
+    }
+}
+
+impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L> ColAccessCap<CIx1, F>
+    for SubEnvLT<'a, F, CIx1, Env1, L>
+{
+    type Variable = Env1::Variable;
+
+    fn assert_zero(&mut self, cst: Self::Variable) {
+        self.0.env.assert_zero(cst);
+    }
+
+    fn constant(&self, value: F) -> Self::Variable {
+        self.0.env.constant(value)
+    }
+
+    fn read_column(&self, ix: CIx1) -> Self::Variable {
+        self.0.env.read_column(ix)
+    }
+}
+
+impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColWriteCap<CIx1, F>, L> ColWriteCap<CIx1, F>
+    for SubEnvLT<'a, F, CIx1, Env1, L>
+{
+    fn write_column(&mut self, ix: CIx1, value: Self::Variable) {
+        self.0.env.write_column(ix, value);
+    }
+}
+
+impl<
+        'a,
+        F: PrimeField,
+        CIx1: ColIndexer,
+        CIx2: ColIndexer,
+        LT: LookupTableID,
+        Env1: FixedLookupCap<CIx1, F, LT>,
+        L: MPrism<Source = CIx1, Target = CIx2>,
+    > FixedLookupCap<CIx2, F, LT> for SubEnvCol<'a, F, CIx1, Env1, L>
+{
+    fn lookup_fixed(&mut self, lookup_id: LT, value: Self::Variable) {
+        self.0.env.lookup_fixed(lookup_id, value)
+    }
+}
+
+impl<
+        'a,
+        F: PrimeField,
+        CIx: ColIndexer,
+        LT1: LookupTableID,
+        LT2: LookupTableID,
+        Env1: FixedLookupCap<CIx, F, LT1>,
+        L: MPrism<Source = LT1, Target = LT2>,
+    > FixedLookupCap<CIx, F, LT2> for SubEnvLT<'a, F, CIx, Env1, L>
+{
+    fn lookup_fixed(&mut self, lookup_id: LT2, value: Self::Variable) {
+        self.0
+            .env
+            .lookup_fixed(self.0.lens.re_get(lookup_id), value)
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////
 // Functions using interpreter env
@@ -397,7 +511,7 @@ where
     a_var
 }
 
-pub fn constrain_foo_lookup<F, LT, Env>(env: &mut Env) -> Env::Variable
+pub fn constrain_foo_lookup<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
     Env: FixedLookupCap<FooColIndexer, F, FooLookupTable>,
@@ -407,16 +521,27 @@ where
     a_var
 }
 
+pub fn constrain_foo_lookup2<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: FixedLookupCap<FooColIndexer, F, BlaLookupTable>,
+{
+    let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
+    env.lookup_fixed(BlaLookupTable::RangeCheckBla1, a_var.clone());
+    constrain_foo_lookup(&mut SubEnvLT::new(env, BlaFoo1LTLens {}));
+    a_var
+}
+
 pub fn constrain_bla<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
     Env: ColAccessCap<BlaColIndexer, F>,
 {
     let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
-    constrain_foo(&mut SubEnv::new(env, BlaFoo1Lens {}));
-    constrain_foo(&mut SubEnv::new(env, BlaFoo2Lens {}));
+    constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    constrain_foo(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
     // This cannot compile since we're calling writer sub-env from a reader-only env
-    // constrain_foo_w(&mut SubEnv::new(env, BlaFoo2Lens {}));
+    // constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
     a_var
 }
 
@@ -426,8 +551,8 @@ where
     Env: ColWriteCap<BlaColIndexer, F>,
 {
     let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
-    constrain_foo(&mut SubEnv::new(env, BlaFoo1Lens {}));
-    constrain_foo_w(&mut SubEnv::new(env, BlaFoo2Lens {}));
+    constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
     a_var
 }
 
@@ -437,10 +562,14 @@ where
     Env: FixedLookupCap<BlaColIndexer, F, BlaLookupTable>,
 {
     let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
-    constrain_foo(&mut SubEnv::new(env, BlaFoo1Lens {}));
-    constrain_foo(&mut SubEnv::new(env, BlaFoo2Lens {}));
+    constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    constrain_foo_lookup2(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    constrain_foo_lookup(&mut SubEnvCol::new(
+        &mut SubEnvLT::new(env, BlaFoo1LTLens {}),
+        BlaFoo1Lens {},
+    ));
     // This cannot compile since we're calling writer sub-env from a reader-only env
-    // constrain_foo_w(&mut SubEnv::new(env, BlaFoo2Lens {}));
+    // constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
     a_var
 }
 
@@ -450,12 +579,12 @@ where
     Env: ColAccessCap<KekColIndexer, F>,
 {
     let a_var: Env::Variable = Env::read_column(env, KekColIndexer::Kek1(0));
-    constrain_bla(&mut SubEnv::new(env, KekBla1Lens {}));
-    constrain_foo(&mut SubEnv::new(
+    constrain_bla(&mut SubEnvCol::new(env, KekBla1Lens {}));
+    constrain_foo(&mut SubEnvCol::new(
         env,
         compose(KekBla1Lens {}, BlaFoo1Lens {}),
     ));
-    constrain_foo(&mut SubEnv::new(env, KekFooComplexLens {}));
+    constrain_foo(&mut SubEnvCol::new(env, KekFooComplexLens {}));
 
     a_var
 }
