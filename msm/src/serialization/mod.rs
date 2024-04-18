@@ -182,6 +182,7 @@ mod tests {
             LogupWitness {
                 f: rangecheck4.to_vec(),
                 m: rangecheck4_m,
+                table_id: LookupTable::RangeCheck4,
             }
         };
 
@@ -189,6 +190,7 @@ mod tests {
             LogupWitness {
                 f: rangecheck15.to_vec(),
                 m: rangecheck15_m,
+                table_id: LookupTable::RangeCheck15,
             }
         };
 

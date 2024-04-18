@@ -114,10 +114,11 @@ where
             let beta = fq_sponge.challenge();
 
             // And now, we absorb the commitments to the other polynomials
-            logup_comms
-                .h
-                .iter()
-                .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
+            logup_comms.h.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(&mut fq_sponge, comm))
+            });
 
             logup_comms
                 .fixed_tables

@@ -55,9 +55,10 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
                     panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
                 }
             }
-            Self::Column::LookupPartialSum(i) => {
+            Self::Column::LookupPartialSum((table_id, i)) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_terms_evals_d8[i])
+                    let table_id = ID::from_u32(table_id);
+                    Some(&lookup.lookup_terms_evals_d8[&table_id][i])
                 } else {
                     panic!("No lookup provided")
                 }
@@ -69,16 +70,16 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(id) => {
+            Self::Column::LookupMultiplicity(table_id) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(id)])
+                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(table_id)])
                 } else {
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupFixedTable(id) => {
+            Self::Column::LookupFixedTable(table_id) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.fixed_tables_evals_d8[&ID::from_u32(id)])
+                    Some(&lookup.fixed_tables_evals_d8[&ID::from_u32(table_id)])
                 } else {
                     panic!("No lookup provided")
                 }
