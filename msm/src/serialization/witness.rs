@@ -22,11 +22,6 @@ pub struct Env<F> {
     /// `get_witness` method.
     pub witness: Witness<SER_N_COLUMNS, F>,
 
-    /// Keep track of the RangeCheck4 table multiplicities.
-    /// The value `0` is used as a (repeated) dummy value.
-    // Boxing to avoid stack overflow
-    pub lookup_t_multiplicities_rangecheck4: Box<[F; 1 << 4]>,
-
     /// Keep track of the lookup multiplicities.
     pub lookup_multiplicities: BTreeMap<LookupTable, Vec<F>>,
 
@@ -210,7 +205,6 @@ impl<F: PrimeField> Env<F> {
             },
 
             lookup_multiplicities,
-            lookup_t_multiplicities_rangecheck4: Box::new([F::zero(); 1 << 4]),
             lookups,
         }
     }
