@@ -147,8 +147,10 @@ use crate::{
 
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
+///
 /// The structure represents the individual fraction of the sum described in the
 /// Logup protocol (for instance Eq. 8).
+///
 /// The table ID is added to the random linear combination formed with the
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
@@ -214,7 +216,7 @@ pub struct LookupTable<F, ID: LookupTableID> {
 }
 
 /// Represents a witness of one instance of the lookup argument
-/// IMPROVEME: Possible to index by a generic const?
+// IMPROVEME: Possible to index by a generic const?
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug, Clone)]
@@ -223,16 +225,18 @@ pub struct LogupWitness<F, ID: LookupTableID> {
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
     /// The values are represented as:
-    /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
-    ///   [f_{2}(1), ..., f_{2}(\omega^n)]
+    /// [ [f_{1}(1), ..., f_{1}(ω^(n-1)],
+    ///   [f_{2}(1), ..., f_{2}(ω^(n-1)]
     ///     ...
-    ///   [f_{m}(1), ..., f_{m}(\omega^n)]
+    ///   [f_{m}(1), ..., f_{m}(ω^(n-1)]
     /// ]
-    /// TODO: for efficiency, as we go through columns and after that row, we
-    /// should reorganize this. While working on the interpreter, we might
-    /// change this structure.
-    /// TODO: for efficiency, we might want to have a single flat fixed-size
-    /// array
+    //
+    // TODO: for efficiency, as we go through columns and after that row, we
+    // should reorganize this. While working on the interpreter, we might
+    // change this structure.
+    //
+    // TODO: for efficiency, we might want to have a single flat fixed-size
+    // array
     pub(crate) f: Vec<Vec<Logup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
@@ -240,10 +244,10 @@ pub struct LogupWitness<F, ID: LookupTableID> {
 
 /// Represents the proof of the lookup argument
 /// It is parametrized by the type `T` which can be either:
-/// - Polycomm<G: KimchiCurve> for the commitments
-/// - F for the evaluations at zeta (resp. zeta omega).
-/// FIXME: We should have a fixed number of m and h. Should we encode that in
-/// the type?
+/// - `Polycomm<G: KimchiCurve>` for the commitments
+/// - `F` for the evaluations at ζ (resp. ζω).
+// FIXME: We should have a fixed number of m and h. Should we encode that in
+// the type?
 #[derive(Debug, Clone)]
 pub struct LookupProof<T, ID> {
     /// The multiplicity polynomials
@@ -296,8 +300,10 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 /// ```
 /// It is because h(X) (column) is defined as:
 /// ```text
-/// h(X) = \sum_{i = 1}^{n} (m_i(X) / (β + f_{i}(X))
-/// ```
+///        n      m_i(X)
+/// h(X)   ∑    ----------
+///       i=1   β + f_i(X)
+///```
 /// For instance, if i = 2, we have
 /// ```text
 /// h(X) = m_1(X) / (β + f_1(X)) + m_2(X) / (β + f_{2}(X))
