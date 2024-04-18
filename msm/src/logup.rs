@@ -636,7 +636,7 @@ pub mod prover {
                 for j in 0..domain.d1.size {
                     let mut partial_sum_idx = 0;
                     let mut row_acc = G::ScalarField::zero();
-                    for f_i in f.iter() {
+                    for (i, f_i) in f.iter().enumerate() {
                         let Logup {
                             numerator,
                             table_id: _,
@@ -647,13 +647,13 @@ pub mod prover {
                         // We split in chunks of (MAX_SUPPORTED_DEGREE - 2)
                         // We reset the accumulator for the current partial
                         // sum after keeping it.
-                        if denominator_index % (MAX_SUPPORTED_DEGREE - 2) == 0 {
+                        if (i + 1) % (MAX_SUPPORTED_DEGREE - 2) == 0 {
                             partial_sums[partial_sum_idx].push(row_acc);
                             row_acc = G::ScalarField::zero();
                             partial_sum_idx += 1;
                         }
                     }
-                    if denominator_index % (MAX_SUPPORTED_DEGREE - 2) != 0 {
+                    if n % (MAX_SUPPORTED_DEGREE - 2) != 0 {
                         partial_sums[partial_sum_idx].push(row_acc);
                     }
                 }
