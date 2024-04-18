@@ -176,10 +176,12 @@ impl<F: PrimeField> Env<F> {
     pub fn get_rangecheck4_multipliticies(&self, domain: EvaluationDomains<F>) -> Vec<F> {
         let mut m = Vec::with_capacity(domain.d1.size as usize);
         m.extend(self.lookup_multiplicities[&LookupTable::RangeCheck4].to_vec());
-        let repeated_dummy_value: Vec<F> = iter::repeat(-F::zero())
-            .take((domain.d1.size - (1 << 4)) as usize)
+        let n_repeated_dummy_value = domain.d1.size - (1 << 4) - 1;
+        let repeated_dummy_value: Vec<F> = iter::repeat(-F::one())
+            .take(n_repeated_dummy_value as usize)
             .collect();
         m.extend(repeated_dummy_value);
+        m.push(F::from(n_repeated_dummy_value));
         assert_eq!(m.len(), domain.d1.size as usize);
         m
     }
