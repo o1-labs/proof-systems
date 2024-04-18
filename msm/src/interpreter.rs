@@ -294,7 +294,8 @@ pub trait ColAccessCap<CIx: ColIndexer, F: PrimeField> {
     fn constant(&self, value: F) -> Self::Variable;
 }
 
-/// Same as `ColAcessT` but also writing constraints.
+/// Environment capability similar to `ColAcessT` but for /also
+/// writing/ columns. Used on the witness side.
 pub trait ColWriteCap<CIx: ColIndexer, F: PrimeField>
 where
     Self: ColAccessCap<CIx, F>,
@@ -302,27 +303,16 @@ where
     fn write_column(&mut self, ix: CIx, value: Self::Variable);
 }
 
-/// Capability for invoking fixed table lookups (range checks).
-pub trait FixedLookupCap<CIx: ColIndexer, F: PrimeField, LT: LookupTableID>
-where
-    Self: ColAccessCap<CIx, F>,
-{
-    fn lookup_fixed(&mut self, lookup_id: LT, value: Self::Variable);
-}
-
-pub struct SubEnv<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L> {
+// Generic sub-environment struct. To avoid copy-paste.
+struct SubEnv<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L> {
     env: &'a mut Env1,
     lens: L,
     phantom: core::marker::PhantomData<(F, CIx1)>,
 }
 
-/// These two wrappers are needed because rust trait system is not smart enough.
+/// Sub environment with a lens that is mapping lookup tables.
+/// Can't use `SubEnv` directly because rust is not idris.
 pub struct SubEnvCol<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>(
-    SubEnv<'a, F, CIx1, Env1, L>,
-);
-
-/// These two wrappers are needed because rust trait system is not smart enough.
-pub struct SubEnvLT<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>(
     SubEnv<'a, F, CIx1, Env1, L>,
 );
 
@@ -343,14 +333,6 @@ impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>
 {
     pub fn new(env: &'a mut Env1, lens: L) -> Self {
         SubEnvCol(SubEnv::new(env, lens))
-    }
-}
-
-impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>
-    SubEnvLT<'a, F, CIx1, Env1, L>
-{
-    pub fn new(env: &'a mut Env1, lens: L) -> Self {
-        SubEnvLT(SubEnv::new(env, lens))
     }
 }
 
@@ -430,6 +412,94 @@ impl<
     }
 }
 
+////////////////////////////////////////////////////////////////////////////
+// Demo #1: Circuit-building functions
+////////////////////////////////////////////////////////////////////////////
+
+pub fn constrain_foo<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: ColAccessCap<FooColIndexer, F>,
+{
+    let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
+    a_var
+}
+
+pub fn constrain_foo_w<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: ColWriteCap<FooColIndexer, F>,
+{
+    let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
+    Env::write_column(env, FooColIndexer::Foo1(1), a_var.clone());
+    a_var
+}
+
+pub fn constrain_bla<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: ColAccessCap<BlaColIndexer, F>,
+{
+    let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
+    constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    constrain_foo(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
+    // This cannot compile since we're calling writer sub-env from a reader-only env
+    // constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
+    a_var
+}
+
+pub fn constrain_bla_w<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: ColWriteCap<BlaColIndexer, F>,
+{
+    let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
+    constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
+    a_var
+}
+
+pub fn constrain_kek<F, Env>(env: &mut Env) -> Env::Variable
+where
+    F: PrimeField,
+    Env: ColAccessCap<KekColIndexer, F>,
+{
+    let a_var: Env::Variable = Env::read_column(env, KekColIndexer::Kek1(0));
+    constrain_bla(&mut SubEnvCol::new(env, KekBla1Lens {}));
+    constrain_foo(&mut SubEnvCol::new(
+        env,
+        compose(KekBla1Lens {}, BlaFoo1Lens {}),
+    ));
+    constrain_foo(&mut SubEnvCol::new(env, KekFooComplexLens {}));
+
+    a_var
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Adding third capability: Lookup Tables
+////////////////////////////////////////////////////////////////////////////
+
+/// Capability for invoking fixed table lookups (range checks).
+pub trait FixedLookupCap<CIx: ColIndexer, F: PrimeField, LT: LookupTableID>
+where
+    Self: ColAccessCap<CIx, F>,
+{
+    fn lookup_fixed(&mut self, lookup_id: LT, value: Self::Variable);
+}
+
+/// Sub environment with a lens that is mapping lookup tables.
+pub struct SubEnvLT<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>(
+    SubEnv<'a, F, CIx1, Env1, L>,
+);
+
+impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L>
+    SubEnvLT<'a, F, CIx1, Env1, L>
+{
+    pub fn new(env: &'a mut Env1, lens: L) -> Self {
+        SubEnvLT(SubEnv::new(env, lens))
+    }
+}
+
 impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColAccessCap<CIx1, F>, L> ColAccessCap<CIx1, F>
     for SubEnvLT<'a, F, CIx1, Env1, L>
 {
@@ -459,21 +529,6 @@ impl<'a, F: PrimeField, CIx1: ColIndexer, Env1: ColWriteCap<CIx1, F>, L> ColWrit
 impl<
         'a,
         F: PrimeField,
-        CIx1: ColIndexer,
-        CIx2: ColIndexer,
-        LT: LookupTableID,
-        Env1: FixedLookupCap<CIx1, F, LT>,
-        L: MPrism<Source = CIx1, Target = CIx2>,
-    > FixedLookupCap<CIx2, F, LT> for SubEnvCol<'a, F, CIx1, Env1, L>
-{
-    fn lookup_fixed(&mut self, lookup_id: LT, value: Self::Variable) {
-        self.0.env.lookup_fixed(lookup_id, value)
-    }
-}
-
-impl<
-        'a,
-        F: PrimeField,
         CIx: ColIndexer,
         LT1: LookupTableID,
         LT2: LookupTableID,
@@ -488,71 +543,48 @@ impl<
     }
 }
 
-////////////////////////////////////////////////////////////////////////////
-// Functions using interpreter env
-////////////////////////////////////////////////////////////////////////////
-
-pub fn constrain_foo<F, Env>(env: &mut Env) -> Env::Variable
-where
-    F: PrimeField,
-    Env: ColAccessCap<FooColIndexer, F>,
+impl<
+        'a,
+        F: PrimeField,
+        CIx1: ColIndexer,
+        CIx2: ColIndexer,
+        LT: LookupTableID,
+        Env1: FixedLookupCap<CIx1, F, LT>,
+        L: MPrism<Source = CIx1, Target = CIx2>,
+    > FixedLookupCap<CIx2, F, LT> for SubEnvCol<'a, F, CIx1, Env1, L>
 {
-    let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
-    a_var
+    fn lookup_fixed(&mut self, lookup_id: LT, value: Self::Variable) {
+        self.0.env.lookup_fixed(lookup_id, value)
+    }
 }
 
-pub fn constrain_foo_w<F, Env>(env: &mut Env) -> Env::Variable
-where
-    F: PrimeField,
-    Env: ColWriteCap<FooColIndexer, F>,
-{
-    let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
-    Env::write_column(env, FooColIndexer::Foo1(1), a_var.clone());
-    a_var
-}
+////////////////////////////////////////////////////////////////////////////
+// Demo #2: Testing with lookups
+////////////////////////////////////////////////////////////////////////////
 
+// Performing a lookup over Foo table
 pub fn constrain_foo_lookup<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
     Env: FixedLookupCap<FooColIndexer, F, FooLookupTable>,
 {
     let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
+    // Lookup from Foo
     env.lookup_fixed(FooLookupTable::RangeCheckFoo1, a_var.clone());
     a_var
 }
 
-pub fn constrain_foo_lookup2<F, Env>(env: &mut Env) -> Env::Variable
+// Performing a lookup over Bar (!!!) table
+pub fn constrain_foo_lookup_bar<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
     Env: FixedLookupCap<FooColIndexer, F, BlaLookupTable>,
 {
     let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
+    // Lookup from Bla
     env.lookup_fixed(BlaLookupTable::RangeCheckBla1, a_var.clone());
+    // Switching lookup layout but not column layout
     constrain_foo_lookup(&mut SubEnvLT::new(env, BlaFoo1LTLens {}));
-    a_var
-}
-
-pub fn constrain_bla<F, Env>(env: &mut Env) -> Env::Variable
-where
-    F: PrimeField,
-    Env: ColAccessCap<BlaColIndexer, F>,
-{
-    let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
-    constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
-    constrain_foo(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
-    // This cannot compile since we're calling writer sub-env from a reader-only env
-    // constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
-    a_var
-}
-
-pub fn constrain_bla_w<F, Env>(env: &mut Env) -> Env::Variable
-where
-    F: PrimeField,
-    Env: ColWriteCap<BlaColIndexer, F>,
-{
-    let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
-    constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
-    constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
     a_var
 }
 
@@ -562,29 +594,16 @@ where
     Env: FixedLookupCap<BlaColIndexer, F, BlaLookupTable>,
 {
     let a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
+    // Switching column layout only
     constrain_foo(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
-    constrain_foo_lookup2(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    // Switching column layout only
+    constrain_foo_lookup_bar(&mut SubEnvCol::new(env, BlaFoo1Lens {}));
+    // Switching column AND lookup table layout
     constrain_foo_lookup(&mut SubEnvCol::new(
         &mut SubEnvLT::new(env, BlaFoo1LTLens {}),
         BlaFoo1Lens {},
     ));
     // This cannot compile since we're calling writer sub-env from a reader-only env
     // constrain_foo_w(&mut SubEnvCol::new(env, BlaFoo2Lens {}));
-    a_var
-}
-
-pub fn constrain_kek<F, Env>(env: &mut Env) -> Env::Variable
-where
-    F: PrimeField,
-    Env: ColAccessCap<KekColIndexer, F>,
-{
-    let a_var: Env::Variable = Env::read_column(env, KekColIndexer::Kek1(0));
-    constrain_bla(&mut SubEnvCol::new(env, KekBla1Lens {}));
-    constrain_foo(&mut SubEnvCol::new(
-        env,
-        compose(KekBla1Lens {}, BlaFoo1Lens {}),
-    ));
-    constrain_foo(&mut SubEnvCol::new(env, KekFooComplexLens {}));
-
     a_var
 }
