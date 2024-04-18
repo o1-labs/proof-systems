@@ -15,27 +15,25 @@ use crate::{
 use kimchi::circuits::domains::EvaluationDomains;
 use std::{collections::BTreeMap, iter};
 
-// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
 // TODO `WitnessEnv`
 /// Environment for the serializer interpreter
-pub struct Env<Fp> {
+pub struct Env<F> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    pub witness: Witness<SER_N_COLUMNS, Fp>,
+    pub witness: Witness<SER_N_COLUMNS, F>,
 
     /// Keep track of the RangeCheck4 table multiplicities.
     /// The value `0` is used as a (repeated) dummy value.
     // Boxing to avoid stack overflow
-    pub lookup_t_multiplicities_rangecheck4: Box<[Fp; 1 << 4]>,
+    pub lookup_t_multiplicities_rangecheck4: Box<[F; 1 << 4]>,
 
     /// Keep track of the lookup multiplicities.
-    pub lookup_multiplicities: BTreeMap<LookupTable, Vec<Fp>>,
+    pub lookup_multiplicities: BTreeMap<LookupTable, Vec<F>>,
 
     /// Keep track of the lookups for each row.
-    pub lookups: BTreeMap<LookupTable, Vec<Lookup<Fp>>>,
+    pub lookups: BTreeMap<LookupTable, Vec<Lookup<F>>>,
 }
 
-// TODO The parameter `Fp` clashes with the `Fp` type alias in the lib. Rename this into `F.`
 impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
@@ -144,8 +142,8 @@ impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     }
 }
 
-impl<Fp: PrimeField> Env<Fp> {
-    pub fn write_column(&mut self, position: Column, value: Fp) {
+impl<F: PrimeField> Env<F> {
+    pub fn write_column(&mut self, position: Column, value: F) {
         match position {
             Column::X(i) => self.witness.cols[i] = value,
             Column::LookupPartialSum(_) => {
@@ -180,39 +178,39 @@ impl<Fp: PrimeField> Env<Fp> {
         *self.lookups.get_mut(&LookupTable::RangeCheck15).unwrap() = Vec::new();
     }
 
-    pub fn get_rangecheck4_multipliticies(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
+    pub fn get_rangecheck4_multipliticies(&self, domain: EvaluationDomains<F>) -> Vec<F> {
         let mut m = Vec::with_capacity(domain.d1.size as usize);
         m.extend(self.lookup_multiplicities[&LookupTable::RangeCheck4].to_vec());
-        let repeated_dummy_value: Vec<Fp> = iter::repeat(-Fp::zero())
+        let repeated_dummy_value: Vec<F> = iter::repeat(-F::zero())
             .take((domain.d1.size - (1 << 4)) as usize)
             .collect();
         m.extend(repeated_dummy_value);
         assert_eq!(m.len(), domain.d1.size as usize);
         m
     }
-    pub fn get_rangecheck15_multipliticies(&self, domain: EvaluationDomains<Fp>) -> Vec<Fp> {
+    pub fn get_rangecheck15_multipliticies(&self, domain: EvaluationDomains<F>) -> Vec<F> {
         assert_eq!(domain.d1.size, 1 << 15);
         self.lookup_multiplicities[&LookupTable::RangeCheck15].to_vec()
     }
 }
 
-impl<Fp: PrimeField> Env<Fp> {
+impl<F: PrimeField> Env<F> {
     pub fn create() -> Self {
         let mut lookups = BTreeMap::new();
         lookups.insert(LookupTable::RangeCheck4, Vec::new());
         lookups.insert(LookupTable::RangeCheck15, Vec::new());
 
         let mut lookup_multiplicities = BTreeMap::new();
-        lookup_multiplicities.insert(LookupTable::RangeCheck4, vec![Fp::zero(); 1 << 4]);
-        lookup_multiplicities.insert(LookupTable::RangeCheck15, vec![Fp::zero(); 1 << 15]);
+        lookup_multiplicities.insert(LookupTable::RangeCheck4, vec![F::zero(); 1 << 4]);
+        lookup_multiplicities.insert(LookupTable::RangeCheck15, vec![F::zero(); 1 << 15]);
 
         Self {
             witness: Witness {
-                cols: Box::new([Fp::zero(); SER_N_COLUMNS]),
+                cols: Box::new([F::zero(); SER_N_COLUMNS]),
             },
 
             lookup_multiplicities,
-            lookup_t_multiplicities_rangecheck4: Box::new([Fp::zero(); 1 << 4]),
+            lookup_t_multiplicities_rangecheck4: Box::new([F::zero(); 1 << 4]),
             lookups,
         }
     }

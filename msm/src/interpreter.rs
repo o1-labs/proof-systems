@@ -1,4 +1,4 @@
-use crate::mvlookup::LookupTableID;
+use crate::logup::LookupTableID;
 use ark_ff::PrimeField;
 
 ////////////////////////////////////////////////////////////////////////////

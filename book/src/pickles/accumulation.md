@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The trick below was originally described in [Halo](https://eprint.iacr.org/2020/499.pdf),
+The trick below was originally described in [Halo](https://eprint.iacr.org/2019/1021.pdf),
 however we are going to base this post on the abstraction of "accumulation schemes" described by Bünz, Chiesa, Mishra and Spooner in [Proof-Carrying Data from Accumulation Schemes](https://eprint.iacr.org/2020/499.pdf), in particular the scheme in Appendix A. 2.
 
 Relevant resources include:

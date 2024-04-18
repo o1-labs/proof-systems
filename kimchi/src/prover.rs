@@ -870,7 +870,7 @@ where
         //~ 1. commit (hiding) to the quotient polynomial $t$
         let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
 
-        //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+        //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);
 
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.

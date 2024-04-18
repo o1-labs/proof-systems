@@ -1,13 +1,19 @@
 use crate::{
+    circuit::CircuitTrait,
     keccak::{
-        column::{Absorbs::*, Sponges::*, Steps::*, ZKVM_KECCAK_COLS},
+        circuit::KeccakCircuit,
+        column::{
+            Absorbs::*,
+            Sponges::*,
+            Steps::{self, *},
+            ZKVM_KECCAK_COLS,
+        },
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
         Constraint::*,
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    CircuitTrait,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -18,8 +24,7 @@ use kimchi_msm::test::test_completeness_generic;
 use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
-
-use super::KeccakCircuit;
+use strum::IntoEnumIterator;
 
 pub type Fp = ark_bn254::Fr;
 
@@ -509,14 +514,7 @@ fn test_keccak_prover() {
         }
         keccak_circuit.pad_witnesses();
 
-        for step in [
-            Round(0),
-            Sponge(Absorb(First)),
-            Sponge(Absorb(Middle)),
-            Sponge(Absorb(Last)),
-            Sponge(Absorb(Only)),
-            Sponge(Squeeze),
-        ] {
+        for step in Steps::iter().flat_map(|x| x.into_iter()) {
             test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
                 keccak_circuit.constraints[&step].clone(),
                 keccak_circuit.witness[&step].clone(),

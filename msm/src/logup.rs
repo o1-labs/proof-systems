@@ -1,5 +1,139 @@
-//! Implement the protocol MVLookup <https://eprint.iacr.org/2022/1530.pdf>
-
+//! Implement a variant of the logarithmic derivative lookups based on the
+//! equations described in the paper ["Multivariate lookups based on logarithmic
+//! derivatives"](https://eprint.iacr.org/2022/1530.pdf).
+//!
+//! The variant is mostly based on the observation that the polynomial
+//! identities can be verified using the "Idealised low-degree protocols"
+//! described in the section 4 of the
+//! ["PlonK"](https://eprint.iacr.org/2019/953.pdf) paper and "the quotient
+//! polynomial" described in the round 3 of the PlonK protocol, instead of using
+//! the sumcheck protocol.
+//!
+//! The protocol is based on the following observations:
+//!
+//! The sequence (a_i) is included in (b_i) if and only if the following
+//! equation holds:
+//! ```text
+//!   k       1        l      m_i
+//!   ∑    -------  =  ∑    -------                          (1)
+//!  i=1   β + a_i    i=1   β + b_i
+//! ```
+//! where m_i is the number of times a_i appears in the sequence b_i.
+//!
+//! The sequence (b_i) will refer to the table values and the sequence (a_i) the
+//! values the prover looks up.
+//!
+//! For readability, the table values are represented as the evaluations over a
+//! subgroup H of the field F of a
+//! polynomial t(X), and the looked-up values by the evaluations of a polynomial
+//! f(X). If we suppose the subgroup H is defined as {1, ω, ω^2, ..., ω^{n-1}},
+//! the equation (1) becomes:
+//!
+//! ```text
+//!   n        1          n      m(ω^i)
+//!   ∑    ----------  =  ∑    ----------                    (2)
+//!  i=1   β + f(ω^i)    i=1   β + t(ω^i)
+//! ```
+//!
+//! In the codebase, the multiplicities m_i are called the "lookup counters".
+//!
+//! The protocol can be generalized to multiple "looked-up" polynomials f_1,
+//! ..., f_k (embedded in the structure `LogupWitness` in the codebase) and the
+//! equation (2) becomes:
+//!
+//! ```text
+//!   n    k           1          n       m(ω^i)
+//!   ∑    ∑     ------------  =  ∑    -----------           (3)
+//!  i=1  j=1    β + f_j(ω^i)    i=1    β + t(ω^i)
+//! ```
+//!
+//! which can be rewritten as:
+//! ```text
+//!   n  (  k         1             m(ω^i)    )
+//!   ∑  (  ∑   ------------   - -----------  )  = 0         (4)
+//!  i=1 ( j=1  β + f_j(ω^i)      β + t(ω^i)  )
+//!      \                                   /
+//!       -----------------------------------
+//!                "inner sums", h(ω^i)
+//! ```
+//!
+//! The equation says that if we sum/accumulate the "inner sums" (called the
+//! "lookup terms" in the codebase) over the
+//! subgroup H, we will get a zero value. Note the analogy with the
+//! "multiplicative" accumulator used in the lookup argument called
+//! ["Plookup"](https://eprint.iacr.org/2020/315.pdf).
+//!
+//! We will define an accumulator ϕ : H -> F (called the "lookup aggregation" in
+//! the codebase) which will contain the "running
+//! inner sums" which will be equal to zero to start, and when we finished
+//! accumulating, it must equal zero. Note that the initial and final values can
+//! be anything. The idea of the equation 4 is that all the values have been
+//! read and written to the accumulator the right number of times, with respect
+//! to the multiplicities m.
+//! More precisely, we will have:
+//! ```text
+//! - φ(1) = 0
+//!                                           h(ω^j)
+//!                            /----------------------------------\
+//!                           (  k         1             m(ω^j)    )
+//! - φ(ω^{j + 1}) = φ(ω^j) + (  ∑   ------------   - -----------  )
+//!                           ( i=1  β + f_i(ω^j)      β + t(ω^j)  )
+//!
+//! - φ(ω^n) = φ(1) = 0
+//! ```
+//!
+//! We will split the inner sums into chunks of size (MAX_SUPPORTED_DEGREE - 2)
+//! to avoid having a too large degree for the quotient polynomial.
+//! As a reminder, the paper ["Multivariate lookups based on logarithmic
+//! derivatives"](https://eprint.iacr.org/2022/1530.pdf) uses the sumcheck
+//! protocol to compute the partial sums (equations 16 and 17). However, we use
+//! the PlonK polynomial IOP and therefore, we will use the quotient polynomial,
+//! and the computation of the partial sums will be translated into a constraint
+//! in a new power of alpha.
+//!
+//! Note that the inner sum h(X) can be constrainted as followed:
+//! ```text
+//!         k                   k  /          k                 \
+//! h(X) *  ᴨ  (β + f_{i}(X)) = ∑  | m_{i} *  ᴨ  (β + f_{j}(X)) |     (5)
+//!        i=1                 i=1 |         j=1                |
+//!                                \         j≠i                /
+//! ```
+//! More than one "inner sum" can be created in the case that `k + 2` is higher
+//! than the maximum degree supported.
+//! The quotient polynomial, defined at round 3 of the [PlonK
+//! protocol](https://eprint.iacr.org/2019/953.pdf), will be something like:
+//!
+//! ```text
+//!         ... + α^i [φ(ω X) - φ(X) - h(X)] + α^(i + 1) (5) + ...
+//!  t(X) = ------------------------------------------------------
+//!                              Z_H(X)
+//! ```
+//!
+//! `k` can then be seen as the number of lookups we can make per row. The
+//! additional cost when we reach the maximum degree supported is to add a new
+//! constraint and add a new column.
+//! For rows with less than `k` lookups, the prover will add a dummy value,
+//! which will be a value known to be in the table, and the multiplicity must be
+//! increased appropriately.
+//!
+//! To handle more than one table, we will use a table ID and transform the
+//! single value lookup into a vector lookup, using a random combiner.
+//! The protocol can also handle vector lookups, by using the random combiner.
+//! The looked-up values therefore become functions f_j: H x H x ... x H -> F
+//! and is transformed into a f'_j: H -> F using a random combiner `r`.
+//!
+//! To summarize, the prover will:
+//! - commit to the multiplicities m.
+//! - commit to individual looked-up values f (which include the table t) which
+//! should be already included in the PlonK protocol as columns.
+//! - coin an evaluation point β.
+//! - coin a random combiner j (used to aggregate the table ID and concatenate
+//! vector lookups, if any).
+//! - commit to the inner sums/lookup terms h.
+//! - commit to the running sum φ.
+//! - add constraints to the quotient polynomial.
+//! - evaluate all polynomials at the evaluation points ζ and ζω (because we
+//! access the "next" row for the accumulator in the quotient polynomial).
 use ark_ff::{Field, PrimeField, Zero};
 use std::{collections::BTreeMap, hash::Hash};
 
@@ -14,24 +148,24 @@ use crate::{
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
 /// The structure represents the individual fraction of the sum described in the
-/// MVLookup protocol (for instance Eq. 8).
+/// Logup protocol (for instance Eq. 8).
 /// The table ID is added to the random linear combination formed with the
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
 #[derive(Debug, Clone)]
-pub struct MVLookup<F, ID: LookupTableID> {
+pub struct Logup<F, ID: LookupTableID> {
     pub(crate) table_id: ID,
     pub(crate) numerator: F,
     pub(crate) value: Vec<F>,
 }
 
-/// Basic trait for MVLookups
-impl<F, ID> MVLookup<F, ID>
+/// Basic trait for logarithmic lookups.
+impl<F, ID> Logup<F, ID>
 where
     F: Clone,
     ID: LookupTableID,
 {
-    /// Creates a new MVLookup
+    /// Creates a new Logup
     pub fn new(table_id: ID, numerator: F, value: &[F]) -> Self {
         Self {
             table_id,
@@ -84,7 +218,7 @@ pub struct LookupTable<F, ID: LookupTableID> {
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug, Clone)]
-pub struct MVLookupWitness<F, ID: LookupTableID> {
+pub struct LogupWitness<F, ID: LookupTableID> {
     /// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
@@ -99,7 +233,7 @@ pub struct MVLookupWitness<F, ID: LookupTableID> {
     /// change this structure.
     /// TODO: for efficiency, we might want to have a single flat fixed-size
     /// array
-    pub(crate) f: Vec<Vec<MVLookup<F, ID>>>,
+    pub(crate) f: Vec<Vec<Logup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
 }
@@ -182,7 +316,7 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 /// ```
 pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
     column: Column,
-    lookups: Vec<MVLookup<E<F>, ID>>,
+    lookups: Vec<Logup<E<F>, ID>>,
 ) -> E<F> {
     let joint_combiner = {
         let joint_combiner = ConstantExpr::from(ChallengeTerm::JointCombiner);
@@ -242,12 +376,12 @@ pub fn combine_lookups<F: PrimeField, ID: LookupTableID>(
 /// Build the constraints for the lookup protocol.
 /// The constraints are the partial sum and the aggregation of the partial sums.
 pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
-    lookups_map: &BTreeMap<ID, Vec<MVLookup<E<F>, ID>>>,
+    lookups_map: &BTreeMap<ID, Vec<Logup<E<F>, ID>>>,
 ) -> Vec<E<F>> {
     let mut constraints: Vec<E<F>> = vec![];
     let mut idx_partial_sum = 0;
     lookups_map.iter().for_each(|(id, lookups)| {
-        let table_lookup = MVLookup {
+        let table_lookup = Logup {
             table_id: *id,
             numerator: curr_cell(Column::LookupMultiplicity(id.to_u32())),
             value: vec![curr_cell(Column::LookupFixedTable(id.to_u32()))],
@@ -280,7 +414,7 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
 
 pub mod prover {
     use crate::{
-        mvlookup::{LookupTableID, MVLookup, MVLookupWitness},
+        logup::{Logup, LogupWitness, LookupTableID},
         MAX_SUPPORTED_DEGREE,
     };
     use ark_ff::{FftField, Zero};
@@ -294,21 +428,35 @@ pub mod prover {
     use rayon::iter::{IntoParallelIterator, ParallelIterator};
     use std::collections::BTreeMap;
 
+    /// The structure used by the prover the compute the quotient polynomial.
+    /// The structure contains the evaluations of the inner sums, the
+    /// multiplicities, the aggregation and the fixed tables, over the domain d8.
     pub struct QuotientPolynomialEnvironment<'a, F: FftField, ID: LookupTableID> {
+        /// The evaluations of the partial sums, over d8.
         pub lookup_terms_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
+        /// The evaluations of the aggregation, over d8.
         pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
+        /// The evaluations of the multiplicities, over d8, indexed by the table ID.
         pub lookup_counters_evals_d8: &'a BTreeMap<ID, Evaluations<F, D<F>>>,
+        /// The evaluations of the fixed tables, over d8, indexed by the table ID.
         pub fixed_tables_evals_d8: &'a BTreeMap<ID, Evaluations<F, D<F>>>,
     }
 
+    /// Represents the environment for the logup argument.
     pub struct Env<G: KimchiCurve, ID: LookupTableID> {
+        /// The polynomial of the multiplicities, indexed by the table ID.
         pub lookup_counters_poly_d1: BTreeMap<ID, DensePolynomial<G::ScalarField>>,
+        /// The commitments to the multiplicities, indexed by the table ID.
         pub lookup_counters_comm_d1: BTreeMap<ID, PolyComm<G>>,
 
+        /// The polynomials of the inner sums.
         pub lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
+        /// The commitments of the inner sums.
         pub lookup_terms_comms_d1: Vec<PolyComm<G>>,
 
+        /// The aggregation polynomial.
         pub lookup_aggregation_poly_d1: DensePolynomial<G::ScalarField>,
+        /// The commitment to the aggregation polynomial.
         pub lookup_aggregation_comm_d1: PolyComm<G>,
 
         // Evaluating over d8 for the quotient polynomial
@@ -329,7 +477,7 @@ pub mod prover {
     }
 
     impl<G: KimchiCurve, ID: LookupTableID> Env<G, ID> {
-        /// Create an environment for the prover to create a proof for the MVLookup protocol.
+        /// Create an environment for the prover to create a proof for the Logup protocol.
         /// The protocol does suppose that the individual lookup terms are
         /// committed as part of the columns.
         /// Therefore, the protocol only focus on commiting to the "grand
@@ -338,7 +486,7 @@ pub mod prover {
             OpeningProof: OpenProof<G>,
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
         >(
-            lookups: Vec<MVLookupWitness<G::ScalarField, ID>>,
+            lookups: Vec<LogupWitness<G::ScalarField, ID>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -416,7 +564,7 @@ pub mod prover {
             let lookup_terms_evals: Vec<Vec<Vec<G::ScalarField>>> = lookups
                 .into_iter()
                 .map(|lookup| {
-                    let MVLookupWitness { f, m: _ } = lookup;
+                    let LogupWitness { f, m: _ } = lookup;
                     // The number of functions to look up, including the fixed table.
                     let n = f.len();
                     let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
@@ -437,7 +585,7 @@ pub mod prover {
                     for j in 0..domain.d1.size {
                         // Iterate over individual columns (i.e. f_i and t)
                         for (i, f_i) in f.iter().enumerate() {
-                            let MVLookup {
+                            let Logup {
                                 numerator: _,
                                 table_id,
                                 value,
@@ -476,7 +624,7 @@ pub mod prover {
                         let mut partial_sum_idx = 0;
                         let mut row_acc = G::ScalarField::zero();
                         for f_i in f.iter() {
-                            let MVLookup {
+                            let Logup {
                                 numerator,
                                 table_id: _,
                                 value: _,

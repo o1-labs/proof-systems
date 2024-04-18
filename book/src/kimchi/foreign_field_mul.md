@@ -457,7 +457,7 @@ All that remains is to range check $v_0$ and $v_1$
 
 When unconstrained, computing $u_0 = p_0 + 2^{\ell} \cdot p_{10} - (r_0 + 2^{\ell} \cdot r_1)$ could require borrowing.  Fortunately, we have the constraint that the $2\ell$ least significant bits of $u_0$ are `0` (i.e. $u_0 = 2^{2\ell} \cdot v_0$), which means borrowing cannot happen.
 
-Borrowing is prevented because when the the $2\ell$ least significant bits of the result are `0` it is not possible for the minuend to be less than the subtrahend.  We can prove this by contradiction.
+Borrowing is prevented because when the $2\ell$ least significant bits of the result are `0` it is not possible for the minuend to be less than the subtrahend.  We can prove this by contradiction.
 
 Let
 
@@ -553,7 +553,7 @@ This requires a single constraint of the form
 
 > 9. $a_n \cdot b_n - q_n \cdot f_n = r_n$
 
-with all of the terms expanded into the limbs according the the above equations.  The values $a_n, b_n, q_n, f_n$ and $r_n$ do not need to be in the witness.
+with all of the terms expanded into the limbs according the above equations.  The values $a_n, b_n, q_n, f_n$ and $r_n$ do not need to be in the witness.
 
 ## Range check both sides of $a \cdot b = q \cdot f + r$
 
@@ -1009,7 +1009,7 @@ We have proven that $q'_{carry2}$ is always zero, so that allows use to simplify
 
 In other words, we have eliminated constraint (7) and removed $q'_{carry2}$ from the witness.
 
-Since we already needed to range-check $q$ or $q'$, the total number of new constraints added is 4: 3 added to to `ForeignFieldMul` and 1 added to `multi-range-check` gadget for constraining the decomposition of $q'_{01}$.
+Since we already needed to range-check $q$ or $q'$, the total number of new constraints added is 4: 3 added to `ForeignFieldMul` and 1 added to `multi-range-check` gadget for constraining the decomposition of $q'_{01}$.
 
 This saves 2 rows per multiplication.
 

@@ -18,6 +18,8 @@ use kimchi_msm::{
     witness::Witness,
 };
 use std::ops::{Index, IndexMut};
+use strum::{EnumCount, IntoEnumIterator};
+use strum_macros::{EnumCount, EnumIter};
 
 /// The maximum total number of witness columns used by the Keccak circuit.
 /// Note that in round steps, the columns used to store padding information are not needed.
@@ -107,28 +109,49 @@ pub enum ColumnAlias {
 /// Variants of Keccak steps available for the interpreter.
 /// These selectors determine the specific behaviour so that Keccak steps
 /// can be split into different instances for folding
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount)]
 pub enum Steps {
-    /// Current step is a sponge
-    Sponge(Sponges),
     /// Current step performs a round of the permutation.
     /// The round number stored in the Step is only used for the environment execution.
     Round(u64),
+    /// Current step is a sponge
+    Sponge(Sponges),
 }
 /// Variants of Keccak sponges
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount, Default)]
 pub enum Sponges {
     Absorb(Absorbs),
+    #[default]
     Squeeze,
 }
 
 /// Order of absorb steps in the computation depending on the number of blocks to absorb
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount, Default)]
 pub enum Absorbs {
     First,  // Also known as the root absorb
     Middle, // Any other absorb
     Last,   // Also known as the padding absorb
-    Only,   // Only one block to absorb (preimage data is less than 136 bytes), both root and pad
+    #[default]
+    Only, // Only one block to absorb (preimage data is less than 136 bytes), both root and pad
+}
+
+impl IntoIterator for Steps {
+    type Item = Steps;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    /// Iterate over the instruction variants
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Steps::Round(_) => vec![Steps::Round(0)].into_iter(),
+            Steps::Sponge(_) => {
+                let mut iter_contents = Vec::with_capacity(Absorbs::COUNT + 1);
+                iter_contents
+                    .extend(Absorbs::iter().map(|absorb| Steps::Sponge(Sponges::Absorb(absorb))));
+                iter_contents.push(Steps::Sponge(Sponges::Squeeze));
+                iter_contents.into_iter()
+            }
+        }
+    }
 }
 
 /// The columns used by the Keccak circuit.

@@ -1,16 +1,18 @@
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::{
-    mips::interpreter::{ITypeInstruction, JTypeInstruction, RTypeInstruction},
-    CircuitTrait,
+    circuit::CircuitTrait,
+    mips::{
+        circuit::MIPSCircuit,
+        constraints::Env,
+        interpreter::{
+            ITypeInstruction::{self, *},
+            Instruction::{self, *},
+            JTypeInstruction::{self, *},
+            RTypeInstruction::{self, *},
+        },
+    },
 };
-
-use super::{
-    constraints::Env,
-    interpreter::{ITypeInstruction::*, JTypeInstruction::*, RTypeInstruction::*},
-    MIPSCircuit,
-};
-use crate::mips::Instruction::{self, *};
 
 type Fp = ark_bn254::Fr;
 

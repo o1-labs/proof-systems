@@ -6,6 +6,8 @@ use crate::{
             Sponges::*,
             Steps::{self, *},
         },
+        helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
+        interpreter::{Interpreter, KeccakInterpreter},
         Constraint, KeccakColumn, Selector,
     },
     lookups::Lookup,
@@ -20,8 +22,6 @@ use kimchi::{
     o1_utils::Two,
 };
 use kimchi_msm::columns::ColumnIndexer;
-
-use super::interpreter::KeccakInterpreter;
 
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
@@ -44,12 +44,18 @@ impl<F: Field> Default for Env<F> {
     }
 }
 
-impl<F: Field> KeccakInterpreter<F> for Env<F> {
-    type Variable = E<F>;
+impl<F: Field> ArithHelpers<F> for Env<F> {
+    fn two_pow(x: u64) -> Self::Variable {
+        Self::constant_field(F::two_pow(x))
+    }
+}
 
-    ///////////////////////////
-    // ARITHMETIC OPERATIONS //
-    ///////////////////////////
+impl<F: Field> BoolHelpers<F> for Env<F> {}
+
+impl<F: Field> LogupHelpers<F> for Env<F> {}
+
+impl<F: Field> Interpreter<F> for Env<F> {
+    type Variable = E<F>;
 
     fn constant(x: u64) -> Self::Variable {
         Self::constant_field(F::from(x))
@@ -58,14 +64,6 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
     fn constant_field(x: F) -> Self::Variable {
         Self::Variable::constant(Operations::from(Literal(x)))
     }
-
-    fn two_pow(x: u64) -> Self::Variable {
-        Self::constant_field(F::two_pow(x))
-    }
-
-    ////////////////////////////
-    // CONSTRAINTS OPERATIONS //
-    ////////////////////////////
 
     fn variable(&self, column: KeccakColumn) -> Self::Variable {
         // Despite `KeccakWitness` containing both `curr` and `next` fields,
@@ -76,7 +74,21 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         }))
     }
 
-    fn check(&mut self, _tag: Selector, _x: Self::Variable) {
+    fn constrain(&mut self, _tag: Constraint, if_true: Self::Variable, x: Self::Variable) {
+        if if_true == Self::Variable::one() {
+            self.constraints.push(x);
+        }
+    }
+
+    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>) {
+        if if_true == Self::Variable::one() {
+            self.lookups.push(lookup);
+        }
+    }
+}
+
+impl<F: Field> KeccakInterpreter<F> for Env<F> {
+    fn check(&mut self, _tag: Selector, _x: <Env<F> as Interpreter<F>>::Variable) {
         // No-op in constraint side
     }
 
@@ -84,57 +96,37 @@ impl<F: Field> KeccakInterpreter<F> for Env<F> {
         // No-op in constraint side
     }
 
-    fn constrain(&mut self, _tag: Constraint, if_true: Self::Variable, x: Self::Variable) {
-        if if_true == Self::Variable::one() {
-            self.constraints.push(x);
-        }
-    }
-
-    ////////////////////////
-    // LOOKUPS OPERATIONS //
-    ////////////////////////
-
-    fn add_lookup(&mut self, if_true: Self::Variable, lookup: Lookup<Self::Variable>) {
-        if if_true == Self::Variable::one() {
-            self.lookups.push(lookup);
-        }
-    }
-
-    /////////////////////////
-    // SELECTOR OPERATIONS //
-    /////////////////////////
-
-    fn mode_absorb(&self) -> Self::Variable {
+    fn mode_absorb(&self) -> <Env<F> as Interpreter<F>>::Variable {
         match self.step {
             Some(Sponge(Absorb(Middle))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-    fn mode_squeeze(&self) -> Self::Variable {
+    fn mode_squeeze(&self) -> <Env<F> as Interpreter<F>>::Variable {
         match self.step {
             Some(Sponge(Squeeze)) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-    fn mode_root(&self) -> Self::Variable {
+    fn mode_root(&self) -> <Env<F> as Interpreter<F>>::Variable {
         match self.step {
             Some(Sponge(Absorb(First))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-    fn mode_pad(&self) -> Self::Variable {
+    fn mode_pad(&self) -> <Env<F> as Interpreter<F>>::Variable {
         match self.step {
             Some(Sponge(Absorb(Last))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-    fn mode_rootpad(&self) -> Self::Variable {
+    fn mode_rootpad(&self) -> <Env<F> as Interpreter<F>>::Variable {
         match self.step {
             Some(Sponge(Absorb(Only))) => Self::Variable::one(),
             _ => Self::Variable::zero(),
         }
     }
-    fn mode_round(&self) -> Self::Variable {
+    fn mode_round(&self) -> <Env<F> as Interpreter<F>>::Variable {
         // The actual round number in the selector carries no information for witness nor constraints
         // because in the witness, any usize is mapped to the same index inside the mode flags
         match self.step {
