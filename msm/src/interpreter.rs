@@ -209,7 +209,7 @@ impl MPrism for KekFooComplexLens {
 
 /// Attempt to define a generic interpreter.
 /// It is not used yet.
-pub trait ColumnAccessCap<CIx: ColIndexer, F: PrimeField> {
+pub trait ColAccessT<CIx: ColIndexer, F: PrimeField> {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
@@ -225,9 +225,9 @@ pub trait ColumnAccessCap<CIx: ColIndexer, F: PrimeField> {
 
 /// Attempt to define a generic interpreter.
 /// It is not used yet.
-pub trait ColumnWriteCap<CIx: ColIndexer, F: PrimeField>
+pub trait ColWriteT<CIx: ColIndexer, F: PrimeField>
 where
-    Self: ColumnAccessCap<CIx, F>,
+    Self: ColAccessT<CIx, F>,
 {
     fn write_column(&self, ix: CIx, value: Self::Variable);
 }
@@ -237,7 +237,7 @@ pub struct SubEnv<
     F: PrimeField,
     CIx1: ColIndexer,
     CIx2: ColIndexer,
-    Env1: ColumnAccessCap<CIx1, F>,
+    Env1: ColAccessT<CIx1, F>,
     L: MPrism<Source = CIx1, Target = CIx2>,
 > {
     env: &'a mut Env1,
@@ -250,7 +250,7 @@ impl<
         F: PrimeField,
         CIx1: ColIndexer,
         CIx2: ColIndexer,
-        Env1: ColumnAccessCap<CIx1, F>,
+        Env1: ColAccessT<CIx1, F>,
         L: MPrism<Source = CIx1, Target = CIx2>,
     > SubEnv<'a, F, CIx1, CIx2, Env1, L>
 {
@@ -268,9 +268,9 @@ impl<
         F: PrimeField,
         CIx1: ColIndexer,
         CIx2: ColIndexer,
-        Env1: ColumnAccessCap<CIx1, F>,
+        Env1: ColAccessT<CIx1, F>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > ColumnAccessCap<CIx2, F> for SubEnv<'a, F, CIx1, CIx2, Env1, L>
+    > ColAccessT<CIx2, F> for SubEnv<'a, F, CIx1, CIx2, Env1, L>
 {
     type Variable = Env1::Variable;
 
@@ -292,9 +292,9 @@ impl<
         F: PrimeField,
         CIx1: ColIndexer,
         CIx2: ColIndexer,
-        Env1: ColumnWriteCap<CIx1, F>,
+        Env1: ColWriteT<CIx1, F>,
         L: MPrism<Source = CIx1, Target = CIx2>,
-    > ColumnWriteCap<CIx2, F> for SubEnv<'a, F, CIx1, CIx2, Env1, L>
+    > ColWriteT<CIx2, F> for SubEnv<'a, F, CIx1, CIx2, Env1, L>
 {
     fn write_column(&self, ix: CIx2, value: Self::Variable) {
         self.env.write_column(self.lens.re_get(ix), value)
@@ -308,7 +308,7 @@ impl<
 pub fn constrain_foo<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: ColumnAccessCap<FooColIndexer, F>,
+    Env: ColAccessT<FooColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
     unimplemented!()
@@ -317,7 +317,7 @@ where
 pub fn constrain_foo_w<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: ColumnWriteCap<FooColIndexer, F>,
+    Env: ColWriteT<FooColIndexer, F>,
 {
     let a_var: Env::Variable = Env::read_column(env, FooColIndexer::Foo1(0));
     Env::write_column(env, FooColIndexer::Foo1(1), a_var);
@@ -327,7 +327,7 @@ where
 pub fn constrain_bla<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: ColumnAccessCap<BlaColIndexer, F>,
+    Env: ColAccessT<BlaColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
     constrain_foo(&mut SubEnv::new(env, BlaFoo1Lens {}));
@@ -340,7 +340,7 @@ where
 pub fn constrain_bla_w<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: ColumnWriteCap<BlaColIndexer, F>,
+    Env: ColWriteT<BlaColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, BlaColIndexer::Bla1(0));
     constrain_foo(&mut SubEnv::new(env, BlaFoo1Lens {}));
@@ -351,7 +351,7 @@ where
 pub fn constrain_kek<F, Env>(env: &mut Env) -> Env::Variable
 where
     F: PrimeField,
-    Env: ColumnAccessCap<KekColIndexer, F>,
+    Env: ColAccessT<KekColIndexer, F>,
 {
     let _a_var: Env::Variable = Env::read_column(env, KekColIndexer::Kek1(0));
     constrain_bla(&mut SubEnv::new(env, KekBla1Lens {}));
