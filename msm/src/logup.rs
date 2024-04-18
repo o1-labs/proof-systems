@@ -625,6 +625,7 @@ pub mod prover {
                         denominators.push(lookup_denominator);
                     }
                 }
+                assert!(denominators.len() == n * domain.d1.size as usize);
 
                 ark_ff::fields::batch_inversion(&mut denominators);
 
