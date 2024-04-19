@@ -69,27 +69,14 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderE
         pos.to_column()
     }
 
-    fn range_check_abs15bit(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented, it's a 16 bit lookup
-    }
-
-    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
-        self.add_lookup(
-            LookupTable::RangeCheckFfHighest(core::marker::PhantomData),
-            value,
-        );
-    }
-
-    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
-        self.add_lookup(LookupTable::RangeCheck4Abs, value);
-    }
-
-    fn range_check15(&mut self, value: &Self::Variable) {
-        self.add_lookup(LookupTable::RangeCheck15, value);
-    }
-
-    fn range_check4(&mut self, value: &Self::Variable) {
-        self.add_lookup(LookupTable::RangeCheck4, value);
+    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        let lookup = Lookup {
+            table_id,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: vec![value.clone()],
+        };
+        self.lookups.entry(table_id).or_default().push(lookup);
     }
 
     fn constant(value: F) -> Self::Variable {
@@ -119,16 +106,6 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderE
 }
 
 impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
-    fn add_lookup(&mut self, table_id: LookupTable<Ff>, value: &E<F>) {
-        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        let lookup = Lookup {
-            table_id,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: vec![value.clone()],
-        };
-        self.lookups.entry(table_id).or_default().push(lookup);
-    }
-
     pub fn get_constraints(&self) -> Vec<E<F>> {
         let mut constraints: Vec<E<F>> = vec![];
 

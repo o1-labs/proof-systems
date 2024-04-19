@@ -1,5 +1,4 @@
-use ark_ff::{FpParameters, PrimeField};
-use num_bigint::BigUint;
+use ark_ff::PrimeField;
 use o1_utils::FieldHelpers;
 use strum::IntoEnumIterator;
 
@@ -12,10 +11,9 @@ use crate::{
         lookups::{Lookup, LookupTable},
     },
     witness::Witness,
-    LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::domains::EvaluationDomains;
-use std::{collections::BTreeMap, iter, marker::PhantomData};
+use std::{collections::BTreeMap, iter};
 
 /// Environment for the serializer interpreter
 pub struct WitnessBuilderEnv<F: PrimeField, Ff: PrimeField> {
@@ -54,54 +52,14 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for WitnessBuilderEnv<
         self.witness.cols[i]
     }
 
-    fn range_check_abs15bit(&mut self, value: &Self::Variable) {
-        assert!(*value < F::from(1u64 << 15) || *value >= F::zero() - F::from(1u64 << 15));
-        // TODO implement actual lookups
-    }
-
-    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
-        assert!(*value < F::from(1u64 << 4) || *value >= F::zero() - F::from(1u64 << 4));
-        // Adding multiplicities
-        let value_ix: usize = if *value < F::from(1u64 << 4) {
-            TryFrom::try_from(value.to_biguint()).unwrap()
-        } else {
-            TryFrom::try_from((*value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
-        };
-        self.record_lookup(LookupTable::RangeCheck4Abs, value, value_ix);
-    }
-
-    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
-        let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
-        let top_modulus_f: F = F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
-        assert!(
-            *value < top_modulus_f,
-            "The value {:?} was higher than modulus {:?}",
-            (*value).to_bigint_positive(),
-            top_modulus_f.to_bigint_positive()
-        );
-
-        let value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
-        self.record_lookup(
-            LookupTable::RangeCheckFfHighest(PhantomData),
-            value,
-            value_ix,
-        );
-    }
-
-    fn range_check15(&mut self, value: &Self::Variable) {
-        let value_biguint = value.to_biguint();
-        assert!(value_biguint < BigUint::from(2u128.pow(15)));
-        // Adding multiplicities
-        let value_ix: usize = value_biguint.clone().try_into().unwrap();
-        self.record_lookup(LookupTable::RangeCheck15, value, value_ix);
-    }
-
-    fn range_check4(&mut self, value: &Self::Variable) {
-        let value_biguint = value.to_biguint();
-        assert!(value_biguint < BigUint::from(2u128.pow(4)));
-        // Adding multiplicities
-        let value_ix: usize = value_biguint.clone().try_into().unwrap();
-        self.record_lookup(LookupTable::RangeCheck4, value, value_ix);
+    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+        let value_ix = table_id.ix_by_value(*value);
+        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
+        self.lookups.get_mut(&table_id).unwrap().push(Lookup {
+            table_id,
+            numerator: F::one(),
+            value: vec![*value],
+        })
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -206,21 +164,6 @@ impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
             lookup_multiplicities,
             lookups,
         }
-    }
-
-    // Commonly used by range checking functions.
-    fn record_lookup(
-        &mut self,
-        table_id: LookupTable<Ff>,
-        value: &<Self as InterpreterEnv<F, Ff>>::Variable,
-        value_ix: usize,
-    ) {
-        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
-        self.lookups.get_mut(&table_id).unwrap().push(Lookup {
-            table_id,
-            numerator: F::one(),
-            value: vec![*value],
-        })
     }
 }
 

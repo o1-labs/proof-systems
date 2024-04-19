@@ -1,5 +1,6 @@
-use crate::{logup::LookupTableID, Logup};
-use ark_ff::PrimeField;
+use crate::{logup::LookupTableID, Logup, LIMB_BITSIZE, N_LIMBS};
+use ark_ff::{FpParameters, PrimeField};
+use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 use std::marker::PhantomData;
 use strum_macros::EnumIter;
@@ -57,7 +58,7 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
 }
 
 impl<Ff: PrimeField> LookupTable<Ff> {
-    pub fn entries_ff_highest<F: PrimeField>(domain_d1_size: u64) -> Vec<F> {
+    fn entries_ff_highest<F: PrimeField>(domain_d1_size: u64) -> Vec<F> {
         let top_modulus_f =
             F::from_biguint(&crate::serialization::interpreter::ff_modulus_highest_limb::<Ff>())
                 .unwrap();
@@ -72,6 +73,7 @@ impl<Ff: PrimeField> LookupTable<Ff> {
             .collect()
     }
 
+    /// Provides a full list of entries for the given table.
     pub fn entries<F: PrimeField>(&self, domain_d1_size: u64) -> Vec<F> {
         assert!(domain_d1_size >= (1 << 15));
         match self {
@@ -93,6 +95,39 @@ impl<Ff: PrimeField> LookupTable<Ff> {
                 })
                 .collect(),
             Self::RangeCheckFfHighest(_) => Self::entries_ff_highest::<F>(domain_d1_size),
+        }
+    }
+
+    /// Checks if a value is in a given table.
+    pub fn is_member<F: PrimeField>(&self, value: F) -> bool {
+        match self {
+            Self::RangeCheck15 => value.to_biguint() < BigUint::from(2u128.pow(15)),
+            Self::RangeCheck4 => value.to_biguint() < BigUint::from(2u128.pow(4)),
+            Self::RangeCheck4Abs => {
+                value < F::from(1u64 << 4) || value >= F::zero() - F::from(1u64 << 4)
+            }
+            Self::RangeCheckFfHighest(_) => {
+                let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+                let top_modulus_f: F =
+                    F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
+                value < top_modulus_f
+            }
+        }
+    }
+
+    /// Converts a value to its index in the fixed table.
+    pub fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
+        match self {
+            Self::RangeCheck15 => TryFrom::try_from(value.to_biguint()).unwrap(),
+            Self::RangeCheck4 => TryFrom::try_from(value.to_biguint()).unwrap(),
+            Self::RangeCheck4Abs => {
+                if value < F::from(1u64 << 4) {
+                    TryFrom::try_from(value.to_biguint()).unwrap()
+                } else {
+                    TryFrom::try_from((value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
+                }
+            }
+            Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
         }
     }
 }

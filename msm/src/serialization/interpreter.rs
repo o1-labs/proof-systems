@@ -2,9 +2,10 @@ use ark_ff::{FpParameters, PrimeField, Zero};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::{sign::Signed, Euclid};
+use std::marker::PhantomData;
 
 use crate::{
-    serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS},
+    serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
     LIMB_BITSIZE, N_LIMBS,
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
@@ -28,20 +29,8 @@ pub trait InterpreterEnv<F: PrimeField, Ff: PrimeField> {
 
     fn get_column(pos: SerializationColumn) -> Self::Position;
 
-    /// Check that the value is in the range [0, 2^15-1]
-    fn range_check15(&mut self, _value: &Self::Variable);
-
-    /// Checks input |x| ∈ [0,2^15)
-    fn range_check_abs15bit(&mut self, value: &Self::Variable);
-
-    /// Checks input |x| ∈ [0,2^4)
-    fn range_check_abs4bit(&mut self, value: &Self::Variable);
-
-    /// Checks x ∈ [0, f >> 15*16)
-    fn range_check_ff_highest(&mut self, value: &Self::Variable);
-
-    /// Check that the value is in the range [0, 2^4-1]
-    fn range_check4(&mut self, _value: &Self::Variable);
+    /// Perform lookup into the specified table.
+    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable);
 
     fn constant(value: F) -> Self::Variable;
 
@@ -126,7 +115,9 @@ pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: Interpreter
         env.add_constraint(constraint)
     }
     // Range check on each limb
-    limb2_vars.iter().for_each(|v| env.range_check4(v));
+    limb2_vars
+        .iter()
+        .for_each(|v| env.lookup(LookupTable::RangeCheck4, v));
 
     let mut fifteen_bits_vars = vec![];
     {
@@ -240,7 +231,9 @@ pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: Interpreter
     }
 
     // Range check on each limb
-    fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
+    fifteen_bits_vars
+        .iter()
+        .for_each(|v| env.lookup(LookupTable::RangeCheck15, v));
 
     let shl_88_var = Env::constant(F::from(1u128 << 88u128));
     let shl_15_var = Env::constant(F::from(1u128 << 15u128));
@@ -425,15 +418,15 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.range_check_ff_highest(x);
+            env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
         } else {
-            env.range_check15(x);
+            env.lookup(LookupTable::RangeCheck15, x);
         }
     }
 
     // Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
     for x in quotient_limbs_small.iter() {
-        env.range_check15(x);
+        env.lookup(LookupTable::RangeCheck15, x);
     }
 
     // Carry limbs need to be in particular ranges.
@@ -441,9 +434,11 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
         if i % 6 == 5 {
             // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.range_check_abs4bit(x);
+            env.lookup(LookupTable::RangeCheck4Abs, x);
         } else {
-            env.range_check_abs15bit(x);
+            // TODO add actual lookup
+            // env.range_check_abs15bit(x);
+            // assert!(x < F::from(1u64 << 15) || x >= F::zero() - F::from(1u64 << 15));
         }
     }
 
