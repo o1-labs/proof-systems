@@ -93,11 +93,13 @@
 //!
 //! Note that the inner sum h(X) can be constrainted as followed:
 //! ```text
-//!         k                   k  /          k                 \
-//! h(X) *  ᴨ  (β + f_{i}(X)) = ∑  | m_{i} *  ᴨ  (β + f_{j}(X)) |     (5)
-//!        i=1                 i=1 |         j=1                |
-//!                                \         j≠i                /
+//!         k                   k  /             k                \
+//! h(X) *  ᴨ  (β + f_{i}(X)) = ∑  | m_{i}(X) *  ᴨ  (β + f_{j}(X)) |     (5)
+//!        i=0                 i=0 |            j=0                |
+//!                                \            j≠i               /
 //! ```
+//! (with m_i(X) being the multiplicities for `i = 0` and `-1` otherwise, and
+//! f_0(X) being the table t(X)).
 //! More than one "inner sum" can be created in the case that `k + 2` is higher
 //! than the maximum degree supported.
 //! The quotient polynomial, defined at round 3 of the [PlonK
