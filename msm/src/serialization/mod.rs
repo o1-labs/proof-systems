@@ -94,7 +94,7 @@ impl<Ff: PrimeField> LookupTable<Ff> {
                         F::from(i)
                     } else if i < 2 * (1 << 4) {
                         // [-(i<<4),...-2,-1]
-                        F::from(i - 2 * (1 << 4))
+                        F::from(i) - F::from(2u64 * (1 << 4))
                     } else {
                         F::zero()
                     }
