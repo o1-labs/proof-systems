@@ -85,9 +85,9 @@ impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
                     panic!("Index out of bounds")
                 }
             }
-            Self::Column::LookupPartialSum(i) => {
+            Self::Column::LookupPartialSum((table_id, idx)) => {
                 if let Some(ref lookup) = self.logup_evals {
-                    lookup.h[i].clone()
+                    lookup.h[&ID::from_u32(table_id)][idx].clone()
                 } else {
                     panic!("No lookup provided")
                 }
@@ -99,16 +99,16 @@ impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(id) => {
+            Self::Column::LookupMultiplicity(table_id) => {
                 if let Some(ref lookup) = self.logup_evals {
-                    lookup.m[&ID::from_u32(id)].clone()
+                    lookup.m[&ID::from_u32(table_id)].clone()
                 } else {
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupFixedTable(id) => {
+            Self::Column::LookupFixedTable(table_id) => {
                 if let Some(ref lookup) = self.logup_evals {
-                    lookup.fixed_tables[&ID::from_u32(id)].clone()
+                    lookup.fixed_tables[&ID::from_u32(table_id)].clone()
                 } else {
                     panic!("No lookup provided")
                 }

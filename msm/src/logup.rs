@@ -147,8 +147,10 @@ use crate::{
 
 /// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
+///
 /// The structure represents the individual fraction of the sum described in the
 /// Logup protocol (for instance Eq. 8).
+///
 /// The table ID is added to the random linear combination formed with the
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
@@ -214,7 +216,7 @@ pub struct LookupTable<F, ID: LookupTableID> {
 }
 
 /// Represents a witness of one instance of the lookup argument
-/// IMPROVEME: Possible to index by a generic const?
+// IMPROVEME: Possible to index by a generic const?
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 #[derive(Debug, Clone)]
@@ -223,33 +225,38 @@ pub struct LogupWitness<F, ID: LookupTableID> {
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
     /// The values are represented as:
-    /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
-    ///   [f_{2}(1), ..., f_{2}(\omega^n)]
+    /// [ [f_{1}(1), ..., f_{1}(ω^(n-1)],
+    ///   [f_{2}(1), ..., f_{2}(ω^(n-1)]
     ///     ...
-    ///   [f_{m}(1), ..., f_{m}(\omega^n)]
+    ///   [f_{m}(1), ..., f_{m}(ω^(n-1)]
     /// ]
-    /// TODO: for efficiency, as we go through columns and after that row, we
-    /// should reorganize this. While working on the interpreter, we might
-    /// change this structure.
-    /// TODO: for efficiency, we might want to have a single flat fixed-size
-    /// array
+    //
+    // TODO: for efficiency, as we go through columns and after that row, we
+    // should reorganize this. While working on the interpreter, we might
+    // change this structure.
+    //
+    // TODO: for efficiency, we might want to have a single flat fixed-size
+    // array
     pub(crate) f: Vec<Vec<Logup<F, ID>>>,
     /// The multiplicity polynomial
     pub(crate) m: Vec<F>,
+    /// The table the witness is related to.
+    // We can improve this later by getting rid of it.
+    pub(crate) table_id: ID,
 }
 
 /// Represents the proof of the lookup argument
 /// It is parametrized by the type `T` which can be either:
-/// - Polycomm<G: KimchiCurve> for the commitments
-/// - F for the evaluations at zeta (resp. zeta omega).
-/// FIXME: We should have a fixed number of m and h. Should we encode that in
-/// the type?
+/// - `Polycomm<G: KimchiCurve>` for the commitments
+/// - `F` for the evaluations at ζ (resp. ζω).
+// FIXME: We should have a fixed number of m and h. Should we encode that in
+// the type?
 #[derive(Debug, Clone)]
 pub struct LookupProof<T, ID> {
     /// The multiplicity polynomials
     pub(crate) m: BTreeMap<ID, T>,
     /// The polynomial keeping the sum of each row
-    pub(crate) h: Vec<T>,
+    pub(crate) h: BTreeMap<ID, Vec<T>>,
     /// The "running-sum" over the rows, coined `φ`
     pub(crate) sum: T,
     /// All fixed lookup tables values, indexed by their ID
@@ -267,7 +274,7 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
         let mut iter_contents = vec![];
         // First multiplicities
         self.m.values().for_each(|m| iter_contents.push(m));
-        iter_contents.extend(&self.h);
+        self.h.values().for_each(|h| iter_contents.extend(h));
         iter_contents.push(&self.sum);
         // Fixed tables
         self.fixed_tables
@@ -296,8 +303,10 @@ impl<'lt, G, ID: LookupTableID> IntoIterator for &'lt LookupProof<G, ID> {
 /// ```
 /// It is because h(X) (column) is defined as:
 /// ```text
-/// h(X) = \sum_{i = 1}^{n} (m_i(X) / (β + f_{i}(X))
-/// ```
+///        n      m_i(X)
+/// h(X)   ∑    ----------
+///       i=1   β + f_i(X)
+///```
 /// For instance, if i = 2, we have
 /// ```text
 /// h(X) = m_1(X) / (β + f_1(X)) + m_2(X) / (β + f_{2}(X))
@@ -379,22 +388,23 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
     lookups_map: &BTreeMap<ID, Vec<Logup<E<F>, ID>>>,
 ) -> Vec<E<F>> {
     let mut constraints: Vec<E<F>> = vec![];
-    let mut idx_partial_sum = 0;
+    let mut lookup_terms_cols: Vec<Column> = vec![];
     lookups_map.iter().for_each(|(id, lookups)| {
+        let mut idx_partial_sum = 0;
+        let id_u32 = id.to_u32();
         let table_lookup = Logup {
             table_id: *id,
-            numerator: curr_cell(Column::LookupMultiplicity(id.to_u32())),
-            value: vec![curr_cell(Column::LookupFixedTable(id.to_u32()))],
+            numerator: -curr_cell(Column::LookupMultiplicity(id_u32)),
+            value: vec![curr_cell(Column::LookupFixedTable(id_u32))],
         };
         // FIXME: do not clone
         let mut lookups = lookups.clone();
         lookups.push(table_lookup);
         // We split in chunks of 6 (MAX_SUPPORTED_DEGREE - 2)
         lookups.chunks(MAX_SUPPORTED_DEGREE - 2).for_each(|chunk| {
-            constraints.push(combine_lookups(
-                Column::LookupPartialSum(idx_partial_sum),
-                chunk.to_vec(),
-            ));
+            let col = Column::LookupPartialSum((id_u32, idx_partial_sum));
+            lookup_terms_cols.push(col);
+            constraints.push(combine_lookups(col, chunk.to_vec()));
             idx_partial_sum += 1;
         });
     });
@@ -404,9 +414,9 @@ pub fn constraint_lookups<F: PrimeField, ID: LookupTableID>(
     {
         let constraint =
             next_cell(Column::LookupAggregation) - curr_cell(Column::LookupAggregation);
-        let constraint = (0..idx_partial_sum).fold(constraint, |acc, i| {
-            acc - curr_cell(Column::LookupPartialSum(i))
-        });
+        let constraint = lookup_terms_cols
+            .into_iter()
+            .fold(constraint, |acc, col| acc - curr_cell(col));
         constraints.push(constraint);
     }
     constraints
@@ -433,7 +443,7 @@ pub mod prover {
     /// multiplicities, the aggregation and the fixed tables, over the domain d8.
     pub struct QuotientPolynomialEnvironment<'a, F: FftField, ID: LookupTableID> {
         /// The evaluations of the partial sums, over d8.
-        pub lookup_terms_evals_d8: &'a Vec<Evaluations<F, D<F>>>,
+        pub lookup_terms_evals_d8: &'a BTreeMap<ID, Vec<Evaluations<F, D<F>>>>,
         /// The evaluations of the aggregation, over d8.
         pub lookup_aggregation_evals_d8: &'a Evaluations<F, D<F>>,
         /// The evaluations of the multiplicities, over d8, indexed by the table ID.
@@ -450,9 +460,9 @@ pub mod prover {
         pub lookup_counters_comm_d1: BTreeMap<ID, PolyComm<G>>,
 
         /// The polynomials of the inner sums.
-        pub lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>>,
+        pub lookup_terms_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>>,
         /// The commitments of the inner sums.
-        pub lookup_terms_comms_d1: Vec<PolyComm<G>>,
+        pub lookup_terms_comms_d1: BTreeMap<ID, Vec<PolyComm<G>>>,
 
         /// The aggregation polynomial.
         pub lookup_aggregation_poly_d1: DensePolynomial<G::ScalarField>,
@@ -461,7 +471,9 @@ pub mod prover {
 
         // Evaluating over d8 for the quotient polynomial
         pub lookup_counters_evals_d8: BTreeMap<ID, Evaluations<G::ScalarField, D<G::ScalarField>>>,
-        pub lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+        #[allow(clippy::type_complexity)]
+        pub lookup_terms_evals_d8:
+            BTreeMap<ID, Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>>,
         pub lookup_aggregation_evals_d8: Evaluations<G::ScalarField, D<G::ScalarField>>,
 
         pub fixed_lookup_tables_poly_d1: BTreeMap<ID, DensePolynomial<G::ScalarField>>,
@@ -561,115 +573,124 @@ pub mod prover {
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
             let mut fixed_lookup_tables: BTreeMap<ID, Vec<G::ScalarField>> = BTreeMap::new();
 
-            let lookup_terms_evals: Vec<Vec<Vec<G::ScalarField>>> = lookups
-                .into_iter()
-                .map(|lookup| {
-                    let LogupWitness { f, m: _ } = lookup;
-                    // The number of functions to look up, including the fixed table.
-                    let n = f.len();
-                    let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
-                        n / (MAX_SUPPORTED_DEGREE - 2)
-                    } else {
-                        n / (MAX_SUPPORTED_DEGREE - 2) + 1
-                    };
-                    let mut partial_sums =
-                        vec![
-                            Vec::<G::ScalarField>::with_capacity(domain.d1.size as usize);
-                            n_partial_sums
-                        ];
+            // We keep the lookup terms in a map, to process them in order in the constraints.
+            let mut lookup_terms_map: BTreeMap<ID, Vec<Vec<G::ScalarField>>> = BTreeMap::new();
 
-                    // We compute first the denominators of all f_i and t. We gather them in
-                    // a vector to perform a batch inversion.
-                    let mut denominators = Vec::with_capacity(n * domain.d1.size as usize);
-                    // Iterate over the rows
-                    for j in 0..domain.d1.size {
-                        // Iterate over individual columns (i.e. f_i and t)
-                        for (i, f_i) in f.iter().enumerate() {
-                            let Logup {
-                                numerator: _,
-                                table_id,
-                                value,
-                            } = &f_i[j as usize];
-                            // Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
-                            let combined_value: G::ScalarField =
-                                value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
-                                    acc * vector_lookup_combiner + y
-                                }) * vector_lookup_combiner;
-                            // add table id
-                            let combined_value =
-                                combined_value + table_id.to_field::<G::ScalarField>();
+            lookups.into_iter().for_each(|lookup| {
+                let LogupWitness { f, m: _, table_id } = lookup;
+                // The number of functions to look up, including the fixed table.
+                let n = f.len();
+                let n_partial_sums = if n % (MAX_SUPPORTED_DEGREE - 2) == 0 {
+                    n / (MAX_SUPPORTED_DEGREE - 2)
+                } else {
+                    n / (MAX_SUPPORTED_DEGREE - 2) + 1
+                };
+                let mut partial_sums =
+                    vec![
+                        Vec::<G::ScalarField>::with_capacity(domain.d1.size as usize);
+                        n_partial_sums
+                    ];
 
-                            // If last element and fixed lookup tables, we keep
-                            // the *combined* value of the table.
-                            if i == (n - 1) && table_id.is_fixed() {
-                                fixed_lookup_tables
-                                    .entry(*table_id)
-                                    .or_insert_with(Vec::new)
-                                    .push(combined_value);
-                            }
+                // We compute first the denominators of all f_i and t. We gather them in
+                // a vector to perform a batch inversion.
+                let mut denominators = Vec::with_capacity(n * domain.d1.size as usize);
+                // Iterate over the rows
+                for j in 0..domain.d1.size {
+                    // Iterate over individual columns (i.e. f_i and t)
+                    for (i, f_i) in f.iter().enumerate() {
+                        let Logup {
+                            numerator: _,
+                            table_id,
+                            value,
+                        } = &f_i[j as usize];
+                        // Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
+                        let combined_value: G::ScalarField =
+                            value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
+                                acc * vector_lookup_combiner + y
+                            }) * vector_lookup_combiner;
+                        // add table id
+                        let combined_value = combined_value + table_id.to_field::<G::ScalarField>();
 
-                            // β + a_{i}
-                            let lookup_denominator = beta + combined_value;
-                            denominators.push(lookup_denominator);
+                        // If last element and fixed lookup tables, we keep
+                        // the *combined* value of the table.
+                        if i == (n - 1) && table_id.is_fixed() {
+                            fixed_lookup_tables
+                                .entry(*table_id)
+                                .or_insert_with(Vec::new)
+                                .push(value[0]);
                         }
+
+                        // β + a_{i}
+                        let lookup_denominator = beta + combined_value;
+                        denominators.push(lookup_denominator);
                     }
+                }
+                assert!(denominators.len() == n * domain.d1.size as usize);
 
-                    ark_ff::fields::batch_inversion(&mut denominators);
+                ark_ff::fields::batch_inversion(&mut denominators);
 
-                    // Evals is the sum on the individual columns for each row
-                    let mut denominator_index = 0;
+                // Evals is the sum on the individual columns for each row
+                let mut denominator_index = 0;
 
-                    // We only need to add the numerator now
-                    for j in 0..domain.d1.size {
-                        let mut partial_sum_idx = 0;
-                        let mut row_acc = G::ScalarField::zero();
-                        for f_i in f.iter() {
-                            let Logup {
-                                numerator,
-                                table_id: _,
-                                value: _,
-                            } = &f_i[j as usize];
-                            row_acc += *numerator * denominators[denominator_index];
-                            denominator_index += 1;
-                            // We split in chunks of (MAX_SUPPORTED_DEGREE - 2)
-                            // We reset the accumulator for the current partial
-                            // sum after keeping it.
-                            if denominator_index % (MAX_SUPPORTED_DEGREE - 2) == 0 {
-                                partial_sums[partial_sum_idx].push(row_acc);
-                                row_acc = G::ScalarField::zero();
-                                partial_sum_idx += 1;
-                            }
-                        }
-                        if denominator_index % (MAX_SUPPORTED_DEGREE - 2) != 0 {
+                // We only need to add the numerator now
+                for j in 0..domain.d1.size {
+                    let mut partial_sum_idx = 0;
+                    let mut row_acc = G::ScalarField::zero();
+                    for (i, f_i) in f.iter().enumerate() {
+                        let Logup {
+                            numerator,
+                            table_id: _,
+                            value: _,
+                        } = &f_i[j as usize];
+                        row_acc += *numerator * denominators[denominator_index];
+                        denominator_index += 1;
+                        // We split in chunks of (MAX_SUPPORTED_DEGREE - 2)
+                        // We reset the accumulator for the current partial
+                        // sum after keeping it.
+                        if (i + 1) % (MAX_SUPPORTED_DEGREE - 2) == 0 {
                             partial_sums[partial_sum_idx].push(row_acc);
+                            row_acc = G::ScalarField::zero();
+                            partial_sum_idx += 1;
                         }
                     }
-                    partial_sums
-                })
-                .collect::<Vec<_>>();
-
-            let lookup_terms_evals: Vec<Vec<G::ScalarField>> =
-                lookup_terms_evals.into_iter().flatten().collect();
+                    // Whatever leftover in `row_acc` left in the end of the iteration, we write it into
+                    // `partial_sums` too. This is only done in case `n % (MAX_SUPPORTED_DEGREE - 2) != 0`
+                    // which means that the similar addition to `partial_sums` a few lines above won't be triggered.
+                    // So we have this wrapping up call instead.
+                    if n % (MAX_SUPPORTED_DEGREE - 2) != 0 {
+                        partial_sums[partial_sum_idx].push(row_acc);
+                    }
+                }
+                lookup_terms_map.insert(table_id, partial_sums);
+            });
 
             // Sanity check to verify that the number of evaluations is correct
-            lookup_terms_evals
-                .iter()
-                .for_each(|evals| assert_eq!(evals.len(), domain.d1.size as usize));
+            lookup_terms_map.values().for_each(|evals| {
+                evals
+                    .iter()
+                    .for_each(|eval| assert_eq!(eval.len(), domain.d1.size as usize))
+            });
 
             // Sanity check to verify that we have all the evaluations for the fixed lookup tables
             fixed_lookup_tables
                 .values()
                 .for_each(|evals| assert_eq!(evals.len(), domain.d1.size as usize));
 
-            let lookup_terms_evals_d1: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
-                lookup_terms_evals
+            #[allow(clippy::type_complexity)]
+            let lookup_terms_evals_d1: BTreeMap<
+                ID,
+                Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+            > =
+                (&lookup_terms_map)
                     .into_par_iter()
-                    .map(|lte| {
+                    .map(|(id, lookup_terms)| {
+                        let lookup_terms = lookup_terms.into_par_iter().map(|lookup_term| {
                         Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                            lte, domain.d1,
-                        )
+                            lookup_term.to_vec(), domain.d1,
+                        )}).collect::<Vec<_>>();
+                        (*id, lookup_terms)
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
 
             let fixed_lookup_tables_evals_d1: BTreeMap<
                 ID,
@@ -686,11 +707,17 @@ pub mod prover {
                 })
                 .collect();
 
-            let lookup_terms_poly_d1: Vec<DensePolynomial<G::ScalarField>> =
+            let lookup_terms_poly_d1: BTreeMap<ID, Vec<DensePolynomial<G::ScalarField>>> =
                 (&lookup_terms_evals_d1)
                     .into_par_iter()
-                    .map(|lte| lte.interpolate_by_ref())
-                    .collect::<Vec<_>>();
+                    .map(|(id, lookup_terms)| {
+                        let lookup_terms: Vec<DensePolynomial<G::ScalarField>> = lookup_terms
+                            .into_par_iter()
+                            .map(|evals| evals.interpolate_by_ref())
+                            .collect();
+                        (*id, lookup_terms)
+                    })
+                    .collect();
 
             let fixed_lookup_tables_poly_d1: BTreeMap<ID, DensePolynomial<G::ScalarField>> =
                 (&fixed_lookup_tables_evals_d1)
@@ -698,11 +725,21 @@ pub mod prover {
                     .map(|(id, evals)| (*id, evals.interpolate_by_ref()))
                     .collect();
 
-            let lookup_terms_evals_d8: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
-                (&lookup_terms_poly_d1)
-                    .into_par_iter()
-                    .map(|lte| lte.evaluate_over_domain_by_ref(domain.d8))
-                    .collect::<Vec<_>>();
+            #[allow(clippy::type_complexity)]
+            let lookup_terms_evals_d8: BTreeMap<
+                ID,
+                Vec<Evaluations<G::ScalarField, D<G::ScalarField>>>,
+            > = (&lookup_terms_poly_d1)
+                .into_par_iter()
+                .map(|(id, lookup_terms)| {
+                    let lookup_terms: Vec<Evaluations<G::ScalarField, D<G::ScalarField>>> =
+                        lookup_terms
+                            .into_par_iter()
+                            .map(|lookup_term| lookup_term.evaluate_over_domain_by_ref(domain.d8))
+                            .collect();
+                    (*id, lookup_terms)
+                })
+                .collect();
 
             let fixed_lookup_tables_evals_d8: BTreeMap<
                 ID,
@@ -712,10 +749,18 @@ pub mod prover {
                 .map(|(id, poly)| (*id, poly.evaluate_over_domain_by_ref(domain.d8)))
                 .collect();
 
-            let lookup_terms_comms_d1: Vec<PolyComm<G>> = (&lookup_terms_evals_d1)
-                .into_par_iter()
-                .map(|lte| srs.commit_evaluations_non_hiding(domain.d1, lte))
-                .collect::<Vec<_>>();
+            let lookup_terms_comms_d1: BTreeMap<ID, Vec<PolyComm<G>>> = lookup_terms_evals_d1
+                .iter()
+                .map(|(id, lookup_terms)| {
+                    let lookup_terms = lookup_terms
+                        .into_par_iter()
+                        .map(|lookup_term| {
+                            srs.commit_evaluations_non_hiding(domain.d1, lookup_term)
+                        })
+                        .collect();
+                    (*id, lookup_terms)
+                })
+                .collect();
 
             let fixed_lookup_tables_comms_d1: BTreeMap<ID, PolyComm<G>> =
                 (&fixed_lookup_tables_evals_d1)
@@ -723,9 +768,11 @@ pub mod prover {
                     .map(|(id, evals)| (*id, srs.commit_evaluations_non_hiding(domain.d1, evals)))
                     .collect();
 
-            lookup_terms_comms_d1
-                .iter()
-                .for_each(|comm| absorb_commitment(fq_sponge, comm));
+            lookup_terms_comms_d1.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(fq_sponge, comm))
+            });
 
             fixed_lookup_tables_comms_d1
                 .values()
@@ -745,9 +792,9 @@ pub mod prover {
                 for i in 0..domain.d1.size as usize {
                     // φ(1) = 0
                     evals.push(acc);
-                    for lte in lookup_terms_evals_d1.iter() {
-                        acc += lte[i]
-                    }
+                    lookup_terms_evals_d1.iter().for_each(|(_, lookup_terms)| {
+                        acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
+                    })
                 }
                 // Sanity check to verify that the accumulator ends up being zero.
                 // FIXME: This should be removed from runtime, and a constraint
