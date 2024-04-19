@@ -1404,24 +1404,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kimchi-visu"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "kimchi",
- "mina-curves",
- "mina-poseidon",
- "o1-utils",
- "poly-commitment",
- "serde",
- "serde_json",
- "serde_with 3.6.0",
- "tinytemplate",
-]
-
-[[package]]
-name = "kimchi_msm"
+name = "kimchi-msm"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
@@ -1449,7 +1432,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kimchi_optimism"
+name = "kimchi-optimism"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
@@ -1464,7 +1447,7 @@ dependencies = [
  "groupmap",
  "hex",
  "kimchi",
- "kimchi_msm",
+ "kimchi-msm",
  "libc",
  "libflate",
  "log",
@@ -1483,6 +1466,23 @@ dependencies = [
  "stacker",
  "strum",
  "strum_macros",
+]
+
+[[package]]
+name = "kimchi-visu"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "kimchi",
+ "mina-curves",
+ "mina-poseidon",
+ "o1-utils",
+ "poly-commitment",
+ "serde",
+ "serde_json",
+ "serde_with 3.6.0",
+ "tinytemplate",
 ]
 
 [[package]]
