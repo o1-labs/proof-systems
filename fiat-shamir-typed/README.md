@@ -34,6 +34,12 @@ In the oracle definition, there is:
 - the original state size of the permutation
 - the type of elements the permutation contains
 
+A round is defined as some operations performed by a party, ending by writing some values on the shared tape.
+When the prover sends messages to the verifier, it will write the message on the
+shared tape. And when the verifier sends messages (i.e. when we "squeeze" the
+sponge, it will be also a message written on the shared tape. An important part
+of the design is how to describe the shared tape, and how messages are read/written.
+
 ### Sponge design
 
 The first thing to design is the mode of operation `Sponge`.
