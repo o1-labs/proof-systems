@@ -1,6 +1,16 @@
 ## Typed Fiat Shamir
 
-This is an attempt to type the Fiat Shamir transform and to add type-safeness to IOP protocols.
+This is an attempt to type the Fiat Shamir transform and to add type-safeness to
+IOP protocols.
+
+An interactive oracle proof protocol is meant to describe messages different
+parties exchange, messages forming a transcript.
+In the case of arguments of knowledge, two parties exchange messages, a prover
+and a verifier. The transcript can be seen as a shared tape between two Turing
+machines representing the prover and the verifier.
+
+When using the Fiat Shamir transformation, we instantiate the oracle with a hash
+function (often using the mode of operation `Sponge` and an internal permutation).
 
 Inspiration might come from different libraries and conversations with some persons:
 - Michele Orru at zkSummit 10, after discussion his library [...] (missing links)
