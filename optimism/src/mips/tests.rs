@@ -1,7 +1,6 @@
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::{
-    circuit::CircuitPad,
     mips::{
         circuit::MIPSCircuit,
         constraints::Env,
@@ -12,6 +11,7 @@ use crate::{
             RTypeInstruction::{self, *},
         },
     },
+    tester::CircuitPad,
 };
 
 type Fp = ark_bn254::Fr;

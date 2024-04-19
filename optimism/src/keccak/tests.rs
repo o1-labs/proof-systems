@@ -1,5 +1,4 @@
 use crate::{
-    circuit::CircuitPad,
     keccak::{
         circuit::KeccakCircuit,
         column::{
@@ -14,6 +13,7 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
+    tester::CircuitPad,
 };
 use ark_ff::{One, Zero};
 use kimchi::{

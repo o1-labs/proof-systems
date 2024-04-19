@@ -5,11 +5,11 @@ use kimchi_msm::witness::Witness;
 use strum::IntoEnumIterator;
 
 use crate::{
-    circuit::{Circuit, CircuitPad},
     keccak::column::{
         Steps::{self, *},
         ZKVM_KECCAK_COLS,
     },
+    tester::{Circuit, CircuitPad},
 };
 
 use super::environment::KeccakEnv;

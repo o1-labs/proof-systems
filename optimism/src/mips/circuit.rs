@@ -1,10 +1,10 @@
 use crate::{
-    circuit::{Circuit, CircuitPad},
     mips::{
         column::MIPS_COLUMNS,
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
+    tester::{Circuit, CircuitPad},
 };
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;

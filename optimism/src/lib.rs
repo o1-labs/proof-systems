@@ -2,9 +2,6 @@
 /// program.
 pub const DOMAIN_SIZE: usize = 1 << 15;
 
-/// Defines a circuit environment used for testing / demo purposes
-pub mod circuit;
-
 /// Modules mimicking the defined structures used by Cannon CLI.
 pub mod cannon;
 
@@ -32,6 +29,9 @@ pub mod proof;
 
 /// The RAM lookup argument.
 pub mod ramlookup;
+
+/// Defines a tester struct used for testing / demo purposes
+pub mod tester;
 
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 use kimchi_msm::columns::Column;

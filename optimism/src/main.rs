@@ -7,7 +7,6 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    circuit::CircuitPad,
     keccak::{
         circuit::KeccakCircuit,
         column::{Steps, ZKVM_KECCAK_COLS},
@@ -22,7 +21,9 @@ use kimchi_optimism::{
         witness::{self as mips_witness, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
-    proof, DOMAIN_SIZE,
+    proof,
+    tester::CircuitPad,
+    DOMAIN_SIZE,
 };
 use log::debug;
 use mina_poseidon::{
