@@ -192,7 +192,7 @@ mod tests {
             }
 
             for (table_id, table) in rangecheck_tables.iter_mut() {
-                println!("Processing table id {:?}", table_id);
+                //println!("Processing table id {:?}", table_id);
                 for (j, lookup) in witness_env
                     .lookups
                     .get(table_id)
@@ -215,6 +215,7 @@ mod tests {
         };
 
         let mut rangecheck_multiplicities: BTreeMap<LookupTable<Ff1>, Vec<Fp>> = BTreeMap::new();
+        // Counting multiplicities & adding fixed column into the last column of every table.
         for (table_id, table) in rangecheck_tables.iter_mut() {
             let rangecheck_m = witness_env.get_rangecheck_multiplicities(domain, *table_id);
             rangecheck_multiplicities.insert(*table_id, rangecheck_m.clone());
@@ -244,6 +245,7 @@ mod tests {
                     Some(LogupWitness {
                         f: table.clone(),
                         m: rangecheck_multiplicities[table_id].clone(),
+                        table_id: *table_id,
                     })
                 } else {
                     None

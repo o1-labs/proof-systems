@@ -24,13 +24,6 @@ pub struct Env<F: PrimeField, Ff: PrimeField> {
     /// `get_witness` method.
     pub witness: Witness<SER_N_COLUMNS, F>,
 
-    /// Keep track of the RangeCheck4 table multiplicities.
-    /// The value `0` is used as a (repeated) dummy value.
-    // Boxing to avoid stack overflow
-    // @volhovm: I understand this is TODO/unused, so I did not create a
-    // rangecheck4abs counterpart for it.
-    pub lookup_t_multiplicities_rangecheck4: Box<[F; 1 << 4]>,
-
     /// Keep track of the lookup multiplicities.
     pub lookup_multiplicities: BTreeMap<LookupTable<Ff>, Vec<F>>,
 
@@ -184,10 +177,19 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     ) -> Vec<F> {
         let mut m = Vec::with_capacity(domain.d1.size as usize);
         m.extend(self.lookup_multiplicities[&table_id].to_vec());
-        let repeated_dummy_value: Vec<F> = iter::repeat(-F::zero())
-            .take((domain.d1.size as usize) - table_id.length())
-            .collect();
-        m.extend(repeated_dummy_value);
+        if table_id.length() < (domain.d1.size as usize) {
+            let n_repeated_dummy_value: usize = (domain.d1.size as usize) - table_id.length() - 1;
+            let repeated_dummy_value: Vec<F> = iter::repeat(-F::one())
+                .take(n_repeated_dummy_value)
+                .collect();
+            m.extend(repeated_dummy_value);
+            // TODO @volhovm Why do we push the last index as a last
+            // element?
+            //
+            // FIXME this makes the logup unsound: we add dummy values
+            // which are not necessarily present in the table.
+            m.push(F::from(n_repeated_dummy_value as u64));
+        }
         assert_eq!(m.len(), domain.d1.size as usize);
         m
     }
@@ -208,7 +210,6 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
             },
 
             lookup_multiplicities,
-            lookup_t_multiplicities_rangecheck4: Box::new([F::zero(); 1 << 4]),
             lookups,
         }
     }

@@ -7,17 +7,22 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    keccak::{self, column::ZKVM_KECCAK_COLS, environment::KeccakEnv, KeccakCircuit},
+    circuit::CircuitTrait,
+    keccak::{
+        circuit::KeccakCircuit,
+        column::{Steps, ZKVM_KECCAK_COLS},
+        environment::KeccakEnv,
+    },
     lookups::LookupTableIDs,
     mips::{
+        circuit::MIPSCircuit,
         column::{MIPSWitnessTrait, MIPS_COLUMNS},
         constraints as mips_constraints,
         interpreter::Instruction,
         witness::{self as mips_witness, SCRATCH_SIZE},
-        MIPSCircuit,
     },
     preimage_oracle::PreImageOracle,
-    proof, CircuitTrait, DOMAIN_SIZE,
+    proof, DOMAIN_SIZE,
 };
 use log::debug;
 use mina_poseidon::{
@@ -108,7 +113,7 @@ pub fn main() -> ExitCode {
         );
     }
     let mut keccak_folded_instance = HashMap::new();
-    for step in keccak::STEPS {
+    for step in Steps::iter().flat_map(|x| x.into_iter()) {
         keccak_folded_instance.insert(
             step,
             ProofInputs::<
@@ -185,7 +190,7 @@ pub fn main() -> ExitCode {
             );
         }
     }
-    for step in keccak::STEPS {
+    for step in Steps::iter().flat_map(|x| x.into_iter()) {
         let needs_folding = keccak_circuit.pad(step);
         if needs_folding {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
@@ -245,7 +250,7 @@ pub fn main() -> ExitCode {
     {
         // KECCAK
         // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
-        for step in keccak::STEPS {
+        for step in Steps::iter().flat_map(|x| x.into_iter()) {
             debug!("Checking Keccak circuit {:?}", step);
             let keccak_result = prove::<
                 _,

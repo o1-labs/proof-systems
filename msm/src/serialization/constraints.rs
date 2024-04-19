@@ -144,10 +144,8 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
             self.lookups[&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)].len() == 1
         );
 
-        let _lookup_constraint = constraint_lookups(&self.lookups);
-        // FIXME: it seems the constraints are not correctly checked.
-        // Activate lookup constraints after by decommenting the following line
-        // constraints.extend(_lookup_constraint);
+        let lookup_constraint = constraint_lookups(&self.lookups);
+        constraints.extend(lookup_constraint);
         constraints
     }
 }

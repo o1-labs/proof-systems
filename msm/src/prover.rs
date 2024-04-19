@@ -323,11 +323,18 @@ where
                 (*id, PointEvaluations { zeta, zeta_omega })
             })
             .collect(),
-        h: (&lookup_env.lookup_terms_poly_d1)
-            .into_par_iter()
-            .map(|poly| PointEvaluations {
-                zeta: poly.evaluate(&zeta),
-                zeta_omega: poly.evaluate(&zeta_omega),
+        h: lookup_env
+            .lookup_terms_poly_d1
+            .iter()
+            .map(|(id, polys)| {
+                let polys_evals: Vec<_> = polys
+                    .iter()
+                    .map(|poly| PointEvaluations {
+                        zeta: poly.evaluate(&zeta),
+                        zeta_omega: poly.evaluate(&zeta_omega),
+                    })
+                    .collect();
+                (*id, polys_evals)
             })
             .collect(),
         sum: PointEvaluations {
@@ -426,13 +433,17 @@ where
                 .map(|poly| (coefficients_form(poly), non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        // -- after that f_i and t
-        polynomials.extend(
-            (&lookup_env.lookup_terms_poly_d1)
-                .into_par_iter()
-                .map(|poly| (coefficients_form(poly), non_hiding(1)))
-                .collect::<Vec<_>>(),
-        );
+        // -- after that the partial sums
+        polynomials.extend({
+            let polys = lookup_env.lookup_terms_poly_d1.values().map(|polys| {
+                polys
+                    .iter()
+                    .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                    .collect::<Vec<_>>()
+            });
+            let polys: Vec<_> = polys.flatten().collect();
+            polys
+        });
         // -- after that the running sum
         polynomials.push((
             coefficients_form(&lookup_env.lookup_aggregation_poly_d1),
