@@ -39,6 +39,22 @@ When the prover sends messages to the verifier, it will write the message on the
 shared tape. And when the verifier sends messages (i.e. when we "squeeze" the
 sponge, it will be also a message written on the shared tape. An important part
 of the design is how to describe the shared tape, and how messages are read/written.
+The transcript can be seen as the concatenatation of heteregenous typed list
+(and its size must be define at the type level).
+
+```
+    Round 1 - Prover
+ --------------------------
+/                          \
+| m1 | m2 | m3 | ... | m_n |      C1    |
+\                           \ --------- /
+                              Verifier
+                              sends a
+                              challenge
+                              after
+                              "squeezing"
+  ---------------------- SHARED TAPE = TRANSCRIPT -------------------------------------------
+```
 
 ### Sponge design
 
