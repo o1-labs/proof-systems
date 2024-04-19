@@ -653,6 +653,10 @@ pub mod prover {
                             partial_sum_idx += 1;
                         }
                     }
+                    // Whatever leftover in `row_acc` left in the end of the iteration, we write it into
+                    // `partial_sums` too. This is only done in case `n % (MAX_SUPPORTED_DEGREE - 2) != 0`
+                    // which means that the similar addition to `partial_sums` a few lines above won't be triggered.
+                    // So we have this wrapping up call instead.
                     if n % (MAX_SUPPORTED_DEGREE - 2) != 0 {
                         partial_sums[partial_sum_idx].push(row_acc);
                     }
