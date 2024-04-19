@@ -1,7 +1,4 @@
-use std::marker::PhantomData;
-
 use crate::{logup::LookupTableID, Logup};
-use ark_ff::PrimeField;
 use strum_macros::EnumIter;
 
 pub mod column;
@@ -13,20 +10,16 @@ pub mod witness;
 pub const N_INTERMEDIATE_LIMBS: usize = 20;
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
-pub enum LookupTable<Ff> {
+pub enum LookupTable {
     RangeCheck15,
     RangeCheck4,
-    RangeCheck4Abs,
-    RangeCheckFfHighest(PhantomData<Ff>),
 }
 
-impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
+impl LookupTableID for LookupTable {
     fn to_u32(&self) -> u32 {
         match self {
             Self::RangeCheck15 => 1,
             Self::RangeCheck4 => 2,
-            Self::RangeCheck4Abs => 3,
-            Self::RangeCheckFfHighest(_) => 4,
         }
     }
 
@@ -34,8 +27,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
         match value {
             1 => Self::RangeCheck15,
             2 => Self::RangeCheck4,
-            3 => Self::RangeCheck4Abs,
-            4 => Self::RangeCheckFfHighest(PhantomData),
             _ => panic!("Invalid lookup table id"),
         }
     }
@@ -49,18 +40,13 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
         match self {
             Self::RangeCheck15 => 1 << 15,
             Self::RangeCheck4 => 1 << 4,
-            Self::RangeCheck4Abs => 1 << 5,
-            Self::RangeCheckFfHighest(_) => TryFrom::try_from(
-                crate::serialization::interpreter::ff_modulus_highest_limb::<Ff>(),
-            )
-            .unwrap(),
         }
     }
 }
 
-impl<Ff: PrimeField> LookupTable<Ff> {}
+impl LookupTable {}
 
-pub type Lookup<F, Ff> = Logup<F, LookupTable<Ff>>;
+pub type Lookup<F> = Logup<F, LookupTable>;
 
 #[cfg(test)]
 mod tests {
@@ -92,7 +78,7 @@ mod tests {
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
 
-    impl<Ff: PrimeField> LookupTable<Ff> {
+    impl<Ff: PrimeField> LookupTable {
         fn entries_ff_highest<F: PrimeField>(domain: EvaluationDomains<F>) -> Vec<F> {
             let top_modulus_f = F::from_biguint(&ff_modulus_highest_limb::<Ff>()).unwrap();
             (0..domain.d1.size)
@@ -113,20 +99,6 @@ mod tests {
                 Self::RangeCheck4 => (0..domain.d1.size)
                     .map(|i| if i < (1 << 4) { F::from(i) } else { F::zero() })
                     .collect(),
-                Self::RangeCheck4Abs => (0..domain.d1.size)
-                    .map(|i| {
-                        if i < (1 << 4) {
-                            // [0,1,2 ... (1<<4)-1]
-                            F::from(i)
-                        } else if i < 2 * (i << 4) {
-                            // [-(i<<4),...-2,-1]
-                            F::from(i - 2 * (1 << 4))
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                Self::RangeCheckFfHighest(_) => Self::entries_ff_highest::<F>(domain),
             }
         }
     }
@@ -168,19 +140,11 @@ mod tests {
         // An extra element in the array stands for the fixed table.
         let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
-        //let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
         let rangecheck15: [Vec<Lookup<Fp, Ff1>>; (3 * N_LIMBS - 1) + 1] =
             std::array::from_fn(|_| vec![]);
-        //let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] = std::array::from_fn(|_| vec![]);
-        let mut rangecheck_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
-            BTreeMap::new();
+        let mut rangecheck_tables: BTreeMap<LookupTable, Vec<Vec<Lookup<Fp>>>> = BTreeMap::new();
         rangecheck_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
-        //rangecheck_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
         rangecheck_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
-        //rangecheck_tables.insert(
-        //    LookupTable::RangeCheckFfHighest(PhantomData),
-        //    rangecheckffhighest.to_vec(),
-        //);
 
         for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness
@@ -214,7 +178,7 @@ mod tests {
             constraints_env.get_constraints()
         };
 
-        let mut rangecheck_multiplicities: BTreeMap<LookupTable<Ff1>, Vec<Fp>> = BTreeMap::new();
+        let mut rangecheck_multiplicities: BTreeMap<LookupTable, Vec<Fp>> = BTreeMap::new();
         // Counting multiplicities & adding fixed column into the last column of every table.
         for (table_id, table) in rangecheck_tables.iter_mut() {
             let rangecheck_m = witness_env.get_rangecheck_multiplicities(domain, *table_id);
@@ -231,7 +195,7 @@ mod tests {
             *(table.last_mut().unwrap()) = rangecheck_t.collect();
         }
 
-        let logups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = rangecheck_tables
+        let logups: Vec<LogupWitness<Fp, LookupTable>> = rangecheck_tables
             .iter()
             .filter_map(|(table_id, table)| {
                 println!(
@@ -266,25 +230,18 @@ mod tests {
             Column,
             _,
             SER_N_COLUMNS,
-            LookupTable<Ff1>,
+            LookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
 
-        let verifies = verify::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            SER_N_COLUMNS,
-            0,
-            LookupTable<Ff1>,
-        >(
-            domain,
-            &srs,
-            &constraints,
-            &proof,
-            Witness::zero_vec(DOMAIN_SIZE),
-        );
+        let verifies =
+            verify::<_, OpeningProof, BaseSponge, ScalarSponge, SER_N_COLUMNS, 0, LookupTable>(
+                domain,
+                &srs,
+                &constraints,
+                &proof,
+                Witness::zero_vec(DOMAIN_SIZE),
+            );
         assert!(verifies)
     }
 }

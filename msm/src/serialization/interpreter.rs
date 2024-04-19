@@ -9,7 +9,7 @@ use crate::{
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-pub trait InterpreterEnv<F: PrimeField, Ff: PrimeField> {
+pub trait InterpreterEnv<F: PrimeField> {
     type Position;
 
     type Variable: Clone
@@ -89,7 +89,7 @@ pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
     env: &mut Env,
     limbs: [BigUint; 3],
 ) {
@@ -360,13 +360,7 @@ where
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
 /// chunks `a_i` of size `5` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-fn combine_small_to_large<
-    const M: usize,
-    const N: usize,
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: InterpreterEnv<F, Ff>,
->(
+fn combine_small_to_large<const M: usize, const N: usize, F: PrimeField, Env: InterpreterEnv<F>>(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -389,7 +383,7 @@ fn combine_small_to_large<
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+fn combine_carry<F: PrimeField, Env: InterpreterEnv<F>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -401,7 +395,7 @@ fn combine_carry<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
 }
 
 /// This constarins the multiplication part of the circuit.
-pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
     env: &mut Env,
 ) {
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
@@ -451,21 +445,20 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
 
     // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
 
-    let chal_converted_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-            chal_converted_limbs_small.clone(),
-        );
-    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
+    let chal_converted_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, Env>(
+        chal_converted_limbs_small.clone(),
+    );
+    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, Env>(
         coeff_input_limbs_small.clone(),
     );
-    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
+    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, Env>(
         coeff_result_limbs_small.clone(),
     );
-    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
+    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, Env>(
         quotient_limbs_small.clone(),
     );
     let carry_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<_, _, Env>(carry_limbs_small.clone());
+        combine_carry::<_, Env>(carry_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
     let add_extra_carries =
@@ -507,7 +500,7 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
 /// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
 /// returns next coefficient c_i.
 #[allow(dead_code)]
-pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
+pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
     env: &mut Env,
     chal: Ff,
     coeff_input: Ff,

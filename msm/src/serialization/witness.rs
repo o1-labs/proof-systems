@@ -1,4 +1,4 @@
-use ark_ff::{FpParameters, PrimeField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::FieldHelpers;
 use strum::IntoEnumIterator;
@@ -12,26 +12,25 @@ use crate::{
         Lookup, LookupTable,
     },
     witness::Witness,
-    LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::domains::EvaluationDomains;
-use std::{collections::BTreeMap, iter, marker::PhantomData};
+use std::{collections::BTreeMap, iter};
 
 // TODO `WitnessEnv`
 /// Environment for the serializer interpreter
-pub struct Env<F: PrimeField, Ff: PrimeField> {
+pub struct Env<F: PrimeField> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
     pub witness: Witness<SER_N_COLUMNS, F>,
 
     /// Keep track of the lookup multiplicities.
-    pub lookup_multiplicities: BTreeMap<LookupTable<Ff>, Vec<F>>,
+    pub lookup_multiplicities: BTreeMap<LookupTable, Vec<F>>,
 
     /// Keep track of the lookups for each row.
-    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<F, Ff>>>,
+    pub lookups: BTreeMap<LookupTable, Vec<Lookup<F>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
+impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
     // Requiring an F element as we would need to compute values up to 180 bits
@@ -63,30 +62,30 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     fn range_check_abs4bit(&mut self, value: &Self::Variable) {
         assert!(*value < F::from(1u64 << 4) || *value >= F::zero() - F::from(1u64 << 4));
         // Adding multiplicities
-        let value_ix: usize = if *value < F::from(1u64 << 4) {
-            TryFrom::try_from(value.to_biguint()).unwrap()
-        } else {
-            TryFrom::try_from((*value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
-        };
-        self.record_range_check(LookupTable::RangeCheck4Abs, value, value_ix);
+        //let value_ix: usize = if *value < F::from(1u64 << 4) {
+        //    TryFrom::try_from(value.to_biguint()).unwrap()
+        //} else {
+        //    TryFrom::try_from((*value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
+        //};
+        //self.record_range_check(LookupTable::RangeCheck4Abs, value, value_ix);
     }
 
-    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
-        let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
-        let top_modulus_f: F = F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
-        assert!(
-            *value < top_modulus_f,
-            "The value {:?} was higher than modulus {:?}",
-            (*value).to_bigint_positive(),
-            top_modulus_f.to_bigint_positive()
-        );
+    fn range_check_ff_highest(&mut self, _value: &Self::Variable) {
+        //let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
+        //let top_modulus_f: F = F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
+        //assert!(
+        //    *value < top_modulus_f,
+        //    "The value {:?} was higher than modulus {:?}",
+        //    (*value).to_bigint_positive(),
+        //    top_modulus_f.to_bigint_positive()
+        //);
 
-        let value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
-        self.record_range_check(
-            LookupTable::RangeCheckFfHighest(PhantomData),
-            value,
-            value_ix,
-        );
+        //let value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
+        //self.record_range_check(
+        //    LookupTable::RangeCheckFfHighest(PhantomData),
+        //    value,
+        //    value_ix,
+        //);
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
@@ -131,7 +130,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField> Env<F> {
     pub fn write_column(&mut self, position: Column, value: F) {
         match position {
             Column::X(i) => self.witness.cols[i] = value,
@@ -173,7 +172,7 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     pub fn get_rangecheck_multiplicities(
         &self,
         domain: EvaluationDomains<F>,
-        table_id: LookupTable<Ff>,
+        table_id: LookupTable,
     ) -> Vec<F> {
         let mut m = Vec::with_capacity(domain.d1.size as usize);
         m.extend(self.lookup_multiplicities[&table_id].to_vec());
@@ -195,17 +194,13 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField> Env<F> {
     pub fn create() -> Self {
         let mut lookups = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
-        for table_id in LookupTable::<Ff>::iter() {
-            if table_id != LookupTable::RangeCheckFfHighest(std::marker::PhantomData)
-                && table_id != LookupTable::RangeCheck4Abs
-            {
-                lookups.insert(table_id, Vec::new());
-                lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
-            }
+        for table_id in LookupTable::iter() {
+            lookups.insert(table_id, Vec::new());
+            lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
         }
 
         Self {
@@ -221,8 +216,8 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     // Commonly used by range checking functions.
     fn record_range_check(
         &mut self,
-        table_id: LookupTable<Ff>,
-        value: &<Self as InterpreterEnv<F, Ff>>::Variable,
+        table_id: LookupTable,
+        value: &<Self as InterpreterEnv<F>>::Variable,
         value_ix: usize,
     ) {
         //println!("Recording range check for table_id {table_id:?}, value {value:?}");
@@ -279,7 +274,7 @@ mod tests {
             let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        let mut dummy_env = Env::<Fp, Ff1>::create();
+        let mut dummy_env = Env::<Fp>::create();
         deserialize_field_element(
             &mut dummy_env,
             [

@@ -12,17 +12,17 @@ use crate::{
     columns::ColumnIndexer, logup::constraint_lookups, serialization::column::SerializationColumn,
 };
 
-pub struct Env<F: PrimeField, Ff: PrimeField> {
+pub struct Env<F: PrimeField> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
     pub constraints: Vec<(usize, Expr<ConstantExpr<F>, Column>)>,
     pub constrain_index: usize,
-    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<F>, Ff>>>,
+    pub lookups: BTreeMap<LookupTable, Vec<Lookup<E<F>>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField> Env<F> {
     pub fn create() -> Self {
         Self {
             constraints: vec![],
@@ -32,7 +32,7 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
+impl<F: PrimeField> InterpreterEnv<F> for Env<F> {
     type Position = Column;
 
     type Variable = E<F>;
@@ -69,16 +69,11 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         // FIXME unimplemented, it's a 16 bit lookup
     }
 
-    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
-        self.add_lookup(
-            LookupTable::RangeCheckFfHighest(core::marker::PhantomData),
-            value,
-        );
+    fn range_check_ff_highest(&mut self, _value: &Self::Variable) {
         panic!("oh well");
     }
 
-    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
-        self.add_lookup(LookupTable::RangeCheck4Abs, value);
+    fn range_check_abs4bit(&mut self, _value: &Self::Variable) {
         panic!("oh well");
     }
 
@@ -116,10 +111,8 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
-    fn add_lookup(&mut self, table_id: LookupTable<Ff>, value: &E<F>) {
-        assert!(table_id != LookupTable::RangeCheckFfHighest(std::marker::PhantomData));
-        assert!(table_id != LookupTable::RangeCheck4Abs);
+impl<F: PrimeField> Env<F> {
+    fn add_lookup(&mut self, table_id: LookupTable, value: &E<F>) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
         let lookup = Lookup {
             table_id,
@@ -143,10 +136,6 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
         // asserts should be ultimately moved to a higher level
         assert!(self.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
         assert!(self.lookups[&LookupTable::RangeCheck4].len() == 20);
-        //assert!(self.lookups[&LookupTable::RangeCheck4Abs].len() == 6);
-        //assert!(
-        //    self.lookups[&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)].len() == 1
-        //);
 
         let lookup_constraint = constraint_lookups(&self.lookups);
         constraints.extend(lookup_constraint);
