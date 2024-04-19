@@ -7,7 +7,7 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    circuit::CircuitTrait,
+    circuit::CircuitPad,
     keccak::{
         circuit::KeccakCircuit,
         column::{Steps, ZKVM_KECCAK_COLS},
@@ -180,7 +180,7 @@ pub fn main() -> ExitCode {
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = mips_circuit.pad(instr);
+        let needs_folding = mips_circuit.pad_dummy(instr);
         if needs_folding {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
@@ -191,7 +191,7 @@ pub fn main() -> ExitCode {
         }
     }
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = keccak_circuit.pad(step);
+        let needs_folding = keccak_circuit.pad_dummy(step);
         if needs_folding {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,

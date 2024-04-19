@@ -1,7 +1,7 @@
 use strum::{EnumCount, IntoEnumIterator};
 
 use crate::{
-    circuit::CircuitTrait,
+    circuit::CircuitPad,
     mips::{
         circuit::MIPSCircuit,
         constraints::Env,
