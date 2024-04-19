@@ -1193,6 +1193,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
+name = "hyperplonk"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "groupmap",
+ "itertools 0.12.1",
+ "kimchi",
+ "kimchi-msm",
+ "mina-curves",
+ "mina-poseidon",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "o1-utils",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with 3.6.0",
+ "thiserror",
+]
+
+[[package]]
 name = "iai"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

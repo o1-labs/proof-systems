@@ -5,6 +5,7 @@ members = [
     "curves",
     "groupmap",
     "hasher",
+    "hyperplonk",
     "kimchi",
     "kimchi/snarky-deriver/",
     "msm",
