@@ -1,7 +1,7 @@
-use std::marker::PhantomData;
-
 use crate::{logup::LookupTableID, Logup};
 use ark_ff::PrimeField;
+use o1_utils::FieldHelpers;
+use std::marker::PhantomData;
 use strum_macros::EnumIter;
 
 pub mod column;
@@ -58,15 +58,55 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
     }
 }
 
+impl<Ff: PrimeField> LookupTable<Ff> {
+    pub fn entries_ff_highest<F: PrimeField>(domain_d1_size: u64) -> Vec<F> {
+        let top_modulus_f =
+            F::from_biguint(&crate::serialization::interpreter::ff_modulus_highest_limb::<Ff>())
+                .unwrap();
+        (0..domain_d1_size)
+            .map(|i| {
+                if F::from(i) < top_modulus_f {
+                    F::from(i)
+                } else {
+                    F::zero()
+                }
+            })
+            .collect()
+    }
+
+    pub fn entries<F: PrimeField>(&self, domain_d1_size: u64) -> Vec<F> {
+        assert!(domain_d1_size >= (1 << 15));
+        match self {
+            Self::RangeCheck15 => (0..domain_d1_size).map(|i| F::from(i)).collect(),
+            Self::RangeCheck4 => (0..domain_d1_size)
+                .map(|i| if i < (1 << 4) { F::from(i) } else { F::zero() })
+                .collect(),
+            Self::RangeCheck4Abs => (0..domain_d1_size)
+                .map(|i| {
+                    if i < (1 << 4) {
+                        // [0,1,2 ... (1<<4)-1]
+                        F::from(i)
+                    } else if i < 2 * (1 << 4) {
+                        // [-(i<<4),...-2,-1]
+                        F::from(i - 2 * (1 << 4))
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            Self::RangeCheckFfHighest(_) => Self::entries_ff_highest::<F>(domain_d1_size),
+        }
+    }
+}
+
 impl<Ff: PrimeField> LookupTable<Ff> {}
 
 pub type Lookup<F, Ff> = Logup<F, LookupTable<Ff>>;
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::{PrimeField, UniformRand};
+    use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
-    use o1_utils::FieldHelpers;
     use poly_commitment::pairing_proof::PairingSRS;
     use std::{collections::BTreeMap, marker::PhantomData};
 
@@ -82,8 +122,8 @@ mod tests {
             column::SER_N_COLUMNS,
             constraints,
             interpreter::{
-                constrain_multiplication, deserialize_field_element, ff_modulus_highest_limb,
-                limb_decompose_ff, multiplication_circuit,
+                constrain_multiplication, deserialize_field_element, limb_decompose_ff,
+                multiplication_circuit,
             },
             witness, N_INTERMEDIATE_LIMBS,
         },
@@ -91,45 +131,6 @@ mod tests {
         witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
-
-    impl<Ff: PrimeField> LookupTable<Ff> {
-        fn entries_ff_highest<F: PrimeField>(domain: EvaluationDomains<F>) -> Vec<F> {
-            let top_modulus_f = F::from_biguint(&ff_modulus_highest_limb::<Ff>()).unwrap();
-            (0..domain.d1.size)
-                .map(|i| {
-                    if F::from(i) < top_modulus_f {
-                        F::from(i)
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect()
-        }
-
-        fn entries<F: PrimeField>(&self, domain: EvaluationDomains<F>) -> Vec<F> {
-            assert!(domain.d1.size >= (1 << 15));
-            match self {
-                Self::RangeCheck15 => (0..domain.d1.size).map(|i| F::from(i)).collect(),
-                Self::RangeCheck4 => (0..domain.d1.size)
-                    .map(|i| if i < (1 << 4) { F::from(i) } else { F::zero() })
-                    .collect(),
-                Self::RangeCheck4Abs => (0..domain.d1.size)
-                    .map(|i| {
-                        if i < (1 << 4) {
-                            // [0,1,2 ... (1<<4)-1]
-                            F::from(i)
-                        } else if i < 2 * (i << 4) {
-                            // [-(i<<4),...-2,-1]
-                            F::from(i - 2 * (1 << 4))
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                Self::RangeCheckFfHighest(_) => Self::entries_ff_highest::<F>(domain),
-            }
-        }
-    }
 
     #[test]
     fn test_completeness() {
@@ -219,8 +220,8 @@ mod tests {
         for (table_id, table) in rangecheck_tables.iter_mut() {
             let rangecheck_m = witness_env.get_rangecheck_multiplicities(domain, *table_id);
             rangecheck_multiplicities.insert(*table_id, rangecheck_m.clone());
-            let rangecheck_t = LookupTable::<Ff1>::RangeCheck15
-                .entries(domain)
+            let rangecheck_t = (*table_id)
+                .entries(domain.d1.size)
                 .into_iter()
                 .enumerate()
                 .map(|(i, v)| Lookup {
@@ -234,12 +235,6 @@ mod tests {
         let logups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = rangecheck_tables
             .iter()
             .filter_map(|(table_id, table)| {
-                println!(
-                    "Adding table to logups, table id: {:?}, len: {:?}, table[0].len: {:?}",
-                    table_id,
-                    table.len(),
-                    table[0].len()
-                );
                 // Only add a table if it's used. Otherwise lookups fail.
                 if !table.is_empty() && !table[0].is_empty() {
                     Some(LogupWitness {

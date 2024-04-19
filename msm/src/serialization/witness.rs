@@ -183,11 +183,6 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
                 .take(n_repeated_dummy_value)
                 .collect();
             m.extend(repeated_dummy_value);
-            // TODO @volhovm Why do we push the last index as a last
-            // element?
-            //
-            // FIXME this makes the logup unsound: we add dummy values
-            // which are not necessarily present in the table.
             m.push(F::from(n_repeated_dummy_value as u64));
         }
         assert_eq!(m.len(), domain.d1.size as usize);
@@ -221,7 +216,6 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
         value: &<Self as InterpreterEnv<F, Ff>>::Variable,
         value_ix: usize,
     ) {
-        //println!("Recording range check for table_id {table_id:?}, value {value:?}");
         self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
         self.lookups.get_mut(&table_id).unwrap().push(Lookup {
             table_id,
