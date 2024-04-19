@@ -3,6 +3,7 @@ use ark_ff::Field;
 pub trait Permutation<F: Field, const STATE_SIZE: usize> {
     fn get_state(&self) -> &[F; STATE_SIZE];
 
+    /// Apply the permutation to the whole state.
     fn apply_permutation(&self);
 }
 
