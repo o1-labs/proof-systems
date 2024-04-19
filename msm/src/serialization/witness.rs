@@ -275,7 +275,7 @@ mod tests {
             limb0.to_biguint().try_into().unwrap()
         };
         let mut dummy_env = Env::<Fp>::create();
-        deserialize_field_element(
+        deserialize_field_element::<Fp, Ff1, _>(
             &mut dummy_env,
             [
                 BigUint::from(limb0),

@@ -78,19 +78,19 @@ mod tests {
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
 
-    impl<Ff: PrimeField> LookupTable {
-        fn entries_ff_highest<F: PrimeField>(domain: EvaluationDomains<F>) -> Vec<F> {
-            let top_modulus_f = F::from_biguint(&ff_modulus_highest_limb::<Ff>()).unwrap();
-            (0..domain.d1.size)
-                .map(|i| {
-                    if F::from(i) < top_modulus_f {
-                        F::from(i)
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect()
-        }
+    impl LookupTable {
+        //fn entries_ff_highest<F: PrimeField>(domain: EvaluationDomains<F>) -> Vec<F> {
+        //    let top_modulus_f = F::from_biguint(&ff_modulus_highest_limb()).unwrap();
+        //    (0..domain.d1.size)
+        //        .map(|i| {
+        //            if F::from(i) < top_modulus_f {
+        //                F::from(i)
+        //            } else {
+        //                F::zero()
+        //            }
+        //        })
+        //        .collect()
+        //}
 
         fn entries<F: PrimeField>(&self, domain: EvaluationDomains<F>) -> Vec<F> {
             assert!(domain.d1.size >= (1 << 15));
@@ -113,7 +113,7 @@ mod tests {
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-        let mut witness_env = witness::Env::<Fp, Ff1>::create();
+        let mut witness_env = witness::Env::<Fp>::create();
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
@@ -138,9 +138,9 @@ mod tests {
         let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
         // An extra element in the array stands for the fixed table.
-        let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
+        let rangecheck4: [Vec<Lookup<Fp>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
-        let rangecheck15: [Vec<Lookup<Fp, Ff1>>; (3 * N_LIMBS - 1) + 1] =
+        let rangecheck15: [Vec<Lookup<Fp>>; (3 * N_LIMBS - 1) + 1] =
             std::array::from_fn(|_| vec![]);
         let mut rangecheck_tables: BTreeMap<LookupTable, Vec<Vec<Lookup<Fp>>>> = BTreeMap::new();
         rangecheck_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
@@ -148,7 +148,7 @@ mod tests {
 
         for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness
-            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
+            deserialize_field_element::<Fp, Ff1, _>(&mut witness_env, limbs.map(Into::into));
             multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
             // Filling actually used rows
             for j in 0..SER_N_COLUMNS {
@@ -172,9 +172,12 @@ mod tests {
         }
 
         let constraints = {
-            let mut constraints_env = constraints::Env::<Fp, Ff1>::create();
-            deserialize_field_element(&mut constraints_env, field_elements[0].map(Into::into));
-            constrain_multiplication(&mut constraints_env);
+            let mut constraints_env = constraints::Env::<Fp>::create();
+            deserialize_field_element::<Fp, Ff1, _>(
+                &mut constraints_env,
+                field_elements[0].map(Into::into),
+            );
+            constrain_multiplication::<Fp, Ff1, _>(&mut constraints_env);
             constraints_env.get_constraints()
         };
 
