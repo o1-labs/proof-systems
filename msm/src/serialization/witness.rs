@@ -68,7 +68,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         } else {
             TryFrom::try_from((*value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
         };
-        self.record_range_check(LookupTable::RangeCheck4Abs, value, value_ix);
+        self.record_lookup(LookupTable::RangeCheck4Abs, value, value_ix);
     }
 
     fn range_check_ff_highest(&mut self, value: &Self::Variable) {
@@ -82,7 +82,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         );
 
         let value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
-        self.record_range_check(
+        self.record_lookup(
             LookupTable::RangeCheckFfHighest(PhantomData),
             value,
             value_ix,
@@ -94,7 +94,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         assert!(value_biguint < BigUint::from(2u128.pow(15)));
         // Adding multiplicities
         let value_ix: usize = value_biguint.clone().try_into().unwrap();
-        self.record_range_check(LookupTable::RangeCheck15, value, value_ix);
+        self.record_lookup(LookupTable::RangeCheck15, value, value_ix);
     }
 
     fn range_check4(&mut self, value: &Self::Variable) {
@@ -102,7 +102,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         assert!(value_biguint < BigUint::from(2u128.pow(4)));
         // Adding multiplicities
         let value_ix: usize = value_biguint.clone().try_into().unwrap();
-        self.record_range_check(LookupTable::RangeCheck4, value, value_ix);
+        self.record_lookup(LookupTable::RangeCheck4, value, value_ix);
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -170,7 +170,7 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     }
 
     /// Getting multiplicities for range check tables less or equal than 15 bits.
-    pub fn get_rangecheck_multiplicities(
+    pub fn get_lookup_multiplicities(
         &self,
         domain: EvaluationDomains<F>,
         table_id: LookupTable<Ff>,
@@ -210,7 +210,7 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     }
 
     // Commonly used by range checking functions.
-    fn record_range_check(
+    fn record_lookup(
         &mut self,
         table_id: LookupTable<Ff>,
         value: &<Self as InterpreterEnv<F, Ff>>::Variable,
