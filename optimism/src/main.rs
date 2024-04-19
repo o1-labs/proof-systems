@@ -8,21 +8,21 @@ use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::{
-        circuit::KeccakCircuit,
         column::{Steps, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
+        trace::KeccakTrace,
     },
     lookups::LookupTableIDs,
     mips::{
-        circuit::MIPSCircuit,
         column::{MIPSWitnessTrait, MIPS_COLUMNS},
         constraints as mips_constraints,
         interpreter::Instruction,
+        trace::MIPSTrace,
         witness::{self as mips_witness, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
     proof,
-    tester::CircuitPad,
+    trace::Tracer,
     DOMAIN_SIZE,
 };
 use log::debug;
@@ -98,8 +98,8 @@ pub fn main() -> ExitCode {
     // The keccak environment is extracted inside the loop
 
     // Initialize the circuits. Includes pre-folding witnesses.
-    let mut mips_circuit = MIPSCircuit::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
-    let mut keccak_circuit = KeccakCircuit::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
+    let mut mips_circuit = MIPSTrace::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
+    let mut keccak_circuit = KeccakTrace::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
     // Initialize folded instances of the sub circuits
     let mut mips_folded_instance = HashMap::new();

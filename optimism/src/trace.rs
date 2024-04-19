@@ -3,7 +3,7 @@ use ark_ff::Field;
 use kimchi_msm::witness::Witness;
 use std::{collections::HashMap, hash::Hash};
 
-pub struct Circuit<const N: usize, SELECTOR, F> {
+pub struct Trace<const N: usize, SELECTOR, F> {
     /// The domain size of the circuit
     pub domain_size: usize,
     /// The witness for a given selector
@@ -14,7 +14,7 @@ pub struct Circuit<const N: usize, SELECTOR, F> {
     pub lookups: HashMap<SELECTOR, Vec<Lookup<E<F>>>>,
 }
 
-impl<const N: usize, SELECTOR: Eq + Hash, F: Field> Circuit<N, SELECTOR, F> {
+impl<const N: usize, SELECTOR: Eq + Hash, F: Field> Trace<N, SELECTOR, F> {
     /// Returns a boolean indicating whether the witness for the given selector is empty.
     pub fn witness_is_empty(&self, step: SELECTOR) -> bool {
         self.witness[&step].cols[0].is_empty()
@@ -33,7 +33,7 @@ impl<const N: usize, SELECTOR: Eq + Hash, F: Field> Circuit<N, SELECTOR, F> {
     }
 }
 
-pub trait CircuitPad<const N: usize, SELECTOR, F, Env> {
+pub trait Tracer<const N: usize, SELECTOR, F, Env> {
     /// Create a new circuit
     fn new(domain_size: usize, env: &mut Env) -> Self;
 

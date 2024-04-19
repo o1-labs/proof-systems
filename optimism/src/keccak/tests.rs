@@ -1,6 +1,5 @@
 use crate::{
     keccak::{
-        circuit::KeccakCircuit,
         column::{
             Absorbs::*,
             Sponges::*,
@@ -9,11 +8,12 @@ use crate::{
         },
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
+        trace::KeccakTrace,
         Constraint::*,
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    tester::CircuitPad,
+    trace::Tracer,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -497,7 +497,7 @@ fn test_keccak_prover() {
         let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
         // Keep track of the constraints and lookups of the sub-circuits
-        let mut keccak_circuit = KeccakCircuit::<Fp>::new(domain_size, &mut keccak_env);
+        let mut keccak_circuit = KeccakTrace::<Fp>::new(domain_size, &mut keccak_env);
 
         while keccak_env.constraints_env.step.is_some() {
             let step = keccak_env.constraints_env.step.unwrap();

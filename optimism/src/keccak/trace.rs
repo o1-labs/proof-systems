@@ -9,15 +9,15 @@ use crate::{
         Steps::{self, *},
         ZKVM_KECCAK_COLS,
     },
-    tester::{Circuit, CircuitPad},
+    trace::{Trace, Tracer},
 };
 
 use super::environment::KeccakEnv;
 
-/// The Keccak circuit
-pub type KeccakCircuit<F> = Circuit<ZKVM_KECCAK_COLS, Steps, F>;
+/// The Keccak circuit trace
+pub type KeccakTrace<F> = Trace<ZKVM_KECCAK_COLS, Steps, F>;
 
-impl<F: Field> CircuitPad<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakCircuit<F> {
+impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<F> {
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
             domain_size,

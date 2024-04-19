@@ -1,8 +1,5 @@
-use strum::{EnumCount, IntoEnumIterator};
-
 use crate::{
     mips::{
-        circuit::MIPSCircuit,
         constraints::Env,
         interpreter::{
             ITypeInstruction::{self, *},
@@ -10,9 +7,11 @@ use crate::{
             JTypeInstruction::{self, *},
             RTypeInstruction::{self, *},
         },
+        trace::MIPSTrace,
     },
-    tester::CircuitPad,
+    trace::Tracer,
 };
+use strum::{EnumCount, IntoEnumIterator};
 
 type Fp = ark_bn254::Fr;
 
@@ -29,7 +28,7 @@ fn test_mips_number_constraints() {
     };
 
     // Keep track of the constraints and lookups of the sub-circuits
-    let mips_circuit = MIPSCircuit::<Fp>::new(domain_size, &mut constraints_env);
+    let mips_circuit = MIPSTrace::<Fp>::new(domain_size, &mut constraints_env);
 
     let assert_num_constraints = |instr: &Instruction, num: usize| {
         assert_eq!(mips_circuit.constraints.get(instr).unwrap().len(), num)

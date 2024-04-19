@@ -4,17 +4,17 @@ use crate::{
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
-    tester::{Circuit, CircuitPad},
+    trace::{Trace, Tracer},
 };
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;
 use std::{array, collections::HashMap};
 use strum::IntoEnumIterator;
 
-/// The Keccak circuit
-pub type MIPSCircuit<F> = Circuit<MIPS_COLUMNS, Instruction, F>;
+/// The MIPS circuit trace
+pub type MIPSTrace<F> = Trace<MIPS_COLUMNS, Instruction, F>;
 
-impl<F: Field> CircuitPad<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircuit<F> {
+impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
     fn new(domain_size: usize, env: &mut Env<F>) -> Self {
         let mut circuit = Self {
             domain_size,

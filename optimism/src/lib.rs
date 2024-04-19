@@ -30,8 +30,8 @@ pub mod proof;
 /// The RAM lookup argument.
 pub mod ramlookup;
 
-/// Defines a tester struct used for testing / demo purposes
-pub mod tester;
+/// Defines a trace struct used for testing / demo purposes
+pub mod trace;
 
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 use kimchi_msm::columns::Column;
