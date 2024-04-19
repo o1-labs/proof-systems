@@ -9,7 +9,7 @@ use crate::{
     serialization::{
         column::{SerializationColumn, SER_N_COLUMNS},
         interpreter::InterpreterEnv,
-        Lookup, LookupTable,
+        lookups::{Lookup, LookupTable},
     },
     witness::Witness,
     LIMB_BITSIZE, N_LIMBS,

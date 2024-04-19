@@ -5,11 +5,15 @@ use kimchi::circuits::{
 };
 use std::collections::BTreeMap;
 
-use crate::{columns::Column, expr::E};
-
-use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
 use crate::{
-    columns::ColumnIndexer, logup::constraint_lookups, serialization::column::SerializationColumn,
+    columns::{Column, ColumnIndexer},
+    expr::E,
+    logup::constraint_lookups,
+    serialization::{
+        column::SerializationColumn,
+        interpreter::InterpreterEnv,
+        lookups::{Lookup, LookupTable},
+    },
 };
 
 pub struct Env<F: PrimeField, Ff: PrimeField> {
