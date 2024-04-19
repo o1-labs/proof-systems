@@ -22,13 +22,14 @@ mod tests {
         prover::prove,
         serialization::{
             column::SER_N_COLUMNS,
-            constraints,
+            constraints::ConstraintBuilderEnv,
             interpreter::{
                 constrain_multiplication, deserialize_field_element, limb_decompose_ff,
                 multiplication_circuit,
             },
             lookups::{Lookup, LookupTable},
-            witness, N_INTERMEDIATE_LIMBS,
+            witness::WitnessBuilderEnv,
+            N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
@@ -45,7 +46,7 @@ mod tests {
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-        let mut witness_env = witness::Env::<Fp, Ff1>::create();
+        let mut witness_env = WitnessBuilderEnv::<Fp, Ff1>::create();
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
@@ -108,7 +109,7 @@ mod tests {
         }
 
         let constraints = {
-            let mut constraints_env = constraints::Env::<Fp, Ff1>::create();
+            let mut constraints_env = ConstraintBuilderEnv::<Fp, Ff1>::create();
             deserialize_field_element(&mut constraints_env, field_elements[0].map(Into::into));
             constrain_multiplication(&mut constraints_env);
 

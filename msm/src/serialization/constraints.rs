@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-pub struct Env<F: PrimeField, Ff: PrimeField> {
+pub struct ConstraintBuilderEnv<F: PrimeField, Ff: PrimeField> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
@@ -26,7 +26,7 @@ pub struct Env<F: PrimeField, Ff: PrimeField> {
     pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<F>, Ff>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
     pub fn create() -> Self {
         Self {
             constraints: vec![],
@@ -36,7 +36,7 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderEnv<F, Ff> {
     type Position = Column;
 
     type Variable = E<F>;
@@ -118,7 +118,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
     fn add_lookup(&mut self, table_id: LookupTable<Ff>, value: &E<F>) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
         let lookup = Lookup {
