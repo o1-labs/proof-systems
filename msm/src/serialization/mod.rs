@@ -219,7 +219,7 @@ mod tests {
         for (table_id, table) in rangecheck_tables.iter_mut() {
             let rangecheck_m = witness_env.get_rangecheck_multiplicities(domain, *table_id);
             rangecheck_multiplicities.insert(*table_id, rangecheck_m.clone());
-            let rangecheck_t = LookupTable::<Ff1>::RangeCheck15
+            let rangecheck_t = (*table_id)
                 .entries(domain)
                 .into_iter()
                 .enumerate()
