@@ -23,6 +23,17 @@ Some designs might be inspired from
 previous designs I wrote in OCaml. For instance, particular the permutation and the sponge mode comes from
 [ocaml-bls12-381-hash](https://gitlab.com/nomadic-labs/cryptography/ocaml-bls12-381-hash).
 
+What the library should be able to encode:
+- different permutations
+- different internal state size of the permutation
+- absorb different type of values
+
+An idea would be to encode the oracle at the round level, and the round has its own Oracle definition.
+In the oracle definition, there is:
+- the number and type of previous messages absorbed and squeezed.
+- the original state size of the permutation
+- the type of elements the permutation contains
+
 ### Sponge design
 
 The first thing to design is the mode of operation `Sponge`.
