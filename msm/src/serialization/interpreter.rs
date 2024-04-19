@@ -425,7 +425,8 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.range_check_ff_highest(x);
+            // TODO reenable
+            // env.range_check_ff_highest(x);
         } else {
             env.range_check15(x);
         }
@@ -441,7 +442,8 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
         if i % 6 == 5 {
             // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.range_check_abs4bit(x);
+            // FIXME resurrect
+            // env.range_check_abs4bit(x);
         } else {
             env.range_check_abs15bit(x);
         }

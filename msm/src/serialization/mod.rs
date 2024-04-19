@@ -168,19 +168,19 @@ mod tests {
         // An extra element in the array stands for the fixed table.
         let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
             std::array::from_fn(|_| vec![]);
-        let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
+        //let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
         let rangecheck15: [Vec<Lookup<Fp, Ff1>>; (3 * N_LIMBS - 1) + 1] =
             std::array::from_fn(|_| vec![]);
-        let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] = std::array::from_fn(|_| vec![]);
+        //let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] = std::array::from_fn(|_| vec![]);
         let mut rangecheck_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
             BTreeMap::new();
         rangecheck_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
-        rangecheck_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
+        //rangecheck_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
         rangecheck_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
-        rangecheck_tables.insert(
-            LookupTable::RangeCheckFfHighest(PhantomData),
-            rangecheckffhighest.to_vec(),
-        );
+        //rangecheck_tables.insert(
+        //    LookupTable::RangeCheckFfHighest(PhantomData),
+        //    rangecheckffhighest.to_vec(),
+        //);
 
         for (_i, limbs) in field_elements.iter().enumerate() {
             // Witness

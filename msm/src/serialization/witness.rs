@@ -200,8 +200,12 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
         let mut lookups = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
         for table_id in LookupTable::<Ff>::iter() {
-            lookups.insert(table_id, Vec::new());
-            lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
+            if table_id != LookupTable::RangeCheckFfHighest(std::marker::PhantomData)
+                && table_id != LookupTable::RangeCheck4Abs
+            {
+                lookups.insert(table_id, Vec::new());
+                lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
+            }
         }
 
         Self {

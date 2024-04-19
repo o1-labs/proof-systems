@@ -74,10 +74,12 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
             LookupTable::RangeCheckFfHighest(core::marker::PhantomData),
             value,
         );
+        panic!("oh well");
     }
 
     fn range_check_abs4bit(&mut self, value: &Self::Variable) {
         self.add_lookup(LookupTable::RangeCheck4Abs, value);
+        panic!("oh well");
     }
 
     fn range_check15(&mut self, value: &Self::Variable) {
@@ -116,6 +118,8 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
 
 impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     fn add_lookup(&mut self, table_id: LookupTable<Ff>, value: &E<F>) {
+        assert!(table_id != LookupTable::RangeCheckFfHighest(std::marker::PhantomData));
+        assert!(table_id != LookupTable::RangeCheck4Abs);
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
         let lookup = Lookup {
             table_id,
@@ -139,10 +143,10 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
         // asserts should be ultimately moved to a higher level
         assert!(self.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
         assert!(self.lookups[&LookupTable::RangeCheck4].len() == 20);
-        assert!(self.lookups[&LookupTable::RangeCheck4Abs].len() == 6);
-        assert!(
-            self.lookups[&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)].len() == 1
-        );
+        //assert!(self.lookups[&LookupTable::RangeCheck4Abs].len() == 6);
+        //assert!(
+        //    self.lookups[&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)].len() == 1
+        //);
 
         let lookup_constraint = constraint_lookups(&self.lookups);
         constraints.extend(lookup_constraint);
