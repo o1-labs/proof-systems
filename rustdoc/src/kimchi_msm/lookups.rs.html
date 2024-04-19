@@ -130,6 +130,7 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the Logup protocol for the MSM project.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::logup::{Logup, LogupWitness, LookupTableID};
@@ -257,6 +258,7 @@
         LookupWitness {
             f: <span class="macro">vec!</span>[f_evals, t_evals],
             m,
+            table_id: LookupTableIDs::Custom(table_id),
         }
     }
 }

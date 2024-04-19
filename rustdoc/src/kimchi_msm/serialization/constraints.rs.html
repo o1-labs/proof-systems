@@ -142,8 +142,6 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -281,11 +279,9 @@
         <span class="macro">assert!</span>(<span class="self">self</span>.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck15].len() == <span class="number">17</span>);
         <span class="macro">assert!</span>(<span class="self">self</span>.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck4].len() == <span class="number">20</span>);
 
-        <span class="kw">let </span>_lookup_constraint = constraint_lookups(<span class="kw-2">&amp;</span><span class="self">self</span>.lookups);
-        <span class="comment">// FIXME: it seems the constraints are not correctly checked.
-        // Activate lookup constraints after by decommenting the following line
-        // constraints.extend(_lookup_constraint);
-        </span>constraints
+        <span class="kw">let </span>lookup_constraint = constraint_lookups(<span class="kw-2">&amp;</span><span class="self">self</span>.lookups);
+        constraints.extend(lookup_constraint);
+        constraints
     }
 }
 </code></pre></div></section></main></body></html>

@@ -222,6 +222,8 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup};
 
 <span class="kw">pub mod </span>column;
@@ -406,6 +408,7 @@
             LogupWitness {
                 f: rangecheck4.to_vec(),
                 m: rangecheck4_m,
+                table_id: LookupTable::RangeCheck4,
             }
         };
 
@@ -413,6 +416,7 @@
             LogupWitness {
                 f: rangecheck15.to_vec(),
                 m: rangecheck15_m,
+                table_id: LookupTable::RangeCheck15,
             }
         };
 

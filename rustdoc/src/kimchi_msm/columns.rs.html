@@ -66,14 +66,14 @@
 </span><span class="kw">pub enum </span>Column {
     X(usize),
     <span class="comment">// Columns related to the lookup protocol
-    </span><span class="doccomment">/// Partial sums, indexed. This corresponds to the `h_i`
-    </span>LookupPartialSum(usize),
+    </span><span class="doccomment">/// Partial sums. This corresponds to the `h_i`.
+    /// It is first indexed by the table ID, and after that internal index.
+    </span>LookupPartialSum((u32, usize)),
     <span class="doccomment">/// Multiplicities, indexed. This corresponds to the `m_i`
     </span>LookupMultiplicity(u32),
     <span class="doccomment">/// The lookup aggregation, i.e. `phi`
     </span>LookupAggregation,
     <span class="doccomment">/// The fixed tables. The parameter is considered to the indexed table.
-    /// u32 has been arbitrarily chosen as it seems to be already large enough
     </span>LookupFixedTable(u32),
 }
 
@@ -81,7 +81,7 @@
     <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             Column::X(i) =&gt; <span class="macro">format!</span>(<span class="string">"x_{{{i}}}"</span>),
-            Column::LookupPartialSum(i) =&gt; <span class="macro">format!</span>(<span class="string">"h_{{{i}}}"</span>),
+            Column::LookupPartialSum((table_id, i)) =&gt; <span class="macro">format!</span>(<span class="string">"h_{{{table_id}, {i}}}"</span>),
             Column::LookupMultiplicity(i) =&gt; <span class="macro">format!</span>(<span class="string">"m_{{{i}}}"</span>),
             Column::LookupFixedTable(i) =&gt; <span class="macro">format!</span>(<span class="string">"t_{{{i}}}"</span>),
             Column::LookupAggregation =&gt; String::from(<span class="string">"φ"</span>),
@@ -91,7 +91,7 @@
     <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, _cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, <span class="self">Self</span>&gt;) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             Column::X(i) =&gt; <span class="macro">format!</span>(<span class="string">"x[{i}]"</span>),
-            Column::LookupPartialSum(i) =&gt; <span class="macro">format!</span>(<span class="string">"h[{i}]"</span>),
+            Column::LookupPartialSum((table_id, i)) =&gt; <span class="macro">format!</span>(<span class="string">"h[{table_id}, {i}]"</span>),
             Column::LookupMultiplicity(i) =&gt; <span class="macro">format!</span>(<span class="string">"m[{i}]"</span>),
             Column::LookupFixedTable(i) =&gt; <span class="macro">format!</span>(<span class="string">"t[{i}]"</span>),
             Column::LookupAggregation =&gt; String::from(<span class="string">"φ"</span>),

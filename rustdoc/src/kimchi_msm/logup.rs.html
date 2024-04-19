@@ -794,6 +794,53 @@
 <a href="#792" id="792">792</a>
 <a href="#793" id="793">793</a>
 <a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a variant of the logarithmic derivative lookups based on the
 //! equations described in the paper ["Multivariate lookups based on logarithmic
 //! derivatives"](https://eprint.iacr.org/2022/1530.pdf).
@@ -943,8 +990,10 @@
 
 <span class="doccomment">/// Generic structure to represent a (vector) lookup the table with ID
 /// `table_id`.
+///
 /// The structure represents the individual fraction of the sum described in the
 /// Logup protocol (for instance Eq. 8).
+///
 /// The table ID is added to the random linear combination formed with the
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
@@ -1010,8 +1059,8 @@
 }
 
 <span class="doccomment">/// Represents a witness of one instance of the lookup argument
-/// IMPROVEME: Possible to index by a generic const?
-</span><span class="comment">// The parameter N is the number of functions/looked-up values per row. It is
+</span><span class="comment">// IMPROVEME: Possible to index by a generic const?
+// The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LogupWitness&lt;F, ID: LookupTableID&gt; {
@@ -1019,33 +1068,38 @@
     /// Invariant: for fixed lookup tables, the last value of the vector is the
     /// lookup table t. The lookup table values must have a negative sign.
     /// The values are represented as:
-    /// [ [f_{1}(1), ..., f_{1}(\omega^n)],
-    ///   [f_{2}(1), ..., f_{2}(\omega^n)]
+    /// [ [f_{1}(1), ..., f_{1}(ω^(n-1)],
+    ///   [f_{2}(1), ..., f_{2}(ω^(n-1)]
     ///     ...
-    ///   [f_{m}(1), ..., f_{m}(\omega^n)]
+    ///   [f_{m}(1), ..., f_{m}(ω^(n-1)]
     /// ]
-    /// TODO: for efficiency, as we go through columns and after that row, we
-    /// should reorganize this. While working on the interpreter, we might
-    /// change this structure.
-    /// TODO: for efficiency, we might want to have a single flat fixed-size
-    /// array
+    </span><span class="comment">//
+    // TODO: for efficiency, as we go through columns and after that row, we
+    // should reorganize this. While working on the interpreter, we might
+    // change this structure.
+    //
+    // TODO: for efficiency, we might want to have a single flat fixed-size
+    // array
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) f: Vec&lt;Vec&lt;Logup&lt;F, ID&gt;&gt;&gt;,
     <span class="doccomment">/// The multiplicity polynomial
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: Vec&lt;F&gt;,
+    <span class="doccomment">/// The table the witness is related to.
+    </span><span class="comment">// We can improve this later by getting rid of it.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) table_id: ID,
 }
 
 <span class="doccomment">/// Represents the proof of the lookup argument
 /// It is parametrized by the type `T` which can be either:
-/// - Polycomm&lt;G: KimchiCurve&gt; for the commitments
-/// - F for the evaluations at zeta (resp. zeta omega).
-/// FIXME: We should have a fixed number of m and h. Should we encode that in
-/// the type?
+/// - `Polycomm&lt;G: KimchiCurve&gt;` for the commitments
+/// - `F` for the evaluations at ζ (resp. ζω).
+</span><span class="comment">// FIXME: We should have a fixed number of m and h. Should we encode that in
+// the type?
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupProof&lt;T, ID&gt; {
     <span class="doccomment">/// The multiplicity polynomials
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) m: BTreeMap&lt;ID, T&gt;,
     <span class="doccomment">/// The polynomial keeping the sum of each row
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) h: Vec&lt;T&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) h: BTreeMap&lt;ID, Vec&lt;T&gt;&gt;,
     <span class="doccomment">/// The "running-sum" over the rows, coined `φ`
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) sum: T,
     <span class="doccomment">/// All fixed lookup tables values, indexed by their ID
@@ -1063,7 +1117,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>iter_contents = <span class="macro">vec!</span>[];
         <span class="comment">// First multiplicities
         </span><span class="self">self</span>.m.values().for_each(|m| iter_contents.push(m));
-        iter_contents.extend(<span class="kw-2">&amp;</span><span class="self">self</span>.h);
+        <span class="self">self</span>.h.values().for_each(|h| iter_contents.extend(h));
         iter_contents.push(<span class="kw-2">&amp;</span><span class="self">self</span>.sum);
         <span class="comment">// Fixed tables
         </span><span class="self">self</span>.fixed_tables
@@ -1092,8 +1146,10 @@
 /// ```
 /// It is because h(X) (column) is defined as:
 /// ```text
-/// h(X) = \sum_{i = 1}^{n} (m_i(X) / (β + f_{i}(X))
-/// ```
+///        n      m_i(X)
+/// h(X)   ∑    ----------
+///       i=1   β + f_i(X)
+///```
 /// For instance, if i = 2, we have
 /// ```text
 /// h(X) = m_1(X) / (β + f_1(X)) + m_2(X) / (β + f_{2}(X))
@@ -1175,22 +1231,23 @@
     lookups_map: <span class="kw-2">&amp;</span>BTreeMap&lt;ID, Vec&lt;Logup&lt;E&lt;F&gt;, ID&gt;&gt;&gt;,
 ) -&gt; Vec&lt;E&lt;F&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
-    <span class="kw">let </span><span class="kw-2">mut </span>idx_partial_sum = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>lookup_terms_cols: Vec&lt;Column&gt; = <span class="macro">vec!</span>[];
     lookups_map.iter().for_each(|(id, lookups)| {
+        <span class="kw">let </span><span class="kw-2">mut </span>idx_partial_sum = <span class="number">0</span>;
+        <span class="kw">let </span>id_u32 = id.to_u32();
         <span class="kw">let </span>table_lookup = Logup {
             table_id: <span class="kw-2">*</span>id,
-            numerator: curr_cell(Column::LookupMultiplicity(id.to_u32())),
-            value: <span class="macro">vec!</span>[curr_cell(Column::LookupFixedTable(id.to_u32()))],
+            numerator: -curr_cell(Column::LookupMultiplicity(id_u32)),
+            value: <span class="macro">vec!</span>[curr_cell(Column::LookupFixedTable(id_u32))],
         };
         <span class="comment">// FIXME: do not clone
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookups = lookups.clone();
         lookups.push(table_lookup);
         <span class="comment">// We split in chunks of 6 (MAX_SUPPORTED_DEGREE - 2)
         </span>lookups.chunks(MAX_SUPPORTED_DEGREE - <span class="number">2</span>).for_each(|chunk| {
-            constraints.push(combine_lookups(
-                Column::LookupPartialSum(idx_partial_sum),
-                chunk.to_vec(),
-            ));
+            <span class="kw">let </span>col = Column::LookupPartialSum((id_u32, idx_partial_sum));
+            lookup_terms_cols.push(col);
+            constraints.push(combine_lookups(col, chunk.to_vec()));
             idx_partial_sum += <span class="number">1</span>;
         });
     });
@@ -1200,9 +1257,9 @@
     </span>{
         <span class="kw">let </span>constraint =
             next_cell(Column::LookupAggregation) - curr_cell(Column::LookupAggregation);
-        <span class="kw">let </span>constraint = (<span class="number">0</span>..idx_partial_sum).fold(constraint, |acc, i| {
-            acc - curr_cell(Column::LookupPartialSum(i))
-        });
+        <span class="kw">let </span>constraint = lookup_terms_cols
+            .into_iter()
+            .fold(constraint, |acc, col| acc - curr_cell(col));
         constraints.push(constraint);
     }
     constraints
@@ -1229,7 +1286,7 @@
     /// multiplicities, the aggregation and the fixed tables, over the domain d8.
     </span><span class="kw">pub struct </span>QuotientPolynomialEnvironment&lt;<span class="lifetime">'a</span>, F: FftField, ID: LookupTableID&gt; {
         <span class="doccomment">/// The evaluations of the partial sums, over d8.
-        </span><span class="kw">pub </span>lookup_terms_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
+        </span><span class="kw">pub </span>lookup_terms_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>BTreeMap&lt;ID, Vec&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;&gt;,
         <span class="doccomment">/// The evaluations of the aggregation, over d8.
         </span><span class="kw">pub </span>lookup_aggregation_evals_d8: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, D&lt;F&gt;&gt;,
         <span class="doccomment">/// The evaluations of the multiplicities, over d8, indexed by the table ID.
@@ -1246,9 +1303,9 @@
         </span><span class="kw">pub </span>lookup_counters_comm_d1: BTreeMap&lt;ID, PolyComm&lt;G&gt;&gt;,
 
         <span class="doccomment">/// The polynomials of the inner sums.
-        </span><span class="kw">pub </span>lookup_terms_poly_d1: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
+        </span><span class="kw">pub </span>lookup_terms_poly_d1: BTreeMap&lt;ID, Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;&gt;,
         <span class="doccomment">/// The commitments of the inner sums.
-        </span><span class="kw">pub </span>lookup_terms_comms_d1: Vec&lt;PolyComm&lt;G&gt;&gt;,
+        </span><span class="kw">pub </span>lookup_terms_comms_d1: BTreeMap&lt;ID, Vec&lt;PolyComm&lt;G&gt;&gt;&gt;,
 
         <span class="doccomment">/// The aggregation polynomial.
         </span><span class="kw">pub </span>lookup_aggregation_poly_d1: DensePolynomial&lt;G::ScalarField&gt;,
@@ -1257,7 +1314,9 @@
 
         <span class="comment">// Evaluating over d8 for the quotient polynomial
         </span><span class="kw">pub </span>lookup_counters_evals_d8: BTreeMap&lt;ID, Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
-        <span class="kw">pub </span>lookup_terms_evals_d8: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
+        <span class="attr">#[allow(clippy::type_complexity)]
+        </span><span class="kw">pub </span>lookup_terms_evals_d8:
+            BTreeMap&lt;ID, Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;&gt;,
         <span class="kw">pub </span>lookup_aggregation_evals_d8: Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;,
 
         <span class="kw">pub </span>fixed_lookup_tables_poly_d1: BTreeMap&lt;ID, DensePolynomial&lt;G::ScalarField&gt;&gt;,
@@ -1357,115 +1416,124 @@
             // in chunks of (MAX_SUPPORTED_DEGREE - 2)
             </span><span class="kw">let </span><span class="kw-2">mut </span>fixed_lookup_tables: BTreeMap&lt;ID, Vec&lt;G::ScalarField&gt;&gt; = BTreeMap::new();
 
-            <span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; = lookups
-                .into_iter()
-                .map(|lookup| {
-                    <span class="kw">let </span>LogupWitness { f, m: <span class="kw">_ </span>} = lookup;
-                    <span class="comment">// The number of functions to look up, including the fixed table.
-                    </span><span class="kw">let </span>n = f.len();
-                    <span class="kw">let </span>n_partial_sums = <span class="kw">if </span>n % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
-                        n / (MAX_SUPPORTED_DEGREE - <span class="number">2</span>)
-                    } <span class="kw">else </span>{
-                        n / (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) + <span class="number">1
-                    </span>};
-                    <span class="kw">let </span><span class="kw-2">mut </span>partial_sums =
-                        <span class="macro">vec!</span>[
-                            Vec::&lt;G::ScalarField&gt;::with_capacity(domain.d1.size <span class="kw">as </span>usize);
-                            n_partial_sums
-                        ];
+            <span class="comment">// We keep the lookup terms in a map, to process them in order in the constraints.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_terms_map: BTreeMap&lt;ID, Vec&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; = BTreeMap::new();
 
-                    <span class="comment">// We compute first the denominators of all f_i and t. We gather them in
-                    // a vector to perform a batch inversion.
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>denominators = Vec::with_capacity(n * domain.d1.size <span class="kw">as </span>usize);
-                    <span class="comment">// Iterate over the rows
-                    </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
-                        <span class="comment">// Iterate over individual columns (i.e. f_i and t)
-                        </span><span class="kw">for </span>(i, f_i) <span class="kw">in </span>f.iter().enumerate() {
-                            <span class="kw">let </span>Logup {
-                                numerator: <span class="kw">_</span>,
-                                table_id,
-                                value,
-                            } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
-                            <span class="comment">// Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
-                            </span><span class="kw">let </span>combined_value: G::ScalarField =
-                                value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
-                                    acc * vector_lookup_combiner + y
-                                }) * vector_lookup_combiner;
-                            <span class="comment">// add table id
-                            </span><span class="kw">let </span>combined_value =
-                                combined_value + table_id.to_field::&lt;G::ScalarField&gt;();
+            lookups.into_iter().for_each(|lookup| {
+                <span class="kw">let </span>LogupWitness { f, m: <span class="kw">_</span>, table_id } = lookup;
+                <span class="comment">// The number of functions to look up, including the fixed table.
+                </span><span class="kw">let </span>n = f.len();
+                <span class="kw">let </span>n_partial_sums = <span class="kw">if </span>n % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
+                    n / (MAX_SUPPORTED_DEGREE - <span class="number">2</span>)
+                } <span class="kw">else </span>{
+                    n / (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) + <span class="number">1
+                </span>};
+                <span class="kw">let </span><span class="kw-2">mut </span>partial_sums =
+                    <span class="macro">vec!</span>[
+                        Vec::&lt;G::ScalarField&gt;::with_capacity(domain.d1.size <span class="kw">as </span>usize);
+                        n_partial_sums
+                    ];
 
-                            <span class="comment">// If last element and fixed lookup tables, we keep
-                            // the *combined* value of the table.
-                            </span><span class="kw">if </span>i == (n - <span class="number">1</span>) &amp;&amp; table_id.is_fixed() {
-                                fixed_lookup_tables
-                                    .entry(<span class="kw-2">*</span>table_id)
-                                    .or_insert_with(Vec::new)
-                                    .push(combined_value);
-                            }
+                <span class="comment">// We compute first the denominators of all f_i and t. We gather them in
+                // a vector to perform a batch inversion.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>denominators = Vec::with_capacity(n * domain.d1.size <span class="kw">as </span>usize);
+                <span class="comment">// Iterate over the rows
+                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
+                    <span class="comment">// Iterate over individual columns (i.e. f_i and t)
+                    </span><span class="kw">for </span>(i, f_i) <span class="kw">in </span>f.iter().enumerate() {
+                        <span class="kw">let </span>Logup {
+                            numerator: <span class="kw">_</span>,
+                            table_id,
+                            value,
+                        } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
+                        <span class="comment">// Compute r * x_{1} + r^2 x_{2} + ... r^{N} x_{N}
+                        </span><span class="kw">let </span>combined_value: G::ScalarField =
+                            value.iter().rev().fold(G::ScalarField::zero(), |acc, y| {
+                                acc * vector_lookup_combiner + y
+                            }) * vector_lookup_combiner;
+                        <span class="comment">// add table id
+                        </span><span class="kw">let </span>combined_value = combined_value + table_id.to_field::&lt;G::ScalarField&gt;();
 
-                            <span class="comment">// β + a_{i}
-                            </span><span class="kw">let </span>lookup_denominator = beta + combined_value;
-                            denominators.push(lookup_denominator);
+                        <span class="comment">// If last element and fixed lookup tables, we keep
+                        // the *combined* value of the table.
+                        </span><span class="kw">if </span>i == (n - <span class="number">1</span>) &amp;&amp; table_id.is_fixed() {
+                            fixed_lookup_tables
+                                .entry(<span class="kw-2">*</span>table_id)
+                                .or_insert_with(Vec::new)
+                                .push(value[<span class="number">0</span>]);
                         }
+
+                        <span class="comment">// β + a_{i}
+                        </span><span class="kw">let </span>lookup_denominator = beta + combined_value;
+                        denominators.push(lookup_denominator);
                     }
+                }
+                <span class="macro">assert!</span>(denominators.len() == n * domain.d1.size <span class="kw">as </span>usize);
 
-                    ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
+                ark_ff::fields::batch_inversion(<span class="kw-2">&amp;mut </span>denominators);
 
-                    <span class="comment">// Evals is the sum on the individual columns for each row
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>denominator_index = <span class="number">0</span>;
+                <span class="comment">// Evals is the sum on the individual columns for each row
+                </span><span class="kw">let </span><span class="kw-2">mut </span>denominator_index = <span class="number">0</span>;
 
-                    <span class="comment">// We only need to add the numerator now
-                    </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
-                        <span class="kw">let </span><span class="kw-2">mut </span>partial_sum_idx = <span class="number">0</span>;
-                        <span class="kw">let </span><span class="kw-2">mut </span>row_acc = G::ScalarField::zero();
-                        <span class="kw">for </span>f_i <span class="kw">in </span>f.iter() {
-                            <span class="kw">let </span>Logup {
-                                numerator,
-                                table_id: <span class="kw">_</span>,
-                                value: <span class="kw">_</span>,
-                            } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
-                            row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
-                            denominator_index += <span class="number">1</span>;
-                            <span class="comment">// We split in chunks of (MAX_SUPPORTED_DEGREE - 2)
-                            // We reset the accumulator for the current partial
-                            // sum after keeping it.
-                            </span><span class="kw">if </span>denominator_index % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
-                                partial_sums[partial_sum_idx].push(row_acc);
-                                row_acc = G::ScalarField::zero();
-                                partial_sum_idx += <span class="number">1</span>;
-                            }
-                        }
-                        <span class="kw">if </span>denominator_index % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) != <span class="number">0 </span>{
+                <span class="comment">// We only need to add the numerator now
+                </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
+                    <span class="kw">let </span><span class="kw-2">mut </span>partial_sum_idx = <span class="number">0</span>;
+                    <span class="kw">let </span><span class="kw-2">mut </span>row_acc = G::ScalarField::zero();
+                    <span class="kw">for </span>(i, f_i) <span class="kw">in </span>f.iter().enumerate() {
+                        <span class="kw">let </span>Logup {
+                            numerator,
+                            table_id: <span class="kw">_</span>,
+                            value: <span class="kw">_</span>,
+                        } = <span class="kw-2">&amp;</span>f_i[j <span class="kw">as </span>usize];
+                        row_acc += <span class="kw-2">*</span>numerator * denominators[denominator_index];
+                        denominator_index += <span class="number">1</span>;
+                        <span class="comment">// We split in chunks of (MAX_SUPPORTED_DEGREE - 2)
+                        // We reset the accumulator for the current partial
+                        // sum after keeping it.
+                        </span><span class="kw">if </span>(i + <span class="number">1</span>) % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) == <span class="number">0 </span>{
                             partial_sums[partial_sum_idx].push(row_acc);
+                            row_acc = G::ScalarField::zero();
+                            partial_sum_idx += <span class="number">1</span>;
                         }
                     }
-                    partial_sums
-                })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-
-            <span class="kw">let </span>lookup_terms_evals: Vec&lt;Vec&lt;G::ScalarField&gt;&gt; =
-                lookup_terms_evals.into_iter().flatten().collect();
+                    <span class="comment">// Whatever leftover in `row_acc` left in the end of the iteration, we write it into
+                    // `partial_sums` too. This is only done in case `n % (MAX_SUPPORTED_DEGREE - 2) != 0`
+                    // which means that the similar addition to `partial_sums` a few lines above won't be triggered.
+                    // So we have this wrapping up call instead.
+                    </span><span class="kw">if </span>n % (MAX_SUPPORTED_DEGREE - <span class="number">2</span>) != <span class="number">0 </span>{
+                        partial_sums[partial_sum_idx].push(row_acc);
+                    }
+                }
+                lookup_terms_map.insert(table_id, partial_sums);
+            });
 
             <span class="comment">// Sanity check to verify that the number of evaluations is correct
-            </span>lookup_terms_evals
-                .iter()
-                .for_each(|evals| <span class="macro">assert_eq!</span>(evals.len(), domain.d1.size <span class="kw">as </span>usize));
+            </span>lookup_terms_map.values().for_each(|evals| {
+                evals
+                    .iter()
+                    .for_each(|eval| <span class="macro">assert_eq!</span>(eval.len(), domain.d1.size <span class="kw">as </span>usize))
+            });
 
             <span class="comment">// Sanity check to verify that we have all the evaluations for the fixed lookup tables
             </span>fixed_lookup_tables
                 .values()
                 .for_each(|evals| <span class="macro">assert_eq!</span>(evals.len(), domain.d1.size <span class="kw">as </span>usize));
 
-            <span class="kw">let </span>lookup_terms_evals_d1: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; =
-                lookup_terms_evals
+            <span class="attr">#[allow(clippy::type_complexity)]
+            </span><span class="kw">let </span>lookup_terms_evals_d1: BTreeMap&lt;
+                ID,
+                Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
+            &gt; =
+                (<span class="kw-2">&amp;</span>lookup_terms_map)
                     .into_par_iter()
-                    .map(|lte| {
+                    .map(|(id, lookup_terms)| {
+                        <span class="kw">let </span>lookup_terms = lookup_terms.into_par_iter().map(|lookup_term| {
                         Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-                            lte, domain.d1,
-                        )
+                            lookup_term.to_vec(), domain.d1,
+                        )}).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                        (<span class="kw-2">*</span>id, lookup_terms)
                     })
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                    .collect();
 
             <span class="kw">let </span>fixed_lookup_tables_evals_d1: BTreeMap&lt;
                 ID,
@@ -1482,11 +1550,17 @@
                 })
                 .collect();
 
-            <span class="kw">let </span>lookup_terms_poly_d1: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; =
+            <span class="kw">let </span>lookup_terms_poly_d1: BTreeMap&lt;ID, Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;&gt; =
                 (<span class="kw-2">&amp;</span>lookup_terms_evals_d1)
                     .into_par_iter()
-                    .map(|lte| lte.interpolate_by_ref())
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                    .map(|(id, lookup_terms)| {
+                        <span class="kw">let </span>lookup_terms: Vec&lt;DensePolynomial&lt;G::ScalarField&gt;&gt; = lookup_terms
+                            .into_par_iter()
+                            .map(|evals| evals.interpolate_by_ref())
+                            .collect();
+                        (<span class="kw-2">*</span>id, lookup_terms)
+                    })
+                    .collect();
 
             <span class="kw">let </span>fixed_lookup_tables_poly_d1: BTreeMap&lt;ID, DensePolynomial&lt;G::ScalarField&gt;&gt; =
                 (<span class="kw-2">&amp;</span>fixed_lookup_tables_evals_d1)
@@ -1494,11 +1568,21 @@
                     .map(|(id, evals)| (<span class="kw-2">*</span>id, evals.interpolate_by_ref()))
                     .collect();
 
-            <span class="kw">let </span>lookup_terms_evals_d8: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; =
-                (<span class="kw-2">&amp;</span>lookup_terms_poly_d1)
-                    .into_par_iter()
-                    .map(|lte| lte.evaluate_over_domain_by_ref(domain.d8))
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+            <span class="attr">#[allow(clippy::type_complexity)]
+            </span><span class="kw">let </span>lookup_terms_evals_d8: BTreeMap&lt;
+                ID,
+                Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt;,
+            &gt; = (<span class="kw-2">&amp;</span>lookup_terms_poly_d1)
+                .into_par_iter()
+                .map(|(id, lookup_terms)| {
+                    <span class="kw">let </span>lookup_terms: Vec&lt;Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;&gt; =
+                        lookup_terms
+                            .into_par_iter()
+                            .map(|lookup_term| lookup_term.evaluate_over_domain_by_ref(domain.d8))
+                            .collect();
+                    (<span class="kw-2">*</span>id, lookup_terms)
+                })
+                .collect();
 
             <span class="kw">let </span>fixed_lookup_tables_evals_d8: BTreeMap&lt;
                 ID,
@@ -1508,10 +1592,18 @@
                 .map(|(id, poly)| (<span class="kw-2">*</span>id, poly.evaluate_over_domain_by_ref(domain.d8)))
                 .collect();
 
-            <span class="kw">let </span>lookup_terms_comms_d1: Vec&lt;PolyComm&lt;G&gt;&gt; = (<span class="kw-2">&amp;</span>lookup_terms_evals_d1)
-                .into_par_iter()
-                .map(|lte| srs.commit_evaluations_non_hiding(domain.d1, lte))
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+            <span class="kw">let </span>lookup_terms_comms_d1: BTreeMap&lt;ID, Vec&lt;PolyComm&lt;G&gt;&gt;&gt; = lookup_terms_evals_d1
+                .iter()
+                .map(|(id, lookup_terms)| {
+                    <span class="kw">let </span>lookup_terms = lookup_terms
+                        .into_par_iter()
+                        .map(|lookup_term| {
+                            srs.commit_evaluations_non_hiding(domain.d1, lookup_term)
+                        })
+                        .collect();
+                    (<span class="kw-2">*</span>id, lookup_terms)
+                })
+                .collect();
 
             <span class="kw">let </span>fixed_lookup_tables_comms_d1: BTreeMap&lt;ID, PolyComm&lt;G&gt;&gt; =
                 (<span class="kw-2">&amp;</span>fixed_lookup_tables_evals_d1)
@@ -1519,9 +1611,11 @@
                     .map(|(id, evals)| (<span class="kw-2">*</span>id, srs.commit_evaluations_non_hiding(domain.d1, evals)))
                     .collect();
 
-            lookup_terms_comms_d1
-                .iter()
-                .for_each(|comm| absorb_commitment(fq_sponge, comm));
+            lookup_terms_comms_d1.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(fq_sponge, comm))
+            });
 
             fixed_lookup_tables_comms_d1
                 .values()
@@ -1541,9 +1635,9 @@
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize {
                     <span class="comment">// φ(1) = 0
                     </span>evals.push(acc);
-                    <span class="kw">for </span>lte <span class="kw">in </span>lookup_terms_evals_d1.iter() {
-                        acc += lte[i]
-                    }
+                    lookup_terms_evals_d1.iter().for_each(|(<span class="kw">_</span>, lookup_terms)| {
+                        acc = lookup_terms.iter().fold(acc, |acc, lte| acc + lte[i]);
+                    })
                 }
                 <span class="comment">// Sanity check to verify that the accumulator ends up being zero.
                 // FIXME: This should be removed from runtime, and a constraint

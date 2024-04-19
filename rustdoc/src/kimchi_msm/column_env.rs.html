@@ -142,6 +142,7 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -199,9 +200,10 @@
                     </span><span class="macro">panic!</span>(<span class="string">"Requested column with index {:?} but the given witness is meant for {:?} columns"</span>, i, witness_length)
                 }
             }
-            <span class="self">Self</span>::Column::LookupPartialSum(i) =&gt; {
+            <span class="self">Self</span>::Column::LookupPartialSum((table_id, i)) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.lookup {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_terms_evals_d8[i])
+                    <span class="kw">let </span>table_id = ID::from_u32(table_id);
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_terms_evals_d8[<span class="kw-2">&amp;</span>table_id][i])
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
@@ -213,16 +215,16 @@
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
             }
-            <span class="self">Self</span>::Column::LookupMultiplicity(id) =&gt; {
+            <span class="self">Self</span>::Column::LookupMultiplicity(table_id) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.lookup {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_counters_evals_d8[<span class="kw-2">&amp;</span>ID::from_u32(id)])
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.lookup_counters_evals_d8[<span class="kw-2">&amp;</span>ID::from_u32(table_id)])
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
             }
-            <span class="self">Self</span>::Column::LookupFixedTable(id) =&gt; {
+            <span class="self">Self</span>::Column::LookupFixedTable(table_id) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>lookup) = <span class="self">self</span>.lookup {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.fixed_tables_evals_d8[<span class="kw-2">&amp;</span>ID::from_u32(id)])
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>lookup.fixed_tables_evals_d8[<span class="kw-2">&amp;</span>ID::from_u32(table_id)])
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"No lookup provided"</span>)
                 }
