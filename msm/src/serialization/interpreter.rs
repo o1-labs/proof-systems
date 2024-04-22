@@ -21,10 +21,13 @@ pub trait InterpreterEnv<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
         + From<u64>
         + std::fmt::Debug;
 
+    /// Asserts that the value is zero.
     fn assert_zero(&mut self, cst: Self::Variable);
 
+    /// This is kind of like write_column & read_column right after... And asserting it.
     fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable;
 
+    /// Reads value from a column position.
     fn read_column(&self, pos: CIx) -> Self::Variable;
 
     /// Perform lookup into the specified table.
