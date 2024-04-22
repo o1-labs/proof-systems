@@ -799,9 +799,6 @@ pub mod prover {
                     })
                 }
                 // Sanity check to verify that the accumulator ends up being zero.
-                // FIXME: This should be removed from runtime, and a constraint
-                // should be added. For now, the verifier accepts any proof.
-                // This will be fixed when constraints are added.
                 assert_eq!(
                     acc,
                     G::ScalarField::zero(),
