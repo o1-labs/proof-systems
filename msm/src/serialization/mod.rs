@@ -46,7 +46,7 @@ mod tests {
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-        let mut witness_env = WitnessBuilderEnv::<Fp, Ff1>::create();
+        let mut witness_env = WitnessBuilderEnv::<Fp, LookupTable<Ff1>>::create();
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
@@ -109,7 +109,7 @@ mod tests {
         }
 
         let constraints = {
-            let mut constraints_env = ConstraintBuilderEnv::<Fp, Ff1>::create();
+            let mut constraints_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
             deserialize_field_element(&mut constraints_env, field_elements[0].map(Into::into));
             constrain_multiplication(&mut constraints_env);
 

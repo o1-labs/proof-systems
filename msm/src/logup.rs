@@ -206,6 +206,9 @@ pub trait LookupTableID: Send + Sync + Copy + Hash + Eq + PartialEq + Ord + Part
 
     /// Returns the length of each table.
     fn length(&self) -> usize;
+
+    /// Given a value, returns an index of this value in the table.
+    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize;
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.

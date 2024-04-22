@@ -8,25 +8,21 @@ use std::collections::BTreeMap;
 use crate::{
     columns::{Column, ColumnIndexer},
     expr::E,
-    logup::constraint_lookups,
-    serialization::{
-        column::SerializationColumn,
-        interpreter::InterpreterEnv,
-        lookups::{Lookup, LookupTable},
-    },
+    logup::{constraint_lookups, Logup, LookupTableID},
+    serialization::{column::SerializationColumn, interpreter::InterpreterEnv},
 };
 
-pub struct ConstraintBuilderEnv<F: PrimeField, Ff: PrimeField> {
+pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
     pub constraints: Vec<(usize, Expr<ConstantExpr<F>, Column>)>,
     pub constrain_index: usize,
-    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<F>, Ff>>>,
+    pub lookups: BTreeMap<LT, Vec<Logup<E<F>, LT>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
+impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     pub fn create() -> Self {
         Self {
             constraints: vec![],
@@ -36,7 +32,7 @@ impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderEnv<F, Ff> {
+impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for ConstraintBuilderEnv<F, LT> {
     type Position = Column;
 
     type Variable = E<F>;
@@ -69,9 +65,9 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderE
         pos.to_column()
     }
 
-    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+    fn lookup(&mut self, table_id: LT, value: &Self::Variable) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        let lookup = Lookup {
+        let lookup = Logup {
             table_id,
             numerator: Expr::Atom(ExprInner::Constant(one)),
             value: vec![value.clone()],
@@ -105,7 +101,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderE
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
+impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     pub fn get_constraints(&self) -> Vec<E<F>> {
         let mut constraints: Vec<E<F>> = vec![];
 

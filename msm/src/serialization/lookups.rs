@@ -55,6 +55,22 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
             .unwrap(),
         }
     }
+
+    /// Converts a value to its index in the fixed table.
+    fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
+        match self {
+            Self::RangeCheck15 => TryFrom::try_from(value.to_biguint()).unwrap(),
+            Self::RangeCheck4 => TryFrom::try_from(value.to_biguint()).unwrap(),
+            Self::RangeCheck4Abs => {
+                if value < F::from(1u64 << 4) {
+                    TryFrom::try_from(value.to_biguint()).unwrap()
+                } else {
+                    TryFrom::try_from((value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
+                }
+            }
+            Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
+        }
+    }
 }
 
 impl<Ff: PrimeField> LookupTable<Ff> {
@@ -112,22 +128,6 @@ impl<Ff: PrimeField> LookupTable<Ff> {
                     F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
                 value < top_modulus_f
             }
-        }
-    }
-
-    /// Converts a value to its index in the fixed table.
-    pub fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
-        match self {
-            Self::RangeCheck15 => TryFrom::try_from(value.to_biguint()).unwrap(),
-            Self::RangeCheck4 => TryFrom::try_from(value.to_biguint()).unwrap(),
-            Self::RangeCheck4Abs => {
-                if value < F::from(1u64 << 4) {
-                    TryFrom::try_from(value.to_biguint()).unwrap()
-                } else {
-                    TryFrom::try_from((value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
-                }
-            }
-            Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
         }
     }
 }
