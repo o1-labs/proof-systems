@@ -844,9 +844,6 @@
 <a href="#842" id="842">842</a>
 <a href="#843" id="843">843</a>
 <a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a variant of the logarithmic derivative lookups based on the
 //! equations described in the paper ["Multivariate lookups based on logarithmic
 //! derivatives"](https://eprint.iacr.org/2022/1530.pdf).
@@ -1648,9 +1645,6 @@
                     })
                 }
                 <span class="comment">// Sanity check to verify that the accumulator ends up being zero.
-                // FIXME: This should be removed from runtime, and a constraint
-                // should be added. For now, the verifier accepts any proof.
-                // This will be fixed when constraints are added.
                 </span><span class="macro">assert_eq!</span>(
                     acc,
                     G::ScalarField::zero(),
