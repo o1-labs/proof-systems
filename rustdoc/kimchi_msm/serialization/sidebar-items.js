@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["N_INTERMEDIATE_LIMBS"],"enum":["LookupTable"],"mod":["column","constraints","interpreter","witness"],"type":["Lookup"]};
+window.SIDEBAR_ITEMS = {"constant":["N_INTERMEDIATE_LIMBS"],"enum":["LookupTable"],"mod":["column","constraints","interpreter","witness"],"struct":["LookupTableIter"],"type":["Lookup"]};

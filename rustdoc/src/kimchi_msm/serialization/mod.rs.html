@@ -224,7 +224,86 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup};
+<span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>std::marker::PhantomData;
+<span class="kw">use </span>strum_macros::EnumIter;
 
 <span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
@@ -234,17 +313,27 @@
 <span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
 </span><span class="kw">pub const </span>N_INTERMEDIATE_LIMBS: usize = <span class="number">20</span>;
 
-<span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-</span><span class="kw">pub enum </span>LookupTable {
-    RangeCheck15,
-    RangeCheck4,
+<span class="doccomment">/// Enumeration of concrete lookup tables used in serialization circuit.
+</span><span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
+</span><span class="kw">pub enum </span>LookupTable&lt;Ff&gt; {
+    <span class="doccomment">/// x ∈ [0, 2^15]
+    </span>RangeCheck15,
+    <span class="doccomment">/// x ∈ [0, 2^4]
+    </span>RangeCheck4,
+    <span class="doccomment">/// x ∈ [-2^4, 2^4-1]
+    </span>RangeCheck4Abs,
+    <span class="doccomment">/// x ∈ [0, ff_highest] where ff_highest is the highest 15-bit
+    /// limb of the modulus of the foreign field `Ff`.
+    </span>RangeCheckFfHighest(PhantomData&lt;Ff&gt;),
 }
 
-<span class="kw">impl </span>LookupTableID <span class="kw">for </span>LookupTable {
+<span class="kw">impl</span>&lt;Ff: PrimeField&gt; LookupTableID <span class="kw">for </span>LookupTable&lt;Ff&gt; {
     <span class="kw">fn </span>to_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; <span class="number">1</span>,
             <span class="self">Self</span>::RangeCheck4 =&gt; <span class="number">2</span>,
+            <span class="self">Self</span>::RangeCheck4Abs =&gt; <span class="number">3</span>,
+            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="number">4</span>,
         }
     }
 
@@ -252,6 +341,8 @@
         <span class="kw">match </span>value {
             <span class="number">1 </span>=&gt; <span class="self">Self</span>::RangeCheck15,
             <span class="number">2 </span>=&gt; <span class="self">Self</span>::RangeCheck4,
+            <span class="number">3 </span>=&gt; <span class="self">Self</span>::RangeCheck4Abs,
+            <span class="number">4 </span>=&gt; <span class="self">Self</span>::RangeCheckFfHighest(PhantomData),
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Invalid lookup table id"</span>),
         }
     }
@@ -265,17 +356,66 @@
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">15</span>,
             <span class="self">Self</span>::RangeCheck4 =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">4</span>,
+            <span class="self">Self</span>::RangeCheck4Abs =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">5</span>,
+            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; TryFrom::try_from(
+                <span class="kw">crate</span>::serialization::interpreter::ff_modulus_highest_limb::&lt;Ff&gt;(),
+            )
+            .unwrap(),
         }
     }
 }
 
-<span class="kw">pub type </span>Lookup&lt;F&gt; = Logup&lt;F, LookupTable&gt;;
+<span class="kw">impl</span>&lt;Ff: PrimeField&gt; LookupTable&lt;Ff&gt; {
+    <span class="kw">pub fn </span>entries_ff_highest&lt;F: PrimeField&gt;(domain_d1_size: u64) -&gt; Vec&lt;F&gt; {
+        <span class="kw">let </span>top_modulus_f =
+            F::from_biguint(<span class="kw-2">&amp;</span><span class="kw">crate</span>::serialization::interpreter::ff_modulus_highest_limb::&lt;Ff&gt;())
+                .unwrap();
+        (<span class="number">0</span>..domain_d1_size)
+            .map(|i| {
+                <span class="kw">if </span>F::from(i) &lt; top_modulus_f {
+                    F::from(i)
+                } <span class="kw">else </span>{
+                    F::zero()
+                }
+            })
+            .collect()
+    }
+
+    <span class="kw">pub fn </span>entries&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_d1_size: u64) -&gt; Vec&lt;F&gt; {
+        <span class="macro">assert!</span>(domain_d1_size &gt;= (<span class="number">1 </span>&lt;&lt; <span class="number">15</span>));
+        <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::RangeCheck15 =&gt; (<span class="number">0</span>..domain_d1_size).map(|i| F::from(i)).collect(),
+            <span class="self">Self</span>::RangeCheck4 =&gt; (<span class="number">0</span>..domain_d1_size)
+                .map(|i| <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) { F::from(i) } <span class="kw">else </span>{ F::zero() })
+                .collect(),
+            <span class="self">Self</span>::RangeCheck4Abs =&gt; (<span class="number">0</span>..domain_d1_size)
+                .map(|i| {
+                    <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) {
+                        <span class="comment">// [0,1,2 ... (1&lt;&lt;4)-1]
+                        </span>F::from(i)
+                    } <span class="kw">else if </span>i &lt; <span class="number">2 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) {
+                        <span class="comment">// [-(i&lt;&lt;4),...-2,-1]
+                        </span>F::from(i) - F::from(<span class="number">2u64 </span>* (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>))
+                    } <span class="kw">else </span>{
+                        F::zero()
+                    }
+                })
+                .collect(),
+            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="self">Self</span>::entries_ff_highest::&lt;F&gt;(domain_d1_size),
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;Ff: PrimeField&gt; LookupTable&lt;Ff&gt; {}
+
+<span class="kw">pub type </span>Lookup&lt;F, Ff&gt; = Logup&lt;F, LookupTable&lt;Ff&gt;&gt;;
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
-    <span class="kw">use </span>rand::Rng <span class="kw">as _</span>;
+    <span class="kw">use </span>std::{collections::BTreeMap, marker::PhantomData};
 
     <span class="kw">use super</span>::{Lookup, LookupTable};
 
@@ -286,27 +426,18 @@
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            column::SER_N_COLUMNS, constraints, interpreter::deserialize_field_element, witness,
-            N_INTERMEDIATE_LIMBS,
+            column::SER_N_COLUMNS,
+            constraints,
+            interpreter::{
+                constrain_multiplication, deserialize_field_element, limb_decompose_ff,
+                multiplication_circuit,
+            },
+            witness, N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
-        BaseSponge, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
-
-    <span class="kw">use </span>ark_ff::FftField;
-
-    <span class="kw">impl </span>LookupTable {
-        <span class="kw">fn </span>entries&lt;F: FftField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: EvaluationDomains&lt;F&gt;) -&gt; Vec&lt;F&gt; {
-            <span class="macro">assert!</span>(domain.d1.size &gt;= (<span class="number">1 </span>&lt;&lt; <span class="number">15</span>));
-            <span class="kw">match </span><span class="self">self </span>{
-                <span class="self">Self</span>::RangeCheck15 =&gt; (<span class="number">0</span>..domain.d1.size).map(|i| F::from(i)).collect(),
-                <span class="self">Self</span>::RangeCheck4 =&gt; (<span class="number">0</span>..domain.d1.size)
-                    .map(|i| <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) { F::from(i) } <span class="kw">else </span>{ F::zero() })
-                    .collect(),
-            }
-        }
-    }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_completeness() {
@@ -318,7 +449,7 @@
 
         <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = witness::Env::&lt;Fp&gt;::create();
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = witness::Env::&lt;Fp, Ff1&gt;::create();
         <span class="comment">// Boxing to avoid stack overflow
         </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;SER_N_COLUMNS, Vec&lt;Fp&gt;&gt;&gt; = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(DOMAIN_SIZE))),
@@ -326,103 +457,115 @@
 
         <span class="comment">// Boxing to avoid stack overflow
         </span><span class="kw">let </span><span class="kw-2">mut </span>field_elements = <span class="macro">vec!</span>[];
+
         <span class="comment">// FIXME: we do use always the same values here, because we have a
         // constant check (X - c), different for each row. And there is no
         // constant support/public input yet in the quotient polynomial.
-        </span><span class="kw">let </span>(x, y, z) = (
-            rng.gen_range(<span class="number">0</span>..<span class="number">1000000</span>),
-            rng.gen_range(<span class="number">0</span>..<span class="number">1000000</span>),
-            rng.gen_range(<span class="number">0</span>..<span class="number">1000000</span>),
-        );
+        </span><span class="kw">let </span>input_chal: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
+        <span class="kw">let </span>[input1, input2, input3]: [Fp; <span class="number">3</span>] = limb_decompose_ff::&lt;Fp, Ff1, <span class="number">88</span>, <span class="number">3</span>&gt;(<span class="kw-2">&amp;</span>input_chal);
         <span class="kw">for _ in </span><span class="number">0</span>..DOMAIN_SIZE {
-            field_elements.push([x, y, z])
+            field_elements.push([input1, input2, input3])
         }
+        <span class="kw">let </span>coeff_input: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
 
-        <span class="comment">// Adding one for the fixed table.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>rangecheck15: [Vec&lt;Lookup&lt;Fp&gt;&gt;; N_LIMBS + <span class="number">1</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
-        <span class="kw">let </span><span class="kw-2">mut </span>rangecheck4: [Vec&lt;Lookup&lt;Fp&gt;&gt;; N_INTERMEDIATE_LIMBS + <span class="number">1</span>] =
+        <span class="comment">// An extra element in the array stands for the fixed table.
+        </span><span class="kw">let </span>rangecheck4: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; N_INTERMEDIATE_LIMBS + <span class="number">1</span>] =
             std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+        <span class="kw">let </span>rangecheck4abs: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; <span class="number">6 </span>+ <span class="number">1</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+        <span class="kw">let </span>rangecheck15: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; (<span class="number">3 </span>* N_LIMBS - <span class="number">1</span>) + <span class="number">1</span>] =
+            std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+        <span class="kw">let </span>rangecheckffhighest: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; <span class="number">1 </span>+ <span class="number">1</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;&gt;&gt; =
+            BTreeMap::new();
+        lookup_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
+        lookup_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
+        lookup_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
+        lookup_tables.insert(
+            LookupTable::RangeCheckFfHighest(PhantomData),
+            rangecheckffhighest.to_vec(),
+        );
 
         <span class="kw">for </span>(_i, limbs) <span class="kw">in </span>field_elements.iter().enumerate() {
             <span class="comment">// Witness
-            </span>deserialize_field_element(<span class="kw-2">&amp;mut </span>witness_env, <span class="kw-2">*</span>limbs);
+            </span>deserialize_field_element(<span class="kw-2">&amp;mut </span>witness_env, limbs.map(Into::into));
+            multiplication_circuit(<span class="kw-2">&amp;mut </span>witness_env, input_chal, coeff_input, <span class="bool-val">false</span>);
             <span class="comment">// Filling actually used rows
             </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..SER_N_COLUMNS {
                 witness.cols[j].push(witness_env.witness.cols[j]);
             }
 
-            <span class="kw">for </span>(j, lookup) <span class="kw">in </span>witness_env
-                .lookups
-                .get(<span class="kw-2">&amp;</span>LookupTable::RangeCheck4)
-                .unwrap()
-                .iter()
-                .enumerate()
-            {
-                rangecheck4[j].push(lookup.clone())
-            }
-
-            <span class="kw">for </span>(j, lookup) <span class="kw">in </span>witness_env
-                .lookups
-                .get(<span class="kw-2">&amp;</span>LookupTable::RangeCheck15)
-                .unwrap()
-                .iter()
-                .enumerate()
-            {
-                rangecheck15[j].push(lookup.clone())
+            <span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
+                <span class="comment">//println!("Processing table id {:?}", table_id);
+                </span><span class="kw">for </span>(j, lookup) <span class="kw">in </span>witness_env
+                    .lookups
+                    .get(table_id)
+                    .unwrap()
+                    .iter()
+                    .enumerate()
+                {
+                    table[j].push(lookup.clone())
+                }
             }
 
             witness_env.reset()
         }
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span><span class="kw-2">mut </span>constraints_env = constraints::Env::&lt;Fp&gt;::create();
-            deserialize_field_element(<span class="kw-2">&amp;mut </span>constraints_env, field_elements[<span class="number">0</span>]);
+            <span class="kw">let </span><span class="kw-2">mut </span>constraints_env = constraints::Env::&lt;Fp, Ff1&gt;::create();
+            deserialize_field_element(<span class="kw-2">&amp;mut </span>constraints_env, field_elements[<span class="number">0</span>].map(Into::into));
+            constrain_multiplication(<span class="kw-2">&amp;mut </span>constraints_env);
+
+            <span class="comment">// Sanity checks.
+            </span><span class="macro">assert!</span>(constraints_env.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck15].len() == (<span class="number">3 </span>* <span class="number">17 </span>- <span class="number">1</span>));
+            <span class="macro">assert!</span>(constraints_env.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck4].len() == <span class="number">20</span>);
+            <span class="macro">assert!</span>(constraints_env.lookups[<span class="kw-2">&amp;</span>LookupTable::RangeCheck4Abs].len() == <span class="number">6</span>);
+            <span class="macro">assert!</span>(
+                constraints_env.lookups
+                    [<span class="kw-2">&amp;</span>LookupTable::RangeCheckFfHighest(std::marker::PhantomData)]
+                    .len()
+                    == <span class="number">1
+            </span>);
+
             constraints_env.get_constraints()
         };
 
-        <span class="kw">let </span>rangecheck15_m = witness_env.get_rangecheck15_multipliticies(domain);
-        <span class="kw">let </span>rangecheck15_t = LookupTable::RangeCheck15
-            .entries(domain)
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| Lookup {
-                table_id: LookupTable::RangeCheck15,
-                numerator: -rangecheck15_m[i],
-                value: <span class="macro">vec!</span>[v],
-            });
-        rangecheck15[N_LIMBS] = rangecheck15_t.collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Fp&gt;&gt; = BTreeMap::new();
+        <span class="comment">// Counting multiplicities &amp; adding fixed column into the last column of every table.
+        </span><span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
+            <span class="kw">let </span>lookup_m = witness_env.get_lookup_multiplicities(domain, <span class="kw-2">*</span>table_id);
+            lookup_multiplicities.insert(<span class="kw-2">*</span>table_id, lookup_m.clone());
+            <span class="kw">let </span>lookup_t = (<span class="kw-2">*</span>table_id)
+                .entries(domain.d1.size)
+                .into_iter()
+                .enumerate()
+                .map(|(i, v)| Lookup {
+                    table_id: <span class="kw-2">*</span>table_id,
+                    numerator: -lookup_m[i],
+                    value: <span class="macro">vec!</span>[v],
+                });
+            <span class="kw-2">*</span>(table.last_mut().unwrap()) = lookup_t.collect();
+        }
 
-        <span class="kw">let </span>rangecheck4_m = witness_env.get_rangecheck4_multipliticies(domain);
-        <span class="kw">let </span>rangecheck4_t = LookupTable::RangeCheck4
-            .entries(domain)
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| Lookup {
-                table_id: LookupTable::RangeCheck4,
-                numerator: -rangecheck4_m[i],
-                value: <span class="macro">vec!</span>[v],
-            });
-        rangecheck4[N_INTERMEDIATE_LIMBS] = rangecheck4_t.collect();
-
-        <span class="kw">let </span>logup_witness_rangecheck4: LogupWitness&lt;Fp, LookupTable&gt; = {
-            LogupWitness {
-                f: rangecheck4.to_vec(),
-                m: rangecheck4_m,
-                table_id: LookupTable::RangeCheck4,
-            }
-        };
-
-        <span class="kw">let </span>logup_witness_rangecheck15: LogupWitness&lt;Fp, LookupTable&gt; = {
-            LogupWitness {
-                f: rangecheck15.to_vec(),
-                m: rangecheck15_m,
-                table_id: LookupTable::RangeCheck15,
-            }
-        };
+        <span class="kw">let </span>logups: Vec&lt;LogupWitness&lt;Fp, LookupTable&lt;Ff1&gt;&gt;&gt; = lookup_tables
+            .iter()
+            .filter_map(|(table_id, table)| {
+                <span class="comment">// Only add a table if it's used. Otherwise lookups fail.
+                </span><span class="kw">if </span>!table.is_empty() &amp;&amp; !table[<span class="number">0</span>].is_empty() {
+                    <span class="prelude-val">Some</span>(LogupWitness {
+                        f: table.clone(),
+                        m: lookup_multiplicities[table_id].clone(),
+                        table_id: <span class="kw-2">*</span>table_id,
+                    })
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect();
 
         <span class="kw">let </span>proof_inputs = ProofInputs {
             evaluations: <span class="kw-2">*</span>witness,
-            logups: <span class="macro">vec!</span>[logup_witness_rangecheck15, logup_witness_rangecheck4],
+            logups,
         };
 
         <span class="kw">let </span>proof = prove::&lt;
@@ -433,18 +576,25 @@
             Column,
             <span class="kw">_</span>,
             SER_N_COLUMNS,
-            LookupTable,
+            LookupTable&lt;Ff1&gt;,
         &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
         .unwrap();
 
-        <span class="kw">let </span>verifies =
-            verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, SER_N_COLUMNS, <span class="number">0</span>, LookupTable&gt;(
-                domain,
-                <span class="kw-2">&amp;</span>srs,
-                <span class="kw-2">&amp;</span>constraints,
-                <span class="kw-2">&amp;</span>proof,
-                Witness::zero_vec(DOMAIN_SIZE),
-            );
+        <span class="kw">let </span>verifies = verify::&lt;
+            <span class="kw">_</span>,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            SER_N_COLUMNS,
+            <span class="number">0</span>,
+            LookupTable&lt;Ff1&gt;,
+        &gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(DOMAIN_SIZE),
+        );
         <span class="macro">assert!</span>(verifies)
     }
 }

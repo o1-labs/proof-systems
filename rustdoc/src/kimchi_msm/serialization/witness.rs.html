@@ -366,12 +366,34 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::FieldHelpers;
+<span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
+    logup::LookupTableID,
     serialization::{
         column::{SerializationColumn, SER_N_COLUMNS},
         interpreter::InterpreterEnv,
@@ -381,23 +403,23 @@
     LIMB_BITSIZE, N_LIMBS,
 };
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
-<span class="kw">use </span>std::{collections::BTreeMap, iter};
+<span class="kw">use </span>std::{collections::BTreeMap, iter, marker::PhantomData};
 
 <span class="comment">// TODO `WitnessEnv`
 </span><span class="doccomment">/// Environment for the serializer interpreter
-</span><span class="kw">pub struct </span>Env&lt;F&gt; {
+</span><span class="kw">pub struct </span>Env&lt;F: PrimeField, Ff: PrimeField&gt; {
     <span class="doccomment">/// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
     </span><span class="kw">pub </span>witness: Witness&lt;SER_N_COLUMNS, F&gt;,
 
     <span class="doccomment">/// Keep track of the lookup multiplicities.
-    </span><span class="kw">pub </span>lookup_multiplicities: BTreeMap&lt;LookupTable, Vec&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>lookup_multiplicities: BTreeMap&lt;LookupTable&lt;Ff&gt;, Vec&lt;F&gt;&gt;,
 
     <span class="doccomment">/// Keep track of the lookups for each row.
-    </span><span class="kw">pub </span>lookups: BTreeMap&lt;LookupTable, Vec&lt;Lookup&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>lookups: BTreeMap&lt;LookupTable&lt;Ff&gt;, Vec&lt;Lookup&lt;F, Ff&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; InterpreterEnv&lt;F&gt; <span class="kw">for </span>Env&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; InterpreterEnv&lt;F, Ff&gt; <span class="kw">for </span>Env&lt;F, Ff&gt; {
     <span class="kw">type </span>Position = Column;
 
     <span class="comment">// Requiring an F element as we would need to compute values up to 180 bits
@@ -428,18 +450,30 @@
 
     <span class="kw">fn </span>range_check_abs4bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="macro">assert!</span>(<span class="kw-2">*</span>value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>) || <span class="kw-2">*</span>value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>));
-        <span class="comment">// TODO implement actual lookups
-    </span>}
+        <span class="comment">// Adding multiplicities
+        </span><span class="kw">let </span>value_ix: usize = <span class="kw">if </span><span class="kw-2">*</span>value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>) {
+            TryFrom::try_from(value.to_biguint()).unwrap()
+        } <span class="kw">else </span>{
+            TryFrom::try_from((<span class="kw-2">*</span>value + F::from(<span class="number">2 </span>* (<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>))).to_biguint()).unwrap()
+        };
+        <span class="self">self</span>.record_lookup(LookupTable::RangeCheck4Abs, value, value_ix);
+    }
 
-    <span class="kw">fn </span>range_check_ff_highest&lt;Ff: PrimeField&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+    <span class="kw">fn </span>range_check_ff_highest(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="kw">let </span>f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
-        <span class="kw">let </span>top_modulus: BigUint = f_bui &gt;&gt; ((N_LIMBS - <span class="number">1</span>) * LIMB_BITSIZE);
-        <span class="kw">let </span>top_modulus_f: F = F::from_biguint(<span class="kw-2">&amp;</span>top_modulus).unwrap();
+        <span class="kw">let </span>top_modulus_f: F = F::from_biguint(<span class="kw-2">&amp;</span>(f_bui &gt;&gt; ((N_LIMBS - <span class="number">1</span>) * LIMB_BITSIZE))).unwrap();
         <span class="macro">assert!</span>(
             <span class="kw-2">*</span>value &lt; top_modulus_f,
             <span class="string">"The value {:?} was higher than modulus {:?}"</span>,
             (<span class="kw-2">*</span>value).to_bigint_positive(),
             top_modulus_f.to_bigint_positive()
+        );
+
+        <span class="kw">let </span>value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
+        <span class="self">self</span>.record_lookup(
+            LookupTable::RangeCheckFfHighest(PhantomData),
+            value,
+            value_ix,
         );
     }
 
@@ -447,36 +481,16 @@
         <span class="kw">let </span>value_biguint = value.to_biguint();
         <span class="macro">assert!</span>(value_biguint &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">15</span>)));
         <span class="comment">// Adding multiplicities
-        </span><span class="kw">let </span>value_usize: usize = value_biguint.clone().try_into().unwrap();
-        <span class="self">self</span>.lookup_multiplicities
-            .get_mut(<span class="kw-2">&amp;</span>LookupTable::RangeCheck15)
-            .unwrap()[value_usize] += F::one();
-        <span class="self">self</span>.lookups
-            .get_mut(<span class="kw-2">&amp;</span>LookupTable::RangeCheck15)
-            .unwrap()
-            .push(Lookup {
-                table_id: LookupTable::RangeCheck15,
-                numerator: F::one(),
-                value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
-            })
+        </span><span class="kw">let </span>value_ix: usize = value_biguint.clone().try_into().unwrap();
+        <span class="self">self</span>.record_lookup(LookupTable::RangeCheck15, value, value_ix);
     }
 
     <span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="kw">let </span>value_biguint = value.to_biguint();
         <span class="macro">assert!</span>(value_biguint &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">4</span>)));
         <span class="comment">// Adding multiplicities
-        </span><span class="kw">let </span>value_usize: usize = value_biguint.clone().try_into().unwrap();
-        <span class="self">self</span>.lookup_multiplicities
-            .get_mut(<span class="kw-2">&amp;</span>LookupTable::RangeCheck4)
-            .unwrap()[value_usize] += F::one();
-        <span class="self">self</span>.lookups
-            .get_mut(<span class="kw-2">&amp;</span>LookupTable::RangeCheck4)
-            .unwrap()
-            .push(Lookup {
-                table_id: LookupTable::RangeCheck4,
-                numerator: F::one(),
-                value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
-            })
+        </span><span class="kw">let </span>value_ix: usize = value_biguint.clone().try_into().unwrap();
+        <span class="self">self</span>.record_lookup(LookupTable::RangeCheck4, value, value_ix);
     }
 
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
@@ -505,7 +519,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; Env&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; Env&lt;F, Ff&gt; {
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, position: Column, value: F) {
         <span class="kw">match </span>position {
             Column::X(i) =&gt; <span class="self">self</span>.witness.cols[i] = value,
@@ -537,37 +551,41 @@
     }
 
     <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw-2">*</span><span class="self">self</span>.lookups.get_mut(<span class="kw-2">&amp;</span>LookupTable::RangeCheck4).unwrap() = Vec::new();
-        <span class="kw-2">*</span><span class="self">self</span>.lookups.get_mut(<span class="kw-2">&amp;</span>LookupTable::RangeCheck15).unwrap() = Vec::new();
-    }
+        <span class="kw">for </span>table <span class="kw">in </span><span class="self">self</span>.lookups.values_mut() {
+            <span class="kw-2">*</span>table = Vec::new();
+        }
+        <span class="comment">// TODO do we need to reset multiplicities?
+    </span>}
 
-    <span class="kw">pub fn </span>get_rangecheck4_multipliticies(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: EvaluationDomains&lt;F&gt;) -&gt; Vec&lt;F&gt; {
+    <span class="doccomment">/// Getting multiplicities for range check tables less or equal than 15 bits.
+    </span><span class="kw">pub fn </span>get_lookup_multiplicities(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        domain: EvaluationDomains&lt;F&gt;,
+        table_id: LookupTable&lt;Ff&gt;,
+    ) -&gt; Vec&lt;F&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>m = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
-        m.extend(<span class="self">self</span>.lookup_multiplicities[<span class="kw-2">&amp;</span>LookupTable::RangeCheck4].to_vec());
-        <span class="kw">let </span>n_repeated_dummy_value = domain.d1.size - (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) - <span class="number">1</span>;
-        <span class="kw">let </span>repeated_dummy_value: Vec&lt;F&gt; = iter::repeat(-F::one())
-            .take(n_repeated_dummy_value <span class="kw">as </span>usize)
-            .collect();
-        m.extend(repeated_dummy_value);
-        m.push(F::from(n_repeated_dummy_value));
+        m.extend(<span class="self">self</span>.lookup_multiplicities[<span class="kw-2">&amp;</span>table_id].to_vec());
+        <span class="kw">if </span>table_id.length() &lt; (domain.d1.size <span class="kw">as </span>usize) {
+            <span class="kw">let </span>n_repeated_dummy_value: usize = (domain.d1.size <span class="kw">as </span>usize) - table_id.length() - <span class="number">1</span>;
+            <span class="kw">let </span>repeated_dummy_value: Vec&lt;F&gt; = iter::repeat(-F::one())
+                .take(n_repeated_dummy_value)
+                .collect();
+            m.extend(repeated_dummy_value);
+            m.push(F::from(n_repeated_dummy_value <span class="kw">as </span>u64));
+        }
         <span class="macro">assert_eq!</span>(m.len(), domain.d1.size <span class="kw">as </span>usize);
         m
     }
-    <span class="kw">pub fn </span>get_rangecheck15_multipliticies(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: EvaluationDomains&lt;F&gt;) -&gt; Vec&lt;F&gt; {
-        <span class="macro">assert_eq!</span>(domain.d1.size, <span class="number">1 </span>&lt;&lt; <span class="number">15</span>);
-        <span class="self">self</span>.lookup_multiplicities[<span class="kw-2">&amp;</span>LookupTable::RangeCheck15].to_vec()
-    }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; Env&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; Env&lt;F, Ff&gt; {
     <span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>lookups = BTreeMap::new();
-        lookups.insert(LookupTable::RangeCheck4, Vec::new());
-        lookups.insert(LookupTable::RangeCheck15, Vec::new());
-
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities = BTreeMap::new();
-        lookup_multiplicities.insert(LookupTable::RangeCheck4, <span class="macro">vec!</span>[F::zero(); <span class="number">1 </span>&lt;&lt; <span class="number">4</span>]);
-        lookup_multiplicities.insert(LookupTable::RangeCheck15, <span class="macro">vec!</span>[F::zero(); <span class="number">1 </span>&lt;&lt; <span class="number">15</span>]);
+        <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff&gt;::iter() {
+            lookups.insert(table_id, Vec::new());
+            lookup_multiplicities.insert(table_id, <span class="macro">vec!</span>[F::zero(); table_id.length()]);
+        }
 
         <span class="self">Self </span>{
             witness: Witness {
@@ -578,13 +596,28 @@
             lookups,
         }
     }
+
+    <span class="comment">// Commonly used by range checking functions.
+    </span><span class="kw">fn </span>record_lookup(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        table_id: LookupTable&lt;Ff&gt;,
+        value: <span class="kw-2">&amp;</span>&lt;<span class="self">Self </span><span class="kw">as </span>InterpreterEnv&lt;F, Ff&gt;&gt;::Variable,
+        value_ix: usize,
+    ) {
+        <span class="self">self</span>.lookup_multiplicities.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap()[value_ix] += F::one();
+        <span class="self">self</span>.lookups.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap().push(Lookup {
+            table_id,
+            numerator: F::one(),
+            value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
+        })
+    }
 }
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">use crate</span>::{serialization::N_INTERMEDIATE_LIMBS, LIMB_BITSIZE, N_LIMBS};
+    <span class="kw">use crate</span>::{serialization::N_INTERMEDIATE_LIMBS, Ff1, LIMB_BITSIZE, N_LIMBS};
 
     <span class="kw">use </span><span class="kw">super</span>::Env;
     <span class="kw">use </span><span class="kw">crate</span>::serialization::{
@@ -624,8 +657,15 @@
             <span class="kw">let </span>limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        <span class="kw">let </span><span class="kw-2">mut </span>dummy_env = Env::&lt;Fp&gt;::create();
-        deserialize_field_element(<span class="kw-2">&amp;mut </span>dummy_env, [limb0, limb1, limb2]);
+        <span class="kw">let </span><span class="kw-2">mut </span>dummy_env = Env::&lt;Fp, Ff1&gt;::create();
+        deserialize_field_element(
+            <span class="kw-2">&amp;mut </span>dummy_env,
+            [
+                BigUint::from(limb0),
+                BigUint::from(limb1),
+                BigUint::from(limb2),
+            ],
+        );
 
         <span class="comment">// Check limb are copied into the environment
         </span><span class="kw">let </span>limbs_to_assert = [limb0, limb1, limb2];
