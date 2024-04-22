@@ -65,6 +65,7 @@ pub type OpeningProof = PairingProof<BN254>;
 mod tests {
     use crate::{
         columns::Column,
+        logup,
         lookups::{Lookup, LookupTableIDs},
         proof::ProofInputs,
         prover::prove,
@@ -137,14 +138,17 @@ mod tests {
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
 
+        let public_inputs = Witness::zero_vec(domain_size);
+        let logup_index = None;
         // verify the proof
         let verifies =
             verify::<_, OpeningProof, BaseSponge, ScalarSponge, TEST_N_COLUMNS, 0, LookupTableIDs>(
                 domain,
                 &srs,
                 &constraints,
+                public_inputs,
+                logup_index,
                 &proof,
-                Witness::zero_vec(domain_size),
             );
 
         assert!(verifies);
@@ -205,6 +209,9 @@ mod tests {
         // Swap the opening proof. The verification should fail.
         {
             let mut proof_clone = proof.clone();
+            let public_inputs = Witness::zero_vec(domain_size);
+            let logup_index = None;
+
             proof_clone.opening_proof = proof_prime.opening_proof;
             let verifies = verify::<
                 _,
@@ -218,8 +225,9 @@ mod tests {
                 domain,
                 &srs,
                 &constraints,
+                public_inputs,
+                logup_index,
                 &proof_clone,
-                Witness::zero_vec(domain_size),
             );
             assert!(!verifies);
         }
@@ -229,6 +237,9 @@ mod tests {
         // easier when an index trait is implemented.
         {
             let mut proof_clone = proof.clone();
+            let public_inputs = Witness::zero_vec(domain_size);
+            let logup_index = None;
+
             proof_clone.proof_comms = proof_prime.proof_comms;
             let verifies = verify::<
                 _,
@@ -242,8 +253,9 @@ mod tests {
                 domain,
                 &srs,
                 &constraints,
+                public_inputs,
+                logup_index,
                 &proof_clone,
-                Witness::zero_vec(domain_size),
             );
             assert!(!verifies);
         }
@@ -254,6 +266,9 @@ mod tests {
         // easier when an index trait is implemented.
         {
             let mut proof_clone = proof.clone();
+            let public_inputs = Witness::zero_vec(domain_size);
+            let logup_index = None;
+
             proof_clone.proof_evals.witness_evals = proof_prime.proof_evals.witness_evals;
             let verifies = verify::<
                 _,
@@ -267,8 +282,9 @@ mod tests {
                 domain,
                 &srs,
                 &constraints,
+                public_inputs,
+                logup_index,
                 &proof_clone,
-                Witness::zero_vec(domain_size),
             );
             assert!(!verifies);
         }
@@ -289,10 +305,12 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(x, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let mut inputs = ProofInputs::random(domain);
+        let inputs = ProofInputs::random(domain);
         let constraints = vec![];
         // Take one random f_i (FIXME: taking first one for now)
-        let looked_up_values = inputs.logups[0].f[0].clone();
+        // FIXME: remove clone
+        let mut logups = inputs.logups.clone().unwrap();
+        let looked_up_values = logups.lookups[0].f[0].clone();
         // We change a random looked up element (FIXME: first one for now)
         let wrong_looked_up_value = Lookup {
             table_id: looked_up_values[0].table_id,
@@ -300,7 +318,13 @@ mod tests {
             value: vec![Fp::rand(&mut rng)],
         };
         // Overwriting the first looked up value
-        inputs.logups[0].f[0][0] = wrong_looked_up_value;
+        logups.lookups[0].f[0][0] = wrong_looked_up_value;
+        let public_inputs = Witness::zero_vec(domain_size);
+        let fixed_lookup_tables = logups.fixed_lookup_tables;
+        let logup_index: Option<logup::verifier::Index<_, LookupTableIDs>> =
+            Some(logup::verifier::Index {
+                fixed_lookup_tables,
+            });
         // generate the proof
         let proof =
             prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
@@ -315,10 +339,12 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            public_inputs,
+            logup_index,
             &proof,
-            Witness::zero_vec(domain_size),
         );
-        // FIXME: At the moment, it does verify. It should not. We are missing constraints.
+        // FIXME: At the moment, it does verify. It should not. We are missing
+        // constraints.
         assert!(!verifies);
     }
 }

@@ -116,7 +116,7 @@ impl WitnessBuilderEnv<Fp> {
 
         ProofInputs {
             evaluations: Witness { cols },
-            logups: vec![],
+            logups: None,
         }
     }
 

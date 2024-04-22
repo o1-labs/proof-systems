@@ -49,6 +49,9 @@ pub fn main() {
     }
 
     let inputs = witness_env.get_witness(domain_size);
+    // FIXME:
+    let logup_index = None;
+
     let pub_inputs = inputs.evaluations.to_pub_columns::<FFA_NPUB_COLUMNS>();
     let constraints = constraint_env.constraints;
 
@@ -74,6 +77,6 @@ pub fn main() {
         FFA_N_COLUMNS,
         FFA_NPUB_COLUMNS,
         LookupTableIDs,
-    >(domain, &srs, &constraints, &proof, pub_inputs);
+    >(domain, &srs, &constraints, pub_inputs, logup_index, &proof);
     println!("Proof verification result: {verifies}")
 }

@@ -224,6 +224,9 @@ pub fn main() -> ExitCode {
                 &mut rng,
             );
             let mips_proof = mips_result.unwrap();
+            let public_inputs = Witness::zero_vec(DOMAIN_SIZE);
+            // FIXME: add corresponding tables, if any.
+            let logup_index = None;
             debug!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
             let mips_verifies = verify::<
                 _,
@@ -237,8 +240,9 @@ pub fn main() -> ExitCode {
                 domain,
                 &srs,
                 &mips_circuit.constraints[&instr],
+                public_inputs,
+                logup_index,
                 &mips_proof,
-                Witness::zero_vec(DOMAIN_SIZE),
             );
             if mips_verifies {
                 debug!("The MIPS {:?} proof verifies", instr)
@@ -250,7 +254,8 @@ pub fn main() -> ExitCode {
 
     {
         // KECCAK
-        // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
+        // FIXME: when folding is applied, the error term will be created to
+        // satisfy the folded witness
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
             debug!("Checking Keccak circuit {:?}", step);
             let keccak_result = prove::<
@@ -270,6 +275,9 @@ pub fn main() -> ExitCode {
                 &mut rng,
             );
             let keccak_proof = keccak_result.unwrap();
+            let public_inputs = Witness::zero_vec(DOMAIN_SIZE);
+            // FIXME: add corresponding tables, if any.
+            let logup_index = None;
             debug!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
             let keccak_verifies = verify::<
                 _,
@@ -283,8 +291,9 @@ pub fn main() -> ExitCode {
                 domain,
                 &srs,
                 &keccak_circuit.constraints[&step],
+                public_inputs,
+                logup_index,
                 &keccak_proof,
-                Witness::zero_vec(DOMAIN_SIZE),
             );
             if keccak_verifies {
                 debug!("The Keccak {:?} proof verifies", step)

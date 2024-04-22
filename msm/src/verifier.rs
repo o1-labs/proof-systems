@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::logup::LookupTableID;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
@@ -24,9 +22,8 @@ use poly_commitment::{
     OpenProof, SRS,
 };
 
-use crate::{expr::E, proof::Proof, witness::Witness};
+use crate::{expr::E, logup, proof::Proof, witness::Witness};
 
-// FIXME: the verifier must have access to the public tables for the lookups.
 pub fn verify<
     G: KimchiCurve,
     OpeningProof: OpenProof<G>,
@@ -41,7 +38,10 @@ pub fn verify<
     // Common information between the prover and the verifier.
     constraints: &Vec<E<G::ScalarField>>,
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
-    fixed_lookup_tables: Option<BTreeMap<ID, Vec<G::ScalarField>>>,
+    // Fixed lookup tables. If logups are not included in the protocol, it will
+    // be set to `None`. Otherwise, it is a mapping from table IDs to a vector
+    // of values.
+    logup_index: Option<logup::verifier::Index<G, ID>>,
     // Actual proof
     proof: &Proof<N, G, OpeningProof, ID>,
 ) -> bool

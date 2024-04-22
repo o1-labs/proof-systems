@@ -1,10 +1,10 @@
 use crate::{
+    logup,
     logup::{LookupProof, LookupTableID},
     lookups::{LookupTableIDs, LookupWitness},
     witness::Witness,
-    LogupWitness, DOMAIN_SIZE,
+    DOMAIN_SIZE,
 };
-use crate::logup;
 use ark_ff::{UniformRand, Zero};
 use kimchi::{
     circuits::{
@@ -42,10 +42,10 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
         let logup_witness = LookupWitness::<G::ScalarField>::random(domain);
         // FIXME: add the actual table
         let fixed_lookup_tables = BTreeMap::new();
-        let logups = logup::prover:Inputs {
-            logups: vec![logup_witness],
+        let logups = logup::prover::Inputs {
+            lookups: vec![logup_witness],
             fixed_lookup_tables,
-        }
+        };
         ProofInputs {
             evaluations: Witness { cols },
             logups: Some(logups),

@@ -847,10 +847,10 @@ pub mod prover {
     /// Represents the inputs of the logup protocol.
     #[derive(Debug, Clone)]
     pub struct Inputs<G: KimchiCurve, ID: LookupTableID> {
-        pub logups: Vec<LogupWitness<G::ScalarField, ID>>,
+        pub lookups: Vec<LogupWitness<G::ScalarField, ID>>,
         /// Contains the evaluations of the fixed tables.
         /// It does contain a vector of scalars as it supports vector lookups.
-        pub fixed_lookup_tables: BTreeMap<ID, Vec<Vec<G::ScalarField>>>
+        pub fixed_lookup_tables: BTreeMap<ID, Vec<Vec<G::ScalarField>>>,
     }
 }
 
@@ -868,6 +868,6 @@ pub mod verifier {
     pub struct Index<G: KimchiCurve, ID: LookupTableID> {
         /// Contains the evaluations of the fixed tables.
         /// It does contain a vector of scalars as it supports vector lookups.
-        pub fixed_lookup_tables: BTreeMap<ID, Vec<Vec<G::ScalarField>>>
+        pub fixed_lookup_tables: BTreeMap<ID, Vec<Vec<G::ScalarField>>>,
     }
 }

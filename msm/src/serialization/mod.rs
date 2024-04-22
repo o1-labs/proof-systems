@@ -16,7 +16,7 @@ mod tests {
 
     use crate::{
         columns::Column,
-        logup::LogupWitness,
+        logup::{self, LogupWitness},
         precomputed_srs::get_bn254_srs,
         proof::ProofInputs,
         prover::prove,
@@ -144,7 +144,7 @@ mod tests {
             *(table.last_mut().unwrap()) = lookup_t.collect();
         }
 
-        let logups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = lookup_tables
+        let lookups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = lookup_tables
             .iter()
             .filter_map(|(table_id, table)| {
                 // Only add a table if it's used. Otherwise lookups fail.
@@ -160,10 +160,23 @@ mod tests {
             })
             .collect();
 
+        // FIXME
+        let fixed_lookup_tables = BTreeMap::new();
+
+        let logup_inputs = logup::prover::Inputs {
+            lookups,
+            fixed_lookup_tables: fixed_lookup_tables.clone(),
+        };
+
         let proof_inputs = ProofInputs {
             evaluations: *witness,
-            logups,
+            logups: Some(logup_inputs),
         };
+
+        let public_inputs = Witness::zero_vec(DOMAIN_SIZE);
+        let logup_index = Some(logup::verifier::Index {
+            fixed_lookup_tables,
+        });
 
         let proof = prove::<
             _,
@@ -189,8 +202,9 @@ mod tests {
             domain,
             &srs,
             &constraints,
+            public_inputs,
+            logup_index,
             &proof,
-            Witness::zero_vec(DOMAIN_SIZE),
         );
         assert!(verifies)
     }

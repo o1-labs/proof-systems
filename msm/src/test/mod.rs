@@ -33,7 +33,7 @@ pub fn test_completeness_generic<const N: usize, RNG>(
 
     let proof_inputs = ProofInputs {
         evaluations,
-        logups: vec![],
+        logups: None,
     };
 
     let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
@@ -81,12 +81,15 @@ pub fn test_completeness_generic<const N: usize, RNG>(
         }
     }
 
+    let public_inputs = Witness::zero_vec(domain_size);
+    let logup_index = None;
     let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0, LookupTableIDs>(
         domain,
         &srs,
         &constraints,
+        public_inputs,
+        logup_index,
         &proof,
-        Witness::zero_vec(domain_size),
     );
     assert!(verifies)
 }
@@ -132,7 +135,7 @@ mod tests {
 
         let proof_inputs = ProofInputs {
             evaluations: evaluations_prime,
-            logups: vec![],
+            logups: None,
         };
 
         let proof =

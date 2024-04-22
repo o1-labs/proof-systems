@@ -6,6 +6,8 @@ pub mod witness;
 #[cfg(test)]
 mod tests {
 
+    use std::collections::BTreeMap;
+
     use crate::{
         columns::Column,
         fec::{
@@ -14,6 +16,7 @@ mod tests {
             interpreter::{self as fec_interpreter, FECInterpreterEnv},
             witness::WitnessBuilderEnv as FECWitnessBuilderEnv,
         },
+        logup,
         lookups::LookupTableIDs,
         prover::prove,
         verifier::verify,
@@ -69,6 +72,12 @@ mod tests {
         fec_interpreter::constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env, 0);
 
         let inputs = witness_env.get_witness(domain_size);
+        // FIXME: remove clone
+        let fixed_lookup_tables = if inputs.logups.is_some() {
+            inputs.logups.clone().unwrap().fixed_lookup_tables.clone()
+        } else {
+            BTreeMap::new()
+        };
         let constraints = constraint_env.constraints;
 
         // generate the proof
@@ -84,14 +93,21 @@ mod tests {
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
 
+        let public_inputs = Witness::zero_vec(domain_size);
+        let logup_index: Option<logup::verifier::Index<_, LookupTableIDs>> =
+            Some(logup::verifier::Index {
+                fixed_lookup_tables,
+            });
+
         // verify the proof
         let verifies =
             verify::<_, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, 0, LookupTableIDs>(
                 domain,
                 &srs,
                 &constraints,
+                public_inputs,
+                logup_index,
                 &proof,
-                Witness::zero_vec(domain_size),
             );
 
         assert!(verifies);

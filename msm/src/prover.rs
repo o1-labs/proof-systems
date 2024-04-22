@@ -123,7 +123,7 @@ where
 
     // -- Start Logup
     let lookup_env = Option::map(inputs.logups, |logup_inputs| {
-        let lookups = logup_inputs.logups;
+        let lookups = logup_inputs.lookups;
         let fixed_lookup_tables = logup_inputs.fixed_lookup_tables;
         Env::create::<OpeningProof, EFqSponge>(
             lookups,
@@ -131,7 +131,8 @@ where
             domain,
             &mut fq_sponge,
             srs,
-        )});
+        )
+    });
 
     let max_degree = {
         if lookup_env.is_none() {
