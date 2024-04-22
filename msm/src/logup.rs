@@ -802,7 +802,11 @@ pub mod prover {
                 // FIXME: This should be removed from runtime, and a constraint
                 // should be added. For now, the verifier accepts any proof.
                 // This will be fixed when constraints are added.
-                assert_eq!(acc, G::ScalarField::zero());
+                assert_eq!(
+                    acc,
+                    G::ScalarField::zero(),
+                    "Logup accumulator must be zero"
+                );
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                     evals, domain.d1,
                 )

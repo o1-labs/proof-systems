@@ -1428,6 +1428,8 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with 3.6.0",
+ "strum",
+ "strum_macros",
  "thiserror",
 ]
 
