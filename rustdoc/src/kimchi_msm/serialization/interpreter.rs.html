@@ -661,18 +661,14 @@
 <a href="#659" id="659">659</a>
 <a href="#660" id="660">660</a>
 <a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>num_traits::{sign::Signed, Euclid};
+<span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use crate</span>::{
-    serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS},
+    serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
     LIMB_BITSIZE, N_LIMBS,
 };
 <span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
@@ -696,20 +692,8 @@
 
     <span class="kw">fn </span>get_column(pos: SerializationColumn) -&gt; <span class="self">Self</span>::Position;
 
-    <span class="doccomment">/// Check that the value is in the range [0, 2^15-1]
-    </span><span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks input |x| ∈ [0,2^15)
-    </span><span class="kw">fn </span>range_check_abs15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks input |x| ∈ [0,2^4)
-    </span><span class="kw">fn </span>range_check_abs4bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks x ∈ [0, f &gt;&gt; 15*16)
-    </span><span class="kw">fn </span>range_check_ff_highest(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Check that the value is in the range [0, 2^4-1]
-    </span><span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+    <span class="doccomment">/// Perform lookup into the specified table.
+    </span><span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LookupTable&lt;Ff&gt;, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
 
@@ -794,7 +778,9 @@
         env.add_constraint(constraint)
     }
     <span class="comment">// Range check on each limb
-    </span>limb2_vars.iter().for_each(|v| env.range_check4(v));
+    </span>limb2_vars
+        .iter()
+        .for_each(|v| env.lookup(LookupTable::RangeCheck4, v));
 
     <span class="kw">let </span><span class="kw-2">mut </span>fifteen_bits_vars = <span class="macro">vec!</span>[];
     {
@@ -908,7 +894,9 @@
     }
 
     <span class="comment">// Range check on each limb
-    </span>fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
+    </span>fifteen_bits_vars
+        .iter()
+        .for_each(|v| env.lookup(LookupTable::RangeCheck15, v));
 
     <span class="kw">let </span>shl_88_var = Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">88u128</span>));
     <span class="kw">let </span>shl_15_var = Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; <span class="number">15u128</span>));
@@ -1093,15 +1081,15 @@
     </span><span class="kw">for </span>(i, x) <span class="kw">in </span>coeff_result_limbs_small.iter().enumerate() {
         <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
             <span class="comment">// If it's the highest limb, we need to check that it's representing a field element.
-            </span>env.range_check_ff_highest(x);
+            </span>env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
         } <span class="kw">else </span>{
-            env.range_check15(x);
+            env.lookup(LookupTable::RangeCheck15, x);
         }
     }
 
     <span class="comment">// Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
     </span><span class="kw">for </span>x <span class="kw">in </span>quotient_limbs_small.iter() {
-        env.range_check15(x);
+        env.lookup(LookupTable::RangeCheck15, x);
     }
 
     <span class="comment">// Carry limbs need to be in particular ranges.
@@ -1109,10 +1097,12 @@
         <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
             <span class="comment">// This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            </span>env.range_check_abs4bit(x);
+            </span>env.lookup(LookupTable::RangeCheck4Abs, x);
         } <span class="kw">else </span>{
-            env.range_check_abs15bit(x);
-        }
+            <span class="comment">// TODO add actual lookup
+            // env.range_check_abs15bit(x);
+            // assert!(x &lt; F::from(1u64 &lt;&lt; 15) || x &gt;= F::zero() - F::from(1u64 &lt;&lt; 15));
+        </span>}
     }
 
     <span class="comment">// FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!

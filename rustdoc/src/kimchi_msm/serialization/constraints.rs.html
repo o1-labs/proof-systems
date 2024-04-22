@@ -123,25 +123,6 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -149,14 +130,18 @@
 };
 <span class="kw">use </span>std::collections::BTreeMap;
 
-<span class="kw">use crate</span>::{columns::Column, expr::E};
-
-<span class="kw">use super</span>::{interpreter::InterpreterEnv, Lookup, LookupTable};
 <span class="kw">use crate</span>::{
-    columns::ColumnIndexer, logup::constraint_lookups, serialization::column::SerializationColumn,
+    columns::{Column, ColumnIndexer},
+    expr::E,
+    logup::constraint_lookups,
+    serialization::{
+        column::SerializationColumn,
+        interpreter::InterpreterEnv,
+        lookups::{Lookup, LookupTable},
+    },
 };
 
-<span class="kw">pub struct </span>Env&lt;F: PrimeField, Ff: PrimeField&gt; {
+<span class="kw">pub struct </span>ConstraintBuilderEnv&lt;F: PrimeField, Ff: PrimeField&gt; {
     <span class="doccomment">/// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
@@ -166,7 +151,7 @@
     <span class="kw">pub </span>lookups: BTreeMap&lt;LookupTable&lt;Ff&gt;, Vec&lt;Lookup&lt;E&lt;F&gt;, Ff&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; Env&lt;F, Ff&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; ConstraintBuilderEnv&lt;F, Ff&gt; {
     <span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             constraints: <span class="macro">vec!</span>[],
@@ -176,7 +161,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; InterpreterEnv&lt;F, Ff&gt; <span class="kw">for </span>Env&lt;F, Ff&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; InterpreterEnv&lt;F, Ff&gt; <span class="kw">for </span>ConstraintBuilderEnv&lt;F, Ff&gt; {
     <span class="kw">type </span>Position = Column;
 
     <span class="kw">type </span>Variable = E&lt;F&gt;;
@@ -209,27 +194,14 @@
         pos.to_column()
     }
 
-    <span class="kw">fn </span>range_check_abs15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="comment">// FIXME unimplemented, it's a 16 bit lookup
-    </span>}
-
-    <span class="kw">fn </span>range_check_ff_highest(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(
-            LookupTable::RangeCheckFfHighest(core::marker::PhantomData),
-            value,
-        );
-    }
-
-    <span class="kw">fn </span>range_check_abs4bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(LookupTable::RangeCheck4Abs, value);
-    }
-
-    <span class="kw">fn </span>range_check15(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(LookupTable::RangeCheck15, value);
-    }
-
-    <span class="kw">fn </span>range_check4(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="self">self</span>.add_lookup(LookupTable::RangeCheck4, value);
+    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LookupTable&lt;Ff&gt;, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        <span class="kw">let </span>lookup = Lookup {
+            table_id,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: <span class="macro">vec!</span>[value.clone()],
+        };
+        <span class="self">self</span>.lookups.entry(table_id).or_default().push(lookup);
     }
 
     <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable {
@@ -258,17 +230,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; Env&lt;F, Ff&gt; {
-    <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LookupTable&lt;Ff&gt;, value: <span class="kw-2">&amp;</span>E&lt;F&gt;) {
-        <span class="kw">let </span>one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        <span class="kw">let </span>lookup = Lookup {
-            table_id,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: <span class="macro">vec!</span>[value.clone()],
-        };
-        <span class="self">self</span>.lookups.entry(table_id).or_default().push(lookup);
-    }
-
+<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; ConstraintBuilderEnv&lt;F, Ff&gt; {
     <span class="kw">pub fn </span>get_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;F&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
 
