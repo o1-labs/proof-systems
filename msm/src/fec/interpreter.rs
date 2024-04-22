@@ -225,6 +225,9 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 /// bits * 6 carries = 36 chunks, and every 6th chunk is 4 bits only.
 /// This matches the 2*S+2 = 36, since S = 17.
 ///
+/// TODO: on avoiding 16bit lookups.
+/// Our current packing is we have 6 batches x 6 elements, each batch is
+/// [16 16 16 16 16 4] bits. We could do [15 15 15 15 15 9] and avoid 16-bit lookups.
 ///
 /// === Ranges
 ///
