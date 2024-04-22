@@ -23,8 +23,7 @@ pub mod prover;
 pub mod verifier;
 pub mod witness;
 
-// TODO resurrect
-//pub mod fec;
+pub mod fec;
 pub mod ffa;
 pub mod serialization;
 pub mod test;

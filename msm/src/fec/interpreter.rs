@@ -1,56 +1,17 @@
 use crate::{
-    columns::Column,
-    fec::lookups::LookupTable,
-    logup::LookupTableID,
+    fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
         bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
+        InterpreterEnv,
     },
     LIMB_BITSIZE, N_LIMBS,
 };
 use ark_ff::{FpParameters, PrimeField, Zero};
+use core::marker::PhantomData;
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::sign::Signed;
 use o1_utils::field_helpers::FieldHelpers;
-
-pub trait FECInterpreterEnv<F: PrimeField, LT: LookupTableID> {
-    type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Neg<Output = Self::Variable>
-        + From<u64>
-        + std::fmt::Debug;
-
-    fn empty() -> Self;
-
-    fn assert_zero(&mut self, cst: Self::Variable);
-
-    fn copy(&mut self, x: &Self::Variable, position: Column) -> Self::Variable;
-
-    // TODO Do we need this? Maybe we could ask From<F> instead?
-    fn constant(value: F) -> Self::Variable;
-
-    fn read_column(&self, ix: Column) -> Self::Variable;
-
-    /// Perform lookup into the specified table.
-    fn lookup(&mut self, table_id: LT, value: &Self::Variable);
-
-    /// Checks |x| = 1, that is x ∈ {-1,1}
-    fn range_check_abs1(&mut self, value: &Self::Variable);
-
-    /// Checks x ∈ [0, f >> 15*16)
-    fn range_check_ff_highest(&mut self, value: &Self::Variable);
-
-    /// Checks input x ∈ [0,2^15)
-    fn range_check_15bit(&mut self, value: &Self::Variable);
-
-    /// Checks input |x| ∈ [0,2^15)
-    fn range_check_abs15bit(&mut self, value: &Self::Variable);
-
-    /// Checks input |x| ∈ [0,2^4)
-    fn range_check_abs4bit(&mut self, value: &Self::Variable);
-}
 
 /// Alias for LIMB_BITSIZE, used for convenience.
 pub const LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
@@ -73,7 +34,7 @@ fn combine_small_to_large<
     const N: usize,
     F: PrimeField,
     Ff: PrimeField,
-    Env: FECInterpreterEnv<F, LookupTable<Ff>>,
+    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
 >(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
@@ -95,7 +56,11 @@ fn combine_small_to_large<
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, LookupTable<Ff>>>(
+fn combine_carry<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
+>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -285,16 +250,16 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 pub fn constrain_ec_addition<
     F: PrimeField,
     Ff: PrimeField,
-    Env: FECInterpreterEnv<F, LookupTable<Ff>>,
+    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     mem_offset: usize,
 ) {
     let read_array_small = |env: &mut Env, extra_offset: usize| -> [Env::Variable; N_LIMBS_SMALL] {
-        core::array::from_fn(|i| env.read_column(Column::X(mem_offset + extra_offset + i)))
+        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
     };
     let read_array_large = |env: &mut Env, extra_offset: usize| -> [Env::Variable; N_LIMBS_LARGE] {
-        core::array::from_fn(|i| env.read_column(Column::X(mem_offset + extra_offset + i)))
+        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
     };
 
     let xp_limbs_large: [_; N_LIMBS_LARGE] = read_array_large(env, 0);
@@ -314,28 +279,28 @@ pub fn constrain_ec_addition<
         read_array_small(env, 5 * N_LIMBS_LARGE + 4 * N_LIMBS_SMALL);
     let q3_limbs_small: [_; N_LIMBS_SMALL] =
         read_array_small(env, 5 * N_LIMBS_LARGE + 5 * N_LIMBS_SMALL);
-    let q1_sign = env.read_column(Column::X(
+    let q1_sign = env.read_column(FECColumn(
         mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL,
     ));
-    let q2_sign = env.read_column(Column::X(
+    let q2_sign = env.read_column(FECColumn(
         mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1,
     ));
-    let q3_sign = env.read_column(Column::X(
+    let q3_sign = env.read_column(FECColumn(
         mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2,
     ));
 
     let carry1_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = core::array::from_fn(|i| {
-        env.read_column(Column::X(
+        env.read_column(FECColumn(
             mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 3 + i,
         ))
     });
     let carry2_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = core::array::from_fn(|i| {
-        env.read_column(Column::X(
+        env.read_column(FECColumn(
             mem_offset + 5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL + 5 + i,
         ))
     });
     let carry3_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = core::array::from_fn(|i| {
-        env.read_column(Column::X(
+        env.read_column(FECColumn(
             mem_offset + 5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL + 7 + i,
         ))
     });
@@ -354,9 +319,9 @@ pub fn constrain_ec_addition<
     {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.range_check_ff_highest(x);
+            env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
         } else {
-            env.range_check_15bit(x);
+            env.lookup(LookupTable::RangeCheck15, x);
         }
     }
 
@@ -366,12 +331,12 @@ pub fn constrain_ec_addition<
         .chain(q2_limbs_small.iter())
         .chain(q3_limbs_small.iter())
     {
-        env.range_check_15bit(x);
+        env.lookup(LookupTable::RangeCheck15, x);
     }
 
     // Signs must be -1 or 1.
     for x in [&q1_sign, &q2_sign, &q3_sign] {
-        env.range_check_abs1(x);
+        env.lookup(LookupTable::RangeCheck1Abs, x);
     }
 
     // Carry limbs need to be in particular ranges.
@@ -384,31 +349,32 @@ pub fn constrain_ec_addition<
         if i % 6 == 5 {
             // This should be a diferent range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.range_check_abs4bit(x);
+            env.lookup(LookupTable::RangeCheck4Abs, x);
         } else {
-            env.range_check_abs15bit(x);
+            // TODO add this table back
+            // env.lookup(LookupTable::RangeCheck15Abs, x);
         }
     }
 
     let xr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(xr_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(xr_limbs_small.clone());
     let yr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(yr_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(yr_limbs_small.clone());
     let s_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(s_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(s_limbs_small.clone());
     let q1_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q1_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(q1_limbs_small.clone());
     let q2_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q2_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(q2_limbs_small.clone());
     let q3_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q3_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(q3_limbs_small.clone());
 
     let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry1_limbs_small.clone());
+        combine_carry::<F, Ff, Env>(carry1_limbs_small.clone());
     let carry2_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry2_limbs_small.clone());
+        combine_carry::<F, Ff, Env>(carry2_limbs_small.clone());
     let carry3_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry3_limbs_small.clone());
+        combine_carry::<F, Ff, Env>(carry3_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
     let add_extra_carries =
@@ -490,7 +456,11 @@ pub fn constrain_ec_addition<
 /// This function is witness-generation counterpart (called by the prover) of
 /// `constrain_ec_addition` -- see the documentation of the latter.
 #[allow(dead_code)]
-pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, LookupTable<Ff>>>(
+pub fn ec_add_circuit<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
+>(
     env: &mut Env,
     mem_offset: usize,
     xp: Ff,
@@ -543,7 +513,7 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, L
         input.iter().enumerate().for_each(|(i, var)| {
             env.copy(
                 &Env::constant(*var),
-                Column::X(mem_offset + extra_offset + i),
+                FECColumn(mem_offset + extra_offset + i),
             );
         })
     };
@@ -552,7 +522,7 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, L
         input.iter().enumerate().for_each(|(i, var)| {
             env.copy(
                 &Env::constant(*var),
-                Column::X(mem_offset + extra_offset + i),
+                FECColumn(mem_offset + extra_offset + i),
             );
         })
     };
@@ -639,15 +609,15 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, L
     );
     env.copy(
         &Env::constant(q1_sign),
-        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL),
+        FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL),
     );
     env.copy(
         &Env::constant(q2_sign),
-        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1),
+        FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1),
     );
     env.copy(
         &Env::constant(q3_sign),
-        Column::X(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2),
+        FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2),
     );
 
     let mut carry1: F = From::from(0u64);
@@ -687,7 +657,7 @@ pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, L
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
                     env.copy(
                         &Env::constant(newcarry_sign * limb),
-                        Column::X(mem_offset + extra_offset + 6 * i + j),
+                        FECColumn(mem_offset + extra_offset + 6 * i + j),
                     );
                 }
 
