@@ -1,5 +1,5 @@
 [package]
-name = "kimchi_msm"
+name = "kimchi-msm"
 version = "0.1.0"
 description = "Large MSM circuit"
 repository = "https://github.com/o1-labs/proof-systems"
