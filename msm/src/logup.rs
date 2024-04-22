@@ -501,6 +501,7 @@ pub mod prover {
             Sponge: FqSponge<G::BaseField, G, G::ScalarField>,
         >(
             lookups: Vec<LogupWitness<G::ScalarField, ID>>,
+            fixed_lookup_tables: BTreeMap<ID, Vec<Vec<G::ScalarField>>>,
             domain: EvaluationDomains<G::ScalarField>,
             fq_sponge: &mut Sponge,
             srs: &OpeningProof::SRS,
@@ -613,6 +614,7 @@ pub mod prover {
                         // add table id
                         let combined_value = combined_value + table_id.to_field::<G::ScalarField>();
 
+                        // FIXME: add the table t and replace code below.
                         // If last element and fixed lookup tables, we keep
                         // the *combined* value of the table.
                         if i == (n - 1) && table_id.is_fixed() {

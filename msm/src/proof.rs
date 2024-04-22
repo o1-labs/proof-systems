@@ -4,6 +4,7 @@ use crate::{
     witness::Witness,
     LogupWitness, DOMAIN_SIZE,
 };
+use crate::logup;
 use ark_ff::{UniformRand, Zero};
 use kimchi::{
     circuits::{
@@ -15,13 +16,15 @@ use kimchi::{
 };
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
 pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
     /// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
     pub evaluations: Witness<N, Vec<G::ScalarField>>,
-    pub logups: Vec<LogupWitness<G::ScalarField, ID>>,
+    /// Represents the inputs of the logup protocol, if any.
+    pub logups: Option<logup::prover::Inputs<G, ID>>,
 }
 
 impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
@@ -36,9 +39,16 @@ impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
                 .map(|_| G::ScalarField::rand(&mut rng))
                 .collect::<Vec<_>>()
         }));
+        let logup_witness = LookupWitness::<G::ScalarField>::random(domain);
+        // FIXME: add the actual table
+        let fixed_lookup_tables = BTreeMap::new();
+        let logups = logup::prover:Inputs {
+            logups: vec![logup_witness],
+            fixed_lookup_tables,
+        }
         ProofInputs {
             evaluations: Witness { cols },
-            logups: vec![LookupWitness::<G::ScalarField>::random(domain)],
+            logups: Some(logups),
         }
     }
 }
@@ -53,7 +63,7 @@ impl<const N: usize, G: KimchiCurve, ID: LookupTableID> Default for ProofInputs<
                     (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
                 })),
             },
-            logups: vec![],
+            logups: None,
         }
     }
 }

@@ -122,16 +122,16 @@ where
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     // -- Start Logup
-    let lookup_env = if !inputs.logups.is_empty() {
-        Some(Env::create::<OpeningProof, EFqSponge>(
-            inputs.logups,
+    let lookup_env = Option::map(inputs.logups, |logup_inputs| {
+        let lookups = logup_inputs.logups;
+        let fixed_lookup_tables = logup_inputs.fixed_lookup_tables;
+        Env::create::<OpeningProof, EFqSponge>(
+            lookups,
+            fixed_lookup_tables,
             domain,
             &mut fq_sponge,
             srs,
-        ))
-    } else {
-        None
-    };
+        )});
 
     let max_degree = {
         if lookup_env.is_none() {
