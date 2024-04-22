@@ -7,22 +7,23 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    circuit::CircuitTrait,
     keccak::{
-        circuit::KeccakCircuit,
         column::{Steps, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
+        trace::KeccakTrace,
     },
     lookups::LookupTableIDs,
     mips::{
-        circuit::MIPSCircuit,
         column::{MIPSWitnessTrait, MIPS_COLUMNS},
         constraints as mips_constraints,
         interpreter::Instruction,
+        trace::MIPSTrace,
         witness::{self as mips_witness, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
-    proof, DOMAIN_SIZE,
+    proof,
+    trace::Tracer,
+    DOMAIN_SIZE,
 };
 use log::debug;
 use mina_poseidon::{
@@ -97,8 +98,8 @@ pub fn main() -> ExitCode {
     // The keccak environment is extracted inside the loop
 
     // Initialize the circuits. Includes pre-folding witnesses.
-    let mut mips_circuit = MIPSCircuit::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
-    let mut keccak_circuit = KeccakCircuit::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
+    let mut mips_circuit = MIPSTrace::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
+    let mut keccak_circuit = KeccakTrace::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
     // Initialize folded instances of the sub circuits
     let mut mips_folded_instance = HashMap::new();
@@ -180,7 +181,7 @@ pub fn main() -> ExitCode {
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = mips_circuit.pad(instr);
+        let needs_folding = mips_circuit.pad_dummy(instr) != 0;
         if needs_folding {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
@@ -191,7 +192,7 @@ pub fn main() -> ExitCode {
         }
     }
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = keccak_circuit.pad(step);
+        let needs_folding = keccak_circuit.pad_dummy(step) != 0;
         if needs_folding {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,

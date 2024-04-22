@@ -1,7 +1,5 @@
 use crate::{
-    circuit::CircuitTrait,
     keccak::{
-        circuit::KeccakCircuit,
         column::{
             Absorbs::*,
             Sponges::*,
@@ -10,10 +8,12 @@ use crate::{
         },
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
+        trace::KeccakTrace,
         Constraint::*,
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
+    trace::Tracer,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -223,22 +223,21 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
             }
             Sponge(Absorb(Last)) => {
                 assert_eq!(keccak_env.constraints_env.lookups.len(), 739);
-                assert_eq!(keccak_env.constraints_env.constraints.len(), 373);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 374);
                 // We have 2 different degrees of constraints in Squeeze
                 assert_eq!(constraint_degrees.len(), 2);
-                // 232 degree-2 constraints
-                assert_eq!(constraint_degrees[&1], 232);
+                // 233 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 233);
                 // 136 degree-2 constraints
                 assert_eq!(constraint_degrees[&2], 141);
             }
             Sponge(Absorb(Only)) => {
                 assert_eq!(keccak_env.constraints_env.lookups.len(), 738);
-                assert_eq!(keccak_env.constraints_env.constraints.len(), 473);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 474);
                 // We have 2 different degrees of constraints in Squeeze
                 assert_eq!(constraint_degrees.len(), 2);
-                // 232 degree-2 constraints
-                // TODO: update after fix
-                assert_eq!(constraint_degrees[&1], 332);
+                // 333 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 333);
                 // 136 degree-2 constraints
                 assert_eq!(constraint_degrees[&2], 141);
             }
@@ -252,12 +251,11 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
             }
             Round(_) => {
                 assert_eq!(keccak_env.constraints_env.lookups.len(), 1623);
-                assert_eq!(keccak_env.constraints_env.constraints.len(), 289);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 389);
                 // We have 2 different degrees of constraints in Round
                 assert_eq!(constraint_degrees.len(), 2);
                 // 384 degree-1 constraints
-                // TODO: update after fix
-                assert_eq!(constraint_degrees[&1], 284);
+                assert_eq!(constraint_degrees[&1], 384);
                 // 5 degree-2 constraints
                 assert_eq!(constraint_degrees[&2], 5);
             }
@@ -338,7 +336,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
         assert_eq!(
             witness_env[0].errors,
             vec![
-                //Error::Constraint(PadAtEnd),
+                Error::Constraint(PadAtEnd),
                 Error::Constraint(PaddingSuffix(0))
             ]
         );
@@ -427,9 +425,9 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
         witness_env[1].errors,
         vec![
             Error::Constraint(ChiShiftsB(0, 0, 0)),
-            //Error::Constraint(ChiShiftsSum(0, 0, 0)),
-            //Error::Constraint(ChiShiftsSum(0, 3, 0)),
-            //Error::Constraint(ChiShiftsSum(0, 4, 0)),
+            Error::Constraint(ChiShiftsSum(0, 0, 0)),
+            Error::Constraint(ChiShiftsSum(0, 3, 0)),
+            Error::Constraint(ChiShiftsSum(0, 4, 0)),
         ]
     );
     witness_env[1].errors.clear();
@@ -499,15 +497,13 @@ fn test_keccak_prover() {
         let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
         // Keep track of the constraints and lookups of the sub-circuits
-        let mut keccak_circuit = KeccakCircuit::<Fp>::new(domain_size, &mut keccak_env);
+        let mut keccak_circuit = KeccakTrace::<Fp>::new(domain_size, &mut keccak_env);
 
-        // We want to use domain_size rows, even if that is an incomplete Keccak execution
         while keccak_env.constraints_env.step.is_some() {
             let step = keccak_env.constraints_env.step.unwrap();
+
             // Run the interpreter, which sets the witness columns
             keccak_env.step();
-            // Check witness satisfies constraints
-            keccak_env.witness_env.constraints();
 
             // Add the witness row to the circuit
             keccak_circuit.push_row(step, &keccak_env.witness_env.witness.cols);
@@ -515,12 +511,14 @@ fn test_keccak_prover() {
         keccak_circuit.pad_witnesses();
 
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
-            test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
-                keccak_circuit.constraints[&step].clone(),
-                keccak_circuit.witness[&step].clone(),
-                domain_size,
-                &mut rng,
-            );
+            if keccak_circuit.in_circuit(step) {
+                test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
+                    keccak_circuit.constraints[&step].clone(),
+                    keccak_circuit.witness[&step].clone(),
+                    domain_size,
+                    &mut rng,
+                );
+            }
         }
     });
 }

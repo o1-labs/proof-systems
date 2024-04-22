@@ -1,20 +1,20 @@
 use crate::{
-    circuit::{Circuit, CircuitTrait},
     mips::{
         column::MIPS_COLUMNS,
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
+    trace::{Trace, Tracer},
 };
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;
-use std::collections::HashMap;
+use std::{array, collections::HashMap};
 use strum::IntoEnumIterator;
 
-/// The Keccak circuit
-pub type MIPSCircuit<F> = Circuit<MIPS_COLUMNS, Instruction, F>;
+/// The MIPS circuit trace
+pub type MIPSTrace<F> = Trace<MIPS_COLUMNS, Instruction, F>;
 
-impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircuit<F> {
+impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
     fn new(domain_size: usize, env: &mut Env<F>) -> Self {
         let mut circuit = Self {
             domain_size,
@@ -50,33 +50,36 @@ impl<F: Field> CircuitTrait<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSCircui
         });
     }
 
-    fn pad(&mut self, instr: Instruction) -> bool {
-        let rows_left = self.domain_size - self.witness[&instr].cols[0].len();
-        if rows_left == 0 {
-            return false;
+    fn pad_with_row(&mut self, step: Instruction, row: &[F; MIPS_COLUMNS]) -> usize {
+        let rows_to_add = self.domain_size - self.witness[&step].cols[0].len();
+        for _ in 0..rows_to_add {
+            self.push_row(step, row);
         }
+        rows_to_add
+    }
+
+    fn pad_with_zeros(&mut self, instr: Instruction) -> usize {
+        let rows_to_add = self.domain_size - self.witness[&instr].cols[0].len();
         self.witness.entry(instr).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
-                col.extend((0..rows_left).map(|_| F::zero()));
+                col.extend((0..rows_to_add).map(|_| F::zero()));
             }
         });
-        true
+        rows_to_add
+    }
+
+    fn pad_dummy(&mut self, step: Instruction) -> usize {
+        if !self.in_circuit(step) {
+            0
+        } else {
+            let row = array::from_fn(|i| self.witness[&step].cols[i][0]);
+            self.pad_with_row(step, &row)
+        }
     }
 
     fn pad_witnesses(&mut self) {
-        for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-            self.pad(instr);
+        for step in Instruction::iter().flat_map(|step| step.into_iter()) {
+            self.pad_dummy(step);
         }
-    }
-
-    fn reset(&mut self, instr: Instruction) {
-        self.witness.insert(
-            instr,
-            Witness {
-                cols: Box::new(std::array::from_fn(|_| {
-                    Vec::with_capacity(self.domain_size)
-                })),
-            },
-        );
     }
 }
