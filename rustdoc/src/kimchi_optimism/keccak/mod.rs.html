@@ -128,7 +128,6 @@
     DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
 
-<span class="kw">pub mod </span>circuit;
 <span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>environment;
@@ -138,6 +137,7 @@
 <span class="kw">pub mod </span>interpreter;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>tests;
+<span class="kw">pub mod </span>trace;
 <span class="kw">pub mod </span>witness;
 
 <span class="doccomment">/// Desired output length of the hash in bits

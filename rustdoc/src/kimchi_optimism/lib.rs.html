@@ -57,9 +57,6 @@
 /// program.
 </span><span class="kw">pub const </span>DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 
-<span class="doccomment">/// Defines a circuit environment used for testing / demo purposes
-</span><span class="kw">pub mod </span>circuit;
-
 <span class="doccomment">/// Modules mimicking the defined structures used by Cannon CLI.
 </span><span class="kw">pub mod </span>cannon;
 
@@ -87,6 +84,9 @@
 
 <span class="doccomment">/// The RAM lookup argument.
 </span><span class="kw">pub mod </span>ramlookup;
+
+<span class="doccomment">/// Defines a trace struct used for testing / demo purposes
+</span><span class="kw">pub mod </span>trace;
 
 <span class="kw">use </span>kimchi::circuits::expr::{ConstantExpr, Expr};
 <span class="kw">use </span>kimchi_msm::columns::Column;
