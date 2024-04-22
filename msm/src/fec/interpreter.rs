@@ -1,5 +1,7 @@
 use crate::{
     columns::Column,
+    fec::lookups::LookupTable,
+    logup::LookupTableID,
     serialization::interpreter::{
         bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
     },
@@ -11,7 +13,7 @@ use num_integer::Integer;
 use num_traits::sign::Signed;
 use o1_utils::field_helpers::FieldHelpers;
 
-pub trait FECInterpreterEnv<F: PrimeField> {
+pub trait FECInterpreterEnv<F: PrimeField, LT: LookupTableID> {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
@@ -31,11 +33,14 @@ pub trait FECInterpreterEnv<F: PrimeField> {
 
     fn read_column(&self, ix: Column) -> Self::Variable;
 
+    /// Perform lookup into the specified table.
+    fn lookup(&mut self, table_id: LT, value: &Self::Variable);
+
     /// Checks |x| = 1, that is x ∈ {-1,1}
     fn range_check_abs1(&mut self, value: &Self::Variable);
 
     /// Checks x ∈ [0, f >> 15*16)
-    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable);
+    fn range_check_ff_highest(&mut self, value: &Self::Variable);
 
     /// Checks input x ∈ [0,2^15)
     fn range_check_15bit(&mut self, value: &Self::Variable);
@@ -67,7 +72,8 @@ fn combine_small_to_large<
     const M: usize,
     const N: usize,
     F: PrimeField,
-    Env: FECInterpreterEnv<F>,
+    Ff: PrimeField,
+    Env: FECInterpreterEnv<F, LookupTable<Ff>>,
 >(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
@@ -89,7 +95,7 @@ fn combine_small_to_large<
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<F: PrimeField, Env: FECInterpreterEnv<F>>(
+fn combine_carry<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, LookupTable<Ff>>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -276,7 +282,11 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 /// bit more for the highest limb. Even checking that highest limb is
 /// 15 bits could be quite sound.
 #[allow(dead_code)]
-pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
+pub fn constrain_ec_addition<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: FECInterpreterEnv<F, LookupTable<Ff>>,
+>(
     env: &mut Env,
     mem_offset: usize,
 ) {
@@ -344,7 +354,7 @@ pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterE
     {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.range_check_ff_highest::<Ff>(x);
+            env.range_check_ff_highest(x);
         } else {
             env.range_check_15bit(x);
         }
@@ -480,7 +490,7 @@ pub fn constrain_ec_addition<F: PrimeField, Ff: PrimeField, Env: FECInterpreterE
 /// This function is witness-generation counterpart (called by the prover) of
 /// `constrain_ec_addition` -- see the documentation of the latter.
 #[allow(dead_code)]
-pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F>>(
+pub fn ec_add_circuit<F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv<F, LookupTable<Ff>>>(
     env: &mut Env,
     mem_offset: usize,
     xp: Ff,

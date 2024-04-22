@@ -1,21 +1,30 @@
-use crate::{columns::Column, expr::E, fec::interpreter::FECInterpreterEnv};
+use crate::{
+    columns::Column,
+    expr::E,
+    fec::{interpreter::FECInterpreterEnv, lookups::LookupTable},
+};
 use ark_ff::PrimeField;
 use kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
     gate::CurrOrNext,
 };
+use std::marker::PhantomData;
 
 /// Contains constraints for just one row.
-pub struct ConstraintBuilderEnv<F> {
+pub struct ConstraintBuilderEnv<F, Ff> {
     pub constraints: Vec<E<F>>,
+    pub phantom: PhantomData<Ff>,
 }
 
-impl<F: PrimeField> FECInterpreterEnv<F> for ConstraintBuilderEnv<F> {
+impl<F: PrimeField, Ff: PrimeField> FECInterpreterEnv<F, LookupTable<Ff>>
+    for ConstraintBuilderEnv<F, Ff>
+{
     type Variable = E<F>;
 
     fn empty() -> Self {
         ConstraintBuilderEnv {
             constraints: vec![],
+            phantom: PhantomData,
         }
     }
 
@@ -44,11 +53,21 @@ impl<F: PrimeField> FECInterpreterEnv<F> for ConstraintBuilderEnv<F> {
         }))
     }
 
+    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        let lookup = Lookup {
+            table_id,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: vec![value.clone()],
+        };
+        self.lookups.entry(table_id).or_default().push(lookup);
+    }
+
     fn range_check_abs1(&mut self, _value: &Self::Variable) {
         // FIXME unimplemented
     }
 
-    fn range_check_ff_highest<Ff: PrimeField>(&mut self, _value: &Self::Variable) {}
+    fn range_check_ff_highest(&mut self, _value: &Self::Variable) {}
 
     fn range_check_15bit(&mut self, _value: &Self::Variable) {
         // FIXME unimplemented

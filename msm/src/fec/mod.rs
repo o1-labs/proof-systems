@@ -1,6 +1,7 @@
 pub mod columns;
 pub mod constraint;
 pub mod interpreter;
+pub mod lookups;
 pub mod witness;
 
 #[cfg(test)]
@@ -25,10 +26,10 @@ mod tests {
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::Rng;
 
-    fn build_foreign_field_addition_circuit(domain_size: usize) -> FECWitnessBuilderEnv<Fp> {
+    fn build_foreign_field_addition_circuit(domain_size: usize) -> FECWitnessBuilderEnv<Fp, Ff1> {
         let mut rng = o1_utils::tests::make_test_rng();
 
-        let mut witness_env = FECWitnessBuilderEnv::<Fp>::empty();
+        let mut witness_env = FECWitnessBuilderEnv::<Fp, Ff1>::empty();
 
         let row_num = rng.gen_range(0..domain_size);
 

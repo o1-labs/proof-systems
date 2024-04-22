@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, marker::PhantomData};
 
 use ark_ff::{FpParameters, PrimeField, Zero};
 use num_bigint::BigUint;
@@ -6,7 +6,7 @@ use o1_utils::field_helpers::FieldHelpers;
 
 use crate::{
     columns::Column,
-    fec::{columns::FEC_N_COLUMNS, interpreter::FECInterpreterEnv},
+    fec::{columns::FEC_N_COLUMNS, interpreter::FECInterpreterEnv, lookups::LookupTable},
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
@@ -15,14 +15,17 @@ use crate::{
 
 #[allow(dead_code)]
 /// Builder environment for a native group `G`.
-pub struct WitnessBuilderEnv<F: PrimeField> {
+pub struct WitnessBuilderEnv<F: PrimeField, Ff: PrimeField> {
     /// Aggregated witness, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
     witness: Vec<Witness<FEC_N_COLUMNS, F>>,
     double_write_checker: HashSet<usize>,
+    phantom: PhantomData<Ff>,
 }
 
-impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
+impl<F: PrimeField, Ff: PrimeField> FECInterpreterEnv<F, LookupTable<Ff>>
+    for WitnessBuilderEnv<F, Ff>
+{
     type Variable = F;
 
     fn empty() -> Self {
@@ -31,6 +34,7 @@ impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
                 cols: Box::new([Zero::zero(); FEC_N_COLUMNS]),
             }],
             double_write_checker: HashSet::new(),
+            phantom: PhantomData,
         }
     }
 
@@ -61,7 +65,7 @@ impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
         assert!(*value == F::one() || *value == F::zero() - F::one());
     }
 
-    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable) {
+    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
         let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
         // N_LIMBS * LIMB_BITSIZE = 17*15 = 255
         // (N_LIMBS-1) * LIMB_BITSIZE = 16*15 = 240
@@ -85,7 +89,7 @@ impl<F: PrimeField> FECInterpreterEnv<F> for WitnessBuilderEnv<F> {
     }
 }
 
-impl WitnessBuilderEnv<Fp> {
+impl<Ff: PrimeField> WitnessBuilderEnv<Fp, Ff> {
     /// Each WitnessColumn stands for both one row and multirow. This
     /// function converts from a vector of one-row instantiation to a
     /// single multi-row form (which is a `Witness`).
