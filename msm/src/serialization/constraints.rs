@@ -5,14 +5,18 @@ use kimchi::circuits::{
 };
 use std::collections::BTreeMap;
 
-use crate::{columns::Column, expr::E};
-
-use super::{interpreter::InterpreterEnv, Lookup, LookupTable};
 use crate::{
-    columns::ColumnIndexer, logup::constraint_lookups, serialization::column::SerializationColumn,
+    columns::{Column, ColumnIndexer},
+    expr::E,
+    logup::constraint_lookups,
+    serialization::{
+        column::SerializationColumn,
+        interpreter::InterpreterEnv,
+        lookups::{Lookup, LookupTable},
+    },
 };
 
-pub struct Env<F: PrimeField, Ff: PrimeField> {
+pub struct ConstraintBuilderEnv<F: PrimeField, Ff: PrimeField> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
@@ -22,7 +26,7 @@ pub struct Env<F: PrimeField, Ff: PrimeField> {
     pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<F>, Ff>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
     pub fn create() -> Self {
         Self {
             constraints: vec![],
@@ -32,7 +36,7 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderEnv<F, Ff> {
     type Position = Column;
 
     type Variable = E<F>;
@@ -65,27 +69,14 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         pos.to_column()
     }
 
-    fn range_check_abs15bit(&mut self, _value: &Self::Variable) {
-        // FIXME unimplemented, it's a 16 bit lookup
-    }
-
-    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
-        self.add_lookup(
-            LookupTable::RangeCheckFfHighest(core::marker::PhantomData),
-            value,
-        );
-    }
-
-    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
-        self.add_lookup(LookupTable::RangeCheck4Abs, value);
-    }
-
-    fn range_check15(&mut self, value: &Self::Variable) {
-        self.add_lookup(LookupTable::RangeCheck15, value);
-    }
-
-    fn range_check4(&mut self, value: &Self::Variable) {
-        self.add_lookup(LookupTable::RangeCheck4, value);
+    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
+        let lookup = Lookup {
+            table_id,
+            numerator: Expr::Atom(ExprInner::Constant(one)),
+            value: vec![value.clone()],
+        };
+        self.lookups.entry(table_id).or_default().push(lookup);
     }
 
     fn constant(value: F) -> Self::Variable {
@@ -114,17 +105,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
-    fn add_lookup(&mut self, table_id: LookupTable<Ff>, value: &E<F>) {
-        let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        let lookup = Lookup {
-            table_id,
-            numerator: Expr::Atom(ExprInner::Constant(one)),
-            value: vec![value.clone()],
-        };
-        self.lookups.entry(table_id).or_default().push(lookup);
-    }
-
+impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
     pub fn get_constraints(&self) -> Vec<E<F>> {
         let mut constraints: Vec<E<F>> = vec![];
 

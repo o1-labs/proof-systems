@@ -1,5 +1,4 @@
-use ark_ff::{FpParameters, PrimeField};
-use num_bigint::BigUint;
+use ark_ff::PrimeField;
 use o1_utils::FieldHelpers;
 use strum::IntoEnumIterator;
 
@@ -9,17 +8,15 @@ use crate::{
     serialization::{
         column::{SerializationColumn, SER_N_COLUMNS},
         interpreter::InterpreterEnv,
-        Lookup, LookupTable,
+        lookups::{Lookup, LookupTable},
     },
     witness::Witness,
-    LIMB_BITSIZE, N_LIMBS,
 };
 use kimchi::circuits::domains::EvaluationDomains;
-use std::{collections::BTreeMap, iter, marker::PhantomData};
+use std::{collections::BTreeMap, iter};
 
-// TODO `WitnessEnv`
 /// Environment for the serializer interpreter
-pub struct Env<F: PrimeField, Ff: PrimeField> {
+pub struct WitnessBuilderEnv<F: PrimeField, Ff: PrimeField> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
     pub witness: Witness<SER_N_COLUMNS, F>,
@@ -31,7 +28,7 @@ pub struct Env<F: PrimeField, Ff: PrimeField> {
     pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<F, Ff>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for WitnessBuilderEnv<F, Ff> {
     type Position = Column;
 
     // Requiring an F element as we would need to compute values up to 180 bits
@@ -55,54 +52,14 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
         self.witness.cols[i]
     }
 
-    fn range_check_abs15bit(&mut self, value: &Self::Variable) {
-        assert!(*value < F::from(1u64 << 15) || *value >= F::zero() - F::from(1u64 << 15));
-        // TODO implement actual lookups
-    }
-
-    fn range_check_abs4bit(&mut self, value: &Self::Variable) {
-        assert!(*value < F::from(1u64 << 4) || *value >= F::zero() - F::from(1u64 << 4));
-        // Adding multiplicities
-        let value_ix: usize = if *value < F::from(1u64 << 4) {
-            TryFrom::try_from(value.to_biguint()).unwrap()
-        } else {
-            TryFrom::try_from((*value + F::from(2 * (1u64 << 4))).to_biguint()).unwrap()
-        };
-        self.record_lookup(LookupTable::RangeCheck4Abs, value, value_ix);
-    }
-
-    fn range_check_ff_highest(&mut self, value: &Self::Variable) {
-        let f_bui: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
-        let top_modulus_f: F = F::from_biguint(&(f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE))).unwrap();
-        assert!(
-            *value < top_modulus_f,
-            "The value {:?} was higher than modulus {:?}",
-            (*value).to_bigint_positive(),
-            top_modulus_f.to_bigint_positive()
-        );
-
-        let value_ix: usize = TryFrom::try_from(value.to_biguint()).unwrap();
-        self.record_lookup(
-            LookupTable::RangeCheckFfHighest(PhantomData),
-            value,
-            value_ix,
-        );
-    }
-
-    fn range_check15(&mut self, value: &Self::Variable) {
-        let value_biguint = value.to_biguint();
-        assert!(value_biguint < BigUint::from(2u128.pow(15)));
-        // Adding multiplicities
-        let value_ix: usize = value_biguint.clone().try_into().unwrap();
-        self.record_lookup(LookupTable::RangeCheck15, value, value_ix);
-    }
-
-    fn range_check4(&mut self, value: &Self::Variable) {
-        let value_biguint = value.to_biguint();
-        assert!(value_biguint < BigUint::from(2u128.pow(4)));
-        // Adding multiplicities
-        let value_ix: usize = value_biguint.clone().try_into().unwrap();
-        self.record_lookup(LookupTable::RangeCheck4, value, value_ix);
+    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+        let value_ix = table_id.ix_by_value(*value);
+        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
+        self.lookups.get_mut(&table_id).unwrap().push(Lookup {
+            table_id,
+            numerator: F::one(),
+            value: vec![*value],
+        })
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -131,7 +88,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
     pub fn write_column(&mut self, position: Column, value: F) {
         match position {
             Column::X(i) => self.witness.cols[i] = value,
@@ -190,7 +147,7 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
+impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
     pub fn create() -> Self {
         let mut lookups = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
@@ -208,39 +165,25 @@ impl<F: PrimeField, Ff: PrimeField> Env<F, Ff> {
             lookups,
         }
     }
-
-    // Commonly used by range checking functions.
-    fn record_lookup(
-        &mut self,
-        table_id: LookupTable<Ff>,
-        value: &<Self as InterpreterEnv<F, Ff>>::Variable,
-        value_ix: usize,
-    ) {
-        self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
-        self.lookups.get_mut(&table_id).unwrap().push(Lookup {
-            table_id,
-            numerator: F::one(),
-            value: vec![*value],
-        })
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use crate::{serialization::N_INTERMEDIATE_LIMBS, Ff1, LIMB_BITSIZE, N_LIMBS};
-
-    use super::Env;
-    use crate::serialization::{
-        column::SerializationColumn,
-        interpreter::{deserialize_field_element, InterpreterEnv},
+    use crate::{
+        serialization::{
+            column::SerializationColumn,
+            interpreter::{deserialize_field_element, InterpreterEnv},
+            witness::WitnessBuilderEnv,
+            N_INTERMEDIATE_LIMBS,
+        },
+        Ff1, LIMB_BITSIZE, N_LIMBS,
     };
     use ark_ff::{BigInteger, FpParameters as _, One, PrimeField, UniformRand, Zero};
     use mina_curves::pasta::Fp;
     use num_bigint::BigUint;
     use o1_utils::{tests::make_test_rng, FieldHelpers};
     use rand::Rng;
+    use std::str::FromStr;
 
     fn test_decomposition_generic(x: Fp) {
         let bits = x.to_bits();
@@ -269,7 +212,7 @@ mod tests {
             let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        let mut dummy_env = Env::<Fp, Ff1>::create();
+        let mut dummy_env = WitnessBuilderEnv::<Fp, Ff1>::create();
         deserialize_field_element(
             &mut dummy_env,
             [
