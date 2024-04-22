@@ -181,7 +181,7 @@ pub fn main() -> ExitCode {
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = mips_circuit.pad_dummy(instr);
+        let needs_folding = mips_circuit.pad_dummy(instr) != 0;
         if needs_folding {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
@@ -192,7 +192,7 @@ pub fn main() -> ExitCode {
         }
     }
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = keccak_circuit.pad_dummy(step);
+        let needs_folding = keccak_circuit.pad_dummy(step) != 0;
         if needs_folding {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,

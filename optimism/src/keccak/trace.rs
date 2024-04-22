@@ -17,6 +17,19 @@ use super::environment::KeccakEnv;
 /// The Keccak circuit trace
 pub type KeccakTrace<F> = Trace<ZKVM_KECCAK_COLS, Steps, F>;
 
+fn standardize(step: Steps) -> Steps {
+    // Note that steps of execution are obtained from the constraints environment.
+    // There, the round steps can be anything between 0 and 23 (for the 24 permutations).
+    // Nonetheless, all of them contain the same set of constraints and lookups.
+    // Therefore, we want to treat them as the same step when it comes to splitting the
+    // circuit into multiple instances with shared behaviour. By default, we use `Round(0)`.
+    if let Round(_) = step {
+        Round(0)
+    } else {
+        step
+    }
+}
+
 impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<F> {
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
@@ -56,46 +69,37 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<
         });
     }
 
-    fn pad_with_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) -> bool {
-        let mut step = step;
-        if let Round(_) = step {
-            step = Round(0);
-        }
-        let rows_left = self.domain_size - self.witness[&step].cols[0].len();
-        if rows_left == 0 {
-            return false;
-        }
-        for _ in 0..rows_left {
+    fn pad_with_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) -> usize {
+        let step = standardize(step);
+        // No need to check if it is negative, because they are usize.
+        let rows_to_add = self.domain_size - self.witness[&step].cols[0].len();
+        // When we reach the domain size, we don't need to pad anymore.
+        for _ in 0..rows_to_add {
             self.push_row(step, row);
         }
-        true
+        rows_to_add
     }
 
-    fn pad_with_zeros(&mut self, step: Steps) -> bool {
-        let mut step = step;
-        if let Round(_) = step {
-            step = Round(0);
-        }
-        let rows_left = self.domain_size - self.witness[&step].cols[0].len();
-        if rows_left == 0 {
-            return false;
-        }
+    fn pad_with_zeros(&mut self, step: Steps) -> usize {
+        let step = standardize(step);
+        // No need to check if it is negative, because they are usize.
+        let rows_to_add = self.domain_size - self.witness[&step].cols[0].len();
+        // When we reach the domain size, we don't need to pad anymore.
         self.witness.entry(step).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
-                col.extend((0..rows_left).map(|_| F::zero()));
+                col.extend((0..rows_to_add).map(|_| F::zero()));
             }
         });
-        true
+        rows_to_add
     }
 
-    fn pad_dummy(&mut self, step: Steps) -> bool {
-        if self.witness_is_empty(step) {
-            false
+    fn pad_dummy(&mut self, step: Steps) -> usize {
+        // We only want to pad non-empty witnesses.
+        if !self.in_circuit(step) {
+            0
         } else {
-            let mut step = step;
-            if let Round(_) = step {
-                step = Round(0);
-            }
+            let step = standardize(step);
+            // We keep track of the first row of the non-empty witness, which is a real step witness.
             let row = array::from_fn(|i| self.witness[&step].cols[i][0]);
             self.pad_with_row(step, &row)
         }

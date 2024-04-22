@@ -50,33 +50,27 @@ impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
         });
     }
 
-    fn pad_with_row(&mut self, step: Instruction, row: &[F; MIPS_COLUMNS]) -> bool {
-        let rows_left = self.domain_size - self.witness[&step].cols[0].len();
-        if rows_left == 0 {
-            return false;
-        }
-        for _ in 0..rows_left {
+    fn pad_with_row(&mut self, step: Instruction, row: &[F; MIPS_COLUMNS]) -> usize {
+        let rows_to_add = self.domain_size - self.witness[&step].cols[0].len();
+        for _ in 0..rows_to_add {
             self.push_row(step, row);
         }
-        true
+        rows_to_add
     }
 
-    fn pad_with_zeros(&mut self, instr: Instruction) -> bool {
-        let rows_left = self.domain_size - self.witness[&instr].cols[0].len();
-        if rows_left == 0 {
-            return false;
-        }
+    fn pad_with_zeros(&mut self, instr: Instruction) -> usize {
+        let rows_to_add = self.domain_size - self.witness[&instr].cols[0].len();
         self.witness.entry(instr).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
-                col.extend((0..rows_left).map(|_| F::zero()));
+                col.extend((0..rows_to_add).map(|_| F::zero()));
             }
         });
-        true
+        rows_to_add
     }
 
-    fn pad_dummy(&mut self, step: Instruction) -> bool {
-        if self.witness_is_empty(step) {
-            false
+    fn pad_dummy(&mut self, step: Instruction) -> usize {
+        if !self.in_circuit(step) {
+            0
         } else {
             let row = array::from_fn(|i| self.witness[&step].cols[i][0]);
             self.pad_with_row(step, &row)

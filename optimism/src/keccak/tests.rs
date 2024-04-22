@@ -511,7 +511,7 @@ fn test_keccak_prover() {
         keccak_circuit.pad_witnesses();
 
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
-            if !keccak_circuit.witness_is_empty(step) {
+            if keccak_circuit.in_circuit(step) {
                 test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
                     keccak_circuit.constraints[&step].clone(),
                     keccak_circuit.witness[&step].clone(),
