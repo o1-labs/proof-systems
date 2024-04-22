@@ -53,5 +53,9 @@ impl FormattedOutput for Column {
 /// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
 pub trait ColumnIndexer {
+    /// Total number of columns in this index.
+    const COL_N: usize;
+
+    /// Flatten the column "alias" into the integer-like column.
     fn to_column(self) -> Column;
 }

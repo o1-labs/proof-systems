@@ -15,13 +15,13 @@ mod tests {
     use std::{collections::BTreeMap, marker::PhantomData};
 
     use crate::{
-        columns::Column,
+        columns::{Column, ColumnIndexer},
         logup::LogupWitness,
         precomputed_srs::get_bn254_srs,
         proof::ProofInputs,
         prover::prove,
         serialization::{
-            column::SER_N_COLUMNS,
+            column::{SerializationColumn, SER_N_COLUMNS},
             constraints::ConstraintBuilderEnv,
             interpreter::{
                 constrain_multiplication, deserialize_field_element, limb_decompose_ff,
@@ -46,7 +46,11 @@ mod tests {
 
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
-        let mut witness_env = WitnessBuilderEnv::<Fp, LookupTable<Ff1>>::create();
+        let mut witness_env = WitnessBuilderEnv::<
+            Fp,
+            { <SerializationColumn as ColumnIndexer>::COL_N },
+            LookupTable<Ff1>,
+        >::create();
         // Boxing to avoid stack overflow
         let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),

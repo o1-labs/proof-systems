@@ -1,24 +1,20 @@
-use ark_ff::PrimeField;
-use o1_utils::FieldHelpers;
-use strum::IntoEnumIterator;
-
 use crate::{
     columns::{Column, ColumnIndexer},
     logup::{Logup, LookupTableID},
-    serialization::{
-        column::{SerializationColumn, SER_N_COLUMNS},
-        interpreter::InterpreterEnv,
-    },
+    serialization::interpreter::InterpreterEnv,
     witness::Witness,
 };
+use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
+use o1_utils::FieldHelpers;
 use std::{collections::BTreeMap, iter};
+use strum::IntoEnumIterator;
 
 /// Environment for the serializer interpreter
-pub struct WitnessBuilderEnv<F: PrimeField, LT: LookupTableID> {
+pub struct WitnessBuilderEnv<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    pub witness: Witness<SER_N_COLUMNS, F>,
+    pub witness: Witness<CIX_COL_N, F>,
 
     /// Keep track of the lookup multiplicities.
     pub lookup_multiplicities: BTreeMap<LT, Vec<F>>,
@@ -27,9 +23,9 @@ pub struct WitnessBuilderEnv<F: PrimeField, LT: LookupTableID> {
     pub lookups: BTreeMap<LT, Vec<Logup<F, LT>>>,
 }
 
-impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for WitnessBuilderEnv<F, LT> {
-    type Position = Column;
-
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    InterpreterEnv<F, CIx, LT> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
     // Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
     type Variable = F;
@@ -42,12 +38,10 @@ impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for WitnessBuilderE
         value
     }
 
-    fn get_column(pos: SerializationColumn) -> Self::Position {
-        pos.to_column()
-    }
-
-    fn read_column(&self, ix: Column) -> Self::Variable {
-        let Column::X(i) = ix else { todo!() };
+    fn read_column(&self, ix: CIx) -> Self::Variable {
+        let Column::X(i) = ix.to_column() else {
+            todo!()
+        };
         self.witness.cols[i]
     }
 
@@ -61,8 +55,8 @@ impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for WitnessBuilderE
         })
     }
 
-    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        self.write_column(position, *x);
+    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
+        self.write_column(position.to_column(), *x);
         *x
     }
 
@@ -74,7 +68,7 @@ impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for WitnessBuilderE
         x: &Self::Variable,
         highest_bit: u32,
         lowest_bit: u32,
-        position: Self::Position,
+        position: CIx,
     ) -> Self::Variable {
         // FIXME: we can assume bitmask_be will be called only on value with
         // maximum 128 bits. We use bitmask_be only for the limbs
@@ -82,12 +76,12 @@ impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for WitnessBuilderE
         let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res_fp: F = res.into();
-        self.write_column(position, res_fp);
+        self.write_column(position.to_column(), res_fp);
         res_fp
     }
 }
 
-impl<F: PrimeField, LT: LookupTableID> WitnessBuilderEnv<F, LT> {
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> WitnessBuilderEnv<F, CIX_COL_N, LT> {
     pub fn write_column(&mut self, position: Column, value: F) {
         match position {
             Column::X(i) => self.witness.cols[i] = value,
@@ -142,7 +136,9 @@ impl<F: PrimeField, LT: LookupTableID> WitnessBuilderEnv<F, LT> {
     }
 }
 
-impl<F: PrimeField, LT: LookupTableID + IntoEnumIterator> WitnessBuilderEnv<F, LT> {
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
+    WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
     pub fn create() -> Self {
         let mut lookups = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
@@ -153,7 +149,7 @@ impl<F: PrimeField, LT: LookupTableID + IntoEnumIterator> WitnessBuilderEnv<F, L
 
         Self {
             witness: Witness {
-                cols: Box::new([F::zero(); SER_N_COLUMNS]),
+                cols: Box::new([F::zero(); CIX_COL_N]),
             },
 
             lookup_multiplicities,
@@ -165,6 +161,7 @@ impl<F: PrimeField, LT: LookupTableID + IntoEnumIterator> WitnessBuilderEnv<F, L
 #[cfg(test)]
 mod tests {
     use crate::{
+        columns::ColumnIndexer,
         serialization::{
             column::SerializationColumn,
             interpreter::{deserialize_field_element, InterpreterEnv},
@@ -208,7 +205,11 @@ mod tests {
             let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        let mut dummy_env = WitnessBuilderEnv::<Fp, LookupTable<Ff1>>::create();
+        let mut dummy_env = WitnessBuilderEnv::<
+            Fp,
+            { <SerializationColumn as ColumnIndexer>::COL_N },
+            LookupTable<Ff1>,
+        >::create();
         deserialize_field_element(
             &mut dummy_env,
             [
@@ -223,7 +224,7 @@ mod tests {
         for (i, limb) in limbs_to_assert.iter().enumerate() {
             assert_eq!(
                 Fp::from(*limb),
-                dummy_env.read_column_direct(SerializationColumn::ChalKimchi(i))
+                dummy_env.read_column(SerializationColumn::ChalKimchi(i))
             );
         }
 
@@ -239,7 +240,7 @@ mod tests {
                     .collect::<Vec<bool>>();
                 let t = Fp::from_bits(le_bits).unwrap();
                 let intermediate_v =
-                    dummy_env.read_column_direct(SerializationColumn::ChalIntermediate(j));
+                    dummy_env.read_column(SerializationColumn::ChalIntermediate(j));
                 assert_eq!(
                     t,
                     intermediate_v,
@@ -262,7 +263,7 @@ mod tests {
                 .take(LIMB_BITSIZE)
                 .collect::<Vec<bool>>();
             let t = Fp::from_bits(le_bits).unwrap();
-            let converted_v = dummy_env.read_column_direct(SerializationColumn::ChalConverted(i));
+            let converted_v = dummy_env.read_column(SerializationColumn::ChalConverted(i));
             assert_eq!(
                 t,
                 converted_v,

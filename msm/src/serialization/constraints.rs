@@ -9,7 +9,7 @@ use crate::{
     columns::{Column, ColumnIndexer},
     expr::E,
     logup::{constraint_lookups, Logup, LookupTableID},
-    serialization::{column::SerializationColumn, interpreter::InterpreterEnv},
+    serialization::interpreter::InterpreterEnv,
 };
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
@@ -32,9 +32,9 @@ impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     }
 }
 
-impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for ConstraintBuilderEnv<F, LT> {
-    type Position = Column;
-
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx, LT>
+    for ConstraintBuilderEnv<F, LT>
+{
     type Variable = E<F>;
 
     fn add_constraint(&mut self, cst: Self::Variable) {
@@ -45,24 +45,21 @@ impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for ConstraintBuild
         self.constrain_index += 1;
     }
 
-    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
+    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
         let y = Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
+            col: position.to_column(),
             row: CurrOrNext::Curr,
         }));
-        self.add_constraint(y.clone() - x.clone());
+        let diff: Self::Variable = y.clone() - x.clone();
+        <Self as InterpreterEnv<F, CIx, LT>>::add_constraint(self, diff);
         y
     }
 
-    fn read_column(&self, position: Self::Position) -> Self::Variable {
+    fn read_column(&self, position: CIx) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
+            col: position.to_column(),
             row: CurrOrNext::Curr,
         }))
-    }
-
-    fn get_column(pos: SerializationColumn) -> Self::Position {
-        pos.to_column()
     }
 
     fn lookup(&mut self, table_id: LT, value: &Self::Variable) {
@@ -90,12 +87,12 @@ impl<F: PrimeField, LT: LookupTableID> InterpreterEnv<F, LT> for ConstraintBuild
         _x: &Self::Variable,
         _highest_bit: u32,
         _lowest_bit: u32,
-        position: Self::Position,
+        position: CIx,
     ) -> Self::Variable {
         // No constraint added. It is supposed that the caller will constraint
         // later the returned variable and/or do a range check.
         Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
+            col: position.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
