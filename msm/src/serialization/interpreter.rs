@@ -21,7 +21,7 @@ pub trait InterpreterEnv<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
         + From<u64>
         + std::fmt::Debug;
 
-    fn add_constraint(&mut self, cst: Self::Variable);
+    fn assert_zero(&mut self, cst: Self::Variable);
 
     fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable;
 
@@ -107,7 +107,7 @@ pub fn deserialize_field_element<
             let pow = Env::constant(pow.into());
             constraint = constraint - var * pow;
         }
-        env.add_constraint(constraint)
+        env.assert_zero(constraint)
     }
     // Range check on each limb
     limb2_vars
@@ -235,7 +235,7 @@ pub fn deserialize_field_element<
                 )
             },
         );
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 
     // -- Start third constraint
@@ -251,7 +251,7 @@ pub fn deserialize_field_element<
             let var = limb2_vars[i].clone() * Env::constant(F::from(1u128 << (4 * (i - 1))));
             acc - var
         });
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 }
 
@@ -478,7 +478,7 @@ pub fn constrain_multiplication<
             });
         constraint = constraint + add_extra_carries(i, &carry_limbs_large);
 
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 }
 

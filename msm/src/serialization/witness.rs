@@ -30,7 +30,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableI
     // in the 15 bits decomposition.
     type Variable = F;
 
-    fn add_constraint(&mut self, cst: Self::Variable) {
+    fn assert_zero(&mut self, cst: Self::Variable) {
         assert_eq!(cst, F::zero());
     }
 

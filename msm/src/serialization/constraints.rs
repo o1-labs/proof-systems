@@ -37,7 +37,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx
 {
     type Variable = E<F>;
 
-    fn add_constraint(&mut self, cst: Self::Variable) {
+    fn assert_zero(&mut self, cst: Self::Variable) {
         // FIXME: We should enforce that we add the same expression
         // Maybe we could have a digest of the expression
         let index = self.constrain_index;
@@ -51,7 +51,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx
             row: CurrOrNext::Curr,
         }));
         let diff: Self::Variable = y.clone() - x.clone();
-        <Self as InterpreterEnv<F, CIx, LT>>::add_constraint(self, diff);
+        <Self as InterpreterEnv<F, CIx, LT>>::assert_zero(self, diff);
         y
     }
 
