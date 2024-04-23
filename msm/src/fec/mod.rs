@@ -85,7 +85,7 @@ mod tests {
         for table_id in LookupTable::<Ff1>::iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
-        let mut proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
         eprintln!("Generating proof");
         // generate the proof
