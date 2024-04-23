@@ -546,7 +546,7 @@
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{ConstantExpr, Expr, ExprInner, Variable},
+    expr::{ConstantExpr, ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 <span class="kw">use </span>kimchi_msm::columns::{Column, ColumnIndexer <span class="kw">as _</span>};
@@ -672,7 +672,7 @@
     </span>}
 
     <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable {
-        Expr::from(x <span class="kw">as </span>u64)
+        <span class="self">Self</span>::Variable::constant(Operations::from(Literal(Fp::from(x))))
     }
 
     <span class="kw">unsafe fn </span>bitmask(
