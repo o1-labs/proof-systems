@@ -1,18 +1,32 @@
 use crate::{
     keccak::{
-        environment::KeccakEnv, interpreter::KeccakInterpreter, Constraint::*, Error, KeccakColumn,
+        column::{
+            Absorbs::*,
+            Sponges::*,
+            Steps::{self, *},
+            ZKVM_KECCAK_COLS,
+        },
+        environment::KeccakEnv,
+        interpreter::KeccakInterpreter,
+        trace::KeccakTrace,
+        Constraint::*,
+        Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
+    trace::Tracer,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
-    circuits::polynomials::keccak::Keccak,
+    circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
     o1_utils::{self, FieldHelpers, Two},
 };
-use mina_curves::pasta::Fp;
+use kimchi_msm::test::test_completeness_generic;
 use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
+use strum::IntoEnumIterator;
+
+pub type Fp = ark_bn254::Fr;
 
 #[test]
 fn test_pad_blocks() {
@@ -136,7 +150,7 @@ fn test_keccak_witness_satisfies_constraints() {
 
     // Initialize the environment and run the interpreter
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    while keccak_env.keccak_step.is_some() {
+    while keccak_env.constraints_env.step.is_some() {
         keccak_env.step();
         // Simulate the constraints for each row
         keccak_env.witness_env.constraints();
@@ -154,22 +168,27 @@ fn test_keccak_witness_satisfies_constraints() {
 }
 
 #[test]
-fn test_regression_number_of_constraints_and_degree() {
+fn test_regression_number_of_lookups_and_constraints_and_degree() {
     let mut rng = o1_utils::tests::make_test_rng();
 
-    // Generate random bytelength and preimage for Keccak
-    let bytelength = rng.gen_range(1..1000);
+    // Generate random bytelength and preimage for Keccak of 1, 2 or 3 blocks
+    // so that there can be both First, Middle, Last and Only absorbs
+    let bytelength = rng.gen_range(1..400);
     let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
 
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    keccak_env.constraints_env.constraints();
-    keccak_env.constraints_env.lookups();
 
-    // Checking relation constraints
-    {
-        // Check that the number of constraints is correct
-        assert_eq!(keccak_env.constraints_env.constraints.len(), 887);
+    // Execute the interpreter to obtain constraints for each step
+    while keccak_env.constraints_env.step.is_some() {
+        // Current step to be executed
+        let step = keccak_env.constraints_env.step.unwrap();
 
+        // Push constraints for the current step
+        keccak_env.constraints_env.constraints();
+        // Push lookups for the current step
+        keccak_env.constraints_env.lookups();
+
+        // Checking relation constraints for each step selector
         let mut constraint_degrees: HashMap<u64, u32> = HashMap::new();
         keccak_env
             .constraints_env
@@ -180,19 +199,70 @@ fn test_regression_number_of_constraints_and_degree() {
                 let entry = constraint_degrees.entry(degree).or_insert(0);
                 *entry += 1;
             });
-        // We have 3 different degrees of constraints
-        assert_eq!(constraint_degrees.len(), 3);
-        // 489 degree-2 constraints
-        assert_eq!(constraint_degrees[&2], 489);
-        // 387 degree-3 constraints
-        assert_eq!(constraint_degrees[&3], 387);
-        // 11 degree-4 constraints
-        assert_eq!(constraint_degrees[&4], 11);
-    }
 
-    // Checking lookup constraints
-    {
-        assert_eq!(keccak_env.constraints_env.lookups.len(), 2361);
+        // Check that the number of constraints is correct for that step type
+        // Check that the degrees of the constraints are correct
+        // Checking lookup constraints
+
+        match step {
+            Sponge(Absorb(First)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 737);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 332);
+                // We have 1 different degrees of constraints in Absorbs::First
+                assert_eq!(constraint_degrees.len(), 1);
+                // 332 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 332);
+            }
+            Sponge(Absorb(Middle)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 738);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 232);
+                // We have 1 different degrees of constraints in Absorbs::Middle
+                assert_eq!(constraint_degrees.len(), 1);
+                // 232 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 232);
+            }
+            Sponge(Absorb(Last)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 739);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 374);
+                // We have 2 different degrees of constraints in Squeeze
+                assert_eq!(constraint_degrees.len(), 2);
+                // 233 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 233);
+                // 136 degree-2 constraints
+                assert_eq!(constraint_degrees[&2], 141);
+            }
+            Sponge(Absorb(Only)) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 738);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 474);
+                // We have 2 different degrees of constraints in Squeeze
+                assert_eq!(constraint_degrees.len(), 2);
+                // 333 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 333);
+                // 136 degree-2 constraints
+                assert_eq!(constraint_degrees[&2], 141);
+            }
+            Sponge(Squeeze) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 602);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 16);
+                // We have 1 different degrees of constraints in Squeeze
+                assert_eq!(constraint_degrees.len(), 1);
+                // 16 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 16);
+            }
+            Round(_) => {
+                assert_eq!(keccak_env.constraints_env.lookups.len(), 1623);
+                assert_eq!(keccak_env.constraints_env.constraints.len(), 389);
+                // We have 2 different degrees of constraints in Round
+                assert_eq!(constraint_degrees.len(), 2);
+                // 384 degree-1 constraints
+                assert_eq!(constraint_degrees[&1], 384);
+                // 5 degree-2 constraints
+                assert_eq!(constraint_degrees[&2], 5);
+            }
+        }
+        // Execute the step updating the witness
+        // (no need to happen before constraints if we are not checking the witness)
+        keccak_env.step(); // This updates the step for the next
     }
 }
 
@@ -205,7 +275,7 @@ fn test_keccak_witness_satisfies_lookups() {
 
     // Initialize the environment and run the interpreter
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    while keccak_env.keccak_step.is_some() {
+    while keccak_env.constraints_env.step.is_some() {
         keccak_env.step();
         keccak_env.witness_env.lookups();
         assert!(keccak_env.witness_env.errors.is_empty());
@@ -230,7 +300,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
     // Run the interpreter and keep track of the witness
-    while keccak_env.keccak_step.is_some() {
+    while keccak_env.constraints_env.step.is_some() {
         keccak_env.step();
         // Store a copy of the witness to be altered later
         witness_env.push(keccak_env.witness_env.clone());
@@ -277,36 +347,11 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[0].errors.clear();
 
     // Break booleanity constraints
-    witness_env[0].witness[KeccakColumn::FlagAbsorb] = Fp::from(2u32);
-    witness_env[0].witness[KeccakColumn::FlagSqueeze] = Fp::from(2u32);
-    witness_env[0].witness[KeccakColumn::FlagRoot] = Fp::from(2u32);
     witness_env[0].witness[KeccakColumn::PadBytesFlags(0)] = Fp::from(2u32);
     witness_env[0].constrain_booleanity();
     assert_eq!(
         witness_env[0].errors,
-        vec![
-            Error::Constraint(BooleanityAbsorb),
-            Error::Constraint(BooleanitySqueeze),
-            Error::Constraint(BooleanityRoot),
-            Error::Constraint(BooleanityPadding(0))
-        ]
-    );
-    witness_env[0].errors.clear();
-
-    // Break mutex constraints
-    witness_env[0].witness[KeccakColumn::FlagAbsorb] = Fp::from(1u32);
-    witness_env[0].witness[KeccakColumn::FlagSqueeze] = Fp::from(1u32);
-    witness_env[0].witness[KeccakColumn::FlagRound] = Fp::from(1u32);
-    witness_env[0].constrain_mutex();
-    assert_eq!(
-        witness_env[0].errors,
-        vec![
-            Error::Constraint(MutexSqueezeRoot),
-            Error::Constraint(MutexSqueezePad),
-            Error::Constraint(MutexRoundPad),
-            Error::Constraint(MutexRoundRoot),
-            Error::Constraint(MutexAbsorbSqueeze)
-        ]
+        vec![Error::Constraint(BooleanityPadding(0))]
     );
     witness_env[0].errors.clear();
 
@@ -419,7 +464,7 @@ fn test_keccak_multiplicities() {
 
     // Run the interpreter and keep track of the witness
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    while keccak_env.keccak_step.is_some() {
+    while keccak_env.constraints_env.step.is_some() {
         keccak_env.step();
         keccak_env.witness_env.lookups();
         // Store a copy of the witness
@@ -428,10 +473,58 @@ fn test_keccak_multiplicities() {
     assert_eq!(witness_env.len(), n_steps);
 
     // Check multiplicities of the padding suffixes
-    assert_eq!(witness_env[25].multiplicities[PadLookup as usize][135], 1);
+    assert_eq!(
+        witness_env[25].multiplicities.get_mut(&PadLookup).unwrap()[135],
+        1
+    );
     // Check multiplicities of the round constants of Rounds 0
     assert_eq!(
-        witness_env[26].multiplicities[RoundConstantsLookup as usize][0],
+        witness_env[26]
+            .multiplicities
+            .get_mut(&RoundConstantsLookup)
+            .unwrap()[0],
         2
     );
+}
+
+// Prover/Verifier test includidng the Keccak constraints
+#[test]
+fn test_keccak_prover_constraints() {
+    // guaranteed to have at least 30MB of stack
+    stacker::grow(30 * 1024 * 1024, || {
+        let mut rng = o1_utils::tests::make_test_rng();
+        let domain_size = 1 << 8;
+
+        // Generate 3 blocks of preimage data
+        let bytelength = rng.gen_range(2 * RATE_IN_BYTES..RATE_IN_BYTES * 3);
+        let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
+
+        // Initialize the environment and run the interpreter
+        let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+
+        // Keep track of the constraints and lookups of the sub-circuits
+        let mut keccak_circuit = KeccakTrace::<Fp>::new(domain_size, &mut keccak_env);
+
+        while keccak_env.constraints_env.step.is_some() {
+            let step = keccak_env.constraints_env.step.unwrap();
+
+            // Run the interpreter, which sets the witness columns
+            keccak_env.step();
+
+            // Add the witness row to the circuit
+            keccak_circuit.push_row(step, &keccak_env.witness_env.witness.cols);
+        }
+        keccak_circuit.pad_witnesses();
+
+        for step in Steps::iter().flat_map(|x| x.into_iter()) {
+            if keccak_circuit.in_circuit(step) {
+                test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
+                    keccak_circuit.constraints[&step].clone(),
+                    keccak_circuit.witness[&step].clone(),
+                    domain_size,
+                    &mut rng,
+                );
+            }
+        }
+    });
 }

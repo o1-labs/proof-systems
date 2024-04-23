@@ -1,20 +1,26 @@
 use crate::{
-    keccak::column::{Column as KeccakColumn, PAD_SUFFIX_LEN},
+    keccak::column::{
+        ColumnAlias as KeccakColumn,
+        Steps::{self},
+        PAD_SUFFIX_LEN,
+    },
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
-use kimchi::circuits::{
-    expr::{ConstantExpr, Expr},
-    polynomials::keccak::constants::{DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN},
+use kimchi::circuits::polynomials::keccak::constants::{
+    DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
 
 pub mod column;
 pub mod constraints;
 pub mod environment;
+#[cfg(feature = "bn254")]
 pub mod folding;
+pub mod helpers;
 pub mod interpreter;
 #[cfg(test)]
 pub mod tests;
+pub mod trace;
 pub mod witness;
 
 /// Desired output length of the hash in bits
@@ -30,27 +36,25 @@ pub(crate) const ZKVM_KECCAK_COLS_NEXT: usize = STATE_LEN;
 /// Number of words that fit in the hash digest
 pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 
-pub(crate) type E<F> = Expr<ConstantExpr<F>, KeccakColumn>;
-
 /// Errors that can occur during the check of the witness
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
+    Selector(Selector),
     Constraint(Constraint),
     Lookup(LookupTableIDs),
+}
+
+/// All the names for selector misconfigurations of the Keccak circuit
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Selector {
+    NotBoolean(Steps),
+    NotMutex,
 }
 
 /// All the names for constraints involved in the Keccak circuit
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Constraint {
-    BooleanityAbsorb,
-    BooleanitySqueeze,
-    BooleanityRoot,
     BooleanityPadding(usize),
-    MutexSqueezeRoot,
-    MutexSqueezePad,
-    MutexRoundPad,
-    MutexRoundRoot,
-    MutexAbsorbSqueeze,
     AbsorbZeroPad(usize),
     AbsorbRootZero(usize),
     AbsorbXor(usize),

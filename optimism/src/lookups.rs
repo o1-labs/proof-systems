@@ -10,17 +10,27 @@ use kimchi::{
     },
     o1_utils::{FieldHelpers, Two},
 };
-use kimchi_msm::{LookupTableID, MVLookupTable};
+use kimchi_msm::{LogupTable, LogupWitness, LookupTableID};
+
+/// The lookups struct based on RAMLookups for the VM table IDs
+pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
+
+#[allow(dead_code)]
+/// Represents a witness of one instance of the lookup argument of the zkVM project
+pub(crate) type LookupWitness<F> = LogupWitness<F, LookupTableIDs>;
+
+/// The lookup table struct based on LogupTable for the VM table IDs
+pub(crate) type LookupTable<F> = LogupTable<F, LookupTableIDs>;
 
 /// All of the possible lookup table IDs used in the zkVM
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum LookupTableIDs {
     // PadLookup ID is 0 because this is the only fixed table whose first entry is not 0.
     // This way, it is guaranteed that the 0 value is not always in the tables after the
     // randomization with the joint combiner is applied.
     /// All [1..136] values of possible padding lengths, the value 2^len, and the 5 corresponding pad suffixes with the 10*1 rule
     PadLookup = 0,
-    /// 24-row table with all possible values for round and their round constant in expanded form (in big endian)
+    /// 24-row table with all possible values for round and their round constant in expanded form (in big endian) [0..=23]
     RoundConstantsLookup = 1,
     /// All values that can be stored in a byte (amortized table, better than model as RangeCheck16 (x and scaled x)
     ByteLookup = 2,
@@ -46,6 +56,22 @@ impl LookupTableID for LookupTableIDs {
         *self as u32
     }
 
+    fn from_u32(value: u32) -> Self {
+        match value {
+            0 => PadLookup,
+            1 => RoundConstantsLookup,
+            2 => ByteLookup,
+            3 => RangeCheck16Lookup,
+            4 => SparseLookup,
+            5 => ResetLookup,
+            6 => MemoryLookup,
+            7 => RegisterLookup,
+            8 => SyscallLookup,
+            9 => KeccakStepLookup,
+            _ => panic!("Invalid table ID"),
+        }
+    }
+
     fn length(&self) -> usize {
         match self {
             PadLookup => RATE_IN_BYTES,
@@ -66,12 +92,6 @@ impl LookupTableID for LookupTableIDs {
         }
     }
 }
-
-/// The lookups struct based on RAMLookups for the VM table IDs
-pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
-
-/// The lookup table struct based on MVLookupTable for the VM table IDs
-pub(crate) type LookupTable<F> = MVLookupTable<F, LookupTableIDs>;
 
 /// Trait that creates all the fixed lookup tables used in the VM
 pub(crate) trait FixedLookupTables<F> {

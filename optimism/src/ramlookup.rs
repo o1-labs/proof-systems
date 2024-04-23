@@ -1,5 +1,5 @@
 use ark_ff::{Field, One, Zero};
-use kimchi_msm::{LookupTableID, MVLookup};
+use kimchi_msm::{Logup, LookupTableID};
 
 /// Enum representing the two different modes of a RAMLookup
 #[derive(Copy, Clone, Debug)]
@@ -42,7 +42,7 @@ where
         }
     }
 
-    /// Returns the numerator corresponding to this lookup in the MVLookup argument
+    /// Returns the numerator corresponding to this lookup in the Logup argument
     pub fn numerator(&self) -> T {
         match self.mode {
             LookupMode::Read => T::zero() - self.magnitude.clone(),
@@ -50,9 +50,9 @@ where
         }
     }
 
-    /// Transforms the current RAMLookup into an equivalent MVLookup
-    pub fn into_mvlookup(self) -> MVLookup<T, ID> {
-        MVLookup::new(self.table_id, self.numerator(), &self.value)
+    /// Transforms the current RAMLookup into an equivalent Logup
+    pub fn into_logup(self) -> Logup<T, ID> {
+        Logup::new(self.table_id, self.numerator(), &self.value)
     }
 
     /// Reads one value when `if_is_true` is 1.

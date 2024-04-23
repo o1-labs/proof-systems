@@ -1,4 +1,4 @@
-use crate::mvlookup::LookupTableID;
+use crate::logup::LookupTableID;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as R2D};
 use rand::thread_rng;
@@ -35,7 +35,7 @@ pub fn verify<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    constraint_exprs: &Vec<E<G::ScalarField>>,
+    constraints: &Vec<E<G::ScalarField>>,
     proof: &Proof<N, G, OpeningProof, ID>,
     public_inputs: Witness<NPUB, Vec<G::ScalarField>>,
 ) -> bool
@@ -98,15 +98,15 @@ where
         .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
     ////////////////////////////////////////////////////////////////////////////
-    // MVLookup
+    // Logup
     ////////////////////////////////////////////////////////////////////////////
 
     let (joint_combiner, beta) = {
-        if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
+        if let Some(logup_comms) = &proof_comms.logup_comms {
             // First, we absorb the multiplicity polynomials
-            mvlookup_comms
+            logup_comms
                 .m
-                .iter()
+                .values()
                 .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
 
             // To generate the challenges
@@ -114,11 +114,19 @@ where
             let beta = fq_sponge.challenge();
 
             // And now, we absorb the commitments to the other polynomials
-            mvlookup_comms
-                .h
-                .iter()
+            logup_comms.h.values().for_each(|comms| {
+                comms
+                    .iter()
+                    .for_each(|comm| absorb_commitment(&mut fq_sponge, comm))
+            });
+
+            logup_comms
+                .fixed_tables
+                .values()
                 .for_each(|comm| absorb_commitment(&mut fq_sponge, comm));
-            absorb_commitment(&mut fq_sponge, &mvlookup_comms.sum);
+
+            // And at the end, the aggregation
+            absorb_commitment(&mut fq_sponge, &logup_comms.sum);
             (Some(joint_combiner), beta)
         } else {
             (None, G::ScalarField::zero())
@@ -155,11 +163,11 @@ where
             }),
     );
 
-    if let Some(mvlookup_comms) = &proof_comms.mvlookup_comms {
+    if let Some(logup_comms) = &proof_comms.logup_comms {
         coms_and_evaluations.extend(
-            mvlookup_comms
+            logup_comms
                 .into_iter()
-                .zip(proof_evals.mvlookup_evals.as_ref().unwrap())
+                .zip(proof_evals.logup_evals.as_ref().unwrap())
                 .map(|(commitment, point_eval)| Evaluation {
                     commitment: commitment.clone(),
                     evaluations: vec![vec![point_eval.zeta], vec![point_eval.zeta_omega]],
@@ -177,10 +185,10 @@ where
         fr_sponge.absorb(zeta);
         fr_sponge.absorb(zeta_omega);
     }
-    if proof_comms.mvlookup_comms.is_some() {
-        // MVLookup FS
+    if proof_comms.logup_comms.is_some() {
+        // Logup FS
         for PointEvaluations { zeta, zeta_omega } in
-            proof_evals.mvlookup_evals.as_ref().unwrap().into_iter()
+            proof_evals.logup_evals.as_ref().unwrap().into_iter()
         {
             fr_sponge.absorb(zeta);
             fr_sponge.absorb(zeta_omega);
@@ -212,7 +220,7 @@ where
     };
 
     let combined_expr =
-        Expr::combine_constraints(0..(constraint_exprs.len() as u32), constraint_exprs.clone());
+        Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
     let ft_eval0 = -PolishToken::evaluate(
         combined_expr.to_polish().as_slice(),
         domain.d1,

@@ -49,7 +49,7 @@ impl<F: PrimeField> TestInterpreterEnv<F> for WitnessBuilderEnv<F> {
 
     // TODO deduplicate, remove this
     fn column_pos(ix: TestColumnIndexer) -> Self::Position {
-        ix.ix_to_column()
+        ix.to_column()
     }
 
     fn read_column(&self, ix: TestColumnIndexer) -> Self::Variable {
@@ -93,7 +93,7 @@ impl WitnessBuilderEnv<Fp> {
             evaluations: Witness {
                 cols: Box::new(cols),
             },
-            mvlookups: vec![],
+            logups: vec![],
         }
     }
 

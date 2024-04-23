@@ -1,5 +1,5 @@
 [package]
-name = "kimchi_optimism"
+name = "kimchi-optimism"
 version = "0.1.0"
 description = "MIPS demo"
 repository = "https://github.com/o1-labs/proof-systems"
@@ -19,7 +19,7 @@ path = "src/test_preimage_read.rs"
 [dependencies]
 ark-bn254.workspace = true
 kimchi = { workspace = true, features = [ "bn254" ] }
-kimchi_msm = { path = "../msm", version = "0.1.0" }
+kimchi-msm.workspace = true
 poly-commitment.workspace = true
 groupmap.workspace = true
 mina-curves.workspace = true
@@ -29,6 +29,7 @@ rmp-serde.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 serde_with.workspace = true
+stacker = "0.1"
 ark-poly.workspace = true
 ark-ff.workspace = true
 ark-ec.workspace = true

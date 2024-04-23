@@ -1,14 +1,14 @@
-//! Instantiate the MVLookup protocol for the MSM project.
+//! Instantiate the Logup protocol for the MSM project.
 
-use crate::mvlookup::{LookupTableID, MVLookup, MVLookupWitness};
+use crate::logup::{Logup, LogupWitness, LookupTableID};
 use ark_ff::FftField;
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
-use std::iter;
+use std::{cmp::Ord, iter};
 
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LookupTableIDs {
     RangeCheck16,
     /// Custom lookup table
@@ -25,6 +25,13 @@ impl LookupTableID for LookupTableIDs {
         }
     }
 
+    fn from_u32(id: u32) -> Self {
+        match id {
+            1 => LookupTableIDs::RangeCheck16,
+            _ => LookupTableIDs::Custom(id - 1),
+        }
+    }
+
     fn length(&self) -> usize {
         match self {
             LookupTableIDs::RangeCheck16 => 1 << 16,
@@ -38,11 +45,11 @@ impl LookupTableID for LookupTableIDs {
     }
 }
 
-/// Additive lookups used in the MSM project based on MVLookup
-pub type Lookup<F> = MVLookup<F, LookupTableIDs>;
+/// Additive lookups used in the MSM project based on Logup
+pub type Lookup<F> = Logup<F, LookupTableIDs>;
 
 /// Represents a witness of one instance of the lookup argument of the MSM project
-pub type LookupWitness<F> = MVLookupWitness<F, LookupTableIDs>;
+pub type LookupWitness<F> = LogupWitness<F, LookupTableIDs>;
 
 // This should be used only for testing purposes.
 // It is not only in the test API because it is used at the moment in the
@@ -118,6 +125,7 @@ impl<F: FftField> LookupWitness<F> {
         LookupWitness {
             f: vec![f_evals, t_evals],
             m,
+            table_id: LookupTableIDs::Custom(table_id),
         }
     }
 }

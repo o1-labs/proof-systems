@@ -1,7 +1,7 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 
-use crate::{mvlookup, witness::Witness};
+use crate::{logup, logup::LookupTableID, witness::Witness};
 use kimchi::circuits::{
     domains::EvaluationDomains,
     expr::{Challenges, ColumnEnvironment as TColumnEnvironment, Constants, Domain},
@@ -11,11 +11,9 @@ use kimchi::circuits::{
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct ColumnEnvironment<'a, const N: usize, F: FftField> {
+pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID> {
     /// The witness column polynomials
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
-    /// The coefficient column polynomials
-    pub coefficients: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
@@ -27,12 +25,12 @@ pub struct ColumnEnvironment<'a, const N: usize, F: FftField> {
     pub domain: EvaluationDomains<F>,
 
     /// Lookup specific polynomials
-    // TODO: rename in additive lookup or "logup"
-    // We do not use multi-variate lookups, only the additive part
-    pub lookup: Option<mvlookup::prover::QuotientPolynomialEnvironment<'a, F>>,
+    pub lookup: Option<logup::prover::QuotientPolynomialEnvironment<'a, F, ID>>,
 }
 
-impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, F> {
+impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, F>
+    for ColumnEnvironment<'a, N, F, ID>
+{
     type Column = crate::columns::Column;
 
     fn get_column(
@@ -40,24 +38,21 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
         let witness_length: usize = self.witness.len();
-        let coefficients_length: usize = self.coefficients.len();
         match *col {
             // Handling the "relation columns"
             Self::Column::X(i) => {
                 if i < witness_length {
                     let res = &self.witness[i];
                     Some(res)
-                } else if i < witness_length + coefficients_length {
-                    // FIXME and add a test
-                    Some(&self.coefficients[i])
                 } else {
                     // TODO: add a test for this
                     panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
                 }
             }
-            Self::Column::LookupPartialSum(i) => {
+            Self::Column::LookupPartialSum((table_id, i)) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_terms_evals_d8[i])
+                    let table_id = ID::from_u32(table_id);
+                    Some(&lookup.lookup_terms_evals_d8[&table_id][i])
                 } else {
                     panic!("No lookup provided")
                 }
@@ -69,15 +64,19 @@ impl<'a, const N: usize, F: FftField> TColumnEnvironment<'a, F> for ColumnEnviro
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(i) => {
+            Self::Column::LookupMultiplicity(table_id) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d8[i as usize])
+                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(table_id)])
                 } else {
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupFixedTable(_) => {
-                panic!("Logup is not yet implemented.")
+            Self::Column::LookupFixedTable(table_id) => {
+                if let Some(ref lookup) = self.lookup {
+                    Some(&lookup.fixed_tables_evals_d8[&ID::from_u32(table_id)])
+                } else {
+                    panic!("No lookup provided")
+                }
             }
         }
     }

@@ -155,6 +155,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "bn254")]
 mod tests {
     use super::*;
     use ark_poly::{Evaluations, Radix2EvaluationDomain};

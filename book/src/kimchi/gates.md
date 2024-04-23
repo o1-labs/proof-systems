@@ -186,7 +186,7 @@ Finally, providing $q(X) = \text{gates}(X)/v_{\mathbb{G}}(X)$ and performing the
 
 _The prover knows a polynomial_ $\text{gates}(X)$ _that equals zero on any_ $x\in\{1,g,g^2,g^3\}$.
 
-Nonetheless, it would still remain to verify that $\text{gates}(X)$ actually corresponds to the encoding of the actual constraints. Meaning, checking that this polynomial encodes the column witnesses, and the agreed circuit. So instead of providing just $\text{gates}(X)$ (actually, a commmitment to it), the prover can send commitments to each of th $15$ witness polynomials, so that the verifier can reconstruct the huge constraint using the encodings of the circuit (which is known ahead). 
+Nonetheless, it would still remain to verify that $\text{gates}(X)$ actually corresponds to the encoding of the actual constraints. Meaning, checking that this polynomial encodes the column witnesses, and the agreed circuit. So instead of providing just $\text{gates}(X)$ (actually, a commitment to it), the prover can send commitments to each of th $15$ witness polynomials, so that the verifier can reconstruct the huge constraint using the encodings of the circuit (which is known ahead). 
 
 <!--- TO-DO (anais): check how the verifier merges both things, as they are quite intertwined and the degrees of the products may could too large for pairings? --->
 

@@ -1549,7 +1549,7 @@ Meaning,
 
 In this section we specify the setup that goes into creating two indexes from a circuit:
 
-* A [*prover index*](#prover-index), necessary for the prover to to create proofs.
+* A [*prover index*](#prover-index), necessary for the prover to create proofs.
 * A [*verifier index*](#verifier-index), necessary for the verifier to verify proofs.
 
 ```admonish
@@ -2197,7 +2197,7 @@ The prover then follows the following steps to create the proof:
    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
    TODO: specify the split of the permutation polynomial into perm and bnd?
 1. commit (hiding) to the quotient polynomial $t$
-1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:

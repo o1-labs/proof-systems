@@ -7,9 +7,9 @@ use crate::{
     lookups::Lookup,
     mips::{
         column::{
-            Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH, MIPS_HASH_COUNTER_OFFSET,
-            MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET, MIPS_PREIMAGE_BYTES_OFFSET,
-            MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
+            ColumnAlias as Column, MIPS_BYTES_READ_OFFSET, MIPS_CHUNK_BYTES_LENGTH,
+            MIPS_HASH_COUNTER_OFFSET, MIPS_HAS_N_BYTES_OFFSET, MIPS_IS_SYSCALL_OFFSET,
+            MIPS_PREIMAGE_BYTES_OFFSET, MIPS_PREIMAGE_LEFT_OFFSET, MIPS_READING_PREIMAGE_OFFSET,
         },
         interpreter::{
             self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
@@ -123,6 +123,24 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     type Variable = u64;
+
+    // TODO: update variable() function once scratch_state is [u64; SCRATCH_SIZE]
+    fn variable(&self, _column: Self::Position) -> Self::Variable {
+        todo!();
+        /*
+        match column {
+            Column::ScratchState(idx) => self.scratch_state[idx],
+            Column::Selector(ins) => match ins {
+                Instruction::RType(r) => self.selectors[r as usize],
+                Instruction::IType(i) => self.selectors[i as usize + RTypeInstruction::COUNT],
+                Instruction::JType(j) => {
+                    self.selectors[j as usize + RTypeInstruction::COUNT + ITypeInstruction::COUNT]
+                }
+            },
+            Column::InstructionCounter => self.instructions_counter,
+        }
+        */
+    }
 
     fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
         // No-op for witness
@@ -543,6 +561,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     ) -> Self::Variable {
         let x: u32 = (*x).try_into().unwrap();
         let res = x.leading_zeros();
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
+    unsafe fn count_leading_ones(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let res = x.leading_ones();
         let res = res as u64;
         self.write_column(position, res);
         res
@@ -1014,7 +1044,14 @@ impl<Fp: Field> Env<Fp> {
         (opcode, instruction)
     }
 
-    pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
+    /// Execute a single step of the MIPS program.
+    /// Returns the instruction that was executed.
+    pub fn step(
+        &mut self,
+        config: &VmConfiguration,
+        metadata: &Meta,
+        start: &Start,
+    ) -> Instruction {
         self.reset_scratch_state();
         let (opcode, _instruction) = self.decode_instruction();
 
@@ -1028,7 +1065,7 @@ impl<Fp: Field> Env<Fp> {
                 "Halted as requested at step={} instruction={:?}",
                 self.instruction_counter, opcode
             );
-            return;
+            return opcode;
         }
 
         interpreter::interpret_instruction(self, opcode);
@@ -1041,6 +1078,7 @@ impl<Fp: Field> Env<Fp> {
                 self.instruction_counter, opcode
             );
         }
+        opcode
     }
 
     fn should_trigger_at(&self, at: &StepFrequency) -> bool {

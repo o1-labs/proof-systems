@@ -10,6 +10,7 @@ use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
+#[cfg(feature = "bn254")]
 pub use example::{Alphas, BaseSponge};
 pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
@@ -17,6 +18,7 @@ pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 pub mod decomposable_folding;
 mod error_term;
 #[allow(dead_code)]
+#[cfg(feature = "bn254")]
 mod example;
 pub mod expressions;
 mod instance_witness;

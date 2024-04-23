@@ -78,3 +78,6 @@ pub const SPONGE_SHIFTS_OFF: usize = SPONGE_BYTES_OFF + SPONGE_BYTES_LEN;
 pub const SPONGE_SHIFTS_LEN: usize = SHIFTS_LEN;
 pub const SPONGE_XOR_STATE_OFF: usize = 0;
 pub const SPONGE_XOR_STATE_LEN: usize = STATE_LEN;
+
+/// The number of columns the Sponge circuit uses.
+pub const SPONGE_COLS: usize = SPONGE_SHIFTS_OFF + SPONGE_SHIFTS_LEN;
