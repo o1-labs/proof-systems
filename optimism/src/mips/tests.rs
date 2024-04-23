@@ -78,9 +78,10 @@ fn test_mips_number_constraints() {
                 JumpAndLink => assert_num_constraints(&instr, 3),
             },
             IType(itype) => match itype {
-                BranchLeqZero | BranchGtZero | BranchLtZero | BranchGeqZero | Store8 | Store16
-                | Store32 => assert_num_constraints(&instr, 0),
-                BranchEq | BranchNeq => assert_num_constraints(&instr, 2),
+                BranchLeqZero | BranchGtZero | BranchLtZero | BranchGeqZero | Store8 | Store16 => {
+                    assert_num_constraints(&instr, 0)
+                }
+                BranchEq | BranchNeq | Store32 => assert_num_constraints(&instr, 2),
                 AddImmediate
                 | AddImmediateUnsigned
                 | SetLessThanImmediate
