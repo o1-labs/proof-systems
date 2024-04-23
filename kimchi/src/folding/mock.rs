@@ -85,7 +85,7 @@ struct TestConfig;
 impl FoldingConfig for TestConfig {
     type Column = u8;
 
-    type S = ();
+    type Selector = ();
 
     type Challenge = Mock;
 
