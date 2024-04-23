@@ -1,9 +1,5 @@
-use strum::{EnumCount, IntoEnumIterator};
-
 use crate::{
-    circuit::CircuitTrait,
     mips::{
-        circuit::MIPSCircuit,
         constraints::Env,
         interpreter::{
             ITypeInstruction::{self, *},
@@ -11,8 +7,11 @@ use crate::{
             JTypeInstruction::{self, *},
             RTypeInstruction::{self, *},
         },
+        trace::MIPSTrace,
     },
+    trace::Tracer,
 };
+use strum::{EnumCount, IntoEnumIterator};
 
 type Fp = ark_bn254::Fr;
 
@@ -29,7 +28,7 @@ fn test_mips_number_constraints() {
     };
 
     // Keep track of the constraints and lookups of the sub-circuits
-    let mips_circuit = MIPSCircuit::<Fp>::new(domain_size, &mut constraints_env);
+    let mips_circuit = MIPSTrace::<Fp>::new(domain_size, &mut constraints_env);
 
     let assert_num_constraints = |instr: &Instruction, num: usize| {
         assert_eq!(mips_circuit.constraints.get(instr).unwrap().len(), num)
@@ -39,9 +38,7 @@ fn test_mips_number_constraints() {
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         match instr {
             RType(rtype) => match rtype {
-                JumpRegister | SyscallExitGroup | Sync | MoveToHi | CountLeadingOnes => {
-                    assert_num_constraints(&instr, 0)
-                }
+                JumpRegister | SyscallExitGroup | Sync => assert_num_constraints(&instr, 0),
                 ShiftLeftLogical
                 | ShiftRightLogical
                 | ShiftRightArithmetic
@@ -53,6 +50,7 @@ fn test_mips_number_constraints() {
                 | MoveFromHi
                 | MoveFromLo
                 | MoveToLo
+                | MoveToHi
                 | Add
                 | AddUnsigned
                 | Sub
@@ -64,6 +62,7 @@ fn test_mips_number_constraints() {
                 | SetLessThan
                 | SetLessThanUnsigned
                 | MultiplyToRegister
+                | CountLeadingOnes
                 | CountLeadingZeros => assert_num_constraints(&instr, 3),
                 MoveZero | MoveNonZero => assert_num_constraints(&instr, 5),
                 SyscallReadOther | SyscallWriteHint | SyscallWriteOther | Multiply
@@ -79,9 +78,10 @@ fn test_mips_number_constraints() {
                 JumpAndLink => assert_num_constraints(&instr, 3),
             },
             IType(itype) => match itype {
-                BranchLeqZero | BranchGtZero | BranchLtZero | BranchGeqZero | Store8 | Store16
-                | Store32 => assert_num_constraints(&instr, 0),
-                BranchEq | BranchNeq => assert_num_constraints(&instr, 2),
+                BranchLeqZero | BranchGtZero | BranchLtZero | BranchGeqZero | Store8 | Store16 => {
+                    assert_num_constraints(&instr, 0)
+                }
+                BranchEq | BranchNeq | Store32 => assert_num_constraints(&instr, 2),
                 AddImmediate
                 | AddImmediateUnsigned
                 | SetLessThanImmediate

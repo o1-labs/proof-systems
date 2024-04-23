@@ -14,8 +14,6 @@ use kimchi::circuits::{
 pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID> {
     /// The witness column polynomials
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
-    /// The coefficient column polynomials
-    pub coefficients: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
@@ -40,24 +38,21 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
         let witness_length: usize = self.witness.len();
-        let coefficients_length: usize = self.coefficients.len();
         match *col {
             // Handling the "relation columns"
             Self::Column::X(i) => {
                 if i < witness_length {
                     let res = &self.witness[i];
                     Some(res)
-                } else if i < witness_length + coefficients_length {
-                    // FIXME and add a test
-                    Some(&self.coefficients[i])
                 } else {
                     // TODO: add a test for this
                     panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
                 }
             }
-            Self::Column::LookupPartialSum(i) => {
+            Self::Column::LookupPartialSum((table_id, i)) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_terms_evals_d8[i])
+                    let table_id = ID::from_u32(table_id);
+                    Some(&lookup.lookup_terms_evals_d8[&table_id][i])
                 } else {
                     panic!("No lookup provided")
                 }
@@ -69,16 +64,16 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupMultiplicity(id) => {
+            Self::Column::LookupMultiplicity(table_id) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(id)])
+                    Some(&lookup.lookup_counters_evals_d8[&ID::from_u32(table_id)])
                 } else {
                     panic!("No lookup provided")
                 }
             }
-            Self::Column::LookupFixedTable(id) => {
+            Self::Column::LookupFixedTable(table_id) => {
                 if let Some(ref lookup) = self.lookup {
-                    Some(&lookup.fixed_tables_evals_d8[&ID::from_u32(id)])
+                    Some(&lookup.fixed_tables_evals_d8[&ID::from_u32(table_id)])
                 } else {
                     panic!("No lookup provided")
                 }

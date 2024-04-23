@@ -15,7 +15,6 @@
 //! [crate::mips::interpreter], and the evaluations will be kept in the
 //! structure ProofInputs.
 
-pub mod circuit;
 pub mod column;
 pub mod constraints;
 #[cfg(feature = "bn254")]
@@ -24,4 +23,5 @@ pub mod interpreter;
 pub mod registers;
 #[cfg(test)]
 pub mod tests;
+pub mod trace;
 pub mod witness;

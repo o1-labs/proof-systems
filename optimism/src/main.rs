@@ -7,22 +7,23 @@ use kimchi_msm::{
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
-    circuit::CircuitTrait,
     keccak::{
-        circuit::KeccakCircuit,
         column::{Steps, ZKVM_KECCAK_COLS},
         environment::KeccakEnv,
+        trace::KeccakTrace,
     },
     lookups::LookupTableIDs,
     mips::{
-        circuit::MIPSCircuit,
         column::{MIPSWitnessTrait, MIPS_COLUMNS},
         constraints as mips_constraints,
         interpreter::Instruction,
+        trace::MIPSTrace,
         witness::{self as mips_witness, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
-    proof, DOMAIN_SIZE,
+    proof,
+    trace::Tracer,
+    DOMAIN_SIZE,
 };
 use log::debug;
 use mina_poseidon::{
@@ -97,8 +98,8 @@ pub fn main() -> ExitCode {
     // The keccak environment is extracted inside the loop
 
     // Initialize the circuits. Includes pre-folding witnesses.
-    let mut mips_circuit = MIPSCircuit::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
-    let mut keccak_circuit = KeccakCircuit::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
+    let mut mips_trace = MIPSTrace::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
+    let mut keccak_trace = KeccakTrace::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
     // Initialize folded instances of the sub circuits
     let mut mips_folded_instance = HashMap::new();
@@ -135,17 +136,17 @@ pub fn main() -> ExitCode {
                 // Run the interpreter, which sets the witness columns
                 keccak_env.step();
                 // Add the witness row to the Keccak circuit for this step
-                keccak_circuit.push_row(step, &keccak_env.witness_env.witness.cols);
+                keccak_trace.push_row(step, &keccak_env.witness_env.witness.cols);
 
                 // If the witness is full, fold it and reset the pre-folding witness
-                if keccak_circuit.witness[&step].cols[0].len() == DOMAIN_SIZE {
+                if keccak_trace.witness[&step].cols[0].len() == DOMAIN_SIZE {
                     proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
                         keccak_folded_instance.get_mut(&step).unwrap(),
-                        &keccak_circuit.witness[&step],
+                        &keccak_trace.witness[&step],
                     );
-                    keccak_circuit.reset(step);
+                    keccak_trace.reset(step);
                 }
             }
             // When the Keccak interpreter is finished, we can reset the environment
@@ -155,49 +156,49 @@ pub fn main() -> ExitCode {
         // TODO: unify witness of MIPS to include the instruction and the error
         for i in 0..MIPS_COLUMNS {
             if i < SCRATCH_SIZE {
-                mips_circuit.witness.get_mut(&instr).unwrap().cols[i]
+                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
                     .push(mips_wit_env.scratch_state[i]);
             } else if i == MIPS_COLUMNS - 2 {
-                mips_circuit.witness.get_mut(&instr).unwrap().cols[i]
+                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
                     .push(Fp::from(mips_wit_env.instruction_counter));
             } else {
                 // TODO: error
-                mips_circuit.witness.get_mut(&instr).unwrap().cols[i]
+                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
                     .push(Fp::rand(&mut rand::rngs::OsRng));
             }
         }
 
-        if mips_circuit.witness[&instr].instruction_counter().len() == DOMAIN_SIZE {
+        if mips_trace.witness[&instr].instruction_counter().len() == DOMAIN_SIZE {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 mips_folded_instance.get_mut(&instr).unwrap(),
-                &mips_circuit.witness[&instr],
+                &mips_trace.witness[&instr],
             );
-            mips_circuit.reset(instr);
+            mips_trace.reset(instr);
         }
     }
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = mips_circuit.pad(instr);
+        let needs_folding = mips_trace.pad_dummy(instr) != 0;
         if needs_folding {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 mips_folded_instance.get_mut(&instr).unwrap(),
-                &mips_circuit.witness[&instr],
+                &mips_trace.witness[&instr],
             );
         }
     }
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = keccak_circuit.pad(step);
+        let needs_folding = keccak_trace.pad_dummy(step) != 0;
         if needs_folding {
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
                 keccak_folded_instance.get_mut(&step).unwrap(),
-                &keccak_circuit.witness[&step],
+                &keccak_trace.witness[&step],
             );
         }
     }
@@ -205,44 +206,47 @@ pub fn main() -> ExitCode {
     {
         // MIPS
         for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-            debug!("Checking MIPS circuit {:?}", instr);
-            let mips_result = prove::<
-                _,
-                OpeningProof,
-                BaseSponge,
-                ScalarSponge,
-                Column,
-                _,
-                MIPS_COLUMNS,
-                LookupTableIDs,
-            >(
-                domain,
-                &srs,
-                &mips_circuit.constraints[&instr],
-                mips_folded_instance[&instr].clone(),
-                &mut rng,
-            );
-            let mips_proof = mips_result.unwrap();
-            debug!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
-            let mips_verifies = verify::<
-                _,
-                OpeningProof,
-                BaseSponge,
-                ScalarSponge,
-                MIPS_COLUMNS,
-                0,
-                LookupTableIDs,
-            >(
-                domain,
-                &srs,
-                &mips_circuit.constraints[&instr],
-                &mips_proof,
-                Witness::zero_vec(DOMAIN_SIZE),
-            );
-            if mips_verifies {
-                debug!("The MIPS {:?} proof verifies", instr)
-            } else {
-                debug!("The MIPS {:?} proof doesn't verify", instr)
+            // Prove only if the instruction was executed
+            if mips_trace.in_circuit(instr) {
+                debug!("Checking MIPS circuit {:?}", instr);
+                let mips_result = prove::<
+                    _,
+                    OpeningProof,
+                    BaseSponge,
+                    ScalarSponge,
+                    Column,
+                    _,
+                    MIPS_COLUMNS,
+                    LookupTableIDs,
+                >(
+                    domain,
+                    &srs,
+                    &mips_trace.constraints[&instr],
+                    mips_folded_instance[&instr].clone(),
+                    &mut rng,
+                );
+                let mips_proof = mips_result.unwrap();
+                debug!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
+                let mips_verifies = verify::<
+                    _,
+                    OpeningProof,
+                    BaseSponge,
+                    ScalarSponge,
+                    MIPS_COLUMNS,
+                    0,
+                    LookupTableIDs,
+                >(
+                    domain,
+                    &srs,
+                    &mips_trace.constraints[&instr],
+                    &mips_proof,
+                    Witness::zero_vec(DOMAIN_SIZE),
+                );
+                if mips_verifies {
+                    debug!("The MIPS {:?} proof verifies", instr)
+                } else {
+                    debug!("The MIPS {:?} proof doesn't verify", instr)
+                }
             }
         }
     }
@@ -251,44 +255,47 @@ pub fn main() -> ExitCode {
         // KECCAK
         // FIXME: when folding is applied, the error term will be created to satisfy the folded witness
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
-            debug!("Checking Keccak circuit {:?}", step);
-            let keccak_result = prove::<
-                _,
-                OpeningProof,
-                BaseSponge,
-                ScalarSponge,
-                Column,
-                _,
-                ZKVM_KECCAK_COLS,
-                LookupTableIDs,
-            >(
-                domain,
-                &srs,
-                &keccak_circuit.constraints[&step],
-                keccak_folded_instance[&step].clone(),
-                &mut rng,
-            );
-            let keccak_proof = keccak_result.unwrap();
-            debug!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
-            let keccak_verifies = verify::<
-                _,
-                OpeningProof,
-                BaseSponge,
-                ScalarSponge,
-                ZKVM_KECCAK_COLS,
-                0,
-                LookupTableIDs,
-            >(
-                domain,
-                &srs,
-                &keccak_circuit.constraints[&step],
-                &keccak_proof,
-                Witness::zero_vec(DOMAIN_SIZE),
-            );
-            if keccak_verifies {
-                debug!("The Keccak {:?} proof verifies", step)
-            } else {
-                debug!("The Keccak {:?} proof doesn't verify", step)
+            // Prove only if the instruction was executed
+            if keccak_trace.in_circuit(step) {
+                debug!("Checking Keccak circuit {:?}", step);
+                let keccak_result = prove::<
+                    _,
+                    OpeningProof,
+                    BaseSponge,
+                    ScalarSponge,
+                    Column,
+                    _,
+                    ZKVM_KECCAK_COLS,
+                    LookupTableIDs,
+                >(
+                    domain,
+                    &srs,
+                    &keccak_trace.constraints[&step],
+                    keccak_folded_instance[&step].clone(),
+                    &mut rng,
+                );
+                let keccak_proof = keccak_result.unwrap();
+                debug!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
+                let keccak_verifies = verify::<
+                    _,
+                    OpeningProof,
+                    BaseSponge,
+                    ScalarSponge,
+                    ZKVM_KECCAK_COLS,
+                    0,
+                    LookupTableIDs,
+                >(
+                    domain,
+                    &srs,
+                    &keccak_trace.constraints[&step],
+                    &keccak_proof,
+                    Witness::zero_vec(DOMAIN_SIZE),
+                );
+                if keccak_verifies {
+                    debug!("The Keccak {:?} proof verifies", step)
+                } else {
+                    debug!("The Keccak {:?} proof doesn't verify", step)
+                }
             }
         }
     }

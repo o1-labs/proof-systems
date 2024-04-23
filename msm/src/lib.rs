@@ -13,9 +13,9 @@ pub mod column_env;
 pub mod columns;
 pub mod expr;
 pub mod interpreter;
-/// Generic definitions of Logups
 pub mod logup;
 /// Instantiations of Logups for the MSM project
+// REMOVEME. The different interpreters must define their own tables.
 pub mod lookups;
 pub mod precomputed_srs;
 pub mod proof;

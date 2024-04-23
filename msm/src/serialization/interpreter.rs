@@ -2,14 +2,15 @@ use ark_ff::{FpParameters, PrimeField, Zero};
 use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::{sign::Signed, Euclid};
+use std::marker::PhantomData;
 
 use crate::{
-    serialization::{column::SerializationColumn, N_INTERMEDIATE_LIMBS},
+    serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
     LIMB_BITSIZE, N_LIMBS,
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-pub trait InterpreterEnv<F: PrimeField> {
+pub trait InterpreterEnv<F: PrimeField, Ff: PrimeField> {
     type Position;
 
     type Variable: Clone
@@ -28,20 +29,8 @@ pub trait InterpreterEnv<F: PrimeField> {
 
     fn get_column(pos: SerializationColumn) -> Self::Position;
 
-    /// Check that the value is in the range [0, 2^15-1]
-    fn range_check15(&mut self, _value: &Self::Variable);
-
-    /// Checks input |x| ∈ [0,2^15)
-    fn range_check_abs15bit(&mut self, value: &Self::Variable);
-
-    /// Checks input |x| ∈ [0,2^4)
-    fn range_check_abs4bit(&mut self, value: &Self::Variable);
-
-    /// Checks x ∈ [0, f >> 15*16)
-    fn range_check_ff_highest<Ff: PrimeField>(&mut self, value: &Self::Variable);
-
-    /// Check that the value is in the range [0, 2^4-1]
-    fn range_check4(&mut self, _value: &Self::Variable);
+    /// Perform lookup into the specified table.
+    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable);
 
     fn constant(value: F) -> Self::Variable;
 
@@ -64,6 +53,12 @@ pub trait InterpreterEnv<F: PrimeField> {
     }
 }
 
+/// Returns the highest limb of the foreign field modulus. Is used by the lookups.
+pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
+    let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::Params::MODULUS).unwrap();
+    f_bui >> ((N_LIMBS - 1) * LIMB_BITSIZE)
+}
+
 /// Deserialize a field element of the scalar field of Vesta or Pallas given as
 /// a sequence of 3 limbs of 88 bits.
 /// It will deserialize into limbs of 15 bits.
@@ -83,23 +78,23 @@ pub trait InterpreterEnv<F: PrimeField> {
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-pub fn deserialize_field_element<F: PrimeField, Env: InterpreterEnv<F>>(
+pub fn deserialize_field_element<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     env: &mut Env,
-    limbs: [u128; 3],
+    limbs: [BigUint; 3],
 ) {
     // Use this to constrain later
     let kimchi_limbs0 = Env::get_column(SerializationColumn::ChalKimchi(0));
     let kimchi_limbs1 = Env::get_column(SerializationColumn::ChalKimchi(1));
     let kimchi_limbs2 = Env::get_column(SerializationColumn::ChalKimchi(2));
 
-    let input_limb0 = Env::constant(limbs[0].into());
-    let input_limb1 = Env::constant(limbs[1].into());
-    let input_limb2 = Env::constant(limbs[2].into());
+    let input_limb0 = Env::constant(F::from(limbs[0].clone()));
+    let input_limb1 = Env::constant(F::from(limbs[1].clone()));
+    let input_limb2 = Env::constant(F::from(limbs[2].clone()));
 
     // FIXME: should we assert this in the circuit?
-    assert!(limbs[0] < 2u128.pow(88));
-    assert!(limbs[1] < 2u128.pow(88));
-    assert!(limbs[2] < 2u128.pow(79));
+    assert!(limbs[0] < BigUint::from(2u128.pow(88)));
+    assert!(limbs[1] < BigUint::from(2u128.pow(88)));
+    assert!(limbs[2] < BigUint::from(2u128.pow(79)));
 
     let limb0_var = env.copy(&input_limb0, kimchi_limbs0);
     let limb1_var = env.copy(&input_limb1, kimchi_limbs1);
@@ -120,7 +115,9 @@ pub fn deserialize_field_element<F: PrimeField, Env: InterpreterEnv<F>>(
         env.add_constraint(constraint)
     }
     // Range check on each limb
-    limb2_vars.iter().for_each(|v| env.range_check4(v));
+    limb2_vars
+        .iter()
+        .for_each(|v| env.lookup(LookupTable::RangeCheck4, v));
 
     let mut fifteen_bits_vars = vec![];
     {
@@ -155,9 +152,9 @@ pub fn deserialize_field_element<F: PrimeField, Env: InterpreterEnv<F>>(
 
     {
         let c5 = Env::get_column(SerializationColumn::ChalConverted(5));
-        let res = (limbs[0] >> 75) & ((1 << (88 - 75)) - 1);
-        let res_prime = limbs[1] & ((1 << 2) - 1);
-        let res = res + (res_prime << (15 - 2));
+        let res = (limbs[0].clone() >> 75) & BigUint::from((1u128 << (88 - 75)) - 1);
+        let res_prime = limbs[1].clone() & BigUint::from((1u128 << 2) - 1);
+        let res: BigUint = res + (res_prime << (15 - 2));
         let res = Env::constant(F::from(res));
         let c5_var = env.copy(&res, c5);
         fifteen_bits_vars.push(c5_var);
@@ -195,9 +192,9 @@ pub fn deserialize_field_element<F: PrimeField, Env: InterpreterEnv<F>>(
 
     {
         let c11 = Env::get_column(SerializationColumn::ChalConverted(11));
-        let res = (limbs[1] >> 77) & ((1 << (88 - 77)) - 1);
-        let res_prime = limbs[2] & ((1 << 4) - 1);
-        let res = res + (res_prime << (15 - 4));
+        let res = (limbs[1].clone() >> 77) & BigUint::from((1u128 << (88 - 77)) - 1);
+        let res_prime = limbs[2].clone() & BigUint::from((1u128 << 4) - 1);
+        let res: BigUint = res + (res_prime << (15 - 4));
         let res = Env::constant(res.into());
         let c11_var = env.copy(&res, c11);
         fifteen_bits_vars.push(c11_var);
@@ -234,7 +231,9 @@ pub fn deserialize_field_element<F: PrimeField, Env: InterpreterEnv<F>>(
     }
 
     // Range check on each limb
-    fifteen_bits_vars.iter().for_each(|v| env.range_check15(v));
+    fifteen_bits_vars
+        .iter()
+        .for_each(|v| env.lookup(LookupTable::RangeCheck15, v));
 
     let shl_88_var = Env::constant(F::from(1u128 << 88u128));
     let shl_15_var = Env::constant(F::from(1u128 << 15u128));
@@ -354,7 +353,13 @@ where
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
 /// chunks `a_i` of size `5` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-fn combine_small_to_large<const M: usize, const N: usize, F: PrimeField, Env: InterpreterEnv<F>>(
+fn combine_small_to_large<
+    const M: usize,
+    const N: usize,
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv<F, Ff>,
+>(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -377,7 +382,7 @@ fn combine_small_to_large<const M: usize, const N: usize, F: PrimeField, Env: In
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<F: PrimeField, Env: InterpreterEnv<F>>(
+fn combine_carry<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -389,7 +394,7 @@ fn combine_carry<F: PrimeField, Env: InterpreterEnv<F>>(
 }
 
 /// This constarins the multiplication part of the circuit.
-pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
+pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     env: &mut Env,
 ) {
     let chal_converted_limbs_small: [_; N_LIMBS_SMALL] =
@@ -413,15 +418,15 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.range_check_ff_highest::<Ff>(x);
+            env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
         } else {
-            env.range_check15(x);
+            env.lookup(LookupTable::RangeCheck15, x);
         }
     }
 
     // Quotient limbs must fit into 15 bits, but we don't care if they're in the field.
     for x in quotient_limbs_small.iter() {
-        env.range_check15(x);
+        env.lookup(LookupTable::RangeCheck15, x);
     }
 
     // Carry limbs need to be in particular ranges.
@@ -429,28 +434,31 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
         if i % 6 == 5 {
             // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.range_check_abs4bit(x);
+            env.lookup(LookupTable::RangeCheck4Abs, x);
         } else {
-            env.range_check_abs15bit(x);
+            // TODO add actual lookup
+            // env.range_check_abs15bit(x);
+            // assert!(x < F::from(1u64 << 15) || x >= F::zero() - F::from(1u64 << 15));
         }
     }
 
     // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
 
-    let chal_converted_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
-        chal_converted_limbs_small.clone(),
-    );
-    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+    let chal_converted_limbs_large =
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
+            chal_converted_limbs_small.clone(),
+        );
+    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
         coeff_input_limbs_small.clone(),
     );
-    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
         coeff_result_limbs_small.clone(),
     );
-    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(
+    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
         quotient_limbs_small.clone(),
     );
     let carry_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry_limbs_small.clone());
+        combine_carry::<_, _, Env>(carry_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
     let add_extra_carries =
@@ -492,10 +500,11 @@ pub fn constrain_multiplication<F: PrimeField, Ff: PrimeField, Env: InterpreterE
 /// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
 /// returns next coefficient c_i.
 #[allow(dead_code)]
-pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F>>(
+pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv<F, Ff>>(
     env: &mut Env,
     chal: Ff,
     coeff_input: Ff,
+    write_chal_converted: bool,
 ) -> Ff {
     let coeff_result = chal * coeff_input;
 
@@ -547,9 +556,11 @@ pub fn multiplication_circuit<F: PrimeField, Ff: PrimeField, Env: InterpreterEnv
             })
         };
 
-    write_array_small(env, chal_limbs_small, &|i| {
-        SerializationColumn::ChalConverted(i)
-    });
+    if write_chal_converted {
+        write_array_small(env, chal_limbs_small, &|i| {
+            SerializationColumn::ChalConverted(i)
+        });
+    }
     write_array_small(env, coeff_input_limbs_small, &|i| {
         SerializationColumn::CoeffInput(i)
     });

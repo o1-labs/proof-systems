@@ -844,6 +844,18 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns the number of leading 1s in `x`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn count_leading_ones(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
@@ -958,7 +970,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::ShiftRightLogical => {
             let rt = env.read_register(&rt);
@@ -970,7 +981,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::ShiftRightArithmetic => {
             let rt = env.read_register(&rt);
@@ -982,7 +992,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::ShiftLeftLogicalVariable => {
             let rs = env.read_register(&rs);
@@ -995,7 +1004,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::ShiftRightLogicalVariable => {
             let rs = env.read_register(&rs);
@@ -1008,7 +1016,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::ShiftRightArithmeticVariable => {
             let rs = env.read_register(&rs);
@@ -1021,20 +1028,17 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::JumpRegister => {
             let addr = env.read_register(&rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(addr);
-            return;
         }
         RTypeInstruction::JumpAndLinkRegister => {
             let addr = env.read_register(&rs);
             env.write_register(&rd, instruction_pointer + Env::constant(8u32));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(addr);
-            return;
         }
         RTypeInstruction::SyscallMmap => {
             let requested_alloc_size = env.read_register(&Env::constant(5));
@@ -1065,13 +1069,11 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), Env::constant(0));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SyscallExitGroup => {
             let exit_code = env.read_register(&Env::constant(4));
             env.report_exit(&exit_code);
             env.set_halted(Env::constant(1));
-            return;
         }
         RTypeInstruction::SyscallReadHint => {
             // We don't really write here, since the value is unused, per the cannon
@@ -1080,7 +1082,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(2), length);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SyscallReadPreimage => {
             let addr = env.read_register(&Env::constant(5));
@@ -1099,7 +1100,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), Env::constant(0));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SyscallReadOther => {
             let fd_id = env.read_register(&Env::constant(4));
@@ -1124,7 +1124,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SyscallWriteHint => {
             let addr = env.read_register(&Env::constant(5));
@@ -1135,7 +1134,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), Env::constant(0));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SyscallWritePreimage => {
             let addr = env.read_register(&Env::constant(5));
@@ -1286,7 +1284,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.
-            return;
         }
         RTypeInstruction::SyscallWriteOther => {
             let fd_id = env.read_register(&Env::constant(4));
@@ -1315,7 +1312,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SyscallFcntl => {
             let fd_id = env.read_register(&Env::constant(4));
@@ -1346,7 +1342,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SyscallOther => {
             let syscall_num = env.read_register(&Env::constant(2));
@@ -1358,7 +1353,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::MoveZero => {
             let rt = env.read_register(&rt);
@@ -1367,7 +1361,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register_if(&rd, rs, &is_zero);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::MoveNonZero => {
             let rt = env.read_register(&rt);
@@ -1376,34 +1369,34 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register_if(&rd, rs, &is_zero);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Sync => {
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::MoveFromHi => {
             let hi = env.read_register(&Env::constant(REGISTER_HI as u32));
             env.write_register(&rd, hi);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
-        RTypeInstruction::MoveToHi => (),
+        RTypeInstruction::MoveToHi => {
+            let rs = env.read_register(&rs);
+            env.write_register(&Env::constant(REGISTER_HI as u32), rs);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
         RTypeInstruction::MoveFromLo => {
             let lo = env.read_register(&Env::constant(REGISTER_LO as u32));
             env.write_register(&rd, lo);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::MoveToLo => {
             let rs = env.read_register(&rs);
             env.write_register(&Env::constant(REGISTER_LO as u32), rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Multiply => {
             let rs = env.read_register(&rs);
@@ -1418,7 +1411,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(REGISTER_LO as u32), lo);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::MultiplyUnsigned => {
             let rs = env.read_register(&rs);
@@ -1433,7 +1425,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(REGISTER_LO as u32), lo);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Div => {
             let rs = env.read_register(&rs);
@@ -1448,7 +1439,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(REGISTER_HI as u32), remainder);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::DivUnsigned => {
             let rs = env.read_register(&rs);
@@ -1463,7 +1453,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(REGISTER_HI as u32), remainder);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Add => {
             let rs = env.read_register(&rs);
@@ -1479,7 +1468,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::AddUnsigned => {
             let rs = env.read_register(&rs);
@@ -1495,7 +1483,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Sub => {
             let rs = env.read_register(&rs);
@@ -1511,7 +1498,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SubUnsigned => {
             let rs = env.read_register(&rs);
@@ -1527,7 +1513,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::And => {
             let rs = env.read_register(&rs);
@@ -1540,7 +1525,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Or => {
             let rs = env.read_register(&rs);
@@ -1553,7 +1537,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Xor => {
             let rs = env.read_register(&rs);
@@ -1566,7 +1549,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::Nor => {
             let rs = env.read_register(&rs);
@@ -1579,7 +1561,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SetLessThan => {
             let rs = env.read_register(&rs);
@@ -1592,7 +1573,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::SetLessThanUnsigned => {
             let rs = env.read_register(&rs);
@@ -1605,7 +1585,6 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
         RTypeInstruction::MultiplyToRegister => {
             let rs = env.read_register(&rs);
@@ -1618,9 +1597,18 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
-        RTypeInstruction::CountLeadingOnes => (),
+        RTypeInstruction::CountLeadingOnes => {
+            let rs = env.read_register(&rs);
+            let leading_ones = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.count_leading_ones(&rs, pos) }
+            };
+            env.write_register(&rd, leading_ones);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
         RTypeInstruction::CountLeadingZeros => {
             let rs = env.read_register(&rs);
             let leading_zeros = {
@@ -1631,11 +1619,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, leading_zeros);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
-            return;
         }
     };
-    // TODO: Don't halt.
-    env.set_halted(Env::constant(1));
 }
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
@@ -2292,6 +2277,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                         unsafe { env.bitmask(&value, 8, 0, pos) }
                     },
                 ]
+            };
+            // Checking that v is the correct decomposition.
+            {
+                let res = value
+                    - v0.clone() * Env::constant(1 << 24)
+                    - v1.clone() * Env::constant(1 << 16)
+                    - v2.clone() * Env::constant(1 << 8)
+                    - v3.clone();
+                env.is_zero(&res)
             };
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);

@@ -183,9 +183,6 @@ where
     //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
-    // TODO These should be evaluations of fixed coefficient polys
-    let coefficient_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
-
     let zk_rows = 0;
     let column_env = {
         let challenges = Challenges {
@@ -204,7 +201,6 @@ where
             },
             challenges,
             witness: &witness_evals,
-            coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 logup::prover::QuotientPolynomialEnvironment {
@@ -323,11 +319,18 @@ where
                 (*id, PointEvaluations { zeta, zeta_omega })
             })
             .collect(),
-        h: (&lookup_env.lookup_terms_poly_d1)
-            .into_par_iter()
-            .map(|poly| PointEvaluations {
-                zeta: poly.evaluate(&zeta),
-                zeta_omega: poly.evaluate(&zeta_omega),
+        h: lookup_env
+            .lookup_terms_poly_d1
+            .iter()
+            .map(|(id, polys)| {
+                let polys_evals: Vec<_> = polys
+                    .iter()
+                    .map(|poly| PointEvaluations {
+                        zeta: poly.evaluate(&zeta),
+                        zeta_omega: poly.evaluate(&zeta_omega),
+                    })
+                    .collect();
+                (*id, polys_evals)
             })
             .collect(),
         sum: PointEvaluations {
@@ -426,13 +429,17 @@ where
                 .map(|poly| (coefficients_form(poly), non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        // -- after that f_i and t
-        polynomials.extend(
-            (&lookup_env.lookup_terms_poly_d1)
-                .into_par_iter()
-                .map(|poly| (coefficients_form(poly), non_hiding(1)))
-                .collect::<Vec<_>>(),
-        );
+        // -- after that the partial sums
+        polynomials.extend({
+            let polys = lookup_env.lookup_terms_poly_d1.values().map(|polys| {
+                polys
+                    .iter()
+                    .map(|poly| (coefficients_form(poly), non_hiding(1)))
+                    .collect::<Vec<_>>()
+            });
+            let polys: Vec<_> = polys.flatten().collect();
+            polys
+        });
         // -- after that the running sum
         polynomials.push((
             coefficients_form(&lookup_env.lookup_aggregation_poly_d1),
