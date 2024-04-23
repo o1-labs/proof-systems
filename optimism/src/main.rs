@@ -207,7 +207,8 @@ pub fn main() -> ExitCode {
         // MIPS
         for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
             // Prove only if the instruction was executed
-            if mips_trace.in_circuit(instr) {
+            // and if the number of constraints is nonzero (otherwise quotient polynomial cannot be created)
+            if mips_trace.in_circuit(instr) && mips_trace.constraints[&instr].len() > 0 {
                 debug!("Checking MIPS circuit {:?}", instr);
                 let mips_result = prove::<
                     _,
@@ -226,7 +227,7 @@ pub fn main() -> ExitCode {
                     &mut rng,
                 );
                 let mips_proof = mips_result.unwrap();
-                debug!("Generated a MIPS {:?} proof:\n{:?}", instr, mips_proof);
+                debug!("Generated a MIPS {:?} proof:", instr);
                 let mips_verifies = verify::<
                     _,
                     OpeningProof,
@@ -243,9 +244,9 @@ pub fn main() -> ExitCode {
                     Witness::zero_vec(DOMAIN_SIZE),
                 );
                 if mips_verifies {
-                    debug!("The MIPS {:?} proof verifies", instr)
+                    debug!("The MIPS {:?} proof verifies\n", instr)
                 } else {
-                    debug!("The MIPS {:?} proof doesn't verify", instr)
+                    debug!("The MIPS {:?} proof doesn't verify\n", instr)
                 }
             }
         }
@@ -275,7 +276,7 @@ pub fn main() -> ExitCode {
                     &mut rng,
                 );
                 let keccak_proof = keccak_result.unwrap();
-                debug!("Generated a Keccak {:?} proof:\n{:?}", step, keccak_proof);
+                debug!("Generated a Keccak {:?} proof:", step);
                 let keccak_verifies = verify::<
                     _,
                     OpeningProof,
@@ -292,9 +293,9 @@ pub fn main() -> ExitCode {
                     Witness::zero_vec(DOMAIN_SIZE),
                 );
                 if keccak_verifies {
-                    debug!("The Keccak {:?} proof verifies", step)
+                    debug!("The Keccak {:?} proof verifies\n", step)
                 } else {
-                    debug!("The Keccak {:?} proof doesn't verify", step)
+                    debug!("The Keccak {:?} proof doesn't verify\n", step)
                 }
             }
         }
