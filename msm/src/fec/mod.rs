@@ -1,8 +1,6 @@
 pub mod columns;
-//pub mod constraint;
 pub mod interpreter;
 pub mod lookups;
-//pub mod witness;
 
 #[cfg(test)]
 mod tests {
