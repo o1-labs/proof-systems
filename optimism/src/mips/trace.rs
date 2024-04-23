@@ -40,8 +40,8 @@ impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
         circuit
     }
 
-    fn push_row(&mut self, instr: Instruction, row: &[F; MIPS_COLUMNS]) {
-        self.witness.entry(instr).and_modify(|wit| {
+    fn push_row(&mut self, opcode: Instruction, row: &[F; MIPS_COLUMNS]) {
+        self.witness.entry(opcode).and_modify(|wit| {
             for (i, value) in row.iter().enumerate() {
                 if wit.cols[i].len() < wit.cols[i].capacity() {
                     wit.cols[i].push(*value);
@@ -50,17 +50,21 @@ impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
         });
     }
 
-    fn pad_with_row(&mut self, step: Instruction, row: &[F; MIPS_COLUMNS]) -> usize {
-        let rows_to_add = self.domain_size - self.witness[&step].cols[0].len();
+    fn pad_with_row(&mut self, opcode: Instruction, row: &[F; MIPS_COLUMNS]) -> usize {
+        let len = self.witness[&opcode].cols[0].len();
+        assert!(len <= self.domain_size);
+        let rows_to_add = self.domain_size - len;
         for _ in 0..rows_to_add {
-            self.push_row(step, row);
+            self.push_row(opcode, row);
         }
         rows_to_add
     }
 
-    fn pad_with_zeros(&mut self, instr: Instruction) -> usize {
-        let rows_to_add = self.domain_size - self.witness[&instr].cols[0].len();
-        self.witness.entry(instr).and_modify(|wit| {
+    fn pad_with_zeros(&mut self, opcode: Instruction) -> usize {
+        let len = self.witness[&opcode].cols[0].len();
+        assert!(len <= self.domain_size);
+        let rows_to_add = self.domain_size - len;
+        self.witness.entry(opcode).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
                 col.extend((0..rows_to_add).map(|_| F::zero()));
             }
@@ -68,12 +72,12 @@ impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
         rows_to_add
     }
 
-    fn pad_dummy(&mut self, step: Instruction) -> usize {
-        if !self.in_circuit(step) {
+    fn pad_dummy(&mut self, opcode: Instruction) -> usize {
+        if !self.in_circuit(opcode) {
             0
         } else {
-            let row = array::from_fn(|i| self.witness[&step].cols[i][0]);
-            self.pad_with_row(step, &row)
+            let row = array::from_fn(|i| self.witness[&opcode].cols[i][0]);
+            self.pad_with_row(opcode, &row)
         }
     }
 

@@ -22,13 +22,13 @@ pub struct Trace<const COLUMNS: usize, SELECTOR, F> {
 
 impl<const COLUMNS: usize, SELECTOR: Eq + Hash, F: Zero> Trace<COLUMNS, SELECTOR, F> {
     /// Returns a boolean indicating whether the witness for the given selector was ever found in the cirucit or not.
-    pub fn in_circuit(&self, step: SELECTOR) -> bool {
-        !self.witness[&step].cols[0].is_empty()
+    pub fn in_circuit(&self, opcode: SELECTOR) -> bool {
+        !self.witness[&opcode].cols[0].is_empty()
     }
 
     /// Resets the witness after folding
-    pub fn reset(&mut self, step: SELECTOR) {
-        (self.witness.get_mut(&step).unwrap().cols.as_mut())
+    pub fn reset(&mut self, opcode: SELECTOR) {
+        (self.witness.get_mut(&opcode).unwrap().cols.as_mut())
             .iter_mut()
             .for_each(Vec::clear);
     }
@@ -45,23 +45,23 @@ pub trait Tracer<const COLUMNS: usize, SELECTOR, F: Zero, Env> {
     fn new(domain_size: usize, env: &mut Env) -> Self;
 
     /// Add a witness row to the circuit
-    fn push_row(&mut self, selector: SELECTOR, row: &[F; COLUMNS]);
+    fn push_row(&mut self, opcode: SELECTOR, row: &[F; COLUMNS]);
 
-    /// Pad the rows of one selector with the given row until
+    /// Pad the rows of one opcode with the given row until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
-    fn pad_with_row(&mut self, step: SELECTOR, row: &[F; COLUMNS]) -> usize;
+    fn pad_with_row(&mut self, opcode: SELECTOR, row: &[F; COLUMNS]) -> usize;
 
-    /// Pads the rows of one selector with zero rows until
+    /// Pads the rows of one opcode with zero rows until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
-    fn pad_with_zeros(&mut self, step: SELECTOR) -> usize;
+    fn pad_with_zeros(&mut self, opcode: SELECTOR) -> usize;
 
-    /// Pad the rows of one selector with the first row until
+    /// Pad the rows of one opcode with the first row until
     /// reaching the domain size if needed.
     /// It only tries to pad witnesses which are non empty.
     /// Returns the number of rows that were added.
-    fn pad_dummy(&mut self, step: SELECTOR) -> usize;
+    fn pad_dummy(&mut self, opcode: SELECTOR) -> usize;
 
     /// Pads the rows of the witnesses until reaching the domain size using the first
     /// row repeatedly.

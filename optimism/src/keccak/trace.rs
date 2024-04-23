@@ -17,16 +17,16 @@ use super::environment::KeccakEnv;
 /// The Keccak circuit trace
 pub type KeccakTrace<F> = Trace<ZKVM_KECCAK_COLS, Steps, F>;
 
-fn standardize(step: Steps) -> Steps {
+fn standardize(opcode: Steps) -> Steps {
     // Note that steps of execution are obtained from the constraints environment.
     // There, the round steps can be anything between 0 and 23 (for the 24 permutations).
     // Nonetheless, all of them contain the same set of constraints and lookups.
     // Therefore, we want to treat them as the same step when it comes to splitting the
     // circuit into multiple instances with shared behaviour. By default, we use `Round(0)`.
-    if let Round(_) = step {
+    if let Round(_) = opcode {
         Round(0)
     } else {
-        step
+        opcode
     }
 }
 
@@ -39,28 +39,27 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<
             lookups: Default::default(),
         };
 
-        for step in Steps::iter().flat_map(|step| step.into_iter()) {
+        for opcode in Steps::iter().flat_map(|step| step.into_iter()) {
             circuit.witness.insert(
-                step,
+                opcode,
                 Witness {
                     cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
                 },
             );
             circuit
                 .constraints
-                .insert(step, KeccakEnv::constraints_of(step));
-            circuit.lookups.insert(step, KeccakEnv::lookups_of(step));
+                .insert(opcode, KeccakEnv::constraints_of(opcode));
+            circuit
+                .lookups
+                .insert(opcode, KeccakEnv::lookups_of(opcode));
         }
         circuit
     }
 
-    fn push_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
+    fn push_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
         // Make sure we are using the same round number to refer to round steps
-        let mut step = step;
-        if let Round(_) = step {
-            step = Round(0);
-        }
-        self.witness.entry(step).and_modify(|wit| {
+        let opcode = standardize(opcode);
+        self.witness.entry(opcode).and_modify(|wit| {
             for (i, value) in row.iter().enumerate() {
                 if wit.cols[i].len() < wit.cols[i].capacity() {
                     wit.cols[i].push(*value);
@@ -69,23 +68,25 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<
         });
     }
 
-    fn pad_with_row(&mut self, step: Steps, row: &[F; ZKVM_KECCAK_COLS]) -> usize {
-        let step = standardize(step);
-        // No need to check if it is negative, because they are usize.
-        let rows_to_add = self.domain_size - self.witness[&step].cols[0].len();
+    fn pad_with_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_COLS]) -> usize {
+        let opcode = standardize(opcode);
+        let len = self.witness[&opcode].cols[0].len();
+        assert!(len <= self.domain_size);
+        let rows_to_add = self.domain_size - len;
         // When we reach the domain size, we don't need to pad anymore.
         for _ in 0..rows_to_add {
-            self.push_row(step, row);
+            self.push_row(opcode, row);
         }
         rows_to_add
     }
 
-    fn pad_with_zeros(&mut self, step: Steps) -> usize {
-        let step = standardize(step);
-        // No need to check if it is negative, because they are usize.
-        let rows_to_add = self.domain_size - self.witness[&step].cols[0].len();
+    fn pad_with_zeros(&mut self, opcode: Steps) -> usize {
+        let opcode = standardize(opcode);
+        let len = self.witness[&opcode].cols[0].len();
+        assert!(len <= self.domain_size);
+        let rows_to_add = self.domain_size - len;
         // When we reach the domain size, we don't need to pad anymore.
-        self.witness.entry(step).and_modify(|wit| {
+        self.witness.entry(opcode).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
                 col.extend((0..rows_to_add).map(|_| F::zero()));
             }
@@ -93,21 +94,21 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<
         rows_to_add
     }
 
-    fn pad_dummy(&mut self, step: Steps) -> usize {
+    fn pad_dummy(&mut self, opcode: Steps) -> usize {
         // We only want to pad non-empty witnesses.
-        if !self.in_circuit(step) {
+        if !self.in_circuit(opcode) {
             0
         } else {
-            let step = standardize(step);
+            let opcode = standardize(opcode);
             // We keep track of the first row of the non-empty witness, which is a real step witness.
-            let row = array::from_fn(|i| self.witness[&step].cols[i][0]);
-            self.pad_with_row(step, &row)
+            let row = array::from_fn(|i| self.witness[&opcode].cols[i][0]);
+            self.pad_with_row(opcode, &row)
         }
     }
 
     fn pad_witnesses(&mut self) {
-        for step in Steps::iter().flat_map(|step| step.into_iter()) {
-            self.pad_dummy(step);
+        for opcode in Steps::iter().flat_map(|opcode| opcode.into_iter()) {
+            self.pad_dummy(opcode);
         }
     }
 }
