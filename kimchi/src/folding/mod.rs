@@ -18,6 +18,7 @@ pub mod decomposable_folding;
 mod error_term;
 #[allow(dead_code)]
 mod example;
+mod example2;
 pub mod expressions;
 mod instance_witness;
 #[cfg(test)]
