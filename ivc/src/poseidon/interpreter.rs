@@ -1,97 +1,116 @@
-use ark_ff::Field;
+//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
+//! The Poseidon construction is defined in the paper ["Poseidon: A New Hash
+//! Function"](https://eprint.iacr.org/2019/458.pdf).
+//! The Poseidon instance works on a state of size `STATE_SIZE` and is designed
+//! to work only with full rounds. As a reminder, the Poseidon permutation is a
+//! mapping from `F^STATE_SIZE` to `F^STATE_SIZE`.
+//! The user is responsible to provide the correct number of full rounds for the
+//! given field and the state.
+//! Also, it is hard-coded that the substitution is `7`. The user must verify
+//! that `7` is coprime with `p - 1` where `p` is the order the field.
+use crate::poseidon::columns::PoseidonColumn;
+use ark_ff::{FpParameters, PrimeField};
+use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap};
+use num_bigint::BigUint;
+use num_integer::Integer;
 
-pub trait Params<F: Field, const S: usize, const R: usize> {
-    const RATE: usize;
-    const CAPACITY: usize;
-    fn constants() -> [[F; S]; R];
-    fn mds() -> [[F; S]; S];
+/// Represents the parameters of the instance of the Poseidon permutation.
+/// Constants are the round constants for each round, and MDS is the matrix used
+/// by the linear layer.
+/// The type is parametrized by the field, the state size, and the number of full rounds.
+/// Note that the parameters are only for instances using full rounds.
+// IMPROVEME merge constants and mds in a flat array, to use the CPU cache
+pub trait Params<F: PrimeField, const STATE_SIZE: usize, const NB_FULL_ROUNDS: usize> {
+    fn constants(&self) -> [[F; STATE_SIZE]; NB_FULL_ROUNDS];
+    fn mds(&self) -> [[F; STATE_SIZE]; STATE_SIZE];
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Column {
-    Input(usize),
-    Round(usize, usize),
-}
-
-pub trait PoseidonInterpreter<F: Field, const S: usize, const R: usize> {
-    type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug;
-
-    fn constrain(&mut self, cst: Self::Variable);
-
-    /// writes the variable to some column, returning the destination
-    fn write(&mut self, x: &Self::Variable, to: Column) -> Self::Variable;
-    fn read_column(&self, col: Column) -> Self::Variable;
-    fn constant(value: F) -> Self::Variable;
-    fn round_constants(&self) -> &[[Self::Variable; S]; R];
-    fn mds(&self) -> &[[Self::Variable; S]; S];
-    /// returns v^7
-    fn sbox(&self, v: Self::Variable) -> Self::Variable;
-}
-
-fn index_array<const N: usize>() -> [usize; N] {
-    let mut a = [0; N];
-    for (i, v) in a.iter_mut().enumerate() {
-        *v = i;
-    }
-    a
-}
-
-pub fn poseidon_row_witness<F, const S: usize, const R: usize, E>(
-    env: &mut E,
-    preimage: [F; S],
-) -> [F; S]
-where
-    F: Field,
-    E: PoseidonInterpreter<F, S, R, Variable = F>,
+/// Apply the whole permutation of Poseidon to the state.
+/// The environment has to be initialized with the input values.
+pub fn apply_permutation<
+    F: PrimeField,
+    const STATE_SIZE: usize,
+    const NB_FULL_ROUND: usize,
+    PARAMETERS,
+    Env,
+>(
+    env: &mut Env,
+    param: PARAMETERS,
+) where
+    F: PrimeField,
+    PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
+    Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
+        + ColWriteCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
-    for (i, p) in preimage.iter().enumerate() {
-        env.write(p, Column::Input(i));
+    // Checking that p - 1 is coprime with 7 as it has to be the case for the sbox
+    {
+        let one = BigUint::from(1u64);
+        let p: BigUint = TryFrom::try_from(<F as PrimeField>::Params::MODULUS).unwrap();
+        let p_minus_one = p - one.clone();
+        let seven = BigUint::from(7u64);
+        assert_eq!(p_minus_one.gcd(&seven), one);
     }
-    poseidon_row(env)
+
+    let state: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE] =
+        std::array::from_fn(PoseidonColumn::Input);
+    for i in 0..NB_FULL_ROUND {
+        compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(env, &param, i, &state);
+    }
 }
 
-/// creates the constraints and computes most of the witness for a row
-/// for witness it assumes the preimage is already written to the respective
-/// columns
-pub fn poseidon_row<F, const S: usize, const R: usize, E>(env: &mut E) -> [E::Variable; S]
-where
-    F: Field,
-    E: PoseidonInterpreter<F, S, R>,
+/// Compute one round the Poseidon permutation
+fn compute_one_round<
+    F: PrimeField,
+    const STATE_SIZE: usize,
+    const NB_FULL_ROUND: usize,
+    PARAMETERS,
+    Env,
+>(
+    env: &mut Env,
+    param: &PARAMETERS,
+    round: usize,
+    elements: &[PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE],
+) where
+    F: PrimeField,
+    PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
+    Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
+        + ColWriteCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
-    let mut state = index_array::<S>().map(|i| env.read_column(Column::Input(i)));
-    let mds = env.mds().clone();
-    let round_constants = env.round_constants().clone();
-    for i in 0..R {
-        let round_constants = &round_constants[i];
-        let out = { round(env, state, &mds, round_constants) };
-        for (j, o) in out.iter().enumerate() {
-            env.write(o, Column::Round(i, j));
-        }
-        state = out
-    }
-    state
-}
-
-fn round<F, const S: usize, const R: usize, E>(
-    env: &E,
-    state: [E::Variable; S],
-    mds: &[[E::Variable; S]; S],
-    round_constants: &[E::Variable; S],
-) -> [E::Variable; S]
-where
-    F: Field,
-    E: PoseidonInterpreter<F, S, R>,
-{
-    let sboxed = state.map(|s| env.sbox(s));
-    index_array().map(|i| {
-        let constant = round_constants[i].clone();
-        sboxed.iter().zip(mds[i].iter()).fold(constant, |acc, e| {
-            let (mds, sboxed) = e;
-            acc + mds.clone() * sboxed.clone()
+    // FIXME: instantiate with correct MDS and constants.
+    // FIXME: maybe change the order of the layers like some implementations do
+    // FIXME: add the constants
+    // We start at round 0
+    assert!(
+        round < NB_FULL_ROUND,
+        "The round index {:} is higher than the number of full rounds encoded in the type",
+        round
+    );
+    // Applying sbox
+    let state: Vec<Env::Variable> = elements
+        .iter()
+        .map(|x| {
+            let x_col = env.read_column(x.clone());
+            let x_square = x_col.clone() * x_col.clone();
+            let x_four = x_square.clone() * x_square.clone();
+            x_four.clone() * x_square.clone() * x_col.clone()
         })
-    })
+        .collect();
+
+    // Applying the linear layer
+    let mds = Params::mds(param);
+    let state: Vec<Env::Variable> = state
+        .iter()
+        .enumerate()
+        .map(|(i, x)| {
+            state.iter().enumerate().fold(x.clone(), |acc, (j, y)| {
+                acc + y.clone() * Env::constant(mds[i][j])
+            })
+        })
+        .collect();
+
+    // FIXME: add the constants
+
+    state.iter().enumerate().for_each(|(i, res)| {
+        env.copy(res, PoseidonColumn::Round(round, i));
+    });
 }

@@ -1368,7 +1368,12 @@ dependencies = [
  "kimchi",
  "kimchi-msm",
  "mina-poseidon",
+ "num-bigint",
+ "num-integer",
+ "o1-utils",
  "once_cell",
+ "poly-commitment",
+ "rand",
 ]
 
 [[package]]
