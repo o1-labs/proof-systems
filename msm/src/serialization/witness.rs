@@ -219,7 +219,6 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
 
         for lookup_row in self.lookups.iter().take(domain_size) {
             for (table_id, table) in lookup_tables.iter_mut() {
-                //println!("Processing table id {:?}", table_id);
                 for (j, lookup) in lookup_row.get(table_id).unwrap().iter().enumerate() {
                     table[j].push(lookup.clone())
                 }
