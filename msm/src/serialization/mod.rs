@@ -12,14 +12,12 @@ mod tests {
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
-    use std::{collections::BTreeMap, marker::PhantomData};
+    use std::collections::BTreeMap;
     use strum::IntoEnumIterator;
 
     use crate::{
         columns::{Column, ColumnIndexer},
-        logup::LogupWitness,
         precomputed_srs::get_bn254_srs,
-        proof::ProofInputs,
         prover::prove,
         serialization::{
             column::{SerializationColumn, SER_N_COLUMNS},
@@ -28,13 +26,12 @@ mod tests {
                 constrain_multiplication, deserialize_field_element, limb_decompose_ff,
                 multiplication_circuit,
             },
-            lookups::{Lookup, LookupTable},
+            lookups::LookupTable,
             witness::WitnessBuilderEnv,
-            N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
-        BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
 
     #[test]

@@ -4,7 +4,7 @@ use crate::{
     witness::Witness,
     LogupWitness, DOMAIN_SIZE,
 };
-use ark_ff::{PrimeField, UniformRand, Zero};
+use ark_ff::PrimeField;
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
