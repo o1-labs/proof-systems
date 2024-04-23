@@ -198,6 +198,16 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This file contains the witness for the Keccak hash function for the zkVM project.
 //! It assigns the witness values to the corresponding columns of KeccakWitness in the environment.
 //!
@@ -206,7 +216,9 @@
 //!
 //! For a pseudo code implementation of Keccap-f, see
 //! &lt;https://keccak.team/keccak_specs_summary.html&gt;
-</span><span class="kw">use crate</span>::{
+</span><span class="kw">use </span>std::collections::HashMap;
+
+<span class="kw">use crate</span>::{
     keccak::{
         column::{Absorbs::<span class="kw-2">*</span>, KeccakWitness, Sponges::<span class="kw-2">*</span>, Steps::<span class="kw-2">*</span>},
         helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
@@ -214,7 +226,10 @@
         Constraint, Error, KeccakColumn,
         Selector::{<span class="self">self</span>, <span class="kw-2">*</span>},
     },
-    lookups::{FixedLookupTables, Lookup, LookupTable, LookupTableIDs::<span class="kw-2">*</span>},
+    lookups::{
+        FixedLookupTables, Lookup, LookupTable,
+        LookupTableIDs::{<span class="self">self</span>, <span class="kw-2">*</span>},
+    },
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi::o1_utils::Two;
@@ -227,9 +242,9 @@
     <span class="doccomment">/// The full state of the Keccak gate (witness)
     </span><span class="kw">pub </span>witness: KeccakWitness&lt;F&gt;,
     <span class="doccomment">/// The fixed tables used in the Keccak gate
-    </span><span class="kw">pub </span>tables: Vec&lt;LookupTable&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>tables: HashMap&lt;LookupTableIDs, LookupTable&lt;F&gt;&gt;,
     <span class="doccomment">/// The multiplicities of each lookup entry. Should not be cleared between steps.
-    </span><span class="kw">pub </span>multiplicities: Vec&lt;Vec&lt;u32&gt;&gt;,
+    </span><span class="kw">pub </span>multiplicities: HashMap&lt;LookupTableIDs, Vec&lt;u32&gt;&gt;,
     <span class="doccomment">/// If any, an error that occurred during the execution of the constraints, to help with debugging
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) errors: Vec&lt;Error&gt;,
     <span class="doccomment">/// The round number [0..23]
@@ -240,22 +255,26 @@
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             witness: KeccakWitness::default(),
-            tables: <span class="macro">vec!</span>[
-                LookupTable::table_pad(),
-                LookupTable::table_round_constants(),
-                LookupTable::table_byte(),
-                LookupTable::table_range_check_16(),
-                LookupTable::table_sparse(),
-                LookupTable::table_reset(),
-            ],
-            multiplicities: <span class="macro">vec!</span>[
-                <span class="macro">vec!</span>[<span class="number">0</span>; PadLookup.length()],
-                <span class="macro">vec!</span>[<span class="number">0</span>; RoundConstantsLookup.length()],
-                <span class="macro">vec!</span>[<span class="number">0</span>; ByteLookup.length()],
-                <span class="macro">vec!</span>[<span class="number">0</span>; RangeCheck16Lookup.length()],
-                <span class="macro">vec!</span>[<span class="number">0</span>; SparseLookup.length()],
-                <span class="macro">vec!</span>[<span class="number">0</span>; ResetLookup.length()],
-            ],
+            tables: {
+                <span class="kw">let </span><span class="kw-2">mut </span>t = HashMap::new();
+                t.insert(PadLookup, LookupTable::table_pad());
+                t.insert(RoundConstantsLookup, LookupTable::table_round_constants());
+                t.insert(ByteLookup, LookupTable::table_byte());
+                t.insert(RangeCheck16Lookup, LookupTable::table_range_check_16());
+                t.insert(SparseLookup, LookupTable::table_sparse());
+                t.insert(ResetLookup, LookupTable::table_reset());
+                t
+            },
+            multiplicities: {
+                <span class="kw">let </span><span class="kw-2">mut </span>m = HashMap::new();
+                m.insert(PadLookup, <span class="macro">vec!</span>[<span class="number">0</span>; PadLookup.length()]);
+                m.insert(RoundConstantsLookup, <span class="macro">vec!</span>[<span class="number">0</span>; RoundConstantsLookup.length()]);
+                m.insert(ByteLookup, <span class="macro">vec!</span>[<span class="number">0</span>; ByteLookup.length()]);
+                m.insert(RangeCheck16Lookup, <span class="macro">vec!</span>[<span class="number">0</span>; RangeCheck16Lookup.length()]);
+                m.insert(SparseLookup, <span class="macro">vec!</span>[<span class="number">0</span>; SparseLookup.length()]);
+                m.insert(ResetLookup, <span class="macro">vec!</span>[<span class="number">0</span>; ResetLookup.length()]);
+                m
+            },
             errors: <span class="macro">vec!</span>[],
             round: <span class="number">0</span>,
         }
@@ -300,10 +319,11 @@
             <span class="comment">// Only when reading. We ignore the other values.
             </span><span class="kw">if </span>lookup.magnitude == <span class="self">Self</span>::one() {
                 <span class="comment">// Check that the lookup value is in the table
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(idx) =
-                    LookupTable::is_in_table(<span class="kw-2">&amp;</span><span class="self">self</span>.tables[lookup.table_id <span class="kw">as </span>usize], lookup.value)
-                {
-                    <span class="self">self</span>.multiplicities[lookup.table_id <span class="kw">as </span>usize][idx] += <span class="number">1</span>;
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = LookupTable::is_in_table(
+                    <span class="self">self</span>.tables.get_mut(<span class="kw-2">&amp;</span>lookup.table_id).unwrap(),
+                    lookup.value,
+                ) {
+                    <span class="self">self</span>.multiplicities.get_mut(<span class="kw-2">&amp;</span>lookup.table_id).unwrap()[idx] += <span class="number">1</span>;
                 } <span class="kw">else </span>{
                     <span class="self">self</span>.errors.push(Error::Lookup(lookup.table_id));
                 }
