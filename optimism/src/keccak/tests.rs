@@ -473,17 +473,23 @@ fn test_keccak_multiplicities() {
     assert_eq!(witness_env.len(), n_steps);
 
     // Check multiplicities of the padding suffixes
-    assert_eq!(witness_env[25].multiplicities[PadLookup as usize][135], 1);
+    assert_eq!(
+        witness_env[25].multiplicities.get_mut(&PadLookup).unwrap()[135],
+        1
+    );
     // Check multiplicities of the round constants of Rounds 0
     assert_eq!(
-        witness_env[26].multiplicities[RoundConstantsLookup as usize][0],
+        witness_env[26]
+            .multiplicities
+            .get_mut(&RoundConstantsLookup)
+            .unwrap()[0],
         2
     );
 }
 
 // Prover/Verifier test includidng the Keccak constraints
 #[test]
-fn test_keccak_prover() {
+fn test_keccak_prover_constraints() {
     // guaranteed to have at least 30MB of stack
     stacker::grow(30 * 1024 * 1024, || {
         let mut rng = o1_utils::tests::make_test_rng();
