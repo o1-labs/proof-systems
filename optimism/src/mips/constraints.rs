@@ -13,7 +13,7 @@ use crate::{
 };
 use ark_ff::Field;
 use kimchi::circuits::{
-    expr::{ConstantExpr, Expr, ExprInner, Variable},
+    expr::{ConstantExpr, ConstantTerm::Literal, Expr, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 use kimchi_msm::columns::{Column, ColumnIndexer as _};
@@ -139,7 +139,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn constant(x: u32) -> Self::Variable {
-        Expr::from(x as u64)
+        Self::Variable::constant(Operations::from(Literal(Fp::from(x))))
     }
 
     unsafe fn bitmask(
@@ -331,6 +331,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     unsafe fn count_leading_zeros(
+        &mut self,
+        _x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
+    unsafe fn count_leading_ones(
         &mut self,
         _x: &Self::Variable,
         position: Self::Position,

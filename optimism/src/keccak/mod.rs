@@ -11,7 +11,6 @@ use kimchi::circuits::polynomials::keccak::constants::{
     DIM, KECCAK_COLS, QUARTERS, RATE_IN_BYTES, STATE_LEN,
 };
 
-pub mod circuit;
 pub mod column;
 pub mod constraints;
 pub mod environment;
@@ -21,6 +20,7 @@ pub mod helpers;
 pub mod interpreter;
 #[cfg(test)]
 pub mod tests;
+pub mod trace;
 pub mod witness;
 
 /// Desired output length of the hash in bits

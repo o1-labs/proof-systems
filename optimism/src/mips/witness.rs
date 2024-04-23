@@ -566,6 +566,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn count_leading_ones(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let x: u32 = (*x).try_into().unwrap();
+        let res = x.leading_ones();
+        let res = res as u64;
+        self.write_column(position, res);
+        res
+    }
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, *x);
         *x

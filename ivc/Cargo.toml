@@ -1,0 +1,11 @@
+[package]
+name = "ivc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+msm = { path = "../msm", package = "kimchi-msm"}
+ark-ff.workspace = true
+kimchi.workspace = true
