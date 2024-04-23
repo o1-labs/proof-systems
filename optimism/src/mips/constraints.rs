@@ -338,6 +338,14 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.variable(position)
     }
 
+    unsafe fn count_leading_ones(
+        &mut self,
+        _x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        self.variable(position)
+    }
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         let res = self.variable(position);
         self.constraints.push(x.clone() - res.clone());

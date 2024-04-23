@@ -38,9 +38,7 @@ fn test_mips_number_constraints() {
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         match instr {
             RType(rtype) => match rtype {
-                JumpRegister | SyscallExitGroup | Sync | CountLeadingOnes => {
-                    assert_num_constraints(&instr, 0)
-                }
+                JumpRegister | SyscallExitGroup | Sync => assert_num_constraints(&instr, 0),
                 ShiftLeftLogical
                 | ShiftRightLogical
                 | ShiftRightArithmetic
@@ -64,6 +62,7 @@ fn test_mips_number_constraints() {
                 | SetLessThan
                 | SetLessThanUnsigned
                 | MultiplyToRegister
+                | CountLeadingOnes
                 | CountLeadingZeros => assert_num_constraints(&instr, 3),
                 MoveZero | MoveNonZero => assert_num_constraints(&instr, 5),
                 SyscallReadOther | SyscallWriteHint | SyscallWriteOther | Multiply
