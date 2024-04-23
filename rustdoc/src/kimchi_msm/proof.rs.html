@@ -145,7 +145,7 @@
     witness::Witness,
     LogupWitness, DOMAIN_SIZE,
 };
-<span class="kw">use </span>ark_ff::{UniformRand, Zero};
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::{
     circuits::{
         domains::EvaluationDomains,
@@ -158,40 +158,40 @@
 <span class="kw">use </span>rand::thread_rng;
 
 <span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID&gt; {
+</span><span class="kw">pub struct </span>ProofInputs&lt;<span class="kw">const </span>N: usize, F: PrimeField, ID: LookupTableID&gt; {
     <span class="doccomment">/// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
-    </span><span class="kw">pub </span>evaluations: Witness&lt;N, Vec&lt;G::ScalarField&gt;&gt;,
-    <span class="kw">pub </span>logups: Vec&lt;LogupWitness&lt;G::ScalarField, ID&gt;&gt;,
+    </span><span class="kw">pub </span>evaluations: Witness&lt;N, Vec&lt;F&gt;&gt;,
+    <span class="kw">pub </span>logups: Vec&lt;LogupWitness&lt;F, ID&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve&gt; ProofInputs&lt;N, G, LookupTableIDs&gt; {
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, F: PrimeField&gt; ProofInputs&lt;N, F, LookupTableIDs&gt; {
     <span class="comment">// This should be used only for testing purposes.
     // It is not only in the test API because it is used at the moment in the
     // main.rs. It should be moved to the test API when main.rs is replaced with
     // real production code.
-    </span><span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;G::ScalarField&gt;) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>random(domain: EvaluationDomains&lt;F&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
-        <span class="kw">let </span>cols: Box&lt;[Vec&lt;G::ScalarField&gt;; N]&gt; = Box::new(std::array::from_fn(|<span class="kw">_</span>| {
+        <span class="kw">let </span>cols: Box&lt;[Vec&lt;F&gt;; N]&gt; = Box::new(std::array::from_fn(|<span class="kw">_</span>| {
             (<span class="number">0</span>..domain.d1.size <span class="kw">as </span>usize)
-                .map(|<span class="kw">_</span>| G::ScalarField::rand(<span class="kw-2">&amp;mut </span>rng))
+                .map(|<span class="kw">_</span>| F::rand(<span class="kw-2">&amp;mut </span>rng))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
         }));
         ProofInputs {
             evaluations: Witness { cols },
-            logups: <span class="macro">vec!</span>[LookupWitness::&lt;G::ScalarField&gt;::random(domain)],
+            logups: <span class="macro">vec!</span>[LookupWitness::&lt;F&gt;::random(domain)],
         }
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: KimchiCurve, ID: LookupTableID&gt; Default <span class="kw">for </span>ProofInputs&lt;N, G, ID&gt; {
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, F: PrimeField, ID: LookupTableID&gt; Default <span class="kw">for </span>ProofInputs&lt;N, F, ID&gt; {
     <span class="doccomment">/// Creates a default proof instance. Note that such an empty "zero" instance will not satisfy any constraint.
     /// E.g. some constraints that have constants inside of them (A - const = 0) cannot be satisfied by it.
     </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         ProofInputs {
             evaluations: Witness {
                 cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| {
-                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| G::ScalarField::zero()).collect()
+                    (<span class="number">0</span>..DOMAIN_SIZE).map(|<span class="kw">_</span>| F::zero()).collect()
                 })),
             },
             logups: <span class="macro">vec!</span>[],

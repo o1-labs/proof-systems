@@ -132,71 +132,6 @@
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
 <a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>interpreter;
@@ -211,28 +146,26 @@
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
-    <span class="kw">use </span>std::{collections::BTreeMap, marker::PhantomData};
+    <span class="kw">use </span>std::collections::BTreeMap;
+    <span class="kw">use </span>strum::IntoEnumIterator;
 
     <span class="kw">use crate</span>::{
-        columns::Column,
-        logup::LogupWitness,
+        columns::{Column, ColumnIndexer},
         precomputed_srs::get_bn254_srs,
-        proof::ProofInputs,
         prover::prove,
         serialization::{
-            column::SER_N_COLUMNS,
+            column::{SerializationColumn, SER_N_COLUMNS},
             constraints::ConstraintBuilderEnv,
             interpreter::{
                 constrain_multiplication, deserialize_field_element, limb_decompose_ff,
                 multiplication_circuit,
             },
-            lookups::{Lookup, LookupTable},
+            lookups::LookupTable,
             witness::WitnessBuilderEnv,
-            N_INTERMEDIATE_LIMBS,
         },
         verifier::verify,
         witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
     };
 
     <span class="attr">#[test]
@@ -245,11 +178,11 @@
 
         <span class="kw">let </span>srs: PairingSRS&lt;BN254&gt; = get_bn254_srs(domain);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::&lt;Fp, Ff1&gt;::create();
-        <span class="comment">// Boxing to avoid stack overflow
-        </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;SER_N_COLUMNS, Vec&lt;Fp&gt;&gt;&gt; = Box::new(Witness {
-            cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(DOMAIN_SIZE))),
-        });
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::&lt;
+            Fp,
+            { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N },
+            LookupTable&lt;Ff1&gt;,
+        &gt;::create();
 
         <span class="comment">// Boxing to avoid stack overflow
         </span><span class="kw">let </span><span class="kw-2">mut </span>field_elements = <span class="macro">vec!</span>[];
@@ -264,51 +197,8 @@
         }
         <span class="kw">let </span>coeff_input: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
 
-        <span class="comment">// An extra element in the array stands for the fixed table.
-        </span><span class="kw">let </span>rangecheck4: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; N_INTERMEDIATE_LIMBS + <span class="number">1</span>] =
-            std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
-        <span class="kw">let </span>rangecheck4abs: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; <span class="number">6 </span>+ <span class="number">1</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
-        <span class="kw">let </span>rangecheck15: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; (<span class="number">3 </span>* N_LIMBS - <span class="number">1</span>) + <span class="number">1</span>] =
-            std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
-        <span class="kw">let </span>rangecheckffhighest: [Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;; <span class="number">1 </span>+ <span class="number">1</span>] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Vec&lt;Lookup&lt;Fp, Ff1&gt;&gt;&gt;&gt; =
-            BTreeMap::new();
-        lookup_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
-        lookup_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
-        lookup_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
-        lookup_tables.insert(
-            LookupTable::RangeCheckFfHighest(PhantomData),
-            rangecheckffhighest.to_vec(),
-        );
-
-        <span class="kw">for </span>(_i, limbs) <span class="kw">in </span>field_elements.iter().enumerate() {
-            <span class="comment">// Witness
-            </span>deserialize_field_element(<span class="kw-2">&amp;mut </span>witness_env, limbs.map(Into::into));
-            multiplication_circuit(<span class="kw-2">&amp;mut </span>witness_env, input_chal, coeff_input, <span class="bool-val">false</span>);
-            <span class="comment">// Filling actually used rows
-            </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..SER_N_COLUMNS {
-                witness.cols[j].push(witness_env.witness.cols[j]);
-            }
-
-            <span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
-                <span class="comment">//println!("Processing table id {:?}", table_id);
-                </span><span class="kw">for </span>(j, lookup) <span class="kw">in </span>witness_env
-                    .lookups
-                    .get(table_id)
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                {
-                    table[j].push(lookup.clone())
-                }
-            }
-
-            witness_env.reset()
-        }
-
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span><span class="kw-2">mut </span>constraints_env = ConstraintBuilderEnv::&lt;Fp, Ff1&gt;::create();
+            <span class="kw">let </span><span class="kw-2">mut </span>constraints_env = ConstraintBuilderEnv::&lt;Fp, LookupTable&lt;Ff1&gt;&gt;::create();
             deserialize_field_element(<span class="kw-2">&amp;mut </span>constraints_env, field_elements[<span class="number">0</span>].map(Into::into));
             constrain_multiplication(<span class="kw-2">&amp;mut </span>constraints_env);
 
@@ -326,43 +216,23 @@
             constraints_env.get_constraints()
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities: BTreeMap&lt;LookupTable&lt;Ff1&gt;, Vec&lt;Fp&gt;&gt; = BTreeMap::new();
-        <span class="comment">// Counting multiplicities &amp; adding fixed column into the last column of every table.
-        </span><span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
-            <span class="kw">let </span>lookup_m = witness_env.get_lookup_multiplicities(domain, <span class="kw-2">*</span>table_id);
-            lookup_multiplicities.insert(<span class="kw-2">*</span>table_id, lookup_m.clone());
-            <span class="kw">let </span>lookup_t = (<span class="kw-2">*</span>table_id)
-                .entries(domain.d1.size)
-                .into_iter()
-                .enumerate()
-                .map(|(i, v)| Lookup {
-                    table_id: <span class="kw-2">*</span>table_id,
-                    numerator: -lookup_m[i],
-                    value: <span class="macro">vec!</span>[v],
-                });
-            <span class="kw-2">*</span>(table.last_mut().unwrap()) = lookup_t.collect();
+        <span class="kw">for </span>(i, limbs) <span class="kw">in </span>field_elements.iter().enumerate() {
+            <span class="comment">// Witness
+            </span>deserialize_field_element(<span class="kw-2">&amp;mut </span>witness_env, limbs.map(Into::into));
+            multiplication_circuit(<span class="kw-2">&amp;mut </span>witness_env, input_chal, coeff_input, <span class="bool-val">false</span>);
+
+            <span class="comment">// Don't reset on the last iteration.
+            </span><span class="kw">if </span>i &lt; DOMAIN_SIZE {
+                witness_env.next_row()
+            }
         }
 
-        <span class="kw">let </span>logups: Vec&lt;LogupWitness&lt;Fp, LookupTable&lt;Ff1&gt;&gt;&gt; = lookup_tables
-            .iter()
-            .filter_map(|(table_id, table)| {
-                <span class="comment">// Only add a table if it's used. Otherwise lookups fail.
-                </span><span class="kw">if </span>!table.is_empty() &amp;&amp; !table[<span class="number">0</span>].is_empty() {
-                    <span class="prelude-val">Some</span>(LogupWitness {
-                        f: table.clone(),
-                        m: lookup_multiplicities[table_id].clone(),
-                        table_id: <span class="kw-2">*</span>table_id,
-                    })
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .collect();
-
-        <span class="kw">let </span>proof_inputs = ProofInputs {
-            evaluations: <span class="kw-2">*</span>witness,
-            logups,
-        };
+        <span class="comment">// Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();
+        <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::iter() {
+            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+        }
+        <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
         <span class="kw">let </span>proof = prove::&lt;
             <span class="kw">_</span>,

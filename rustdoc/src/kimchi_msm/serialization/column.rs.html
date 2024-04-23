@@ -68,6 +68,7 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     serialization::N_INTERMEDIATE_LIMBS,
@@ -99,6 +100,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>SerializationColumn {
+    <span class="kw">const </span>COL_N: usize = SER_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ChalKimchi(j) =&gt; {

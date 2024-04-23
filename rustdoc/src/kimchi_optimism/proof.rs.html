@@ -128,7 +128,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    accumulator: <span class="kw-2">&amp;mut </span>ProofInputs&lt;N, G, LookupTableIDs&gt;,
+    accumulator: <span class="kw-2">&amp;mut </span>ProofInputs&lt;N, G::ScalarField, LookupTableIDs&gt;,
     inputs: <span class="kw-2">&amp;</span>Witness&lt;N, Vec&lt;G::ScalarField&gt;&gt;,
 ) <span class="kw">where
     </span>&lt;OpeningProof <span class="kw">as </span>poly_commitment::OpenProof&lt;G&gt;&gt;::SRS: std::marker::Sync,
@@ -176,7 +176,7 @@
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
-    accumulator: <span class="kw-2">&amp;mut </span>ProofInputs&lt;N, G, LookupTableIDs&gt;,
+    accumulator: <span class="kw-2">&amp;mut </span>ProofInputs&lt;N, G::ScalarField, LookupTableIDs&gt;,
     inputs: <span class="kw-2">&amp;</span>Witness&lt;N, Vec&lt;G::ScalarField&gt;&gt;,
 ) <span class="kw">where
     </span>&lt;OpeningProof <span class="kw">as </span>poly_commitment::OpenProof&lt;G&gt;&gt;::SRS: std::marker::Sync,

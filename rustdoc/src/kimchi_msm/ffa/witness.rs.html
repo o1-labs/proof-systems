@@ -124,7 +124,7 @@
     lookups::LookupTableIDs,
     proof::ProofInputs,
     witness::Witness,
-    BN254G1Affine, Fp,
+    Fp,
 };
 
 <span class="attr">#[allow(dead_code)]
@@ -190,7 +190,7 @@
     </span><span class="kw">pub fn </span>get_witness(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         domain_size: usize,
-    ) -&gt; ProofInputs&lt;FFA_N_COLUMNS, BN254G1Affine, LookupTableIDs&gt; {
+    ) -&gt; ProofInputs&lt;FFA_N_COLUMNS, Fp, LookupTableIDs&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>cols: [Vec&lt;Fp&gt;; FFA_N_COLUMNS] = std::array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[]);
 
         <span class="kw">if </span><span class="self">self</span>.witness.len() &gt; domain_size {

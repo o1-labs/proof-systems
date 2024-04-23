@@ -114,6 +114,7 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
 
 <span class="kw">use </span><span class="kw">super</span>::witness::SCRATCH_SIZE;
@@ -217,7 +218,8 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">const </span>COL_N: usize = MIPS_COLUMNS; <span class="comment">// TODO is this true?
+    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
         </span><span class="kw">match </span><span class="self">self </span>{
             ColumnAlias::ScratchState(i) =&gt; {

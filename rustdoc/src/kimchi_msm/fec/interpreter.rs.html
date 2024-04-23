@@ -735,71 +735,20 @@
 <a href="#733" id="733">733</a>
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    columns::Column,
+    fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
         bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
+        InterpreterEnv,
     },
     LIMB_BITSIZE, N_LIMBS,
 };
 <span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
+<span class="kw">use </span>core::marker::PhantomData;
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>num_traits::sign::Signed;
 <span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
-
-<span class="kw">pub trait </span>FECInterpreterEnv&lt;F: PrimeField&gt; {
-    <span class="kw">type </span>Variable: Clone
-        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Neg&lt;Output = <span class="self">Self</span>::Variable&gt;
-        + From&lt;u64&gt;
-        + std::fmt::Debug;
-
-    <span class="kw">fn </span>empty() -&gt; <span class="self">Self</span>;
-
-    <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
-
-    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: Column) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="comment">// TODO Do we need this? Maybe we could ask From&lt;F&gt; instead?
-    </span><span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: Column) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Checks |x| = 1, that is x ∈ {-1,1}
-    </span><span class="kw">fn </span>range_check_abs1(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks x ∈ [0, f &gt;&gt; 15*16)
-    </span><span class="kw">fn </span>range_check_ff_highest&lt;Ff: PrimeField&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks input x ∈ [0,2^15)
-    </span><span class="kw">fn </span>range_check_15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks input |x| ∈ [0,2^15)
-    </span><span class="kw">fn </span>range_check_abs15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks input |x| ∈ [0,2^4)
-    </span><span class="kw">fn </span>range_check_abs4bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-}
 
 <span class="doccomment">/// Alias for LIMB_BITSIZE, used for convenience.
 </span><span class="kw">pub const </span>LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
@@ -821,7 +770,8 @@
     <span class="kw">const </span>M: usize,
     <span class="kw">const </span>N: usize,
     F: PrimeField,
-    Env: FECInterpreterEnv&lt;F&gt;,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
 &gt;(
     x: [Env::Variable; M],
 ) -&gt; [Env::Variable; N] {
@@ -843,7 +793,11 @@
 <span class="doccomment">/// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-</span><span class="kw">fn </span>combine_carry&lt;F: PrimeField, Env: FECInterpreterEnv&lt;F&gt;&gt;(
+</span><span class="kw">fn </span>combine_carry&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
+&gt;(
     x: [Env::Variable; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>],
 ) -&gt; [Env::Variable; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] {
     <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -979,6 +933,9 @@
 /// bits * 6 carries = 36 chunks, and every 6th chunk is 4 bits only.
 /// This matches the 2*S+2 = 36, since S = 17.
 ///
+/// TODO: on avoiding 16bit lookups.
+/// Our current packing is we have 6 batches x 6 elements, each batch is
+/// [16 16 16 16 16 4] bits. We could do [15 15 15 15 15 9] and avoid 16-bit lookups.
 ///
 /// === Ranges
 ///
@@ -1027,15 +984,19 @@
 /// bit more for the highest limb. Even checking that highest limb is
 /// 15 bits could be quite sound.
 </span><span class="attr">#[allow(dead_code)]
-</span><span class="kw">pub fn </span>constrain_ec_addition&lt;F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv&lt;F&gt;&gt;(
+</span><span class="kw">pub fn </span>constrain_ec_addition&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     mem_offset: usize,
 ) {
     <span class="kw">let </span>read_array_small = |env: <span class="kw-2">&amp;mut </span>Env, extra_offset: usize| -&gt; [Env::Variable; N_LIMBS_SMALL] {
-        core::array::from_fn(|i| env.read_column(Column::X(mem_offset + extra_offset + i)))
+        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
     };
     <span class="kw">let </span>read_array_large = |env: <span class="kw-2">&amp;mut </span>Env, extra_offset: usize| -&gt; [Env::Variable; N_LIMBS_LARGE] {
-        core::array::from_fn(|i| env.read_column(Column::X(mem_offset + extra_offset + i)))
+        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
     };
 
     <span class="kw">let </span>xp_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_array_large(env, <span class="number">0</span>);
@@ -1055,28 +1016,28 @@
         read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL);
     <span class="kw">let </span>q3_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
         read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">5 </span>* N_LIMBS_SMALL);
-    <span class="kw">let </span>q1_sign = env.read_column(Column::X(
+    <span class="kw">let </span>q1_sign = env.read_column(FECColumn(
         mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL,
     ));
-    <span class="kw">let </span>q2_sign = env.read_column(Column::X(
+    <span class="kw">let </span>q2_sign = env.read_column(FECColumn(
         mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>,
     ));
-    <span class="kw">let </span>q3_sign = env.read_column(Column::X(
+    <span class="kw">let </span>q3_sign = env.read_column(FECColumn(
         mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>,
     ));
 
     <span class="kw">let </span>carry1_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = core::array::from_fn(|i| {
-        env.read_column(Column::X(
+        env.read_column(FECColumn(
             mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i,
         ))
     });
     <span class="kw">let </span>carry2_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = core::array::from_fn(|i| {
-        env.read_column(Column::X(
+        env.read_column(FECColumn(
             mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">8 </span>* N_LIMBS_SMALL + <span class="number">5 </span>+ i,
         ))
     });
     <span class="kw">let </span>carry3_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = core::array::from_fn(|i| {
-        env.read_column(Column::X(
+        env.read_column(FECColumn(
             mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">7 </span>+ i,
         ))
     });
@@ -1095,9 +1056,9 @@
     {
         <span class="kw">if </span>i % N_LIMBS_SMALL == N_LIMBS_SMALL - <span class="number">1 </span>{
             <span class="comment">// If it's the highest limb, we need to check that it's representing a field element.
-            </span>env.range_check_ff_highest::&lt;Ff&gt;(x);
+            </span>env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
         } <span class="kw">else </span>{
-            env.range_check_15bit(x);
+            env.lookup(LookupTable::RangeCheck15, x);
         }
     }
 
@@ -1107,12 +1068,12 @@
         .chain(q2_limbs_small.iter())
         .chain(q3_limbs_small.iter())
     {
-        env.range_check_15bit(x);
+        env.lookup(LookupTable::RangeCheck15, x);
     }
 
     <span class="comment">// Signs must be -1 or 1.
     </span><span class="kw">for </span>x <span class="kw">in </span>[<span class="kw-2">&amp;</span>q1_sign, <span class="kw-2">&amp;</span>q2_sign, <span class="kw-2">&amp;</span>q3_sign] {
-        env.range_check_abs1(x);
+        env.lookup(LookupTable::RangeCheck1Abs, x);
     }
 
     <span class="comment">// Carry limbs need to be in particular ranges.
@@ -1125,31 +1086,32 @@
         <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
             <span class="comment">// This should be a diferent range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            </span>env.range_check_abs4bit(x);
+            </span>env.lookup(LookupTable::RangeCheck4Abs, x);
         } <span class="kw">else </span>{
-            env.range_check_abs15bit(x);
-        }
+            <span class="comment">// TODO add this table back
+            // env.lookup(LookupTable::RangeCheck15Abs, x);
+        </span>}
     }
 
     <span class="kw">let </span>xr_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(xr_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(xr_limbs_small.clone());
     <span class="kw">let </span>yr_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(yr_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(yr_limbs_small.clone());
     <span class="kw">let </span>s_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(s_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(s_limbs_small.clone());
     <span class="kw">let </span>q1_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q1_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(q1_limbs_small.clone());
     <span class="kw">let </span>q2_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q2_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(q2_limbs_small.clone());
     <span class="kw">let </span>q3_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q3_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(q3_limbs_small.clone());
 
     <span class="kw">let </span>carry1_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Env&gt;(carry1_limbs_small.clone());
+        combine_carry::&lt;F, Ff, Env&gt;(carry1_limbs_small.clone());
     <span class="kw">let </span>carry2_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Env&gt;(carry2_limbs_small.clone());
+        combine_carry::&lt;F, Ff, Env&gt;(carry2_limbs_small.clone());
     <span class="kw">let </span>carry3_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Env&gt;(carry3_limbs_small.clone());
+        combine_carry::&lt;F, Ff, Env&gt;(carry3_limbs_small.clone());
 
     <span class="kw">let </span>limb_size_large = constant_u128(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
     <span class="kw">let </span>add_extra_carries =
@@ -1231,7 +1193,11 @@
 /// This function is witness-generation counterpart (called by the prover) of
 /// `constrain_ec_addition` -- see the documentation of the latter.
 </span><span class="attr">#[allow(dead_code)]
-</span><span class="kw">pub fn </span>ec_add_circuit&lt;F: PrimeField, Ff: PrimeField, Env: FECInterpreterEnv&lt;F&gt;&gt;(
+</span><span class="kw">pub fn </span>ec_add_circuit&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     mem_offset: usize,
     xp: Ff,
@@ -1284,7 +1250,7 @@
         input.iter().enumerate().for_each(|(i, var)| {
             env.copy(
                 <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-                Column::X(mem_offset + extra_offset + i),
+                FECColumn(mem_offset + extra_offset + i),
             );
         })
     };
@@ -1293,7 +1259,7 @@
         input.iter().enumerate().for_each(|(i, var)| {
             env.copy(
                 <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-                Column::X(mem_offset + extra_offset + i),
+                FECColumn(mem_offset + extra_offset + i),
             );
         })
     };
@@ -1380,15 +1346,15 @@
     );
     env.copy(
         <span class="kw-2">&amp;</span>Env::constant(q1_sign),
-        Column::X(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL),
+        FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL),
     );
     env.copy(
         <span class="kw-2">&amp;</span>Env::constant(q2_sign),
-        Column::X(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>),
+        FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>),
     );
     env.copy(
         <span class="kw-2">&amp;</span>Env::constant(q3_sign),
-        Column::X(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>),
+        FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>),
     );
 
     <span class="kw">let </span><span class="kw-2">mut </span>carry1: F = From::from(<span class="number">0u64</span>);
@@ -1428,7 +1394,7 @@
                 <span class="kw">for </span>(j, limb) <span class="kw">in </span>newcarry_limbs.iter().enumerate() {
                     env.copy(
                         <span class="kw-2">&amp;</span>Env::constant(newcarry_sign * limb),
-                        Column::X(mem_offset + extra_offset + <span class="number">6 </span>* i + j),
+                        FECColumn(mem_offset + extra_offset + <span class="number">6 </span>* i + j),
                     );
                 }
 

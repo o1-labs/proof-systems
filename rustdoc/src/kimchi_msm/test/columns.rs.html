@@ -36,6 +36,7 @@
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     N_LIMBS,
@@ -59,6 +60,7 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>TestColumnIndexer {
+    <span class="kw">const </span>COL_N: usize = TEST_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
             <span class="macro">assert!</span>(i &lt; N_LIMBS);

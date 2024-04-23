@@ -659,8 +659,6 @@
 <a href="#657" id="657">657</a>
 <a href="#658" id="658">658</a>
 <a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -668,14 +666,19 @@
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use crate</span>::{
+    columns::ColumnIndexer,
+    logup::LookupTableID,
     serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
     LIMB_BITSIZE, N_LIMBS,
 };
 <span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-<span class="kw">pub trait </span>InterpreterEnv&lt;F: PrimeField, Ff: PrimeField&gt; {
-    <span class="kw">type </span>Position;
-
+<span class="doccomment">/// A generic environment trait that allows manipulating columns and
+/// requesting lookups. Implies two categories of implementations:
+/// constraint ones (that operate over expressions, building a
+/// circuit), and witness ones (that operate over values, building
+/// values for the circuit).
+</span><span class="kw">pub trait </span>InterpreterEnv&lt;F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID&gt; {
     <span class="kw">type </span>Variable: Clone
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
@@ -684,16 +687,17 @@
         + From&lt;u64&gt;
         + std::fmt::Debug;
 
-    <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
+    <span class="doccomment">/// Asserts that the value is zero.
+    </span><span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
 
-    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// This is kind of like write_column &amp; read_column right after... And asserting it.
+    </span><span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: CIx) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>get_column(pos: SerializationColumn) -&gt; <span class="self">Self</span>::Position;
+    <span class="doccomment">/// Reads value from a column position.
+    </span><span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: CIx) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Perform lookup into the specified table.
-    </span><span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LookupTable&lt;Ff&gt;, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+    </span><span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LT, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
 
@@ -706,14 +710,8 @@
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         highest_bit: u32,
         lowest_bit: u32,
-        position: <span class="self">Self</span>::Position,
+        position: CIx,
     ) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="comment">// Helper
-    // @volhovm I think we could just use indexer directly without Position.
-    </span><span class="kw">fn </span>read_column_direct(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: SerializationColumn) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.read_column(<span class="self">Self</span>::get_column(pos))
-    }
 }
 
 <span class="doccomment">/// Returns the highest limb of the foreign field modulus. Is used by the lookups.
@@ -741,15 +739,14 @@
 /// ```
 /// And we can ignore the last 10 bits (i.e. `limbs2[78..87]`) as a field element
 /// is 254bits long.
-</span><span class="kw">pub fn </span>deserialize_field_element&lt;F: PrimeField, Ff: PrimeField, Env: InterpreterEnv&lt;F, Ff&gt;&gt;(
+</span><span class="kw">pub fn </span>deserialize_field_element&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, SerializationColumn, LookupTable&lt;Ff&gt;&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     limbs: [BigUint; <span class="number">3</span>],
 ) {
-    <span class="comment">// Use this to constrain later
-    </span><span class="kw">let </span>kimchi_limbs0 = Env::get_column(SerializationColumn::ChalKimchi(<span class="number">0</span>));
-    <span class="kw">let </span>kimchi_limbs1 = Env::get_column(SerializationColumn::ChalKimchi(<span class="number">1</span>));
-    <span class="kw">let </span>kimchi_limbs2 = Env::get_column(SerializationColumn::ChalKimchi(<span class="number">2</span>));
-
     <span class="kw">let </span>input_limb0 = Env::constant(F::from(limbs[<span class="number">0</span>].clone()));
     <span class="kw">let </span>input_limb1 = Env::constant(F::from(limbs[<span class="number">1</span>].clone()));
     <span class="kw">let </span>input_limb2 = Env::constant(F::from(limbs[<span class="number">2</span>].clone()));
@@ -759,23 +756,27 @@
     <span class="macro">assert!</span>(limbs[<span class="number">1</span>] &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">88</span>)));
     <span class="macro">assert!</span>(limbs[<span class="number">2</span>] &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">79</span>)));
 
-    <span class="kw">let </span>limb0_var = env.copy(<span class="kw-2">&amp;</span>input_limb0, kimchi_limbs0);
-    <span class="kw">let </span>limb1_var = env.copy(<span class="kw-2">&amp;</span>input_limb1, kimchi_limbs1);
-    <span class="kw">let </span>limb2_var = env.copy(<span class="kw-2">&amp;</span>input_limb2, kimchi_limbs2);
+    <span class="kw">let </span>limb0_var = env.copy(<span class="kw-2">&amp;</span>input_limb0, SerializationColumn::ChalKimchi(<span class="number">0</span>));
+    <span class="kw">let </span>limb1_var = env.copy(<span class="kw-2">&amp;</span>input_limb1, SerializationColumn::ChalKimchi(<span class="number">1</span>));
+    <span class="kw">let </span>limb2_var = env.copy(<span class="kw-2">&amp;</span>input_limb2, SerializationColumn::ChalKimchi(<span class="number">2</span>));
 
     <span class="kw">let </span><span class="kw-2">mut </span>limb2_vars = <span class="macro">vec!</span>[];
     <span class="comment">// Compute individual 4 bits limbs of b2
     </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>constraint = limb2_var.clone();
         <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..N_INTERMEDIATE_LIMBS {
-            <span class="kw">let </span>position = Env::get_column(SerializationColumn::ChalIntermediate(j));
-            <span class="kw">let </span>var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">4 </span>* (j + <span class="number">1</span>) <span class="kw">as </span>u32, <span class="number">4 </span>* j <span class="kw">as </span>u32, position);
+            <span class="kw">let </span>var = env.bitmask_be(
+                <span class="kw-2">&amp;</span>input_limb2,
+                <span class="number">4 </span>* (j + <span class="number">1</span>) <span class="kw">as </span>u32,
+                <span class="number">4 </span>* j <span class="kw">as </span>u32,
+                SerializationColumn::ChalIntermediate(j),
+            );
             limb2_vars.push(var.clone());
             <span class="kw">let </span>pow: u128 = <span class="number">1 </span>&lt;&lt; (<span class="number">4 </span>* j);
             <span class="kw">let </span>pow = Env::constant(pow.into());
             constraint = constraint - var * pow;
         }
-        env.add_constraint(constraint)
+        env.assert_zero(constraint)
     }
     <span class="comment">// Range check on each limb
     </span>limb2_vars
@@ -784,112 +785,95 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>fifteen_bits_vars = <span class="macro">vec!</span>[];
     {
-        <span class="kw">let </span>c0 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">0</span>));
-        <span class="kw">let </span>c0_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">15</span>, <span class="number">0</span>, c0);
+        <span class="kw">let </span>c0_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">15</span>, <span class="number">0</span>, SerializationColumn::ChalConverted(<span class="number">0</span>));
         fifteen_bits_vars.push(c0_var)
     }
 
     {
-        <span class="kw">let </span>c1 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">1</span>));
-        <span class="kw">let </span>c1_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">30</span>, <span class="number">15</span>, c1);
+        <span class="kw">let </span>c1_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">30</span>, <span class="number">15</span>, SerializationColumn::ChalConverted(<span class="number">1</span>));
         fifteen_bits_vars.push(c1_var);
     }
 
     {
-        <span class="kw">let </span>c2 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">2</span>));
-        <span class="kw">let </span>c2_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">45</span>, <span class="number">30</span>, c2);
+        <span class="kw">let </span>c2_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">45</span>, <span class="number">30</span>, SerializationColumn::ChalConverted(<span class="number">2</span>));
         fifteen_bits_vars.push(c2_var);
     }
 
     {
-        <span class="kw">let </span>c3 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">3</span>));
-        <span class="kw">let </span>c3_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">60</span>, <span class="number">45</span>, c3);
+        <span class="kw">let </span>c3_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">60</span>, <span class="number">45</span>, SerializationColumn::ChalConverted(<span class="number">3</span>));
         fifteen_bits_vars.push(c3_var)
     }
 
     {
-        <span class="kw">let </span>c4 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">4</span>));
-        <span class="kw">let </span>c4_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">75</span>, <span class="number">60</span>, c4);
+        <span class="kw">let </span>c4_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb0, <span class="number">75</span>, <span class="number">60</span>, SerializationColumn::ChalConverted(<span class="number">4</span>));
         fifteen_bits_vars.push(c4_var);
     }
 
     {
-        <span class="kw">let </span>c5 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">5</span>));
         <span class="kw">let </span>res = (limbs[<span class="number">0</span>].clone() &gt;&gt; <span class="number">75</span>) &amp; BigUint::from((<span class="number">1u128 </span>&lt;&lt; (<span class="number">88 </span>- <span class="number">75</span>)) - <span class="number">1</span>);
         <span class="kw">let </span>res_prime = limbs[<span class="number">1</span>].clone() &amp; BigUint::from((<span class="number">1u128 </span>&lt;&lt; <span class="number">2</span>) - <span class="number">1</span>);
         <span class="kw">let </span>res: BigUint = res + (res_prime &lt;&lt; (<span class="number">15 </span>- <span class="number">2</span>));
         <span class="kw">let </span>res = Env::constant(F::from(res));
-        <span class="kw">let </span>c5_var = env.copy(<span class="kw-2">&amp;</span>res, c5);
+        <span class="kw">let </span>c5_var = env.copy(<span class="kw-2">&amp;</span>res, SerializationColumn::ChalConverted(<span class="number">5</span>));
         fifteen_bits_vars.push(c5_var);
     }
 
     {
-        <span class="kw">let </span>c6 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">6</span>));
-        <span class="kw">let </span>c6_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">17</span>, <span class="number">2</span>, c6);
+        <span class="kw">let </span>c6_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">17</span>, <span class="number">2</span>, SerializationColumn::ChalConverted(<span class="number">6</span>));
         fifteen_bits_vars.push(c6_var);
     }
 
     {
-        <span class="kw">let </span>c7 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">7</span>));
-        <span class="kw">let </span>c7_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">32</span>, <span class="number">17</span>, c7);
+        <span class="kw">let </span>c7_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">32</span>, <span class="number">17</span>, SerializationColumn::ChalConverted(<span class="number">7</span>));
         fifteen_bits_vars.push(c7_var);
     }
 
     {
-        <span class="kw">let </span>c8 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">8</span>));
-        <span class="kw">let </span>c8_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">47</span>, <span class="number">32</span>, c8);
+        <span class="kw">let </span>c8_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">47</span>, <span class="number">32</span>, SerializationColumn::ChalConverted(<span class="number">8</span>));
         fifteen_bits_vars.push(c8_var);
     }
 
     {
-        <span class="kw">let </span>c9 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">9</span>));
-        <span class="kw">let </span>c9_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">62</span>, <span class="number">47</span>, c9);
+        <span class="kw">let </span>c9_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">62</span>, <span class="number">47</span>, SerializationColumn::ChalConverted(<span class="number">9</span>));
         fifteen_bits_vars.push(c9_var);
     }
 
     {
-        <span class="kw">let </span>c10 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">10</span>));
-        <span class="kw">let </span>c10_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">77</span>, <span class="number">62</span>, c10);
+        <span class="kw">let </span>c10_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb1, <span class="number">77</span>, <span class="number">62</span>, SerializationColumn::ChalConverted(<span class="number">10</span>));
         fifteen_bits_vars.push(c10_var);
     }
 
     {
-        <span class="kw">let </span>c11 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">11</span>));
         <span class="kw">let </span>res = (limbs[<span class="number">1</span>].clone() &gt;&gt; <span class="number">77</span>) &amp; BigUint::from((<span class="number">1u128 </span>&lt;&lt; (<span class="number">88 </span>- <span class="number">77</span>)) - <span class="number">1</span>);
         <span class="kw">let </span>res_prime = limbs[<span class="number">2</span>].clone() &amp; BigUint::from((<span class="number">1u128 </span>&lt;&lt; <span class="number">4</span>) - <span class="number">1</span>);
         <span class="kw">let </span>res: BigUint = res + (res_prime &lt;&lt; (<span class="number">15 </span>- <span class="number">4</span>));
         <span class="kw">let </span>res = Env::constant(res.into());
-        <span class="kw">let </span>c11_var = env.copy(<span class="kw-2">&amp;</span>res, c11);
+        <span class="kw">let </span>c11_var = env.copy(<span class="kw-2">&amp;</span>res, SerializationColumn::ChalConverted(<span class="number">11</span>));
         fifteen_bits_vars.push(c11_var);
     }
 
     {
-        <span class="kw">let </span>c12 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">12</span>));
-        <span class="kw">let </span>c12_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">19</span>, <span class="number">4</span>, c12);
+        <span class="kw">let </span>c12_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">19</span>, <span class="number">4</span>, SerializationColumn::ChalConverted(<span class="number">12</span>));
         fifteen_bits_vars.push(c12_var);
     }
 
     {
-        <span class="kw">let </span>c13 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">13</span>));
-        <span class="kw">let </span>c13_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">34</span>, <span class="number">19</span>, c13);
+        <span class="kw">let </span>c13_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">34</span>, <span class="number">19</span>, SerializationColumn::ChalConverted(<span class="number">13</span>));
         fifteen_bits_vars.push(c13_var);
     }
 
     {
-        <span class="kw">let </span>c14 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">14</span>));
-        <span class="kw">let </span>c14_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">49</span>, <span class="number">34</span>, c14);
+        <span class="kw">let </span>c14_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">49</span>, <span class="number">34</span>, SerializationColumn::ChalConverted(<span class="number">14</span>));
         fifteen_bits_vars.push(c14_var);
     }
 
     {
-        <span class="kw">let </span>c15 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">15</span>));
-        <span class="kw">let </span>c15_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">64</span>, <span class="number">49</span>, c15);
+        <span class="kw">let </span>c15_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">64</span>, <span class="number">49</span>, SerializationColumn::ChalConverted(<span class="number">15</span>));
         fifteen_bits_vars.push(c15_var);
     }
 
     {
-        <span class="kw">let </span>c16 = Env::get_column(SerializationColumn::ChalConverted(<span class="number">16</span>));
-        <span class="kw">let </span>c16_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">79</span>, <span class="number">64</span>, c16);
+        <span class="kw">let </span>c16_var = env.bitmask_be(<span class="kw-2">&amp;</span>input_limb2, <span class="number">79</span>, <span class="number">64</span>, SerializationColumn::ChalConverted(<span class="number">16</span>));
         fifteen_bits_vars.push(c16_var);
     }
 
@@ -920,7 +904,7 @@
                 )
             },
         );
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 
     <span class="comment">// -- Start third constraint
@@ -936,7 +920,7 @@
             <span class="kw">let </span>var = limb2_vars[i].clone() * Env::constant(F::from(<span class="number">1u128 </span>&lt;&lt; (<span class="number">4 </span>* (i - <span class="number">1</span>))));
             acc - var
         });
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 }
 
@@ -1021,7 +1005,7 @@
     <span class="kw">const </span>N: usize,
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv&lt;F, Ff&gt;,
+    Env: InterpreterEnv&lt;F, SerializationColumn, LookupTable&lt;Ff&gt;&gt;,
 &gt;(
     x: [Env::Variable; M],
 ) -&gt; [Env::Variable; N] {
@@ -1045,7 +1029,11 @@
 </span><span class="doccomment">/// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-</span><span class="kw">fn </span>combine_carry&lt;F: PrimeField, Ff: PrimeField, Env: InterpreterEnv&lt;F, Ff&gt;&gt;(
+</span><span class="kw">fn </span>combine_carry&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, SerializationColumn, LookupTable&lt;Ff&gt;&gt;,
+&gt;(
     x: [Env::Variable; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>],
 ) -&gt; [Env::Variable; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] {
     <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -1057,22 +1045,26 @@
 }
 
 <span class="doccomment">/// This constarins the multiplication part of the circuit.
-</span><span class="kw">pub fn </span>constrain_multiplication&lt;F: PrimeField, Ff: PrimeField, Env: InterpreterEnv&lt;F, Ff&gt;&gt;(
+</span><span class="kw">pub fn </span>constrain_multiplication&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, SerializationColumn, LookupTable&lt;Ff&gt;&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
 ) {
     <span class="kw">let </span>chal_converted_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::ChalConverted(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::ChalConverted(i)));
     <span class="kw">let </span>coeff_input_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffInput(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::CoeffInput(i)));
     <span class="kw">let </span>coeff_result_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::CoeffResult(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::CoeffResult(i)));
 
     <span class="kw">let </span>ffield_modulus_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::FFieldModulus(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::FFieldModulus(i)));
     <span class="kw">let </span>quotient_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Quotient(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::Quotient(i)));
     <span class="kw">let </span>carry_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] =
-        core::array::from_fn(|i| env.read_column_direct(SerializationColumn::Carry(i)));
+        core::array::from_fn(|i| env.read_column(SerializationColumn::Carry(i)));
 
     <span class="comment">// u128 covers our limb sizes shifts which is good
     </span><span class="kw">let </span>constant_u128 = |x: u128| -&gt; Env::Variable { Env::constant(From::from(x)) };
@@ -1155,7 +1147,7 @@
             });
         constraint = constraint + add_extra_carries(i, <span class="kw-2">&amp;</span>carry_limbs_large);
 
-        env.add_constraint(constraint);
+        env.assert_zero(constraint);
     }
 }
 
@@ -1163,7 +1155,11 @@
 /// procedure. Takes challenge x_{log i} and coefficient c_prev_i as input,
 /// returns next coefficient c_i.
 </span><span class="attr">#[allow(dead_code)]
-</span><span class="kw">pub fn </span>multiplication_circuit&lt;F: PrimeField, Ff: PrimeField, Env: InterpreterEnv&lt;F, Ff&gt;&gt;(
+</span><span class="kw">pub fn </span>multiplication_circuit&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: InterpreterEnv&lt;F, SerializationColumn, LookupTable&lt;Ff&gt;&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     chal: Ff,
     coeff_input: Ff,
@@ -1206,7 +1202,7 @@
          input: [F; N_LIMBS_SMALL],
          f_column: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Fn(usize) -&gt; SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(<span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var), Env::get_column(f_column(i)));
+                env.copy(<span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var), f_column(i));
             })
         };
 
@@ -1215,7 +1211,7 @@
          input: [F; N_LIMBS_LARGE],
          f_column: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Fn(usize) -&gt; SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(<span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var), Env::get_column(f_column(i)));
+                env.copy(<span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var), f_column(i));
             })
         };
 
@@ -1294,7 +1290,7 @@
                 <span class="kw">for </span>(j, limb) <span class="kw">in </span>newcarry_limbs.iter().enumerate() {
                     env.copy(
                         <span class="kw-2">&amp;</span>Env::constant(newcarry_sign * limb),
-                        Env::get_column(SerializationColumn::Carry(<span class="number">6 </span>* i + j)),
+                        SerializationColumn::Carry(<span class="number">6 </span>* i + j),
                     );
                 }
 

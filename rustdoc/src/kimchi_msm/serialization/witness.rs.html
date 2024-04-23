@@ -329,44 +329,152 @@
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>o1_utils::FieldHelpers;
-<span class="kw">use </span>strum::IntoEnumIterator;
-
-<span class="kw">use crate</span>::{
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
-    logup::LookupTableID,
-    serialization::{
-        column::{SerializationColumn, SER_N_COLUMNS},
-        interpreter::InterpreterEnv,
-        lookups::{Lookup, LookupTable},
-    },
+    logup::{Logup, LogupWitness, LookupTableID},
+    proof::ProofInputs,
+    serialization::interpreter::InterpreterEnv,
     witness::Witness,
 };
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>o1_utils::FieldHelpers;
 <span class="kw">use </span>std::{collections::BTreeMap, iter};
+<span class="kw">use </span>strum::IntoEnumIterator;
 
-<span class="doccomment">/// Environment for the serializer interpreter
-</span><span class="kw">pub struct </span>WitnessBuilderEnv&lt;F: PrimeField, Ff: PrimeField&gt; {
-    <span class="doccomment">/// Single-row witness columns, in raw form. For accessing [`Witness`], see the
-    /// `get_witness` method.
-    </span><span class="kw">pub </span>witness: Witness&lt;SER_N_COLUMNS, F&gt;,
+<span class="doccomment">/// Witness builder environment. Operates
+</span><span class="kw">pub struct </span>WitnessBuilderEnv&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt; {
+    <span class="doccomment">/// The witness columns that the environment is working with.
+    /// Every element of the vector is a row, and the builder is
+    /// always processing the last row.
+    </span><span class="kw">pub </span>witness: Vec&lt;Witness&lt;CIX_COL_N, F&gt;&gt;,
 
-    <span class="doccomment">/// Keep track of the lookup multiplicities.
-    </span><span class="kw">pub </span>lookup_multiplicities: BTreeMap&lt;LookupTable&lt;Ff&gt;, Vec&lt;F&gt;&gt;,
+    <span class="doccomment">/// Lookup multiplicities, a vector of values `m_i` per lookup
+    /// table, where `m_i` is how many times the lookup value number
+    /// `i` was looked up.
+    </span><span class="kw">pub </span>lookup_multiplicities: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
 
-    <span class="doccomment">/// Keep track of the lookups for each row.
-    </span><span class="kw">pub </span>lookups: BTreeMap&lt;LookupTable&lt;Ff&gt;, Vec&lt;Lookup&lt;F, Ff&gt;&gt;&gt;,
+    <span class="doccomment">/// Lookup requests. Each vector element represents one row, and
+    /// each row is a map from lookup type to a vector of concrete
+    /// lookups requested.
+    </span><span class="kw">pub </span>lookups: Vec&lt;BTreeMap&lt;LT, Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; InterpreterEnv&lt;F, Ff&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, Ff&gt; {
-    <span class="kw">type </span>Position = Column;
-
+<span class="kw">impl</span>&lt;
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        <span class="kw">const </span>CIX_COL_N: usize,
+        LT: LookupTableID + IntoEnumIterator,
+    &gt; InterpreterEnv&lt;F, CIx, LT&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+{
     <span class="comment">// Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
     </span><span class="kw">type </span>Variable = F;
 
-    <span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable) {
+    <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable) {
         <span class="macro">assert_eq!</span>(cst, F::zero());
     }
 
@@ -374,31 +482,35 @@
         value
     }
 
-    <span class="kw">fn </span>get_column(pos: SerializationColumn) -&gt; <span class="self">Self</span>::Position {
-        pos.to_column()
+    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: CIx) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>Column::X(i) = ix.to_column() <span class="kw">else </span>{
+            <span class="macro">todo!</span>()
+        };
+        <span class="self">self</span>.witness.last().unwrap().cols[i]
     }
 
-    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: Column) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>Column::X(i) = ix <span class="kw">else </span>{ <span class="macro">todo!</span>() };
-        <span class="self">self</span>.witness.cols[i]
-    }
-
-    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LookupTable&lt;Ff&gt;, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+    <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LT, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="kw">let </span>value_ix = table_id.ix_by_value(<span class="kw-2">*</span>value);
         <span class="self">self</span>.lookup_multiplicities.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap()[value_ix] += F::one();
-        <span class="self">self</span>.lookups.get_mut(<span class="kw-2">&amp;</span>table_id).unwrap().push(Lookup {
-            table_id,
-            numerator: F::one(),
-            value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
-        })
+        <span class="self">self</span>.lookups
+            .last_mut()
+            .unwrap()
+            .get_mut(<span class="kw-2">&amp;</span>table_id)
+            .unwrap()
+            .push(Logup {
+                table_id,
+                numerator: F::one(),
+                value: <span class="macro">vec!</span>[<span class="kw-2">*</span>value],
+            })
     }
 
-    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.write_column(position, <span class="kw-2">*</span>x);
+    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: CIx) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.write_column(position.to_column(), <span class="kw-2">*</span>x);
         <span class="kw-2">*</span>x
     }
 
-    <span class="doccomment">/// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
+    <span class="comment">// TODO this does not belong in the generic interpreter, move out.
+    </span><span class="doccomment">/// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
     /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
     </span><span class="kw">fn </span>bitmask_be(
@@ -406,7 +518,7 @@
         x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         highest_bit: u32,
         lowest_bit: u32,
-        position: <span class="self">Self</span>::Position,
+        position: CIx,
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="comment">// FIXME: we can assume bitmask_be will be called only on value with
         // maximum 128 bits. We use bitmask_be only for the limbs
@@ -414,15 +526,17 @@
         <span class="kw">let </span>x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         <span class="kw">let </span>res = (x_u128 &gt;&gt; lowest_bit) &amp; ((<span class="number">1 </span>&lt;&lt; (highest_bit - lowest_bit)) - <span class="number">1</span>);
         <span class="kw">let </span>res_fp: F = res.into();
-        <span class="self">self</span>.write_column(position, res_fp);
+        <span class="self">self</span>.write_column(position.to_column(), res_fp);
         res_fp
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; WitnessBuilderEnv&lt;F, Ff&gt; {
-    <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, position: Column, value: F) {
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator&gt;
+    WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+{
+    <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, position: Column, value: F) {
         <span class="kw">match </span>position {
-            Column::X(i) =&gt; <span class="self">self</span>.witness.cols[i] = value,
+            Column::X(i) =&gt; <span class="self">self</span>.witness.last_mut().unwrap().cols[i] = value,
             Column::LookupPartialSum(<span class="kw">_</span>) =&gt; {
                 <span class="macro">panic!</span>(
                     <span class="string">"This is a lookup related column. The environment is
@@ -450,19 +564,20 @@
         }
     }
 
-    <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>table <span class="kw">in </span><span class="self">self</span>.lookups.values_mut() {
-            <span class="kw-2">*</span>table = Vec::new();
+    <span class="doccomment">/// Progress to the computations on the next row.
+    </span><span class="kw">pub fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.witness.push(Witness {
+            cols: Box::new([F::zero(); CIX_COL_N]),
+        });
+        <span class="kw">let </span><span class="kw-2">mut </span>lookups_row = BTreeMap::new();
+        <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
+            lookups_row.insert(table_id, Vec::new());
         }
-        <span class="comment">// TODO do we need to reset multiplicities?
-    </span>}
+        <span class="self">self</span>.lookups.push(lookups_row);
+    }
 
     <span class="doccomment">/// Getting multiplicities for range check tables less or equal than 15 bits.
-    </span><span class="kw">pub fn </span>get_lookup_multiplicities(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        domain: EvaluationDomains&lt;F&gt;,
-        table_id: LookupTable&lt;Ff&gt;,
-    ) -&gt; Vec&lt;F&gt; {
+    </span><span class="kw">pub fn </span>get_lookup_multiplicities(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: EvaluationDomains&lt;F&gt;, table_id: LT) -&gt; Vec&lt;F&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>m = Vec::with_capacity(domain.d1.size <span class="kw">as </span>usize);
         m.extend(<span class="self">self</span>.lookup_multiplicities[<span class="kw-2">&amp;</span>table_id].to_vec());
         <span class="kw">if </span>table_id.length() &lt; (domain.d1.size <span class="kw">as </span>usize) {
@@ -478,22 +593,107 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, Ff: PrimeField&gt; WitnessBuilderEnv&lt;F, Ff&gt; {
-    <span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>lookups = BTreeMap::new();
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator&gt;
+    WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+{
+    <span class="doccomment">/// Create a new empty-state witness builder.
+    </span><span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>lookups_row = BTreeMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities = BTreeMap::new();
-        <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff&gt;::iter() {
-            lookups.insert(table_id, Vec::new());
+        <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
+            lookups_row.insert(table_id, Vec::new());
             lookup_multiplicities.insert(table_id, <span class="macro">vec!</span>[F::zero(); table_id.length()]);
         }
 
         <span class="self">Self </span>{
-            witness: Witness {
-                cols: Box::new([F::zero(); SER_N_COLUMNS]),
-            },
+            witness: <span class="macro">vec!</span>[Witness {
+                cols: Box::new([F::zero(); CIX_COL_N]),
+            }],
 
             lookup_multiplicities,
-            lookups,
+            lookups: <span class="macro">vec!</span>[lookups_row],
+        }
+    }
+
+    <span class="doccomment">/// Generates proof inputs, repacking/collecting internal witness builder state.
+    </span><span class="kw">pub fn </span>get_proof_inputs(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        domain: EvaluationDomains&lt;F&gt;,
+        lookup_tables_data: BTreeMap&lt;LT, Vec&lt;F&gt;&gt;,
+    ) -&gt; ProofInputs&lt;CIX_COL_N, F, LT&gt; {
+        <span class="kw">let </span>domain_size: usize = domain.d1.size <span class="kw">as </span>usize;
+        <span class="comment">// Boxing to avoid stack overflow
+        </span><span class="kw">let </span><span class="kw-2">mut </span>witness: Box&lt;Witness&lt;CIX_COL_N, Vec&lt;F&gt;&gt;&gt; = Box::new(Witness {
+            cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
+        });
+
+        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
+        <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
+            <span class="comment">// Find how many lookups are done per table.
+            </span><span class="kw">let </span>number_of_lookups = <span class="self">self</span>.lookups[<span class="number">0</span>].get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
+            <span class="comment">// Technically the number of lookups must be the same per
+            // row, but let's check if it's actually so.
+            </span><span class="kw">for </span>(i, lookup_row) <span class="kw">in </span><span class="self">self</span>.lookups.iter().enumerate().take(domain_size) {
+                <span class="kw">let </span>number_of_lookups_currow = lookup_row.get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
+                <span class="macro">assert!</span>(
+                    number_of_lookups == number_of_lookups_currow,
+                    <span class="string">"Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookups:?}"
+                </span>);
+            }
+            <span class="comment">// +1 for the fixed table
+            </span>lookup_tables.insert(table_id, <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; number_of_lookups + <span class="number">1</span>]);
+        }
+
+        <span class="kw">for </span>witness_row <span class="kw">in </span><span class="self">self</span>.witness.iter().take(domain_size) {
+            <span class="comment">// Filling actually used rows
+            </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..CIX_COL_N {
+                witness.cols[j].push(witness_row.cols[j]);
+            }
+        }
+
+        <span class="kw">for </span>lookup_row <span class="kw">in </span><span class="self">self</span>.lookups.iter().take(domain_size) {
+            <span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
+                <span class="kw">for </span>(j, lookup) <span class="kw">in </span>lookup_row.get(table_id).unwrap().iter().enumerate() {
+                    table[j].push(lookup.clone())
+                }
+            }
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities: BTreeMap&lt;LT, Vec&lt;F&gt;&gt; = BTreeMap::new();
+        <span class="comment">// Counting multiplicities &amp; adding fixed column into the last column of every table.
+        </span><span class="kw">for </span>(table_id, table) <span class="kw">in </span>lookup_tables.iter_mut() {
+            <span class="kw">let </span>lookup_m = <span class="self">self</span>.get_lookup_multiplicities(domain, <span class="kw-2">*</span>table_id);
+            lookup_multiplicities.insert(<span class="kw-2">*</span>table_id, lookup_m.clone());
+            <span class="kw">let </span>lookup_t = lookup_tables_data[table_id]
+                .iter()
+                .enumerate()
+                .map(|(i, v)| Logup {
+                    table_id: <span class="kw-2">*</span>table_id,
+                    numerator: -lookup_m[i],
+                    value: <span class="macro">vec!</span>[<span class="kw-2">*</span>v],
+                });
+            <span class="kw-2">*</span>(table.last_mut().unwrap()) = lookup_t.collect();
+        }
+
+        <span class="kw">let </span>logups: Vec&lt;LogupWitness&lt;F, LT&gt;&gt; = lookup_tables
+            .iter()
+            .filter_map(|(table_id, table)| {
+                <span class="comment">// Only add a table if it's used. Otherwise lookups fail.
+                </span><span class="kw">if </span>!table.is_empty() &amp;&amp; !table[<span class="number">0</span>].is_empty() {
+                    <span class="prelude-val">Some</span>(LogupWitness {
+                        f: table.clone(),
+                        m: lookup_multiplicities[table_id].clone(),
+                        table_id: <span class="kw-2">*</span>table_id,
+                    })
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect();
+
+        ProofInputs {
+            evaluations: <span class="kw-2">*</span>witness,
+            logups,
         }
     }
 }
@@ -501,9 +701,11 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{
+        columns::ColumnIndexer,
         serialization::{
             column::SerializationColumn,
             interpreter::{deserialize_field_element, InterpreterEnv},
+            lookups::LookupTable,
             witness::WitnessBuilderEnv,
             N_INTERMEDIATE_LIMBS,
         },
@@ -543,7 +745,11 @@
             <span class="kw">let </span>limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        <span class="kw">let </span><span class="kw-2">mut </span>dummy_env = WitnessBuilderEnv::&lt;Fp, Ff1&gt;::create();
+        <span class="kw">let </span><span class="kw-2">mut </span>dummy_env = WitnessBuilderEnv::&lt;
+            Fp,
+            { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N },
+            LookupTable&lt;Ff1&gt;,
+        &gt;::create();
         deserialize_field_element(
             <span class="kw-2">&amp;mut </span>dummy_env,
             [
@@ -558,7 +764,7 @@
         <span class="kw">for </span>(i, limb) <span class="kw">in </span>limbs_to_assert.iter().enumerate() {
             <span class="macro">assert_eq!</span>(
                 Fp::from(<span class="kw-2">*</span>limb),
-                dummy_env.read_column_direct(SerializationColumn::ChalKimchi(i))
+                dummy_env.read_column(SerializationColumn::ChalKimchi(i))
             );
         }
 
@@ -574,7 +780,7 @@
                     .collect::&lt;Vec&lt;bool&gt;&gt;();
                 <span class="kw">let </span>t = Fp::from_bits(le_bits).unwrap();
                 <span class="kw">let </span>intermediate_v =
-                    dummy_env.read_column_direct(SerializationColumn::ChalIntermediate(j));
+                    dummy_env.read_column(SerializationColumn::ChalIntermediate(j));
                 <span class="macro">assert_eq!</span>(
                     t,
                     intermediate_v,
@@ -597,7 +803,7 @@
                 .take(LIMB_BITSIZE)
                 .collect::&lt;Vec&lt;bool&gt;&gt;();
             <span class="kw">let </span>t = Fp::from_bits(le_bits).unwrap();
-            <span class="kw">let </span>converted_v = dummy_env.read_column_direct(SerializationColumn::ChalConverted(i));
+            <span class="kw">let </span>converted_v = dummy_env.read_column(SerializationColumn::ChalConverted(i));
             <span class="macro">assert_eq!</span>(
                 t,
                 converted_v,

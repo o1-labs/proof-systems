@@ -57,6 +57,10 @@
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>kimchi::circuits::expr::{CacheId, FormattedOutput};
@@ -112,6 +116,10 @@
 <span class="doccomment">/// A datatype expressing a generalized column, but with potentially
 /// more convenient interface than a bare column.
 </span><span class="kw">pub trait </span>ColumnIndexer {
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column;
+    <span class="doccomment">/// Total number of columns in this index.
+    </span><span class="kw">const </span>COL_N: usize;
+
+    <span class="doccomment">/// Flatten the column "alias" into the integer-like column.
+    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column;
 }
 </code></pre></div></section></main></body></html>

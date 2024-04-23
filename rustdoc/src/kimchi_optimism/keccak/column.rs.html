@@ -367,6 +367,7 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 </span><span class="kw">use </span><span class="self">self</span>::{Absorbs::<span class="kw-2">*</span>, Sponges::<span class="kw-2">*</span>, Steps::<span class="kw-2">*</span>};
@@ -730,7 +731,8 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
-    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">const </span>COL_N: usize = ZKVM_KECCAK_COLS; <span class="comment">// TODO is this true?
+    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         Column::X(<span class="self">self</span>.ix())
     }
 }

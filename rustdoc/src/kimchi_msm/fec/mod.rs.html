@@ -99,24 +99,33 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
-<span class="kw">pub mod </span>constraint;
-<span class="kw">pub mod </span>interpreter;
-<span class="kw">pub mod </span>witness;
+<span class="comment">//pub mod constraint;
+</span><span class="kw">pub mod </span>interpreter;
+<span class="kw">pub mod </span>lookups;
+<span class="comment">//pub mod witness;
 
-<span class="attr">#[cfg(test)]
+</span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
 
     <span class="kw">use crate</span>::{
-        columns::Column,
+        columns::{Column, ColumnIndexer},
         fec::{
-            columns::FEC_N_COLUMNS,
-            constraint::ConstraintBuilderEnv <span class="kw">as </span>FECConstraintBuilderEnv,
-            interpreter::{<span class="self">self </span><span class="kw">as </span>fec_interpreter, FECInterpreterEnv},
-            witness::WitnessBuilderEnv <span class="kw">as </span>FECWitnessBuilderEnv,
+            columns::{FECColumn, FEC_N_COLUMNS},
+            interpreter::{constrain_ec_addition, ec_add_circuit},
+            lookups::LookupTable,
         },
-        lookups::LookupTableIDs,
         prover::prove,
+        serialization::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
         verifier::verify,
         witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
@@ -124,23 +133,29 @@
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
-    <span class="kw">use </span>rand::Rng;
+    <span class="kw">use </span>rand::{CryptoRng, RngCore};
+    <span class="kw">use </span>std::collections::BTreeMap;
+    <span class="kw">use </span>strum::IntoEnumIterator;
 
-    <span class="kw">fn </span>build_foreign_field_addition_circuit(domain_size: usize) -&gt; FECWitnessBuilderEnv&lt;Fp&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+    <span class="kw">fn </span>build_foreign_field_addition_circuit&lt;RNG: RngCore + CryptoRng&gt;(
+        rng: <span class="kw-2">&amp;mut </span>RNG,
+        domain_size: usize,
+    ) -&gt; WitnessBuilderEnv&lt;Fp, { &lt;FECColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, LookupTable&lt;Ff1&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = FECWitnessBuilderEnv::&lt;Fp&gt;::empty();
+        <span class="comment">// To support less rows than domain_size we need to have selectors.
+        //let row_num = rng.gen_range(0..domain_size);
 
-        <span class="kw">let </span>row_num = rng.gen_range(<span class="number">0</span>..domain_size);
+        </span><span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
+            <span class="kw">let </span>xp: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
+            <span class="kw">let </span>yp: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
+            <span class="kw">let </span>xq: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
+            <span class="kw">let </span>yq: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
 
-        <span class="kw">for </span>_row_i <span class="kw">in </span><span class="number">0</span>..row_num {
-            <span class="kw">let </span>xp: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
-            <span class="kw">let </span>yp: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
-            <span class="kw">let </span>xq: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
-            <span class="kw">let </span>yq: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(<span class="kw-2">&amp;mut </span>rng);
-
-            fec_interpreter::ec_add_circuit(<span class="kw-2">&amp;mut </span>witness_env, <span class="number">0</span>, xp, yp, xq, yq);
-            witness_env.next_row();
+            ec_add_circuit(<span class="kw-2">&amp;mut </span>witness_env, <span class="number">0</span>, xp, yp, xq, yq);
+            <span class="kw">if </span>row_i &lt; domain_size - <span class="number">1 </span>{
+                witness_env.next_row();
+            }
         }
 
         witness_env
@@ -151,49 +166,52 @@
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
     </span><span class="kw">pub fn </span>test_foreign_field_addition_circuit() {
-        build_foreign_field_addition_circuit(<span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        build_foreign_field_addition_circuit(<span class="kw-2">&amp;mut </span>rng, <span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">pub fn </span>test_fec_completeness() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
-        <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
-        <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
+        <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>; <span class="comment">// Otherwise we can't do 15-bit lookups.
+        </span><span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(domain_size).unwrap();
 
         <span class="kw">let </span>srs_trapdoor = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(srs_trapdoor, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = FECConstraintBuilderEnv::&lt;Fp&gt;::empty();
-        <span class="kw">let </span>witness_env = build_foreign_field_addition_circuit(domain_size);
+        <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, LookupTable&lt;Ff1&gt;&gt;::create();
+        constrain_ec_addition::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env, <span class="number">0</span>);
+        <span class="kw">let </span>constraints = constraint_env.get_constraints();
 
-        fec_interpreter::constrain_ec_addition::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env, <span class="number">0</span>);
+        <span class="kw">let </span>witness_env = build_foreign_field_addition_circuit(<span class="kw-2">&amp;mut </span>rng, domain_size);
 
-        <span class="kw">let </span>inputs = witness_env.get_witness(domain_size);
-        <span class="kw">let </span>constraints = constraint_env.constraints;
+        <span class="comment">// Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();
+        <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::iter() {
+            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+        }
+        <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;
-            <span class="kw">_</span>,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            Column,
-            <span class="kw">_</span>,
-            FEC_N_COLUMNS,
-            LookupTableIDs,
-        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, inputs, <span class="kw-2">&amp;mut </span>rng)
-        .unwrap();
-
-        <span class="comment">// verify the proof
-        </span><span class="kw">let </span>verifies =
-            verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, <span class="number">0</span>, LookupTableIDs&gt;(
+        </span><span class="kw">let </span>proof =
+            prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, FEC_N_COLUMNS, <span class="kw">_</span>&gt;(
                 domain,
                 <span class="kw-2">&amp;</span>srs,
                 <span class="kw-2">&amp;</span>constraints,
-                <span class="kw-2">&amp;</span>proof,
-                Witness::zero_vec(domain_size),
-            );
+                proof_inputs,
+                <span class="kw-2">&amp;mut </span>rng,
+            )
+            .unwrap();
+
+        <span class="comment">// verify the proof
+        </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, <span class="number">0</span>, <span class="kw">_</span>&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(domain_size),
+        );
 
         <span class="macro">assert!</span>(verifies);
     }

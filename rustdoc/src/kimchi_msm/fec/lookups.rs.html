@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `msm/src/serialization/lookups.rs`."><title>lookups.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `msm/src/fec/lookups.rs`."><title>lookups.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_msm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
             <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
     <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../kimchi_msm/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
@@ -137,6 +137,15 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup, LIMB_BITSIZE, N_LIMBS};
 <span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
@@ -149,31 +158,31 @@
 </span><span class="kw">pub enum </span>LookupTable&lt;Ff&gt; {
     <span class="doccomment">/// x ∈ [0, 2^15]
     </span>RangeCheck15,
-    <span class="doccomment">/// x ∈ [0, 2^4]
-    </span>RangeCheck4,
     <span class="doccomment">/// x ∈ [-2^4, 2^4-1]
     </span>RangeCheck4Abs,
     <span class="doccomment">/// x ∈ [0, ff_highest] where ff_highest is the highest 15-bit
     /// limb of the modulus of the foreign field `Ff`.
     </span>RangeCheckFfHighest(PhantomData&lt;Ff&gt;),
+    <span class="doccomment">/// x ∈ [-1, 1]
+    </span>RangeCheck1Abs,
 }
 
 <span class="kw">impl</span>&lt;Ff: PrimeField&gt; LookupTableID <span class="kw">for </span>LookupTable&lt;Ff&gt; {
     <span class="kw">fn </span>to_u32(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; <span class="number">1</span>,
-            <span class="self">Self</span>::RangeCheck4 =&gt; <span class="number">2</span>,
-            <span class="self">Self</span>::RangeCheck4Abs =&gt; <span class="number">3</span>,
-            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="number">4</span>,
+            <span class="self">Self</span>::RangeCheck4Abs =&gt; <span class="number">2</span>,
+            <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; <span class="number">3</span>,
+            <span class="self">Self</span>::RangeCheck1Abs =&gt; <span class="number">4</span>,
         }
     }
 
     <span class="kw">fn </span>from_u32(value: u32) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
             <span class="number">1 </span>=&gt; <span class="self">Self</span>::RangeCheck15,
-            <span class="number">2 </span>=&gt; <span class="self">Self</span>::RangeCheck4,
-            <span class="number">3 </span>=&gt; <span class="self">Self</span>::RangeCheck4Abs,
-            <span class="number">4 </span>=&gt; <span class="self">Self</span>::RangeCheckFfHighest(PhantomData),
+            <span class="number">2 </span>=&gt; <span class="self">Self</span>::RangeCheck4Abs,
+            <span class="number">3 </span>=&gt; <span class="self">Self</span>::RangeCheckFfHighest(PhantomData),
+            <span class="number">4 </span>=&gt; <span class="self">Self</span>::RangeCheck1Abs,
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Invalid lookup table id"</span>),
         }
     }
@@ -186,12 +195,12 @@
     <span class="kw">fn </span>length(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">15</span>,
-            <span class="self">Self</span>::RangeCheck4 =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">4</span>,
             <span class="self">Self</span>::RangeCheck4Abs =&gt; <span class="number">1 </span>&lt;&lt; <span class="number">5</span>,
             <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; TryFrom::try_from(
                 <span class="kw">crate</span>::serialization::interpreter::ff_modulus_highest_limb::&lt;Ff&gt;(),
             )
             .unwrap(),
+            <span class="self">Self</span>::RangeCheck1Abs =&gt; <span class="number">2</span>,
         }
     }
 
@@ -199,7 +208,6 @@
     </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::RangeCheck15 =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
-            <span class="self">Self</span>::RangeCheck4 =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
             <span class="self">Self</span>::RangeCheck4Abs =&gt; {
                 <span class="kw">if </span>value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>) {
                     TryFrom::try_from(value.to_biguint()).unwrap()
@@ -208,6 +216,15 @@
                 }
             }
             <span class="self">Self</span>::RangeCheckFfHighest(<span class="kw">_</span>) =&gt; TryFrom::try_from(value.to_biguint()).unwrap(),
+            <span class="self">Self</span>::RangeCheck1Abs =&gt; {
+                <span class="kw">if </span>value == F::one() {
+                    <span class="number">0
+                </span>} <span class="kw">else if </span>value == F::zero() - F::one() {
+                    <span class="number">1
+                </span>} <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"Invalid value for rangecheck1abs"</span>)
+                }
+            }
         }
     }
 }
@@ -232,10 +249,11 @@
     </span><span class="kw">pub fn </span>entries&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, domain_d1_size: u64) -&gt; Vec&lt;F&gt; {
         <span class="macro">assert!</span>(domain_d1_size &gt;= (<span class="number">1 </span>&lt;&lt; <span class="number">15</span>));
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::RangeCheck1Abs =&gt; [F::one(), F::zero() - F::one()]
+                .into_iter()
+                .chain((<span class="number">2</span>..domain_d1_size).map(|<span class="kw">_</span>| F::one())) <span class="comment">// dummies are 1s
+                </span>.collect(),
             <span class="self">Self</span>::RangeCheck15 =&gt; (<span class="number">0</span>..domain_d1_size).map(|i| F::from(i)).collect(),
-            <span class="self">Self</span>::RangeCheck4 =&gt; (<span class="number">0</span>..domain_d1_size)
-                .map(|i| <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) { F::from(i) } <span class="kw">else </span>{ F::zero() })
-                .collect(),
             <span class="self">Self</span>::RangeCheck4Abs =&gt; (<span class="number">0</span>..domain_d1_size)
                 .map(|i| {
                     <span class="kw">if </span>i &lt; (<span class="number">1 </span>&lt;&lt; <span class="number">4</span>) {
@@ -256,8 +274,8 @@
     <span class="doccomment">/// Checks if a value is in a given table.
     </span><span class="kw">pub fn </span>is_member&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
+            <span class="self">Self</span>::RangeCheck1Abs =&gt; value == F::one() || value == F::zero() - F::one(),
             <span class="self">Self</span>::RangeCheck15 =&gt; value.to_biguint() &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">15</span>)),
-            <span class="self">Self</span>::RangeCheck4 =&gt; value.to_biguint() &lt; BigUint::from(<span class="number">2u128</span>.pow(<span class="number">4</span>)),
             <span class="self">Self</span>::RangeCheck4Abs =&gt; {
                 value &lt; F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>) || value &gt;= F::zero() - F::from(<span class="number">1u64 </span>&lt;&lt; <span class="number">4</span>)
             }

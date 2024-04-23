@@ -131,10 +131,14 @@
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
 <a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the Logup protocol for the MSM project.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::logup::{Logup, LogupWitness, LookupTableID};
-<span class="kw">use </span>ark_ff::FftField;
+<span class="kw">use </span>ark_ff::{FftField, PrimeField};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>rand::{seq::SliceRandom, thread_rng, Rng};
 <span class="kw">use </span>std::{cmp::Ord, iter};
@@ -176,6 +180,10 @@
     </span><span class="kw">fn </span>is_fixed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="bool-val">true
     </span>}
+
+    <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _value: F) -&gt; usize {
+        <span class="macro">todo!</span>()
+    }
 }
 
 <span class="doccomment">/// Additive lookups used in the MSM project based on Logup

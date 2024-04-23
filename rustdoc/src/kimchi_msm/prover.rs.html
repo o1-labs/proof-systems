@@ -548,7 +548,7 @@
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
     constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
-    inputs: ProofInputs&lt;N, G, ID&gt;,
+    inputs: ProofInputs&lt;N, G::ScalarField, ID&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;N, G, OpeningProof, ID&gt;, ProverError&gt;
 <span class="kw">where
