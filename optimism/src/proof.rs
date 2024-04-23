@@ -18,7 +18,7 @@ pub fn fold<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    accumulator: &mut ProofInputs<N, G, LookupTableIDs>,
+    accumulator: &mut ProofInputs<N, G::ScalarField, LookupTableIDs>,
     inputs: &Witness<N, Vec<G::ScalarField>>,
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,
@@ -66,7 +66,7 @@ fn old_fold<
 >(
     domain: EvaluationDomains<G::ScalarField>,
     srs: &OpeningProof::SRS,
-    accumulator: &mut ProofInputs<N, G, LookupTableIDs>,
+    accumulator: &mut ProofInputs<N, G::ScalarField, LookupTableIDs>,
     inputs: &Witness<N, Vec<G::ScalarField>>,
 ) where
     <OpeningProof as poly_commitment::OpenProof<G>>::SRS: std::marker::Sync,

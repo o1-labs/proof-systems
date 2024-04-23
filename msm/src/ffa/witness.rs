@@ -75,7 +75,7 @@ impl WitnessBuilderEnv<Fp> {
     pub fn get_witness(
         &self,
         domain_size: usize,
-    ) -> ProofInputs<FFA_N_COLUMNS, BN254G1Affine, LookupTableIDs> {
+    ) -> ProofInputs<FFA_N_COLUMNS, Fp, LookupTableIDs> {
         let mut cols: [Vec<Fp>; FFA_N_COLUMNS] = std::array::from_fn(|_| vec![]);
 
         if self.witness.len() > domain_size {

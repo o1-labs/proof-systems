@@ -1,13 +1,21 @@
 use crate::{
     columns::{Column, ColumnIndexer},
-    logup::{Logup, LookupTableID},
-    serialization::interpreter::InterpreterEnv,
+    logup::{Logup, LogupWitness, LookupTableID},
+    proof::ProofInputs,
+    serialization::{
+        column::{SerializationColumn, SER_N_COLUMNS},
+        interpreter::InterpreterEnv,
+        lookups::{Lookup, LookupTable},
+        N_INTERMEDIATE_LIMBS,
+    },
     witness::Witness,
+    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
 };
 use ark_ff::PrimeField;
-use kimchi::circuits::domains::EvaluationDomains;
+use ark_poly::EvaluationDomain;
+use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
 use o1_utils::FieldHelpers;
-use std::{collections::BTreeMap, iter};
+use std::{collections::BTreeMap, iter, marker::PhantomData};
 use strum::IntoEnumIterator;
 
 /// Environment for the serializer interpreter
@@ -123,7 +131,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn next_row(&mut self) {
         self.witness.push(Witness {
             cols: Box::new([F::zero(); CIX_COL_N]),
         });
@@ -169,6 +177,92 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
 
             lookup_multiplicities,
             lookups: vec![lookups_row],
+        }
+    }
+}
+
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
+    WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    pub fn get_proof_inputs(
+        &self,
+        domain: EvaluationDomains<F>,
+        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+    ) -> ProofInputs<CIX_COL_N, F, LT> {
+        let domain_size: usize = domain.d1.size as usize;
+        // Boxing to avoid stack overflow
+        let mut witness: Box<Witness<CIX_COL_N, Vec<F>>> = Box::new(Witness {
+            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
+        });
+
+        let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
+        for table_id in LT::iter() {
+            // Find how many lookups are done per table.
+            let number_of_lookups = self.lookups[0].get(&table_id).unwrap().len();
+            // Technically the number of lookups must be the same per
+            // row, but let's check if it's actually so.
+            for (i, lookup_row) in self.lookups.iter().enumerate().take(domain_size) {
+                let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
+                assert!(
+                    number_of_lookups == number_of_lookups_currow,
+                    "Different number of lookups in row {i:?} and row 0"
+                );
+            }
+            // +1 for the fixed table
+            lookup_tables.insert(table_id, vec![vec![]; number_of_lookups + 1]);
+        }
+
+        for witness_row in self.witness.iter().take(domain_size) {
+            // Filling actually used rows
+            for j in 0..CIX_COL_N {
+                witness.cols[j].push(witness_row.cols[j]);
+            }
+        }
+
+        for lookup_row in self.lookups.iter().take(domain_size) {
+            for (table_id, table) in lookup_tables.iter_mut() {
+                //println!("Processing table id {:?}", table_id);
+                for (j, lookup) in lookup_row.get(table_id).unwrap().iter().enumerate() {
+                    table[j].push(lookup.clone())
+                }
+            }
+        }
+
+        let mut lookup_multiplicities: BTreeMap<LT, Vec<F>> = BTreeMap::new();
+        // Counting multiplicities & adding fixed column into the last column of every table.
+        for (table_id, table) in lookup_tables.iter_mut() {
+            let lookup_m = self.get_lookup_multiplicities(domain, *table_id);
+            lookup_multiplicities.insert(*table_id, lookup_m.clone());
+            let lookup_t = lookup_tables_data[table_id]
+                .iter()
+                .enumerate()
+                .map(|(i, v)| Logup {
+                    table_id: *table_id,
+                    numerator: -lookup_m[i],
+                    value: vec![*v],
+                });
+            *(table.last_mut().unwrap()) = lookup_t.collect();
+        }
+
+        let logups: Vec<LogupWitness<F, LT>> = lookup_tables
+            .iter()
+            .filter_map(|(table_id, table)| {
+                // Only add a table if it's used. Otherwise lookups fail.
+                if !table.is_empty() && !table[0].is_empty() {
+                    Some(LogupWitness {
+                        f: table.clone(),
+                        m: lookup_multiplicities[table_id].clone(),
+                        table_id: *table_id,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        ProofInputs {
+            evaluations: *witness,
+            logups,
         }
     }
 }
