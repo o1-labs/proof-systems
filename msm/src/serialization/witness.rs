@@ -14,17 +14,21 @@ use strum::IntoEnumIterator;
 pub struct WitnessBuilderEnv<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> {
     /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
     /// `get_witness` method.
-    pub witness: Witness<CIX_COL_N, F>,
+    pub witness: Vec<Witness<CIX_COL_N, F>>,
 
     /// Keep track of the lookup multiplicities.
     pub lookup_multiplicities: BTreeMap<LT, Vec<F>>,
 
     /// Keep track of the lookups for each row.
-    pub lookups: BTreeMap<LT, Vec<Logup<F, LT>>>,
+    pub lookups: Vec<BTreeMap<LT, Vec<Logup<F, LT>>>>,
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
-    InterpreterEnv<F, CIx, LT> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const CIX_COL_N: usize,
+        LT: LookupTableID + IntoEnumIterator,
+    > InterpreterEnv<F, CIx, LT> for WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     // Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
@@ -42,17 +46,22 @@ impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableI
         let Column::X(i) = ix.to_column() else {
             todo!()
         };
-        self.witness.cols[i]
+        self.witness.last().unwrap().cols[i]
     }
 
     fn lookup(&mut self, table_id: LT, value: &Self::Variable) {
         let value_ix = table_id.ix_by_value(*value);
         self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
-        self.lookups.get_mut(&table_id).unwrap().push(Logup {
-            table_id,
-            numerator: F::one(),
-            value: vec![*value],
-        })
+        self.lookups
+            .last_mut()
+            .unwrap()
+            .get_mut(&table_id)
+            .unwrap()
+            .push(Logup {
+                table_id,
+                numerator: F::one(),
+                value: vec![*value],
+            })
     }
 
     fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
@@ -81,10 +90,12 @@ impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableI
     }
 }
 
-impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> WitnessBuilderEnv<F, CIX_COL_N, LT> {
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
+    WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
     pub fn write_column(&mut self, position: Column, value: F) {
         match position {
-            Column::X(i) => self.witness.cols[i] = value,
+            Column::X(i) => self.witness.last_mut().unwrap().cols[i] = value,
             Column::LookupPartialSum(_) => {
                 panic!(
                     "This is a lookup related column. The environment is
@@ -113,10 +124,14 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> WitnessBuilderEnv
     }
 
     pub fn reset(&mut self) {
-        for table in self.lookups.values_mut() {
-            *table = Vec::new();
+        self.witness.push(Witness {
+            cols: Box::new([F::zero(); CIX_COL_N]),
+        });
+        let mut lookups_row = BTreeMap::new();
+        for table_id in LT::iter() {
+            lookups_row.insert(table_id, Vec::new());
         }
-        // TODO do we need to reset multiplicities?
+        self.lookups.push(lookups_row);
     }
 
     /// Getting multiplicities for range check tables less or equal than 15 bits.
@@ -140,20 +155,20 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
     WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     pub fn create() -> Self {
-        let mut lookups = BTreeMap::new();
+        let mut lookups_row = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
         for table_id in LT::iter() {
-            lookups.insert(table_id, Vec::new());
+            lookups_row.insert(table_id, Vec::new());
             lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
         }
 
         Self {
-            witness: Witness {
+            witness: vec![Witness {
                 cols: Box::new([F::zero(); CIX_COL_N]),
-            },
+            }],
 
             lookup_multiplicities,
-            lookups,
+            lookups: vec![lookups_row],
         }
     }
 }

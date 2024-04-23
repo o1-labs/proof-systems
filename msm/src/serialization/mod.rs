@@ -33,8 +33,94 @@ mod tests {
         },
         verifier::verify,
         witness::Witness,
-        BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
+        BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
     };
+
+    impl WitnessBuilderEnv<Fp, SER_N_COLUMNS, LookupTable<Ff1>> {
+        pub fn get_proof_inputs(
+            &self,
+            domain: EvaluationDomains<Fp>,
+        ) -> ProofInputs<SER_N_COLUMNS, BN254G1Affine, LookupTable<Ff1>> {
+            // Boxing to avoid stack overflow
+            let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
+                cols: Box::new(std::array::from_fn(|_| {
+                    Vec::with_capacity(domain.d1.size as usize)
+                })),
+            });
+
+            // An extra element in the array stands for the fixed table.
+            let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
+                std::array::from_fn(|_| vec![]);
+            let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
+            let rangecheck15: [Vec<Lookup<Fp, Ff1>>; (3 * N_LIMBS - 1) + 1] =
+                std::array::from_fn(|_| vec![]);
+            let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] =
+                std::array::from_fn(|_| vec![]);
+
+            let mut lookup_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
+                BTreeMap::new();
+            lookup_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
+            lookup_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
+            lookup_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
+            lookup_tables.insert(
+                LookupTable::RangeCheckFfHighest(PhantomData),
+                rangecheckffhighest.to_vec(),
+            );
+
+            for witness_row in self.witness.iter() {
+                // Filling actually used rows
+                for j in 0..SER_N_COLUMNS {
+                    witness.cols[j].push(witness_row.cols[j]);
+                }
+            }
+            for lookup_row in self.lookups.iter() {
+                for (table_id, table) in lookup_tables.iter_mut() {
+                    //println!("Processing table id {:?}", table_id);
+                    for (j, lookup) in lookup_row.get(table_id).unwrap().iter().enumerate() {
+                        table[j].push(lookup.clone())
+                    }
+                }
+            }
+
+            let mut lookup_multiplicities: BTreeMap<LookupTable<Ff1>, Vec<Fp>> = BTreeMap::new();
+            // Counting multiplicities & adding fixed column into the last column of every table.
+            for (table_id, table) in lookup_tables.iter_mut() {
+                let lookup_m = self.get_lookup_multiplicities(domain, *table_id);
+                lookup_multiplicities.insert(*table_id, lookup_m.clone());
+                let lookup_t = (*table_id)
+                    .entries(domain.d1.size)
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, v)| Lookup {
+                        table_id: *table_id,
+                        numerator: -lookup_m[i],
+                        value: vec![v],
+                    });
+                *(table.last_mut().unwrap()) = lookup_t.collect();
+            }
+
+            let logups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = lookup_tables
+                .iter()
+                .filter_map(|(table_id, table)| {
+                    // Only add a table if it's used. Otherwise lookups fail.
+                    if !table.is_empty() && !table[0].is_empty() {
+                        Some(LogupWitness {
+                            f: table.clone(),
+                            m: lookup_multiplicities[table_id].clone(),
+                            table_id: *table_id,
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            ProofInputs {
+                evaluations: *witness,
+                logups,
+            }
+        }
+    }
 
     #[test]
     fn test_completeness() {
@@ -51,10 +137,6 @@ mod tests {
             { <SerializationColumn as ColumnIndexer>::COL_N },
             LookupTable<Ff1>,
         >::create();
-        // Boxing to avoid stack overflow
-        let mut witness: Box<Witness<SER_N_COLUMNS, Vec<Fp>>> = Box::new(Witness {
-            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(DOMAIN_SIZE))),
-        });
 
         // Boxing to avoid stack overflow
         let mut field_elements = vec![];
@@ -68,49 +150,6 @@ mod tests {
             field_elements.push([input1, input2, input3])
         }
         let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
-
-        // An extra element in the array stands for the fixed table.
-        let rangecheck4: [Vec<Lookup<Fp, Ff1>>; N_INTERMEDIATE_LIMBS + 1] =
-            std::array::from_fn(|_| vec![]);
-        let rangecheck4abs: [Vec<Lookup<Fp, Ff1>>; 6 + 1] = std::array::from_fn(|_| vec![]);
-        let rangecheck15: [Vec<Lookup<Fp, Ff1>>; (3 * N_LIMBS - 1) + 1] =
-            std::array::from_fn(|_| vec![]);
-        let rangecheckffhighest: [Vec<Lookup<Fp, Ff1>>; 1 + 1] = std::array::from_fn(|_| vec![]);
-
-        let mut lookup_tables: BTreeMap<LookupTable<Ff1>, Vec<Vec<Lookup<Fp, Ff1>>>> =
-            BTreeMap::new();
-        lookup_tables.insert(LookupTable::RangeCheck4, rangecheck4.to_vec());
-        lookup_tables.insert(LookupTable::RangeCheck4Abs, rangecheck4abs.to_vec());
-        lookup_tables.insert(LookupTable::RangeCheck15, rangecheck15.to_vec());
-        lookup_tables.insert(
-            LookupTable::RangeCheckFfHighest(PhantomData),
-            rangecheckffhighest.to_vec(),
-        );
-
-        for (_i, limbs) in field_elements.iter().enumerate() {
-            // Witness
-            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
-            multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
-            // Filling actually used rows
-            for j in 0..SER_N_COLUMNS {
-                witness.cols[j].push(witness_env.witness.cols[j]);
-            }
-
-            for (table_id, table) in lookup_tables.iter_mut() {
-                //println!("Processing table id {:?}", table_id);
-                for (j, lookup) in witness_env
-                    .lookups
-                    .get(table_id)
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                {
-                    table[j].push(lookup.clone())
-                }
-            }
-
-            witness_env.reset()
-        }
 
         let constraints = {
             let mut constraints_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
@@ -131,43 +170,14 @@ mod tests {
             constraints_env.get_constraints()
         };
 
-        let mut lookup_multiplicities: BTreeMap<LookupTable<Ff1>, Vec<Fp>> = BTreeMap::new();
-        // Counting multiplicities & adding fixed column into the last column of every table.
-        for (table_id, table) in lookup_tables.iter_mut() {
-            let lookup_m = witness_env.get_lookup_multiplicities(domain, *table_id);
-            lookup_multiplicities.insert(*table_id, lookup_m.clone());
-            let lookup_t = (*table_id)
-                .entries(domain.d1.size)
-                .into_iter()
-                .enumerate()
-                .map(|(i, v)| Lookup {
-                    table_id: *table_id,
-                    numerator: -lookup_m[i],
-                    value: vec![v],
-                });
-            *(table.last_mut().unwrap()) = lookup_t.collect();
+        for (_i, limbs) in field_elements.iter().enumerate() {
+            // Witness
+            deserialize_field_element(&mut witness_env, limbs.map(Into::into));
+            multiplication_circuit(&mut witness_env, input_chal, coeff_input, false);
+            witness_env.reset()
         }
 
-        let logups: Vec<LogupWitness<Fp, LookupTable<Ff1>>> = lookup_tables
-            .iter()
-            .filter_map(|(table_id, table)| {
-                // Only add a table if it's used. Otherwise lookups fail.
-                if !table.is_empty() && !table[0].is_empty() {
-                    Some(LogupWitness {
-                        f: table.clone(),
-                        m: lookup_multiplicities[table_id].clone(),
-                        table_id: *table_id,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let proof_inputs = ProofInputs {
-            evaluations: *witness,
-            logups,
-        };
+        let proof_inputs = witness_env.get_proof_inputs(domain);
 
         let proof = prove::<
             _,
