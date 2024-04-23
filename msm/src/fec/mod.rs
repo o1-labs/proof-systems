@@ -66,20 +66,16 @@ mod tests {
         let domain_size = 1 << 15; // Otherwise we can't do 15-bit lookups.
         let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
 
-        eprintln!("Generating SRS");
         let srs_trapdoor = Fp::rand(&mut rng);
         let mut srs: PairingSRS<BN254> = PairingSRS::create(srs_trapdoor, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        eprintln!("Generating constraints");
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
         constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env, 0);
         let constraints = constraint_env.get_constraints();
 
-        eprintln!("Generating witness");
         let witness_env = build_foreign_field_addition_circuit(&mut rng, domain_size);
 
-        eprintln!("Generating tables/proof inputs");
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
         for table_id in LookupTable::<Ff1>::iter() {
@@ -87,7 +83,6 @@ mod tests {
         }
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
-        eprintln!("Generating proof");
         // generate the proof
         let proof =
             prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, FEC_N_COLUMNS, _>(
@@ -100,7 +95,6 @@ mod tests {
             .unwrap();
 
         // verify the proof
-        eprintln!("Verifying proof");
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, 0, _>(
             domain,
             &srs,
