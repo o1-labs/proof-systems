@@ -6,10 +6,10 @@ use kimchi::circuits::{
 use std::collections::BTreeMap;
 
 use crate::{
+    circuit_design::capabilities::{ColAccessCap, LookupCap},
     columns::{Column, ColumnIndexer},
     expr::E,
     logup::{constraint_lookups, Logup, LookupTableID},
-    serialization::interpreter::InterpreterEnv,
 };
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
@@ -32,7 +32,7 @@ impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     for ConstraintBuilderEnv<F, LT>
 {
     type Variable = E<F>;
@@ -45,16 +45,6 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx
         self.constrain_index += 1;
     }
 
-    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
-        let y = Expr::Atom(ExprInner::Cell(Variable {
-            col: position.to_column(),
-            row: CurrOrNext::Curr,
-        }));
-        let diff: Self::Variable = y.clone() - x.clone();
-        <Self as InterpreterEnv<F, CIx, LT>>::assert_zero(self, diff);
-        y
-    }
-
     fn read_column(&self, position: CIx) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
             col: position.to_column(),
@@ -62,7 +52,16 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx
         }))
     }
 
-    fn lookup(&mut self, table_id: LT, value: &Self::Variable) {
+    fn constant(value: F) -> Self::Variable {
+        let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
+        Expr::Atom(ExprInner::Constant(cst_expr_inner))
+    }
+}
+
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> LookupCap<F, CIx, LT>
+    for ConstraintBuilderEnv<F, LT>
+{
+    fn lookup(&mut self, table_id: LT, value: &<Self as ColAccessCap<F, CIx>>::Variable) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
         let lookup = Logup {
             table_id,
@@ -70,31 +69,6 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx
             value: vec![value.clone()],
         };
         self.lookups.entry(table_id).or_default().push(lookup);
-    }
-
-    fn constant(value: F) -> Self::Variable {
-        let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
-        Expr::Atom(ExprInner::Constant(cst_expr_inner))
-    }
-
-    /// Extract the bits from the variable `x` between `highest_bit` (excluded)
-    /// and `lowest_bit` (included), and store
-    /// the result in `position`.
-    /// `lowest_bit` becomes the least-significant bit of the resulting value.
-    /// The value `x` is expected to be encoded in big-endian
-    fn bitmask_be(
-        &mut self,
-        _x: &Self::Variable,
-        _highest_bit: u32,
-        _lowest_bit: u32,
-        position: CIx,
-    ) -> Self::Variable {
-        // No constraint added. It is supposed that the caller will constraint
-        // later the returned variable and/or do a range check.
-        Expr::Atom(ExprInner::Cell(Variable {
-            col: position.to_column(),
-            row: CurrOrNext::Curr,
-        }))
     }
 }
 

@@ -1,8 +1,8 @@
 use crate::{
+    circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
     fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
         bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
-        InterpreterEnv,
     },
     LIMB_BITSIZE, N_LIMBS,
 };
@@ -33,8 +33,7 @@ fn combine_small_to_large<
     const M: usize,
     const N: usize,
     F: PrimeField,
-    Ff: PrimeField,
-    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, FECColumn>,
 >(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
@@ -56,11 +55,7 @@ fn combine_small_to_large<
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
->(
+fn combine_carry<F: PrimeField, Env: ColAccessCap<F, FECColumn>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -250,7 +245,7 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 pub fn constrain_ec_addition<
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, FECColumn> + LookupCap<F, FECColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     mem_offset: usize,
@@ -357,24 +352,24 @@ pub fn constrain_ec_addition<
     }
 
     let xr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(xr_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(xr_limbs_small.clone());
     let yr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(yr_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(yr_limbs_small.clone());
     let s_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(s_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(s_limbs_small.clone());
     let q1_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(q1_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q1_limbs_small.clone());
     let q2_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(q2_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q2_limbs_small.clone());
     let q3_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env>(q3_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q3_limbs_small.clone());
 
     let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Ff, Env>(carry1_limbs_small.clone());
+        combine_carry::<F, Env>(carry1_limbs_small.clone());
     let carry2_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Ff, Env>(carry2_limbs_small.clone());
+        combine_carry::<F, Env>(carry2_limbs_small.clone());
     let carry3_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Ff, Env>(carry3_limbs_small.clone());
+        combine_carry::<F, Env>(carry3_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
     let add_extra_carries =
@@ -459,7 +454,7 @@ pub fn constrain_ec_addition<
 pub fn ec_add_circuit<
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv<F, FECColumn, LookupTable<Ff>>,
+    Env: ColWriteCap<F, FECColumn> + LookupCap<F, FECColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     mem_offset: usize,
@@ -511,18 +506,18 @@ pub fn ec_add_circuit<
 
     let write_array = |env: &mut Env, input: [F; N_LIMBS_SMALL], extra_offset: usize| {
         input.iter().enumerate().for_each(|(i, var)| {
-            env.copy(
-                &Env::constant(*var),
+            env.write_column(
                 FECColumn(mem_offset + extra_offset + i),
+                &Env::constant(*var),
             );
         })
     };
 
     let write_array_large = |env: &mut Env, input: [F; N_LIMBS_LARGE], extra_offset: usize| {
         input.iter().enumerate().for_each(|(i, var)| {
-            env.copy(
-                &Env::constant(*var),
+            env.write_column(
                 FECColumn(mem_offset + extra_offset + i),
+                &Env::constant(*var),
             );
         })
     };
@@ -607,17 +602,17 @@ pub fn ec_add_circuit<
         q3_limbs_small,
         mem_offset + 5 * N_LIMBS_LARGE + 5 * N_LIMBS_SMALL,
     );
-    env.copy(
-        &Env::constant(q1_sign),
+    env.write_column(
         FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL),
+        &Env::constant(q1_sign),
     );
-    env.copy(
-        &Env::constant(q2_sign),
+    env.write_column(
         FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1),
+        &Env::constant(q2_sign),
     );
-    env.copy(
-        &Env::constant(q3_sign),
+    env.write_column(
         FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2),
+        &Env::constant(q3_sign),
     );
 
     let mut carry1: F = From::from(0u64);
@@ -655,9 +650,9 @@ pub fn ec_add_circuit<
                     limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
 
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
-                    env.copy(
-                        &Env::constant(newcarry_sign * limb),
+                    env.write_column(
                         FECColumn(mem_offset + extra_offset + 6 * i + j),
+                        &Env::constant(newcarry_sign * limb),
                     );
                 }
 
