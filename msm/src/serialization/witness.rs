@@ -1,41 +1,46 @@
-use ark_ff::PrimeField;
-use o1_utils::FieldHelpers;
-use strum::IntoEnumIterator;
-
 use crate::{
     columns::{Column, ColumnIndexer},
-    logup::LookupTableID,
-    serialization::{
-        column::{SerializationColumn, SER_N_COLUMNS},
-        interpreter::InterpreterEnv,
-        lookups::{Lookup, LookupTable},
-    },
+    logup::{Logup, LogupWitness, LookupTableID},
+    proof::ProofInputs,
+    serialization::interpreter::InterpreterEnv,
     witness::Witness,
 };
+use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
+use o1_utils::FieldHelpers;
 use std::{collections::BTreeMap, iter};
+use strum::IntoEnumIterator;
 
-/// Environment for the serializer interpreter
-pub struct WitnessBuilderEnv<F: PrimeField, Ff: PrimeField> {
-    /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
-    /// `get_witness` method.
-    pub witness: Witness<SER_N_COLUMNS, F>,
+/// Witness builder environment. Operates
+pub struct WitnessBuilderEnv<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> {
+    /// The witness columns that the environment is working with.
+    /// Every element of the vector is a row, and the builder is
+    /// always processing the last row.
+    pub witness: Vec<Witness<CIX_COL_N, F>>,
 
-    /// Keep track of the lookup multiplicities.
-    pub lookup_multiplicities: BTreeMap<LookupTable<Ff>, Vec<F>>,
+    /// Lookup multiplicities, a vector of values `m_i` per lookup
+    /// table, where `m_i` is how many times the lookup value number
+    /// `i` was looked up.
+    pub lookup_multiplicities: BTreeMap<LT, Vec<F>>,
 
-    /// Keep track of the lookups for each row.
-    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<F, Ff>>>,
+    /// Lookup requests. Each vector element represents one row, and
+    /// each row is a map from lookup type to a vector of concrete
+    /// lookups requested.
+    pub lookups: Vec<BTreeMap<LT, Vec<Logup<F, LT>>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for WitnessBuilderEnv<F, Ff> {
-    type Position = Column;
-
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const CIX_COL_N: usize,
+        LT: LookupTableID + IntoEnumIterator,
+    > InterpreterEnv<F, CIx, LT> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
     // Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
     type Variable = F;
 
-    fn add_constraint(&mut self, cst: Self::Variable) {
+    fn assert_zero(&mut self, cst: Self::Variable) {
         assert_eq!(cst, F::zero());
     }
 
@@ -43,30 +48,34 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for WitnessBuilderEnv<
         value
     }
 
-    fn get_column(pos: SerializationColumn) -> Self::Position {
-        pos.to_column()
+    fn read_column(&self, ix: CIx) -> Self::Variable {
+        let Column::X(i) = ix.to_column() else {
+            todo!()
+        };
+        self.witness.last().unwrap().cols[i]
     }
 
-    fn read_column(&self, ix: Column) -> Self::Variable {
-        let Column::X(i) = ix else { todo!() };
-        self.witness.cols[i]
-    }
-
-    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+    fn lookup(&mut self, table_id: LT, value: &Self::Variable) {
         let value_ix = table_id.ix_by_value(*value);
         self.lookup_multiplicities.get_mut(&table_id).unwrap()[value_ix] += F::one();
-        self.lookups.get_mut(&table_id).unwrap().push(Lookup {
-            table_id,
-            numerator: F::one(),
-            value: vec![*value],
-        })
+        self.lookups
+            .last_mut()
+            .unwrap()
+            .get_mut(&table_id)
+            .unwrap()
+            .push(Logup {
+                table_id,
+                numerator: F::one(),
+                value: vec![*value],
+            })
     }
 
-    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
-        self.write_column(position, *x);
+    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
+        self.write_column(position.to_column(), *x);
         *x
     }
 
+    // TODO this does not belong in the generic interpreter, move out.
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
     /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
@@ -75,7 +84,7 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for WitnessBuilderEnv<
         x: &Self::Variable,
         highest_bit: u32,
         lowest_bit: u32,
-        position: Self::Position,
+        position: CIx,
     ) -> Self::Variable {
         // FIXME: we can assume bitmask_be will be called only on value with
         // maximum 128 bits. We use bitmask_be only for the limbs
@@ -83,15 +92,17 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for WitnessBuilderEnv<
         let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
         let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
         let res_fp: F = res.into();
-        self.write_column(position, res_fp);
+        self.write_column(position.to_column(), res_fp);
         res_fp
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
-    pub fn write_column(&mut self, position: Column, value: F) {
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
+    WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    fn write_column(&mut self, position: Column, value: F) {
         match position {
-            Column::X(i) => self.witness.cols[i] = value,
+            Column::X(i) => self.witness.last_mut().unwrap().cols[i] = value,
             Column::LookupPartialSum(_) => {
                 panic!(
                     "This is a lookup related column. The environment is
@@ -119,19 +130,20 @@ impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
         }
     }
 
-    pub fn reset(&mut self) {
-        for table in self.lookups.values_mut() {
-            *table = Vec::new();
+    /// Progress to the computations on the next row.
+    pub fn next_row(&mut self) {
+        self.witness.push(Witness {
+            cols: Box::new([F::zero(); CIX_COL_N]),
+        });
+        let mut lookups_row = BTreeMap::new();
+        for table_id in LT::iter() {
+            lookups_row.insert(table_id, Vec::new());
         }
-        // TODO do we need to reset multiplicities?
+        self.lookups.push(lookups_row);
     }
 
     /// Getting multiplicities for range check tables less or equal than 15 bits.
-    pub fn get_lookup_multiplicities(
-        &self,
-        domain: EvaluationDomains<F>,
-        table_id: LookupTable<Ff>,
-    ) -> Vec<F> {
+    pub fn get_lookup_multiplicities(&self, domain: EvaluationDomains<F>, table_id: LT) -> Vec<F> {
         let mut m = Vec::with_capacity(domain.d1.size as usize);
         m.extend(self.lookup_multiplicities[&table_id].to_vec());
         if table_id.length() < (domain.d1.size as usize) {
@@ -147,22 +159,107 @@ impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
+    WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    /// Create a new empty-state witness builder.
     pub fn create() -> Self {
-        let mut lookups = BTreeMap::new();
+        let mut lookups_row = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
-        for table_id in LookupTable::<Ff>::iter() {
-            lookups.insert(table_id, Vec::new());
+        for table_id in LT::iter() {
+            lookups_row.insert(table_id, Vec::new());
             lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
         }
 
         Self {
-            witness: Witness {
-                cols: Box::new([F::zero(); SER_N_COLUMNS]),
-            },
+            witness: vec![Witness {
+                cols: Box::new([F::zero(); CIX_COL_N]),
+            }],
 
             lookup_multiplicities,
-            lookups,
+            lookups: vec![lookups_row],
+        }
+    }
+
+    /// Generates proof inputs, repacking/collecting internal witness builder state.
+    pub fn get_proof_inputs(
+        &self,
+        domain: EvaluationDomains<F>,
+        lookup_tables_data: BTreeMap<LT, Vec<F>>,
+    ) -> ProofInputs<CIX_COL_N, F, LT> {
+        let domain_size: usize = domain.d1.size as usize;
+        // Boxing to avoid stack overflow
+        let mut witness: Box<Witness<CIX_COL_N, Vec<F>>> = Box::new(Witness {
+            cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
+        });
+
+        let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
+        for table_id in LT::iter() {
+            // Find how many lookups are done per table.
+            let number_of_lookups = self.lookups[0].get(&table_id).unwrap().len();
+            // Technically the number of lookups must be the same per
+            // row, but let's check if it's actually so.
+            for (i, lookup_row) in self.lookups.iter().enumerate().take(domain_size) {
+                let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
+                assert!(
+                    number_of_lookups == number_of_lookups_currow,
+                    "Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookups:?}"
+                );
+            }
+            // +1 for the fixed table
+            lookup_tables.insert(table_id, vec![vec![]; number_of_lookups + 1]);
+        }
+
+        for witness_row in self.witness.iter().take(domain_size) {
+            // Filling actually used rows
+            for j in 0..CIX_COL_N {
+                witness.cols[j].push(witness_row.cols[j]);
+            }
+        }
+
+        for lookup_row in self.lookups.iter().take(domain_size) {
+            for (table_id, table) in lookup_tables.iter_mut() {
+                for (j, lookup) in lookup_row.get(table_id).unwrap().iter().enumerate() {
+                    table[j].push(lookup.clone())
+                }
+            }
+        }
+
+        let mut lookup_multiplicities: BTreeMap<LT, Vec<F>> = BTreeMap::new();
+        // Counting multiplicities & adding fixed column into the last column of every table.
+        for (table_id, table) in lookup_tables.iter_mut() {
+            let lookup_m = self.get_lookup_multiplicities(domain, *table_id);
+            lookup_multiplicities.insert(*table_id, lookup_m.clone());
+            let lookup_t = lookup_tables_data[table_id]
+                .iter()
+                .enumerate()
+                .map(|(i, v)| Logup {
+                    table_id: *table_id,
+                    numerator: -lookup_m[i],
+                    value: vec![*v],
+                });
+            *(table.last_mut().unwrap()) = lookup_t.collect();
+        }
+
+        let logups: Vec<LogupWitness<F, LT>> = lookup_tables
+            .iter()
+            .filter_map(|(table_id, table)| {
+                // Only add a table if it's used. Otherwise lookups fail.
+                if !table.is_empty() && !table[0].is_empty() {
+                    Some(LogupWitness {
+                        f: table.clone(),
+                        m: lookup_multiplicities[table_id].clone(),
+                        table_id: *table_id,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        ProofInputs {
+            evaluations: *witness,
+            logups,
         }
     }
 }
@@ -170,9 +267,11 @@ impl<F: PrimeField, Ff: PrimeField> WitnessBuilderEnv<F, Ff> {
 #[cfg(test)]
 mod tests {
     use crate::{
+        columns::ColumnIndexer,
         serialization::{
             column::SerializationColumn,
             interpreter::{deserialize_field_element, InterpreterEnv},
+            lookups::LookupTable,
             witness::WitnessBuilderEnv,
             N_INTERMEDIATE_LIMBS,
         },
@@ -212,7 +311,11 @@ mod tests {
             let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
             limb0.to_biguint().try_into().unwrap()
         };
-        let mut dummy_env = WitnessBuilderEnv::<Fp, Ff1>::create();
+        let mut dummy_env = WitnessBuilderEnv::<
+            Fp,
+            { <SerializationColumn as ColumnIndexer>::COL_N },
+            LookupTable<Ff1>,
+        >::create();
         deserialize_field_element(
             &mut dummy_env,
             [
@@ -227,7 +330,7 @@ mod tests {
         for (i, limb) in limbs_to_assert.iter().enumerate() {
             assert_eq!(
                 Fp::from(*limb),
-                dummy_env.read_column_direct(SerializationColumn::ChalKimchi(i))
+                dummy_env.read_column(SerializationColumn::ChalKimchi(i))
             );
         }
 
@@ -243,7 +346,7 @@ mod tests {
                     .collect::<Vec<bool>>();
                 let t = Fp::from_bits(le_bits).unwrap();
                 let intermediate_v =
-                    dummy_env.read_column_direct(SerializationColumn::ChalIntermediate(j));
+                    dummy_env.read_column(SerializationColumn::ChalIntermediate(j));
                 assert_eq!(
                     t,
                     intermediate_v,
@@ -266,7 +369,7 @@ mod tests {
                 .take(LIMB_BITSIZE)
                 .collect::<Vec<bool>>();
             let t = Fp::from_bits(le_bits).unwrap();
-            let converted_v = dummy_env.read_column_direct(SerializationColumn::ChalConverted(i));
+            let converted_v = dummy_env.read_column(SerializationColumn::ChalConverted(i));
             assert_eq!(
                 t,
                 converted_v,

@@ -21,6 +21,7 @@ pub enum TestColumnIndexer {
 }
 
 impl ColumnIndexer for TestColumnIndexer {
+    const COL_N: usize = TEST_N_COLUMNS;
     fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);

@@ -8,25 +8,21 @@ use std::collections::BTreeMap;
 use crate::{
     columns::{Column, ColumnIndexer},
     expr::E,
-    logup::constraint_lookups,
-    serialization::{
-        column::SerializationColumn,
-        interpreter::InterpreterEnv,
-        lookups::{Lookup, LookupTable},
-    },
+    logup::{constraint_lookups, Logup, LookupTableID},
+    serialization::interpreter::InterpreterEnv,
 };
 
-pub struct ConstraintBuilderEnv<F: PrimeField, Ff: PrimeField> {
+pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
     /// The index can be used to differentiate the constraints used by different
     /// calls to the interpreter function, and let the callers ordered them for
     /// folding for instance.
     pub constraints: Vec<(usize, Expr<ConstantExpr<F>, Column>)>,
     pub constrain_index: usize,
-    pub lookups: BTreeMap<LookupTable<Ff>, Vec<Lookup<E<F>, Ff>>>,
+    pub lookups: BTreeMap<LT, Vec<Logup<E<F>, LT>>>,
 }
 
-impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
+impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     pub fn create() -> Self {
         Self {
             constraints: vec![],
@@ -36,12 +32,12 @@ impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderEnv<F, Ff> {
-    type Position = Column;
-
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> InterpreterEnv<F, CIx, LT>
+    for ConstraintBuilderEnv<F, LT>
+{
     type Variable = E<F>;
 
-    fn add_constraint(&mut self, cst: Self::Variable) {
+    fn assert_zero(&mut self, cst: Self::Variable) {
         // FIXME: We should enforce that we add the same expression
         // Maybe we could have a digest of the expression
         let index = self.constrain_index;
@@ -49,29 +45,26 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderE
         self.constrain_index += 1;
     }
 
-    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
+    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
         let y = Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
+            col: position.to_column(),
             row: CurrOrNext::Curr,
         }));
-        self.add_constraint(y.clone() - x.clone());
+        let diff: Self::Variable = y.clone() - x.clone();
+        <Self as InterpreterEnv<F, CIx, LT>>::assert_zero(self, diff);
         y
     }
 
-    fn read_column(&self, position: Self::Position) -> Self::Variable {
+    fn read_column(&self, position: CIx) -> Self::Variable {
         Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
+            col: position.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
 
-    fn get_column(pos: SerializationColumn) -> Self::Position {
-        pos.to_column()
-    }
-
-    fn lookup(&mut self, table_id: LookupTable<Ff>, value: &Self::Variable) {
+    fn lookup(&mut self, table_id: LT, value: &Self::Variable) {
         let one = ConstantExpr::from(ConstantTerm::Literal(F::one()));
-        let lookup = Lookup {
+        let lookup = Logup {
             table_id,
             numerator: Expr::Atom(ExprInner::Constant(one)),
             value: vec![value.clone()],
@@ -94,18 +87,18 @@ impl<F: PrimeField, Ff: PrimeField> InterpreterEnv<F, Ff> for ConstraintBuilderE
         _x: &Self::Variable,
         _highest_bit: u32,
         _lowest_bit: u32,
-        position: Self::Position,
+        position: CIx,
     ) -> Self::Variable {
         // No constraint added. It is supposed that the caller will constraint
         // later the returned variable and/or do a range check.
         Expr::Atom(ExprInner::Cell(Variable {
-            col: position,
+            col: position.to_column(),
             row: CurrOrNext::Curr,
         }))
     }
 }
 
-impl<F: PrimeField, Ff: PrimeField> ConstraintBuilderEnv<F, Ff> {
+impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     pub fn get_constraints(&self) -> Vec<E<F>> {
         let mut constraints: Vec<E<F>> = vec![];
 

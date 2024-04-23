@@ -29,6 +29,7 @@ pub enum SerializationColumn {
 }
 
 impl ColumnIndexer for SerializationColumn {
+    const COL_N: usize = SER_N_COLUMNS;
     fn to_column(self) -> Column {
         match self {
             Self::ChalKimchi(j) => {
