@@ -137,12 +137,6 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -159,8 +153,6 @@
 </span><span class="kw">pub struct </span>ColumnEnvironment&lt;<span class="lifetime">'a</span>, <span class="kw">const </span>N: usize, F: FftField, ID: LookupTableID&gt; {
     <span class="doccomment">/// The witness column polynomials
     </span><span class="kw">pub </span>witness: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Witness&lt;N, Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt;,
-    <span class="doccomment">/// The coefficient column polynomials
-    </span><span class="kw">pub </span>coefficients: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     </span><span class="kw">pub </span>l0_1: F,
@@ -185,16 +177,12 @@
         col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
         <span class="kw">let </span>witness_length: usize = <span class="self">self</span>.witness.len();
-        <span class="kw">let </span>coefficients_length: usize = <span class="self">self</span>.coefficients.len();
         <span class="kw">match </span><span class="kw-2">*</span>col {
             <span class="comment">// Handling the "relation columns"
             </span><span class="self">Self</span>::Column::X(i) =&gt; {
                 <span class="kw">if </span>i &lt; witness_length {
                     <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[i];
                     <span class="prelude-val">Some</span>(res)
-                } <span class="kw">else if </span>i &lt; witness_length + coefficients_length {
-                    <span class="comment">// FIXME and add a test
-                    </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.coefficients[i])
                 } <span class="kw">else </span>{
                     <span class="comment">// TODO: add a test for this
                     </span><span class="macro">panic!</span>(<span class="string">"Requested column with index {:?} but the given witness is meant for {:?} columns"</span>, i, witness_length)

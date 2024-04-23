@@ -487,10 +487,6 @@
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -676,9 +672,6 @@
     <span class="comment">//~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
     </span><span class="kw">let </span>alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
-    <span class="comment">// TODO These should be evaluations of fixed coefficient polys
-    </span><span class="kw">let </span>coefficient_evals_env: Vec&lt;Evaluations&lt;G::ScalarField, R2D&lt;G::ScalarField&gt;&gt;&gt; = <span class="macro">vec!</span>[];
-
     <span class="kw">let </span>zk_rows = <span class="number">0</span>;
     <span class="kw">let </span>column_env = {
         <span class="kw">let </span>challenges = Challenges {
@@ -697,7 +690,6 @@
             },
             challenges,
             witness: <span class="kw-2">&amp;</span>witness_evals,
-            coefficients: <span class="kw-2">&amp;</span>coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 logup::prover::QuotientPolynomialEnvironment {
