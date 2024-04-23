@@ -2558,6 +2558,15 @@
 <a href="#2556" id="2556">2556</a>
 <a href="#2557" id="2557">2557</a>
 <a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
+<a href="#2562" id="2562">2562</a>
+<a href="#2563" id="2563">2563</a>
+<a href="#2564" id="2564">2564</a>
+<a href="#2565" id="2565">2565</a>
+<a href="#2566" id="2566">2566</a>
+<a href="#2567" id="2567">2567</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -4837,6 +4846,15 @@
                         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">8</span>, <span class="number">0</span>, pos) }
                     },
                 ]
+            };
+            <span class="comment">// Checking that v is the correct decomposition.
+            </span>{
+                <span class="kw">let </span>res = value
+                    - v0.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>)
+                    - v1.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>)
+                    - v2.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>)
+                    - v3.clone();
+                env.is_zero(<span class="kw-2">&amp;</span>res)
             };
             env.write_memory(<span class="kw-2">&amp;</span>addr, v0);
             env.write_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">1</span>)), v1);
