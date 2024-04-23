@@ -110,7 +110,7 @@ impl<F: Field> Interpreter<F> for Env<F> {
             if lookup.magnitude == Self::one() {
                 // Check that the lookup value is in the table
                 if let Some(idx) = LookupTable::is_in_table(
-                    &self.tables.get_mut(&lookup.table_id).unwrap(),
+                    self.tables.get_mut(&lookup.table_id).unwrap(),
                     lookup.value,
                 ) {
                     self.multiplicities.get_mut(&lookup.table_id).unwrap()[idx] += 1;

@@ -15,6 +15,7 @@ use kimchi_msm::{LogupTable, LogupWitness, LookupTableID};
 /// The lookups struct based on RAMLookups for the VM table IDs
 pub(crate) type Lookup<F> = RAMLookup<F, LookupTableIDs>;
 
+#[allow(dead_code)]
 /// Represents a witness of one instance of the lookup argument of the zkVM project
 pub(crate) type LookupWitness<F> = LogupWitness<F, LookupTableIDs>;
 
