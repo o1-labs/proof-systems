@@ -183,9 +183,6 @@ where
     //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
-    // TODO These should be evaluations of fixed coefficient polys
-    let coefficient_evals_env: Vec<Evaluations<G::ScalarField, R2D<G::ScalarField>>> = vec![];
-
     let zk_rows = 0;
     let column_env = {
         let challenges = Challenges {
@@ -204,7 +201,6 @@ where
             },
             challenges,
             witness: &witness_evals,
-            coefficients: &coefficient_evals_env,
             l0_1: l0_1(domain.d1),
             lookup: Option::map(lookup_env.as_ref(), |lookup_env| {
                 logup::prover::QuotientPolynomialEnvironment {

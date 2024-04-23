@@ -14,8 +14,6 @@ use kimchi::circuits::{
 pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID> {
     /// The witness column polynomials
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
-    /// The coefficient column polynomials
-    pub coefficients: &'a Vec<Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
@@ -40,16 +38,12 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
         let witness_length: usize = self.witness.len();
-        let coefficients_length: usize = self.coefficients.len();
         match *col {
             // Handling the "relation columns"
             Self::Column::X(i) => {
                 if i < witness_length {
                     let res = &self.witness[i];
                     Some(res)
-                } else if i < witness_length + coefficients_length {
-                    // FIXME and add a test
-                    Some(&self.coefficients[i])
                 } else {
                     // TODO: add a test for this
                     panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
