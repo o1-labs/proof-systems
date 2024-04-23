@@ -208,7 +208,7 @@ pub fn main() -> ExitCode {
         for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
             // Prove only if the instruction was executed
             // and if the number of constraints is nonzero (otherwise quotient polynomial cannot be created)
-            if mips_trace.in_circuit(instr) && mips_trace.constraints[&instr].len() > 0 {
+            if mips_trace.in_circuit(instr) && !mips_trace.constraints[&instr].is_empty() {
                 debug!("Checking MIPS circuit {:?}", instr);
                 let mips_result = prove::<
                     _,
