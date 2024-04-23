@@ -844,6 +844,18 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns the number of leading 1s in `x`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn count_leading_ones(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
