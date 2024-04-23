@@ -38,7 +38,7 @@ fn test_mips_number_constraints() {
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         match instr {
             RType(rtype) => match rtype {
-                JumpRegister | SyscallExitGroup | Sync | MoveToHi | CountLeadingOnes => {
+                JumpRegister | SyscallExitGroup | Sync | CountLeadingOnes => {
                     assert_num_constraints(&instr, 0)
                 }
                 ShiftLeftLogical
@@ -52,6 +52,7 @@ fn test_mips_number_constraints() {
                 | MoveFromHi
                 | MoveFromLo
                 | MoveToLo
+                | MoveToHi
                 | Add
                 | AddUnsigned
                 | Sub
