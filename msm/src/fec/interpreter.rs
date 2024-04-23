@@ -321,7 +321,7 @@ pub fn constrain_ec_addition<
             // If it's the highest limb, we need to check that it's representing a field element.
             env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
         } else {
-            env.lookup(LookupTable::RangeCheck15(PhantomData), x);
+            env.lookup(LookupTable::RangeCheck15, x);
         }
     }
 
@@ -331,7 +331,7 @@ pub fn constrain_ec_addition<
         .chain(q2_limbs_small.iter())
         .chain(q3_limbs_small.iter())
     {
-        env.lookup(LookupTable::RangeCheck15(PhantomData), x);
+        env.lookup(LookupTable::RangeCheck15, x);
     }
 
     // Signs must be -1 or 1.
