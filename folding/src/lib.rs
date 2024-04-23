@@ -1,10 +1,10 @@
-use crate::circuits::gate::CurrOrNext;
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 use instance_witness::{RelaxableInstance, RelaxablePair};
+use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
