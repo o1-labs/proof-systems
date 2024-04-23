@@ -1,3 +1,4 @@
+use log::debug;
 use crate::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -157,6 +158,7 @@ where
     // -- end computing the running sum in lookup_aggregation
     // -- End of Logup
 
+    debug!("Computing witness evals");
     let witness_evals: Witness<N, Evaluations<G::ScalarField, R2D<G::ScalarField>>> = {
         let domain_eval = if max_degree <= 4 {
             domain.d4
@@ -183,6 +185,7 @@ where
     //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
+    debug!("Building env");
     let zk_rows = 0;
     let column_env = {
         let challenges = Challenges {
@@ -214,9 +217,11 @@ where
         }
     };
 
+    debug!("Building quotient poly");
     let quotient_poly: DensePolynomial<G::ScalarField> = {
         // Only for debugging purposes
-        for expr in constraints.iter() {
+        for (i, expr) in constraints.iter().enumerate() {
+            debug!("Processing constraint {:}/{:}", i, constraints.len());
             let fail_q_division =
                 ProverError::ConstraintNotSatisfied(format!("Unsatisfied expression: {:}", expr));
             // Check this expression are witness satisfied
@@ -230,6 +235,7 @@ where
             }
         }
 
+        debug!("Combining the constraints");
         // Compute ∑ α^i constraint_i as an expression
         let combined_expr =
             Expr::combine_constraints(0..(constraints.len() as u32), constraints.clone());
@@ -246,9 +252,11 @@ where
         // Reminder: to compute P(X) = P_{1}(X) * P_{2}(X), from the evaluations
         // of P_{1} and P_{2}, with deg(P_{1}) = deg(P_{2}(X)) = N, we must have
         // 2N evaluation points to compute P as deg(P(X)) <= 2N.
+        debug!("Evaluating the quotient polynomial to interpolate, i.e. computing the evaluations over {:?}", domain);
         let expr_evaluation: Evaluations<G::ScalarField, R2D<G::ScalarField>> =
             combined_expr.evaluations(&column_env);
 
+        debug!("Interpolating ");
         // And we interpolate using the evaluations
         let expr_evaluation_interpolated = expr_evaluation.interpolate();
 
@@ -371,6 +379,7 @@ where
         }
     }
 
+    debug!("Computing ft");
     // Compute ft(X) = \
     //   (1 - ζ^n) \
     //    (t_0(X) + ζ^n t_1(X) + ... + ζ^{kn} t_{k}(X))
@@ -389,6 +398,7 @@ where
         t_chunked.scale(G::ScalarField::one() - evaluation_point_to_domain_size)
     };
 
+    debug!("Evaluating ft");
     // We only evaluate at ζω as the verifier can compute the
     // evaluation at ζ from the independent evaluations at ζ of the
     // witness columns because ft(X) is the constraint polynomial, built from
@@ -413,6 +423,7 @@ where
         elems: vec![G::ScalarField::one(); d1_size],
     };
 
+    debug!("Gathering all polynomials for the opening proof");
     // Gathering all polynomials to use in the opening proof
     let mut polynomials: Vec<_> = (&witness_polys)
         .into_par_iter()
@@ -456,6 +467,7 @@ where
     }
     polynomials.push((coefficients_form(&ft), non_hiding(1)));
 
+    debug!("Computing the opening proof");
     let opening_proof = OpenProof::open::<_, _, R2D<G::ScalarField>>(
         srs,
         &group_map,
@@ -475,6 +487,7 @@ where
         }
     };
 
+    debug!("Returning the proof");
     Ok(Proof {
         proof_comms: ProofCommitments {
             witness_comms,

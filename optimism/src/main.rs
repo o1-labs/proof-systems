@@ -206,6 +206,7 @@ pub fn main() -> ExitCode {
     {
         // MIPS
         for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
+            debug!("Instr: {:?}", instr);
             // Prove only if the instruction was executed
             if mips_trace.in_circuit(instr) {
                 debug!("Checking MIPS circuit {:?}", instr);
