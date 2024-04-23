@@ -1626,7 +1626,17 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::CountLeadingOnes => (),
+        RTypeInstruction::CountLeadingOnes => {
+            let rs = env.read_register(&rs);
+            let leading_ones = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.count_leading_ones(&rs, pos) }
+            };
+            env.write_register(&rd, leading_ones);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
         RTypeInstruction::CountLeadingZeros => {
             let rs = env.read_register(&rs);
             let leading_zeros = {
