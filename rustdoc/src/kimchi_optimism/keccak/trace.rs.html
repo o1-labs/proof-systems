@@ -113,6 +113,7 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{array, collections::HashMap};
 
 <span class="kw">use </span>ark_ff::Field;
@@ -132,16 +133,16 @@
 <span class="doccomment">/// The Keccak circuit trace
 </span><span class="kw">pub type </span>KeccakTrace&lt;F&gt; = Trace&lt;ZKVM_KECCAK_COLS, Steps, F&gt;;
 
-<span class="kw">fn </span>standardize(step: Steps) -&gt; Steps {
+<span class="kw">fn </span>standardize(opcode: Steps) -&gt; Steps {
     <span class="comment">// Note that steps of execution are obtained from the constraints environment.
     // There, the round steps can be anything between 0 and 23 (for the 24 permutations).
     // Nonetheless, all of them contain the same set of constraints and lookups.
     // Therefore, we want to treat them as the same step when it comes to splitting the
     // circuit into multiple instances with shared behaviour. By default, we use `Round(0)`.
-    </span><span class="kw">if let </span>Round(<span class="kw">_</span>) = step {
+    </span><span class="kw">if let </span>Round(<span class="kw">_</span>) = opcode {
         Round(<span class="number">0</span>)
     } <span class="kw">else </span>{
-        step
+        opcode
     }
 }
 
@@ -154,28 +155,27 @@
             lookups: Default::default(),
         };
 
-        <span class="kw">for </span>step <span class="kw">in </span>Steps::iter().flat_map(|step| step.into_iter()) {
+        <span class="kw">for </span>opcode <span class="kw">in </span>Steps::iter().flat_map(|step| step.into_iter()) {
             circuit.witness.insert(
-                step,
+                opcode,
                 Witness {
                     cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
                 },
             );
             circuit
                 .constraints
-                .insert(step, KeccakEnv::constraints_of(step));
-            circuit.lookups.insert(step, KeccakEnv::lookups_of(step));
+                .insert(opcode, KeccakEnv::constraints_of(opcode));
+            circuit
+                .lookups
+                .insert(opcode, KeccakEnv::lookups_of(opcode));
         }
         circuit
     }
 
-    <span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps, row: <span class="kw-2">&amp;</span>[F; ZKVM_KECCAK_COLS]) {
+    <span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Steps, row: <span class="kw-2">&amp;</span>[F; ZKVM_KECCAK_COLS]) {
         <span class="comment">// Make sure we are using the same round number to refer to round steps
-        </span><span class="kw">let </span><span class="kw-2">mut </span>step = step;
-        <span class="kw">if let </span>Round(<span class="kw">_</span>) = step {
-            step = Round(<span class="number">0</span>);
-        }
-        <span class="self">self</span>.witness.entry(step).and_modify(|wit| {
+        </span><span class="kw">let </span>opcode = standardize(opcode);
+        <span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
             <span class="kw">for </span>(i, value) <span class="kw">in </span>row.iter().enumerate() {
                 <span class="kw">if </span>wit.cols[i].len() &lt; wit.cols[i].capacity() {
                     wit.cols[i].push(<span class="kw-2">*</span>value);
@@ -184,23 +184,25 @@
         });
     }
 
-    <span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps, row: <span class="kw-2">&amp;</span>[F; ZKVM_KECCAK_COLS]) -&gt; usize {
-        <span class="kw">let </span>step = standardize(step);
-        <span class="comment">// No need to check if it is negative, because they are usize.
-        </span><span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>step].cols[<span class="number">0</span>].len();
+    <span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Steps, row: <span class="kw-2">&amp;</span>[F; ZKVM_KECCAK_COLS]) -&gt; usize {
+        <span class="kw">let </span>opcode = standardize(opcode);
+        <span class="kw">let </span>len = <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len();
+        <span class="macro">assert!</span>(len &lt;= <span class="self">self</span>.domain_size);
+        <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
         <span class="comment">// When we reach the domain size, we don't need to pad anymore.
         </span><span class="kw">for _ in </span><span class="number">0</span>..rows_to_add {
-            <span class="self">self</span>.push_row(step, row);
+            <span class="self">self</span>.push_row(opcode, row);
         }
         rows_to_add
     }
 
-    <span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) -&gt; usize {
-        <span class="kw">let </span>step = standardize(step);
-        <span class="comment">// No need to check if it is negative, because they are usize.
-        </span><span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>step].cols[<span class="number">0</span>].len();
+    <span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Steps) -&gt; usize {
+        <span class="kw">let </span>opcode = standardize(opcode);
+        <span class="kw">let </span>len = <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len();
+        <span class="macro">assert!</span>(len &lt;= <span class="self">self</span>.domain_size);
+        <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
         <span class="comment">// When we reach the domain size, we don't need to pad anymore.
-        </span><span class="self">self</span>.witness.entry(step).and_modify(|wit| {
+        </span><span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
             <span class="kw">for </span>col <span class="kw">in </span>wit.cols.iter_mut() {
                 col.extend((<span class="number">0</span>..rows_to_add).map(|<span class="kw">_</span>| F::zero()));
             }
@@ -208,21 +210,21 @@
         rows_to_add
     }
 
-    <span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: Steps) -&gt; usize {
+    <span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Steps) -&gt; usize {
         <span class="comment">// We only want to pad non-empty witnesses.
-        </span><span class="kw">if </span>!<span class="self">self</span>.in_circuit(step) {
+        </span><span class="kw">if </span>!<span class="self">self</span>.in_circuit(opcode) {
             <span class="number">0
         </span>} <span class="kw">else </span>{
-            <span class="kw">let </span>step = standardize(step);
+            <span class="kw">let </span>opcode = standardize(opcode);
             <span class="comment">// We keep track of the first row of the non-empty witness, which is a real step witness.
-            </span><span class="kw">let </span>row = array::from_fn(|i| <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>step].cols[i][<span class="number">0</span>]);
-            <span class="self">self</span>.pad_with_row(step, <span class="kw-2">&amp;</span>row)
+            </span><span class="kw">let </span>row = array::from_fn(|i| <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[i][<span class="number">0</span>]);
+            <span class="self">self</span>.pad_with_row(opcode, <span class="kw-2">&amp;</span>row)
         }
     }
 
     <span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>step <span class="kw">in </span>Steps::iter().flat_map(|step| step.into_iter()) {
-            <span class="self">self</span>.pad_dummy(step);
+        <span class="kw">for </span>opcode <span class="kw">in </span>Steps::iter().flat_map(|opcode| opcode.into_iter()) {
+            <span class="self">self</span>.pad_dummy(opcode);
         }
     }
 }

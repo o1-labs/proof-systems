@@ -93,13 +93,13 @@
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>COLUMNS: usize, SELECTOR: Eq + Hash, F: Zero&gt; Trace&lt;COLUMNS, SELECTOR, F&gt; {
     <span class="doccomment">/// Returns a boolean indicating whether the witness for the given selector was ever found in the cirucit or not.
-    </span><span class="kw">pub fn </span>in_circuit(<span class="kw-2">&amp;</span><span class="self">self</span>, step: SELECTOR) -&gt; bool {
-        !<span class="self">self</span>.witness[<span class="kw-2">&amp;</span>step].cols[<span class="number">0</span>].is_empty()
+    </span><span class="kw">pub fn </span>in_circuit(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: SELECTOR) -&gt; bool {
+        !<span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].is_empty()
     }
 
     <span class="doccomment">/// Resets the witness after folding
-    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: SELECTOR) {
-        (<span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>step).unwrap().cols.as_mut())
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR) {
+        (<span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>opcode).unwrap().cols.as_mut())
             .iter_mut()
             .for_each(Vec::clear);
     }
@@ -116,23 +116,23 @@
     </span><span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="self">Self</span>;
 
     <span class="doccomment">/// Add a witness row to the circuit
-    </span><span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: SELECTOR, row: <span class="kw-2">&amp;</span>[F; COLUMNS]);
+    </span><span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR, row: <span class="kw-2">&amp;</span>[F; COLUMNS]);
 
-    <span class="doccomment">/// Pad the rows of one selector with the given row until
+    <span class="doccomment">/// Pad the rows of one opcode with the given row until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
-    </span><span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: SELECTOR, row: <span class="kw-2">&amp;</span>[F; COLUMNS]) -&gt; usize;
+    </span><span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR, row: <span class="kw-2">&amp;</span>[F; COLUMNS]) -&gt; usize;
 
-    <span class="doccomment">/// Pads the rows of one selector with zero rows until
+    <span class="doccomment">/// Pads the rows of one opcode with zero rows until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
-    </span><span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: SELECTOR) -&gt; usize;
+    </span><span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR) -&gt; usize;
 
-    <span class="doccomment">/// Pad the rows of one selector with the first row until
+    <span class="doccomment">/// Pad the rows of one opcode with the first row until
     /// reaching the domain size if needed.
     /// It only tries to pad witnesses which are non empty.
     /// Returns the number of rows that were added.
-    </span><span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, step: SELECTOR) -&gt; usize;
+    </span><span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR) -&gt; usize;
 
     <span class="doccomment">/// Pads the rows of the witnesses until reaching the domain size using the first
     /// row repeatedly.

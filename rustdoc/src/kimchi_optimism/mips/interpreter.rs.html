@@ -2573,6 +2573,12 @@
 <a href="#2571" id="2571">2571</a>
 <a href="#2572" id="2572">2572</a>
 <a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a>
+<a href="#2575" id="2575">2575</a>
+<a href="#2576" id="2576">2576</a>
+<a href="#2577" id="2577">2577</a>
+<a href="#2578" id="2578">2578</a>
+<a href="#2579" id="2579">2579</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -3965,7 +3971,13 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::MoveToHi =&gt; (),
+        RTypeInstruction::MoveToHi =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_HI <span class="kw">as </span>u32), rs);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::MoveFromLo =&gt; {
             <span class="kw">let </span>lo = env.read_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_LO <span class="kw">as </span>u32));
             env.write_register(<span class="kw-2">&amp;</span>rd, lo);
