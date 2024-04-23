@@ -2278,6 +2278,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                     },
                 ]
             };
+            // Checking that v is the correct decomposition.
+            {
+                let res = value
+                    - v0.clone() * Env::constant(1 << 24)
+                    - v1.clone() * Env::constant(1 << 16)
+                    - v2.clone() * Env::constant(1 << 8)
+                    - v3.clone();
+                env.is_zero(&res)
+            };
             env.write_memory(&addr, v0);
             env.write_memory(&(addr.clone() + Env::constant(1)), v1);
             env.write_memory(&(addr.clone() + Env::constant(2)), v2);
