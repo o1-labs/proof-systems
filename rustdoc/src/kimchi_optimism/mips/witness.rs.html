@@ -1196,6 +1196,18 @@
 <a href="#1194" id="1194">1194</a>
 <a href="#1195" id="1195">1195</a>
 <a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Hint, Meta, Page, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK,
@@ -1759,6 +1771,18 @@
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
         <span class="kw">let </span>res = x.leading_zeros();
+        <span class="kw">let </span>res = res <span class="kw">as </span>u64;
+        <span class="self">self</span>.write_column(position, res);
+        res
+    }
+
+    <span class="kw">unsafe fn </span>count_leading_ones(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>x: u32 = (<span class="kw-2">*</span>x).try_into().unwrap();
+        <span class="kw">let </span>res = x.leading_ones();
         <span class="kw">let </span>res = res <span class="kw">as </span>u64;
         <span class="self">self</span>.write_column(position, res);
         res

@@ -2558,27 +2558,6 @@
 <a href="#2556" id="2556">2556</a>
 <a href="#2557" id="2557">2557</a>
 <a href="#2558" id="2558">2558</a>
-<a href="#2559" id="2559">2559</a>
-<a href="#2560" id="2560">2560</a>
-<a href="#2561" id="2561">2561</a>
-<a href="#2562" id="2562">2562</a>
-<a href="#2563" id="2563">2563</a>
-<a href="#2564" id="2564">2564</a>
-<a href="#2565" id="2565">2565</a>
-<a href="#2566" id="2566">2566</a>
-<a href="#2567" id="2567">2567</a>
-<a href="#2568" id="2568">2568</a>
-<a href="#2569" id="2569">2569</a>
-<a href="#2570" id="2570">2570</a>
-<a href="#2571" id="2571">2571</a>
-<a href="#2572" id="2572">2572</a>
-<a href="#2573" id="2573">2573</a>
-<a href="#2574" id="2574">2574</a>
-<a href="#2575" id="2575">2575</a>
-<a href="#2576" id="2576">2576</a>
-<a href="#2577" id="2577">2577</a>
-<a href="#2578" id="2578">2578</a>
-<a href="#2579" id="2579">2579</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -3425,6 +3404,18 @@
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="doccomment">/// Returns the number of leading 1s in `x`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    </span><span class="kw">unsafe fn </span>count_leading_ones(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
@@ -3539,7 +3530,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::ShiftRightLogical =&gt; {
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
@@ -3551,7 +3541,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::ShiftRightArithmetic =&gt; {
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
@@ -3563,7 +3552,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::ShiftLeftLogicalVariable =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -3576,7 +3564,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::ShiftRightLogicalVariable =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -3589,7 +3576,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::ShiftRightArithmeticVariable =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -3602,20 +3588,17 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::JumpRegister =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(addr);
-            <span class="kw">return</span>;
         }
         RTypeInstruction::JumpAndLinkRegister =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>rs);
             env.write_register(<span class="kw-2">&amp;</span>rd, instruction_pointer + Env::constant(<span class="number">8u32</span>));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(addr);
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallMmap =&gt; {
             <span class="kw">let </span>requested_alloc_size = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
@@ -3646,13 +3629,11 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), Env::constant(<span class="number">0</span>));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallExitGroup =&gt; {
             <span class="kw">let </span>exit_code = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
             env.report_exit(<span class="kw-2">&amp;</span>exit_code);
             env.set_halted(Env::constant(<span class="number">1</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallReadHint =&gt; {
             <span class="comment">// We don't really write here, since the value is unused, per the cannon
@@ -3661,7 +3642,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), length);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallReadPreimage =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
@@ -3680,7 +3660,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), Env::constant(<span class="number">0</span>));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallReadOther =&gt; {
             <span class="kw">let </span>fd_id = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
@@ -3705,7 +3684,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallWriteHint =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
@@ -3716,7 +3694,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), Env::constant(<span class="number">0</span>));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallWritePreimage =&gt; {
             <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
@@ -3867,8 +3844,7 @@
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
-        }
+        </span>}
         RTypeInstruction::SyscallWriteOther =&gt; {
             <span class="kw">let </span>fd_id = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
             <span class="kw">let </span>write_length = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">6</span>));
@@ -3896,7 +3872,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallFcntl =&gt; {
             <span class="kw">let </span>fd_id = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
@@ -3927,7 +3902,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SyscallOther =&gt; {
             <span class="kw">let </span>syscall_num = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>));
@@ -3939,7 +3913,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), v1);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MoveZero =&gt; {
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
@@ -3948,7 +3921,6 @@
             env.write_register_if(<span class="kw-2">&amp;</span>rd, rs, <span class="kw-2">&amp;</span>is_zero);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MoveNonZero =&gt; {
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
@@ -3957,40 +3929,34 @@
             env.write_register_if(<span class="kw-2">&amp;</span>rd, rs, <span class="kw-2">&amp;</span>is_zero);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Sync =&gt; {
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MoveFromHi =&gt; {
             <span class="kw">let </span>hi = env.read_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_HI <span class="kw">as </span>u32));
             env.write_register(<span class="kw-2">&amp;</span>rd, hi);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MoveToHi =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_HI <span class="kw">as </span>u32), rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MoveFromLo =&gt; {
             <span class="kw">let </span>lo = env.read_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_LO <span class="kw">as </span>u32));
             env.write_register(<span class="kw-2">&amp;</span>rd, lo);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MoveToLo =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_LO <span class="kw">as </span>u32), rs);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Multiply =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4005,7 +3971,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_LO <span class="kw">as </span>u32), lo);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MultiplyUnsigned =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4020,7 +3985,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_LO <span class="kw">as </span>u32), lo);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Div =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4035,7 +3999,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_HI <span class="kw">as </span>u32), remainder);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::DivUnsigned =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4050,7 +4013,6 @@
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_HI <span class="kw">as </span>u32), remainder);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Add =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4066,7 +4028,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::AddUnsigned =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4082,7 +4043,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Sub =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4098,7 +4058,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SubUnsigned =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4114,7 +4073,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::And =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4127,7 +4085,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Or =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4140,7 +4097,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Xor =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4153,7 +4109,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::Nor =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4166,7 +4121,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SetLessThan =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4179,7 +4133,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::SetLessThanUnsigned =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4192,7 +4145,6 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
         RTypeInstruction::MultiplyToRegister =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -4205,9 +4157,18 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
-        RTypeInstruction::CountLeadingOnes =&gt; (),
+        RTypeInstruction::CountLeadingOnes =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>leading_ones = {
+                <span class="comment">// FIXME: Constrain
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.count_leading_ones(<span class="kw-2">&amp;</span>rs, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, leading_ones);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+        }
         RTypeInstruction::CountLeadingZeros =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>leading_zeros = {
@@ -4218,11 +4179,8 @@
             env.write_register(<span class="kw-2">&amp;</span>rd, leading_zeros);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
         }
     };
-    <span class="comment">// TODO: Don't halt.
-    </span>env.set_halted(Env::constant(<span class="number">1</span>));
 }
 
 <span class="kw">pub fn </span>interpret_jtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: JTypeInstruction) {
