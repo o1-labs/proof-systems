@@ -256,7 +256,7 @@ pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
     witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
     domain: Radix2EvaluationDomain<ScalarField<CF>>,
-    selector: Option<CF::S>,
+    selector: Option<CF::Selector>,
 }
 
 impl<CF: FoldingConfig> ExtendedEnv<CF> {
@@ -266,7 +266,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
         witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
-        selector: Option<CF::S>,
+        selector: Option<CF::Selector>,
     ) -> Self {
         let inner_instances = [
             instances[0].inner_instance().inner(),
@@ -282,7 +282,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
             selector,
         }
     }
-    pub fn enabled_selector(&self) -> Option<&CF::S> {
+    pub fn enabled_selector(&self) -> Option<&CF::Selector> {
         self.selector.as_ref()
     }
 

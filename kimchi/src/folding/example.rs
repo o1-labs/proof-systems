@@ -291,7 +291,7 @@ enum TestChallenge {
 impl FoldingConfig for TestFoldingConfig {
     type Structure = TestStructure<Fp>;
     type Column = TestColumn;
-    type S = ();
+    type Selector = ();
     type Challenge = TestChallenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;

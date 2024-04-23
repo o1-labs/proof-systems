@@ -29,7 +29,8 @@ pub(crate) struct KeccakConfig;
 
 impl FoldingColumnTrait for KeccakColumn {
     fn is_witness(&self) -> bool {
-        !matches!(self, KeccakColumn::Selector(_))
+        // dynamic selectors KeccakColumn::Selector() count as witnesses
+        true
     }
 }
 

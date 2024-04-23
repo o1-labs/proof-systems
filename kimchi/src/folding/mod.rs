@@ -30,8 +30,8 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
-    //in case of using docomposable folding, if not it can be just ()
-    type S: Clone + Debug + Eq + Hash;
+    //in case of using decomposable folding, if not it can be just ()
+    type Selector: Clone + Debug + Eq + Hash;
 
     /// The type of an abstract challenge that can be found in the expressions
     /// provided as constraints.
@@ -61,7 +61,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
         Self::Witness,
         Self::Column,
         Self::Challenge,
-        Self::S,
+        Self::Selector,
         Structure = Self::Structure,
     >;
 

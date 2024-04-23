@@ -32,7 +32,7 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
     Alpha(usize),
-    Selector(C::S),
+    Selector(C::Selector),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -67,7 +67,7 @@ pub enum ExpExtension<C: FoldingConfig> {
     ExtendedWitness(usize),
     Alpha(usize),
     //in case of using decomposable folding
-    Selector(C::S),
+    Selector(C::Selector),
 }
 
 ///Internal expression used for folding, simplified for that purpose

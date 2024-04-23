@@ -25,7 +25,7 @@ pub struct DecomposableFoldingScheme<CF: FoldingConfig> {
 impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     pub fn new(
         //constraints with a dynamic selector
-        constraints: BTreeMap<CF::S, Vec<FoldingCompatibleExpr<CF>>>,
+        constraints: BTreeMap<CF::Selector, Vec<FoldingCompatibleExpr<CF>>>,
         //constraints to be applied to every single instance regardless of selectors
         common_constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: CF::Srs,
@@ -57,7 +57,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
         &self,
         a: A,
         b: B,
-        selector: Option<CF::S>,
+        selector: Option<CF::Selector>,
     ) -> (
         RelaxedInstance<CF::Curve, CF::Instance>,
         RelaxedWitness<CF::Curve, CF::Witness>,
@@ -100,7 +100,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     }
 }
 
-pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::S> {
+pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::Selector> {
     match exp {
         Operations::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
         _ => None,
