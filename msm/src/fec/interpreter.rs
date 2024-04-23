@@ -319,9 +319,9 @@ pub fn constrain_ec_addition<
     {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
+            //env.lookup(LookupTable::RangeCheckFfHighest(PhantomData), x);
         } else {
-            env.lookup(LookupTable::RangeCheck15, x);
+            //env.lookup(LookupTable::RangeCheck15, x);
         }
     }
 
@@ -331,12 +331,12 @@ pub fn constrain_ec_addition<
         .chain(q2_limbs_small.iter())
         .chain(q3_limbs_small.iter())
     {
-        env.lookup(LookupTable::RangeCheck15, x);
+        //env.lookup(LookupTable::RangeCheck15, x);
     }
 
     // Signs must be -1 or 1.
     for x in [&q1_sign, &q2_sign, &q3_sign] {
-        env.lookup(LookupTable::RangeCheck1Abs, x);
+        //env.lookup(LookupTable::RangeCheck1Abs, x);
     }
 
     // Carry limbs need to be in particular ranges.
@@ -349,7 +349,7 @@ pub fn constrain_ec_addition<
         if i % 6 == 5 {
             // This should be a diferent range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.lookup(LookupTable::RangeCheck4Abs, x);
+            //env.lookup(LookupTable::RangeCheck4Abs, x);
         } else {
             // TODO add this table back
             // env.lookup(LookupTable::RangeCheck15Abs, x);

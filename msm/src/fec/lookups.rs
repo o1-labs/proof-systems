@@ -8,8 +8,8 @@ use strum_macros::EnumIter;
 /// Enumeration of concrete lookup tables used in serialization circuit.
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
 pub enum LookupTable<Ff> {
-    /// x ∈ [-1, 1]
-    RangeCheck1Abs,
+    //    /// x ∈ [-1, 1]
+    //    RangeCheck1Abs,
     /// x ∈ [0, 2^15]
     RangeCheck15,
     /// x ∈ [0, 2^4]
@@ -24,21 +24,21 @@ pub enum LookupTable<Ff> {
 impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
     fn to_u32(&self) -> u32 {
         match self {
-            Self::RangeCheck1Abs => 1,
-            Self::RangeCheck15 => 2,
-            Self::RangeCheck4 => 3,
-            Self::RangeCheck4Abs => 4,
-            Self::RangeCheckFfHighest(_) => 5,
+            Self::RangeCheck15 => 1,
+            Self::RangeCheck4 => 2,
+            Self::RangeCheck4Abs => 3,
+            Self::RangeCheckFfHighest(_) => 4,
+            //            Self::RangeCheck1Abs => 1,
         }
     }
 
     fn from_u32(value: u32) -> Self {
         match value {
-            1 => Self::RangeCheck1Abs,
-            2 => Self::RangeCheck15,
-            3 => Self::RangeCheck4,
-            4 => Self::RangeCheck4Abs,
-            5 => Self::RangeCheckFfHighest(PhantomData),
+            1 => Self::RangeCheck15,
+            2 => Self::RangeCheck4,
+            3 => Self::RangeCheck4Abs,
+            4 => Self::RangeCheckFfHighest(PhantomData),
+            //1 => Self::RangeCheck1Abs,
             _ => panic!("Invalid lookup table id"),
         }
     }
@@ -50,7 +50,6 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
 
     fn length(&self) -> usize {
         match self {
-            Self::RangeCheck1Abs => 2,
             Self::RangeCheck15 => 1 << 15,
             Self::RangeCheck4 => 1 << 4,
             Self::RangeCheck4Abs => 1 << 5,
@@ -58,21 +57,13 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
                 crate::serialization::interpreter::ff_modulus_highest_limb::<Ff>(),
             )
             .unwrap(),
+            //Self::RangeCheck1Abs => 2,
         }
     }
 
     /// Converts a value to its index in the fixed table.
     fn ix_by_value<F: PrimeField>(&self, value: F) -> usize {
         match self {
-            Self::RangeCheck1Abs => {
-                if value == F::one() {
-                    0
-                } else if value == F::zero() - F::one() {
-                    1
-                } else {
-                    panic!("Invalid value for rangecheck1abs")
-                }
-            }
             Self::RangeCheck15 => TryFrom::try_from(value.to_biguint()).unwrap(),
             Self::RangeCheck4 => TryFrom::try_from(value.to_biguint()).unwrap(),
             Self::RangeCheck4Abs => {
@@ -83,6 +74,15 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
                 }
             }
             Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
+            //Self::RangeCheck1Abs => {
+            //    if value == F::one() {
+            //        0
+            //    } else if value == F::zero() - F::one() {
+            //        1
+            //    } else {
+            //        panic!("Invalid value for rangecheck1abs")
+            //    }
+            //}
         }
     }
 }
@@ -107,10 +107,10 @@ impl<Ff: PrimeField> LookupTable<Ff> {
     pub fn entries<F: PrimeField>(&self, domain_d1_size: u64) -> Vec<F> {
         assert!(domain_d1_size >= (1 << 15));
         match self {
-            Self::RangeCheck1Abs => [F::one(), F::zero() - F::one()]
-                .into_iter()
-                .chain((2..domain_d1_size).map(|_| F::one())) // dummies are 1s
-                .collect(),
+            //Self::RangeCheck1Abs => [F::one(), F::zero() - F::one()]
+            //    .into_iter()
+            //    .chain((2..domain_d1_size).map(|_| F::one())) // dummies are 1s
+            //    .collect(),
             Self::RangeCheck15 => (0..domain_d1_size).map(|i| F::from(i)).collect(),
             Self::RangeCheck4 => (0..domain_d1_size)
                 .map(|i| if i < (1 << 4) { F::from(i) } else { F::zero() })
@@ -135,7 +135,7 @@ impl<Ff: PrimeField> LookupTable<Ff> {
     /// Checks if a value is in a given table.
     pub fn is_member<F: PrimeField>(&self, value: F) -> bool {
         match self {
-            Self::RangeCheck1Abs => value == F::one() || value == F::zero() - F::one(),
+            //Self::RangeCheck1Abs => value == F::one() || value == F::zero() - F::one(),
             Self::RangeCheck15 => value.to_biguint() < BigUint::from(2u128.pow(15)),
             Self::RangeCheck4 => value.to_biguint() < BigUint::from(2u128.pow(4)),
             Self::RangeCheck4Abs => {

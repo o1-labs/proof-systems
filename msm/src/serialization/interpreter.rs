@@ -12,6 +12,11 @@ use crate::{
 };
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
+/// A generic environment trait that allows manipulating columns and
+/// requesting lookups. Implies two categories of implementations:
+/// constraint ones (that operate over expressions, building a
+/// circuit), and witness ones (that operate over values, building
+/// values for the circuit).
 pub trait InterpreterEnv<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>

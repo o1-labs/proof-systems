@@ -11,16 +11,21 @@ use o1_utils::FieldHelpers;
 use std::{collections::BTreeMap, iter};
 use strum::IntoEnumIterator;
 
-/// Environment for the serializer interpreter
+/// Witness builder environment. Operates
 pub struct WitnessBuilderEnv<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> {
-    /// Single-row witness columns, in raw form. For accessing [`Witness`], see the
-    /// `get_witness` method.
+    /// The witness columns that the environment is working with.
+    /// Every element of the vector is a row, and the builder is
+    /// always processing the last row.
     pub witness: Vec<Witness<CIX_COL_N, F>>,
 
-    /// Keep track of the lookup multiplicities.
+    /// Lookup multiplicities, a vector of values `m_i` per lookup
+    /// table, where `m_i` is how many times the lookup value number
+    /// `i` was looked up.
     pub lookup_multiplicities: BTreeMap<LT, Vec<F>>,
 
-    /// Keep track of the lookups for each row.
+    /// Lookup requests. Each vector element represents one row, and
+    /// each row is a map from lookup type to a vector of concrete
+    /// lookups requested.
     pub lookups: Vec<BTreeMap<LT, Vec<Logup<F, LT>>>>,
 }
 
@@ -70,6 +75,7 @@ impl<
         *x
     }
 
+    // TODO this does not belong in the generic interpreter, move out.
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
     /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
@@ -94,7 +100,7 @@ impl<
 impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
     WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
-    pub fn write_column(&mut self, position: Column, value: F) {
+    fn write_column(&mut self, position: Column, value: F) {
         match position {
             Column::X(i) => self.witness.last_mut().unwrap().cols[i] = value,
             Column::LookupPartialSum(_) => {
@@ -124,6 +130,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
         }
     }
 
+    /// Progress to the computations on the next row.
     pub fn next_row(&mut self) {
         self.witness.push(Witness {
             cols: Box::new([F::zero(); CIX_COL_N]),
@@ -155,6 +162,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
 impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
     WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
+    /// Create a new empty-state witness builder.
     pub fn create() -> Self {
         let mut lookups_row = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
@@ -173,6 +181,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
         }
     }
 
+    /// Generates proof inputs, repacking/collecting internal witness builder state.
     pub fn get_proof_inputs(
         &self,
         domain: EvaluationDomains<F>,
@@ -194,7 +203,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
                 let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
                 assert!(
                     number_of_lookups == number_of_lookups_currow,
-                    "Different number of lookups in row {i:?} and row 0"
+                    "Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookups:?}"
                 );
             }
             // +1 for the fixed table
