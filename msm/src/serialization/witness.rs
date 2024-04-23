@@ -2,20 +2,13 @@ use crate::{
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
     proof::ProofInputs,
-    serialization::{
-        column::{SerializationColumn, SER_N_COLUMNS},
-        interpreter::InterpreterEnv,
-        lookups::{Lookup, LookupTable},
-        N_INTERMEDIATE_LIMBS,
-    },
+    serialization::interpreter::InterpreterEnv,
     witness::Witness,
-    BN254G1Affine, BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254, N_LIMBS,
 };
 use ark_ff::PrimeField;
-use ark_poly::EvaluationDomain;
-use kimchi::{circuits::domains::EvaluationDomains, curve::KimchiCurve};
+use kimchi::circuits::domains::EvaluationDomains;
 use o1_utils::FieldHelpers;
-use std::{collections::BTreeMap, iter, marker::PhantomData};
+use std::{collections::BTreeMap, iter};
 use strum::IntoEnumIterator;
 
 /// Environment for the serializer interpreter
@@ -179,11 +172,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
             lookups: vec![lookups_row],
         }
     }
-}
 
-impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
-    WitnessBuilderEnv<F, CIX_COL_N, LT>
-{
     pub fn get_proof_inputs(
         &self,
         domain: EvaluationDomains<F>,

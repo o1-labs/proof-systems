@@ -33,17 +33,17 @@ mod tests {
 
         let mut witness_env = WitnessBuilderEnv::create();
 
-        //let row_num = rng.gen_range(0..domain_size);
+        let row_num = rng.gen_range(0..domain_size);
 
-        //  for _row_i in 0..row_num {
-        let xp: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
-        let yp: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
-        let xq: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
-        let yq: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+        for _row_i in 0..row_num {
+            let xp: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+            let yp: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+            let xq: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
+            let yq: Ff1 = <Ff1 as UniformRand>::rand(&mut rng);
 
-        ec_add_circuit(&mut witness_env, 0, xp, yp, xq, yq);
-        //     witness_env.next_row();
-        // }
+            ec_add_circuit(&mut witness_env, 0, xp, yp, xq, yq);
+            witness_env.next_row();
+        }
 
         witness_env
     }

@@ -9,7 +9,7 @@ use crate::{
         interpreter::TestInterpreterEnv,
     },
     witness::Witness,
-    BN254G1Affine, Fp,
+    Fp,
 };
 
 #[allow(dead_code)]
