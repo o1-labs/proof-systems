@@ -234,6 +234,21 @@ where
     }
 }
 
+impl<G, I, W> RelaxablePair<G, I, W> for (RelaxedInstance<G, I>, RelaxedWitness<G, W>)
+where
+    G: CommitmentCurve,
+    I: Instance<G> + RelaxableInstance<G, I>,
+    W: Witness<G> + RelaxableWitness<G, W>,
+{
+    fn relax(
+        self,
+        _zero_poly: &Evals<G::ScalarField>,
+        _zero_commitment: PolyComm<G>,
+    ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>) {
+        self
+    }
+}
+
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     fn sub_errors(self, error_commitments: &[PolyComm<G>; 2], challenge: G::ScalarField) -> Self {
         let RelaxedInstance {
