@@ -133,7 +133,7 @@
     <span class="kw">use </span>std::collections::BTreeMap;
     <span class="kw">use </span>strum::IntoEnumIterator;
 
-    <span class="kw">fn </span>build_foreign_field_addition_circuit&lt;RNG: RngCore + CryptoRng&gt;(
+    <span class="kw">fn </span>build_fec_addition_circuit&lt;RNG: RngCore + CryptoRng&gt;(
         rng: <span class="kw-2">&amp;mut </span>RNG,
         domain_size: usize,
     ) -&gt; WitnessBuilderEnv&lt;Fp, { &lt;FECColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, LookupTable&lt;Ff1&gt;&gt; {
@@ -161,9 +161,9 @@
     </span><span class="doccomment">/// Builds the FF addition circuit with random values. The witness
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
-    </span><span class="kw">pub fn </span>test_foreign_field_addition_circuit() {
+    </span><span class="kw">pub fn </span>test_fec_addition_circuit() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
-        build_foreign_field_addition_circuit(<span class="kw-2">&amp;mut </span>rng, <span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
+        build_fec_addition_circuit(<span class="kw-2">&amp;mut </span>rng, <span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
     }
 
     <span class="attr">#[test]
@@ -180,7 +180,7 @@
         constrain_ec_addition::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env, <span class="number">0</span>);
         <span class="kw">let </span>constraints = constraint_env.get_constraints();
 
-        <span class="kw">let </span>witness_env = build_foreign_field_addition_circuit(<span class="kw-2">&amp;mut </span>rng, domain_size);
+        <span class="kw">let </span>witness_env = build_fec_addition_circuit(<span class="kw-2">&amp;mut </span>rng, domain_size);
 
         <span class="comment">// Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();

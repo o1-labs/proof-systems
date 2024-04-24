@@ -55,7 +55,7 @@
 ///
 /// They represent the equation
 ///   `InputA(i) + InputB(i) = ModulusF(i) * Quotient + Carry(i) * 2^LIMB_SIZE - Carry(i-1)`
-</span><span class="kw">pub enum </span>FFAColumnIndexer {
+</span><span class="kw">pub enum </span>FFAColumn {
     InputA(usize),
     InputB(usize),
     ModulusF(usize),
@@ -64,7 +64,7 @@
     Quotient,
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FFAColumnIndexer {
+<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FFAColumn {
     <span class="kw">const </span>COL_N: usize = FFA_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
@@ -72,15 +72,15 @@
             Column::X(N_LIMBS * offset + i)
         };
         <span class="kw">match </span><span class="self">self </span>{
-            FFAColumnIndexer::InputA(i) =&gt; to_column_inner(<span class="number">0</span>, i),
-            FFAColumnIndexer::InputB(i) =&gt; to_column_inner(<span class="number">1</span>, i),
-            FFAColumnIndexer::ModulusF(i) =&gt; to_column_inner(<span class="number">2</span>, i),
-            FFAColumnIndexer::Remainder(i) =&gt; to_column_inner(<span class="number">3</span>, i),
-            FFAColumnIndexer::Carry(i) =&gt; {
+            FFAColumn::InputA(i) =&gt; to_column_inner(<span class="number">0</span>, i),
+            FFAColumn::InputB(i) =&gt; to_column_inner(<span class="number">1</span>, i),
+            FFAColumn::ModulusF(i) =&gt; to_column_inner(<span class="number">2</span>, i),
+            FFAColumn::Remainder(i) =&gt; to_column_inner(<span class="number">3</span>, i),
+            FFAColumn::Carry(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS - <span class="number">1</span>);
                 to_column_inner(<span class="number">4</span>, i)
             }
-            FFAColumnIndexer::Quotient =&gt; to_column_inner(<span class="number">4</span>, N_LIMBS - <span class="number">1</span>),
+            FFAColumn::Quotient =&gt; to_column_inner(<span class="number">4</span>, N_LIMBS - <span class="number">1</span>),
         }
     }
 }

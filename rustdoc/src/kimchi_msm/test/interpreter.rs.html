@@ -107,119 +107,111 @@
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{test::columns::TestColumnIndexer, Ff1, LIMB_BITSIZE, N_LIMBS};
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    circuit_design::{ColAccessCap, ColWriteCap},
+    serialization::interpreter::limb_decompose_ff,
+    test::columns::TestColumn,
+    LIMB_BITSIZE, N_LIMBS,
+};
 <span class="kw">use </span>ark_ff::{PrimeField, Zero};
-<span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-<span class="kw">pub trait </span>TestInterpreterEnv&lt;F: PrimeField&gt; {
-    <span class="kw">type </span>Position;
-
-    <span class="kw">type </span>Variable: Clone
-        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::fmt::Debug;
-
-    <span class="kw">fn </span>empty() -&gt; <span class="self">Self</span>;
-
-    <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
-
-    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>column_pos(ix: TestColumnIndexer) -&gt; <span class="self">Self</span>::Position;
-
-    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: TestColumnIndexer) -&gt; <span class="self">Self</span>::Variable;
-}
-
-<span class="kw">fn </span>limb_decompose_bui&lt;F: PrimeField&gt;(input: BigUint) -&gt; [F; N_LIMBS] {
-    <span class="kw">let </span>ff_el: ForeignElement&lt;F, LIMB_BITSIZE, N_LIMBS&gt; = ForeignElement::from_biguint(input);
-    ff_el.limbs
-}
-
-<span class="kw">fn </span>limb_decompose_ff&lt;F: PrimeField, Ff: PrimeField&gt;(input: <span class="kw-2">&amp;</span>Ff) -&gt; [F; N_LIMBS] {
-    <span class="kw">let </span>input_bi: BigUint = FieldHelpers::to_biguint(input);
-    limb_decompose_bui(input_bi)
-}
-
-<span class="kw">fn </span>fill_limbs_a_b&lt;F: PrimeField, Env: TestInterpreterEnv&lt;F&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env, a: Ff1, b: Ff1) {
-    <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(<span class="kw-2">&amp;</span>a).map(Env::constant);
-    <span class="kw">let </span>b_limbs: [Env::Variable; N_LIMBS] = limb_decompose_ff(<span class="kw-2">&amp;</span>b).map(Env::constant);
+<span class="kw">fn </span>fill_limbs_a_b&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt;,
+&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    a: Ff,
+    b: Ff,
+) -&gt; ([Env::Variable; N_LIMBS], [Env::Variable; N_LIMBS]) {
+    <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE, N_LIMBS&gt;(<span class="kw-2">&amp;</span>a).map(Env::constant);
+    <span class="kw">let </span>b_limbs: [Env::Variable; N_LIMBS] =
+        limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE, N_LIMBS&gt;(<span class="kw-2">&amp;</span>b).map(Env::constant);
     a_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(TestColumnIndexer::A(i)));
+        env.write_column(TestColumn::A(i), var);
     });
     b_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(TestColumnIndexer::B(i)));
+        env.write_column(TestColumn::B(i), var);
     });
+    (a_limbs, b_limbs)
 }
 
 <span class="doccomment">/// A consraint function for A + B - C that reads values from limbs A
 /// and B, and additionally returns resulting value in C.
-</span><span class="kw">pub fn </span>constrain_addition&lt;F: PrimeField, Env: TestInterpreterEnv&lt;F&gt;&gt;(
+</span><span class="kw">pub fn </span>constrain_addition&lt;F: PrimeField, Ff: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-) -&gt; [Env::Variable; N_LIMBS] {
+) {
     <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, TestColumnIndexer::A(i)));
+        core::array::from_fn(|i| Env::read_column(env, TestColumn::A(i)));
     <span class="kw">let </span>b_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, TestColumnIndexer::B(i)));
+        core::array::from_fn(|i| Env::read_column(env, TestColumn::B(i)));
     <span class="comment">// fix cloning
     </span><span class="kw">let </span>c_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| a_limbs[i].clone() + b_limbs[i].clone());
-    c_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(TestColumnIndexer::C(i)));
+        core::array::from_fn(|i| Env::read_column(env, TestColumn::C(i)));
+    <span class="kw">let </span>equation: [Env::Variable; N_LIMBS] =
+        core::array::from_fn(|i| a_limbs[i].clone() * b_limbs[i].clone() - c_limbs[i].clone());
+    equation.iter().for_each(|var| {
+        env.assert_zero(var.clone());
     });
-    c_limbs
 }
 
 <span class="doccomment">/// Circuit generator function for A + B - C, with D = 0.
-</span><span class="kw">pub fn </span>test_addition&lt;F: PrimeField, Env: TestInterpreterEnv&lt;F&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env, a: Ff1, b: Ff1) {
-    fill_limbs_a_b(env, a, b);
+</span><span class="kw">pub fn </span>test_addition&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt;,
+&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    a: Ff,
+    b: Ff,
+) {
+    <span class="kw">let </span>(a_limbs, b_limbs) = fill_limbs_a_b(env, a, b);
 
-    <span class="kw">let _ </span>= constrain_addition(env); <span class="comment">// we don't do anything else further with c_limbs
-
-    </span><span class="kw">let </span>d_limbs: [Env::Variable; N_LIMBS] = [Zero::zero(); N_LIMBS].map(Env::constant);
-    d_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(TestColumnIndexer::D(i)));
+    (<span class="number">0</span>..N_LIMBS).for_each(|i| {
+        env.write_column(TestColumn::C(i), <span class="kw-2">&amp;</span>(a_limbs[i].clone() + b_limbs[i].clone()));
+        env.write_column(TestColumn::D(i), <span class="kw-2">&amp;</span>Env::constant(Zero::zero()));
     });
+
+    constrain_addition::&lt;F, Ff, Env&gt;(env);
 }
 
 <span class="doccomment">/// A consraint function for A * B - D that reads values from limbs A
-/// and B, and additionally returns resulting value in D.
-</span><span class="kw">pub fn </span>constrain_multiplication&lt;F: PrimeField, Env: TestInterpreterEnv&lt;F&gt;&gt;(
+/// and B, and multiplicationally returns resulting value in D.
+</span><span class="kw">pub fn </span>constrain_multiplication&lt;F: PrimeField, Ff: PrimeField, Env: ColAccessCap&lt;F, TestColumn&gt;&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-) -&gt; [Env::Variable; N_LIMBS] {
+) {
     <span class="kw">let </span>a_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, TestColumnIndexer::A(i)));
+        core::array::from_fn(|i| Env::read_column(env, TestColumn::A(i)));
     <span class="kw">let </span>b_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| Env::read_column(env, TestColumnIndexer::B(i)));
+        core::array::from_fn(|i| Env::read_column(env, TestColumn::B(i)));
     <span class="comment">// fix cloning
-    </span><span class="kw">let </span>c_limbs: [Env::Variable; N_LIMBS] =
-        core::array::from_fn(|i| a_limbs[i].clone() * b_limbs[i].clone());
-    c_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(TestColumnIndexer::C(i)));
+    </span><span class="kw">let </span>d_limbs: [Env::Variable; N_LIMBS] =
+        core::array::from_fn(|i| Env::read_column(env, TestColumn::D(i)));
+    <span class="kw">let </span>equation: [Env::Variable; N_LIMBS] =
+        core::array::from_fn(|i| a_limbs[i].clone() * b_limbs[i].clone() - d_limbs[i].clone());
+    equation.iter().for_each(|var| {
+        env.assert_zero(var.clone());
     });
-    c_limbs
 }
 
-<span class="doccomment">/// Circuit generator function for A * B - D, with C = 0.
-</span><span class="kw">pub fn </span>test_multiplication&lt;F: PrimeField, Env: TestInterpreterEnv&lt;F&gt;&gt;(
+<span class="doccomment">/// Circuit generator function for A + B - C, with D = 0.
+</span><span class="kw">pub fn </span>test_multiplication&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, TestColumn&gt; + ColWriteCap&lt;F, TestColumn&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    a: Ff1,
-    b: Ff1,
+    a: Ff,
+    b: Ff,
 ) {
-    fill_limbs_a_b(env, a, b);
+    <span class="kw">let </span>(a_limbs, b_limbs) = fill_limbs_a_b(env, a, b);
 
-    <span class="kw">let _ </span>= constrain_multiplication(env); <span class="comment">// we don't do anything else further with c_limbs
-
-    </span><span class="kw">let </span>d_limbs: [Env::Variable; N_LIMBS] = [Zero::zero(); N_LIMBS].map(Env::constant);
-    d_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(var, Env::column_pos(TestColumnIndexer::D(i)));
+    (<span class="number">0</span>..N_LIMBS).for_each(|i| {
+        env.write_column(TestColumn::D(i), <span class="kw-2">&amp;</span>(a_limbs[i].clone() * b_limbs[i].clone()));
+        env.write_column(TestColumn::C(i), <span class="kw-2">&amp;</span>Env::constant(Zero::zero()));
     });
+
+    constrain_multiplication::&lt;F, Ff, Env&gt;(env);
 }
 </code></pre></div></section></main></body></html>

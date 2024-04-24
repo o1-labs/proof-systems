@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LookupTableIDs"],"type":["Lookup","LookupWitness"]};
+window.SIDEBAR_ITEMS = {"enum":["DummyLookupTable","LookupTableIDs"],"struct":["DummyLookupTableIter","LookupTableIDsIter"],"type":["Lookup","LookupWitness"]};

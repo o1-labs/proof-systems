@@ -52,14 +52,14 @@
 /// either of the two equations:
 ///   A + B - C = 0
 ///   A * B - D = 0
-</span><span class="kw">pub enum </span>TestColumnIndexer {
+</span><span class="kw">pub enum </span>TestColumn {
     A(usize),
     B(usize),
     C(usize),
     D(usize),
 }
 
-<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>TestColumnIndexer {
+<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>TestColumn {
     <span class="kw">const </span>COL_N: usize = TEST_N_COLUMNS;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
@@ -67,10 +67,10 @@
             Column::X(N_LIMBS * offset + i)
         };
         <span class="kw">match </span><span class="self">self </span>{
-            TestColumnIndexer::A(i) =&gt; to_column_inner(<span class="number">0</span>, i),
-            TestColumnIndexer::B(i) =&gt; to_column_inner(<span class="number">1</span>, i),
-            TestColumnIndexer::C(i) =&gt; to_column_inner(<span class="number">2</span>, i),
-            TestColumnIndexer::D(i) =&gt; to_column_inner(<span class="number">3</span>, i),
+            TestColumn::A(i) =&gt; to_column_inner(<span class="number">0</span>, i),
+            TestColumn::B(i) =&gt; to_column_inner(<span class="number">1</span>, i),
+            TestColumn::C(i) =&gt; to_column_inner(<span class="number">2</span>, i),
+            TestColumn::D(i) =&gt; to_column_inner(<span class="number">3</span>, i),
         }
     }
 }

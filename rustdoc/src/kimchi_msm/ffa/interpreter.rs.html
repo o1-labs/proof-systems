@@ -136,89 +136,16 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ffa::columns::FFAColumnIndexer, LIMB_BITSIZE, N_LIMBS};
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
+    ffa::{columns::FFAColumn, lookups::LookupTable},
+    serialization::interpreter::{limb_decompose_biguint, limb_decompose_ff},
+    LIMB_BITSIZE, N_LIMBS,
+};
 <span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>num_integer::Integer;
-<span class="kw">use </span>o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
-
-<span class="kw">pub trait </span>FFAInterpreterEnv&lt;F: PrimeField&gt; {
-    <span class="kw">type </span>Position;
-
-    <span class="kw">type </span>Variable: Clone
-        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::fmt::Debug;
-
-    <span class="kw">fn </span>empty() -&gt; <span class="self">Self</span>;
-
-    <span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
-
-    <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="kw">fn </span>column_pos(ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Position;
-
-    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: FFAColumnIndexer) -&gt; <span class="self">Self</span>::Variable;
-
-    <span class="doccomment">/// Checks |x| = 1, that is x ∈ {-1,0,1}
-    </span><span class="kw">fn </span>range_check_abs1(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// Checks input x ∈ [0,2^15)
-    </span><span class="kw">fn </span>range_check_15bit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
-}
-
-<span class="kw">fn </span>limb_decompose_biguint&lt;F: PrimeField&gt;(input: BigUint) -&gt; [F; N_LIMBS] {
-    <span class="kw">let </span>ff_el: ForeignElement&lt;F, LIMB_BITSIZE, N_LIMBS&gt; = ForeignElement::from_biguint(input);
-    ff_el.limbs
-}
-
-<span class="comment">// TODO use more foreign_field.rs with from/to bigint conversion
-</span><span class="kw">fn </span>limb_decompose_ff&lt;F: PrimeField, Ff: PrimeField&gt;(input: <span class="kw-2">&amp;</span>Ff) -&gt; [F; N_LIMBS] {
-    <span class="kw">let </span>input_bi: BigUint = FieldHelpers::to_biguint(input);
-    limb_decompose_biguint(input_bi)
-}
+<span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
 
 <span class="comment">// For now this function does not /compute/ anything, although it could.
 </span><span class="doccomment">/// Constraint for one row of FF addition:
@@ -229,73 +156,77 @@
 ///
 /// q, c_i ∈ {-1,0,1}
 /// a_i, b_i, f_i, r_i ∈ [0,2^15)
-</span><span class="kw">pub fn </span>constrain_ff_addition_row&lt;F: PrimeField, Env: FFAInterpreterEnv&lt;F&gt;&gt;(
+</span><span class="kw">pub fn </span>constrain_ff_addition_row&lt;
+    F: PrimeField,
+    Env: ColAccessCap&lt;F, FFAColumn&gt; + LookupCap&lt;F, FFAColumn, LookupTable&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     limb_num: usize,
 ) {
-    <span class="kw">let </span>a: Env::Variable = Env::read_column(env, FFAColumnIndexer::InputA(limb_num));
-    <span class="kw">let </span>b: Env::Variable = Env::read_column(env, FFAColumnIndexer::InputB(limb_num));
-    <span class="kw">let </span>f: Env::Variable = Env::read_column(env, FFAColumnIndexer::ModulusF(limb_num));
-    <span class="kw">let </span>r: Env::Variable = Env::read_column(env, FFAColumnIndexer::Remainder(limb_num));
-    <span class="kw">let </span>q: Env::Variable = Env::read_column(env, FFAColumnIndexer::Quotient);
-    env.range_check_15bit(<span class="kw-2">&amp;</span>a);
-    env.range_check_15bit(<span class="kw-2">&amp;</span>b);
-    env.range_check_15bit(<span class="kw-2">&amp;</span>f);
-    env.range_check_15bit(<span class="kw-2">&amp;</span>r);
-    env.range_check_abs1(<span class="kw-2">&amp;</span>q);
+    <span class="kw">let </span>a: Env::Variable = Env::read_column(env, FFAColumn::InputA(limb_num));
+    <span class="kw">let </span>b: Env::Variable = Env::read_column(env, FFAColumn::InputB(limb_num));
+    <span class="kw">let </span>f: Env::Variable = Env::read_column(env, FFAColumn::ModulusF(limb_num));
+    <span class="kw">let </span>r: Env::Variable = Env::read_column(env, FFAColumn::Remainder(limb_num));
+    <span class="kw">let </span>q: Env::Variable = Env::read_column(env, FFAColumn::Quotient);
+    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>a);
+    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>b);
+    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>f);
+    env.lookup(LookupTable::RangeCheck15, <span class="kw-2">&amp;</span>r);
+    env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>q);
     <span class="kw">let </span>constraint = <span class="kw">if </span>limb_num == <span class="number">0 </span>{
         <span class="kw">let </span>limb_size = Env::constant(From::from((<span class="number">1 </span>&lt;&lt; LIMB_BITSIZE) <span class="kw">as </span>u64));
-        <span class="kw">let </span>c0: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num));
-        env.range_check_abs1(<span class="kw-2">&amp;</span>c0);
+        <span class="kw">let </span>c0: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c0);
         a + b - q * f - r - c0 * limb_size
     } <span class="kw">else if </span>limb_num &lt; N_LIMBS - <span class="number">1 </span>{
         <span class="kw">let </span>limb_size = Env::constant(From::from((<span class="number">1 </span>&lt;&lt; LIMB_BITSIZE) <span class="kw">as </span>u64));
-        <span class="kw">let </span>c_prev: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num - <span class="number">1</span>));
-        <span class="kw">let </span>c_cur: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num));
-        env.range_check_abs1(<span class="kw-2">&amp;</span>c_prev);
-        env.range_check_abs1(<span class="kw-2">&amp;</span>c_cur);
+        <span class="kw">let </span>c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - <span class="number">1</span>));
+        <span class="kw">let </span>c_cur: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c_prev);
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c_cur);
         a + b - q * f - r - c_cur * limb_size + c_prev
     } <span class="kw">else </span>{
-        <span class="kw">let </span>c_prev: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num - <span class="number">1</span>));
-        env.range_check_abs1(<span class="kw-2">&amp;</span>c_prev);
+        <span class="kw">let </span>c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - <span class="number">1</span>));
+        env.lookup(LookupTable::RangeCheck1BitSigned, <span class="kw-2">&amp;</span>c_prev);
         a + b - q * f - r + c_prev
     };
     env.assert_zero(constraint);
 }
 
-<span class="kw">pub fn </span>constrain_ff_addition&lt;F: PrimeField, Env: FFAInterpreterEnv&lt;F&gt;&gt;(env: <span class="kw-2">&amp;mut </span>Env) {
+<span class="kw">pub fn </span>constrain_ff_addition&lt;
+    F: PrimeField,
+    Env: ColAccessCap&lt;F, FFAColumn&gt; + LookupCap&lt;F, FFAColumn, LookupTable&gt;,
+&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+) {
     <span class="kw">for </span>limb_i <span class="kw">in </span><span class="number">0</span>..N_LIMBS {
         constrain_ff_addition_row(env, limb_i);
     }
 }
 
-<span class="kw">pub fn </span>ff_addition_circuit&lt;F: PrimeField, Ff: PrimeField, Env: FFAInterpreterEnv&lt;F&gt;&gt;(
+<span class="kw">pub fn </span>ff_addition_circuit&lt;
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap&lt;F, FFAColumn&gt; + ColWriteCap&lt;F, FFAColumn&gt; + LookupCap&lt;F, FFAColumn, LookupTable&gt;,
+&gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     a: Ff,
     b: Ff,
 ) {
     <span class="kw">let </span>f_bigint: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
 
-    <span class="kw">let </span>a_limbs: [F; N_LIMBS] = limb_decompose_ff(<span class="kw-2">&amp;</span>a);
-    <span class="kw">let </span>b_limbs: [F; N_LIMBS] = limb_decompose_ff(<span class="kw-2">&amp;</span>b);
-    <span class="kw">let </span>f_limbs: [F; N_LIMBS] = limb_decompose_biguint(f_bigint.clone());
+    <span class="kw">let </span>a_limbs: [F; N_LIMBS] = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE, N_LIMBS&gt;(<span class="kw-2">&amp;</span>a);
+    <span class="kw">let </span>b_limbs: [F; N_LIMBS] = limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE, N_LIMBS&gt;(<span class="kw-2">&amp;</span>b);
+    <span class="kw">let </span>f_limbs: [F; N_LIMBS] =
+        limb_decompose_biguint::&lt;F, LIMB_BITSIZE, N_LIMBS&gt;(f_bigint.clone());
     a_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-            Env::column_pos(FFAColumnIndexer::InputA(i)),
-        );
+        env.write_column(FFAColumn::InputA(i), <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var));
     });
     b_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-            Env::column_pos(FFAColumnIndexer::InputB(i)),
-        );
+        env.write_column(FFAColumn::InputB(i), <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var));
     });
     f_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-            Env::column_pos(FFAColumnIndexer::ModulusF(i)),
-        );
+        env.write_column(FFAColumn::ModulusF(i), <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var));
     });
 
     <span class="kw">let </span>a_bigint = FieldHelpers::to_biguint(<span class="kw-2">&amp;</span>a);
@@ -305,19 +236,13 @@
     // q can be -1! But only in subtraction, so for now we don't care.
     // for now with addition only q ∈ {0,1}
     </span><span class="kw">let </span>(q_bigint, r_bigint) = (a_bigint + b_bigint).div_rem(<span class="kw-2">&amp;</span>f_bigint);
-    <span class="kw">let </span>r_limbs: [F; N_LIMBS] = limb_decompose_biguint(r_bigint);
+    <span class="kw">let </span>r_limbs: [F; N_LIMBS] = limb_decompose_biguint::&lt;F, LIMB_BITSIZE, N_LIMBS&gt;(r_bigint);
     <span class="comment">// We expect just one limb.
-    </span><span class="kw">let </span>q: F = limb_decompose_biguint(q_bigint)[<span class="number">0</span>];
+    </span><span class="kw">let </span>q: F = limb_decompose_biguint::&lt;F, LIMB_BITSIZE, N_LIMBS&gt;(q_bigint)[<span class="number">0</span>];
 
-    env.copy(
-        <span class="kw-2">&amp;</span>Env::constant(q),
-        Env::column_pos(FFAColumnIndexer::Quotient),
-    );
+    env.write_column(FFAColumn::Quotient, <span class="kw-2">&amp;</span>Env::constant(q));
     r_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-            Env::column_pos(FFAColumnIndexer::Remainder(i)),
-        );
+        env.write_column(FFAColumn::Remainder(i), <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var));
     });
 
     <span class="kw">let </span>limb_size: F = From::from((<span class="number">1 </span>&lt;&lt; LIMB_BITSIZE) <span class="kw">as </span>u64);
@@ -338,10 +263,7 @@
         };
         <span class="comment">// Last carry should be zero, otherwise we record it
         </span><span class="kw">if </span>limb_i &lt; N_LIMBS - <span class="number">1 </span>{
-            env.copy(
-                <span class="kw-2">&amp;</span>Env::constant(newcarry),
-                Env::column_pos(FFAColumnIndexer::Carry(limb_i)),
-            );
+            env.write_column(FFAColumn::Carry(limb_i), <span class="kw-2">&amp;</span>Env::constant(newcarry));
             carry = newcarry;
         } <span class="kw">else </span>{
             <span class="comment">// should this be in circiut?

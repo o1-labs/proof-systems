@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FFA_NPUB_COLUMNS","FFA_N_COLUMNS"],"enum":["FFAColumnIndexer"]};
+window.SIDEBAR_ITEMS = {"constant":["FFA_NPUB_COLUMNS","FFA_N_COLUMNS"],"enum":["FFAColumn"]};

@@ -261,6 +261,13 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{ColAccessCap, ColWriteCap, LookupCap},
     columns::{Column, ColumnIndexer},
@@ -469,10 +476,17 @@
             </span>lookup_tables.insert(table_id, <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; number_of_lookups + <span class="number">1</span>]);
         }
 
-        <span class="kw">for </span>witness_row <span class="kw">in </span><span class="self">self</span>.witness.iter().take(domain_size) {
-            <span class="comment">// Filling actually used rows
-            </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..CIX_COL_N {
+        <span class="comment">// Filling actually used rows first
+        </span><span class="kw">for </span>witness_row <span class="kw">in </span><span class="self">self</span>.witness.iter().take(domain_size) {
+            <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..CIX_COL_N {
                 witness.cols[j].push(witness_row.cols[j]);
+            }
+        }
+        <span class="comment">// Then filling witness rows up with zeroes to the domain size
+        // FIXME: Maybe this is not always wise, as default instance can be non-zero.
+        </span><span class="kw">if </span><span class="self">self</span>.witness.len() &lt; domain_size {
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..CIX_COL_N {
+                witness.cols[i].extend(<span class="macro">vec!</span>[F::zero(); domain_size - <span class="self">self</span>.witness.len()]);
             }
         }
 
