@@ -16,7 +16,7 @@ use kimchi::{
 use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProofInputs<const N: usize, F: PrimeField, ID: LookupTableID> {
     /// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
