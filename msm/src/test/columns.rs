@@ -13,14 +13,14 @@ pub const TEST_N_COLUMNS: usize = 4 * N_LIMBS;
 /// either of the two equations:
 ///   A + B - C = 0
 ///   A * B - D = 0
-pub enum TestColumnIndexer {
+pub enum TestColumn {
     A(usize),
     B(usize),
     C(usize),
     D(usize),
 }
 
-impl ColumnIndexer for TestColumnIndexer {
+impl ColumnIndexer for TestColumn {
     const COL_N: usize = TEST_N_COLUMNS;
     fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
@@ -28,10 +28,10 @@ impl ColumnIndexer for TestColumnIndexer {
             Column::X(N_LIMBS * offset + i)
         };
         match self {
-            TestColumnIndexer::A(i) => to_column_inner(0, i),
-            TestColumnIndexer::B(i) => to_column_inner(1, i),
-            TestColumnIndexer::C(i) => to_column_inner(2, i),
-            TestColumnIndexer::D(i) => to_column_inner(3, i),
+            TestColumn::A(i) => to_column_inner(0, i),
+            TestColumn::B(i) => to_column_inner(1, i),
+            TestColumn::C(i) => to_column_inner(2, i),
+            TestColumn::D(i) => to_column_inner(3, i),
         }
     }
 }

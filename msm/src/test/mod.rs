@@ -1,7 +1,5 @@
 pub mod columns;
-pub mod constraint;
 pub mod interpreter;
-pub mod witness;
 
 use crate::{
     columns::Column, expr::E, lookups::LookupTableIDs, proof::ProofInputs, prover::prove,

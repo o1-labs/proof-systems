@@ -156,7 +156,7 @@ use crate::{
 /// The table ID is added to the random linear combination formed with the
 /// values. The combiner for the random linear combination is coined during the
 /// proving phase by the prover.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Logup<F, ID: LookupTableID> {
     pub(crate) table_id: ID,
     pub(crate) numerator: F,
@@ -224,7 +224,7 @@ pub struct LookupTable<F, ID: LookupTableID> {
 // IMPROVEME: Possible to index by a generic const?
 // The parameter N is the number of functions/looked-up values per row. It is
 // used by the PlonK polynomial IOP to compute the number of partial sums.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogupWitness<F, ID: LookupTableID> {
     /// A list of functions/looked-up values.
     /// Invariant: for fixed lookup tables, the last value of the vector is the
