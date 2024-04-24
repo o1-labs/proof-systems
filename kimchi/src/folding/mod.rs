@@ -216,7 +216,8 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
 /// - `W`: The type of the witness, i.e. the private inputs
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
-pub trait FoldingEnv<F, I, W, Col, Chal, S> {
+/// - `Selector`: The type of the selector
+pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
@@ -245,7 +246,7 @@ pub trait FoldingEnv<F, I, W, Col, Chal, S> {
     fn alpha(&self, i: usize, side: Side) -> F;
     /// similar to col(), but folding may ask for a dynamic selector directly instead
     /// of just column that happens to be a selector
-    fn selector(&self, s: &S, side: Side) -> &Vec<F>;
+    fn selector(&self, s: &Selector, side: Side) -> &Vec<F>;
 }
 
 /// TODO: Use Sponge trait from kimchi
