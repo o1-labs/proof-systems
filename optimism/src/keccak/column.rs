@@ -65,6 +65,9 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum ColumnAlias {
     /// Selectors used to distinguish between different modes of the Keccak step
+    /// They are not located at the end because unlike with MIPS where it is very
+    /// costly to instantiate them at each step, these are very small in comparison
+    /// and the interpreter is already storing them at each step.
     Selector(Steps),
 
     /// Hash identifier to distinguish inside the syscalls communication channel

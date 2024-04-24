@@ -160,7 +160,7 @@ pub fn main() -> ExitCode {
                 keccak_trace.push_row(step, &keccak_env.witness_env.witness.cols);
 
                 // If the witness is full, fold it and reset the pre-folding witness
-                if keccak_trace.number_rows(step) == DOMAIN_SIZE {
+                if keccak_trace.number_of_rows(step) == DOMAIN_SIZE {
                     proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
@@ -189,7 +189,7 @@ pub fn main() -> ExitCode {
             }
         }
 
-        if mips_trace.number_rows(instr) == DOMAIN_SIZE {
+        if mips_trace.number_of_rows(instr) == DOMAIN_SIZE {
             // Set to zero all selectors except for the one corresponding to the current instruction
             set_mips_selectors(&mut mips_trace, instr, DOMAIN_SIZE);
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
@@ -205,7 +205,7 @@ pub fn main() -> ExitCode {
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         // The number of rows fulfilled corresponds to the number of rows in the scratch state
-        let number_of_rows = mips_trace.number_rows(instr);
+        let number_of_rows = mips_trace.number_of_rows(instr);
         if number_of_rows != 0 {
             // First set the selector columns
             set_mips_selectors(&mut mips_trace, instr, number_of_rows);
