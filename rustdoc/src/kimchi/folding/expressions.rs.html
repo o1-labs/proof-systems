@@ -570,6 +570,21 @@
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
 <a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::expr::{
         ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
@@ -604,6 +619,7 @@
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     Challenge(C::Challenge),
     Alpha(usize),
+    Selector(C::S),
 }
 
 <span class="attr">#[derive(Clone, PartialEq, Debug)]
@@ -616,7 +632,7 @@
     /// (x^n - 1) / (x - omega^i)
     </span>UnnormalizedLagrangeBasis(usize),
     <span class="doccomment">///extra nodes created by folding, should not be passed to folding
-    </span>Extensions(ExpExtension),
+    </span>Extensions(ExpExtension&lt;C&gt;),
 }
 
 <span class="doccomment">///designed for easy translation to and from most Expr
@@ -631,16 +647,18 @@
 
 <span class="doccomment">/// Extra expressions that can be created by folding
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub enum </span>ExpExtension {
+</span><span class="kw">pub enum </span>ExpExtension&lt;C: FoldingConfig&gt; {
     U,
     Error,
     <span class="comment">//from quadraticization
     </span>ExtendedWitness(usize),
     Alpha(usize),
+    <span class="comment">//in case of using decomposable folding
+    </span>Selector(C::S),
 }
 
 <span class="doccomment">///Internal expression used for folding, simplified for that purpose
-</span><span class="kw">pub type </span>FoldingExp&lt;C&gt; = Operations&lt;ExtendedFoldingColumn&lt;C&gt;&gt;;
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>FoldingExp&lt;C&gt; = Operations&lt;ExtendedFoldingColumn&lt;C&gt;&gt;;
 
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; std::ops::Add <span class="kw">for </span>FoldingExp&lt;C&gt; {
     <span class="kw">type </span>Output = <span class="self">Self</span>;
@@ -687,8 +705,16 @@
                 FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) =&gt; {
                     Atom(Ex::UnnormalizedLagrangeBasis(i))
                 }
-                FoldingCompatibleExprInner::Extensions(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">panic!</span>(<span class="string">"this should only be created by folding itself"</span>)
+                FoldingCompatibleExprInner::Extensions(ext) =&gt; {
+                    <span class="kw">match </span>ext {
+                        <span class="comment">// TODO: this shouldn't be allowed, but is needed for now to add
+                        // decomposable folding without many changes, it should be
+                        // refactored at some point in the future
+                        </span>ExpExtension::Selector(s) =&gt; Atom(ExtendedFoldingColumn::Selector(s)),
+                        <span class="kw">_ </span>=&gt; {
+                            <span class="macro">panic!</span>(<span class="string">"this should only be created by folding itself"</span>)
+                        }
+                    }
                 }
             },
             FoldingCompatibleExpr::Double(exp) =&gt; Double(Box::new((<span class="kw-2">*</span>exp).simplify())),
@@ -752,6 +778,7 @@
                 ExtendedFoldingColumn::Constant(<span class="kw">_</span>) =&gt; Zero,
                 ExtendedFoldingColumn::Challenge(<span class="kw">_</span>) =&gt; One,
                 ExtendedFoldingColumn::Alpha(<span class="kw">_</span>) =&gt; One,
+                ExtendedFoldingColumn::Selector(<span class="kw">_</span>) =&gt; One,
             },
             FoldingExp::Double(e) =&gt; e.folding_degree(),
             FoldingExp::Square(e) =&gt; <span class="kw-2">&amp;</span>e.folding_degree() * <span class="kw-2">&amp;</span>e.folding_degree(),
@@ -790,6 +817,7 @@
                 ExtendedFoldingColumn::Constant(c) =&gt; Atom(Constant(c)),
                 ExtendedFoldingColumn::Challenge(c) =&gt; Atom(Challenge(c)),
                 ExtendedFoldingColumn::Alpha(i) =&gt; Atom(Extensions(ExpExtension::Alpha(i))),
+                ExtendedFoldingColumn::Selector(s) =&gt; Atom(Extensions(ExpExtension::Selector(s))),
             },
             FoldingExp::Double(exp) =&gt; Double(Box::new(exp.into_compatible())),
             FoldingExp::Square(exp) =&gt; Square(Box::new(exp.into_compatible())),
@@ -852,7 +880,7 @@
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>Sign {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>Sign {
     Pos,
     Neg,
 }
@@ -869,7 +897,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>Term&lt;C: FoldingConfig&gt; {
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Term&lt;C: FoldingConfig&gt; {
     <span class="kw">pub </span>exp: FoldingExp&lt;C&gt;,
     <span class="kw">pub </span>sign: Sign,
 }
@@ -968,7 +996,9 @@
     }
 }
 
-<span class="kw">pub fn </span>extract_terms&lt;C: FoldingConfig&gt;(exp: FoldingExp&lt;C&gt;) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>extract_terms&lt;C: FoldingConfig&gt;(
+    exp: FoldingExp&lt;C&gt;,
+) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; {
     <span class="kw">use </span>Operations::<span class="kw-2">*</span>;
     <span class="kw">let </span>exps: Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; = <span class="kw">match </span>exp {
         exp @ Atom(<span class="kw">_</span>) =&gt; Box::new(
@@ -1042,7 +1072,7 @@
     exps
 }
 
-<span class="kw">pub fn </span>folding_expression&lt;C: FoldingConfig&gt;(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>folding_expression&lt;C: FoldingConfig&gt;(
     exps: Vec&lt;FoldingCompatibleExpr&lt;C&gt;&gt;,
 ) -&gt; (IntegratedFoldingExpr&lt;C&gt;, ExtendedWitnessGenerator&lt;C&gt;) {
     <span class="kw">let </span>simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();

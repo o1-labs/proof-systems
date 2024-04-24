@@ -594,6 +594,12 @@
 <a href="#592" id="592">592</a>
 <a href="#593" id="593">593</a>
 <a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         expr::{Op2, Variable},
@@ -782,7 +788,7 @@
     </span>next_witnesses: [TestWitness; <span class="number">2</span>],
 }
 
-<span class="kw">impl </span>FoldingEnv&lt;Fp, TestInstance, TestWitness, TestColumn, TestChallenge&gt; <span class="kw">for </span>TestFoldingEnv {
+<span class="kw">impl </span>FoldingEnv&lt;Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()&gt; <span class="kw">for </span>TestFoldingEnv {
     <span class="kw">type </span>Structure = TestStructure&lt;Fp&gt;;
 
     <span class="kw">fn </span>new(
@@ -840,6 +846,10 @@
         <span class="kw">let </span>instance = <span class="kw-2">&amp;</span><span class="self">self</span>.instances[side <span class="kw">as </span>usize];
         instance.alphas.get(i).unwrap()
     }
+
+    <span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, _s: <span class="kw-2">&amp;</span>(), _side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;Fp&gt; {
+        <span class="macro">unreachable!</span>()
+    }
 }
 
 <span class="kw">fn </span>constraints() -&gt; Vec&lt;FoldingCompatibleExpr&lt;TestFoldingConfig&gt;&gt; {
@@ -883,6 +893,7 @@
 <span class="kw">impl </span>FoldingConfig <span class="kw">for </span>TestFoldingConfig {
     <span class="kw">type </span>Structure = TestStructure&lt;Fp&gt;;
     <span class="kw">type </span>Column = TestColumn;
+    <span class="kw">type </span>S = ();
     <span class="kw">type </span>Challenge = TestChallenge;
     <span class="kw">type </span>Curve = Curve;
     <span class="kw">type </span>Srs = poly_commitment::srs::SRS&lt;Curve&gt;;
@@ -1038,6 +1049,7 @@
                         <span class="kw">let </span>alpha = <span class="self">self</span>.instance.inner_instance().inner.alphas.get(i).unwrap();
                         <span class="macro">vec!</span>[alpha; <span class="self">self</span>.inner_provider.rows]
                     }
+                    ExpExtension::Selector(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"unused"</span>),
                 },
                 e =&gt; <span class="self">self</span>.inner_provider.resolve(e),
             }

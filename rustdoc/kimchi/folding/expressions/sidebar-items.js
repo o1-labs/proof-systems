@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Degree","ExpExtension","ExtendedFoldingColumn","FoldingCompatibleExpr","FoldingCompatibleExprInner","Sign"],"fn":["extract_terms","folding_expression"],"struct":["IntegratedFoldingExpr","Term"],"trait":["FoldingColumnTrait"],"type":["FoldingExp"]};
+window.SIDEBAR_ITEMS = {"enum":["Degree","ExpExtension","ExtendedFoldingColumn","FoldingCompatibleExpr","FoldingCompatibleExprInner"],"struct":["IntegratedFoldingExpr"],"trait":["FoldingColumnTrait"]};
