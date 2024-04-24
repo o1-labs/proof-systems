@@ -21,6 +21,10 @@ pub(crate) const MIPS_PREIMAGE_BYTES_OFFSET: usize = 85;
 pub(crate) const MIPS_HAS_N_BYTES_OFFSET: usize = 89;
 pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
 
+pub const MIPS_SELECTORS_OFFSET: usize = SCRATCH_SIZE + 2;
+pub const MIPS_SELECTORS_LENGTH: usize =
+    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
+
 /// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -45,11 +49,10 @@ impl ColumnAlias {
             }
             ColumnAlias::InstructionCounter => SCRATCH_SIZE,
             ColumnAlias::Selector(instruction) => match instruction {
-                RType(rtype) => SCRATCH_SIZE + 2 + rtype as usize,
-                JType(jtype) => SCRATCH_SIZE + 2 + RTypeInstruction::COUNT + jtype as usize,
+                RType(rtype) => MIPS_SELECTORS_OFFSET + rtype as usize,
+                JType(jtype) => MIPS_SELECTORS_OFFSET + RTypeInstruction::COUNT + jtype as usize,
                 IType(itype) => {
-                    SCRATCH_SIZE
-                        + 2
+                    MIPS_SELECTORS_OFFSET
                         + RTypeInstruction::COUNT
                         + JTypeInstruction::COUNT
                         + itype as usize
@@ -86,8 +89,6 @@ impl ColumnAlias {
 pub type MIPSWitness<T> = Witness<MIPS_COLUMNS, T>;
 
 pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + 2 + MIPS_SELECTORS_LENGTH;
-pub const MIPS_SELECTORS_LENGTH: usize =
-    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
 
 impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
     type Output = T;

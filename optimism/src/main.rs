@@ -14,7 +14,9 @@ use kimchi_optimism::{
     },
     lookups::LookupTableIDs,
     mips::{
-        column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS, MIPS_SELECTORS_LENGTH},
+        column::{
+            ColumnAlias as MIPSColumn, MIPS_COLUMNS, MIPS_SELECTORS_LENGTH, MIPS_SELECTORS_OFFSET,
+        },
         constraints as mips_constraints,
         interpreter::Instruction,
         trace::MIPSTrace,
@@ -125,7 +127,26 @@ pub fn main() -> ExitCode {
         );
     }
 
-    while !mips_wit_env.halt {
+    // Function to set selectors of MIPS for one instruction and a given number of rows
+    let set_mips_selectors =
+        |trace: &mut MIPSTrace<Fp>, instr: Instruction, number_of_rows: usize| {
+            let instr_ix = MIPSColumn::Selector(instr).ix();
+            (MIPS_SELECTORS_OFFSET..MIPS_COLUMNS)
+                .into_iter()
+                .for_each(|i| {
+                    if i == instr_ix {
+                        trace.witness.get_mut(&instr).unwrap().cols[i]
+                            .extend((0..number_of_rows).map(|_| Fp::one()))
+                    } else {
+                        trace.witness.get_mut(&instr).unwrap().cols[i]
+                            .extend((0..number_of_rows).map(|_| Fp::zero()))
+                    }
+                });
+        };
+
+    let mut j = 0;
+    while j < 5_000_000 && !mips_wit_env.halt {
+        j += 1;
         let instr = mips_wit_env.step(&configuration, &meta, &start);
 
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
@@ -139,7 +160,7 @@ pub fn main() -> ExitCode {
                 keccak_trace.push_row(step, &keccak_env.witness_env.witness.cols);
 
                 // If the witness is full, fold it and reset the pre-folding witness
-                if keccak_trace.witness[&step].cols[0].len() == DOMAIN_SIZE {
+                if keccak_trace.number_rows(step) == DOMAIN_SIZE {
                     proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
@@ -153,21 +174,12 @@ pub fn main() -> ExitCode {
             mips_wit_env.keccak_env = None;
         }
 
-        // TODO: unify witness of MIPS to include the selectors, scratch state, instruction counter, and the error
-        // TODO: it's probably more efficient if zero/ones columns for selectors are assigned at once instead of pushing each element
-        for i in 0..MIPS_COLUMNS {
-            if i < MIPS_SELECTORS_LENGTH {
-                // Set to zero all selectors except for the one corresponding to the current instruction
-                let flag = if i != MIPSColumn::Selector(instr).ix() {
-                    Fp::zero()
-                } else {
-                    Fp::one()
-                };
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i].push(flag);
-            } else if i < SCRATCH_SIZE + MIPS_SELECTORS_LENGTH {
+        // TODO: unify witness of MIPS to include scratch state, instruction counter, and error
+        for i in 0..MIPS_COLUMNS - MIPS_SELECTORS_LENGTH {
+            if i < SCRATCH_SIZE {
                 mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(mips_wit_env.scratch_state[i - MIPS_SELECTORS_LENGTH]);
-            } else if i == MIPS_COLUMNS - 2 {
+                    .push(mips_wit_env.scratch_state[i]);
+            } else if i == SCRATCH_SIZE {
                 mips_trace.witness.get_mut(&instr).unwrap().cols[i]
                     .push(Fp::from(mips_wit_env.instruction_counter));
             } else {
@@ -177,7 +189,9 @@ pub fn main() -> ExitCode {
             }
         }
 
-        if mips_trace.witness[&instr].cols[SCRATCH_SIZE].len() == DOMAIN_SIZE {
+        if mips_trace.number_rows(instr) == DOMAIN_SIZE {
+            // Set to zero all selectors except for the one corresponding to the current instruction
+            set_mips_selectors(&mut mips_trace, instr, DOMAIN_SIZE);
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -190,8 +204,16 @@ pub fn main() -> ExitCode {
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
-        let needs_folding = mips_trace.pad_dummy(instr) != 0;
-        if needs_folding {
+        // The number of rows fulfilled corresponds to the number of rows in the scratch state
+        let number_of_rows = mips_trace.number_rows(instr);
+        if number_of_rows != 0 {
+            // First set the selector columns
+            set_mips_selectors(&mut mips_trace, instr, number_of_rows);
+
+            // Then pad with the first row
+            mips_trace.pad_dummy(instr);
+
+            // Finally fold instance
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
