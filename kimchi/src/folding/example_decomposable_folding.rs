@@ -501,7 +501,8 @@ mod checker {
 mod tests {
     use super::*;
     use crate::folding::{
-        decomposable_folding::DecomposableFoldingScheme, example2::checker::ExtendedProvider,
+        decomposable_folding::DecomposableFoldingScheme,
+        example_decomposable_folding::checker::ExtendedProvider,
     };
     use ark_poly::{EvaluationDomain, Evaluations};
 
