@@ -1,5 +1,5 @@
 use ark_ec::bn::Bn;
-use ark_ff::UniformRand;
+use ark_ff::{One, UniformRand, Zero};
 use kimchi::o1_utils;
 use kimchi_msm::{
     columns::Column, proof::ProofInputs, prover::prove, verifier::verify, witness::Witness,
@@ -14,7 +14,7 @@ use kimchi_optimism::{
     },
     lookups::LookupTableIDs,
     mips::{
-        column::{MIPSWitnessTrait, MIPS_COLUMNS},
+        column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS, MIPS_SELECTORS_LENGTH},
         constraints as mips_constraints,
         interpreter::Instruction,
         trace::MIPSTrace,
@@ -155,9 +155,12 @@ pub fn main() -> ExitCode {
 
         // TODO: unify witness of MIPS to include the instruction and the error
         for i in 0..MIPS_COLUMNS {
-            if i < SCRATCH_SIZE {
+            if i < MIPS_SELECTORS_LENGTH && i != MIPSColumn::Selector(instr).ix() {
+                // Set to zero all selectors except for the one corresponding to the current instruction
+                mips_trace.witness.get_mut(&instr).unwrap().cols[i].push(Fp::zero());
+            } else if i < SCRATCH_SIZE + MIPS_SELECTORS_LENGTH {
                 mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(mips_wit_env.scratch_state[i]);
+                    .push(mips_wit_env.scratch_state[i - MIPS_SELECTORS_LENGTH]);
             } else if i == MIPS_COLUMNS - 2 {
                 mips_trace.witness.get_mut(&instr).unwrap().cols[i]
                     .push(Fp::from(mips_wit_env.instruction_counter));
@@ -167,8 +170,9 @@ pub fn main() -> ExitCode {
                     .push(Fp::rand(&mut rand::rngs::OsRng));
             }
         }
+        mips_trace.witness.get_mut(&instr).unwrap()[MIPSColumn::Selector(instr)].push(Fp::one());
 
-        if mips_trace.witness[&instr].instruction_counter().len() == DOMAIN_SIZE {
+        if mips_trace.witness[&instr].cols[0].len() == DOMAIN_SIZE {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
