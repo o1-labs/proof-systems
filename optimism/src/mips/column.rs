@@ -25,10 +25,10 @@ pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
 /// describe our constraints.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum ColumnAlias {
-    Selector(Instruction),
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     InstructionCounter,
+    Selector(Instruction),
 }
 
 /// The columns used by the MIPS circuit.
@@ -37,17 +37,24 @@ pub enum ColumnAlias {
 /// (the total number of columns refers to the maximum of columns used by each mode)
 impl ColumnAlias {
     pub fn ix(&self) -> usize {
+        // Note that SCRATCH_SIZE + 1 is for the error
         match *self {
-            ColumnAlias::Selector(instruction) => match instruction {
-                RType(rtype) => rtype as usize,
-                JType(jtype) => RTypeInstruction::COUNT + jtype as usize,
-                IType(itype) => RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype as usize,
-            },
             ColumnAlias::ScratchState(i) => {
                 assert!(i < SCRATCH_SIZE);
-                MIPS_SELECTORS_LENGTH + i
+                i
             }
-            ColumnAlias::InstructionCounter => MIPS_SELECTORS_LENGTH + SCRATCH_SIZE,
+            ColumnAlias::InstructionCounter => SCRATCH_SIZE,
+            ColumnAlias::Selector(instruction) => match instruction {
+                RType(rtype) => SCRATCH_SIZE + 2 + rtype as usize,
+                JType(jtype) => SCRATCH_SIZE + 2 + RTypeInstruction::COUNT + jtype as usize,
+                IType(itype) => {
+                    SCRATCH_SIZE
+                        + 2
+                        + RTypeInstruction::COUNT
+                        + JTypeInstruction::COUNT
+                        + itype as usize
+                }
+            },
         }
     }
 }
@@ -78,7 +85,7 @@ impl ColumnAlias {
 /// - 4 helpers to check if at least n bytes were read in the current row
 pub type MIPSWitness<T> = Witness<MIPS_COLUMNS, T>;
 
-pub const MIPS_COLUMNS: usize = MIPS_SELECTORS_LENGTH + SCRATCH_SIZE + 2;
+pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + 2 + MIPS_SELECTORS_LENGTH;
 pub const MIPS_SELECTORS_LENGTH: usize =
     RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
 
