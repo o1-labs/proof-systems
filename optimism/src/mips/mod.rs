@@ -25,3 +25,5 @@ pub mod registers;
 pub mod tests;
 pub mod trace;
 pub mod witness;
+
+pub use interpreter::{ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction};
