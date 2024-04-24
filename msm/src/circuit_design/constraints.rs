@@ -90,7 +90,9 @@ impl<F: PrimeField, LT: LookupTableID> ConstraintBuilderEnv<F, LT> {
     pub fn get_constraints(&self) -> Vec<E<F>> {
         let mut constraints: Vec<E<F>> = vec![];
         constraints.extend(self.get_relation_constraints());
-        constraints.extend(self.get_lookup_constraints());
+        if !self.lookups.is_empty() {
+            constraints.extend(self.get_lookup_constraints());
+        }
         constraints
     }
 }
