@@ -2,9 +2,10 @@ use crate::{
     circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
     fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
-        bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
+        bigint_to_biguint_f, combine_carry, combine_small_to_large, fold_choice2,
+        limb_decompose_biguint, limb_decompose_ff, LIMB_BITSIZE_LARGE, LIMB_BITSIZE_SMALL,
+        N_LIMBS_LARGE, N_LIMBS_SMALL,
     },
-    LIMB_BITSIZE, N_LIMBS,
 };
 use ark_ff::{FpParameters, PrimeField, Zero};
 use core::marker::PhantomData;
@@ -12,59 +13,6 @@ use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::sign::Signed;
 use o1_utils::field_helpers::FieldHelpers;
-
-/// Alias for LIMB_BITSIZE, used for convenience.
-pub const LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
-/// Alias for N_LIMBS, used for convenience.
-pub const N_LIMBS_SMALL: usize = N_LIMBS;
-
-/// In FEC addition we use bigger limbs, of 75 bits, that are still
-/// nicely decomposable into smaller 15bit ones for range checking.
-pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
-pub const N_LIMBS_LARGE: usize = 4;
-
-/// Helper function for limb recombination.
-///
-/// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
-/// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
-/// chunks `a_i` of size `5` from the first, and recombining them as
-/// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-fn combine_small_to_large<
-    const M: usize,
-    const N: usize,
-    F: PrimeField,
-    Env: ColAccessCap<F, FECColumn>,
->(
-    x: [Env::Variable; M],
-) -> [Env::Variable; N] {
-    let constant_u128 = |x: u128| Env::constant(From::from(x));
-    let disparity: usize = M % 5;
-    std::array::from_fn(|i| {
-        // We have less small limbs in the last large limb
-        let upper_bound = if disparity != 0 && i == N - 1 {
-            disparity
-        } else {
-            5
-        };
-        (0..upper_bound)
-            .map(|j| x[5 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
-            .fold(Env::Variable::from(0u64), |acc, v| acc + v)
-    })
-}
-
-/// Helper function for limb recombination for carry specifically.
-/// Each big carry limb is stored as 6 (not 5!) small elements. We
-/// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<F: PrimeField, Env: ColAccessCap<F, FECColumn>>(
-    x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
-) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
-    let constant_u128 = |x: u128| Env::constant(From::from(x));
-    std::array::from_fn(|i| {
-        (0..6)
-            .map(|j| x[6 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
-            .fold(Env::Variable::from(0u64), |acc, v| acc + v)
-    })
-}
 
 /// Convenience function for printing.
 pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<BigInt> {
@@ -352,24 +300,24 @@ pub fn constrain_ec_addition<
     }
 
     let xr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(xr_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(xr_limbs_small.clone());
     let yr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(yr_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(yr_limbs_small.clone());
     let s_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(s_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(s_limbs_small.clone());
     let q1_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q1_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(q1_limbs_small.clone());
     let q2_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q2_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(q2_limbs_small.clone());
     let q3_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env>(q3_limbs_small.clone());
+        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(q3_limbs_small.clone());
 
     let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry1_limbs_small.clone());
+        combine_carry::<F, _, Env>(carry1_limbs_small.clone());
     let carry2_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry2_limbs_small.clone());
+        combine_carry::<F, _, Env>(carry2_limbs_small.clone());
     let carry3_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
-        combine_carry::<F, Env>(carry3_limbs_small.clone());
+        combine_carry::<F, _, Env>(carry3_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
     let add_extra_carries =

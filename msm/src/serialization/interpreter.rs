@@ -108,6 +108,16 @@ impl<
     }
 }
 
+/// Alias for LIMB_BITSIZE, used for convenience.
+pub const LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
+/// Alias for N_LIMBS, used for convenience.
+pub const N_LIMBS_SMALL: usize = N_LIMBS;
+
+/// In FEC addition we use bigger limbs, of 75 bits, that are still
+/// nicely decomposable into smaller 15bit ones for range checking.
+pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
+pub const N_LIMBS_LARGE: usize = 4;
+
 /// Returns the highest limb of the foreign field modulus. Is used by the lookups.
 pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
     let f_bui: BigUint = TryFrom::try_from(<Ff as PrimeField>::Params::MODULUS).unwrap();
@@ -257,16 +267,6 @@ pub fn deserialize_field_element<
     }
 }
 
-/// Alias for LIMB_BITSIZE, used for convenience.
-pub const LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
-/// Alias for N_LIMBS, used for convenience.
-pub const N_LIMBS_SMALL: usize = N_LIMBS;
-
-/// In FEC addition we use bigger limbs, of 75 bits, that are still
-/// nicely decomposable into smaller 15bit ones for range checking.
-pub const LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * 5; // 75 bits
-pub const N_LIMBS_LARGE: usize = 4;
-
 /// Interprets bigint `input` as an element of a field modulo `f_bi`,
 /// converts it to `[0,f_bi)` range, and outptus a corresponding
 /// biguint representation.
@@ -331,13 +331,12 @@ where
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
 /// chunks `a_i` of size `5` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-fn combine_small_to_large<
+pub fn combine_small_to_large<
     const M: usize,
     const N: usize,
     F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, SerializationColumn>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
+    CIx: ColumnIndexer,
+    Env: ColAccessCap<F, CIx>,
 >(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
@@ -356,17 +355,10 @@ fn combine_small_to_large<
     })
 }
 
-// TODO unify with the same function in fec/interpreter.rs after the
-// interpreter interface is unified.
 /// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-fn combine_carry<
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, SerializationColumn>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
->(
+pub fn combine_carry<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
     let constant_u128 = |x: u128| Env::constant(From::from(x));
