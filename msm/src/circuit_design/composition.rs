@@ -204,6 +204,10 @@ impl<
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.env.write_column(self.lens.re_get(ix), value)
     }
+
+    fn copy(&mut self, x: &Self::Variable, position: CIx2) -> Self::Variable {
+        self.env.copy(x, self.lens.re_get(position))
+    }
 }
 
 impl<
@@ -242,6 +246,10 @@ impl<
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.0.write_column(ix, value);
     }
+
+    fn copy(&mut self, x: &Self::Variable, position: CIx2) -> Self::Variable {
+        self.0.copy(x, position)
+    }
 }
 
 impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> ColAccessCap<F, CIx1>
@@ -267,6 +275,10 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColWriteCap<F, CIx1>, L> ColW
 {
     fn write_column(&mut self, ix: CIx1, value: &Self::Variable) {
         self.0.env.write_column(ix, value);
+    }
+
+    fn copy(&mut self, _x: &Self::Variable, _position: CIx1) -> Self::Variable {
+        unimplemented!()
     }
 }
 

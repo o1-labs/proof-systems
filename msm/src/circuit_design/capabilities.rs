@@ -36,6 +36,8 @@ where
     Self: ColAccessCap<F, CIx>,
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable);
+
+    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable;
 }
 
 /// Capability for invoking table lookups.

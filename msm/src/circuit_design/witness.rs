@@ -69,6 +69,14 @@ impl<
         };
         self.witness.last_mut().unwrap().cols[i] = *value;
     }
+
+    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
+        let Column::X(i) = position.to_column() else {
+            todo!()
+        };
+        self.witness.last_mut().unwrap().cols[i] = *x;
+        *x
+    }
 }
 
 impl<
