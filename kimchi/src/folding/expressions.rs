@@ -544,6 +544,7 @@ where
     Config::Curve: AffineCurve<ScalarField = F>,
     Config::Challenge: From<ChallengeTerm>,
 {
+    // TODO: check if this needs some special treatment for Extensions
     fn from(expr: ExprInner<ConstantExprInner<F>, Col>) -> Self {
         match expr {
             ExprInner::Constant(cexpr) => cexpr.into(),
