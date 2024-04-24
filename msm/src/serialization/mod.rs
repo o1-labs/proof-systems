@@ -1,8 +1,6 @@
 pub mod column;
-pub mod constraints;
 pub mod interpreter;
 pub mod lookups;
-pub mod witness;
 
 /// The number of intermediate limbs of 4 bits required for the circuit
 pub const N_INTERMEDIATE_LIMBS: usize = 20;
@@ -16,18 +14,17 @@ mod tests {
     use strum::IntoEnumIterator;
 
     use crate::{
+        circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
         columns::{Column, ColumnIndexer},
         precomputed_srs::get_bn254_srs,
         prover::prove,
         serialization::{
             column::{SerializationColumn, SER_N_COLUMNS},
-            constraints::ConstraintBuilderEnv,
             interpreter::{
                 constrain_multiplication, deserialize_field_element, limb_decompose_ff,
                 multiplication_circuit,
             },
             lookups::LookupTable,
-            witness::WitnessBuilderEnv,
         },
         verifier::verify,
         witness::Witness,

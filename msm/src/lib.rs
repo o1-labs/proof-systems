@@ -9,6 +9,7 @@ pub use logup::{
     LookupTableID as LogupTableID, LookupTableID,
 };
 
+pub mod circuit_design;
 pub mod column_env;
 pub mod columns;
 pub mod expr;

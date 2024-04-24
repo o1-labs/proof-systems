@@ -6,6 +6,7 @@ pub mod lookups;
 mod tests {
 
     use crate::{
+        circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
         columns::{Column, ColumnIndexer},
         fec::{
             columns::{FECColumn, FEC_N_COLUMNS},
@@ -13,7 +14,6 @@ mod tests {
             lookups::LookupTable,
         },
         prover::prove,
-        serialization::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
         verifier::verify,
         witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,

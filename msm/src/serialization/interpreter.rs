@@ -3,54 +3,109 @@ use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::{sign::Signed, Euclid};
 use std::marker::PhantomData;
+use strum::IntoEnumIterator;
 
 use crate::{
+    circuit_design::{ColAccessCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
     serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
     LIMB_BITSIZE, N_LIMBS,
 };
+use kimchi::circuits::{
+    expr::{Expr, ExprInner, Variable},
+    gate::CurrOrNext,
+};
 use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
-/// A generic environment trait that allows manipulating columns and
-/// requesting lookups. Implies two categories of implementations:
-/// constraint ones (that operate over expressions, building a
-/// circuit), and witness ones (that operate over values, building
-/// values for the circuit).
-pub trait InterpreterEnv<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
-    type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Neg<Output = Self::Variable>
-        + From<u64>
-        + std::fmt::Debug;
-
-    /// Asserts that the value is zero.
-    fn assert_zero(&mut self, cst: Self::Variable);
-
-    /// This is kind of like write_column & read_column right after... And asserting it.
-    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable;
-
-    /// Reads value from a column position.
-    fn read_column(&self, pos: CIx) -> Self::Variable;
-
-    /// Perform lookup into the specified table.
-    fn lookup(&mut self, table_id: LT, value: &Self::Variable);
-
-    fn constant(value: F) -> Self::Variable;
-
-    /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
-    /// the result in `position`.
-    /// `lowest_bit` becomes the least-significant bit of the resulting value.
+// Such "helpers" defeat the whole purpose of the interpreter.
+// TODO remove
+pub trait SerializationHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
+    /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
+    /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
     fn bitmask_be(
         &mut self,
-        x: &Self::Variable,
+        x: &<Self as ColAccessCap<F, CIx>>::Variable,
         highest_bit: u32,
         lowest_bit: u32,
         position: CIx,
-    ) -> Self::Variable;
+    ) -> Self::Variable
+    where
+        Self: ColAccessCap<F, CIx>;
+
+    /// This is kind of like write_column & read_column right after... And asserting it.
+    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable
+    where
+        Self: ColAccessCap<F, CIx>;
+}
+
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
+    SerializationHelpers<F, CIx, LT> for crate::circuit_design::ConstraintBuilderEnv<F, LT>
+{
+    fn bitmask_be(
+        &mut self,
+        _x: &<Self as ColAccessCap<F, CIx>>::Variable,
+        _highest_bit: u32,
+        _lowest_bit: u32,
+        position: CIx,
+    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
+        // No constraint added. It is supposed that the caller will constraint
+        // later the returned variable and/or do a range check.
+        Expr::Atom(ExprInner::Cell(Variable {
+            col: position.to_column(),
+            row: CurrOrNext::Curr,
+        }))
+    }
+
+    fn copy(
+        &mut self,
+        x: &<Self as ColAccessCap<F, CIx>>::Variable,
+        position: CIx,
+    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
+        let y = Expr::Atom(ExprInner::Cell(Variable {
+            col: position.to_column(),
+            row: CurrOrNext::Curr,
+        }));
+        let diff = y.clone() - x.clone();
+        <Self as ColAccessCap<F, CIx>>::assert_zero(self, diff);
+        y
+    }
+}
+
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const CIX_COL_N: usize,
+        LT: LookupTableID + IntoEnumIterator,
+    > SerializationHelpers<F, CIx, LT>
+    for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    fn bitmask_be(
+        &mut self,
+        x: &<Self as ColAccessCap<F, CIx>>::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: CIx,
+    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
+        // FIXME: we can assume bitmask_be will be called only on value with
+        // maximum 128 bits. We use bitmask_be only for the limbs
+        let x_bytes_u8 = &x.to_bytes()[0..16];
+        let x_u128 = u128::from_le_bytes(x_bytes_u8.try_into().unwrap());
+        let res = (x_u128 >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
+        let res_fp: F = res.into();
+        self.write_column(position.to_column(), res_fp);
+        res_fp
+    }
+
+    fn copy(
+        &mut self,
+        x: &<Self as ColAccessCap<F, CIx>>::Variable,
+        position: CIx,
+    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
+        self.write_column(position.to_column(), *x);
+        *x
+    }
 }
 
 /// Returns the highest limb of the foreign field modulus. Is used by the lookups.
@@ -81,7 +136,9 @@ pub fn ff_modulus_highest_limb<Ff: PrimeField>() -> BigUint {
 pub fn deserialize_field_element<
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, SerializationColumn>
+        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
+        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     limbs: [BigUint; 3],
@@ -89,6 +146,11 @@ pub fn deserialize_field_element<
     let input_limb0 = Env::constant(F::from(limbs[0].clone()));
     let input_limb1 = Env::constant(F::from(limbs[1].clone()));
     let input_limb2 = Env::constant(F::from(limbs[2].clone()));
+    let input_limbs = [
+        input_limb0.clone(),
+        input_limb1.clone(),
+        input_limb2.clone(),
+    ];
 
     // FIXME: should we assert this in the circuit?
     assert!(limbs[0] < BigUint::from(2u128.pow(88)));
@@ -100,6 +162,7 @@ pub fn deserialize_field_element<
     let limb2_var = env.copy(&input_limb2, SerializationColumn::ChalKimchi(2));
 
     let mut limb2_vars = vec![];
+
     // Compute individual 4 bits limbs of b2
     {
         let mut constraint = limb2_var.clone();
@@ -123,97 +186,28 @@ pub fn deserialize_field_element<
         .for_each(|v| env.lookup(LookupTable::RangeCheck4, v));
 
     let mut fifteen_bits_vars = vec![];
-    {
-        let c0_var = env.bitmask_be(&input_limb0, 15, 0, SerializationColumn::ChalConverted(0));
-        fifteen_bits_vars.push(c0_var)
-    }
 
-    {
-        let c1_var = env.bitmask_be(&input_limb0, 30, 15, SerializationColumn::ChalConverted(1));
-        fifteen_bits_vars.push(c1_var);
-    }
+    for j in 0..3 {
+        for i in 0..5 {
+            let ci_var = env.bitmask_be(
+                &input_limbs[j],
+                15 * (i + 1) + 2 * j as u32,
+                15 * i + 2 * j as u32,
+                SerializationColumn::ChalConverted(6 * j + i as usize),
+            );
+            fifteen_bits_vars.push(ci_var)
+        }
 
-    {
-        let c2_var = env.bitmask_be(&input_limb0, 45, 30, SerializationColumn::ChalConverted(2));
-        fifteen_bits_vars.push(c2_var);
-    }
-
-    {
-        let c3_var = env.bitmask_be(&input_limb0, 60, 45, SerializationColumn::ChalConverted(3));
-        fifteen_bits_vars.push(c3_var)
-    }
-
-    {
-        let c4_var = env.bitmask_be(&input_limb0, 75, 60, SerializationColumn::ChalConverted(4));
-        fifteen_bits_vars.push(c4_var);
-    }
-
-    {
-        let res = (limbs[0].clone() >> 75) & BigUint::from((1u128 << (88 - 75)) - 1);
-        let res_prime = limbs[1].clone() & BigUint::from((1u128 << 2) - 1);
-        let res: BigUint = res + (res_prime << (15 - 2));
-        let res = Env::constant(F::from(res));
-        let c5_var = env.copy(&res, SerializationColumn::ChalConverted(5));
-        fifteen_bits_vars.push(c5_var);
-    }
-
-    {
-        let c6_var = env.bitmask_be(&input_limb1, 17, 2, SerializationColumn::ChalConverted(6));
-        fifteen_bits_vars.push(c6_var);
-    }
-
-    {
-        let c7_var = env.bitmask_be(&input_limb1, 32, 17, SerializationColumn::ChalConverted(7));
-        fifteen_bits_vars.push(c7_var);
-    }
-
-    {
-        let c8_var = env.bitmask_be(&input_limb1, 47, 32, SerializationColumn::ChalConverted(8));
-        fifteen_bits_vars.push(c8_var);
-    }
-
-    {
-        let c9_var = env.bitmask_be(&input_limb1, 62, 47, SerializationColumn::ChalConverted(9));
-        fifteen_bits_vars.push(c9_var);
-    }
-
-    {
-        let c10_var = env.bitmask_be(&input_limb1, 77, 62, SerializationColumn::ChalConverted(10));
-        fifteen_bits_vars.push(c10_var);
-    }
-
-    {
-        let res = (limbs[1].clone() >> 77) & BigUint::from((1u128 << (88 - 77)) - 1);
-        let res_prime = limbs[2].clone() & BigUint::from((1u128 << 4) - 1);
-        let res: BigUint = res + (res_prime << (15 - 4));
-        let res = Env::constant(res.into());
-        let c11_var = env.copy(&res, SerializationColumn::ChalConverted(11));
-        fifteen_bits_vars.push(c11_var);
-    }
-
-    {
-        let c12_var = env.bitmask_be(&input_limb2, 19, 4, SerializationColumn::ChalConverted(12));
-        fifteen_bits_vars.push(c12_var);
-    }
-
-    {
-        let c13_var = env.bitmask_be(&input_limb2, 34, 19, SerializationColumn::ChalConverted(13));
-        fifteen_bits_vars.push(c13_var);
-    }
-
-    {
-        let c14_var = env.bitmask_be(&input_limb2, 49, 34, SerializationColumn::ChalConverted(14));
-        fifteen_bits_vars.push(c14_var);
-    }
-
-    {
-        let c15_var = env.bitmask_be(&input_limb2, 64, 49, SerializationColumn::ChalConverted(15));
-        fifteen_bits_vars.push(c15_var);
-    }
-
-    {
-        let c16_var = env.bitmask_be(&input_limb2, 79, 64, SerializationColumn::ChalConverted(16));
-        fifteen_bits_vars.push(c16_var);
+        if j < 2 {
+            let shift = 2 * (j + 1); // ∈ [2, 4]
+            let res = (limbs[j].clone() >> (73 + shift))
+                & BigUint::from((1u128 << (88 - 73 + shift)) - 1);
+            let res_prime = limbs[j + 1].clone() & BigUint::from((1u128 << shift) - 1);
+            let res: BigUint = res + (res_prime << (15 - shift));
+            let res = Env::constant(F::from(res));
+            let c5_var = env.copy(&res, SerializationColumn::ChalConverted(6 * j + 5));
+            fifteen_bits_vars.push(c5_var);
+        }
     }
 
     // Range check on each limb
@@ -331,8 +325,6 @@ where
         .fold(Var::from(0u64), |acc, v| acc + v)
 }
 
-// TODO unify with the same function in fec/interpreter.rs after the
-// interpreter interface is unified.
 /// Helper function for limb recombination.
 ///
 /// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
@@ -344,7 +336,8 @@ fn combine_small_to_large<
     const N: usize,
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, SerializationColumn>
+        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
 >(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
@@ -371,7 +364,8 @@ fn combine_small_to_large<
 fn combine_carry<
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, SerializationColumn>
+        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
 >(
     x: [Env::Variable; 2 * N_LIMBS_SMALL + 2],
 ) -> [Env::Variable; 2 * N_LIMBS_LARGE - 2] {
@@ -387,7 +381,9 @@ fn combine_carry<
 pub fn constrain_multiplication<
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, SerializationColumn>
+        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
+        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
 ) {
@@ -406,7 +402,9 @@ pub fn constrain_multiplication<
         core::array::from_fn(|i| env.read_column(SerializationColumn::Carry(i)));
 
     // u128 covers our limb sizes shifts which is good
-    let constant_u128 = |x: u128| -> Env::Variable { Env::constant(From::from(x)) };
+    let constant_u128 = |x: u128| -> <Env as ColAccessCap<F, SerializationColumn>>::Variable {
+        Env::constant(From::from(x))
+    };
 
     // Result variable must be in the field.
     for (i, x) in coeff_result_limbs_small.iter().enumerate() {
@@ -455,19 +453,21 @@ pub fn constrain_multiplication<
         combine_carry::<_, _, Env>(carry_limbs_small.clone());
 
     let limb_size_large = constant_u128(1u128 << LIMB_BITSIZE_LARGE);
-    let add_extra_carries =
-        |i: usize, carry_limbs_large: &[Env::Variable; 2 * N_LIMBS_LARGE - 2]| -> Env::Variable {
-            if i == 0 {
-                -(carry_limbs_large[0].clone() * limb_size_large.clone())
-            } else if i < 2 * N_LIMBS_LARGE - 2 {
-                carry_limbs_large[i - 1].clone()
-                    - carry_limbs_large[i].clone() * limb_size_large.clone()
-            } else if i == 2 * N_LIMBS_LARGE - 2 {
-                carry_limbs_large[i - 1].clone()
-            } else {
-                panic!("add_extra_carries: the index {i:?} is too high")
-            }
-        };
+    let add_extra_carries = |i: usize,
+                             carry_limbs_large: &[<Env as ColAccessCap<F, SerializationColumn>>::Variable;
+                                  2 * N_LIMBS_LARGE - 2]|
+     -> <Env as ColAccessCap<F, SerializationColumn>>::Variable {
+        if i == 0 {
+            -(carry_limbs_large[0].clone() * limb_size_large.clone())
+        } else if i < 2 * N_LIMBS_LARGE - 2 {
+            carry_limbs_large[i - 1].clone()
+                - carry_limbs_large[i].clone() * limb_size_large.clone()
+        } else if i == 2 * N_LIMBS_LARGE - 2 {
+            carry_limbs_large[i - 1].clone()
+        } else {
+            panic!("add_extra_carries: the index {i:?} is too high")
+        }
+    };
 
     // Equation 1
     // General form:
@@ -497,7 +497,9 @@ pub fn constrain_multiplication<
 pub fn multiplication_circuit<
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, SerializationColumn>
+        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
+        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     chal: Ff,
@@ -656,4 +658,169 @@ pub fn multiplication_circuit<
 
     constrain_multiplication::<F, Ff, Env>(env);
     coeff_result
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        circuit_design::{ColAccessCap, WitnessBuilderEnv},
+        columns::ColumnIndexer,
+        serialization::{
+            column::SerializationColumn, interpreter::deserialize_field_element,
+            lookups::LookupTable, N_INTERMEDIATE_LIMBS,
+        },
+        Ff1, LIMB_BITSIZE, N_LIMBS,
+    };
+    use ark_ff::{BigInteger, FpParameters as _, One, PrimeField, UniformRand, Zero};
+    use mina_curves::pasta::Fp;
+    use num_bigint::BigUint;
+    use o1_utils::{tests::make_test_rng, FieldHelpers};
+    use rand::Rng;
+    use std::str::FromStr;
+
+    fn test_decomposition_generic(x: Fp) {
+        let bits = x.to_bits();
+        let limb0: u128 = {
+            let limb0_le_bits: &[bool] = &bits.clone().into_iter().take(88).collect::<Vec<bool>>();
+            let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
+            limb0.to_biguint().try_into().unwrap()
+        };
+        let limb1: u128 = {
+            let limb0_le_bits: &[bool] = &bits
+                .clone()
+                .into_iter()
+                .skip(88)
+                .take(88)
+                .collect::<Vec<bool>>();
+            let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
+            limb0.to_biguint().try_into().unwrap()
+        };
+        let limb2: u128 = {
+            let limb0_le_bits: &[bool] = &bits
+                .clone()
+                .into_iter()
+                .skip(2 * 88)
+                .take(79)
+                .collect::<Vec<bool>>();
+            let limb0 = Fp::from_bits(limb0_le_bits).unwrap();
+            limb0.to_biguint().try_into().unwrap()
+        };
+        let mut dummy_env = WitnessBuilderEnv::<
+            Fp,
+            { <SerializationColumn as ColumnIndexer>::COL_N },
+            LookupTable<Ff1>,
+        >::create();
+        deserialize_field_element(
+            &mut dummy_env,
+            [
+                BigUint::from(limb0),
+                BigUint::from(limb1),
+                BigUint::from(limb2),
+            ],
+        );
+
+        // Check limb are copied into the environment
+        let limbs_to_assert = [limb0, limb1, limb2];
+        for (i, limb) in limbs_to_assert.iter().enumerate() {
+            assert_eq!(
+                Fp::from(*limb),
+                dummy_env.read_column(SerializationColumn::ChalKimchi(i))
+            );
+        }
+
+        // Check intermediate limbs
+        {
+            let bits = Fp::from(limb2).to_bits();
+            for j in 0..N_INTERMEDIATE_LIMBS {
+                let le_bits: &[bool] = &bits
+                    .clone()
+                    .into_iter()
+                    .skip(j * 4)
+                    .take(4)
+                    .collect::<Vec<bool>>();
+                let t = Fp::from_bits(le_bits).unwrap();
+                let intermediate_v =
+                    dummy_env.read_column(SerializationColumn::ChalIntermediate(j));
+                assert_eq!(
+                    t,
+                    intermediate_v,
+                    "{}",
+                    format_args!(
+                        "Intermediate limb {j}. Exp value is {:?}, computed is {:?}",
+                        t.to_biguint(),
+                        intermediate_v.to_biguint()
+                    )
+                )
+            }
+        }
+
+        // Checking msm limbs
+        for i in 0..N_LIMBS {
+            let le_bits: &[bool] = &bits
+                .clone()
+                .into_iter()
+                .skip(i * LIMB_BITSIZE)
+                .take(LIMB_BITSIZE)
+                .collect::<Vec<bool>>();
+            let t = Fp::from_bits(le_bits).unwrap();
+            let converted_v = dummy_env.read_column(SerializationColumn::ChalConverted(i));
+            assert_eq!(
+                t,
+                converted_v,
+                "{}",
+                format_args!(
+                    "MSM limb {i}. Exp value is {:?}, computed is {:?}",
+                    t.to_biguint(),
+                    converted_v.to_biguint()
+                )
+            )
+        }
+    }
+
+    #[test]
+    fn test_decomposition_zero() {
+        test_decomposition_generic(Fp::zero());
+    }
+
+    #[test]
+    fn test_decomposition_one() {
+        test_decomposition_generic(Fp::one());
+    }
+
+    #[test]
+    fn test_decomposition_random_first_limb_only() {
+        let mut rng = make_test_rng();
+        let x = rng.gen_range(0..2u128.pow(88) - 1);
+        test_decomposition_generic(Fp::from(x));
+    }
+
+    #[test]
+    fn test_decomposition_second_limb_only() {
+        test_decomposition_generic(Fp::from(2u128.pow(88)));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 1));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 2));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 16));
+        test_decomposition_generic(Fp::from(2u128.pow(88) + 23234));
+    }
+
+    #[test]
+    fn test_decomposition_random_second_limb_only() {
+        let mut rng = make_test_rng();
+        let x = rng.gen_range(0..2u128.pow(88) - 1);
+        test_decomposition_generic(Fp::from(2u128.pow(88) + x));
+    }
+
+    #[test]
+    fn test_decomposition_random() {
+        let mut rng = make_test_rng();
+        test_decomposition_generic(Fp::rand(&mut rng));
+    }
+
+    #[test]
+    fn test_decomposition_order_minus_one() {
+        let x = BigUint::from_bytes_be(&<Fp as PrimeField>::Params::MODULUS.to_bytes_be())
+            - BigUint::from_str("1").unwrap();
+
+        test_decomposition_generic(Fp::from(x));
+    }
 }
