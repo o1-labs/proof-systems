@@ -144,9 +144,7 @@ pub fn main() -> ExitCode {
                 });
         };
 
-    let mut j = 0;
-    while j < 5_000_000 && !mips_wit_env.halt {
-        j += 1;
+    while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
 
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
