@@ -528,3 +528,6 @@ fn test_keccak_prover_constraints() {
         }
     });
 }
+
+#[test]
+fn test_keccak_decomposable_folding() {}

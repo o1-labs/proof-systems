@@ -153,11 +153,17 @@ pub fn main() -> ExitCode {
             mips_wit_env.keccak_env = None;
         }
 
-        // TODO: unify witness of MIPS to include the instruction and the error
+        // TODO: unify witness of MIPS to include the selectors, scratch state, instruction counter, and the error
+        // TODO: it's probably more efficient if zero/ones columns for selectors are assigned at once instead of pushing each element
         for i in 0..MIPS_COLUMNS {
-            if i < MIPS_SELECTORS_LENGTH && i != MIPSColumn::Selector(instr).ix() {
+            if i < MIPS_SELECTORS_LENGTH {
                 // Set to zero all selectors except for the one corresponding to the current instruction
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i].push(Fp::zero());
+                let flag = if i != MIPSColumn::Selector(instr).ix() {
+                    Fp::zero()
+                } else {
+                    Fp::one()
+                };
+                mips_trace.witness.get_mut(&instr).unwrap().cols[i].push(flag);
             } else if i < SCRATCH_SIZE + MIPS_SELECTORS_LENGTH {
                 mips_trace.witness.get_mut(&instr).unwrap().cols[i]
                     .push(mips_wit_env.scratch_state[i - MIPS_SELECTORS_LENGTH]);
@@ -170,9 +176,8 @@ pub fn main() -> ExitCode {
                     .push(Fp::rand(&mut rand::rngs::OsRng));
             }
         }
-        mips_trace.witness.get_mut(&instr).unwrap()[MIPSColumn::Selector(instr)].push(Fp::one());
 
-        if mips_trace.witness[&instr].cols[0].len() == DOMAIN_SIZE {
+        if mips_trace.witness[&instr].cols[SCRATCH_SIZE].len() == DOMAIN_SIZE {
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
