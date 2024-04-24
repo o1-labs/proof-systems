@@ -27,7 +27,7 @@ mod tests {
     use std::collections::BTreeMap;
     use strum::IntoEnumIterator;
 
-    fn build_foreign_field_addition_circuit<RNG: RngCore + CryptoRng>(
+    fn build_fec_addition_circuit<RNG: RngCore + CryptoRng>(
         rng: &mut RNG,
         domain_size: usize,
     ) -> WitnessBuilderEnv<Fp, { <FECColumn as ColumnIndexer>::COL_N }, LookupTable<Ff1>> {
@@ -55,9 +55,9 @@ mod tests {
     /// Builds the FF addition circuit with random values. The witness
     /// environment enforces the constraints internally, so it is
     /// enough to just build the circuit to ensure it is satisfied.
-    pub fn test_foreign_field_addition_circuit() {
+    pub fn test_fec_addition_circuit() {
         let mut rng = o1_utils::tests::make_test_rng();
-        build_foreign_field_addition_circuit(&mut rng, 1 << 4);
+        build_fec_addition_circuit(&mut rng, 1 << 4);
     }
 
     #[test]
@@ -74,7 +74,7 @@ mod tests {
         constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env, 0);
         let constraints = constraint_env.get_constraints();
 
-        let witness_env = build_foreign_field_addition_circuit(&mut rng, domain_size);
+        let witness_env = build_fec_addition_circuit(&mut rng, domain_size);
 
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
