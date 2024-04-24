@@ -98,6 +98,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for MIPSWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
+    const COL_N: usize = MIPS_COLUMNS;
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
         Column::X(self.ix())

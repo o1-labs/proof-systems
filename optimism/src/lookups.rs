@@ -2,7 +2,7 @@
 
 use self::LookupTableIDs::*;
 use crate::{keccak::pad_blocks, ramlookup::RAMLookup};
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
 use kimchi::{
     circuits::polynomials::keccak::{
         constants::{RATE_IN_BYTES, ROUNDS},
@@ -90,6 +90,10 @@ impl LookupTableID for LookupTableIDs {
             | ResetLookup => true,
             MemoryLookup | RegisterLookup | SyscallLookup | KeccakStepLookup => false,
         }
+    }
+
+    fn ix_by_value<F: PrimeField>(&self, _value: F) -> usize {
+        todo!()
     }
 }
 

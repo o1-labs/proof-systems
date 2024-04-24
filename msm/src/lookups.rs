@@ -1,7 +1,7 @@
 //! Instantiate the Logup protocol for the MSM project.
 
 use crate::logup::{Logup, LogupWitness, LookupTableID};
-use ark_ff::FftField;
+use ark_ff::{FftField, PrimeField};
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use std::{cmp::Ord, iter};
@@ -42,6 +42,10 @@ impl LookupTableID for LookupTableIDs {
     /// All tables are fixed tables.
     fn is_fixed(&self) -> bool {
         true
+    }
+
+    fn ix_by_value<F: PrimeField>(&self, _value: F) -> usize {
+        todo!()
     }
 }
 

@@ -21,6 +21,7 @@ pub enum FFAColumnIndexer {
 }
 
 impl ColumnIndexer for FFAColumnIndexer {
+    const COL_N: usize = FFA_N_COLUMNS;
     fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);

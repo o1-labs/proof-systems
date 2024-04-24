@@ -361,6 +361,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
+    const COL_N: usize = ZKVM_KECCAK_COLS;
     fn to_column(self) -> Column {
         Column::X(self.ix())
     }

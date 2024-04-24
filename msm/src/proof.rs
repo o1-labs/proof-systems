@@ -4,7 +4,7 @@ use crate::{
     witness::Witness,
     LogupWitness, DOMAIN_SIZE,
 };
-use ark_ff::{UniformRand, Zero};
+use ark_ff::PrimeField;
 use kimchi::{
     circuits::{
         domains::EvaluationDomains,
@@ -17,40 +17,40 @@ use poly_commitment::{commitment::PolyComm, OpenProof};
 use rand::thread_rng;
 
 #[derive(Debug, Clone)]
-pub struct ProofInputs<const N: usize, G: KimchiCurve, ID: LookupTableID> {
+pub struct ProofInputs<const N: usize, F: PrimeField, ID: LookupTableID> {
     /// Actual values w_i of the witness columns. "Evaluations" as in
     /// evaluations of polynomial P_w that interpolates w_i.
-    pub evaluations: Witness<N, Vec<G::ScalarField>>,
-    pub logups: Vec<LogupWitness<G::ScalarField, ID>>,
+    pub evaluations: Witness<N, Vec<F>>,
+    pub logups: Vec<LogupWitness<F, ID>>,
 }
 
-impl<const N: usize, G: KimchiCurve> ProofInputs<N, G, LookupTableIDs> {
+impl<const N: usize, F: PrimeField> ProofInputs<N, F, LookupTableIDs> {
     // This should be used only for testing purposes.
     // It is not only in the test API because it is used at the moment in the
     // main.rs. It should be moved to the test API when main.rs is replaced with
     // real production code.
-    pub fn random(domain: EvaluationDomains<G::ScalarField>) -> Self {
+    pub fn random(domain: EvaluationDomains<F>) -> Self {
         let mut rng = thread_rng();
-        let cols: Box<[Vec<G::ScalarField>; N]> = Box::new(std::array::from_fn(|_| {
+        let cols: Box<[Vec<F>; N]> = Box::new(std::array::from_fn(|_| {
             (0..domain.d1.size as usize)
-                .map(|_| G::ScalarField::rand(&mut rng))
+                .map(|_| F::rand(&mut rng))
                 .collect::<Vec<_>>()
         }));
         ProofInputs {
             evaluations: Witness { cols },
-            logups: vec![LookupWitness::<G::ScalarField>::random(domain)],
+            logups: vec![LookupWitness::<F>::random(domain)],
         }
     }
 }
 
-impl<const N: usize, G: KimchiCurve, ID: LookupTableID> Default for ProofInputs<N, G, ID> {
+impl<const N: usize, F: PrimeField, ID: LookupTableID> Default for ProofInputs<N, F, ID> {
     /// Creates a default proof instance. Note that such an empty "zero" instance will not satisfy any constraint.
     /// E.g. some constraints that have constants inside of them (A - const = 0) cannot be satisfied by it.
     fn default() -> Self {
         ProofInputs {
             evaluations: Witness {
                 cols: Box::new(std::array::from_fn(|_| {
-                    (0..DOMAIN_SIZE).map(|_| G::ScalarField::zero()).collect()
+                    (0..DOMAIN_SIZE).map(|_| F::zero()).collect()
                 })),
             },
             logups: vec![],

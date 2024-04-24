@@ -1,4 +1,4 @@
-use ark_ec::bn::Bn;
+use ark_ec::{bn::Bn, AffineCurve};
 use ark_ff::{One, UniformRand, Zero};
 use kimchi::o1_utils;
 use kimchi_msm::{
@@ -108,7 +108,7 @@ pub fn main() -> ExitCode {
             instr,
             ProofInputs::<
                 MIPS_COLUMNS,
-                ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+                <ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters> as AffineCurve>::ScalarField,
                 LookupTableIDs,
             >::default(),
         );
@@ -119,7 +119,7 @@ pub fn main() -> ExitCode {
             step,
             ProofInputs::<
                 ZKVM_KECCAK_COLS,
-                ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters>,
+                <ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters> as AffineCurve>::ScalarField,
                 LookupTableIDs,
             >::default(),
         );
