@@ -1,9 +1,5 @@
 use crate::{
-    keccak::column::{
-        ColumnAlias as KeccakColumn,
-        Steps::{self},
-        PAD_SUFFIX_LEN,
-    },
+    keccak::column::{ColumnAlias as KeccakColumn, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
@@ -22,6 +18,8 @@ pub mod interpreter;
 pub mod tests;
 pub mod trace;
 pub mod witness;
+
+pub use column::{Absorbs, Sponges, Steps};
 
 /// Desired output length of the hash in bits
 pub(crate) const HASH_BITLENGTH: usize = 256;
