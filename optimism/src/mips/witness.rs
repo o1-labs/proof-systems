@@ -844,6 +844,9 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
+            Column::Selector(_) => {
+                panic!("Selectors should be configured in the caller function (main)")
+            }
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
         }
