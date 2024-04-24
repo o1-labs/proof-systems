@@ -1,6 +1,7 @@
 use crate::{
     circuits::expr::{Operations, Variable},
     folding::{
+        decomposable_folding::check_selector,
         expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
         quadraticization::ExtendedWitnessGenerator,
         EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
@@ -54,17 +55,27 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
         Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
         Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
         Mul(e1, e2) => {
-            let d1 = e1.folding_degree();
-            let d2 = e2.folding_degree();
-            let e1 = match d1 {
-                Degree::Two => eval_sided(e1, env, side),
-                _ => eval_exp_error(e1, env, side),
-            };
-            let e2 = match d2 {
-                Degree::Two => eval_sided(e2, env, side),
-                _ => eval_exp_error(e2, env, side),
-            };
-            e1 * e2
+            //this assumes to some degree that selectors don't multiply each other
+            let selector = check_selector(e1)
+                .or(check_selector(e2))
+                .zip(env.enabled_selector())
+                .map(|(s1, s2)| s1 == s2);
+            match selector {
+                Some(false) => EvalLeaf::Result(env.inner.zero_vec()),
+                Some(true) | None => {
+                    let d1 = e1.folding_degree();
+                    let d2 = e2.folding_degree();
+                    let e1 = match d1 {
+                        Degree::Two => eval_sided(e1, env, side),
+                        _ => eval_exp_error(e1, env, side),
+                    };
+                    let e2 = match d2 {
+                        Degree::Two => eval_sided(e2, env, side),
+                        _ => eval_exp_error(e2, env, side),
+                    };
+                    e1 * e2
+                }
+            }
         }
         Pow(e, i) => match i {
             0 => EvalLeaf::Const(ScalarField::<C>::one()),
@@ -114,14 +125,26 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
         },
         Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
         Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
-        Mul(e1, e2) => match (exp.folding_degree(), e1.folding_degree()) {
-            (Degree::Two, Degree::One) => {
-                let first = eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side.other());
-                let second = eval_exp_error(e1, env, side.other()) * eval_exp_error(e2, env, side);
-                first + second
+        Mul(e1, e2) => {
+            //this assumes to some degree that selectors don't multiply each other
+            let selector = check_selector(e1)
+                .or(check_selector(e2))
+                .zip(env.enabled_selector())
+                .map(|(s1, s2)| s1 == s2);
+            match selector {
+                Some(false) => EvalLeaf::Result(env.inner.zero_vec()),
+                Some(true) | None => match (exp.folding_degree(), e1.folding_degree()) {
+                    (Degree::Two, Degree::One) => {
+                        let first =
+                            eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side.other());
+                        let second =
+                            eval_exp_error(e1, env, side.other()) * eval_exp_error(e2, env, side);
+                        first + second
+                    }
+                    _ => eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
+                },
             }
-            _ => eval_exp_error(e1, env, side) * eval_exp_error(e2, env, side),
-        },
+        }
         Pow(_, 0) => EvalLeaf::Const(ScalarField::<C>::one()),
         Pow(e, 1) => eval_exp_error(e, env, side),
         Pow(e, 2) => match (exp.folding_degree(), e.folding_degree()) {
@@ -233,6 +256,7 @@ pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
     witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
     domain: Radix2EvaluationDomain<ScalarField<CF>>,
+    selector: Option<CF::S>,
 }
 
 impl<CF: FoldingConfig> ExtendedEnv<CF> {
@@ -242,6 +266,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
         witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
+        selector: Option<CF::S>,
     ) -> Self {
         let inner_instances = [
             instances[0].inner_instance().inner(),
@@ -254,7 +279,11 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
             instances,
             witnesses,
             domain,
+            selector,
         }
+    }
+    pub fn enabled_selector(&self) -> Option<&CF::S> {
+        self.selector.as_ref()
     }
 
     pub fn inner(&self) -> &CF::Env {
@@ -296,6 +325,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
             Constant(c) => EvalLeaf::Const(*c),
             Challenge(chall) => EvalLeaf::Const(self.inner().challenge(*chall, side)),
             Alpha(i) => EvalLeaf::Const(self.inner().alpha(*i, side)),
+            Selector(s) => Col(self.inner().selector(s, side)),
         }
     }
 
@@ -308,7 +338,12 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         match col {
             WitnessExtended(i) => witness.inner().extended.get(i).is_some(),
             Error => panic!("shouldn't happen"),
-            Inner(_) | UnnormalizedLagrangeBasis(_) | Constant(_) | Challenge(_) | Alpha(_) => true,
+            Inner(_)
+            | UnnormalizedLagrangeBasis(_)
+            | Constant(_)
+            | Challenge(_)
+            | Alpha(_)
+            | Selector(_) => true,
         }
     }
 

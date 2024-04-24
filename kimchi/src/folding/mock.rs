@@ -48,7 +48,7 @@ impl<G: CommitmentCurve> Witness<G> for Mock {
 }
 
 struct MockEnv<F, I, W, Col, Chal>(PhantomData<(F, I, W, Col, Chal)>);
-impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col, Chal> {
+impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal, ()> for MockEnv<F, I, W, Col, Chal> {
     type Structure = Mock;
 
     fn zero_vec(&self) -> Vec<F> {
@@ -74,12 +74,18 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
     fn alpha(&self, _i: usize, _side: Side) -> F {
         todo!()
     }
+
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<F> {
+        todo!()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct TestConfig;
 impl FoldingConfig for TestConfig {
     type Column = u8;
+
+    type S = ();
 
     type Challenge = Mock;
 

@@ -186,7 +186,7 @@ struct TestFoldingEnv {
     next_witnesses: [TestWitness; 2],
 }
 
-impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for TestFoldingEnv {
+impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> for TestFoldingEnv {
     type Structure = TestStructure<Fp>;
 
     fn new(
@@ -244,6 +244,10 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge> for Te
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
     }
+
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
+        unreachable!()
+    }
 }
 
 fn constraints() -> Vec<FoldingCompatibleExpr<TestFoldingConfig>> {
@@ -287,6 +291,7 @@ enum TestChallenge {
 impl FoldingConfig for TestFoldingConfig {
     type Structure = TestStructure<Fp>;
     type Column = TestColumn;
+    type S = ();
     type Challenge = TestChallenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;
@@ -442,6 +447,7 @@ mod checker {
                         let alpha = self.instance.inner_instance().inner.alphas.get(i).unwrap();
                         vec![alpha; self.inner_provider.rows]
                     }
+                    ExpExtension::Selector(_) => panic!("unused"),
                 },
                 e => self.inner_provider.resolve(e),
             }

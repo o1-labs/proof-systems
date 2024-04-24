@@ -32,6 +32,7 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
     Alpha(usize),
+    Selector(C::S),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -44,7 +45,7 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
     ///extra nodes created by folding, should not be passed to folding
-    Extensions(ExpExtension),
+    Extensions(ExpExtension<C>),
 }
 
 ///designed for easy translation to and from most Expr
@@ -59,16 +60,18 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
 
 /// Extra expressions that can be created by folding
 #[derive(Clone, Debug, PartialEq)]
-pub enum ExpExtension {
+pub enum ExpExtension<C: FoldingConfig> {
     U,
     Error,
     //from quadraticization
     ExtendedWitness(usize),
     Alpha(usize),
+    //in case of using decomposable folding
+    Selector(C::S),
 }
 
 ///Internal expression used for folding, simplified for that purpose
-pub type FoldingExp<C> = Operations<ExtendedFoldingColumn<C>>;
+pub(crate) type FoldingExp<C> = Operations<ExtendedFoldingColumn<C>>;
 
 impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
     type Output = Self;
@@ -115,8 +118,16 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
                 FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) => {
                     Atom(Ex::UnnormalizedLagrangeBasis(i))
                 }
-                FoldingCompatibleExprInner::Extensions(_) => {
-                    panic!("this should only be created by folding itself")
+                FoldingCompatibleExprInner::Extensions(ext) => {
+                    match ext {
+                        // TODO: this shouldn't be allowed, but is needed for now to add
+                        // decomposable folding without many changes, it should be
+                        // refactored at some point in the future
+                        ExpExtension::Selector(s) => Atom(ExtendedFoldingColumn::Selector(s)),
+                        _ => {
+                            panic!("this should only be created by folding itself")
+                        }
+                    }
                 }
             },
             FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
@@ -180,6 +191,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Constant(_) => Zero,
                 ExtendedFoldingColumn::Challenge(_) => One,
                 ExtendedFoldingColumn::Alpha(_) => One,
+                ExtendedFoldingColumn::Selector(_) => One,
             },
             FoldingExp::Double(e) => e.folding_degree(),
             FoldingExp::Square(e) => &e.folding_degree() * &e.folding_degree(),
@@ -218,6 +230,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Constant(c) => Atom(Constant(c)),
                 ExtendedFoldingColumn::Challenge(c) => Atom(Challenge(c)),
                 ExtendedFoldingColumn::Alpha(i) => Atom(Extensions(ExpExtension::Alpha(i))),
+                ExtendedFoldingColumn::Selector(s) => Atom(Extensions(ExpExtension::Selector(s))),
             },
             FoldingExp::Double(exp) => Double(Box::new(exp.into_compatible())),
             FoldingExp::Square(exp) => Square(Box::new(exp.into_compatible())),
@@ -280,7 +293,7 @@ impl std::ops::Mul for &Degree {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Sign {
+pub(crate) enum Sign {
     Pos,
     Neg,
 }
@@ -297,7 +310,7 @@ impl std::ops::Neg for Sign {
 }
 
 #[derive(Clone, Debug)]
-pub struct Term<C: FoldingConfig> {
+pub(crate) struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
     pub sign: Sign,
 }
@@ -396,7 +409,9 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     }
 }
 
-pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
+pub(crate) fn extract_terms<C: FoldingConfig>(
+    exp: FoldingExp<C>,
+) -> Box<dyn Iterator<Item = Term<C>>> {
     use Operations::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
         exp @ Atom(_) => Box::new(
@@ -470,7 +485,7 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
     exps
 }
 
-pub fn folding_expression<C: FoldingConfig>(
+pub(crate) fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();

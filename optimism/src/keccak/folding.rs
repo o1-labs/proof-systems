@@ -35,6 +35,7 @@ impl FoldingColumnTrait for KeccakColumn {
 
 impl FoldingConfig for KeccakConfig {
     type Column = KeccakColumn;
+    type S = ();
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;
