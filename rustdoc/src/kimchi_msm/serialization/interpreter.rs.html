@@ -818,14 +818,6 @@
 <a href="#816" id="816">816</a>
 <a href="#817" id="817">817</a>
 <a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -935,6 +927,16 @@
         <span class="kw-2">*</span>x
     }
 }
+
+<span class="doccomment">/// Alias for LIMB_BITSIZE, used for convenience.
+</span><span class="kw">pub const </span>LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
+<span class="doccomment">/// Alias for N_LIMBS, used for convenience.
+</span><span class="kw">pub const </span>N_LIMBS_SMALL: usize = N_LIMBS;
+
+<span class="doccomment">/// In FEC addition we use bigger limbs, of 75 bits, that are still
+/// nicely decomposable into smaller 15bit ones for range checking.
+</span><span class="kw">pub const </span>LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * <span class="number">5</span>; <span class="comment">// 75 bits
+</span><span class="kw">pub const </span>N_LIMBS_LARGE: usize = <span class="number">4</span>;
 
 <span class="doccomment">/// Returns the highest limb of the foreign field modulus. Is used by the lookups.
 </span><span class="kw">pub fn </span>ff_modulus_highest_limb&lt;Ff: PrimeField&gt;() -&gt; BigUint {
@@ -1085,16 +1087,6 @@
     }
 }
 
-<span class="doccomment">/// Alias for LIMB_BITSIZE, used for convenience.
-</span><span class="kw">pub const </span>LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
-<span class="doccomment">/// Alias for N_LIMBS, used for convenience.
-</span><span class="kw">pub const </span>N_LIMBS_SMALL: usize = N_LIMBS;
-
-<span class="doccomment">/// In FEC addition we use bigger limbs, of 75 bits, that are still
-/// nicely decomposable into smaller 15bit ones for range checking.
-</span><span class="kw">pub const </span>LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * <span class="number">5</span>; <span class="comment">// 75 bits
-</span><span class="kw">pub const </span>N_LIMBS_LARGE: usize = <span class="number">4</span>;
-
 <span class="doccomment">/// Interprets bigint `input` as an element of a field modulo `f_bi`,
 /// converts it to `[0,f_bi)` range, and outptus a corresponding
 /// biguint representation.
@@ -1159,13 +1151,12 @@
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
 /// chunks `a_i` of size `5` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-</span><span class="kw">fn </span>combine_small_to_large&lt;
+</span><span class="kw">pub fn </span>combine_small_to_large&lt;
     <span class="kw">const </span>M: usize,
     <span class="kw">const </span>N: usize,
     F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap&lt;F, SerializationColumn&gt;
-        + SerializationHelpers&lt;F, SerializationColumn, LookupTable&lt;Ff&gt;&gt;,
+    CIx: ColumnIndexer,
+    Env: ColAccessCap&lt;F, CIx&gt;,
 &gt;(
     x: [Env::Variable; M],
 ) -&gt; [Env::Variable; N] {
@@ -1184,17 +1175,10 @@
     })
 }
 
-<span class="comment">// TODO unify with the same function in fec/interpreter.rs after the
-// interpreter interface is unified.
-</span><span class="doccomment">/// Helper function for limb recombination for carry specifically.
+<span class="doccomment">/// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-</span><span class="kw">fn </span>combine_carry&lt;
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap&lt;F, SerializationColumn&gt;
-        + SerializationHelpers&lt;F, SerializationColumn, LookupTable&lt;Ff&gt;&gt;,
-&gt;(
+</span><span class="kw">pub fn </span>combine_carry&lt;F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap&lt;F, CIx&gt;&gt;(
     x: [Env::Variable; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>],
 ) -&gt; [Env::Variable; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] {
     <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));

@@ -678,65 +678,14 @@
 <a href="#676" id="676">676</a>
 <a href="#677" id="677">677</a>
 <a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
     fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
-        bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
+        bigint_to_biguint_f, combine_carry, combine_small_to_large, fold_choice2,
+        limb_decompose_biguint, limb_decompose_ff, LIMB_BITSIZE_LARGE, LIMB_BITSIZE_SMALL,
+        N_LIMBS_LARGE, N_LIMBS_SMALL,
     },
-    LIMB_BITSIZE, N_LIMBS,
 };
 <span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>core::marker::PhantomData;
@@ -744,59 +693,6 @@
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>num_traits::sign::Signed;
 <span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
-
-<span class="doccomment">/// Alias for LIMB_BITSIZE, used for convenience.
-</span><span class="kw">pub const </span>LIMB_BITSIZE_SMALL: usize = LIMB_BITSIZE;
-<span class="doccomment">/// Alias for N_LIMBS, used for convenience.
-</span><span class="kw">pub const </span>N_LIMBS_SMALL: usize = N_LIMBS;
-
-<span class="doccomment">/// In FEC addition we use bigger limbs, of 75 bits, that are still
-/// nicely decomposable into smaller 15bit ones for range checking.
-</span><span class="kw">pub const </span>LIMB_BITSIZE_LARGE: usize = LIMB_BITSIZE_SMALL * <span class="number">5</span>; <span class="comment">// 75 bits
-</span><span class="kw">pub const </span>N_LIMBS_LARGE: usize = <span class="number">4</span>;
-
-<span class="doccomment">/// Helper function for limb recombination.
-///
-/// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
-/// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
-/// chunks `a_i` of size `5` from the first, and recombining them as
-/// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-</span><span class="kw">fn </span>combine_small_to_large&lt;
-    <span class="kw">const </span>M: usize,
-    <span class="kw">const </span>N: usize,
-    F: PrimeField,
-    Env: ColAccessCap&lt;F, FECColumn&gt;,
-&gt;(
-    x: [Env::Variable; M],
-) -&gt; [Env::Variable; N] {
-    <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
-    <span class="kw">let </span>disparity: usize = M % <span class="number">5</span>;
-    std::array::from_fn(|i| {
-        <span class="comment">// We have less small limbs in the last large limb
-        </span><span class="kw">let </span>upper_bound = <span class="kw">if </span>disparity != <span class="number">0 </span>&amp;&amp; i == N - <span class="number">1 </span>{
-            disparity
-        } <span class="kw">else </span>{
-            <span class="number">5
-        </span>};
-        (<span class="number">0</span>..upper_bound)
-            .map(|j| x[<span class="number">5 </span>* i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * LIMB_BITSIZE_SMALL)))
-            .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
-    })
-}
-
-<span class="doccomment">/// Helper function for limb recombination for carry specifically.
-/// Each big carry limb is stored as 6 (not 5!) small elements. We
-/// accept 36 small limbs, and return 6 large ones.
-</span><span class="kw">fn </span>combine_carry&lt;F: PrimeField, Env: ColAccessCap&lt;F, FECColumn&gt;&gt;(
-    x: [Env::Variable; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>],
-) -&gt; [Env::Variable; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] {
-    <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
-    std::array::from_fn(|i| {
-        (<span class="number">0</span>..<span class="number">6</span>)
-            .map(|j| x[<span class="number">6 </span>* i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * LIMB_BITSIZE_SMALL)))
-            .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
-    })
-}
 
 <span class="doccomment">/// Convenience function for printing.
 </span><span class="kw">pub fn </span>limbs_to_bigints&lt;F: PrimeField, <span class="kw">const </span>N: usize&gt;(input: [F; N]) -&gt; Vec&lt;BigInt&gt; {
@@ -1084,24 +980,24 @@
     }
 
     <span class="kw">let </span>xr_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(xr_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(xr_limbs_small.clone());
     <span class="kw">let </span>yr_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(yr_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(yr_limbs_small.clone());
     <span class="kw">let </span>s_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(s_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(s_limbs_small.clone());
     <span class="kw">let </span>q1_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q1_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(q1_limbs_small.clone());
     <span class="kw">let </span>q2_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q2_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(q2_limbs_small.clone());
     <span class="kw">let </span>q3_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q3_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(q3_limbs_small.clone());
 
     <span class="kw">let </span>carry1_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Env&gt;(carry1_limbs_small.clone());
+        combine_carry::&lt;F, <span class="kw">_</span>, Env&gt;(carry1_limbs_small.clone());
     <span class="kw">let </span>carry2_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Env&gt;(carry2_limbs_small.clone());
+        combine_carry::&lt;F, <span class="kw">_</span>, Env&gt;(carry2_limbs_small.clone());
     <span class="kw">let </span>carry3_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Env&gt;(carry3_limbs_small.clone());
+        combine_carry::&lt;F, <span class="kw">_</span>, Env&gt;(carry3_limbs_small.clone());
 
     <span class="kw">let </span>limb_size_large = constant_u128(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
     <span class="kw">let </span>add_extra_carries =
