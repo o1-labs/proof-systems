@@ -19,7 +19,7 @@ mod error_term;
 #[allow(dead_code)]
 mod example;
 #[cfg(test)]
-mod example2;
+mod example_decomposable_folding;
 pub mod expressions;
 mod instance_witness;
 #[cfg(test)]
