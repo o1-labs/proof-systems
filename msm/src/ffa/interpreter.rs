@@ -1,47 +1,13 @@
-use crate::{ffa::columns::FFAColumnIndexer, LIMB_BITSIZE, N_LIMBS};
+use crate::{
+    circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
+    ffa::{columns::FFAColumn, lookups::LookupTable},
+    serialization::interpreter::{limb_decompose_biguint, limb_decompose_ff},
+    LIMB_BITSIZE, N_LIMBS,
+};
 use ark_ff::{FpParameters, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
-use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
-
-pub trait FFAInterpreterEnv<F: PrimeField> {
-    type Position;
-
-    type Variable: Clone
-        + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Sub<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::fmt::Debug;
-
-    fn empty() -> Self;
-
-    fn assert_zero(&mut self, cst: Self::Variable);
-
-    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
-
-    fn constant(value: F) -> Self::Variable;
-
-    fn column_pos(ix: FFAColumnIndexer) -> Self::Position;
-
-    fn read_column(&self, ix: FFAColumnIndexer) -> Self::Variable;
-
-    /// Checks |x| = 1, that is x ∈ {-1,0,1}
-    fn range_check_abs1(&mut self, value: &Self::Variable);
-
-    /// Checks input x ∈ [0,2^15)
-    fn range_check_15bit(&mut self, value: &Self::Variable);
-}
-
-fn limb_decompose_biguint<F: PrimeField>(input: BigUint) -> [F; N_LIMBS] {
-    let ff_el: ForeignElement<F, LIMB_BITSIZE, N_LIMBS> = ForeignElement::from_biguint(input);
-    ff_el.limbs
-}
-
-// TODO use more foreign_field.rs with from/to bigint conversion
-fn limb_decompose_ff<F: PrimeField, Ff: PrimeField>(input: &Ff) -> [F; N_LIMBS] {
-    let input_bi: BigUint = FieldHelpers::to_biguint(input);
-    limb_decompose_biguint(input_bi)
-}
+use o1_utils::field_helpers::FieldHelpers;
 
 // For now this function does not /compute/ anything, although it could.
 /// Constraint for one row of FF addition:
@@ -52,73 +18,77 @@ fn limb_decompose_ff<F: PrimeField, Ff: PrimeField>(input: &Ff) -> [F; N_LIMBS] 
 ///
 /// q, c_i ∈ {-1,0,1}
 /// a_i, b_i, f_i, r_i ∈ [0,2^15)
-pub fn constrain_ff_addition_row<F: PrimeField, Env: FFAInterpreterEnv<F>>(
+pub fn constrain_ff_addition_row<
+    F: PrimeField,
+    Env: ColAccessCap<F, FFAColumn> + LookupCap<F, FFAColumn, LookupTable>,
+>(
     env: &mut Env,
     limb_num: usize,
 ) {
-    let a: Env::Variable = Env::read_column(env, FFAColumnIndexer::InputA(limb_num));
-    let b: Env::Variable = Env::read_column(env, FFAColumnIndexer::InputB(limb_num));
-    let f: Env::Variable = Env::read_column(env, FFAColumnIndexer::ModulusF(limb_num));
-    let r: Env::Variable = Env::read_column(env, FFAColumnIndexer::Remainder(limb_num));
-    let q: Env::Variable = Env::read_column(env, FFAColumnIndexer::Quotient);
-    env.range_check_15bit(&a);
-    env.range_check_15bit(&b);
-    env.range_check_15bit(&f);
-    env.range_check_15bit(&r);
-    env.range_check_abs1(&q);
+    let a: Env::Variable = Env::read_column(env, FFAColumn::InputA(limb_num));
+    let b: Env::Variable = Env::read_column(env, FFAColumn::InputB(limb_num));
+    let f: Env::Variable = Env::read_column(env, FFAColumn::ModulusF(limb_num));
+    let r: Env::Variable = Env::read_column(env, FFAColumn::Remainder(limb_num));
+    let q: Env::Variable = Env::read_column(env, FFAColumn::Quotient);
+    env.lookup(LookupTable::RangeCheck15, &a);
+    env.lookup(LookupTable::RangeCheck15, &b);
+    env.lookup(LookupTable::RangeCheck15, &f);
+    env.lookup(LookupTable::RangeCheck15, &r);
+    env.lookup(LookupTable::RangeCheck1BitSigned, &q);
     let constraint = if limb_num == 0 {
         let limb_size = Env::constant(From::from((1 << LIMB_BITSIZE) as u64));
-        let c0: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num));
-        env.range_check_abs1(&c0);
+        let c0: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
+        env.lookup(LookupTable::RangeCheck1BitSigned, &c0);
         a + b - q * f - r - c0 * limb_size
     } else if limb_num < N_LIMBS - 1 {
         let limb_size = Env::constant(From::from((1 << LIMB_BITSIZE) as u64));
-        let c_prev: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num - 1));
-        let c_cur: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num));
-        env.range_check_abs1(&c_prev);
-        env.range_check_abs1(&c_cur);
+        let c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - 1));
+        let c_cur: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num));
+        env.lookup(LookupTable::RangeCheck1BitSigned, &c_prev);
+        env.lookup(LookupTable::RangeCheck1BitSigned, &c_cur);
         a + b - q * f - r - c_cur * limb_size + c_prev
     } else {
-        let c_prev: Env::Variable = Env::read_column(env, FFAColumnIndexer::Carry(limb_num - 1));
-        env.range_check_abs1(&c_prev);
+        let c_prev: Env::Variable = Env::read_column(env, FFAColumn::Carry(limb_num - 1));
+        env.lookup(LookupTable::RangeCheck1BitSigned, &c_prev);
         a + b - q * f - r + c_prev
     };
     env.assert_zero(constraint);
 }
 
-pub fn constrain_ff_addition<F: PrimeField, Env: FFAInterpreterEnv<F>>(env: &mut Env) {
+pub fn constrain_ff_addition<
+    F: PrimeField,
+    Env: ColAccessCap<F, FFAColumn> + LookupCap<F, FFAColumn, LookupTable>,
+>(
+    env: &mut Env,
+) {
     for limb_i in 0..N_LIMBS {
         constrain_ff_addition_row(env, limb_i);
     }
 }
 
-pub fn ff_addition_circuit<F: PrimeField, Ff: PrimeField, Env: FFAInterpreterEnv<F>>(
+pub fn ff_addition_circuit<
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, FFAColumn> + ColWriteCap<F, FFAColumn> + LookupCap<F, FFAColumn, LookupTable>,
+>(
     env: &mut Env,
     a: Ff,
     b: Ff,
 ) {
     let f_bigint: BigUint = TryFrom::try_from(Ff::Params::MODULUS).unwrap();
 
-    let a_limbs: [F; N_LIMBS] = limb_decompose_ff(&a);
-    let b_limbs: [F; N_LIMBS] = limb_decompose_ff(&b);
-    let f_limbs: [F; N_LIMBS] = limb_decompose_biguint(f_bigint.clone());
+    let a_limbs: [F; N_LIMBS] = limb_decompose_ff::<F, Ff, LIMB_BITSIZE, N_LIMBS>(&a);
+    let b_limbs: [F; N_LIMBS] = limb_decompose_ff::<F, Ff, LIMB_BITSIZE, N_LIMBS>(&b);
+    let f_limbs: [F; N_LIMBS] =
+        limb_decompose_biguint::<F, LIMB_BITSIZE, N_LIMBS>(f_bigint.clone());
     a_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            &Env::constant(*var),
-            Env::column_pos(FFAColumnIndexer::InputA(i)),
-        );
+        env.write_column(FFAColumn::InputA(i), &Env::constant(*var));
     });
     b_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            &Env::constant(*var),
-            Env::column_pos(FFAColumnIndexer::InputB(i)),
-        );
+        env.write_column(FFAColumn::InputB(i), &Env::constant(*var));
     });
     f_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            &Env::constant(*var),
-            Env::column_pos(FFAColumnIndexer::ModulusF(i)),
-        );
+        env.write_column(FFAColumn::ModulusF(i), &Env::constant(*var));
     });
 
     let a_bigint = FieldHelpers::to_biguint(&a);
@@ -128,19 +98,13 @@ pub fn ff_addition_circuit<F: PrimeField, Ff: PrimeField, Env: FFAInterpreterEnv
     // q can be -1! But only in subtraction, so for now we don't care.
     // for now with addition only q ∈ {0,1}
     let (q_bigint, r_bigint) = (a_bigint + b_bigint).div_rem(&f_bigint);
-    let r_limbs: [F; N_LIMBS] = limb_decompose_biguint(r_bigint);
+    let r_limbs: [F; N_LIMBS] = limb_decompose_biguint::<F, LIMB_BITSIZE, N_LIMBS>(r_bigint);
     // We expect just one limb.
-    let q: F = limb_decompose_biguint(q_bigint)[0];
+    let q: F = limb_decompose_biguint::<F, LIMB_BITSIZE, N_LIMBS>(q_bigint)[0];
 
-    env.copy(
-        &Env::constant(q),
-        Env::column_pos(FFAColumnIndexer::Quotient),
-    );
+    env.write_column(FFAColumn::Quotient, &Env::constant(q));
     r_limbs.iter().enumerate().for_each(|(i, var)| {
-        env.copy(
-            &Env::constant(*var),
-            Env::column_pos(FFAColumnIndexer::Remainder(i)),
-        );
+        env.write_column(FFAColumn::Remainder(i), &Env::constant(*var));
     });
 
     let limb_size: F = From::from((1 << LIMB_BITSIZE) as u64);
@@ -161,10 +125,7 @@ pub fn ff_addition_circuit<F: PrimeField, Ff: PrimeField, Env: FFAInterpreterEnv
         };
         // Last carry should be zero, otherwise we record it
         if limb_i < N_LIMBS - 1 {
-            env.copy(
-                &Env::constant(newcarry),
-                Env::column_pos(FFAColumnIndexer::Carry(limb_i)),
-            );
+            env.write_column(FFAColumn::Carry(limb_i), &Env::constant(newcarry));
             carry = newcarry;
         } else {
             // should this be in circiut?

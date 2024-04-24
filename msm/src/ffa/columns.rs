@@ -11,7 +11,7 @@ pub const FFA_NPUB_COLUMNS: usize = N_LIMBS;
 ///
 /// They represent the equation
 ///   `InputA(i) + InputB(i) = ModulusF(i) * Quotient + Carry(i) * 2^LIMB_SIZE - Carry(i-1)`
-pub enum FFAColumnIndexer {
+pub enum FFAColumn {
     InputA(usize),
     InputB(usize),
     ModulusF(usize),
@@ -20,7 +20,7 @@ pub enum FFAColumnIndexer {
     Quotient,
 }
 
-impl ColumnIndexer for FFAColumnIndexer {
+impl ColumnIndexer for FFAColumn {
     const COL_N: usize = FFA_N_COLUMNS;
     fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
@@ -28,15 +28,15 @@ impl ColumnIndexer for FFAColumnIndexer {
             Column::X(N_LIMBS * offset + i)
         };
         match self {
-            FFAColumnIndexer::InputA(i) => to_column_inner(0, i),
-            FFAColumnIndexer::InputB(i) => to_column_inner(1, i),
-            FFAColumnIndexer::ModulusF(i) => to_column_inner(2, i),
-            FFAColumnIndexer::Remainder(i) => to_column_inner(3, i),
-            FFAColumnIndexer::Carry(i) => {
+            FFAColumn::InputA(i) => to_column_inner(0, i),
+            FFAColumn::InputB(i) => to_column_inner(1, i),
+            FFAColumn::ModulusF(i) => to_column_inner(2, i),
+            FFAColumn::Remainder(i) => to_column_inner(3, i),
+            FFAColumn::Carry(i) => {
                 assert!(i < N_LIMBS - 1);
                 to_column_inner(4, i)
             }
-            FFAColumnIndexer::Quotient => to_column_inner(4, N_LIMBS - 1),
+            FFAColumn::Quotient => to_column_inner(4, N_LIMBS - 1),
         }
     }
 }
