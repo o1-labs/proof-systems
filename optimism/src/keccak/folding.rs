@@ -1,6 +1,6 @@
 use crate::{
     folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
-    keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn},
+    keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -16,6 +16,16 @@ impl Index<KeccakColumn> for KeccakFoldingWitness {
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
         &self.witness[index]
+    }
+}
+
+// Implemented for decomposable folding compatibility
+impl Index<Steps> for KeccakFoldingWitness<T> {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    /// Map a selector column to the corresponding witness column.
+    fn index(&self, index: Steps) -> &Self::Output {
+        &self.witness.cols[KeccakColumn::Selector(index).ix()]
     }
 }
 
@@ -36,7 +46,7 @@ impl FoldingColumnTrait for KeccakColumn {
 
 impl FoldingConfig for KeccakConfig {
     type Column = KeccakColumn;
-    type S = ();
+    type Selector = Steps;
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;
