@@ -730,16 +730,11 @@
 <a href="#728" id="728">728</a>
 <a href="#729" id="729">729</a>
 <a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
     fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
         bigint_to_biguint_f, fold_choice2, limb_decompose_biguint, limb_decompose_ff,
-        InterpreterEnv,
     },
     LIMB_BITSIZE, N_LIMBS,
 };
@@ -770,8 +765,7 @@
     <span class="kw">const </span>M: usize,
     <span class="kw">const </span>N: usize,
     F: PrimeField,
-    Ff: PrimeField,
-    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
+    Env: ColAccessCap&lt;F, FECColumn&gt;,
 &gt;(
     x: [Env::Variable; M],
 ) -&gt; [Env::Variable; N] {
@@ -793,11 +787,7 @@
 <span class="doccomment">/// Helper function for limb recombination for carry specifically.
 /// Each big carry limb is stored as 6 (not 5!) small elements. We
 /// accept 36 small limbs, and return 6 large ones.
-</span><span class="kw">fn </span>combine_carry&lt;
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
-&gt;(
+</span><span class="kw">fn </span>combine_carry&lt;F: PrimeField, Env: ColAccessCap&lt;F, FECColumn&gt;&gt;(
     x: [Env::Variable; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>],
 ) -&gt; [Env::Variable; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] {
     <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
@@ -987,7 +977,7 @@
 </span><span class="kw">pub fn </span>constrain_ec_addition&lt;
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
+    Env: ColAccessCap&lt;F, FECColumn&gt; + LookupCap&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
 &gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     mem_offset: usize,
@@ -1094,24 +1084,24 @@
     }
 
     <span class="kw">let </span>xr_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(xr_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(xr_limbs_small.clone());
     <span class="kw">let </span>yr_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(yr_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(yr_limbs_small.clone());
     <span class="kw">let </span>s_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(s_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(s_limbs_small.clone());
     <span class="kw">let </span>q1_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(q1_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q1_limbs_small.clone());
     <span class="kw">let </span>q2_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(q2_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q2_limbs_small.clone());
     <span class="kw">let </span>q3_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Ff, Env&gt;(q3_limbs_small.clone());
+        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, F, Env&gt;(q3_limbs_small.clone());
 
     <span class="kw">let </span>carry1_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Ff, Env&gt;(carry1_limbs_small.clone());
+        combine_carry::&lt;F, Env&gt;(carry1_limbs_small.clone());
     <span class="kw">let </span>carry2_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Ff, Env&gt;(carry2_limbs_small.clone());
+        combine_carry::&lt;F, Env&gt;(carry2_limbs_small.clone());
     <span class="kw">let </span>carry3_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
-        combine_carry::&lt;F, Ff, Env&gt;(carry3_limbs_small.clone());
+        combine_carry::&lt;F, Env&gt;(carry3_limbs_small.clone());
 
     <span class="kw">let </span>limb_size_large = constant_u128(<span class="number">1u128 </span>&lt;&lt; LIMB_BITSIZE_LARGE);
     <span class="kw">let </span>add_extra_carries =
@@ -1196,7 +1186,7 @@
 </span><span class="kw">pub fn </span>ec_add_circuit&lt;
     F: PrimeField,
     Ff: PrimeField,
-    Env: InterpreterEnv&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
+    Env: ColWriteCap&lt;F, FECColumn&gt; + LookupCap&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
 &gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
     mem_offset: usize,
@@ -1248,18 +1238,18 @@
 
     <span class="kw">let </span>write_array = |env: <span class="kw-2">&amp;mut </span>Env, input: [F; N_LIMBS_SMALL], extra_offset: usize| {
         input.iter().enumerate().for_each(|(i, var)| {
-            env.copy(
-                <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
+            env.write_column(
                 FECColumn(mem_offset + extra_offset + i),
+                <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
             );
         })
     };
 
     <span class="kw">let </span>write_array_large = |env: <span class="kw-2">&amp;mut </span>Env, input: [F; N_LIMBS_LARGE], extra_offset: usize| {
         input.iter().enumerate().for_each(|(i, var)| {
-            env.copy(
-                <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
+            env.write_column(
                 FECColumn(mem_offset + extra_offset + i),
+                <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
             );
         })
     };
@@ -1344,17 +1334,17 @@
         q3_limbs_small,
         mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">5 </span>* N_LIMBS_SMALL,
     );
-    env.copy(
-        <span class="kw-2">&amp;</span>Env::constant(q1_sign),
+    env.write_column(
         FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL),
+        <span class="kw-2">&amp;</span>Env::constant(q1_sign),
     );
-    env.copy(
-        <span class="kw-2">&amp;</span>Env::constant(q2_sign),
+    env.write_column(
         FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>),
+        <span class="kw-2">&amp;</span>Env::constant(q2_sign),
     );
-    env.copy(
-        <span class="kw-2">&amp;</span>Env::constant(q3_sign),
+    env.write_column(
         FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>),
+        <span class="kw-2">&amp;</span>Env::constant(q3_sign),
     );
 
     <span class="kw">let </span><span class="kw-2">mut </span>carry1: F = From::from(<span class="number">0u64</span>);
@@ -1392,9 +1382,9 @@
                     limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, <span class="number">6</span>&gt;(newcarry_abs_bui.clone());
 
                 <span class="kw">for </span>(j, limb) <span class="kw">in </span>newcarry_limbs.iter().enumerate() {
-                    env.copy(
-                        <span class="kw-2">&amp;</span>Env::constant(newcarry_sign * limb),
+                    env.write_column(
                         FECColumn(mem_offset + extra_offset + <span class="number">6 </span>* i + j),
+                        <span class="kw-2">&amp;</span>Env::constant(newcarry_sign * limb),
                     );
                 }
 

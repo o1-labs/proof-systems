@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["N_INTERMEDIATE_LIMBS"],"mod":["column","constraints","interpreter","lookups","witness"]};
+window.SIDEBAR_ITEMS = {"constant":["N_INTERMEDIATE_LIMBS"],"mod":["column","interpreter","lookups"]};

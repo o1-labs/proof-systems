@@ -129,14 +129,9 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>column;
-<span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
-<span class="kw">pub mod </span>witness;
 
 <span class="doccomment">/// The number of intermediate limbs of 4 bits required for the circuit
 </span><span class="kw">pub const </span>N_INTERMEDIATE_LIMBS: usize = <span class="number">20</span>;
@@ -150,18 +145,17 @@
     <span class="kw">use </span>strum::IntoEnumIterator;
 
     <span class="kw">use crate</span>::{
+        circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
         columns::{Column, ColumnIndexer},
         precomputed_srs::get_bn254_srs,
         prover::prove,
         serialization::{
             column::{SerializationColumn, SER_N_COLUMNS},
-            constraints::ConstraintBuilderEnv,
             interpreter::{
                 constrain_multiplication, deserialize_field_element, limb_decompose_ff,
                 multiplication_circuit,
             },
             lookups::LookupTable,
-            witness::WitnessBuilderEnv,
         },
         verifier::verify,
         witness::Witness,

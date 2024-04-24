@@ -114,6 +114,7 @@
 </span><span class="kw">mod </span>tests {
 
     <span class="kw">use crate</span>::{
+        circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
         columns::{Column, ColumnIndexer},
         fec::{
             columns::{FECColumn, FEC_N_COLUMNS},
@@ -121,7 +122,6 @@
             lookups::LookupTable,
         },
         prover::prove,
-        serialization::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
         verifier::verify,
         witness::Witness,
         BaseSponge, Ff1, Fp, OpeningProof, ScalarSponge, BN254,
