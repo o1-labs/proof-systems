@@ -77,10 +77,10 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
 }
 
 /// Environment for the folding protocol, for a given number of witness columns and structure
-pub(crate) struct FoldingEnvironment<const N: usize, S> {
+pub(crate) struct FoldingEnvironment<const N: usize, Structure> {
     /// Structure of the folded circuit
     #[allow(dead_code)]
-    pub(crate) structure: S,
+    pub(crate) structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub(crate) instances: [FoldingInstance<N>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -90,13 +90,14 @@ pub(crate) struct FoldingEnvironment<const N: usize, S> {
     pub(crate) next_witnesses: [FoldingWitness<N>; 2],
 }
 
-impl<const N: usize, Col, S: Clone>
-    FoldingEnv<Fp, FoldingInstance<N>, FoldingWitness<N>, Col, Challenge, ()>
-    for FoldingEnvironment<N, S>
+impl<const N: usize, Col, Selector: Copy + Clone, Structure: Clone>
+    FoldingEnv<Fp, FoldingInstance<N>, FoldingWitness<N>, Col, Challenge, Selector>
+    for FoldingEnvironment<N, Structure>
 where
     FoldingWitness<N>: Index<Col, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+    FoldingWitness<N>: Index<Selector, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
 {
-    type Structure = S;
+    type Structure = Structure;
 
     fn new(
         structure: &Self::Structure,
@@ -149,8 +150,9 @@ where
         instance.alphas.get(i).unwrap()
     }
 
-    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
-        todo!()
+    fn selector(&self, s: &Selector, side: Side) -> &Vec<Fp> {
+        let witness = &self.curr_witnesses[side as usize];
+        &witness[s]
     }
 }
 
@@ -235,7 +237,7 @@ mod tests {
     }
 
     #[test]
-    fn test_conversion() {
+    fn test_expr_translation() {
         use super::*;
         use kimchi::circuits::expr::ChallengeTerm;
 
