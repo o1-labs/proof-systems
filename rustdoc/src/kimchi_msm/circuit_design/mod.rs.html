@@ -10,13 +10,17 @@
 <a href="#8" id="8">8</a>
 <a href="#9" id="9">9</a>
 <a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>capabilities;
+<span class="kw">pub mod </span>composition;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>witness;
 
 <span class="comment">// Reexport main types
 </span><span class="kw">pub use </span><span class="kw">crate</span>::circuit_design::{
     capabilities::{ColAccessCap, ColWriteCap, LookupCap},
+    composition::{MPrism, SubEnvColumn, SubEnvLookup},
     constraints::ConstraintBuilderEnv,
     witness::WitnessBuilderEnv,
 };
