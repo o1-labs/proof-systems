@@ -1,7 +1,9 @@
-use crate::mips::{
-    witness::SCRATCH_SIZE,
-    Instruction,
-    Instruction::{IType, JType, RType},
+use crate::{
+    mips::{
+        witness::SCRATCH_SIZE,
+        Instruction::{self, IType, JType, RType},
+    },
+    trace::Indexer,
 };
 use kimchi_msm::{
     columns::{Column, ColumnIndexer},
@@ -21,9 +23,15 @@ pub(crate) const MIPS_PREIMAGE_BYTES_OFFSET: usize = 85;
 pub(crate) const MIPS_HAS_N_BYTES_OFFSET: usize = 89;
 pub(crate) const MIPS_CHUNK_BYTES_LENGTH: usize = 4;
 
-pub const MIPS_SELECTORS_OFFSET: usize = SCRATCH_SIZE + 2;
-pub const MIPS_SELECTORS_LENGTH: usize =
+/// The number of columns used for relation witness in the MIPS circuit
+pub const MIPS_REL_COLS: usize = SCRATCH_SIZE + 2;
+
+/// The number of witness columns used to store the instruction selectors.
+pub const MIPS_SEL_COLS: usize =
     RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
+
+/// All the witness columns used in MIPS
+pub const MIPS_COLUMNS: usize = MIPS_REL_COLS + MIPS_SEL_COLS;
 
 /// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
@@ -32,15 +40,14 @@ pub enum ColumnAlias {
     // Can be seen as the abstract indexed variable X_{i}
     ScratchState(usize),
     InstructionCounter,
-    Selector(Instruction),
 }
 
 /// The columns used by the MIPS circuit.
 /// The MIPS circuit is split into three main opcodes: RType, JType, IType.
 /// The columns are shared between different instruction types.
 /// (the total number of columns refers to the maximum of columns used by each mode)
-impl ColumnAlias {
-    pub fn ix(&self) -> usize {
+impl Indexer for ColumnAlias {
+    fn ix(&self) -> usize {
         // Note that SCRATCH_SIZE + 1 is for the error
         match *self {
             ColumnAlias::ScratchState(i) => {
@@ -48,16 +55,17 @@ impl ColumnAlias {
                 i
             }
             ColumnAlias::InstructionCounter => SCRATCH_SIZE,
-            ColumnAlias::Selector(instruction) => match instruction {
-                RType(rtype) => MIPS_SELECTORS_OFFSET + rtype as usize,
-                JType(jtype) => MIPS_SELECTORS_OFFSET + RTypeInstruction::COUNT + jtype as usize,
-                IType(itype) => {
-                    MIPS_SELECTORS_OFFSET
-                        + RTypeInstruction::COUNT
-                        + JTypeInstruction::COUNT
-                        + itype as usize
-                }
-            },
+        }
+    }
+}
+
+/// Returns the corresponding index of the corresponding DynamicSelector column.
+impl Indexer for Instruction {
+    fn ix(&self) -> usize {
+        match *self {
+            RType(rtype) => rtype as usize,
+            JType(jtype) => RTypeInstruction::COUNT + jtype as usize,
+            IType(itype) => RTypeInstruction::COUNT + JTypeInstruction::COUNT + itype as usize,
         }
     }
 }
@@ -88,7 +96,7 @@ impl ColumnAlias {
 /// - 4 helpers to check if at least n bytes were read in the current row
 pub type MIPSWitness<T> = Witness<MIPS_COLUMNS, T>;
 
-pub const MIPS_COLUMNS: usize = SCRATCH_SIZE + 2 + MIPS_SELECTORS_LENGTH;
+// IMPLEMENTATIONS FOR COLUMN ALIAS
 
 impl<T: Clone> Index<ColumnAlias> for MIPSWitness<T> {
     type Output = T;
@@ -110,5 +118,30 @@ impl ColumnIndexer for ColumnAlias {
     fn to_column(self) -> Column {
         // TODO: what happens with error? It does not have a corresponding alias
         Column::Relation(self.ix())
+    }
+}
+
+// IMPLEMENTATIONS FOR SELECTOR
+
+impl<T: Clone> Index<Instruction> for MIPSWitness<T> {
+    type Output = T;
+
+    /// Map the column alias to the actual column index.
+    fn index(&self, index: Instruction) -> &Self::Output {
+        &self.cols[index.ix()]
+    }
+}
+
+impl<T: Clone> IndexMut<Instruction> for MIPSWitness<T> {
+    fn index_mut(&mut self, index: Instruction) -> &mut Self::Output {
+        &mut self.cols[index.ix()]
+    }
+}
+
+impl ColumnIndexer for Instruction {
+    const COL_N: usize = MIPS_COLUMNS;
+    fn to_column(self) -> Column {
+        // TODO: what happens with error? It does not have a corresponding alias
+        Column::DynamicSelector(self.ix())
     }
 }

@@ -1,7 +1,10 @@
 //! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 use self::{Absorbs::*, Sponges::*, Steps::*};
-use crate::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
+use crate::{
+    keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
+    trace::Indexer,
+};
 use kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
@@ -23,18 +26,23 @@ use strum_macros::{EnumCount, EnumIter};
 
 /// The maximum total number of witness columns used by the Keccak circuit.
 /// Note that in round steps, the columns used to store padding information are not needed.
-pub const ZKVM_KECCAK_COLS: usize = MODE_LEN + STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
+pub const ZKVM_KECCAK_REL: usize = STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
 
-const MODE_OFF: usize = 0; // The offset of the selector columns inside the witness
+/// The number of columns required for the Keccak selectors
+pub const ZKVM_KECCAK_SEL: usize = MODE_LEN;
+
+/// Total number of columns used in Keccak, including relation and selectors
+pub const ZKVM_KECCAK_COLS: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+
 const MODE_LEN: usize = 6; // The number of columns used by the Keccak circuit to represent the mode flags.
-const FLAG_ROUND_OFF: usize = 0; // Offset of the Round selector inside the mode flags
-const FLAG_FST_OFF: usize = 1; // Offset of the Absorb(First) selector inside the mode flags
-const FLAG_MID_OFF: usize = 2; // Offset of the Absorb(Middle) selector inside the mode flags
-const FLAG_LST_OFF: usize = 3; // Offset of the Absorb(Last) selector  inside the mode flags
-const FLAG_ONE_OFF: usize = 4; // Offset of the Absorb(Only) selector  inside the mode flags
-const FLAG_SQUEEZE_OFF: usize = 5; // Offset of the Squeeze selector inside the mode flags
+const FLAG_ROUND_OFF: usize = 0; // Offset of the Round selector inside DynamicSelector
+const FLAG_FST_OFF: usize = FLAG_ROUND_OFF + 1; // Offset of the Absorb(First) selector inside the mode flags
+const FLAG_MID_OFF: usize = FLAG_ROUND_OFF + 2; // Offset of the Absorb(Middle) selector inside the mode flags
+const FLAG_LST_OFF: usize = FLAG_ROUND_OFF + 3; // Offset of the Absorb(Last) selector  inside the mode flags
+const FLAG_ONE_OFF: usize = FLAG_ROUND_OFF + 4; // Offset of the Absorb(Only) selector  inside the mode flags
+const FLAG_SQUEEZE_OFF: usize = FLAG_ROUND_OFF + 5; // Offset of the Squeeze selector inside the mode flags
 
-const STATUS_OFF: usize = MODE_OFF + MODE_LEN; // The offset of the columns reserved for the status indices
+const STATUS_OFF: usize = 0; // The offset of the columns reserved for the status indices
 const STATUS_LEN: usize = 3; // The number of columns used by the Keccak circuit to represent the status flags.
 
 const CURR_OFF: usize = STATUS_OFF + STATUS_LEN; // The offset of the curr chunk inside the witness columns
@@ -64,12 +72,6 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 /// (Sponge or Round) that is currently being executed.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum ColumnAlias {
-    /// Selectors used to distinguish between different modes of the Keccak step
-    /// They are not located at the end because unlike with MIPS where it is very
-    /// costly to instantiate them at each step, these are very small in comparison
-    /// and the interpreter is already storing them at each step.
-    Selector(Steps),
-
     /// Hash identifier to distinguish inside the syscalls communication channel
     HashIndex,
     /// Block index inside the hash to enumerate preimage bytes
@@ -157,29 +159,35 @@ impl IntoIterator for Steps {
     }
 }
 
+/// Returns the index of the column corresponding to the given selector.
+/// They are located at the end of the witness columns.
+impl Indexer for Steps {
+    fn ix(&self) -> usize {
+        match *self {
+            Round(_) => FLAG_ROUND_OFF,
+            Sponge(sponge) => match sponge {
+                Absorb(absorb) => match absorb {
+                    First => FLAG_FST_OFF,
+                    Middle => FLAG_MID_OFF,
+                    Last => FLAG_LST_OFF,
+                    Only => FLAG_ONE_OFF,
+                },
+                Squeeze => FLAG_SQUEEZE_OFF,
+            },
+        }
+    }
+}
+
 /// The columns used by the Keccak circuit.
 /// The Keccak circuit is split into two main modes: Round and Sponge (split into Root, Absorb, Pad, RootPad, Squeeze).
 /// The columns are shared between the Sponge and Round steps
 /// (the total number of columns refers to the maximum of columns used by each mode)
 /// The hash, block, and step indices are shared between both modes.
-impl ColumnAlias {
+impl Indexer for ColumnAlias {
     /// Returns the witness column index for the given alias
     // TODO: move selector columns outside the main witness
-    pub fn ix(&self) -> usize {
+    fn ix(&self) -> usize {
         match *self {
-            ColumnAlias::Selector(step) => match step {
-                Round(_) => FLAG_ROUND_OFF,
-                Sponge(sponge) => match sponge {
-                    Absorb(absorb) => match absorb {
-                        First => FLAG_FST_OFF,
-                        Middle => FLAG_MID_OFF,
-                        Last => FLAG_LST_OFF,
-                        Only => FLAG_ONE_OFF,
-                    },
-                    Squeeze => FLAG_SQUEEZE_OFF,
-                },
-            },
-
             ColumnAlias::HashIndex => STATUS_OFF,
             ColumnAlias::BlockIndex => STATUS_OFF + 1,
             ColumnAlias::StepIndex => STATUS_OFF + 2,
@@ -343,7 +351,9 @@ impl ColumnAlias {
 ///             -> 811..=815: PadSuffix
 ///             -> 816..=951: PadBytesFlags
 ///
-pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_COLS, T>;
+pub type KeccakWitness<T> = Witness<ZKVM_KECCAK_REL, T>;
+
+/// IMPLEMENTATIONS FOR COLUMN ALIAS
 
 impl<T: Clone> Index<ColumnAlias> for KeccakWitness<T> {
     type Output = T;
@@ -364,8 +374,35 @@ impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
-    const COL_N: usize = ZKVM_KECCAK_COLS;
+    const COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
     fn to_column(self) -> Column {
         Column::Relation(self.ix())
+    }
+}
+
+// IMPLEMENTAIONS FOR SELECTOR
+
+impl<T: Clone> Index<Steps> for KeccakWitness<T> {
+    type Output = T;
+
+    /// Map the column alias to the actual column index.
+    /// Note that the column index depends on the step kind (Sponge or Round).
+    /// For instance, the column 800 represents PadLength in the Sponge step, while it
+    /// is used by intermediary values when executing the Round step.
+    fn index(&self, index: Steps) -> &Self::Output {
+        &self.cols[index.ix()]
+    }
+}
+
+impl<T: Clone> IndexMut<Steps> for KeccakWitness<T> {
+    fn index_mut(&mut self, index: Steps) -> &mut Self::Output {
+        &mut self.cols[index.ix()]
+    }
+}
+
+impl ColumnIndexer for Steps {
+    const COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+    fn to_column(self) -> Column {
+        Column::DynamicSelector(self.ix())
     }
 }
