@@ -11,7 +11,14 @@ use kimchi::circuits::{
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID> {
+pub struct ColumnEnvironment<
+    'a,
+    const N: usize,
+    const N_REL: usize,
+    const N_SEL: usize,
+    F: FftField,
+    ID: LookupTableID,
+> {
     /// The witness column polynomials
     pub witness: &'a Witness<N, Evaluations<F, Radix2EvaluationDomain<F>>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
@@ -28,8 +35,14 @@ pub struct ColumnEnvironment<'a, const N: usize, F: FftField, ID: LookupTableID>
     pub lookup: Option<logup::prover::QuotientPolynomialEnvironment<'a, F, ID>>,
 }
 
-impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, F>
-    for ColumnEnvironment<'a, N, F, ID>
+impl<
+        'a,
+        const N: usize,
+        const N_REL: usize,
+        const N_SEL: usize,
+        F: FftField,
+        ID: LookupTableID,
+    > TColumnEnvironment<'a, F> for ColumnEnvironment<'a, N, N_REL, N_SEL, F, ID>
 {
     type Column = crate::columns::Column;
 
@@ -37,16 +50,27 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
         &self,
         col: &Self::Column,
     ) -> Option<&'a Evaluations<F, Radix2EvaluationDomain<F>>> {
-        let witness_length: usize = self.witness.len();
+        // TODO: when non-literal constant generics are available, substitute N with N_REG + N_SEL
+        assert!(N == N_REL + N_SEL);
+        assert!(N == self.witness.len());
         match *col {
-            // Handling the "relation columns"
-            Self::Column::X(i) => {
-                if i < witness_length {
+            // Handling the "relation columns" at the beginning of the witness columns
+            Self::Column::Relation(i) => {
+                if i < N_REL {
                     let res = &self.witness[i];
                     Some(res)
                 } else {
                     // TODO: add a test for this
-                    panic!("Requested column with index {:?} but the given witness is meant for {:?} columns", i, witness_length)
+                    panic!("Requested column with index {:?} but the given witness is meant for {:?} relation columns", i, N_REL)
+                }
+            }
+            // Handling the "dynamic selector columns" at the end of the witness columns
+            Self::Column::DynamicSelector(i) => {
+                if i < N_SEL {
+                    let res = &self.witness[N_REL + i];
+                    Some(res)
+                } else {
+                    panic!("Requested selector with index {:?} but the given witness is meant for {:?} selector columns", i, N_SEL)
                 }
             }
             Self::Column::LookupPartialSum((table_id, i)) => {
@@ -92,8 +116,14 @@ impl<'a, const N: usize, F: FftField, ID: LookupTableID> TColumnEnvironment<'a, 
 
     fn column_domain(&self, col: &Self::Column) -> Domain {
         match *col {
-            Self::Column::X(i) => {
-                let domain_size = self.witness[i].domain().size;
+            Self::Column::Relation(i) | Self::Column::DynamicSelector(i) => {
+                let domain_size = if *col == Self::Column::Relation(i) {
+                    // Relation
+                    self.witness[i].domain().size
+                } else {
+                    // DynamicSelector
+                    self.witness[N_REL + i].domain().size
+                };
                 if self.domain.d1.size == domain_size {
                     Domain::D1
                 } else if self.domain.d2.size == domain_size {

@@ -12,7 +12,7 @@ use rand::{CryptoRng, RngCore};
 
 // Generic function to test with different circuits with the generic prover/verifier.
 // It doesn't use the interpreter to build the witness and compute the constraints.
-pub fn test_completeness_generic<const N: usize, RNG>(
+pub fn test_completeness_generic<const N: usize, const N_REL: usize, const N_SEL: usize, RNG>(
     constraints: Vec<E<Fp>>,
     evaluations: Witness<N, Vec<Fp>>,
     domain_size: usize,
@@ -34,13 +34,18 @@ pub fn test_completeness_generic<const N: usize, RNG>(
         logups: vec![],
     };
 
-    let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N, LookupTableIDs>(
-        domain,
-        &srs,
-        &constraints,
-        proof_inputs,
-        rng,
-    )
+    let proof = prove::<
+        _,
+        OpeningProof,
+        BaseSponge,
+        ScalarSponge,
+        Column,
+        _,
+        N,
+        N_REL,
+        N_SEL,
+        LookupTableIDs,
+    >(domain, &srs, &constraints, proof_inputs, rng)
     .unwrap();
 
     {
@@ -79,13 +84,14 @@ pub fn test_completeness_generic<const N: usize, RNG>(
         }
     }
 
-    let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, 0, LookupTableIDs>(
-        domain,
-        &srs,
-        &constraints,
-        &proof,
-        Witness::zero_vec(domain_size),
-    );
+    let verifies =
+        verify::<_, OpeningProof, BaseSponge, ScalarSponge, N, N_REL, N_SEL, 0, LookupTableIDs>(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+            Witness::zero_vec(domain_size),
+        );
     assert!(verifies)
 }
 
@@ -160,8 +166,8 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
             vec![x0.clone() - x1]
         };
 
@@ -171,7 +177,7 @@ mod tests {
             cols: Box::new([random_x0s, exp_x1]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -190,9 +196,9 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
-            let x2 = expr::curr_cell::<Fp>(Column::X(2));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
+            let x2 = expr::curr_cell::<Fp>(Column::Relation(2));
             vec![x0.clone() * x0.clone() - x1.clone() - x2.clone()]
         };
 
@@ -207,7 +213,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, exp_x2]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -229,10 +235,10 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
-            let x2 = expr::curr_cell::<Fp>(Column::X(2));
-            let x3 = expr::curr_cell::<Fp>(Column::X(3));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
+            let x2 = expr::curr_cell::<Fp>(Column::Relation(2));
+            let x3 = expr::curr_cell::<Fp>(Column::Relation(3));
             vec![
                 x0.clone() * x0.clone() * x0.clone() - E::from(42) * x1.clone() * x2.clone()
                     + x3.clone(),
@@ -252,7 +258,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -271,10 +277,10 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
-            let x2 = expr::curr_cell::<Fp>(Column::X(2));
-            let x3 = expr::curr_cell::<Fp>(Column::X(3));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
+            let x2 = expr::curr_cell::<Fp>(Column::Relation(2));
+            let x3 = expr::curr_cell::<Fp>(Column::Relation(3));
             let one = ConstantExpr::from(ConstantTerm::Literal(Fp::one()));
             vec![x0.clone() * (x1.clone() * x2.clone() * x3.clone() + E::constant(one))]
         };
@@ -291,7 +297,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -310,8 +316,8 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
             vec![x0.clone() * x0.clone() * x0.clone() * x0.clone() * x0.clone() + x1.clone()]
         };
 
@@ -324,7 +330,7 @@ mod tests {
             cols: Box::new([random_x0s, exp_x1]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -343,11 +349,11 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
             let cst1 = x0.clone() * x0.clone() * x0.clone() + x1.clone();
-            let x2 = expr::curr_cell::<Fp>(Column::X(2));
-            let x3 = expr::curr_cell::<Fp>(Column::X(3));
+            let x2 = expr::curr_cell::<Fp>(Column::Relation(2));
+            let x3 = expr::curr_cell::<Fp>(Column::Relation(3));
             let three = ConstantExpr::from(ConstantTerm::Literal(Fp::from(3)));
             let cst2 = x2.clone() * x2.clone() - E::constant(three) * x3.clone();
             vec![cst1, cst2]
@@ -367,7 +373,7 @@ mod tests {
             cols: Box::new([random_x0s, exp_x1, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -386,10 +392,10 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
-            let x2 = expr::curr_cell::<Fp>(Column::X(2));
-            let x3 = expr::curr_cell::<Fp>(Column::X(3));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
+            let x2 = expr::curr_cell::<Fp>(Column::Relation(2));
+            let x3 = expr::curr_cell::<Fp>(Column::Relation(3));
             let x0_square = x0.clone() * x0.clone();
             let x1_square = x1.clone() * x1.clone();
             let x2_square = x2.clone() * x2.clone();
@@ -422,7 +428,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -441,10 +447,10 @@ mod tests {
         let domain_size = 1 << 8;
 
         let constraints = {
-            let x0 = expr::curr_cell::<Fp>(Column::X(0));
-            let x1 = expr::curr_cell::<Fp>(Column::X(1));
-            let x2 = expr::curr_cell::<Fp>(Column::X(2));
-            let x3 = expr::curr_cell::<Fp>(Column::X(3));
+            let x0 = expr::curr_cell::<Fp>(Column::Relation(0));
+            let x1 = expr::curr_cell::<Fp>(Column::Relation(1));
+            let x2 = expr::curr_cell::<Fp>(Column::Relation(2));
+            let x3 = expr::curr_cell::<Fp>(Column::Relation(3));
             let x0_square = x0.clone() * x0.clone();
             let x1_square = x1.clone() * x1.clone();
             let x2_square = x2.clone() * x2.clone();
@@ -477,7 +483,7 @@ mod tests {
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::<N, _>(
+        test_completeness_generic::<N, N, 0, _>(
             constraints.clone(),
             witness.clone(),
             domain_size,

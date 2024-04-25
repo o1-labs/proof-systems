@@ -105,6 +105,8 @@ mod tests {
             Column,
             _,
             SER_N_COLUMNS,
+            SER_N_COLUMNS,
+            0,
             LookupTable<Ff1>,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -115,6 +117,8 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             SER_N_COLUMNS,
+            SER_N_COLUMNS,
+            0,
             0,
             LookupTable<Ff1>,
         >(
