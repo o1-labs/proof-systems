@@ -1,6 +1,7 @@
 pub mod capabilities;
 pub mod composition;
 pub mod constraints;
+pub mod copy_discussion;
 pub mod witness;
 
 // Reexport main types
