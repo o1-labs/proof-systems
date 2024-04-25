@@ -12,18 +12,13 @@ use crate::{
 };
 use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{Field, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use poly_commitment::SRS;
 use rand::thread_rng;
-use std::{
-    collections::BTreeMap,
-    iter::successors,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::collections::BTreeMap;
 
 type Fp = ark_bn254::Fr;
 type Curve = ark_bn254::G1Affine;
