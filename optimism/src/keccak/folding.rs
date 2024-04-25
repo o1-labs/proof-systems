@@ -1,6 +1,7 @@
 use crate::{
     folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
+    trace::Indexer,
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -15,7 +16,7 @@ impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
-        &self.witness[index]
+        &self.witness.cols[index.ix()]
     }
 }
 
@@ -25,7 +26,7 @@ impl Index<Steps> for KeccakFoldingWitness {
 
     /// Map a selector column to the corresponding witness column.
     fn index(&self, index: Steps) -> &Self::Output {
-        &self.witness.cols[KeccakColumn::Selector(index).ix()]
+        &self.witness.cols[index.ix()]
     }
 }
 
