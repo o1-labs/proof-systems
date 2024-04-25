@@ -26,19 +26,19 @@ use crate::columns::Column;
 /// pub type Fp = ark_bn254::Fr;
 /// let x1 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x2 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x3 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
