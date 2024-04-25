@@ -326,6 +326,21 @@
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::folding::Evals;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>num_traits::One;
@@ -560,6 +575,21 @@
             RelaxableWitness::relax(witness, zero_poly),
         )
     }
+}
+
+<span class="kw">impl</span>&lt;G, I, W&gt; RelaxablePair&lt;G, I, W&gt; <span class="kw">for </span>(RelaxedInstance&lt;G, I&gt;, RelaxedWitness&lt;G, W&gt;)
+<span class="kw">where
+    </span>G: CommitmentCurve,
+    I: Instance&lt;G&gt; + RelaxableInstance&lt;G, I&gt;,
+    W: Witness&lt;G&gt; + RelaxableWitness&lt;G, W&gt;,
+{
+    <span class="kw">fn </span>relax(
+        <span class="self">self</span>,
+        _zero_poly: <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;,
+        _zero_commitment: PolyComm&lt;G&gt;,
+    ) -&gt; (RelaxedInstance&lt;G, I&gt;, RelaxedWitness&lt;G, W&gt;) {
+        <span class="self">self
+    </span>}
 }
 
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; RelaxedInstance&lt;G, I&gt; {
