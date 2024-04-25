@@ -620,66 +620,11 @@
 <a href="#618" id="618">618</a>
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
-<a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
-<a href="#625" id="625">625</a>
-<a href="#626" id="626">626</a>
-<a href="#627" id="627">627</a>
-<a href="#628" id="628">628</a>
-<a href="#629" id="629">629</a>
-<a href="#630" id="630">630</a>
-<a href="#631" id="631">631</a>
-<a href="#632" id="632">632</a>
-<a href="#633" id="633">633</a>
-<a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
-<a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
-<a href="#638" id="638">638</a>
-<a href="#639" id="639">639</a>
-<a href="#640" id="640">640</a>
-<a href="#641" id="641">641</a>
-<a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
+    circuit_design::{
+        capabilities::{read_column_array, write_column_array_const, write_column_const},
+        ColAccessCap, ColWriteCap, LookupCap,
+    },
     fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
         bigint_to_biguint_f, combine_carry, combine_small_to_large, fold_choice2,
@@ -876,57 +821,26 @@
     Env: ColAccessCap&lt;F, FECColumn&gt; + LookupCap&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
 &gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    mem_offset: usize,
 ) {
-    <span class="kw">let </span>read_array_small = |env: <span class="kw-2">&amp;mut </span>Env, extra_offset: usize| -&gt; [Env::Variable; N_LIMBS_SMALL] {
-        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
-    };
-    <span class="kw">let </span>read_array_large = |env: <span class="kw-2">&amp;mut </span>Env, extra_offset: usize| -&gt; [Env::Variable; N_LIMBS_LARGE] {
-        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
-    };
+    <span class="kw">let </span>xp_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_column_array(env, FECColumn::XP);
+    <span class="kw">let </span>yp_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_column_array(env, FECColumn::YP);
+    <span class="kw">let </span>xq_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_column_array(env, FECColumn::XQ);
+    <span class="kw">let </span>yq_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_column_array(env, FECColumn::YQ);
+    <span class="kw">let </span>f_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_column_array(env, FECColumn::F);
+    <span class="kw">let </span>xr_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] = read_column_array(env, FECColumn::XR);
+    <span class="kw">let </span>yr_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] = read_column_array(env, FECColumn::YR);
+    <span class="kw">let </span>s_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] = read_column_array(env, FECColumn::S);
 
-    <span class="kw">let </span>xp_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_array_large(env, <span class="number">0</span>);
-    <span class="kw">let </span>yp_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_array_large(env, N_LIMBS_LARGE);
-    <span class="kw">let </span>xq_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_array_large(env, <span class="number">2 </span>* N_LIMBS_LARGE);
-    <span class="kw">let </span>yq_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_array_large(env, <span class="number">3 </span>* N_LIMBS_LARGE);
-    <span class="kw">let </span>f_limbs_large: [<span class="kw">_</span>; N_LIMBS_LARGE] = read_array_large(env, <span class="number">4 </span>* N_LIMBS_LARGE);
-    <span class="kw">let </span>xr_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] = read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE);
-    <span class="kw">let </span>yr_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE + N_LIMBS_SMALL);
-    <span class="kw">let </span>s_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">2 </span>* N_LIMBS_SMALL);
+    <span class="kw">let </span>q1_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q1);
+    <span class="kw">let </span>q2_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q2);
+    <span class="kw">let </span>q3_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q3);
+    <span class="kw">let </span>q1_sign = env.read_column(FECColumn::Q1Sign);
+    <span class="kw">let </span>q2_sign = env.read_column(FECColumn::Q2Sign);
+    <span class="kw">let </span>q3_sign = env.read_column(FECColumn::Q3Sign);
 
-    <span class="kw">let </span>q1_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">3 </span>* N_LIMBS_SMALL);
-    <span class="kw">let </span>q2_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL);
-    <span class="kw">let </span>q3_limbs_small: [<span class="kw">_</span>; N_LIMBS_SMALL] =
-        read_array_small(env, <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">5 </span>* N_LIMBS_SMALL);
-    <span class="kw">let </span>q1_sign = env.read_column(FECColumn(
-        mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL,
-    ));
-    <span class="kw">let </span>q2_sign = env.read_column(FECColumn(
-        mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>,
-    ));
-    <span class="kw">let </span>q3_sign = env.read_column(FECColumn(
-        mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>,
-    ));
-
-    <span class="kw">let </span>carry1_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = core::array::from_fn(|i| {
-        env.read_column(FECColumn(
-            mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i,
-        ))
-    });
-    <span class="kw">let </span>carry2_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = core::array::from_fn(|i| {
-        env.read_column(FECColumn(
-            mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">8 </span>* N_LIMBS_SMALL + <span class="number">5 </span>+ i,
-        ))
-    });
-    <span class="kw">let </span>carry3_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = core::array::from_fn(|i| {
-        env.read_column(FECColumn(
-            mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">7 </span>+ i,
-        ))
-    });
+    <span class="kw">let </span>carry1_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = read_column_array(env, FECColumn::Carry1);
+    <span class="kw">let </span>carry2_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = read_column_array(env, FECColumn::Carry2);
+    <span class="kw">let </span>carry3_limbs_small: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>] = read_column_array(env, FECColumn::Carry3);
 
     <span class="comment">// FIXME get rid of cloning
 
@@ -1085,7 +999,6 @@
     Env: ColWriteCap&lt;F, FECColumn&gt; + LookupCap&lt;F, FECColumn, LookupTable&lt;Ff&gt;&gt;,
 &gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    mem_offset: usize,
     xp: Ff,
     yp: Ff,
     xq: Ff,
@@ -1132,36 +1045,14 @@
     <span class="kw">let </span>slope_limbs_large: [F; N_LIMBS_LARGE] =
         limb_decompose_ff::&lt;F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE&gt;(<span class="kw-2">&amp;</span>slope);
 
-    <span class="kw">let </span>write_array = |env: <span class="kw-2">&amp;mut </span>Env, input: [F; N_LIMBS_SMALL], extra_offset: usize| {
-        input.iter().enumerate().for_each(|(i, var)| {
-            env.write_column(
-                FECColumn(mem_offset + extra_offset + i),
-                <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-            );
-        })
-    };
-
-    <span class="kw">let </span>write_array_large = |env: <span class="kw-2">&amp;mut </span>Env, input: [F; N_LIMBS_LARGE], extra_offset: usize| {
-        input.iter().enumerate().for_each(|(i, var)| {
-            env.write_column(
-                FECColumn(mem_offset + extra_offset + i),
-                <span class="kw-2">&amp;</span>Env::constant(<span class="kw-2">*</span>var),
-            );
-        })
-    };
-
-    write_array_large(env, xp_limbs_large, <span class="number">0</span>);
-    write_array_large(env, yp_limbs_large, N_LIMBS_LARGE);
-    write_array_large(env, xq_limbs_large, <span class="number">2 </span>* N_LIMBS_LARGE);
-    write_array_large(env, yq_limbs_large, <span class="number">3 </span>* N_LIMBS_LARGE);
-    write_array_large(env, f_limbs_large, <span class="number">4 </span>* N_LIMBS_LARGE);
-    write_array(env, xr_limbs_small, <span class="number">5 </span>* N_LIMBS_LARGE);
-    write_array(env, yr_limbs_small, <span class="number">5 </span>* N_LIMBS_LARGE + N_LIMBS_SMALL);
-    write_array(
-        env,
-        slope_limbs_small,
-        <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">2 </span>* N_LIMBS_SMALL,
-    );
+    write_column_array_const(env, xp_limbs_large, FECColumn::XP);
+    write_column_array_const(env, yp_limbs_large, FECColumn::YP);
+    write_column_array_const(env, xq_limbs_large, FECColumn::XQ);
+    write_column_array_const(env, yq_limbs_large, FECColumn::YQ);
+    write_column_array_const(env, f_limbs_large, FECColumn::F);
+    write_column_array_const(env, xr_limbs_small, FECColumn::XR);
+    write_column_array_const(env, yr_limbs_small, FECColumn::YR);
+    write_column_array_const(env, slope_limbs_small, FECColumn::S);
 
     <span class="kw">let </span>xp_bi: BigInt = FieldHelpers::to_bigint_positive(<span class="kw-2">&amp;</span>xp);
     <span class="kw">let </span>yp_bi: BigInt = FieldHelpers::to_bigint_positive(<span class="kw-2">&amp;</span>yp);
@@ -1215,33 +1106,12 @@
     <span class="kw">let </span>q3_limbs_small: [F; N_LIMBS_SMALL] =
         limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL&gt;(q3_bi.to_biguint().unwrap());
 
-    write_array(
-        env,
-        q1_limbs_small,
-        mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">3 </span>* N_LIMBS_SMALL,
-    );
-    write_array(
-        env,
-        q2_limbs_small,
-        mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL,
-    );
-    write_array(
-        env,
-        q3_limbs_small,
-        mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">5 </span>* N_LIMBS_SMALL,
-    );
-    env.write_column(
-        FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL),
-        <span class="kw-2">&amp;</span>Env::constant(q1_sign),
-    );
-    env.write_column(
-        FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>),
-        <span class="kw-2">&amp;</span>Env::constant(q2_sign),
-    );
-    env.write_column(
-        FECColumn(mem_offset + <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>),
-        <span class="kw-2">&amp;</span>Env::constant(q3_sign),
-    );
+    write_column_array_const(env, q1_limbs_small, FECColumn::Q1);
+    write_column_array_const(env, q2_limbs_small, FECColumn::Q2);
+    write_column_array_const(env, q3_limbs_small, FECColumn::Q3);
+    write_column_const(env, FECColumn::Q1Sign, <span class="kw-2">&amp;</span>q1_sign);
+    write_column_const(env, FECColumn::Q2Sign, <span class="kw-2">&amp;</span>q2_sign);
+    write_column_const(env, FECColumn::Q3Sign, <span class="kw-2">&amp;</span>q3_sign);
 
     <span class="kw">let </span><span class="kw-2">mut </span>carry1: F = From::from(<span class="number">0u64</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>carry2: F = From::from(<span class="number">0u64</span>);
@@ -1263,11 +1133,22 @@
             F::from_biguint(<span class="kw-2">&amp;</span>carry_f).unwrap()
         };
 
-        <span class="kw">let </span>assign_carry = |env: <span class="kw-2">&amp;mut </span>Env, newcarry: F, carryvar: <span class="kw-2">&amp;mut </span>F, extra_offset: usize| {
+        <span class="kw">fn </span>assign_carry&lt;F, Env, ColMap&gt;(
+            env: <span class="kw-2">&amp;mut </span>Env,
+            n_half_bi: <span class="kw-2">&amp;</span>BigInt,
+            i: usize,
+            newcarry: F,
+            carryvar: <span class="kw-2">&amp;mut </span>F,
+            column_mapper: ColMap,
+        ) <span class="kw">where
+            </span>F: PrimeField,
+            Env: ColWriteCap&lt;F, FECColumn&gt;,
+            ColMap: Fn(usize) -&gt; FECColumn,
+        {
             <span class="comment">// Last carry should be zero, otherwise we record it
             </span><span class="kw">if </span>i &lt; N_LIMBS_LARGE * <span class="number">2 </span>- <span class="number">2 </span>{
                 <span class="comment">// Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I think.
-                </span><span class="kw">let </span>newcarry_sign = <span class="kw">if </span>newcarry.to_bigint_positive() &gt; n_half_bi {
+                </span><span class="kw">let </span>newcarry_sign = <span class="kw">if </span><span class="kw-2">&amp;</span>newcarry.to_bigint_positive() &gt; n_half_bi {
                     F::zero() - F::one()
                 } <span class="kw">else </span>{
                     F::one()
@@ -1278,10 +1159,7 @@
                     limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, <span class="number">6</span>&gt;(newcarry_abs_bui.clone());
 
                 <span class="kw">for </span>(j, limb) <span class="kw">in </span>newcarry_limbs.iter().enumerate() {
-                    env.write_column(
-                        FECColumn(mem_offset + extra_offset + <span class="number">6 </span>* i + j),
-                        <span class="kw-2">&amp;</span>Env::constant(newcarry_sign * limb),
-                    );
+                    write_column_const(env, column_mapper(<span class="number">6 </span>* i + j), <span class="kw-2">&amp;</span>(newcarry_sign * limb));
                 }
 
                 <span class="kw-2">*</span>carryvar = newcarry;
@@ -1289,7 +1167,7 @@
                 <span class="comment">// should this be in circiut?
                 </span><span class="macro">assert!</span>(newcarry.is_zero(), <span class="string">"Last carry is non-zero"</span>);
             }
-        };
+        }
 
         <span class="comment">// Equation 1: s (xP - xQ) - (yP - yQ) - q_1 f =  0
         </span><span class="kw">let </span><span class="kw-2">mut </span>res1 = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
@@ -1306,9 +1184,11 @@
         <span class="kw">let </span>newcarry1 = compute_carry(res1);
         assign_carry(
             env,
+            <span class="kw-2">&amp;</span>n_half_bi,
+            i,
             newcarry1,
             <span class="kw-2">&amp;mut </span>carry1,
-            <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">3</span>,
+            FECColumn::Carry1,
         );
 
         <span class="comment">// Equation 2: xR - s^2 + xP + xQ - q_2 f = 0
@@ -1327,9 +1207,11 @@
         <span class="kw">let </span>newcarry2 = compute_carry(res2);
         assign_carry(
             env,
+            <span class="kw-2">&amp;</span>n_half_bi,
+            i,
             newcarry2,
             <span class="kw-2">&amp;mut </span>carry2,
-            <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">8 </span>* N_LIMBS_SMALL + <span class="number">5</span>,
+            FECColumn::Carry2,
         );
 
         <span class="comment">// Equation 3: yR + yP - s (xP - xR) - q_3 f = 0
@@ -1348,12 +1230,14 @@
         <span class="kw">let </span>newcarry3 = compute_carry(res3);
         assign_carry(
             env,
+            <span class="kw-2">&amp;</span>n_half_bi,
+            i,
             newcarry3,
             <span class="kw-2">&amp;mut </span>carry3,
-            <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">7</span>,
+            FECColumn::Carry3,
         );
     }
 
-    constrain_ec_addition::&lt;F, Ff, Env&gt;(env, mem_offset);
+    constrain_ec_addition::&lt;F, Ff, Env&gt;(env);
 }
 </code></pre></div></section></main></body></html>

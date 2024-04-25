@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["ColAccessCap","ColWriteCap","LookupCap"]};
+window.SIDEBAR_ITEMS = {"fn":["read_column_array","write_column_array","write_column_array_const","write_column_const"],"trait":["ColAccessCap","ColWriteCap","LookupCap"]};

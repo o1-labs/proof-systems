@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["FEC_N_COLUMNS"],"struct":["FECColumn"]};
+window.SIDEBAR_ITEMS = {"constant":["FEC_N_COLUMNS"],"enum":["FECColumn"]};

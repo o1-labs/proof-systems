@@ -148,7 +148,7 @@
             <span class="kw">let </span>xq: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
             <span class="kw">let </span>yq: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
 
-            ec_add_circuit(<span class="kw-2">&amp;mut </span>witness_env, <span class="number">0</span>, xp, yp, xq, yq);
+            ec_add_circuit(<span class="kw-2">&amp;mut </span>witness_env, xp, yp, xq, yq);
             <span class="kw">if </span>row_i &lt; domain_size - <span class="number">1 </span>{
                 witness_env.next_row();
             }
@@ -177,7 +177,7 @@
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, LookupTable&lt;Ff1&gt;&gt;::create();
-        constrain_ec_addition::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env, <span class="number">0</span>);
+        constrain_ec_addition::&lt;Fp, Ff1, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>constraint_env);
         <span class="kw">let </span>constraints = constraint_env.get_constraints();
 
         <span class="kw">let </span>witness_env = build_fec_addition_circuit(<span class="kw-2">&amp;mut </span>rng, domain_size);
