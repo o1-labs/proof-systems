@@ -13,7 +13,7 @@ impl ColumnIndexer for FECColumn {
     const COL_N: usize = FEC_N_COLUMNS;
     fn to_column(self) -> Column {
         match self {
-            FECColumn(j) => Column::X(j),
+            FECColumn(j) => Column::Relation(j),
         }
     }
 }

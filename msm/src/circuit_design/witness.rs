@@ -48,7 +48,7 @@ impl<
     }
 
     fn read_column(&self, ix: CIx) -> Self::Variable {
-        let Column::X(i) = ix.to_column() else {
+        let Column::Relation(i) = ix.to_column() else {
             todo!()
         };
         self.witness.last().unwrap().cols[i]
@@ -63,7 +63,7 @@ impl<
     > ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable) {
-        let Column::X(i) = ix.to_column() else {
+        let Column::Relation(i) = ix.to_column() else {
             todo!()
         };
         self.witness.last_mut().unwrap().cols[i] = *value;
@@ -98,7 +98,14 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
 {
     pub fn write_column(&mut self, position: Column, value: F) {
         match position {
-            Column::X(i) => self.witness.last_mut().unwrap().cols[i] = value,
+            Column::Relation(i) => self.witness.last_mut().unwrap().cols[i] = value,
+            Column::DynamicSelector(_) => {
+                // TODO: Do we want to allow writing to dynamic selector columns only 1 or 0?
+                panic!(
+                    "This is a dynamic selector column. The environment is
+                supposed to write only in witness columns"
+                );
+            }
             Column::LookupPartialSum(_) => {
                 panic!(
                     "This is a lookup related column. The environment is
