@@ -72,7 +72,7 @@ impl Indexer for Instruction {
 
 /// Represents one line of the execution trace of the virtual machine
 /// It does contain
-/// [MIPS_SELECTORS_LENGTH] columns for the instruction selectors
+/// [MIPS_SEL_COLS] columns for the instruction selectors
 /// + [SCRATCH_SIZE] columns
 /// + 2 additional columns to keep track of the instruction index and one for the system error code.
 /// The columns are, in order,
