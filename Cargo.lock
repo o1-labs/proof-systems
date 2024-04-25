@@ -1424,6 +1424,7 @@ dependencies = [
  "groupmap",
  "itertools 0.12.1",
  "kimchi",
+ "log",
  "mina-curves",
  "mina-poseidon",
  "num-bigint",
