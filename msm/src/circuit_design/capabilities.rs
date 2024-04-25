@@ -51,16 +51,16 @@ where
 ////////////////////////////////////////////////////////////////////////////
 
 /// Write an array of values simultaneously.
-pub fn read_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, Func>(
+pub fn read_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
     env: &mut Env,
-    column_foo: Func,
+    column_map: ColMap,
 ) -> [Env::Variable; ARR_N]
 where
     F: PrimeField,
     Env: ColAccessCap<F, CIx>,
-    Func: Fn(usize) -> CIx,
+    ColMap: Fn(usize) -> CIx,
 {
-    core::array::from_fn(|i| env.read_column(column_foo(i)))
+    core::array::from_fn(|i| env.read_column(column_map(i)))
 }
 
 /// Write a field element directly as a constant.
@@ -73,31 +73,31 @@ where
 }
 
 /// Write an array of values simultaneously.
-pub fn write_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, Func>(
+pub fn write_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
     env: &mut Env,
     input: [Env::Variable; ARR_N],
-    column_foo: Func,
+    column_map: ColMap,
 ) where
     F: PrimeField,
     Env: ColWriteCap<F, CIx>,
-    Func: Fn(usize) -> CIx,
+    ColMap: Fn(usize) -> CIx,
 {
     input.iter().enumerate().for_each(|(i, var)| {
-        env.write_column(column_foo(i), var);
+        env.write_column(column_map(i), var);
     })
 }
 
 /// Write an array of /field/ values simultaneously.
-pub fn write_column_array_const<F, Env, const ARR_N: usize, CIx: ColumnIndexer, Func>(
+pub fn write_column_array_const<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
     env: &mut Env,
     input: [F; ARR_N],
-    column_foo: Func,
+    column_map: ColMap,
 ) where
     F: PrimeField,
     Env: ColWriteCap<F, CIx>,
-    Func: Fn(usize) -> CIx,
+    ColMap: Fn(usize) -> CIx,
 {
     input.iter().enumerate().for_each(|(i, var)| {
-        env.write_column(column_foo(i), &Env::constant(*var));
+        env.write_column(column_map(i), &Env::constant(*var));
     })
 }

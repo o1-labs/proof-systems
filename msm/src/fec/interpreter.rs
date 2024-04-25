@@ -511,17 +511,17 @@ pub fn ec_add_circuit<
             F::from_biguint(&carry_f).unwrap()
         };
 
-        fn assign_carry<F, Env, Foo>(
+        fn assign_carry<F, Env, ColMap>(
             env: &mut Env,
             n_half_bi: &BigInt,
             i: usize,
             newcarry: F,
             carryvar: &mut F,
-            column_foo: Foo,
+            column_mapper: ColMap,
         ) where
             F: PrimeField,
             Env: ColWriteCap<F, FECColumn>,
-            Foo: Fn(usize) -> FECColumn,
+            ColMap: Fn(usize) -> FECColumn,
         {
             // Last carry should be zero, otherwise we record it
             if i < N_LIMBS_LARGE * 2 - 2 {
@@ -537,7 +537,7 @@ pub fn ec_add_circuit<
                     limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
 
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
-                    write_column_const(env, column_foo(6 * i + j), &(newcarry_sign * limb));
+                    write_column_const(env, column_mapper(6 * i + j), &(newcarry_sign * limb));
                 }
 
                 *carryvar = newcarry;
