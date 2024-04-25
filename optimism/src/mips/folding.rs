@@ -9,7 +9,10 @@ use crate::{
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig};
+use kimchi_msm::columns::Column;
 use std::ops::Index;
+
+use super::column::MIPS_REL_COLS;
 
 pub(crate) type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS>;
 pub(crate) type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS>;
@@ -33,6 +36,20 @@ impl Index<Instruction> for MIPSFoldingWitness {
     }
 }
 
+// Implementing this so that generic constraints can be used in folding
+impl Index<Column> for MIPSFoldingWitness {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    /// Map a column alias to the corresponding witness column.
+    fn index(&self, index: Column) -> &Self::Output {
+        match index {
+            Column::Relation(ix) => &self.witness.cols[ix],
+            Column::DynamicSelector(ix) => &self.witness.cols[MIPS_REL_COLS + ix],
+            _ => panic!("Invalid column type"),
+        }
+    }
+}
+
 // TODO: will contain information about the circuit structure
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct MIPSStructure;
@@ -49,7 +66,7 @@ impl FoldingColumnTrait for MIPSColumn {
 }
 
 impl FoldingConfig for MIPSConfig {
-    type Column = MIPSColumn;
+    type Column = Column;
     type Selector = Instruction;
     type Challenge = Challenge;
     type Curve = Curve;
