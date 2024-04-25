@@ -1,4 +1,51 @@
-/// Tools to compose different circit designers.
+/// Tools to /compose/ different circuit designers.
+///
+/// Assume we have several sets of columns:
+/// Col0 ⊂ Col1 ⊂ Col2, and
+///       Col1' ⊂ Col2
+///
+///
+/// For example they are laid out like this:
+///
+/// |-------------------------------------------| Col2
+/// |-|  |----------------------|                 Col1
+///        |-----|     |--| |---|                 Col0
+/// |---|        |-----|        |---------------| Col1'
+///
+/// Some columns might be even shared (e.g. Col1 and Col1' share column#0).
+///
+/// Using capabilities one can define functions that operate over different sets of columns,
+/// and does not "know" in which bigger context it operates.
+/// - function0<Env: ColumnAccess<Col0>>(env: Env, ...)
+/// - function1<Env: ColumnAccess<Col1>>(env: Env, ...)
+/// - function1'<Env: ColumnAccess<Col1'>>(env: Env, ...)
+/// - function2<Env: ColumnAccess<Col2>>(env: Env, ...)
+///
+/// This is similar to memory separation: a program function0 might
+/// need just three columns for A * B - C constraint, and if it works
+/// in a 1000 column environment it needs to be told /which three
+/// exactly/ will it see.
+///
+/// One only needs a single concrete Env (e.g. WitnessBuilder or
+/// Constraint Builder) over the "top level" Col2, and then all these
+/// functions can be called using lenses. Each lens describes how the
+/// layouts will be mapped.
+///
+/// |-------------------------------------------|                        Col2
+///            |                  |      |
+///            | Col2To1Lens      |      |
+///            V                  |      |
+/// |-|  |----------------------| | (compose(Col2To1Lens . Col1To0Lens)  Col1
+///            |                  |      |
+///            | Col1To0Lens     /       |
+///            |                /        |
+///            V               V         | Col2To1'Lens
+///        |-----|     |--| |---|        |                               Col0
+///                                      V
+/// |---|        |-----|        |---------------|                        Col1'
+///
+///
+/// Similar "mapping" intuition applies to lookup tables.
 use crate::{
     circuit_design::capabilities::{ColAccessCap, ColWriteCap, LookupCap},
     columns::ColumnIndexer,
@@ -66,15 +113,20 @@ where
 // Interpreter and sub-interpreter
 ////////////////////////////////////////////////////////////////////////////
 
-// Generic sub-environment struct. Internal object to avoid copy-paste.
+/// Generic sub-environment struct: don't use directly. It's an
+/// internal object to avoid copy-paste.
+///
+/// We can't use `SubEnv` directly because rust is not idris: it is
+/// impossible to instantiate `SubEnv` with two /completely/ different
+/// lenses and then write proper trait implementations. Rust complains
+/// about conflicting trait implementations.
 struct SubEnv<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L> {
     env: &'a mut Env1,
     lens: L,
     phantom: core::marker::PhantomData<(F, CIx1)>,
 }
 
-/// Sub environment with a lens that is mapping lookup tables.
-/// Can't use `SubEnv` directly because rust is not idris.
+/// Sub environment with a lens that is mapping columns.
 pub struct SubEnvColumn<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap<F, CIx1>, L>(
     SubEnv<'a, F, CIx1, Env1, L>,
 );
