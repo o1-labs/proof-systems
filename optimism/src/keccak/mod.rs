@@ -1,5 +1,5 @@
 use crate::{
-    keccak::column::{ColumnAlias as KeccakColumn, PAD_SUFFIX_LEN},
+    keccak::column::{ColumnAlias as KeccakColumn, Steps::*, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
@@ -37,16 +37,8 @@ pub(crate) const WORDS_IN_HASH: usize = HASH_BITLENGTH / WORD_LENGTH_IN_BITS;
 /// Errors that can occur during the check of the witness
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
-    Selector(Selector),
     Constraint(Constraint),
     Lookup(LookupTableIDs),
-}
-
-/// All the names for selector misconfigurations of the Keccak circuit
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Selector {
-    NotBoolean(Steps),
-    NotMutex,
 }
 
 /// All the names for constraints involved in the Keccak circuit
@@ -70,6 +62,20 @@ pub enum Constraint {
     ChiShiftsB(usize, usize, usize),
     ChiShiftsSum(usize, usize, usize),
     IotaStateG(usize),
+}
+
+/// Standardizes a Keccak step to a common opcode
+pub fn standardize(opcode: Steps) -> Steps {
+    // Note that steps of execution are obtained from the constraints environment.
+    // There, the round steps can be anything between 0 and 23 (for the 24 permutations).
+    // Nonetheless, all of them contain the same set of constraints and lookups.
+    // Therefore, we want to treat them as the same step when it comes to splitting the
+    // circuit into multiple instances with shared behaviour. By default, we use `Round(0)`.
+    if let Round(_) = opcode {
+        Round(0)
+    } else {
+        opcode
+    }
 }
 
 // This function maps a 4D index into a 1D index depending on the length of the grid
