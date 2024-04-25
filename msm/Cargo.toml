@@ -12,10 +12,6 @@ license = "Apache-2.0"
 [lib]
 path = "src/lib.rs"
 
-[[bin]]
-name = "ffa"
-path = "src/ffa/main.rs"
-
 [dependencies]
 ark-bn254.workspace = true
 ark-serialize.workspace = true

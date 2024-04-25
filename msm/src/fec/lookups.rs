@@ -5,7 +5,7 @@ use o1_utils::FieldHelpers;
 use std::marker::PhantomData;
 use strum_macros::EnumIter;
 
-/// Enumeration of concrete lookup tables used in serialization circuit.
+/// Enumeration of concrete lookup tables used in FEC circuit.
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
 pub enum LookupTable<Ff> {
     /// x ∈ [0, 2^15]

@@ -206,10 +206,17 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
             lookup_tables.insert(table_id, vec![vec![]; number_of_lookups + 1]);
         }
 
+        // Filling actually used rows first
         for witness_row in self.witness.iter().take(domain_size) {
-            // Filling actually used rows
             for j in 0..CIX_COL_N {
                 witness.cols[j].push(witness_row.cols[j]);
+            }
+        }
+        // Then filling witness rows up with zeroes to the domain size
+        // FIXME: Maybe this is not always wise, as default instance can be non-zero.
+        if self.witness.len() < domain_size {
+            for i in 0..CIX_COL_N {
+                witness.cols[i].extend(vec![F::zero(); domain_size - self.witness.len()]);
             }
         }
 
