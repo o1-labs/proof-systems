@@ -518,6 +518,8 @@ pub(crate) fn folding_expression<C: FoldingConfig>(
     (integrated, extended_witness_generator)
 }
 
+// CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
+
 impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
