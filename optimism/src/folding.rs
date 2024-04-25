@@ -134,7 +134,6 @@ where
         };
         // The following is possible because Index is implemented for our circuit witnesses
         &wit[col].evals
-        // TODO: if selectors columns are used, then return selectors instead of real witness columns
     }
 
     fn challenge(&self, challenge: Challenge, side: Side) -> Fp {
