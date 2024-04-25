@@ -594,21 +594,21 @@ fn test_keccak_decomposable_folding() {
             Sponge(Absorb(Only)),
             keccak_trace.constraints[&Sponge(Absorb(Only))]
                 .iter()
-                .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(*c))
+                .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
                 .collect(),
         ),
         (
             Round(0),
             keccak_trace.constraints[&Sponge(Absorb(Only))]
                 .iter()
-                .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(*c))
+                .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
                 .collect(),
         ),
     ]
     .into_iter()
     .collect();
 
-    let (scheme, final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
+    let (_scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
         constraints,
         vec![],
         srs.clone(),
