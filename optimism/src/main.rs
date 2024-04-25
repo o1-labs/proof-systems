@@ -33,7 +33,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use poly_commitment::pairing_proof::PairingProof;
-use std::{collections::HashMap, fs::File, io::BufReader, process::ExitCode};
+use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;
 
 type Fp = ark_bn254::Fr;
@@ -131,17 +131,15 @@ pub fn main() -> ExitCode {
     let set_mips_selectors =
         |trace: &mut MIPSTrace<Fp>, instr: Instruction, number_of_rows: usize| {
             let instr_ix = MIPSColumn::Selector(instr).ix();
-            (MIPS_SELECTORS_OFFSET..MIPS_COLUMNS)
-                .into_iter()
-                .for_each(|i| {
-                    if i == instr_ix {
-                        trace.witness.get_mut(&instr).unwrap().cols[i]
-                            .extend((0..number_of_rows).map(|_| Fp::one()))
-                    } else {
-                        trace.witness.get_mut(&instr).unwrap().cols[i]
-                            .extend((0..number_of_rows).map(|_| Fp::zero()))
-                    }
-                });
+            (MIPS_SELECTORS_OFFSET..MIPS_COLUMNS).for_each(|i| {
+                if i == instr_ix {
+                    trace.witness.get_mut(&instr).unwrap().cols[i]
+                        .extend((0..number_of_rows).map(|_| Fp::one()))
+                } else {
+                    trace.witness.get_mut(&instr).unwrap().cols[i]
+                        .extend((0..number_of_rows).map(|_| Fp::zero()))
+                }
+            });
         };
 
     while !mips_wit_env.halt {
@@ -174,16 +172,16 @@ pub fn main() -> ExitCode {
 
         // TODO: unify witness of MIPS to include scratch state, instruction counter, and error
         for i in 0..MIPS_COLUMNS - MIPS_SELECTORS_LENGTH {
-            if i < SCRATCH_SIZE {
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(mips_wit_env.scratch_state[i]);
-            } else if i == SCRATCH_SIZE {
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(Fp::from(mips_wit_env.instruction_counter));
-            } else {
-                // TODO: error
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(Fp::rand(&mut rand::rngs::OsRng));
+            match i.cmp(&SCRATCH_SIZE) {
+                Ordering::Less => mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                    .push(mips_wit_env.scratch_state[i]),
+                Ordering::Equal => mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                    .push(Fp::from(mips_wit_env.instruction_counter)),
+                Ordering::Greater => {
+                    // TODO: error
+                    mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                        .push(Fp::rand(&mut rand::rngs::OsRng))
+                }
             }
         }
 
