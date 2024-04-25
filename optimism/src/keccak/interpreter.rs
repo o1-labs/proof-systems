@@ -1,16 +1,16 @@
 //! This module defines the Keccak interpreter in charge of triggering the Keccak workflow
 
-use super::{
-    column::PAD_SUFFIX_LEN,
-    helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
-    WORDS_IN_HASH,
-};
 use crate::{
     keccak::{
-        column::{PAD_BYTES_LEN, ROUND_CONST_LEN},
+        column::{PAD_BYTES_LEN, PAD_SUFFIX_LEN, ROUND_CONST_LEN},
         grid_index,
+        helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
+        Absorbs::*,
         Constraint::{self, *},
-        KeccakColumn, Selector,
+        KeccakColumn,
+        Sponges::*,
+        Steps::{self, *},
+        WORDS_IN_HASH,
     },
     lookups::{Lookup, LookupTableIDs::*},
 };
@@ -62,16 +62,6 @@ pub trait KeccakInterpreter<F: One + Debug + Zero>
 where
     Self: Interpreter<F> + LogupHelpers<F> + BoolHelpers<F> + ArithHelpers<F>,
 {
-    ////////////////////////////
-    // CONSTRAINTS OPERATIONS //
-    ////////////////////////////
-
-    /// Check one condition on the selectors
-    fn check(&mut self, tag: Selector, x: Self::Variable);
-
-    /// Checks that the selectors are set correctly
-    fn checks(&mut self);
-
     /// Creates all 879 constraints/checks to the environment:
     /// - 733 constraints of degree 1
     /// - 146 constraints of degree 2
@@ -84,14 +74,12 @@ where
     /// - if Steps::Sponge::Squeeze         -> only 16  constraints added
     /// So:
     /// - At most, 474 constraints are added per row
-    fn constraints(&mut self) {
-        self.checks();
-
+    fn constraints(&mut self, step: Steps) {
         // CORRECTNESS OF FLAGS: 136 CONSTRAINTS
         // - 136 constraints of degree 2
         // Of which:
         // - 136 constraints are added only if is_pad() holds
-        self.constrain_flags();
+        self.constrain_flags(step);
 
         // SPONGE CONSTRAINTS: 32 + 3*100 + 16 + 6 = 354 CONSTRAINTS
         // - 349 of degree 1
@@ -101,34 +89,34 @@ where
         // - 100 constraints are added only if is_root() holds
         // - 6 constraints are added only if is_pad() holds
         // - 16 constraints are added only if is_squeeze() holds
-        self.constrain_sponge();
+        self.constrain_sponge(step);
 
         // ROUND CONSTRAINTS: 35 + 150 + 200 + 4 = 389 CONSTRAINTS
         // - 384 constraints of degree 1
         // - 5 constraints of degree 2
         // Of which:
         // - 389 constraints are added only if is_round() holds
-        self.constrain_round();
+        self.constrain_round(step);
     }
 
     /// Constrains 136 checks of correctness of mode flags
     /// - 136 constraints of degree 2
     /// Of which:
     /// - 136 constraints are added only if is_pad() holds
-    fn constrain_flags(&mut self)
+    fn constrain_flags(&mut self, step: Steps)
     where
         Self: Interpreter<F>,
     {
         // Booleanity of sponge flags:
         // - 136 constraints of degree 2
-        self.constrain_booleanity();
+        self.constrain_booleanity(step);
     }
 
     /// Constrains 136 checks of booleanity for some mode flags.
     /// - 136 constraints of degree 2
     /// Of which,
     /// - 136 constraints are added only if is_pad() holds
-    fn constrain_booleanity(&mut self)
+    fn constrain_booleanity(&mut self, step: Steps)
     where
         Self: Interpreter<F>,
     {
@@ -136,7 +124,7 @@ where
             // Bytes are either involved on padding or not
             self.constrain(
                 BooleanityPadding(i),
-                self.is_pad(),
+                self.is_pad(step),
                 Self::is_boolean(self.in_padding(i)),
             );
         }
@@ -150,10 +138,10 @@ where
     /// - 100 constraints are added only if is_root() holds
     /// - 6 constraints are added only if is_pad() holds
     /// - 16 constraints are added only if is_squeeze() holds
-    fn constrain_sponge(&mut self) {
-        self.constrain_absorb();
-        self.constrain_padding();
-        self.constrain_squeeze();
+    fn constrain_sponge(&mut self, step: Steps) {
+        self.constrain_absorb(step);
+        self.constrain_padding(step);
+        self.constrain_squeeze(step);
     }
 
     /// Constrains 332 checks of absorb sponges
@@ -161,24 +149,28 @@ where
     /// Of which:
     /// - 232 constraints are added only if is_absorb() holds
     /// - 100 constraints are added only if is_root() holds
-    fn constrain_absorb(&mut self) {
+    fn constrain_absorb(&mut self, step: Steps) {
         for (i, zero) in self.sponge_zeros().iter().enumerate() {
             // Absorb phase pads with zeros the new state
-            self.constrain(AbsorbZeroPad(i), self.is_absorb(), zero.clone());
+            self.constrain(AbsorbZeroPad(i), self.is_absorb(step), zero.clone());
         }
         for i in 0..QUARTERS * DIM * DIM {
             // In first absorb, root state is all zeros
-            self.constrain(AbsorbRootZero(i), self.is_root(), self.old_state(i).clone());
+            self.constrain(
+                AbsorbRootZero(i),
+                self.is_root(step),
+                self.old_state(i).clone(),
+            );
             // Absorbs the new block by performing XOR with the old state
             self.constrain(
                 AbsorbXor(i),
-                self.is_absorb(),
+                self.is_absorb(step),
                 self.xor_state(i).clone() - (self.old_state(i).clone() + self.new_state(i).clone()),
             );
             // In absorb, Check shifts correspond to the decomposition of the new state
             self.constrain(
                 AbsorbShifts(i),
-                self.is_absorb(),
+                self.is_absorb(step),
                 self.new_state(i).clone()
                     - Self::from_shifts(&self.vec_sponge_shifts(), Some(i), None, None, None),
             );
@@ -190,21 +182,21 @@ where
     /// - 5 of degree 2
     /// Of which:
     /// - 6 constraints are added only if is_pad() holds
-    fn constrain_padding(&mut self) {
+    fn constrain_padding(&mut self, step: Steps) {
         // Check that the padding is located at the end of the message
         let pad_at_end = (0..RATE_IN_BYTES).fold(Self::zero(), |acc, i| {
             acc * Self::two() + self.in_padding(i)
         });
         self.constrain(
             PadAtEnd,
-            self.is_pad(),
+            self.is_pad(step),
             self.two_to_pad() - Self::one() - pad_at_end,
         );
         // Check that the padding value is correct
         for i in 0..PAD_SUFFIX_LEN {
             self.constrain(
                 PaddingSuffix(i),
-                self.is_pad(),
+                self.is_pad(step),
                 self.block_in_padding(i) - self.pad_suffix(i),
             );
         }
@@ -214,13 +206,13 @@ where
     /// - 16 of degree 1
     /// Of which:
     /// - 16 constraints are added only if is_squeeze() holds
-    fn constrain_squeeze(&mut self) {
+    fn constrain_squeeze(&mut self, step: Steps) {
         let sponge_shifts = self.vec_sponge_shifts();
         for i in 0..QUARTERS * WORDS_IN_HASH {
             // In squeeze, check shifts correspond to the 256-bit prefix digest of the old state (current)
             self.constrain(
                 SqueezeShifts(i),
-                self.is_squeeze(),
+                self.is_squeeze(step),
                 self.old_state(i).clone()
                     - Self::from_shifts(&sponge_shifts, Some(i), None, None, None),
             );
@@ -232,29 +224,29 @@ where
     /// - 5 constraints of degree 2
     /// Of which:
     /// - 389 constraints are added only if is_round() holds
-    fn constrain_round(&mut self) {
+    fn constrain_round(&mut self, step: Steps) {
         // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
         // - 30 constraints of degree 1
         // - 5 constraints of degree 2
-        let state_e = self.constrain_theta();
+        let state_e = self.constrain_theta(step);
 
         // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
         // - 150 of degree 1
-        let state_b = self.constrain_pirho(state_e);
+        let state_b = self.constrain_pirho(step, state_e);
 
         // STEP chi: 4 * 5 * 5 * 2 = 200 constraints
         // - 200 of degree 1
-        let state_f = self.constrain_chi(state_b);
+        let state_f = self.constrain_chi(step, state_b);
 
         // STEP iota: 4 constraints
         // - 4 of degree 1
-        self.constrain_iota(state_f);
+        self.constrain_iota(step, state_f);
     }
 
     /// Constrains 35 checks of the theta algorithm in round steps
     ///  - 30 constraints of degree 1
     ///  - 5 constraints of degree 2
-    fn constrain_theta(&mut self) -> Vec<Vec<Vec<Self::Variable>>> {
+    fn constrain_theta(&mut self, step: Steps) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
         let mut state_c = vec![vec![Self::zero(); QUARTERS]; DIM];
         let mut state_d = vec![vec![Self::zero(); QUARTERS]; DIM];
@@ -267,18 +259,18 @@ where
 
             self.constrain(
                 ThetaWordC(x),
-                self.is_round(),
+                self.is_round(step),
                 word_c * Self::two_pow(1)
                     - (self.quotient_c(x) * Self::two_pow(64) + rem_c.clone()),
             );
             self.constrain(
                 ThetaRotatedC(x),
-                self.is_round(),
+                self.is_round(step),
                 rot_c - (self.quotient_c(x) + rem_c),
             );
             self.constrain(
                 ThetaQuotientC(x),
-                self.is_round(),
+                self.is_round(step),
                 Self::is_boolean(self.quotient_c(x)),
             );
 
@@ -290,7 +282,7 @@ where
                     + self.state_a(4, x, q);
                 self.constrain(
                     ThetaShiftsC(x, q),
-                    self.is_round(),
+                    self.is_round(step),
                     state_c[x][q].clone()
                         - Self::from_shifts(&self.vec_shifts_c(), None, None, Some(x), Some(q)),
                 );
@@ -310,6 +302,7 @@ where
     /// - 150 of degree 1
     fn constrain_pirho(
         &mut self,
+        step: Steps,
         state_e: Vec<Vec<Vec<Self::Variable>>>,
     ) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
@@ -324,20 +317,20 @@ where
 
                 self.constrain(
                     PiRhoWordE(y, x),
-                    self.is_round(),
+                    self.is_round(step),
                     word_e * Self::two_pow(*off)
                         - (quo_e.clone() * Self::two_pow(64) + rem_e.clone()),
                 );
                 self.constrain(
                     PiRhoRotatedE(y, x),
-                    self.is_round(),
+                    self.is_round(step),
                     rot_e - (quo_e.clone() + rem_e),
                 );
 
                 for q in 0..QUARTERS {
                     self.constrain(
                         PiRhoShiftsE(y, x, q),
-                        self.is_round(),
+                        self.is_round(step),
                         state_e[y][x][q].clone()
                             - Self::from_shifts(
                                 &self.vec_shifts_e(),
@@ -358,6 +351,7 @@ where
     /// - 200 of degree 1
     fn constrain_chi(
         &mut self,
+        step: Steps,
         state_b: Vec<Vec<Vec<Self::Variable>>>,
     ) -> Vec<Vec<Vec<Self::Variable>>> {
         // Define vectors storing expressions which are not in the witness layout for efficiency
@@ -373,7 +367,7 @@ where
 
                     self.constrain(
                         ChiShiftsB(y, x, q),
-                        self.is_round(),
+                        self.is_round(step),
                         state_b[y][x][q].clone()
                             - Self::from_shifts(
                                 &self.vec_shifts_b(),
@@ -385,7 +379,7 @@ where
                     );
                     self.constrain(
                         ChiShiftsSum(y, x, q),
-                        self.is_round(),
+                        self.is_round(step),
                         sum - Self::from_shifts(
                             &self.vec_shifts_sum(),
                             None,
@@ -403,11 +397,11 @@ where
 
     /// Constrains 4 checks of the iota algorithm in round steps
     /// - 4 of degree 1
-    fn constrain_iota(&mut self, state_f: Vec<Vec<Vec<Self::Variable>>>) {
+    fn constrain_iota(&mut self, step: Steps, state_f: Vec<Vec<Vec<Self::Variable>>>) {
         for (q, c) in self.round_constants().to_vec().iter().enumerate() {
             self.constrain(
                 IotaStateG(q),
-                self.is_round(),
+                self.is_round(step),
                 self.state_g(q).clone() - (state_f[0][0][q].clone() + c.clone()),
             );
         }
@@ -429,23 +423,23 @@ where
     /// - 739  lookups if Step::Absorb::Last   (601 + 2 + 136)
     /// - 738  lookups if Step::Absorb::Only   (601 + 1 + 136)
     /// - 602 lookups if Step::Squeeze         (600 + 1 + 1)
-    fn lookups(&mut self) {
+    fn lookups(&mut self, step: Steps) {
         // SPONGE LOOKUPS
         // -> adds 600 lookups if is_sponge
         // -> adds 601 lookups if is_pad
-        self.lookups_sponge();
+        self.lookups_sponge(step);
 
         // ROUND LOOKUPS
         // -> adds 1621 lookups if is_round
         {
             // THETA LOOKUPS
-            self.lookups_round_theta();
+            self.lookups_round_theta(step);
             // PIRHO LOOKUPS
-            self.lookups_round_pirho();
+            self.lookups_round_pirho(step);
             // CHI LOOKUPS
-            self.lookups_round_chi();
+            self.lookups_round_chi(step);
             // IOTA LOOKUPS
-            self.lookups_round_iota();
+            self.lookups_round_iota(step);
         }
 
         // INTER-STEP CHANNEL
@@ -453,25 +447,25 @@ where
         // -> adds 1 lookup if is_root
         // -> adds 1 lookup if is_squeeze
         // -> adds 2 lookups otherwise
-        self.lookup_steps();
+        self.lookup_steps(step);
 
         // COMMUNICATION CHANNEL: read bytes of current block
         // -> adds 136 lookups if is_absorb
-        self.lookup_syscall_preimage();
+        self.lookup_syscall_preimage(step);
 
         // COMMUNICATION CHANNEL: Write hash output
         // -> adds 1 lookup if is_squeeze
-        self.lookup_syscall_hash();
+        self.lookup_syscall_hash(step);
     }
 
     /// When in Absorb mode, reads Lookups containing the 136 bytes of the block of the preimage
     /// - if is_absorb, adds 136 lookups
     /// - otherwise, adds 0 lookups
     // TODO: optimize this by using a single lookup reusing PadSuffix
-    fn lookup_syscall_preimage(&mut self) {
+    fn lookup_syscall_preimage(&mut self, step: Steps) {
         for i in 0..RATE_IN_BYTES {
             self.read_syscall(
-                self.is_absorb(),
+                self.is_absorb(step),
                 vec![
                     self.hash_index(),
                     self.block_index() * Self::constant(RATE_IN_BYTES as u64)
@@ -485,11 +479,11 @@ where
     /// When in Squeeze mode, writes a Lookup containing the 31byte output of the hash (excludes the MSB)
     /// - if is_squeeze, adds 1 lookup
     /// - otherwise, adds 0 lookups
-    fn lookup_syscall_hash(&mut self) {
+    fn lookup_syscall_hash(&mut self, step: Steps) {
         let bytes31 = (1..32).fold(Self::zero(), |acc, i| {
             acc * Self::two_pow(8) + self.sponge_byte(i)
         });
-        self.write_syscall(self.is_squeeze(), vec![self.hash_index(), bytes31]);
+        self.write_syscall(self.is_squeeze(step), vec![self.hash_index(), bytes31]);
     }
 
     /// Reads a Lookup containing the input of a step
@@ -497,15 +491,15 @@ where
     /// - if is_root, only adds 1 lookup
     /// - if is_squeeze, only adds 1 lookup
     /// - otherwise, adds 2 lookups
-    fn lookup_steps(&mut self) {
+    fn lookup_steps(&mut self, step: Steps) {
         // (if not a root) Output of previous step is input of current step
         self.add_lookup(
-            Self::not(self.is_root()),
+            Self::not(self.is_root(step)),
             Lookup::read_one(KeccakStepLookup, self.input_of_step()),
         );
         // (if not a squeeze) Input for next step is output of current step
         self.add_lookup(
-            Self::not(self.is_squeeze()),
+            Self::not(self.is_squeeze(step)),
             Lookup::write_one(KeccakStepLookup, self.output_of_step()),
         );
     }
@@ -513,12 +507,12 @@ where
     /// Adds the 601 lookups required for the sponge
     /// - 600 lookups if is_sponge()
     /// - 1 extra lookup if is_pad()
-    fn lookups_sponge(&mut self) {
+    fn lookups_sponge(&mut self, step: Steps) {
         // PADDING LOOKUPS
         // Power of two corresponds to 2^pad_length
         // Pad suffixes correspond to 10*1 rule
         self.lookup_pad(
-            self.is_pad(),
+            self.is_pad(step),
             vec![
                 self.pad_length(),
                 self.two_to_pad(),
@@ -532,65 +526,69 @@ where
         // BYTES LOOKUPS
         for i in 0..200 {
             // Bytes are <2^8
-            self.lookup_byte(self.is_sponge(), self.sponge_byte(i));
+            self.lookup_byte(self.is_sponge(step), self.sponge_byte(i));
         }
         // SHIFTS LOOKUPS
         for i in 100..SHIFTS_LEN {
             // Shifts1, Shifts2, Shifts3 are in the Sparse table
-            self.lookup_sparse(self.is_sponge(), self.sponge_shifts(i));
+            self.lookup_sparse(self.is_sponge(step), self.sponge_shifts(i));
         }
         for i in 0..STATE_LEN {
             // Shifts0 together with Bits composition by pairs are in the Reset table
             let dense = self.sponge_byte(2 * i) + self.sponge_byte(2 * i + 1) * Self::two_pow(8);
-            self.lookup_reset(self.is_sponge(), dense, self.sponge_shifts(i));
+            self.lookup_reset(self.is_sponge(step), dense, self.sponge_shifts(i));
         }
     }
 
     /// Adds the 120 lookups required for Theta in the round
-    fn lookups_round_theta(&mut self) {
+    fn lookups_round_theta(&mut self, step: Steps) {
         for q in 0..QUARTERS {
             for x in 0..DIM {
                 // Check that ThetaRemainderC < 2^64
-                self.lookup_rc16(self.is_round(), self.remainder_c(x, q));
+                self.lookup_rc16(self.is_round(step), self.remainder_c(x, q));
                 // Check ThetaExpandRotC is the expansion of ThetaDenseRotC
                 self.lookup_reset(
-                    self.is_round(),
+                    self.is_round(step),
                     self.dense_rot_c(x, q),
                     self.expand_rot_c(x, q),
                 );
                 // Check ThetaShiftC0 is the expansion of ThetaDenseC
-                self.lookup_reset(self.is_round(), self.dense_c(x, q), self.shifts_c(0, x, q));
+                self.lookup_reset(
+                    self.is_round(step),
+                    self.dense_c(x, q),
+                    self.shifts_c(0, x, q),
+                );
                 // Check that the rest of ThetaShiftsC are in the Sparse table
                 for i in 1..SHIFTS {
-                    self.lookup_sparse(self.is_round(), self.shifts_c(i, x, q));
+                    self.lookup_sparse(self.is_round(step), self.shifts_c(i, x, q));
                 }
             }
         }
     }
 
     /// Adds the 700 lookups required for PiRho in the round
-    fn lookups_round_pirho(&mut self) {
+    fn lookups_round_pirho(&mut self, step: Steps) {
         for q in 0..QUARTERS {
             for x in 0..DIM {
                 for y in 0..DIM {
                     // Check that PiRhoRemainderE < 2^64 and PiRhoQuotientE < 2^64
-                    self.lookup_rc16(self.is_round(), self.remainder_e(y, x, q));
-                    self.lookup_rc16(self.is_round(), self.quotient_e(y, x, q));
+                    self.lookup_rc16(self.is_round(step), self.remainder_e(y, x, q));
+                    self.lookup_rc16(self.is_round(step), self.quotient_e(y, x, q));
                     // Check PiRhoExpandRotE is the expansion of PiRhoDenseRotE
                     self.lookup_reset(
-                        self.is_round(),
+                        self.is_round(step),
                         self.dense_rot_e(y, x, q),
                         self.expand_rot_e(y, x, q),
                     );
                     // Check PiRhoShift0E is the expansion of PiRhoDenseE
                     self.lookup_reset(
-                        self.is_round(),
+                        self.is_round(step),
                         self.dense_e(y, x, q),
                         self.shifts_e(0, y, x, q),
                     );
                     // Check that the rest of PiRhoShiftsE are in the Sparse table
                     for i in 1..SHIFTS {
-                        self.lookup_sparse(self.is_round(), self.shifts_e(i, y, x, q));
+                        self.lookup_sparse(self.is_round(step), self.shifts_e(i, y, x, q));
                     }
                 }
             }
@@ -598,22 +596,22 @@ where
     }
 
     /// Adds the 800 lookups required for Chi in the round
-    fn lookups_round_chi(&mut self) {
+    fn lookups_round_chi(&mut self, step: Steps) {
         let shifts_b = self.vec_shifts_b();
         let shifts_sum = self.vec_shifts_sum();
         for i in 0..SHIFTS_LEN {
             // Check ChiShiftsB and ChiShiftsSum are in the Sparse table
-            self.lookup_sparse(self.is_round(), shifts_b[i].clone());
-            self.lookup_sparse(self.is_round(), shifts_sum[i].clone());
+            self.lookup_sparse(self.is_round(step), shifts_b[i].clone());
+            self.lookup_sparse(self.is_round(step), shifts_sum[i].clone());
         }
     }
 
     /// Adds the 1 lookup required for Iota in the round
-    fn lookups_round_iota(&mut self) {
+    fn lookups_round_iota(&mut self, step: Steps) {
         // Check round constants correspond with the current round
         let round_constants = self.round_constants();
         self.lookup_round_constants(
-            self.is_round(),
+            self.is_round(step),
             vec![
                 self.round(),
                 round_constants[3].clone(),
@@ -629,45 +627,82 @@ where
     ///////////////////////////
 
     /// Returns a degree-2 variable that encodes whether the current step is a sponge (1 = yes)
-    fn is_sponge(&self) -> Self::Variable {
-        Self::xor(self.is_absorb(), self.is_squeeze())
+    fn is_sponge(&self, step: Steps) -> Self::Variable {
+        Self::xor(self.is_absorb(step), self.is_squeeze(step))
     }
     /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
-    fn is_absorb(&self) -> Self::Variable {
+    fn is_absorb(&self, step: Steps) -> Self::Variable {
         Self::or(
-            Self::or(self.mode_root(), self.mode_rootpad()),
-            Self::or(self.mode_pad(), self.mode_absorb()),
+            Self::or(self.mode_root(step), self.mode_rootpad(step)),
+            Self::or(self.mode_pad(step), self.mode_absorb(step)),
         )
     }
     /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
-    fn is_squeeze(&self) -> Self::Variable {
-        self.mode_squeeze()
+    fn is_squeeze(&self, step: Steps) -> Self::Variable {
+        self.mode_squeeze(step)
     }
     /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
-    fn is_root(&self) -> Self::Variable {
-        Self::or(self.mode_root(), self.mode_rootpad())
+    fn is_root(&self, step: Steps) -> Self::Variable {
+        Self::or(self.mode_root(step), self.mode_rootpad(step))
     }
     /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
-    fn is_pad(&self) -> Self::Variable {
-        Self::or(self.mode_pad(), self.mode_rootpad())
+    fn is_pad(&self, step: Steps) -> Self::Variable {
+        Self::or(self.mode_pad(step), self.mode_rootpad(step))
     }
     /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
-    fn is_round(&self) -> Self::Variable {
-        self.mode_round()
+    fn is_round(&self, step: Steps) -> Self::Variable {
+        self.mode_round(step)
     }
 
     /// Returns a variable that encodes whether the current step is an absorb sponge (1 = yes)
-    fn mode_absorb(&self) -> Self::Variable;
+    fn mode_absorb(&self, step: Steps) -> Self::Variable {
+        match step {
+            Sponge(Absorb(Middle)) => Self::one(),
+            _ => Self::zero(),
+        }
+    }
+
     /// Returns a variable that encodes whether the current step is a squeeze sponge (1 = yes)
-    fn mode_squeeze(&self) -> Self::Variable;
+    fn mode_squeeze(&self, step: Steps) -> Self::Variable {
+        match step {
+            Sponge(Squeeze) => Self::one(),
+            _ => Self::zero(),
+        }
+    }
+
     /// Returns a variable that encodes whether the current step is the first absorb sponge (1 = yes)
-    fn mode_root(&self) -> Self::Variable;
+    fn mode_root(&self, step: Steps) -> Self::Variable {
+        match step {
+            Sponge(Absorb(First)) => Self::one(),
+            _ => Self::zero(),
+        }
+    }
+
     /// Returns a degree-1 variable that encodes whether the current step is the last absorb sponge (1 = yes)
-    fn mode_pad(&self) -> Self::Variable;
+    fn mode_pad(&self, step: Steps) -> Self::Variable {
+        match step {
+            Sponge(Absorb(Last)) => Self::one(),
+            _ => Self::zero(),
+        }
+    }
+
     /// Returns a degree-1 variable that encodes whether the current step is the first and last absorb sponge (1 = yes)
-    fn mode_rootpad(&self) -> Self::Variable;
+    fn mode_rootpad(&self, step: Steps) -> Self::Variable {
+        match step {
+            Sponge(Absorb(Only)) => Self::one(),
+            _ => Self::zero(),
+        }
+    }
+
     /// Returns a variable that encodes whether the current step is a permutation round (1 = yes)
-    fn mode_round(&self) -> Self::Variable;
+    fn mode_round(&self, step: Steps) -> Self::Variable {
+        // The actual round number in the selector carries no information for witness nor constraints
+        // because in the witness, any usize is mapped to the same index inside the mode flags
+        match step {
+            Round(_) => Self::one(),
+            _ => Self::zero(),
+        }
+    }
 
     /////////////////////////
     /// COLUMN OPERATIONS ///
