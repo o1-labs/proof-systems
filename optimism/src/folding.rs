@@ -152,7 +152,7 @@ where
 
     fn selector(&self, s: &Selector, side: Side) -> &Vec<Fp> {
         let witness = &self.curr_witnesses[side as usize];
-        &witness[s]
+        &witness[*s].evals
     }
 }
 

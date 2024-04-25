@@ -16,16 +16,24 @@ pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 pub mod decomposable_folding;
+
 mod error_term;
+
 #[allow(dead_code)]
 #[cfg(feature = "bn254")]
 mod example;
-#[cfg(test)]
+
+#[allow(dead_code)]
+#[cfg(feature = "bn254")]
 mod example_decomposable_folding;
+
 pub mod expressions;
+
 mod instance_witness;
+
 #[cfg(test)]
 mod mock;
+
 mod quadraticization;
 
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;

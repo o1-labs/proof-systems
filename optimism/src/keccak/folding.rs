@@ -20,7 +20,7 @@ impl Index<KeccakColumn> for KeccakFoldingWitness {
 }
 
 // Implemented for decomposable folding compatibility
-impl Index<Steps> for KeccakFoldingWitness<T> {
+impl Index<Steps> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a selector column to the corresponding witness column.

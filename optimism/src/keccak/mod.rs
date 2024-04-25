@@ -10,7 +10,7 @@ use kimchi::circuits::polynomials::keccak::constants::{
 pub mod column;
 pub mod constraints;
 pub mod environment;
-#[cfg(feature = "bn254")]
+//#[cfg(feature = "bn254")]
 pub mod folding;
 pub mod helpers;
 pub mod interpreter;

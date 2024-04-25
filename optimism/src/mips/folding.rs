@@ -23,7 +23,7 @@ impl Index<MIPSColumn> for MIPSFoldingWitness {
 }
 
 // Implemented for decomposable folding compatibility
-impl Index<Instruction> for MIPSFoldingWitness<T> {
+impl Index<Instruction> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a selector column to the corresponding witness column.

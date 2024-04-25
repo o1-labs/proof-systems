@@ -165,7 +165,7 @@ impl IntoIterator for Steps {
 impl ColumnAlias {
     /// Returns the witness column index for the given alias
     // TODO: move selector columns outside the main witness
-    fn ix(&self) -> usize {
+    pub fn ix(&self) -> usize {
         match *self {
             ColumnAlias::Selector(step) => match step {
                 Round(_) => FLAG_ROUND_OFF,

@@ -292,7 +292,7 @@ pub enum TestChallenge {
 impl FoldingConfig for TestFoldingConfig {
     type Structure = ();
     type Column = TestColumn;
-    type S = DynamicSelector;
+    type Selector = DynamicSelector;
     type Challenge = TestChallenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;
