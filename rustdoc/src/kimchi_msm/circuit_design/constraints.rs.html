@@ -96,6 +96,8 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::{
     expr::{ConstantExpr, ConstantTerm, Expr, ExprInner, Variable},
@@ -188,7 +190,9 @@
     </span><span class="kw">pub fn </span>get_constraints(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;E&lt;F&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;E&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
         constraints.extend(<span class="self">self</span>.get_relation_constraints());
-        constraints.extend(<span class="self">self</span>.get_lookup_constraints());
+        <span class="kw">if </span>!<span class="self">self</span>.lookups.is_empty() {
+            constraints.extend(<span class="self">self</span>.get_lookup_constraints());
+        }
         constraints
     }
 }

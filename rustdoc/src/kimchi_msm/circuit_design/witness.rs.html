@@ -268,6 +268,12 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{ColAccessCap, ColWriteCap, LookupCap},
     columns::{Column, ColumnIndexer},
@@ -277,6 +283,7 @@
 };
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
+<span class="kw">use </span>log::debug;
 <span class="kw">use </span>std::{collections::BTreeMap, iter};
 <span class="kw">use </span>strum::IntoEnumIterator;
 
@@ -459,23 +466,6 @@
             cols: Box::new(std::array::from_fn(|<span class="kw">_</span>| Vec::with_capacity(domain_size))),
         });
 
-        <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
-        <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
-            <span class="comment">// Find how many lookups are done per table.
-            </span><span class="kw">let </span>number_of_lookups = <span class="self">self</span>.lookups[<span class="number">0</span>].get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
-            <span class="comment">// Technically the number of lookups must be the same per
-            // row, but let's check if it's actually so.
-            </span><span class="kw">for </span>(i, lookup_row) <span class="kw">in </span><span class="self">self</span>.lookups.iter().enumerate().take(domain_size) {
-                <span class="kw">let </span>number_of_lookups_currow = lookup_row.get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
-                <span class="macro">assert!</span>(
-                    number_of_lookups == number_of_lookups_currow,
-                    <span class="string">"Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookups:?}"
-                </span>);
-            }
-            <span class="comment">// +1 for the fixed table
-            </span>lookup_tables.insert(table_id, <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; number_of_lookups + <span class="number">1</span>]);
-        }
-
         <span class="comment">// Filling actually used rows first
         </span><span class="kw">for </span>witness_row <span class="kw">in </span><span class="self">self</span>.witness.iter().take(domain_size) {
             <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..CIX_COL_N {
@@ -488,6 +478,28 @@
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..CIX_COL_N {
                 witness.cols[i].extend(<span class="macro">vec!</span>[F::zero(); domain_size - <span class="self">self</span>.witness.len()]);
             }
+        }
+
+        <span class="comment">// Building lookup values
+        </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
+        <span class="kw">if </span>!lookup_tables_data.is_empty() {
+            <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
+                <span class="comment">// Find how many lookups are done per table.
+                </span><span class="kw">let </span>number_of_lookups = <span class="self">self</span>.lookups[<span class="number">0</span>].get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
+                <span class="comment">// Technically the number of lookups must be the same per
+                // row, but let's check if it's actually so.
+                </span><span class="kw">for </span>(i, lookup_row) <span class="kw">in </span><span class="self">self</span>.lookups.iter().enumerate().take(domain_size) {
+                    <span class="kw">let </span>number_of_lookups_currow = lookup_row.get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
+                    <span class="macro">assert!</span>(
+                        number_of_lookups == number_of_lookups_currow,
+                        <span class="string">"Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookups:?}"
+                    </span>);
+                }
+                <span class="comment">// +1 for the fixed table
+                </span>lookup_tables.insert(table_id, <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; number_of_lookups + <span class="number">1</span>]);
+            }
+        } <span class="kw">else </span>{
+            <span class="macro">debug!</span>(<span class="string">"No lookup tables data provided. Skipping lookup tables."</span>);
         }
 
         <span class="kw">for </span>lookup_row <span class="kw">in </span><span class="self">self</span>.lookups.iter().take(domain_size) {
