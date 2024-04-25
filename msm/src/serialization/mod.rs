@@ -68,7 +68,7 @@ mod tests {
             // Sanity checks.
             assert!(constraints_env.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
             assert!(constraints_env.lookups[&LookupTable::RangeCheck4].len() == 20);
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck4Abs].len() == 6);
+            assert!(constraints_env.lookups[&LookupTable::RangeCheck9Abs].len() == 6);
             assert!(
                 constraints_env.lookups
                     [&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)]
