@@ -156,8 +156,8 @@ where
     }
 }
 
+#[cfg(bn254)]
 #[cfg(test)]
-#[cfg(feature = "bn254")]
 mod tests {
     use super::*;
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -202,6 +202,15 @@ mod tests {
         }
     }
 
+    // Implemented for decomposable folding compatibility (Selector is usize in this case)
+    impl Index<usize> for TestFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        fn index(&self, index: usize) -> &Self::Output {
+            &self.witness.cols[index]
+        }
+    }
+
     impl FoldingColumnTrait for TestColumn {
         fn is_witness(&self) -> bool {
             true
@@ -221,7 +230,7 @@ mod tests {
 
     impl FoldingConfig for TestConfig {
         type Column = TestColumn;
-        type S = ();
+        type Selector = usize;
         type Challenge = Challenge;
         type Curve = Curve;
         type Srs = poly_commitment::srs::SRS<Curve>;
