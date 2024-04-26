@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Degree","ExpExtension","ExtendedFoldingColumn","FoldingCompatibleExpr","FoldingCompatibleExprInner"],"struct":["IntegratedFoldingExpr"],"trait":["FoldingColumnTrait"]};

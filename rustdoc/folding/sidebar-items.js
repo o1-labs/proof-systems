@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Side"],"mod":["decomposable_folding","expressions"],"struct":["FoldingScheme","RelaxedInstance","RelaxedWitness"],"trait":["FoldingConfig","FoldingEnv","Instance","Sponge","Witness"]};
