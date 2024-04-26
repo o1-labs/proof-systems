@@ -67,7 +67,7 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
                     } else {
                         c.to_string()
                     };
-                    format!("{}", c)
+                    c.to_string()
                 }
                 FoldingCompatibleExprInner::Challenge(c) => {
                     format!("{:?}", c)

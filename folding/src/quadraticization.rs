@@ -90,28 +90,23 @@ fn lower_degree_to_1<C: FoldingConfig>(
     let degree = exp.degree();
     match degree {
         1 => exp,
-        _ => {
-            let exp = match exp {
-                FoldingExp::Add(e1, e2) => FoldingExp::Add(
-                    Box::new(lower_degree_to_1(*e1, rec)),
-                    Box::new(lower_degree_to_1(*e2, rec)),
-                ),
-                FoldingExp::Sub(e1, e2) => FoldingExp::Sub(
-                    Box::new(lower_degree_to_1(*e1, rec)),
-                    Box::new(lower_degree_to_1(*e2, rec)),
-                ),
-                e @ FoldingExp::Square(_) | e @ FoldingExp::Mul(_, _) => {
-                    let exp = lower_degree_to_2(e, rec);
-                    let id = rec.get_id(exp);
-                    FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
-                }
-                FoldingExp::Double(exp) => {
-                    FoldingExp::Double(Box::new(lower_degree_to_1(*exp, rec)))
-                }
-                _ => todo!(),
-            };
-            exp
-        }
+        _ => match exp {
+            FoldingExp::Add(e1, e2) => FoldingExp::Add(
+                Box::new(lower_degree_to_1(*e1, rec)),
+                Box::new(lower_degree_to_1(*e2, rec)),
+            ),
+            FoldingExp::Sub(e1, e2) => FoldingExp::Sub(
+                Box::new(lower_degree_to_1(*e1, rec)),
+                Box::new(lower_degree_to_1(*e2, rec)),
+            ),
+            e @ FoldingExp::Square(_) | e @ FoldingExp::Mul(_, _) => {
+                let exp = lower_degree_to_2(e, rec);
+                let id = rec.get_id(exp);
+                FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
+            }
+            FoldingExp::Double(exp) => FoldingExp::Double(Box::new(lower_degree_to_1(*exp, rec))),
+            _ => todo!(),
+        },
     }
 }
 

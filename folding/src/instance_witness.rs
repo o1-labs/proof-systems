@@ -172,7 +172,7 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     }
     ///allows to know if the extended witness comlumns are already computed, to avoid overriding them
     pub fn is_extended(&self) -> bool {
-        self.extended.len() > 0
+        !self.extended.is_empty()
     }
 }
 impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
