@@ -8,7 +8,7 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-ark-bn254.workspace = true
+ark-bn254 = {workspace = true, optional = true }
 ark-serialize.workspace = true
 o1-utils.workspace = true
 itertools.workspace = true
@@ -32,3 +32,6 @@ ark-ec.workspace = true
 rand.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
+
+[features]
+bn254 = ["ark-bn254"]
