@@ -558,8 +558,7 @@ mod tests {
         let left = (left_instance, left_witness);
         let right = (right_instance, right_witness);
 
-        let folded =
-            scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(left, right);
+        let folded = scheme.fold_instance_witness_pair(left, right);
         let (folded_instance, folded_witness, [_t0, _t1]) = folded;
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);

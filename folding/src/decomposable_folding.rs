@@ -51,7 +51,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     /// folding with a selector will assume that only the selector in question is enabled (1)
     /// in all rows, and any other selector is 0 over all rows.
     /// If that is not the case, providing None will fold without assumptions
-    pub fn fold_instance_witness_pair<I, W, A, B>(
+    pub fn fold_instance_witness_pair<A, B>(
         &self,
         a: A,
         b: B,

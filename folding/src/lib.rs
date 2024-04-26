@@ -293,7 +293,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn fold_instance_witness_pair<I, W, A, B>(
+    pub fn fold_instance_witness_pair<A, B>(
         &self,
         a: A,
         b: B,

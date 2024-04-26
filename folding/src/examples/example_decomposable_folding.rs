@@ -562,11 +562,8 @@ mod tests {
             let left = (instance1, witness1);
             let right = (instance2, witness2);
             // here we provide normal instance-witness pairs, which will be automatically relaxed
-            let folded = scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(
-                left,
-                right,
-                Some(DynamicSelector::SelecAdd),
-            );
+            let folded =
+                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             // println!("exp: \n {:#?}", final_constraint);
@@ -589,11 +586,8 @@ mod tests {
 
             let left = (instance1, witness1);
             let right = (instance2, witness2);
-            let folded = scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(
-                left,
-                right,
-                Some(DynamicSelector::SelecSub),
-            );
+            let folded =
+                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecSub));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
@@ -609,8 +603,7 @@ mod tests {
         // println!("fold mixed");
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
-            let folded = scheme
-                .fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(left, right, None);
+            let folded = scheme.fold_instance_witness_pair(left, right, None);
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
