@@ -566,7 +566,7 @@ mod tests {
                 scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
+            // println!("exp: \n {:#?}", final_constraint.to_string());
             checker.check(&final_constraint, false);
             let ExtendedProvider {
                 instance, witness, ..
@@ -591,7 +591,7 @@ mod tests {
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
+            // println!("exp: \n {:#?}", final_constraint.to_string());
 
             checker.check(&final_constraint, false);
             let ExtendedProvider {
@@ -607,7 +607,7 @@ mod tests {
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
+            // println!("exp: \n {:#?}", final_constraint.to_string());
 
             checker.check(&final_constraint, false);
         };
