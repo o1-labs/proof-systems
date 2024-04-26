@@ -1,21 +1,21 @@
 use crate::{
-    circuits::{
-        expr::{Op2, Variable},
-        gate::CurrOrNext,
-    },
-    curve::KimchiCurve,
-    folding::{
-        error_term::Side,
-        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-        ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-        RelaxedWitness, Sponge, Witness,
-    },
+    error_term::Side,
+    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
+    RelaxedWitness, Sponge, Witness,
 };
 use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
+use kimchi::{
+    circuits::{
+        expr::{Op2, Variable},
+        gate::CurrOrNext,
+    },
+    curve::KimchiCurve,
+};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, ScalarChallenge},

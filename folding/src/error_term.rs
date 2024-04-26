@@ -1,15 +1,13 @@
 use crate::{
-    circuits::expr::{Operations, Variable},
-    folding::{
-        decomposable_folding::check_selector,
-        expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
-        quadraticization::ExtendedWitnessGenerator,
-        EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
-    },
+    decomposable_folding::check_selector,
+    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
+    quadraticization::ExtendedWitnessGenerator,
+    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use kimchi::circuits::expr::Variable;
 use poly_commitment::SRS;
 
 /// This type refers to the two instances to be folded
@@ -36,7 +34,7 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
     env: &'a ExtendedEnv<C>,
     side: Side,
 ) -> EvalLeaf<'a, ScalarField<C>> {
-    use Operations::*;
+    use FoldingExp::*;
 
     match exp {
         Atom(col) => env.col(col, side),
@@ -89,8 +87,6 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
                 acc
             }
         },
-        Cache(_, _) => todo!(),
-        IfFeature(_, _, _) => todo!(),
     }
 }
 
@@ -99,7 +95,7 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
     env: &'a ExtendedEnv<C>,
     side: Side,
 ) -> EvalLeaf<'a, ScalarField<C>> {
-    use Operations::*;
+    use FoldingExp::*;
 
     match exp {
         Atom(col) => env.col(col, side),
@@ -170,8 +166,6 @@ pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
             }
             _ => panic!("degree over 2"),
         },
-        Cache(_, _) => todo!(),
-        IfFeature(_, _, _) => todo!(),
     }
 }
 

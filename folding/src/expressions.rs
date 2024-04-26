@@ -1,15 +1,13 @@
 use crate::{
-    circuits::expr::{
-        ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
-    },
-    folding::{
-        quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
-        FoldingConfig, ScalarField,
-    },
+    quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
+    FoldingConfig, ScalarField,
 };
 use ark_ec::AffineCurve;
 use ark_ff::One;
 use itertools::Itertools;
+use kimchi::circuits::expr::{
+    ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
+};
 use num_traits::Zero;
 
 pub trait FoldingColumnTrait: Copy + Clone {
@@ -71,7 +69,16 @@ pub enum ExpExtension<C: FoldingConfig> {
 }
 
 ///Internal expression used for folding, simplified for that purpose
-pub(crate) type FoldingExp<C> = Operations<ExtendedFoldingColumn<C>>;
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum FoldingExp<C: FoldingConfig> {
+    Atom(ExtendedFoldingColumn<C>),
+    Pow(Box<Self>, u64),
+    Add(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Double(Box<Self>),
+    Square(Box<Self>),
+}
 
 impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
     type Output = Self;
@@ -106,7 +113,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
-        use Operations::*;
+        use FoldingExp::*;
         match self {
             FoldingCompatibleExpr::Atom(atom) => match atom {
                 FoldingCompatibleExprInner::Constant(c) => Atom(ExtendedFoldingColumn::Constant(c)),
@@ -150,7 +157,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
         C::Column: Clone,
         C::Challenge: Clone,
     {
-        use Operations::*;
+        use FoldingExp::*;
         let e = Box::new(exp);
         let e_2 = Box::new(Square(e.clone()));
         match p {
@@ -209,8 +216,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 }
                 acc
             }
-            FoldingExp::Cache(_, _) => todo!(),
-            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 
@@ -260,8 +265,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 }
                 acc
             }
-            FoldingExp::Cache(_, _) => todo!(),
-            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 }
@@ -293,7 +296,7 @@ impl std::ops::Mul for &Degree {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Sign {
+pub enum Sign {
     Pos,
     Neg,
 }
@@ -310,7 +313,7 @@ impl std::ops::Neg for Sign {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Term<C: FoldingConfig> {
+pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
     pub sign: Sign,
 }
@@ -409,10 +412,14 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     }
 }
 
-pub(crate) fn extract_terms<C: FoldingConfig>(
-    exp: FoldingExp<C>,
-) -> Box<dyn Iterator<Item = Term<C>>> {
-    use Operations::*;
+//<<<<<<< HEAD
+//pub(crate) fn extract_terms<C: FoldingConfig>(
+//    exp: FoldingExp<C>,
+//) -> Box<dyn Iterator<Item = Term<C>>> {
+//    use Operations::*;
+//=======
+pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
+    use FoldingExp::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
         exp @ Atom(_) => Box::new(
             [Term {
@@ -479,8 +486,6 @@ pub(crate) fn extract_terms<C: FoldingConfig>(
             }
             Box::new(acc.into_iter())
         }
-        Cache(_, _) => todo!(),
-        IfFeature(_, _, _) => todo!(),
     };
     exps
 }

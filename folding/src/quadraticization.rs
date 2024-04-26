@@ -1,10 +1,7 @@
 use crate::{
-    circuits::expr::Operations,
-    folding::{
-        error_term::{eval_sided, ExtendedEnv, Side},
-        expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
-        FoldingConfig,
-    },
+    error_term::{eval_sided, ExtendedEnv, Side},
+    expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
+    FoldingConfig,
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
@@ -82,8 +79,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
             }
             FoldingExp::Mul(e1, e2) => e1.degree() + e2.degree(),
             FoldingExp::Pow(e, i) => e.degree() * (*i as usize),
-            FoldingExp::Cache(_, _) => todo!(),
-            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 }
@@ -107,7 +102,7 @@ fn lower_degree_to_2<C: FoldingConfig>(
     exp: FoldingExp<C>,
     rec: &mut ExpRecorder<C>,
 ) -> FoldingExp<C> {
-    use Operations::*;
+    use FoldingExp::*;
     let degree = exp.degree();
     if degree <= 2 {
         return exp;
@@ -150,8 +145,6 @@ fn lower_degree_to_2<C: FoldingConfig>(
             }
             FoldingExp::Mul(Box::new(e.clone()), Box::new(acc))
         }
-        FoldingExp::Cache(_, _) => todo!(),
-        FoldingExp::IfFeature(_, _, _) => todo!(),
     }
 }
 
@@ -193,7 +186,5 @@ fn check_evaluable<C: FoldingConfig>(
             check_evaluable(e1, env, side) && check_evaluable(e2, env, side)
         }
         FoldingExp::Pow(e, _) => check_evaluable(e, env, side),
-        FoldingExp::Cache(_, _) => todo!(),
-        FoldingExp::IfFeature(_, _, _) => todo!(),
     }
 }

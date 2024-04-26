@@ -1,22 +1,26 @@
 use crate::{
-    circuits::{
-        expr::{Op2, Variable},
-        gate::CurrOrNext,
-    },
-    folding::{
-        error_term::Side,
-        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-        ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-        RelaxedWitness, Witness,
-    },
+    error_term::Side,
+    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
+    RelaxedWitness, Sponge, Witness,
 };
-use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
-use poly_commitment::SRS;
+use kimchi::{
+    circuits::{
+        expr::{Op2, Variable},
+        gate::CurrOrNext,
+    },
+    curve::KimchiCurve,
+};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, ScalarChallenge},
+    FqSponge,
+};
+use poly_commitment::{PolyComm, SRS};
 use rand::thread_rng;
 use std::{
     collections::BTreeMap,
@@ -52,6 +56,20 @@ impl FoldingColumnTrait for TestColumn {
         match self {
             TestColumn::A | TestColumn::B | TestColumn::C => true,
         }
+    }
+}
+
+// TODO: get rid of trait Sponge in folding, and use the one from kimchi
+impl Sponge<Curve> for BaseSponge {
+    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
+        // This function does not have a &self because it is meant to absorb and squeeze only once
+        let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
+        s.absorb_g(&absorb[0].elems);
+        s.absorb_g(&absorb[1].elems);
+        // Squeeze sponge
+        let chal = ScalarChallenge(s.challenge());
+        let (_, endo_r) = Curve::endos();
+        chal.to_field(endo_r)
     }
 }
 
@@ -500,7 +518,7 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::folding::{
+    use crate::{
         decomposable_folding::DecomposableFoldingScheme,
         example_decomposable_folding::checker::ExtendedProvider,
     };

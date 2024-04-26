@@ -1,4 +1,4 @@
-use crate::folding::Evals;
+use crate::Evals;
 use ark_ff::Field;
 use num_traits::One;
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};

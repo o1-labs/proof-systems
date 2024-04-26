@@ -1,14 +1,12 @@
 use crate::{
-    circuits::gate::CurrOrNext::{self, Curr},
-    folding::{
-        error_term::Side,
-        expressions::{extract_terms, FoldingColumnTrait},
-        FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
-    },
+    error_term::Side,
+    expressions::{extract_terms, FoldingColumnTrait},
+    FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
 };
 use ark_ec::AffineCurve;
 use ark_ff::Field;
 use itertools::Itertools;
+use kimchi::circuits::gate::CurrOrNext::{self, Curr};
 use mina_curves::pasta::Pallas;
 use num_traits::Zero;
 use poly_commitment::commitment::CommitmentCurve;
@@ -111,10 +109,8 @@ impl FoldingConfig for TestConfig {
 #[test]
 //not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
-    use crate::{
-        circuits::expr::Variable,
-        folding::expressions::{ExtendedFoldingColumn, FoldingExp},
-    };
+    use crate::expressions::{ExtendedFoldingColumn, FoldingExp};
+    use kimchi::circuits::expr::Variable;
     let col = |col| FoldingExp::Atom(ExtendedFoldingColumn::Inner(Variable { col, row: Curr }));
     let t1: FoldingExp<TestConfig> = (col(0) + col(1)) * (col(2) + col(3));
     let t2 = col(1).double()

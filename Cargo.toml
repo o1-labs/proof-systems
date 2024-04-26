@@ -16,7 +16,8 @@ members = [
     "tools/kimchi-visu",
     "utils",
     "internal-tracing",
-    "ivc"
+    "ivc",
+    "folding"
 ]
 resolver = "2"
 

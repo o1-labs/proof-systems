@@ -4,17 +4,15 @@
 //! from a set of list of constraints, each set associated with a particular selector, as opposed to a single list of constraints.
 
 use crate::{
-    circuits::expr::{Op2, Operations},
-    folding::{
-        error_term::{compute_error, ExtendedEnv},
-        expressions::{
-            ExtendedFoldingColumn, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp,
-        },
-        instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
-        FoldingConfig, FoldingScheme, ScalarField, Sponge,
+    error_term::{compute_error, ExtendedEnv},
+    expressions::{
+        ExtendedFoldingColumn, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp,
     },
+    instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
+    FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use kimchi::circuits::expr::Op2;
 use poly_commitment::{PolyComm, SRS};
 use std::collections::BTreeMap;
 
@@ -102,7 +100,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
 
 pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::S> {
     match exp {
-        Operations::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
+        FoldingExp::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
         _ => None,
     }
 }
