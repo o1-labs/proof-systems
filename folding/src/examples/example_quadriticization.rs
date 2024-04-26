@@ -1,3 +1,5 @@
+// this example is a copy of the decomposable folding one, but with a degree 3 gate
+// that triggers quadriticization
 use crate::examples::example_decomposable_folding::TestWitness;
 use crate::examples::{BaseSponge, Curve, Fp};
 use crate::{
@@ -36,7 +38,7 @@ pub enum TestColumn {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum DynamicSelector {
     SelecAdd,
-    SelecSub,
+    SelecMul,
 }
 
 impl FoldingColumnTrait for TestColumn {
@@ -218,13 +220,13 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         let wit = &self.curr_witnesses[side as usize];
         match s {
             DynamicSelector::SelecAdd => &wit[3].evals,
-            DynamicSelector::SelecSub => &wit[4].evals,
+            DynamicSelector::SelecMul => &wit[4].evals,
         }
     }
 }
 
 // this creates 2 single-constraint gates, each with a selector,
-// an addition gate, and a subtraction gate
+// an addition gate, and a multiplication gate
 fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFoldingConfig>>> {
     let get_col = |col| {
         FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
@@ -242,12 +244,12 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
     let add = op(a.clone(), b.clone(), Op2::Add);
     let add = op(add, c.clone(), Op2::Sub);
 
-    let sub = op(a, b, Op2::Sub);
-    let sub = op(sub, c, Op2::Sub);
+    let mul = op(a, b, Op2::Mul);
+    let mul = op(mul, c, Op2::Sub);
 
     [
         (DynamicSelector::SelecAdd, vec![*add]),
-        (DynamicSelector::SelecSub, vec![*sub]),
+        (DynamicSelector::SelecMul, vec![*mul]),
     ]
     .into_iter()
     .collect()
@@ -413,7 +415,7 @@ mod checker {
                     ExpExtension::Selector(s) => {
                         let col = match s {
                             DynamicSelector::SelecAdd => &self.inner_provider.witness[3].evals,
-                            DynamicSelector::SelecSub => &self.inner_provider.witness[4].evals,
+                            DynamicSelector::SelecMul => &self.inner_provider.witness[4].evals,
                         };
                         col.clone()
                     }
@@ -487,18 +489,18 @@ mod tests {
         let c = [a1 + b1, a2 + b2];
         [a, b, c, [1, 1], [0, 0]]
     }
-    fn sub_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
+    fn mul_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
         let [a1, a2] = a;
         let [b1, b2] = b;
-        let c = [a1 - b1, a2 - b2];
+        let c = [a1 * b1, a2 * b2];
         [a, b, c, [0, 0], [1, 1]]
     }
     fn int_to_witness(x: [[u32; 2]; 5], domain: Radix2EvaluationDomain<Fp>) -> TestWitness {
         x.map(|row| Evaluations::from_vec_and_domain(row.map(Fp::from).to_vec(), domain))
     }
 
-    // in this test we will create 2 add witnesses, fold them together, create 2 sub witnesses,
-    // fold them together, and then further fold the 2 resulting pairs into one mixed add-sub witnes
+    // in this test we will create 2 add witnesses, fold them together, create 2 mul witnesses,
+    // fold them together, and then further fold the 2 resulting pairs into one mixed add-mul witness
     // instances are also folded, but not that relevant in the examples as we don't make a proof for them
     // and instead directly check the witness
     #[test]
@@ -520,7 +522,7 @@ mod tests {
             (),
         );
 
-        //some inputs to be used by both add and sub
+        //some inputs to be used by both add and mul
         let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
         let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
 
@@ -529,6 +531,9 @@ mod tests {
             let ins = instance_from_witness(&wit, &srs, domain);
             (wit, ins)
         };
+
+        // uncomment to see the expression
+        // println!("exp: \n {:#?}", final_constraint.to_string());
 
         //fold adds
         // println!("fold add");
@@ -548,32 +553,30 @@ mod tests {
                 scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint.to_string());
             checker.check(&final_constraint, false);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
             (instance, witness)
         };
-        //fold subs
-        // println!("fold subs");
+        //fold muls
+        // println!("fold muls");
         let right = {
             let [a, b] = inputs1;
-            let wit1 = sub_witness(a, b);
+            let wit1 = mul_witness(a, b);
             let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
 
             let [a, b] = inputs2;
-            let wit2 = sub_witness(a, b);
+            let wit2 = mul_witness(a, b);
             let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
 
             let left = (instance1, witness1);
             let right = (instance2, witness2);
             let folded =
-                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecSub));
+                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecMul));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint.to_string());
 
             checker.check(&final_constraint, false);
             let ExtendedProvider {
@@ -589,7 +592,6 @@ mod tests {
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint.to_string());
 
             checker.check(&final_constraint, false);
         };
