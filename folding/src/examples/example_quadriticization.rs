@@ -1,13 +1,14 @@
+use crate::examples::example_decomposable_folding::TestWitness;
 use crate::examples::{BaseSponge, Curve, Fp};
 use crate::{
     error_term::Side,
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness, Witness,
+    RelaxedWitness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, UniformRand, Zero};
-use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use ark_poly::Radix2EvaluationDomain;
 use itertools::Itertools;
 use kimchi::circuits::{
     expr::{Op2, Variable},
@@ -123,23 +124,6 @@ impl Instance<Curve> for TestInstance {
             ],
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
-    }
-}
-
-/// Our witness is going to be the polynomials that we will commit too.
-/// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
-/// This witness includes not only the 3 normal witness columns, but also the
-/// 2 dynamic selector columns that are esentially witness
-pub type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 5];
-
-impl Witness<Curve> for TestWitness {
-    fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-        for (a, b) in a.iter_mut().zip(b) {
-            for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                *a += challenge * b;
-            }
-        }
-        a
     }
 }
 
@@ -518,7 +502,7 @@ mod tests {
     // instances are also folded, but not that relevant in the examples as we don't make a proof for them
     // and instead directly check the witness
     #[test]
-    fn test_decomposable_folding() {
+    fn test_quadriticization() {
         use ark_poly::Radix2EvaluationDomain as D;
         use checker::Checker;
 

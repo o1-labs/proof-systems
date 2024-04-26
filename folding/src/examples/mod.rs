@@ -9,6 +9,7 @@ use poly_commitment::PolyComm;
 
 mod example;
 mod example_decomposable_folding;
+mod example_quadriticization;
 
 type Fp = ark_bn254::Fr;
 type Curve = ark_bn254::G1Affine;
