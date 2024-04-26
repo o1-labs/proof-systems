@@ -29,15 +29,13 @@ pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
     fn constant(value: F) -> Self::Variable;
 }
 
-/// Environment capability similar to `ColAcessT` but for /also
+/// Environment capability similar to `ColAccessCap` but for /also
 /// writing/ columns. Used on the witness side.
 pub trait ColWriteCap<F: PrimeField, CIx: ColumnIndexer>
 where
     Self: ColAccessCap<F, CIx>,
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable);
-
-    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable;
 }
 
 /// Capability for invoking table lookups.
@@ -46,6 +44,29 @@ where
     Self: ColAccessCap<F, CIx>,
 {
     fn lookup(&mut self, lookup_id: LT, value: &Self::Variable);
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Hybrid capabilities
+////////////////////////////////////////////////////////////////////////////
+
+/// Capability for computing arithmetic functions and enforcing
+/// constraints simultaneously.
+///
+/// The "hybrid" in the name of the trait (and other traits here)
+/// means "maybe".
+///
+/// That is, it allows computations which /might be/ no-ops (even
+/// partially) in the constraint builder case. For example, "hcopy",
+/// despite its name, does not do any "write", so hcopy !=>
+/// write_column.
+pub trait HybridCopyCap<F: PrimeField, CIx: ColumnIndexer>
+where
+    Self: ColAccessCap<F, CIx>,
+{
+    /// Given variable `x` and position `ix`, it (hybrid) writes `x`
+    /// into `ix`, and returns the value.
+    fn hcopy(&mut self, x: &Self::Variable, ix: CIx) -> Self::Variable;
 }
 
 ////////////////////////////////////////////////////////////////////////////

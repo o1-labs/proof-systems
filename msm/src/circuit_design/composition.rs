@@ -47,7 +47,7 @@
 ///
 /// Similar "mapping" intuition applies to lookup tables.
 use crate::{
-    circuit_design::capabilities::{ColAccessCap, ColWriteCap, LookupCap},
+    circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
 };
@@ -204,9 +204,19 @@ impl<
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.env.write_column(self.lens.re_get(ix), value)
     }
+}
 
-    fn copy(&mut self, x: &Self::Variable, position: CIx2) -> Self::Variable {
-        self.env.copy(x, self.lens.re_get(position))
+impl<
+        'a,
+        F: PrimeField,
+        CIx1: ColumnIndexer,
+        CIx2: ColumnIndexer,
+        Env1: HybridCopyCap<F, CIx1>,
+        L: MPrism<Source = CIx1, Target = CIx2>,
+    > HybridCopyCap<F, CIx2> for SubEnv<'a, F, CIx1, Env1, L>
+{
+    fn hcopy(&mut self, x: &Self::Variable, ix: CIx2) -> Self::Variable {
+        self.env.hcopy(x, self.lens.re_get(ix))
     }
 }
 
@@ -246,9 +256,19 @@ impl<
     fn write_column(&mut self, ix: CIx2, value: &Self::Variable) {
         self.0.write_column(ix, value);
     }
+}
 
-    fn copy(&mut self, x: &Self::Variable, position: CIx2) -> Self::Variable {
-        self.0.copy(x, position)
+impl<
+        'a,
+        F: PrimeField,
+        CIx1: ColumnIndexer,
+        CIx2: ColumnIndexer,
+        Env1: HybridCopyCap<F, CIx1>,
+        L: MPrism<Source = CIx1, Target = CIx2>,
+    > HybridCopyCap<F, CIx2> for SubEnvColumn<'a, F, CIx1, Env1, L>
+{
+    fn hcopy(&mut self, x: &Self::Variable, ix: CIx2) -> Self::Variable {
+        self.0.hcopy(x, ix)
     }
 }
 
@@ -276,9 +296,13 @@ impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: ColWriteCap<F, CIx1>, L> ColW
     fn write_column(&mut self, ix: CIx1, value: &Self::Variable) {
         self.0.env.write_column(ix, value);
     }
+}
 
-    fn copy(&mut self, _x: &Self::Variable, _position: CIx1) -> Self::Variable {
-        unimplemented!()
+impl<'a, F: PrimeField, CIx1: ColumnIndexer, Env1: HybridCopyCap<F, CIx1>, L> HybridCopyCap<F, CIx1>
+    for SubEnvLookup<'a, F, CIx1, Env1, L>
+{
+    fn hcopy(&mut self, x: &Self::Variable, ix: CIx1) -> Self::Variable {
+        self.0.env.hcopy(x, ix)
     }
 }
 

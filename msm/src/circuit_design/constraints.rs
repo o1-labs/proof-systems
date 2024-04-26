@@ -6,13 +6,11 @@ use kimchi::circuits::{
 use std::collections::BTreeMap;
 
 use crate::{
-    circuit_design::capabilities::{ColAccessCap, LookupCap},
+    circuit_design::capabilities::{ColAccessCap, HybridCopyCap, LookupCap},
     columns::{Column, ColumnIndexer},
     expr::E,
     logup::{constraint_lookups, Logup, LookupTableID},
 };
-
-use super::ColWriteCap;
 
 pub struct ConstraintBuilderEnv<F: PrimeField, LT: LookupTableID> {
     /// An indexed set of constraints.
@@ -60,14 +58,10 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     }
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColWriteCap<F, CIx>
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridCopyCap<F, CIx>
     for ConstraintBuilderEnv<F, LT>
 {
-    fn write_column(&mut self, _ix: CIx, _value: &Self::Variable) {
-        // No-op, only witness
-    }
-
-    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
+    fn hcopy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
         let y = Expr::Atom(ExprInner::Cell(Variable {
             col: position.to_column(),
             row: CurrOrNext::Curr,

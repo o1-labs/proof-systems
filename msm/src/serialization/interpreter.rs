@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use strum::IntoEnumIterator;
 
 use crate::{
-    circuit_design::{ColAccessCap, LookupCap},
+    circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
     serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
@@ -20,7 +20,7 @@ use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 // Such "helpers" defeat the whole purpose of the interpreter.
 // TODO remove
-pub trait SerializationHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
+pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
     /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
@@ -33,15 +33,10 @@ pub trait SerializationHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTabl
     ) -> Self::Variable
     where
         Self: ColAccessCap<F, CIx>;
-
-    /// This is kind of like write_column & read_column right after... And asserting it.
-    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable
-    where
-        Self: ColAccessCap<F, CIx>;
 }
 
 impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
-    SerializationHelpers<F, CIx, LT> for crate::circuit_design::ConstraintBuilderEnv<F, LT>
+    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::ConstraintBuilderEnv<F, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -57,20 +52,6 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
             row: CurrOrNext::Curr,
         }))
     }
-
-    fn copy(
-        &mut self,
-        x: &<Self as ColAccessCap<F, CIx>>::Variable,
-        position: CIx,
-    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
-        let y = Expr::Atom(ExprInner::Cell(Variable {
-            col: position.to_column(),
-            row: CurrOrNext::Curr,
-        }));
-        let diff = y.clone() - x.clone();
-        <Self as ColAccessCap<F, CIx>>::assert_zero(self, diff);
-        y
-    }
 }
 
 impl<
@@ -78,8 +59,7 @@ impl<
         CIx: ColumnIndexer,
         const CIX_COL_N: usize,
         LT: LookupTableID + IntoEnumIterator,
-    > SerializationHelpers<F, CIx, LT>
-    for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
+    > HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -96,15 +76,6 @@ impl<
         let res_fp: F = res.into();
         self.write_column(position.to_column(), res_fp);
         res_fp
-    }
-
-    fn copy(
-        &mut self,
-        x: &<Self as ColAccessCap<F, CIx>>::Variable,
-        position: CIx,
-    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
-        self.write_column(position.to_column(), *x);
-        *x
     }
 }
 
@@ -148,7 +119,8 @@ pub fn deserialize_field_element<
     Ff: PrimeField,
     Env: ColAccessCap<F, SerializationColumn>
         + LookupCap<F, SerializationColumn, LookupTable<Ff>>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
+        + HybridCopyCap<F, SerializationColumn>
+        + HybridSerHelpers<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     limbs: [BigUint; 3],
@@ -167,9 +139,9 @@ pub fn deserialize_field_element<
     assert!(limbs[1] < BigUint::from(2u128.pow(88)));
     assert!(limbs[2] < BigUint::from(2u128.pow(79)));
 
-    let limb0_var = env.copy(&input_limb0, SerializationColumn::ChalKimchi(0));
-    let limb1_var = env.copy(&input_limb1, SerializationColumn::ChalKimchi(1));
-    let limb2_var = env.copy(&input_limb2, SerializationColumn::ChalKimchi(2));
+    let limb0_var = env.hcopy(&input_limb0, SerializationColumn::ChalKimchi(0));
+    let limb1_var = env.hcopy(&input_limb1, SerializationColumn::ChalKimchi(1));
+    let limb2_var = env.hcopy(&input_limb2, SerializationColumn::ChalKimchi(2));
 
     let mut limb2_vars = vec![];
 
@@ -215,7 +187,7 @@ pub fn deserialize_field_element<
             let res_prime = limbs[j + 1].clone() & BigUint::from((1u128 << shift) - 1);
             let res: BigUint = res + (res_prime << (15 - shift));
             let res = Env::constant(F::from(res));
-            let c5_var = env.copy(&res, SerializationColumn::ChalConverted(6 * j + 5));
+            let c5_var = env.hcopy(&res, SerializationColumn::ChalConverted(6 * j + 5));
             fifteen_bits_vars.push(c5_var);
         }
     }
@@ -373,9 +345,7 @@ pub fn combine_carry<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx
 pub fn constrain_multiplication<
     F: PrimeField,
     Ff: PrimeField,
-    Env: ColAccessCap<F, SerializationColumn>
-        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, SerializationColumn> + LookupCap<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
 ) {
@@ -489,9 +459,7 @@ pub fn constrain_multiplication<
 pub fn multiplication_circuit<
     F: PrimeField,
     Ff: PrimeField,
-    Env: ColAccessCap<F, SerializationColumn>
-        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColWriteCap<F, SerializationColumn> + LookupCap<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     chal: Ff,
@@ -535,7 +503,7 @@ pub fn multiplication_circuit<
          input: [F; N_LIMBS_SMALL],
          f_column: &dyn Fn(usize) -> SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(&Env::constant(*var), f_column(i));
+                env.write_column(f_column(i), &Env::constant(*var));
             })
         };
 
@@ -544,7 +512,7 @@ pub fn multiplication_circuit<
          input: [F; N_LIMBS_LARGE],
          f_column: &dyn Fn(usize) -> SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(&Env::constant(*var), f_column(i));
+                env.write_column(f_column(i), &Env::constant(*var));
             })
         };
 
@@ -621,9 +589,9 @@ pub fn multiplication_circuit<
                     limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
 
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
-                    env.copy(
-                        &Env::constant(newcarry_sign * limb),
+                    env.write_column(
                         SerializationColumn::Carry(6 * i + j),
+                        &Env::constant(newcarry_sign * limb),
                     );
                 }
 

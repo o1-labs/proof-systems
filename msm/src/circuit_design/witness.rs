@@ -1,5 +1,5 @@
 use crate::{
-    circuit_design::capabilities::{ColAccessCap, ColWriteCap, LookupCap},
+    circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
     proof::ProofInputs,
@@ -69,13 +69,24 @@ impl<
         };
         self.witness.last_mut().unwrap().cols[i] = *value;
     }
+}
 
-    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
-        let Column::X(i) = position.to_column() else {
-            todo!()
-        };
-        self.witness.last_mut().unwrap().cols[i] = *x;
-        *x
+/// If `Env` implements real write ("for sure" writes), you can implement
+/// hybrid copy (that is only required to "maybe" copy). The other way
+/// around violates the semantics.
+///
+/// Sadly, rust does not allow "cover" instances to define this impl
+/// for every `T: ColWriteCap`.
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const CIX_COL_N: usize,
+        LT: LookupTableID + IntoEnumIterator,
+    > HybridCopyCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    fn hcopy(&mut self, value: &Self::Variable, ix: CIx) -> Self::Variable {
+        <WitnessBuilderEnv<F, CIX_COL_N, LT> as ColWriteCap<F, CIx>>::write_column(self, ix, value);
+        *value
     }
 }
 
