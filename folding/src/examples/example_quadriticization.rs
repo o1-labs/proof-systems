@@ -1,9 +1,8 @@
 // this example is a copy of the decomposable folding one, but with a degree 3 gate
 // that triggers quadriticization
-use crate::examples::example_decomposable_folding::TestWitness;
-use crate::examples::{BaseSponge, Curve, Fp};
 use crate::{
     error_term::Side,
+    examples::{example_decomposable_folding::TestWitness, BaseSponge, Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness,

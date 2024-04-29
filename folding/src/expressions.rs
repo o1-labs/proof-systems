@@ -5,10 +5,10 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::One;
 use itertools::Itertools;
-use kimchi::circuits::expr::{
-    ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
+use kimchi::circuits::{
+    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable},
+    gate::CurrOrNext,
 };
-use kimchi::circuits::gate::CurrOrNext;
 use num_traits::Zero;
 
 pub trait FoldingColumnTrait: Copy + Clone {

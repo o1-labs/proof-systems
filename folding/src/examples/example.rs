@@ -1,6 +1,6 @@
-use crate::examples::{BaseSponge, Curve, Fp};
 use crate::{
     error_term::Side,
+    examples::{BaseSponge, Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness, Witness,
