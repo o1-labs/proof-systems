@@ -584,12 +584,6 @@
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
@@ -1004,13 +998,7 @@
     }
 }
 
-<span class="comment">//&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
-//pub(crate) fn extract_terms&lt;C: FoldingConfig&gt;(
-//    exp: FoldingExp&lt;C&gt;,
-//) -&gt; Box&lt;dyn Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; {
-//    use Operations::*;
-//=======
-</span><span class="kw">pub fn </span>extract_terms&lt;C: FoldingConfig&gt;(exp: FoldingExp&lt;C&gt;) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; {
+<span class="kw">pub fn </span>extract_terms&lt;C: FoldingConfig&gt;(exp: FoldingExp&lt;C&gt;) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; {
     <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
     <span class="kw">let </span>exps: Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Term&lt;C&gt;&gt;&gt; = <span class="kw">match </span>exp {
         exp @ Atom(<span class="kw">_</span>) =&gt; Box::new(
