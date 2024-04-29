@@ -1,4 +1,3 @@
-pub mod bn254;
 pub mod constants;
 pub mod dummy_values;
 pub mod pasta;

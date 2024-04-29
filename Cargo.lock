@@ -1363,9 +1363,12 @@ checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
 name = "ivc"
 version = "0.1.0"
 dependencies = [
+ "ark-bn254",
  "ark-ff",
  "kimchi",
  "kimchi-msm",
+ "mina-poseidon",
+ "once_cell",
 ]
 
 [[package]]
@@ -1693,7 +1696,6 @@ dependencies = [
 name = "mina-poseidon"
 version = "0.1.0"
 dependencies = [
- "ark-bn254",
  "ark-ec",
  "ark-ff",
  "ark-poly",
