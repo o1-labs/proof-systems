@@ -8,6 +8,9 @@
 //! given field and the state.
 //! Also, it is hard-coded that the substitution is `7`. The user must verify
 //! that `7` is coprime with `p - 1` where `p` is the order the field.
+//! The constants and matrix can be generated the file
+//! `poseidon/src/pasta/params.sage`
+
 use crate::poseidon::columns::PoseidonColumn;
 use ark_ff::{FpParameters, PrimeField};
 use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
