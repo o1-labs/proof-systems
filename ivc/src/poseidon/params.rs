@@ -857,3 +857,34 @@ impl SpongeConstants for PlonkSpongeConstantsIVC {
     const PERM_FULL_MDS: bool = true;
     const PERM_INITIAL_ARK: bool = false;
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::{static_params, PlonkSpongeConstantsIVC};
+    use ark_bn254::Fr as Fp;
+    use kimchi::o1_utils::FieldHelpers;
+    use mina_poseidon::poseidon::{ArithmeticSponge as Poseidon, Sponge as _};
+
+    // Regression tests. Test vectors have been generated using the same
+    // code, commit a1ad3f17b12baff62bc7fab6c0c4bacb704518d5
+    // This does not mean that the implementation is correct.
+    #[test]
+    fn test_poseidon() {
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsIVC>::new(static_params());
+        let input: [Fp; 3] = [
+            Fp::from_str("1").unwrap(),
+            Fp::from_str("1").unwrap(),
+            Fp::from_str("1").unwrap(),
+        ];
+        let exp_output_str = [
+            "62838cdb9e91f1e85b450c1c45ccd220da17896083479d4879d520dc51ca390c",
+            "1dcb5390c0c61fc6c461043e5b1ae385faedb3d5a87c95f488bb851faca61f0a",
+            "fc0388532e2e38ec1e1402fbcf016a7954cf8fb6b6ba5739c7666aea7af42c29",
+        ];
+        let exp_output = exp_output_str.map(|x| Fp::from_hex(x).unwrap());
+        hash.absorb(&input);
+        assert_eq!(hash.state, exp_output);
+    }
+}
