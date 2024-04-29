@@ -10,7 +10,7 @@
 //! that `7` is coprime with `p - 1` where `p` is the order the field.
 use crate::poseidon::columns::PoseidonColumn;
 use ark_ff::{FpParameters, PrimeField};
-use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap};
+use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
 use num_bigint::BigUint;
 use num_integer::Integer;
 
@@ -40,7 +40,7 @@ pub fn apply_permutation<
     F: PrimeField,
     PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
-        + ColWriteCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
+        + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
     // Checking that p - 1 is coprime with 7 as it has to be the case for the sbox
     {
@@ -74,7 +74,7 @@ fn compute_one_round<
     F: PrimeField,
     PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
-        + ColWriteCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
+        + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
     // FIXME: instantiate with correct MDS and constants.
     // FIXME: maybe change the order of the layers like some implementations do
@@ -111,6 +111,6 @@ fn compute_one_round<
     // FIXME: add the constants
 
     state.iter().enumerate().for_each(|(i, res)| {
-        env.copy(res, PoseidonColumn::Round(round, i));
+        env.hcopy(res, PoseidonColumn::Round(round, i));
     });
 }
