@@ -8,6 +8,7 @@ pub mod params;
 mod tests {
     use std::collections::BTreeMap;
 
+    use super::params;
     use crate::poseidon::{columns::PoseidonColumn, interpreter, interpreter::Params};
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
@@ -21,7 +22,6 @@ mod tests {
         BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
     };
     use poly_commitment::pairing_proof::PairingSRS;
-    use rand::{rngs::StdRng, SeedableRng as _};
 
     pub struct PoseidonBN254Parameters;
 
@@ -31,17 +31,13 @@ mod tests {
 
     impl Params<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
-            let seed: [u8; 32] = [0u8; 32];
-            let mut rng = StdRng::from_seed(seed);
-            // FIXME: generating random constants is not secure
-            [[Fp::rand(&mut rng); STATE_SIZE]; NB_FULL_ROUND]
+            let rc = &params::static_params().round_constants;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
         }
 
         fn mds(&self) -> [[Fp; STATE_SIZE]; STATE_SIZE] {
-            let seed: [u8; 32] = [0u8; 32];
-            let mut rng = StdRng::from_seed(seed);
-            // FIXME: generating random MDS is not secure
-            [[Fp::rand(&mut rng); STATE_SIZE]; STATE_SIZE]
+            let mds = &params::static_params().mds;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
         }
     }
 
