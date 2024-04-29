@@ -7,5 +7,8 @@ edition = "2021"
 
 [dependencies]
 msm = { path = "../msm", package = "kimchi-msm"}
+ark-bn254.workspace = true
 ark-ff.workspace = true
 kimchi.workspace = true
+mina-poseidon.workspace = true
+once_cell.workspace = true
