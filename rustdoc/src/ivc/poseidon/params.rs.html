@@ -840,8 +840,58 @@
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
 <a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_bn254::Fr <span class="kw">as </span>Fp;
-<span class="kw">use </span>mina_poseidon::poseidon::ArithmeticSpongeParams;
+<span class="kw">use </span>mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
 <span class="kw">use </span>once_cell::sync::Lazy;
 
 <span class="comment">// FIXME: move into mina_poseidon when this code is ready to go into production.
@@ -1679,5 +1729,55 @@ where the curves have been changed in the script params.sage to use bn254
 <span class="kw">pub fn </span>static_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>ArithmeticSpongeParams&lt;Fp&gt; {
     <span class="kw">static </span>PARAMS: Lazy&lt;ArithmeticSpongeParams&lt;Fp&gt;&gt; = Lazy::new(params);
     <span class="kw-2">&amp;</span>PARAMS
+}
+
+<span class="doccomment">/// Constants used by the IVC circuit used by the folding scheme
+/// This is meant to be only used for the IVC circuit, with the BN254 curve
+/// It has not been tested with/for other curves.
+</span><span class="comment">// This must be moved into mina_poseidon later.
+</span><span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>PlonkSpongeConstantsIVC {}
+
+<span class="kw">impl </span>SpongeConstants <span class="kw">for </span>PlonkSpongeConstantsIVC {
+    <span class="kw">const </span>SPONGE_CAPACITY: usize = <span class="number">1</span>;
+    <span class="kw">const </span>SPONGE_WIDTH: usize = <span class="number">3</span>;
+    <span class="kw">const </span>SPONGE_RATE: usize = <span class="number">2</span>;
+    <span class="kw">const </span>PERM_ROUNDS_FULL: usize = <span class="number">55</span>;
+    <span class="kw">const </span>PERM_ROUNDS_PARTIAL: usize = <span class="number">0</span>;
+    <span class="kw">const </span>PERM_HALF_ROUNDS_FULL: usize = <span class="number">0</span>;
+    <span class="kw">const </span>PERM_SBOX: u32 = <span class="number">7</span>;
+    <span class="kw">const </span>PERM_FULL_MDS: bool = <span class="bool-val">true</span>;
+    <span class="kw">const </span>PERM_INITIAL_ARK: bool = <span class="bool-val">false</span>;
+}
+
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>std::str::FromStr;
+
+    <span class="kw">use super</span>::{static_params, PlonkSpongeConstantsIVC};
+    <span class="kw">use </span>ark_bn254::Fr <span class="kw">as </span>Fp;
+    <span class="kw">use </span>kimchi::o1_utils::FieldHelpers;
+    <span class="kw">use </span>mina_poseidon::poseidon::{ArithmeticSponge <span class="kw">as </span>Poseidon, Sponge <span class="kw">as _</span>};
+
+    <span class="comment">// Regression tests. Test vectors have been generated using the same
+    // code, commit a1ad3f17b12baff62bc7fab6c0c4bacb704518d5
+    // This does not mean that the implementation is correct.
+    </span><span class="attr">#[test]
+    </span><span class="kw">fn </span>test_poseidon() {
+        <span class="kw">let </span><span class="kw-2">mut </span>hash = Poseidon::&lt;Fp, PlonkSpongeConstantsIVC&gt;::new(static_params());
+        <span class="kw">let </span>input: [Fp; <span class="number">3</span>] = [
+            Fp::from_str(<span class="string">"1"</span>).unwrap(),
+            Fp::from_str(<span class="string">"1"</span>).unwrap(),
+            Fp::from_str(<span class="string">"1"</span>).unwrap(),
+        ];
+        <span class="kw">let </span>exp_output_str = [
+            <span class="string">"62838cdb9e91f1e85b450c1c45ccd220da17896083479d4879d520dc51ca390c"</span>,
+            <span class="string">"1dcb5390c0c61fc6c461043e5b1ae385faedb3d5a87c95f488bb851faca61f0a"</span>,
+            <span class="string">"fc0388532e2e38ec1e1402fbcf016a7954cf8fb6b6ba5739c7666aea7af42c29"</span>,
+        ];
+        <span class="kw">let </span>exp_output = exp_output_str.map(|x| Fp::from_hex(x).unwrap());
+        hash.absorb(<span class="kw-2">&amp;</span>input);
+        <span class="macro">assert_eq!</span>(hash.state, exp_output);
+    }
 }
 </code></pre></div></section></main></body></html>
