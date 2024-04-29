@@ -301,6 +301,42 @@
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
 <a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Tools to /compose/ different circuit designers.
 ///
 /// Assume we have several sets of columns:
@@ -350,7 +386,7 @@
 ///
 /// Similar "mapping" intuition applies to lookup tables.
 </span><span class="kw">use crate</span>::{
-    circuit_design::capabilities::{ColAccessCap, ColWriteCap, LookupCap},
+    circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
 };
@@ -514,6 +550,20 @@
         F: PrimeField,
         CIx1: ColumnIndexer,
         CIx2: ColumnIndexer,
+        Env1: HybridCopyCap&lt;F, CIx1&gt;,
+        L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
+    &gt; HybridCopyCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnv&lt;<span class="lifetime">'a</span>, F, CIx1, Env1, L&gt;
+{
+    <span class="kw">fn </span>hcopy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, ix: CIx2) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.env.hcopy(x, <span class="self">self</span>.lens.re_get(ix))
+    }
+}
+
+<span class="kw">impl</span>&lt;
+        <span class="lifetime">'a</span>,
+        F: PrimeField,
+        CIx1: ColumnIndexer,
+        CIx2: ColumnIndexer,
         Env1: ColAccessCap&lt;F, CIx1&gt;,
         L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
     &gt; ColAccessCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnvColumn&lt;<span class="lifetime">'a</span>, F, CIx1, Env1, L&gt;
@@ -547,6 +597,20 @@
     }
 }
 
+<span class="kw">impl</span>&lt;
+        <span class="lifetime">'a</span>,
+        F: PrimeField,
+        CIx1: ColumnIndexer,
+        CIx2: ColumnIndexer,
+        Env1: HybridCopyCap&lt;F, CIx1&gt;,
+        L: MPrism&lt;Source = CIx1, Target = CIx2&gt;,
+    &gt; HybridCopyCap&lt;F, CIx2&gt; <span class="kw">for </span>SubEnvColumn&lt;<span class="lifetime">'a</span>, F, CIx1, Env1, L&gt;
+{
+    <span class="kw">fn </span>hcopy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, ix: CIx2) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.<span class="number">0</span>.hcopy(x, ix)
+    }
+}
+
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: ColAccessCap&lt;F, CIx1&gt;, L&gt; ColAccessCap&lt;F, CIx1&gt;
     <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">'a</span>, F, CIx1, Env1, L&gt;
 {
@@ -570,6 +634,14 @@
 {
     <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ix: CIx1, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="self">self</span>.<span class="number">0</span>.env.write_column(ix, value);
+    }
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, F: PrimeField, CIx1: ColumnIndexer, Env1: HybridCopyCap&lt;F, CIx1&gt;, L&gt; HybridCopyCap&lt;F, CIx1&gt;
+    <span class="kw">for </span>SubEnvLookup&lt;<span class="lifetime">'a</span>, F, CIx1, Env1, L&gt;
+{
+    <span class="kw">fn </span>hcopy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, ix: CIx1) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.<span class="number">0</span>.env.hcopy(x, ix)
     }
 }
 
