@@ -1,5 +1,5 @@
 use ark_bn254::Fr as Fp;
-use mina_poseidon::poseidon::ArithmeticSpongeParams;
+use mina_poseidon::{constants::SpongeConstants, poseidon::ArithmeticSpongeParams};
 use once_cell::sync::Lazy;
 
 // FIXME: move into mina_poseidon when this code is ready to go into production.
@@ -837,4 +837,54 @@ fn params() -> ArithmeticSpongeParams<Fp> {
 pub fn static_params() -> &'static ArithmeticSpongeParams<Fp> {
     static PARAMS: Lazy<ArithmeticSpongeParams<Fp>> = Lazy::new(params);
     &PARAMS
+}
+
+/// Constants used by the IVC circuit used by the folding scheme
+/// This is meant to be only used for the IVC circuit, with the BN254 curve
+/// It has not been tested with/for other curves.
+// This must be moved into mina_poseidon later.
+#[derive(Clone)]
+pub struct PlonkSpongeConstantsIVC {}
+
+impl SpongeConstants for PlonkSpongeConstantsIVC {
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
+    const SPONGE_RATE: usize = 2;
+    const PERM_ROUNDS_FULL: usize = 55;
+    const PERM_ROUNDS_PARTIAL: usize = 0;
+    const PERM_HALF_ROUNDS_FULL: usize = 0;
+    const PERM_SBOX: u32 = 7;
+    const PERM_FULL_MDS: bool = true;
+    const PERM_INITIAL_ARK: bool = false;
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::{static_params, PlonkSpongeConstantsIVC};
+    use ark_bn254::Fr as Fp;
+    use kimchi::o1_utils::FieldHelpers;
+    use mina_poseidon::poseidon::{ArithmeticSponge as Poseidon, Sponge as _};
+
+    // Regression tests. Test vectors have been generated using the same
+    // code, commit a1ad3f17b12baff62bc7fab6c0c4bacb704518d5
+    // This does not mean that the implementation is correct.
+    #[test]
+    fn test_poseidon() {
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsIVC>::new(static_params());
+        let input: [Fp; 3] = [
+            Fp::from_str("1").unwrap(),
+            Fp::from_str("1").unwrap(),
+            Fp::from_str("1").unwrap(),
+        ];
+        let exp_output_str = [
+            "62838cdb9e91f1e85b450c1c45ccd220da17896083479d4879d520dc51ca390c",
+            "1dcb5390c0c61fc6c461043e5b1ae385faedb3d5a87c95f488bb851faca61f0a",
+            "fc0388532e2e38ec1e1402fbcf016a7954cf8fb6b6ba5739c7666aea7af42c29",
+        ];
+        let exp_output = exp_output_str.map(|x| Fp::from_hex(x).unwrap());
+        hash.absorb(&input);
+        assert_eq!(hash.state, exp_output);
+    }
 }
