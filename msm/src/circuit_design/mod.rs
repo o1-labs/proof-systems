@@ -5,7 +5,7 @@ pub mod witness;
 
 // Reexport main types
 pub use crate::circuit_design::{
-    capabilities::{ColAccessCap, ColWriteCap, LookupCap},
+    capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     composition::{MPrism, SubEnvColumn, SubEnvLookup},
     constraints::ConstraintBuilderEnv,
     witness::WitnessBuilderEnv,
