@@ -8,12 +8,12 @@ pub mod params;
 mod tests {
     use std::collections::BTreeMap;
 
-    use super::params;
+    use super::{params, params::PlonkSpongeConstantsIVC};
     use crate::poseidon::{columns::PoseidonColumn, interpreter, interpreter::Params};
     use ark_ff::UniformRand;
     use kimchi::circuits::domains::EvaluationDomains;
     use kimchi_msm::{
-        circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
+        circuit_design::{ColAccessCap, ConstraintBuilderEnv, WitnessBuilderEnv},
         columns::{Column, ColumnIndexer},
         lookups::DummyLookupTable,
         prover::prove,
@@ -21,13 +21,14 @@ mod tests {
         witness::Witness,
         BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
     };
+    use mina_poseidon::permutation::poseidon_block_cipher;
     use poly_commitment::pairing_proof::PairingSRS;
 
     pub struct PoseidonBN254Parameters;
 
     pub const STATE_SIZE: usize = 3;
     pub const NB_FULL_ROUND: usize = 55;
-    pub const N_COL: usize = STATE_SIZE + NB_FULL_ROUND * STATE_SIZE;
+    pub const N_COL: usize = PoseidonColumn::<STATE_SIZE, NB_FULL_ROUND>::COL_N;
 
     impl Params<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
@@ -59,18 +60,58 @@ mod tests {
             let x: Fp = Fp::rand(&mut rng);
             let y: Fp = Fp::rand(&mut rng);
             let z: Fp = Fp::rand(&mut rng);
-            let input_x: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(0);
-            let input_y: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(1);
-            let input_z: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(2);
+            let exp_output: Vec<Fp> = {
+                let mut state: Vec<Fp> = vec![x, y, z];
+                poseidon_block_cipher::<Fp, PlonkSpongeConstantsIVC>(
+                    params::static_params(),
+                    &mut state,
+                );
+                state
+            };
 
-            witness_env.write_column(input_x.to_column(), x);
-            witness_env.write_column(input_y.to_column(), y);
-            witness_env.write_column(input_z.to_column(), z);
+            // Initialize inputs in the circuit
+            {
+                let input_x: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(0);
+                let input_y: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(1);
+                let input_z: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(2);
+
+                witness_env.write_column(input_x.to_column(), x);
+                witness_env.write_column(input_y.to_column(), y);
+                witness_env.write_column(input_z.to_column(), z);
+            }
+
+            {
+                // FIXME:
+                // Round constants should not be considered as columns. We should
+                // handle differently constants. See the comment in the columns file.
+                // This must be improved!
+                let rc = PoseidonBN254Parameters.constants();
+                rc.iter().enumerate().for_each(|(round, rcs)| {
+                    rcs.iter().enumerate().for_each(|(j, rc)| {
+                        let rc_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                            PoseidonColumn::RoundConstant(round, j);
+                        witness_env.write_column(rc_col.to_column(), *rc);
+                    });
+                });
+            }
 
             interpreter::apply_permutation(&mut witness_env, PoseidonBN254Parameters);
 
-            // TODO: add a check on the output, using read_column, and a
-            // concrete implementation of Poseidon
+            // Test verifying the output
+            {
+                let x_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 0);
+                let y_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 1);
+                let z_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 2);
+                let x = witness_env.read_column(x_col);
+                let y = witness_env.read_column(y_col);
+                let z = witness_env.read_column(z_col);
+                assert_eq!(x, exp_output[0]);
+                assert_eq!(y, exp_output[1]);
+                assert_eq!(z, exp_output[2]);
+            }
         }
 
         let empty_lookups = BTreeMap::new();

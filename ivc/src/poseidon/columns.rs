@@ -9,19 +9,24 @@
 /// - `3` input columns
 /// - `N * 3` round columns, indexed by the round number and the index in the state,
 /// the number of rounds.
+/// The round constants are also added as columns.
 // IMPROVEME: should be split the SBOX and the MDS?
+// IMPROVEME: round constants should be public
+// IMPROVEME: round constants should be part of the expression framework. The
+// expression must be changed to support this.
 use kimchi_msm::columns::{Column, ColumnIndexer};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PoseidonColumn<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> {
     Input(usize),
     Round(usize, usize),
+    RoundConstant(usize, usize),
 }
 
 impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
     for PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>
 {
-    const COL_N: usize = STATE_SIZE + NB_FULL_ROUND * STATE_SIZE;
+    const COL_N: usize = STATE_SIZE + 2 * NB_FULL_ROUND * STATE_SIZE;
 
     fn to_column(self) -> Column {
         match self {
@@ -34,6 +39,14 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
                 // We start round 0
                 assert!(round < NB_FULL_ROUND);
                 let idx = STATE_SIZE + (round * STATE_SIZE + state_index);
+                Column::X(idx)
+            }
+            PoseidonColumn::RoundConstant(round, state_index) => {
+                assert!(state_index < STATE_SIZE);
+                // We start round 0
+                assert!(round < NB_FULL_ROUND);
+                let offset = STATE_SIZE + STATE_SIZE * NB_FULL_ROUND;
+                let idx = offset + (round * STATE_SIZE + state_index);
                 Column::X(idx)
             }
         }

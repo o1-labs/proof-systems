@@ -54,9 +54,14 @@ pub fn apply_permutation<
         assert_eq!(p_minus_one.gcd(&seven), one);
     }
 
-    let state: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE] =
-        std::array::from_fn(PoseidonColumn::Input);
     for i in 0..NB_FULL_ROUND {
+        let state: [PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>; STATE_SIZE] = {
+            if i == 0 {
+                std::array::from_fn(PoseidonColumn::Input)
+            } else {
+                std::array::from_fn(|j| PoseidonColumn::Round(i - 1, j))
+            }
+        };
         compute_one_round::<F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env>(env, &param, i, &state);
     }
 }
@@ -79,10 +84,9 @@ fn compute_one_round<
     Env: ColAccessCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
         + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
 {
-    // FIXME: instantiate with correct MDS and constants.
-    // FIXME: maybe change the order of the layers like some implementations do
-    // FIXME: add the constants
     // We start at round 0
+    // This implementation mimicks the version described in
+    // poseidon_block_cipher in the mina_poseidon crate.
     assert!(
         round < NB_FULL_ROUND,
         "The round index {:} is higher than the number of full rounds encoded in the type",
@@ -101,17 +105,28 @@ fn compute_one_round<
 
     // Applying the linear layer
     let mds = Params::mds(param);
+    let state: Vec<Env::Variable> = mds
+        .into_iter()
+        .map(|m| {
+            state
+                .clone()
+                .into_iter()
+                .zip(m)
+                .fold(Env::constant(F::zero()), |acc, (s_i, mds_i_j)| {
+                    Env::constant(mds_i_j) * s_i.clone() + acc.clone()
+                })
+        })
+        .collect();
+
+    // Adding the round constants
     let state: Vec<Env::Variable> = state
         .iter()
         .enumerate()
         .map(|(i, x)| {
-            state.iter().enumerate().fold(x.clone(), |acc, (j, y)| {
-                acc + y.clone() * Env::constant(mds[i][j])
-            })
+            let rc = env.read_column(PoseidonColumn::RoundConstant(round, i));
+            x.clone() + rc
         })
         .collect();
-
-    // FIXME: add the constants
 
     state.iter().enumerate().for_each(|(i, res)| {
         env.hcopy(res, PoseidonColumn::Round(round, i));
