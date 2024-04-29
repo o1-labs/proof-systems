@@ -6,11 +6,11 @@ use crate::N_LIMBS;
 pub const FFA_N_COLUMNS: usize = 5 * N_LIMBS;
 pub const FFA_NPUB_COLUMNS: usize = N_LIMBS;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
 /// Column indexer for MSM columns.
 ///
 /// They represent the equation
 ///   `InputA(i) + InputB(i) = ModulusF(i) * Quotient + Carry(i) * 2^LIMB_SIZE - Carry(i-1)`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FFAColumn {
     InputA(usize),
     InputB(usize),
@@ -21,7 +21,7 @@ pub enum FFAColumn {
 }
 
 impl ColumnIndexer for FFAColumn {
-    const COL_N: usize = FFA_N_COLUMNS;
+    const N_COL: usize = FFA_N_COLUMNS;
     fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);

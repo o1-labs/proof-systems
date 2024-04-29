@@ -85,10 +85,209 @@ mod tests {
     use rand::{CryptoRng, Rng, RngCore};
     use std::collections::BTreeMap;
 
-    fn build_test_circuit<RNG: RngCore + CryptoRng, LT: LookupTableID>(
+    type TestWitnessBuilderEnv<LT> = WitnessBuilderEnv<
+        Fp,
+        TestColumn,
+        { <TestColumn as ColumnIndexer>::N_COL },
+        { <TestColumn as ColumnIndexer>::N_COL - 1 },
+        0,
+        1,
+        LT,
+    >;
+
+    fn build_test_fixed_sel_circuit<RNG: RngCore + CryptoRng, LT: LookupTableID>(
         rng: &mut RNG,
         domain_size: usize,
-    ) -> WitnessBuilderEnv<Fp, { <TestColumn as ColumnIndexer>::COL_N }, LT> {
+    ) -> TestWitnessBuilderEnv<LT> {
+        let mut witness_env = WitnessBuilderEnv::create();
+
+        let mut fixed_sel: Vec<Fp> = vec![];
+        for i in 0..domain_size {
+            fixed_sel.push(Fp::from(i as u64));
+        }
+
+        witness_env.set_fixed_selector(TestColumn::FixedE, fixed_sel);
+
+        for row_i in 0..domain_size {
+            let a: Fp = <Fp as UniformRand>::rand(rng);
+            test_interpreter::test_fixed_sel(&mut witness_env, a);
+
+            if row_i < domain_size - 1 {
+                witness_env.next_row();
+            }
+        }
+
+        witness_env
+    }
+
+    #[test]
+    pub fn test_build_test_fixed_sel_circuit() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        build_test_fixed_sel_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
+    }
+
+    #[test]
+    fn test_completeness_fixed_sel() {
+        let mut rng = o1_utils::tests::make_test_rng();
+
+        // Include tests for completeness for Logup as the random witness
+        // includes all arguments
+        let domain_size = 1 << 8;
+        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
+
+        let srs: PairingSRS<BN254> = get_bn254_srs(domain);
+
+        let mut lookup_tables_data = BTreeMap::new();
+        for table_id in DummyLookupTable::all_variants().into_iter() {
+            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+        }
+        let witness_env =
+            build_test_fixed_sel_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
+        let mut proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        // Don't use lookups for now
+        proof_inputs.logups = vec![];
+
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
+        test_interpreter::constrain_test_fixed_sel::<Fp, _>(&mut constraint_env);
+        // Don't use lookups for now
+        let constraints = constraint_env.get_relation_constraints();
+
+        // generate the proof
+        let proof = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            _,
+            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
+            0,
+            1,
+            DummyLookupTable,
+        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        .unwrap();
+
+        // verify the proof
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
+            0,
+            1,
+            0,
+            DummyLookupTable,
+        >(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+            Witness::zero_vec(domain_size),
+        );
+
+        assert!(verifies);
+    }
+
+    fn build_test_const_circuit<RNG: RngCore + CryptoRng, LT: LookupTableID>(
+        rng: &mut RNG,
+        domain_size: usize,
+    ) -> (TestWitnessBuilderEnv<LT>, Fp) {
+        let mut witness_env = WitnessBuilderEnv::create();
+
+        // To support less rows than domain_size we need to have selectors.
+        //let row_num = rng.gen_range(0..domain_size);
+
+        let constant: Fp = <Fp as UniformRand>::rand(rng);
+        for row_i in 0..domain_size {
+            let a: Fp = <Fp as UniformRand>::rand(rng);
+            let b: Fp = constant / a;
+            assert!(a * b == constant);
+            test_interpreter::test_const(&mut witness_env, a, b, constant);
+
+            if row_i < domain_size - 1 {
+                witness_env.next_row();
+            }
+        }
+
+        (witness_env, constant)
+    }
+
+    #[test]
+    pub fn test_build_test_constant_circuit() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        build_test_const_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
+    }
+
+    #[test]
+    fn test_completeness_constant() {
+        let mut rng = o1_utils::tests::make_test_rng();
+
+        // Include tests for completeness for Logup as the random witness
+        // includes all arguments
+        let domain_size = 1 << 8;
+        let domain = EvaluationDomains::<Fp>::create(domain_size).unwrap();
+
+        let srs: PairingSRS<BN254> = get_bn254_srs(domain);
+
+        let mut lookup_tables_data = BTreeMap::new();
+        for table_id in DummyLookupTable::all_variants().into_iter() {
+            lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
+        }
+        let (witness_env, constant) =
+            build_test_const_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
+        let mut proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
+        // Don't use lookups for now
+        proof_inputs.logups = vec![];
+
+        let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
+        test_interpreter::constrain_test_const::<Fp, _>(&mut constraint_env, constant);
+        // Don't use lookups for now
+        let constraints = constraint_env.get_relation_constraints();
+
+        // generate the proof
+        let proof = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            _,
+            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
+            0,
+            1,
+            DummyLookupTable,
+        >(domain, &srs, &constraints, proof_inputs, &mut rng)
+        .unwrap();
+
+        // verify the proof
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
+            0,
+            1,
+            0,
+            DummyLookupTable,
+        >(
+            domain,
+            &srs,
+            &constraints,
+            &proof,
+            Witness::zero_vec(domain_size),
+        );
+
+        assert!(verifies);
+    }
+
+    fn build_test_mul_circuit<RNG: RngCore + CryptoRng, LT: LookupTableID>(
+        rng: &mut RNG,
+        domain_size: usize,
+    ) -> TestWitnessBuilderEnv<LT> {
         let mut witness_env = WitnessBuilderEnv::create();
 
         // To support less rows than domain_size we need to have selectors.
@@ -109,9 +308,9 @@ mod tests {
 
     #[test]
     /// Tests if the "test" circuit is valid without running the proof.
-    pub fn test_test_circuit() {
+    pub fn test_build_test_mul_circuit() {
         let mut rng = o1_utils::tests::make_test_rng();
-        build_test_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
+        build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, 1 << 4);
     }
 
     #[test]
@@ -126,7 +325,7 @@ mod tests {
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
-        test_interpreter::constrain_multiplication::<Fp, Ff1, _>(&mut constraint_env);
+        test_interpreter::constrain_multiplication::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
@@ -134,7 +333,7 @@ mod tests {
         for table_id in DummyLookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
-        let witness_env = build_test_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
+        let witness_env = build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let mut proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
         // Don't use lookups for now
         proof_inputs.logups = vec![];
@@ -147,8 +346,9 @@ mod tests {
             ScalarSponge,
             _,
             TEST_N_COLUMNS,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             0,
+            1,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -160,8 +360,9 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             TEST_N_COLUMNS,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             0,
+            1,
             0,
             DummyLookupTable,
         >(
@@ -186,7 +387,7 @@ mod tests {
         let srs: PairingSRS<BN254> = get_bn254_srs(domain);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
-        test_interpreter::constrain_multiplication::<Fp, Ff1, _>(&mut constraint_env);
+        test_interpreter::constrain_multiplication::<Fp, _>(&mut constraint_env);
         // Don't use lookups for now
         let constraints = constraint_env.get_relation_constraints();
 
@@ -194,7 +395,7 @@ mod tests {
         for table_id in DummyLookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
-        let witness_env = build_test_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
+        let witness_env = build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let mut proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data.clone());
         proof_inputs.logups = vec![];
 
@@ -206,13 +407,15 @@ mod tests {
             ScalarSponge,
             _,
             TEST_N_COLUMNS,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             0,
+            1,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
 
-        let witness_env_prime = build_test_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
+        let witness_env_prime =
+            build_test_mul_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
         let mut proof_inputs_prime =
             witness_env_prime.get_proof_inputs(domain, lookup_tables_data.clone());
         proof_inputs_prime.logups = vec![];
@@ -225,8 +428,9 @@ mod tests {
             ScalarSponge,
             _,
             TEST_N_COLUMNS,
-            TEST_N_COLUMNS,
+            { TEST_N_COLUMNS - 1 },
             0,
+            1,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs_prime, &mut rng)
         .unwrap();
@@ -241,8 +445,9 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
-                TEST_N_COLUMNS,
+                { TEST_N_COLUMNS - 1 },
                 0,
+                1,
                 0,
                 DummyLookupTable,
             >(
@@ -267,8 +472,9 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
-                TEST_N_COLUMNS,
+                { TEST_N_COLUMNS - 1 },
                 0,
+                1,
                 0,
                 DummyLookupTable,
             >(
@@ -294,8 +500,9 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
-                TEST_N_COLUMNS,
+                { TEST_N_COLUMNS - 1 },
                 0,
+                1,
                 0,
                 DummyLookupTable,
             >(
@@ -349,6 +556,7 @@ mod tests {
             LOOKUP_TEST_N_COL,
             LOOKUP_TEST_N_COL,
             0,
+            0,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
@@ -359,6 +567,7 @@ mod tests {
             ScalarSponge,
             LOOKUP_TEST_N_COL,
             LOOKUP_TEST_N_COL,
+            0,
             0,
             0,
             LookupTableIDs,
