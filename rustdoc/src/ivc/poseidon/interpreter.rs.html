@@ -97,101 +97,175 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
+//! The Poseidon construction is defined in the paper ["Poseidon: A New Hash
+//! Function"](https://eprint.iacr.org/2019/458.pdf).
+//! The Poseidon instance works on a state of size `STATE_SIZE` and is designed
+//! to work only with full rounds. As a reminder, the Poseidon permutation is a
+//! mapping from `F^STATE_SIZE` to `F^STATE_SIZE`.
+//! The user is responsible to provide the correct number of full rounds for the
+//! given field and the state.
+//! Also, it is hard-coded that the substitution is `7`. The user must verify
+//! that `7` is coprime with `p - 1` where `p` is the order the field.
+//! The constants and matrix can be generated the file
+//! `poseidon/src/pasta/params.sage`
 
-<span class="kw">pub trait </span>Params&lt;F: Field, <span class="kw">const </span>S: usize, <span class="kw">const </span>R: usize&gt; {
-    <span class="kw">const </span>RATE: usize;
-    <span class="kw">const </span>CAPACITY: usize;
-    <span class="kw">fn </span>constants() -&gt; [[F; S]; R];
-    <span class="kw">fn </span>mds() -&gt; [[F; S]; S];
+</span><span class="kw">use </span><span class="kw">crate</span>::poseidon::columns::PoseidonColumn;
+<span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
+<span class="kw">use </span>kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>num_integer::Integer;
+
+<span class="doccomment">/// Represents the parameters of the instance of the Poseidon permutation.
+/// Constants are the round constants for each round, and MDS is the matrix used
+/// by the linear layer.
+/// The type is parametrized by the field, the state size, and the number of full rounds.
+/// Note that the parameters are only for instances using full rounds.
+</span><span class="comment">// IMPROVEME merge constants and mds in a flat array, to use the CPU cache
+</span><span class="kw">pub trait </span>Params&lt;F: PrimeField, <span class="kw">const </span>STATE_SIZE: usize, <span class="kw">const </span>NB_FULL_ROUNDS: usize&gt; {
+    <span class="kw">fn </span>constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[F; STATE_SIZE]; NB_FULL_ROUNDS];
+    <span class="kw">fn </span>mds(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[F; STATE_SIZE]; STATE_SIZE];
 }
 
-<span class="attr">#[derive(Debug, Clone, PartialEq)]
-</span><span class="kw">pub enum </span>Column {
-    Input(usize),
-    Round(usize, usize),
-}
-
-<span class="kw">pub trait </span>PoseidonInterpreter&lt;F: Field, <span class="kw">const </span>S: usize, <span class="kw">const </span>R: usize&gt; {
-    <span class="kw">type </span>Variable: Clone
-        + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::fmt::Debug;
-
-    <span class="kw">fn </span>constrain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
-
-    <span class="doccomment">/// writes the variable to some column, returning the destination
-    </span><span class="kw">fn </span>write(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, to: Column) -&gt; <span class="self">Self</span>::Variable;
-    <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Column) -&gt; <span class="self">Self</span>::Variable;
-    <span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
-    <span class="kw">fn </span>round_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[[<span class="self">Self</span>::Variable; S]; R];
-    <span class="kw">fn </span>mds(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[[<span class="self">Self</span>::Variable; S]; S];
-    <span class="doccomment">/// returns v^7
-    </span><span class="kw">fn </span>sbox(<span class="kw-2">&amp;</span><span class="self">self</span>, v: <span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
-}
-
-<span class="kw">fn </span>index_array&lt;<span class="kw">const </span>N: usize&gt;() -&gt; [usize; N] {
-    <span class="kw">let </span><span class="kw-2">mut </span>a = [<span class="number">0</span>; N];
-    <span class="kw">for </span>(i, v) <span class="kw">in </span>a.iter_mut().enumerate() {
-        <span class="kw-2">*</span>v = i;
-    }
-    a
-}
-
-<span class="kw">pub fn </span>poseidon_row_witness&lt;F, <span class="kw">const </span>S: usize, <span class="kw">const </span>R: usize, E&gt;(
-    env: <span class="kw-2">&amp;mut </span>E,
-    preimage: [F; S],
-) -&gt; [F; S]
-<span class="kw">where
-    </span>F: Field,
-    E: PoseidonInterpreter&lt;F, S, R, Variable = F&gt;,
+<span class="doccomment">/// Apply the whole permutation of Poseidon to the state.
+/// The environment has to be initialized with the input values.
+</span><span class="kw">pub fn </span>apply_permutation&lt;
+    F: PrimeField,
+    <span class="kw">const </span>STATE_SIZE: usize,
+    <span class="kw">const </span>NB_FULL_ROUND: usize,
+    PARAMETERS,
+    Env,
+&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    param: PARAMETERS,
+) <span class="kw">where
+    </span>F: PrimeField,
+    PARAMETERS: Params&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    Env: ColAccessCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
+        + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {
-    <span class="kw">for </span>(i, p) <span class="kw">in </span>preimage.iter().enumerate() {
-        env.write(p, Column::Input(i));
+    <span class="comment">// Checking that p - 1 is coprime with 7 as it has to be the case for the sbox
+    </span>{
+        <span class="kw">let </span>one = BigUint::from(<span class="number">1u64</span>);
+        <span class="kw">let </span>p: BigUint = TryFrom::try_from(&lt;F <span class="kw">as </span>PrimeField&gt;::Params::MODULUS).unwrap();
+        <span class="kw">let </span>p_minus_one = p - one.clone();
+        <span class="kw">let </span>seven = BigUint::from(<span class="number">7u64</span>);
+        <span class="macro">assert_eq!</span>(p_minus_one.gcd(<span class="kw-2">&amp;</span>seven), one);
     }
-    poseidon_row(env)
+
+    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..NB_FULL_ROUND {
+        <span class="kw">let </span>state: [PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;; STATE_SIZE] = {
+            <span class="kw">if </span>i == <span class="number">0 </span>{
+                std::array::from_fn(PoseidonColumn::Input)
+            } <span class="kw">else </span>{
+                std::array::from_fn(|j| PoseidonColumn::Round(i - <span class="number">1</span>, j))
+            }
+        };
+        compute_one_round::&lt;F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env&gt;(env, <span class="kw-2">&amp;</span>param, i, <span class="kw-2">&amp;</span>state);
+    }
 }
 
-<span class="doccomment">/// creates the constraints and computes most of the witness for a row
-/// for witness it assumes the preimage is already written to the respective
-/// columns
-</span><span class="kw">pub fn </span>poseidon_row&lt;F, <span class="kw">const </span>S: usize, <span class="kw">const </span>R: usize, E&gt;(env: <span class="kw-2">&amp;mut </span>E) -&gt; [E::Variable; S]
-<span class="kw">where
-    </span>F: Field,
-    E: PoseidonInterpreter&lt;F, S, R&gt;,
+<span class="doccomment">/// Compute one round the Poseidon permutation
+</span><span class="kw">fn </span>compute_one_round&lt;
+    F: PrimeField,
+    <span class="kw">const </span>STATE_SIZE: usize,
+    <span class="kw">const </span>NB_FULL_ROUND: usize,
+    PARAMETERS,
+    Env,
+&gt;(
+    env: <span class="kw-2">&amp;mut </span>Env,
+    param: <span class="kw-2">&amp;</span>PARAMETERS,
+    round: usize,
+    elements: <span class="kw-2">&amp;</span>[PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;; STATE_SIZE],
+) <span class="kw">where
+    </span>F: PrimeField,
+    PARAMETERS: Params&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    Env: ColAccessCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
+        + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {
-    <span class="kw">let </span><span class="kw-2">mut </span>state = index_array::&lt;S&gt;().map(|i| env.read_column(Column::Input(i)));
-    <span class="kw">let </span>mds = env.mds().clone();
-    <span class="kw">let </span>round_constants = env.round_constants().clone();
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..R {
-        <span class="kw">let </span>round_constants = <span class="kw-2">&amp;</span>round_constants[i];
-        <span class="kw">let </span>out = { round(env, state, <span class="kw-2">&amp;</span>mds, round_constants) };
-        <span class="kw">for </span>(j, o) <span class="kw">in </span>out.iter().enumerate() {
-            env.write(o, Column::Round(i, j));
-        }
-        state = out
-    }
-    state
-}
-
-<span class="kw">fn </span>round&lt;F, <span class="kw">const </span>S: usize, <span class="kw">const </span>R: usize, E&gt;(
-    env: <span class="kw-2">&amp;</span>E,
-    state: [E::Variable; S],
-    mds: <span class="kw-2">&amp;</span>[[E::Variable; S]; S],
-    round_constants: <span class="kw-2">&amp;</span>[E::Variable; S],
-) -&gt; [E::Variable; S]
-<span class="kw">where
-    </span>F: Field,
-    E: PoseidonInterpreter&lt;F, S, R&gt;,
-{
-    <span class="kw">let </span>sboxed = state.map(|s| env.sbox(s));
-    index_array().map(|i| {
-        <span class="kw">let </span>constant = round_constants[i].clone();
-        sboxed.iter().zip(mds[i].iter()).fold(constant, |acc, e| {
-            <span class="kw">let </span>(mds, sboxed) = e;
-            acc + mds.clone() * sboxed.clone()
+    <span class="comment">// We start at round 0
+    // This implementation mimicks the version described in
+    // poseidon_block_cipher in the mina_poseidon crate.
+    </span><span class="macro">assert!</span>(
+        round &lt; NB_FULL_ROUND,
+        <span class="string">"The round index {:} is higher than the number of full rounds encoded in the type"</span>,
+        round
+    );
+    <span class="comment">// Applying sbox
+    </span><span class="kw">let </span>state: Vec&lt;Env::Variable&gt; = elements
+        .iter()
+        .map(|x| {
+            <span class="kw">let </span>x_col = env.read_column(x.clone());
+            <span class="kw">let </span>x_square = x_col.clone() * x_col.clone();
+            <span class="kw">let </span>x_four = x_square.clone() * x_square.clone();
+            x_four.clone() * x_square.clone() * x_col.clone()
         })
-    })
+        .collect();
+
+    <span class="comment">// Applying the linear layer
+    </span><span class="kw">let </span>mds = Params::mds(param);
+    <span class="kw">let </span>state: Vec&lt;Env::Variable&gt; = mds
+        .into_iter()
+        .map(|m| {
+            state
+                .clone()
+                .into_iter()
+                .zip(m)
+                .fold(Env::constant(F::zero()), |acc, (s_i, mds_i_j)| {
+                    Env::constant(mds_i_j) * s_i.clone() + acc.clone()
+                })
+        })
+        .collect();
+
+    <span class="comment">// Adding the round constants
+    </span><span class="kw">let </span>state: Vec&lt;Env::Variable&gt; = state
+        .iter()
+        .enumerate()
+        .map(|(i, x)| {
+            <span class="kw">let </span>rc = env.read_column(PoseidonColumn::RoundConstant(round, i));
+            x.clone() + rc
+        })
+        .collect();
+
+    state.iter().enumerate().for_each(|(i, res)| {
+        env.hcopy(res, PoseidonColumn::Round(round, i));
+    });
 }
 </code></pre></div></section></main></body></html>

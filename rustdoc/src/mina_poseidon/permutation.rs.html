@@ -114,17 +114,8 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-</pre></div><pre class="rust"><code><span class="doccomment">//! The permutation module contains the function implementing the permutation used in Poseidon
+</pre></div><pre class="rust"><code><span class="doccomment">//! The permutation module contains the function implementing the permutation
+//! used in Poseidon.
 
 </span><span class="kw">use crate</span>::{
     constants::SpongeConstants,
@@ -156,7 +147,13 @@
     }
 }
 
-<span class="kw">pub fn </span>full_round&lt;F: Field, SC: SpongeConstants&gt;(
+<span class="doccomment">/// Apply a full round of the permutation.
+/// A full round is composed of the following steps:
+/// - Apply the S-box to each element of the state.
+/// - Apply the MDS matrix to the state.
+/// - Add the round constants to the state.
+/// The function has side-effect and the parameter state is modified.
+</span><span class="kw">pub fn </span>full_round&lt;F: Field, SC: SpongeConstants&gt;(
     params: <span class="kw-2">&amp;</span>ArithmeticSpongeParams&lt;F&gt;,
     state: <span class="kw-2">&amp;mut </span>Vec&lt;F&gt;,
     r: usize,
@@ -168,23 +165,6 @@
     <span class="kw">for </span>(i, x) <span class="kw">in </span>params.round_constants[r].iter().enumerate() {
         state[i].add_assign(x);
     }
-}
-
-<span class="doccomment">/// Same as full round but works better with arrays.
-</span><span class="kw">pub fn </span>full_round2&lt;F: Field, SC: SpongeConstants&gt;(
-    params: <span class="kw-2">&amp;</span>ArithmeticSpongeParams&lt;F&gt;,
-    state: [F; <span class="number">3</span>],
-    r: usize,
-) -&gt; [F; <span class="number">3</span>] {
-    <span class="kw">let </span>state = state.map(sbox::&lt;F, SC&gt;);
-    <span class="kw">let </span>state = apply_mds_matrix::&lt;F, SC&gt;(params, <span class="kw-2">&amp;</span>state);
-    state
-        .into_iter()
-        .zip(params.round_constants[r].iter())
-        .map(|(s, x)| s + x)
-        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-        .try_into()
-        .unwrap()
 }
 
 <span class="kw">pub fn </span>half_rounds&lt;F: Field, SC: SpongeConstants&gt;(

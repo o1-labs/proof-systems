@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Column"],"fn":["poseidon_row","poseidon_row_witness"],"trait":["Params","PoseidonInterpreter"]};
+window.SIDEBAR_ITEMS = {"fn":["apply_permutation"],"trait":["Params"]};
