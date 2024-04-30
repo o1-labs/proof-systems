@@ -10,6 +10,7 @@ license = "Apache-2.0"
 [dependencies]
 ark-bn254 = {workspace = true, optional = true }
 ark-serialize.workspace = true
+log.workspace = true
 o1-utils.workspace = true
 itertools.workspace = true
 kimchi.workspace = true

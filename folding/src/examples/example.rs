@@ -482,6 +482,7 @@ mod tests {
     use super::*;
     use crate::{examples::example::checker::ExtendedProvider, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations};
+    use log::debug;
 
     // this checks a single folding, it would be good to expand it in the future
     // to do several foldings, as a few thigs are trivial in the first fold
@@ -534,7 +535,7 @@ mod tests {
 
         // check left
         {
-            // println!("check left");
+            debug!("check left");
             let checker = Provider::new(
                 structure.clone(),
                 left_instance.clone(),
@@ -546,7 +547,7 @@ mod tests {
         }
         // check right
         {
-            // println!("check right");
+            debug!("check right");
             let checker = Provider::new(
                 structure.clone(),
                 right_instance.clone(),
@@ -565,8 +566,8 @@ mod tests {
         let (folded_instance, folded_witness, [_t0, _t1]) = folded;
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
-            // println!("check folded");
+            debug!("exp: \n {:#?}", final_constraint);
+            debug!("check folded");
             checker.check(final_constraint, false);
         }
     }
