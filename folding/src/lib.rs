@@ -48,7 +48,8 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     /// For Plonk, it will be the commitments to the polynomials and the challenges
     type Instance: Instance<Self::Curve>;
 
-    /// For PlonK, it will be the polynomials in evaluation form that we commit to, i.e. the columns.
+    /// For PlonK, it will be the polynomials in evaluation form that we commit
+    /// to, i.e. the columns.
     /// In the generic prover/verifier, it would be kimchi_msm::witness::Witness.
     type Witness: Witness<Self::Curve>;
 

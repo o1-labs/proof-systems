@@ -171,7 +171,8 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.iter_mut() {
-                //TODO: check this, while not relevant for this example I think it should be right rotation
+                // TODO: check this, while not relevant for this example I think
+                // it should be right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -291,7 +292,8 @@ fn instance_from_witness(
         .collect_vec();
     let commitments: [_; 3] = commitments.try_into().unwrap();
 
-    // here we should absorve the commitments and similar things to later compute challenges
+    // here we should absorve the commitments and similar things to later
+    // compute challenges
     // but for this example I just use random values
     let mut rng = thread_rng();
     let mut challenge = || Fp::rand(&mut rng);
@@ -308,8 +310,8 @@ fn circuit() -> [Vec<Fp>; 2] {
     [vec![Fp::one(), Fp::zero()], vec![Fp::zero(), Fp::one()]]
 }
 
-/// A kind of pseudo-prover, will compute the expressions over the witness a check row by row
-/// for a zero result.
+/// A kind of pseudo-prover, will compute the expressions over the witness a
+/// check row by row for a zero result.
 mod checker {
     use super::*;
     pub struct Provider {
@@ -481,8 +483,8 @@ mod tests {
     use crate::{examples::example::checker::ExtendedProvider, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations};
 
-    // this checks a single folding, it would be good to expand it in the future to do several foldings,
-    // as a few thigs are trivial in the first fold
+    // this checks a single folding, it would be good to expand it in the future
+    // to do several foldings, as a few thigs are trivial in the first fold
     #[test]
     fn test_folding_instance() {
         use ark_poly::Radix2EvaluationDomain as D;
@@ -506,7 +508,8 @@ mod tests {
             structure.clone(),
         );
 
-        // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
+        // We have a 2 row circuit with and addition gate in the first row, and
+        // a multiplication gate in the second
 
         // Left: 1 + 2 - 3 = 0
         let left_witness = [
@@ -525,11 +528,11 @@ mod tests {
         let right_witness: TestWitness =
             right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
 
-        //instances
+        // instances
         let left_instance = instance_from_witness(&left_witness, &srs, domain);
         let right_instance = instance_from_witness(&left_witness, &srs, domain);
 
-        //check left
+        // check left
         {
             // println!("check left");
             let checker = Provider::new(
@@ -541,7 +544,7 @@ mod tests {
                 checker.check(constraint.clone(), false)
             }
         }
-        //check right
+        // check right
         {
             // println!("check right");
             let checker = Provider::new(
@@ -554,7 +557,7 @@ mod tests {
             }
         }
 
-        //pairs
+        // pairs
         let left = (left_instance, left_witness);
         let right = (right_instance, right_witness);
 
