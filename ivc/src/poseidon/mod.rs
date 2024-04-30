@@ -43,9 +43,10 @@ mod tests {
     }
 
     #[test]
-    /// Tests that poseidon circuit is correctly formed and matches
-    /// the CPU specification of Poseidon. Fast to run, can be used
-    /// for debugging.
+    /// Tests that poseidon circuit is correctly formed (witness
+    /// generation + constraints match) and matches the CPU
+    /// specification of Poseidon. Fast to run, can be used for
+    /// debugging.
     pub fn test_poseidon_circuit() {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 4;
@@ -87,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    /// Checks that poseidon circuit can be proven and verified.
+    /// Checks that poseidon circuit can be proven and verified. Big domain.
     pub fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 15;
@@ -116,7 +117,7 @@ mod tests {
 
         let constraints = {
             let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
-            interpreter::constrain_poseidon(&mut constraint_env, PoseidonBN254Parameters);
+            interpreter::apply_permutation(&mut constraint_env, PoseidonBN254Parameters);
             let constraints = constraint_env.get_constraints();
 
             // Constraints properties check. For this test, we do have 165 constraints

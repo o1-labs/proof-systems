@@ -67,12 +67,12 @@ pub fn poseidon_circuit<
     }
 
     // Create, write, and constrain all other columns.
-    constrain_poseidon(env, param);
+    apply_permutation(env, param);
 }
 
 /// Apply the whole permutation of Poseidon to the state.
 /// The environment has to be initialized with the input values.
-pub fn constrain_poseidon<
+pub fn apply_permutation<
     F: PrimeField,
     const STATE_SIZE: usize,
     const NB_FULL_ROUND: usize,
