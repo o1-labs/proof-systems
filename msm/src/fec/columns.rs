@@ -7,6 +7,7 @@ use crate::{
 pub const FEC_N_COLUMNS: usize = 5 * N_LIMBS_LARGE + 12 * N_LIMBS_SMALL + 9;
 
 /// Columns used by the serialization subcircuit.
+#[derive(Debug, Clone, PartialEq)]
 pub enum FECColumn {
     XP(usize),
     YP(usize),
