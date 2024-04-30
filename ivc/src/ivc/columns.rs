@@ -26,8 +26,9 @@ pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 ///      |   ...    |   ...    |   ...    |           |        |             |     |           |                |
 /// N    |----------|----------|----------|-----------|--------|-------------|-----|-----------|----------------|
 /// N+1  |        default_instance?       |
-///      |            ....
-///      |  ...??? empty space? reuse w/ selectors?
+///      |            ....                |              ...       FEC ADDs       ...
+///      |  ...??? empty space?
+///      |     reuse w/ selectors?
 /// 2^15 |---------------
 ///```
 
