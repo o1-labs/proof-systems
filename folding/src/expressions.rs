@@ -474,12 +474,6 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     }
 }
 
-//<<<<<<< HEAD
-//pub(crate) fn extract_terms<C: FoldingConfig>(
-//    exp: FoldingExp<C>,
-//) -> Box<dyn Iterator<Item = Term<C>>> {
-//    use Operations::*;
-//=======
 pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
     use FoldingExp::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {

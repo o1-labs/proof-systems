@@ -6,7 +6,7 @@ use kimchi::circuits::{
 use std::collections::BTreeMap;
 
 use crate::{
-    circuit_design::capabilities::{ColAccessCap, LookupCap},
+    circuit_design::capabilities::{ColAccessCap, HybridCopyCap, LookupCap},
     columns::{Column, ColumnIndexer},
     expr::E,
     logup::{constraint_lookups, Logup, LookupTableID},
@@ -55,6 +55,22 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> ColAccessCap<F, CIx>
     fn constant(value: F) -> Self::Variable {
         let cst_expr_inner = ConstantExpr::from(ConstantTerm::Literal(value));
         Expr::Atom(ExprInner::Constant(cst_expr_inner))
+    }
+}
+
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridCopyCap<F, CIx>
+    for ConstraintBuilderEnv<F, LT>
+{
+    fn hcopy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable {
+        let y = Expr::Atom(ExprInner::Cell(Variable {
+            col: position.to_column(),
+            row: CurrOrNext::Curr,
+        }));
+        <ConstraintBuilderEnv<F, LT> as ColAccessCap<F, CIx>>::assert_zero(
+            self,
+            y.clone() - x.clone(),
+        );
+        y
     }
 }
 
