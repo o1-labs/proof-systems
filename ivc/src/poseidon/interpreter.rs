@@ -13,7 +13,7 @@
 
 use crate::poseidon::columns::PoseidonColumn;
 use ark_ff::{FpParameters, PrimeField};
-use kimchi_msm::circuit_design::{ColAccessCap, HybridCopyCap};
+use kimchi_msm::circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap};
 use num_bigint::BigUint;
 use num_integer::Integer;
 
@@ -28,9 +28,51 @@ pub trait Params<F: PrimeField, const STATE_SIZE: usize, const NB_FULL_ROUNDS: u
     fn mds(&self) -> [[F; STATE_SIZE]; STATE_SIZE];
 }
 
+/// Populates and checks one poseidon invocation.
+pub fn poseidon_circuit<
+    F: PrimeField,
+    const STATE_SIZE: usize,
+    const NB_FULL_ROUND: usize,
+    PARAMETERS,
+    Env,
+>(
+    env: &mut Env,
+    param: PARAMETERS,
+    init_state: (F, F, F),
+) where
+    F: PrimeField,
+    PARAMETERS: Params<F, STATE_SIZE, NB_FULL_ROUND>,
+    Env: ColWriteCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>
+        + HybridCopyCap<F, PoseidonColumn<STATE_SIZE, NB_FULL_ROUND>>,
+{
+    // Write inputs
+    {
+        env.write_column(PoseidonColumn::Input(0), &Env::constant(init_state.0));
+        env.write_column(PoseidonColumn::Input(1), &Env::constant(init_state.1));
+        env.write_column(PoseidonColumn::Input(2), &Env::constant(init_state.2));
+    }
+
+    // Write constants
+    {
+        // FIXME:
+        // Round constants should not be considered as columns. We should
+        // handle differently constants. See the comment in the columns file.
+        // This must be improved!
+        let rc = param.constants();
+        rc.iter().enumerate().for_each(|(round, rcs)| {
+            rcs.iter().enumerate().for_each(|(j, rc)| {
+                env.write_column(PoseidonColumn::RoundConstant(round, j), &Env::constant(*rc));
+            });
+        });
+    }
+
+    // Create, write, and constrain all other columns.
+    constrain_poseidon(env, param);
+}
+
 /// Apply the whole permutation of Poseidon to the state.
 /// The environment has to be initialized with the input values.
-pub fn apply_permutation<
+pub fn constrain_poseidon<
     F: PrimeField,
     const STATE_SIZE: usize,
     const NB_FULL_ROUND: usize,
