@@ -42,7 +42,7 @@ pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 /// - ECADDs:              230 * 35 * 3N = 24150N
 /// Total:                 25333*N
 ///
-///       which is less than 32k*N
+///     ...which is less than 32k*N
 ///
 /// We can calculate N_IVC as dependency of N_APP in this way:
 ///    N = N_APP + (CELL/2^15)*N
@@ -64,22 +64,22 @@ pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 ///```text
 ///           34      8    4        constϕ
 ///                                   ϕ^i    same ϕs but
-///                                    r*ϕ^i  in 17 limbs      35*3 - BOT
-///         Input1    R75 R150  H1 H2    -ϕ^i   each         FEC ADDs
-///  1   |----------|----|----|-------|-|-|-|-|---|---|---|----------------|
-///      |   C_L1   |    |    |       |       |           |                |
-///      |   C_L2   |    |    |       |       |           |                |
-///      |   ...    |    |    |       |       |           |                |
-///   N  |----------|    |    |       |       |           |                |
-///      |   C_R1   |    |    |       |       |           |                |
-///      |   ...    |    |    |       |       |           |                |
-///  2N  |----------|    |    |       |       |           |                |
-///      |   C_O1   |    |    |       |       |           |                |
-///      |   ...    |    |    |       |       |           |                |
-///  3N  |----------|----|----|-------|-------|-----------|----------------|
-///      |        default_instance?                                        |
-///      |                      ....... BOT FEC ADDs .......               |
-/// 2^15 |-----------------------------------------------------------------|
+///                                    r*ϕ^i  in 17 limbs  35*3 - BOT
+///         Input1    R75 R150  H1 H2          each         FEC ADDs
+///  1   |----------|----|----|-------|-|-|-|---|---|----------------|
+///      |   C_L1   |    |    |       |     |       |                |
+///      |   C_L2   |    |    |       |     |       |                |
+///      |   ...    |    |    |       |     |       |                |
+///   N  |----------|    |    |       |     |       |                |
+///      |   C_R1   |    |    |       |     |       |                |
+///      |   ...    |    |    |       |     |       |                |
+///  2N  |----------|    |    |       |     |       |                |
+///      |   C_O1   |    |    |       |     |       |                |
+///      |   ...    |    |    |       |     |       |                |
+///  3N  |----------|----|----|-------|-----|-------|----------------|
+///      |        default_instance?                                  |
+///      |                      ....... BOT FEC ADDs .......         |
+/// 2^15 |-----------------------------------------------------------|
 ///```
 ///
 ///
@@ -112,15 +112,10 @@ pub enum IVCColumn {
     Phi,
     /// Scalar coeff #2, r * phi^i
     PhiR,
-    /// Scalar coeff #3, -phi^i
-    // minor optimisation: maybe we don't need minus phi.
-    PhiMinus,
     /// 17 15-bit limbs
     PhiLimbs(usize),
     /// 17 15-bit limbs
     PhiRLimbs(usize),
-    /// 17 15-bit limbs
-    PhiMinusLimbs(usize),
     /// 35 additions per row at most.
     ///
     /// We have 1 input per row, each one requires 2*17+1 ECAdds. Note
@@ -136,8 +131,8 @@ impl ColumnIndexer for IVCColumn {
         + 2 * 4
         + 2 * 2
         + 2 * PoseidonColumn::<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>::COL_N
-        + 4
-        + 3 * N_LIMBS_SMALL
+        + 3
+        + 2 * N_LIMBS_SMALL
         + 35 * FECColumn::COL_N;
 
     fn to_column(self) -> Column {
