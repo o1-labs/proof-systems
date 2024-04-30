@@ -1,4 +1,5 @@
-//! The permutation module contains the function implementing the permutation used in Poseidon
+//! The permutation module contains the function implementing the permutation
+//! used in Poseidon.
 
 use crate::{
     constants::SpongeConstants,
@@ -30,6 +31,12 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     }
 }
 
+/// Apply a full round of the permutation.
+/// A full round is composed of the following steps:
+/// - Apply the S-box to each element of the state.
+/// - Apply the MDS matrix to the state.
+/// - Add the round constants to the state.
+/// The function has side-effect and the parameter state is modified.
 pub fn full_round<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
@@ -42,23 +49,6 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
     for (i, x) in params.round_constants[r].iter().enumerate() {
         state[i].add_assign(x);
     }
-}
-
-/// Same as full round but works better with arrays.
-pub fn full_round2<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: [F; 3],
-    r: usize,
-) -> [F; 3] {
-    let state = state.map(sbox::<F, SC>);
-    let state = apply_mds_matrix::<F, SC>(params, &state);
-    state
-        .into_iter()
-        .zip(params.round_constants[r].iter())
-        .map(|(s, x)| s + x)
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap()
 }
 
 pub fn half_rounds<F: Field, SC: SpongeConstants>(
