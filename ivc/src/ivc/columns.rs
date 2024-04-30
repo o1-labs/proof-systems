@@ -10,6 +10,7 @@ pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 
 /// N := N_IVC + N_APP is the total number of columns in the circuit.
 ///
+///```text
 ///                                                  (repacked 150)          ϕ^i    same ϕs but
 ///                                      (repacked 75)             (hashes)   r*ϕ^i  in 17 limbs       153
 ///         Input1     Input2     Input3    R1  R2  R3 R1 R2 R3   H1 ... H12    -ϕ^i   each         FEC ADDs
@@ -28,6 +29,7 @@ pub const IVC_POSEIDON_NB_FULL_ROUND: usize = 55;
 ///      |            ....
 ///      |  ...??? empty space? reuse w/ selectors?
 /// 2^15 |---------------
+///```
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum IVCColumn {
