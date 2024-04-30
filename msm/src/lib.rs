@@ -23,8 +23,10 @@ pub mod prover;
 pub mod verifier;
 pub mod witness;
 
+/// List of gadgets, implemented using the generic interpreter
 pub mod fec;
 pub mod ffa;
+pub mod rescue;
 pub mod serialization;
 pub mod test;
 
