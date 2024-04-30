@@ -9,23 +9,23 @@ pub const FEC_N_COLUMNS: usize = 5 * N_LIMBS_LARGE + 12 * N_LIMBS_SMALL + 9;
 /// Columns used by the serialization subcircuit.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FECColumn {
-    XP(usize),
-    YP(usize),
-    XQ(usize),
-    YQ(usize),
-    F(usize),
-    XR(usize),
-    YR(usize),
-    S(usize),
-    Q1(usize),
-    Q2(usize),
-    Q3(usize),
-    Q1Sign,
-    Q2Sign,
-    Q3Sign,
-    Carry1(usize),
-    Carry2(usize),
-    Carry3(usize),
+    XP(usize),     // 4
+    YP(usize),     // 4
+    XQ(usize),     // 4
+    YQ(usize),     // 4
+    F(usize),      // 4
+    XR(usize),     // 17
+    YR(usize),     // 17
+    S(usize),      // 17
+    Q1(usize),     // 17
+    Q2(usize),     // 17
+    Q3(usize),     // 17
+    Q1Sign,        // 1
+    Q2Sign,        // 1
+    Q3Sign,        // 1
+    Carry1(usize), // 36
+    Carry2(usize), // 36
+    Carry3(usize), // 36
 }
 
 impl ColumnIndexer for FECColumn {
