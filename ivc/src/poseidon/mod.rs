@@ -43,51 +43,6 @@ mod tests {
     }
 
     #[test]
-    /// Tests that poseidon circuit is correctly formed and matches
-    /// the CPU specification of Poseidon. Fast to run, can be used
-    /// for debugging.
-    pub fn test_poseidon_circuit() {
-        let mut rng = o1_utils::tests::make_test_rng();
-        let domain_size = 1 << 4;
-
-        let mut witness_env: WitnessBuilderEnv<Fp, N_COL, DummyLookupTable> =
-            WitnessBuilderEnv::create();
-
-        // Generate random inputs at each row
-        for _row in 0..domain_size {
-            let x: Fp = Fp::rand(&mut rng);
-            let y: Fp = Fp::rand(&mut rng);
-            let z: Fp = Fp::rand(&mut rng);
-
-            interpreter::poseidon_circuit(&mut witness_env, PoseidonBN254Parameters, (x, y, z));
-
-            // Check internal consistency of our circuit: that our
-            // computed values match the CPU-spec implementation of
-            // Poseidon.
-            {
-                let exp_output: Vec<Fp> = {
-                    let mut state: Vec<Fp> = vec![x, y, z];
-                    poseidon_block_cipher::<Fp, PlonkSpongeConstantsIVC>(
-                        params::static_params(),
-                        &mut state,
-                    );
-                    state
-                };
-                let x_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 0);
-                let y_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 1);
-                let z_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
-                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 2);
-                assert_eq!(witness_env.read_column(x_col), exp_output[0]);
-                assert_eq!(witness_env.read_column(y_col), exp_output[1]);
-                assert_eq!(witness_env.read_column(z_col), exp_output[2]);
-            }
-        }
-    }
-
-    #[test]
-    /// Checks that poseidon circuit can be proven and verified.
     pub fn test_completeness() {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 15;
@@ -97,40 +52,86 @@ mod tests {
         let mut srs: PairingSRS<BN254> = PairingSRS::create(srs_trapdoor, domain.d1.size as usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        let empty_lookups = BTreeMap::new();
-        let proof_inputs = {
-            let mut witness_env: WitnessBuilderEnv<Fp, N_COL, DummyLookupTable> =
-                WitnessBuilderEnv::create();
+        let mut witness_env: WitnessBuilderEnv<Fp, N_COL, DummyLookupTable> =
+            WitnessBuilderEnv::create();
 
-            // Generate random inputs at each row
-            for _row in 0..domain.d1.size {
-                let x: Fp = Fp::rand(&mut rng);
-                let y: Fp = Fp::rand(&mut rng);
-                let z: Fp = Fp::rand(&mut rng);
+        // Generate random inputs at each row
+        for _row in 0..domain.d1.size {
+            let x: Fp = Fp::rand(&mut rng);
+            let y: Fp = Fp::rand(&mut rng);
+            let z: Fp = Fp::rand(&mut rng);
+            let exp_output: Vec<Fp> = {
+                let mut state: Vec<Fp> = vec![x, y, z];
+                poseidon_block_cipher::<Fp, PlonkSpongeConstantsIVC>(
+                    params::static_params(),
+                    &mut state,
+                );
+                state
+            };
 
-                interpreter::poseidon_circuit(&mut witness_env, PoseidonBN254Parameters, (x, y, z));
+            // Initialize inputs in the circuit
+            {
+                let input_x: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(0);
+                let input_y: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(1);
+                let input_z: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> = PoseidonColumn::Input(2);
+
+                witness_env.write_column(input_x.to_column(), x);
+                witness_env.write_column(input_y.to_column(), y);
+                witness_env.write_column(input_z.to_column(), z);
             }
 
-            witness_env.get_proof_inputs(domain, empty_lookups)
-        };
+            {
+                // FIXME:
+                // Round constants should not be considered as columns. We should
+                // handle differently constants. See the comment in the columns file.
+                // This must be improved!
+                let rc = PoseidonBN254Parameters.constants();
+                rc.iter().enumerate().for_each(|(round, rcs)| {
+                    rcs.iter().enumerate().for_each(|(j, rc)| {
+                        let rc_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                            PoseidonColumn::RoundConstant(round, j);
+                        witness_env.write_column(rc_col.to_column(), *rc);
+                    });
+                });
+            }
+
+            interpreter::apply_permutation(&mut witness_env, PoseidonBN254Parameters);
+
+            // Test verifying the output
+            {
+                let x_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 0);
+                let y_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 1);
+                let z_col: PoseidonColumn<STATE_SIZE, NB_FULL_ROUND> =
+                    PoseidonColumn::Round(NB_FULL_ROUND - 1, 2);
+                let x = witness_env.read_column(x_col);
+                let y = witness_env.read_column(y_col);
+                let z = witness_env.read_column(z_col);
+                assert_eq!(x, exp_output[0]);
+                assert_eq!(y, exp_output[1]);
+                assert_eq!(z, exp_output[2]);
+            }
+        }
+
+        let empty_lookups = BTreeMap::new();
+        let proof_inputs = witness_env.get_proof_inputs(domain, empty_lookups);
 
         let constraints = {
             let mut constraint_env = ConstraintBuilderEnv::<Fp, DummyLookupTable>::create();
-            interpreter::constrain_poseidon(&mut constraint_env, PoseidonBN254Parameters);
-            let constraints = constraint_env.get_constraints();
-
-            // Constraints properties check. For this test, we do have 165 constraints
-            assert_eq!(constraints.len(), STATE_SIZE * NB_FULL_ROUND);
-            // Maximum degree of the constraints
-            assert_eq!(constraints.iter().map(|c| c.degree(1, 0)).max().unwrap(), 7);
-            // We only have degree 7 constraints
-            constraints
-                .iter()
-                .map(|c| c.degree(1, 0))
-                .for_each(|d| assert_eq!(d, 7));
-
-            constraints
+            interpreter::apply_permutation(&mut constraint_env, PoseidonBN254Parameters);
+            constraint_env.get_constraints()
         };
+
+        // Constraints properties check. For this test, we do have 165 constraints
+        assert_eq!(constraints.len(), STATE_SIZE * NB_FULL_ROUND);
+        // Maximum degree of the constraints
+        assert_eq!(constraints.iter().map(|c| c.degree(1, 0)).max().unwrap(), 7);
+        // We only have degree 7 constraints
+        constraints
+            .iter()
+            .map(|c| c.degree(1, 0))
+            .for_each(|d| assert_eq!(d, 7));
 
         // generate the proof
         let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N_COL, _>(
