@@ -78,6 +78,7 @@ pub enum IVCColumn {
 }
 
 impl ColumnIndexer for IVCColumn {
+    // 192 + 12 * HASH + 53 * ECADD
     const COL_N: usize = 3 * 2 * N_LIMBS_SMALL
         + 3 * 2 * 4
         + 3 * 2 * 2
