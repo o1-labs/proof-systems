@@ -1,7 +1,7 @@
 var srcIndex = new Map(JSON.parse('[\
 ["export_test_vectors",["",[],["main.rs","vectors.rs"]]],\
 ["flamegraph",["",[],["flamegraph.rs"]]],\
-["folding",["",[],["decomposable_folding.rs","error_term.rs","expressions.rs","instance_witness.rs","lib.rs","quadraticization.rs"]]],\
+["folding",["",[],["columns.rs","decomposable_folding.rs","error_term.rs","expressions.rs","instance_witness.rs","lib.rs","quadraticization.rs"]]],\
 ["groupmap",["",[],["lib.rs"]]],\
 ["internal_tracing",["",[],["lib.rs"]]],\
 ["ivc",["",[["ivc",[],["columns.rs","interpreter.rs","mod.rs"]],["poseidon",[],["columns.rs","interpreter.rs","mod.rs","params.rs"]]],["lib.rs"]]],\

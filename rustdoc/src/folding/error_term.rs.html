@@ -385,15 +385,13 @@
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
+    expressions::{Degree, FoldingExp, IntegratedFoldingExpr, Sign},
     quadraticization::ExtendedWitnessGenerator,
-    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
+    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness, ScalarField,
 };
-<span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::{Field, One};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>kimchi::circuits::expr::Variable;
@@ -414,8 +412,6 @@
         }
     }
 }
-
-<span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
 
 <span class="doccomment">/// Evaluates the expression in the provided side
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_sided&lt;<span class="lifetime">'a</span>, C: FoldingConfig&gt;(

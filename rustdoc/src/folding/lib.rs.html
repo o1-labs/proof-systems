@@ -354,7 +354,50 @@
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
 <a href="#354" id="354">354</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::AffineCurve;
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
+//! multivariate polynomials of any degree. It is based on the "folding scheme"
+//! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
+//! It implements different components to achieve it:
+//! - quadriticization: a submodule to reduce multivariate polynomials to degree
+//! `2`
+//! - decomposable_folding: a submodule to "parallelize" folded computations
+//! Examples can be found in the directory `examples`.
+//! The folding library is meant to be used in harmony with the library `ivc`.
+//! To use the library, the user has to define first a "folding configuration"
+//! described in the trait [FoldingConfig]. Each expression has to be converted
+//! into [crate::expressions::FoldingCompatibleExpr] before being converted into
+//! [crate::expressions::FoldingExp].
+</span><span class="comment">// TODO: the documentation above might need more descriptions.
+
+</span><span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>error_term::{compute_error, ExtendedEnv};
@@ -370,22 +413,31 @@
 </span><span class="kw">pub use </span>expressions::{ExpExtension, FoldingCompatibleExpr};
 <span class="kw">pub use </span>instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
+<span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>decomposable_folding;
 <span class="kw">mod </span>error_term;
-<span class="attr">#[cfg(test)]
-#[cfg(feature = <span class="string">"bn254"</span>)]
-</span><span class="kw">mod </span>examples;
+
 <span class="kw">pub mod </span>expressions;
 <span class="kw">mod </span>instance_witness;
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>mock;
 <span class="kw">mod </span>quadraticization;
 
-<span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
+<span class="comment">// Modules strictly related to tests
+// TODO: should we move them into an explicit subdirectory `test`?
+</span><span class="attr">#[cfg(test)]
+#[cfg(feature = <span class="string">"bn254"</span>)]
+</span><span class="kw">mod </span>examples;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>mock;
+
+<span class="comment">// Simple type alias as ScalarField is often used. Reduce type complexity for
+// clippy.
+// Should be moved into FoldingConfig, but associated type defaults are unstable
+// at the moment.
+</span><span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
 
 <span class="kw">pub trait </span>FoldingConfig: Clone + Debug + Eq + Hash + <span class="lifetime">'static </span>{
     <span class="kw">type </span>Column: FoldingColumnTrait + Debug + Eq + Hash;
-    <span class="comment">//in case of using docomposable folding, if not it can be just ()
+    <span class="comment">// in case of using docomposable folding, if not it can be just ()
     </span><span class="kw">type </span>S: Clone + Debug + Eq + Hash;
 
     <span class="doccomment">/// The type of an abstract challenge that can be found in the expressions
@@ -397,15 +449,16 @@
 
     <span class="kw">type </span>Srs: SRS&lt;<span class="self">Self</span>::Curve&gt;;
 
-    <span class="doccomment">/// FIXME: use Sponge from kimchi
-    /// The sponge used to create challenges
+    <span class="doccomment">/// The sponge used to create challenges
+    </span><span class="comment">// FIXME: use Sponge from kimchi
     </span><span class="kw">type </span>Sponge: Sponge&lt;<span class="self">Self</span>::Curve&gt;;
 
     <span class="doccomment">/// For Plonk, it will be the commitments to the polynomials and the challenges
     </span><span class="kw">type </span>Instance: Instance&lt;<span class="self">Self</span>::Curve&gt;;
 
-    <span class="doccomment">/// For PlonK, it will be the polynomials in evaluation form that we commit to, i.e. the columns.
-    /// In the generic prover/verifier, it would be kimchi_msm::witness::Witness.
+    <span class="doccomment">/// For PlonK, it will be the polynomials in evaluation form that we commit
+    /// to, i.e. the columns.
+    /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
     </span><span class="kw">type </span>Witness: Witness&lt;<span class="self">Self</span>::Curve&gt;;
 
     <span class="kw">type </span>Structure;
@@ -571,6 +624,7 @@
 /// - `W`: The type of the witness, i.e. the private inputs
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
+/// - `S`: The type of selectors
 </span><span class="kw">pub trait </span>FoldingEnv&lt;F, I, W, Col, Chal, S&gt; {
     <span class="doccomment">/// Structure which could be storing useful information like selectors, etc.
     </span><span class="kw">type </span>Structure;
@@ -581,7 +635,8 @@
     <span class="comment">// TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
-    </span><span class="doccomment">/// Returns a vector of zeros with the same length as the number of rows in the circuit.
+    </span><span class="doccomment">/// Returns a vector of zeros with the same length as the number of rows in
+    /// the circuit.
     </span><span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;F&gt;;
 
     <span class="doccomment">/// Returns the evaluations of a given column witness at omega or zeta*omega.
@@ -598,8 +653,9 @@
     <span class="doccomment">/// Computes the i-th power of alpha for a given side.
     /// Folding itself will provide us with the alpha value.
     </span><span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; F;
-    <span class="doccomment">/// similar to col(), but folding may ask for a dynamic selector directly instead
-    /// of just column that happens to be a selector
+
+    <span class="doccomment">/// similar to [Self::col], but folding may ask for a dynamic selector directly
+    /// instead of just column that happens to be a selector
     </span><span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>S, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;F&gt;;
 }
 

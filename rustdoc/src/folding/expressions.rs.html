@@ -646,7 +646,36 @@
 <a href="#644" id="644">644</a>
 <a href="#645" id="645">645</a>
 <a href="#646" id="646">646</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::ExtendedFoldingColumn;
+<span class="doccomment">/// Implement a library to represent expressions/multivariate polynomials that
+/// can be used with folding schemes like
+/// [Nova](https://eprint.iacr.org/2021/370).
+/// We do enforce expressions to be degree `2` maximum to apply our folding
+/// scheme.
+/// Before folding, we do suppose that each expression has been reduced to
+/// degree `2` using [quadraticization].
+</span><span class="kw">use crate</span>::{
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
 };
@@ -659,9 +688,46 @@
 };
 <span class="kw">use </span>num_traits::Zero;
 
+<span class="doccomment">/// Describe the degree of a constraint.
+/// Only degree up to `2` is supported.
+</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="kw">pub enum </span>Degree {
+    Zero,
+    One,
+    Two,
+}
+
+<span class="kw">impl </span>std::ops::Add <span class="kw">for </span>Degree {
+    <span class="kw">type </span>Output = <span class="self">Self</span>;
+
+    <span class="kw">fn </span>add(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
+        <span class="kw">use </span>Degree::<span class="kw-2">*</span>;
+        <span class="kw">match </span>(<span class="self">self</span>, rhs) {
+            (<span class="kw">_</span>, Two) | (Two, <span class="kw">_</span>) =&gt; Two,
+            (<span class="kw">_</span>, One) | (One, <span class="kw">_</span>) =&gt; One,
+            (Zero, Zero) =&gt; Zero,
+        }
+    }
+}
+
+<span class="kw">impl </span>std::ops::Mul <span class="kw">for </span><span class="kw-2">&amp;</span>Degree {
+    <span class="kw">type </span>Output = Degree;
+
+    <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
+        <span class="kw">use </span>Degree::<span class="kw-2">*</span>;
+        <span class="kw">match </span>(<span class="self">self</span>, rhs) {
+            (Zero, other) | (other, Zero) =&gt; <span class="kw-2">*</span>other,
+            (One, One) =&gt; Two,
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"The folding library does support only expressions of degree `2` maximum"</span>),
+        }
+    }
+}
+
 <span class="kw">pub trait </span>FoldingColumnTrait: Copy + Clone {
     <span class="kw">fn </span>is_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
-    <span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Degree {
+
+    <span class="comment">// TODO: why witnesses are degree 1, otherwise 0?
+    </span><span class="kw">fn </span>degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Degree {
         <span class="kw">match </span><span class="self">self</span>.is_witness() {
             <span class="bool-val">true </span>=&gt; Degree::One,
             <span class="bool-val">false </span>=&gt; Degree::Zero,
@@ -669,20 +735,21 @@
     }
 }
 
-<span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-</span><span class="kw">pub enum </span>ExtendedFoldingColumn&lt;C: FoldingConfig&gt; {
-    Inner(Variable&lt;C::Column&gt;),
-    <span class="doccomment">///for the extra columns added by quadraticization
-    </span>WitnessExtended(usize),
+<span class="doccomment">/// Extra expressions that can be created by folding
+</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
+</span><span class="kw">pub enum </span>ExpExtension&lt;C: FoldingConfig&gt; {
+    U,
     Error,
-    UnnormalizedLagrangeBasis(usize),
-    Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
-    Challenge(C::Challenge),
+    <span class="comment">// from quadraticization
+    </span>ExtendedWitness(usize),
     Alpha(usize),
-    Selector(C::S),
+    <span class="comment">// in case of using decomposable folding
+    </span>Selector(C::S),
 }
 
-<span class="attr">#[derive(Clone, PartialEq, Debug)]
+<span class="doccomment">/// Components to be used to convert multivariate polynomials into "compatible"
+/// multivariate polynomials that will be translated to folding expressions
+</span><span class="attr">#[derive(Clone, PartialEq, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     Challenge(C::Challenge),
@@ -691,11 +758,11 @@
     <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     </span>UnnormalizedLagrangeBasis(usize),
-    <span class="doccomment">///extra nodes created by folding, should not be passed to folding
+    <span class="doccomment">/// extra nodes created by folding, should not be passed to folding
     </span>Extensions(ExpExtension&lt;C&gt;),
 }
 
-<span class="doccomment">///designed for easy translation to and from most Expr
+<span class="doccomment">/// Designed for easy translation to and from most Expr
 </span><span class="attr">#[derive(Clone, PartialEq, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
     Atom(FoldingCompatibleExprInner&lt;C&gt;),
@@ -705,17 +772,18 @@
     Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; ToString <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
+<span class="doccomment">/// Implement a human-readable version of a folding compatible expression.
+</span><span class="comment">// FIXME: use Display instead, to follow the recommandation of the trait.
+</span><span class="kw">impl</span>&lt;C: FoldingConfig&gt; ToString <span class="kw">for </span>FoldingCompatibleExpr&lt;C&gt; {
     <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             FoldingCompatibleExpr::Atom(c) =&gt; <span class="kw">match </span>c {
                 FoldingCompatibleExprInner::Constant(c) =&gt; {
-                    <span class="kw">let </span>c = <span class="kw">if </span>c.is_zero() {
+                    <span class="kw">if </span>c.is_zero() {
                         <span class="string">"0"</span>.to_string()
                     } <span class="kw">else </span>{
                         c.to_string()
-                    };
-                    c.to_string()
+                    }
                 }
                 FoldingCompatibleExprInner::Challenge(c) =&gt; {
                     <span class="macro">format!</span>(<span class="string">"{:?}"</span>, c)
@@ -766,19 +834,15 @@
     }
 }
 
-<span class="doccomment">/// Extra expressions that can be created by folding
-</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub enum </span>ExpExtension&lt;C: FoldingConfig&gt; {
-    U,
-    Error,
-    <span class="comment">//from quadraticization
-    </span>ExtendedWitness(usize),
-    Alpha(usize),
-    <span class="comment">//in case of using decomposable folding
-    </span>Selector(C::S),
-}
-
-<span class="doccomment">///Internal expression used for folding, simplified for that purpose
+<span class="doccomment">/// Internal expression used for folding.
+/// A "folding" expression is a multivariate polynomial like defined in
+/// [kimchi::circuits::expr] with the following differences:
+/// - No constructors related to zero-knowledge or lagrange basis (i.e. no
+/// constructors related to the PIOP)
+/// - The variables includes a set of columns that describes the initial circuit
+/// shape, with additional columns strictly related to the folding scheme (error
+/// term, etc).
+</span><span class="comment">// TODO: renamed in "RelaxedExpression"?
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub enum </span>FoldingExp&lt;C: FoldingConfig&gt; {
     Atom(ExtendedFoldingColumn&lt;C&gt;),
@@ -820,7 +884,12 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingCompatibleExpr&lt;C&gt; {
+<span class="doccomment">/// Converts an expression "compatible" with folding into a folded expression.
+</span><span class="comment">// TODO: use "into"?
+// FIXME: add independent tests
+// FIXME: test independently the behavior of pow_to_mul, and explain only why 8
+// maximum
+</span><span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingCompatibleExpr&lt;C&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>simplify(<span class="self">self</span>) -&gt; FoldingExp&lt;C&gt; {
         <span class="kw">type </span>Ex&lt;C&gt; = ExtendedFoldingColumn&lt;C&gt;;
         <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
@@ -889,13 +958,6 @@
     }
 }
 
-<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-</span><span class="kw">pub enum </span>Degree {
-    Zero,
-    One,
-    Two,
-}
-
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingExp&lt;C&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>folding_degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Degree {
         <span class="kw">use </span>Degree::<span class="kw-2">*</span>;
@@ -929,7 +991,11 @@
         }
     }
 
-    <span class="kw">fn </span>into_compatible(<span class="self">self</span>) -&gt; FoldingCompatibleExpr&lt;C&gt; {
+    <span class="doccomment">/// Convert a folding expression into a compatible one.
+    </span><span class="comment">// TODO: explain why do we need it. It is transformations between the two
+    // categories FoldingCompatibleExpr and FoldingExpr. Is there a one-to-one
+    // conversion?
+    </span><span class="kw">fn </span>into_compatible(<span class="self">self</span>) -&gt; FoldingCompatibleExpr&lt;C&gt; {
         <span class="kw">use </span>FoldingCompatibleExpr::<span class="kw-2">*</span>;
         <span class="kw">use </span>FoldingCompatibleExprInner::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
@@ -979,33 +1045,8 @@
     }
 }
 
-<span class="kw">impl </span>std::ops::Add <span class="kw">for </span>Degree {
-    <span class="kw">type </span>Output = <span class="self">Self</span>;
-
-    <span class="kw">fn </span>add(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
-        <span class="kw">use </span>Degree::<span class="kw-2">*</span>;
-        <span class="kw">match </span>(<span class="self">self</span>, rhs) {
-            (<span class="kw">_</span>, Two) | (Two, <span class="kw">_</span>) =&gt; Two,
-            (<span class="kw">_</span>, One) | (One, <span class="kw">_</span>) =&gt; One,
-            (Zero, Zero) =&gt; Zero,
-        }
-    }
-}
-
-<span class="kw">impl </span>std::ops::Mul <span class="kw">for </span><span class="kw-2">&amp;</span>Degree {
-    <span class="kw">type </span>Output = Degree;
-
-    <span class="kw">fn </span>mul(<span class="self">self</span>, rhs: <span class="self">Self</span>) -&gt; <span class="self">Self</span>::Output {
-        <span class="kw">use </span>Degree::<span class="kw-2">*</span>;
-        <span class="kw">match </span>(<span class="self">self</span>, rhs) {
-            (Zero, other) | (other, Zero) =&gt; <span class="kw-2">*</span>other,
-            (One, One) =&gt; Two,
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"degree over 2"</span>),
-        }
-    }
-}
-
-<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+<span class="comment">// TODO: doc - what is the sign?
+</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Sign {
     Pos,
     Neg,
@@ -1022,7 +1063,8 @@
     }
 }
 
-<span class="attr">#[derive(Clone, Debug)]
+<span class="comment">// TODO: doc - What is a term?
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>Term&lt;C: FoldingConfig&gt; {
     <span class="kw">pub </span>exp: FoldingExp&lt;C&gt;,
     <span class="kw">pub </span>sign: Sign,
@@ -1061,10 +1103,10 @@
     }
 }
 
-<span class="doccomment">///A simplified expression with all terms separated by degree
+<span class="doccomment">/// A simplified expression with all terms separated by degree
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>IntegratedFoldingExpr&lt;C: FoldingConfig&gt; {
-    <span class="comment">//(exp,sign,alpha)
+    <span class="comment">// (exp,sign,alpha)
     </span><span class="kw">pub</span>(<span class="kw">super</span>) degree_0: Vec&lt;(FoldingExp&lt;C&gt;, Sign, usize)&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) degree_1: Vec&lt;(FoldingExp&lt;C&gt;, Sign, usize)&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) degree_2: Vec&lt;(FoldingExp&lt;C&gt;, Sign, usize)&gt;,
@@ -1081,10 +1123,10 @@
 }
 
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; IntegratedFoldingExpr&lt;C&gt; {
-    <span class="doccomment">///combines constraints into single expression
+    <span class="doccomment">/// Combines constraints into single expression
     </span><span class="kw">pub fn </span>final_expression(<span class="self">self</span>) -&gt; FoldingCompatibleExpr&lt;C&gt; {
         <span class="kw">use </span>FoldingCompatibleExpr::<span class="kw-2">*</span>;
-        <span class="doccomment">///todo: should use powers of alpha
+        <span class="doccomment">/// TODO: should use powers of alpha
         </span><span class="kw">use </span>FoldingCompatibleExprInner::<span class="kw-2">*</span>;
         <span class="kw">let </span><span class="self">Self </span>{
             degree_0,
