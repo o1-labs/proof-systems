@@ -19,7 +19,8 @@ type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 // TODO: get rid of trait Sponge in folding, and use the one from kimchi
 impl Sponge<Curve> for BaseSponge {
     fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
-        // This function does not have a &self because it is meant to absorb and squeeze only once
+        // This function does not have a &self because it is meant to absorb and
+        // squeeze only once
         let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
         s.absorb_g(&absorb[0].elems);
         s.absorb_g(&absorb[1].elems);
