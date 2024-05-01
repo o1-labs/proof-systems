@@ -52,6 +52,8 @@ pub enum ExpExtension<C: FoldingConfig> {
     Selector(C::S),
 }
 
+/// Components to be used to convert multivariate polynomials into "compatible"
+/// multivariate polynomials that will be translated to folding expressions
 #[derive(Clone, PartialEq, Debug)]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
