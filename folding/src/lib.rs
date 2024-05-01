@@ -14,6 +14,7 @@ pub use error_term::Side;
 pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
+pub mod columns;
 pub mod decomposable_folding;
 mod error_term;
 #[cfg(test)]

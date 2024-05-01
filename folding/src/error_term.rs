@@ -1,6 +1,7 @@
 use crate::{
+    columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
+    expressions::{Degree, FoldingExp, IntegratedFoldingExpr, Sign},
     quadraticization::ExtendedWitnessGenerator,
     EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
 };

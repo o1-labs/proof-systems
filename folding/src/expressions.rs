@@ -1,3 +1,4 @@
+use crate::columns::ExtendedFoldingColumn;
 /// Implement a library to represent expressions/multivariate polynomials that
 /// can be used with folding schemes like
 /// [Nova](https://eprint.iacr.org/2021/370).
@@ -30,26 +31,15 @@ pub trait FoldingColumnTrait: Copy + Clone {
     }
 }
 
-/// Represents the types of additional columns that the folding scheme needs
-/// while relaxing an expression.
-/// It is parametrized by a configuration for the folding scheme, described in
-/// the trait [FoldingConfig]. For instance, the configuration describes the
-/// initial columns of the circuit, the challenges and the underlying field.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExtendedFoldingColumn<C: FoldingConfig> {
-    Inner(Variable<C::Column>),
-    /// For the extra columns added by quadraticization
-    WitnessExtended(usize),
-    /// The error term introduced in the "relaxed" instance.
+/// Extra expressions that can be created by folding
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExpExtension<C: FoldingConfig> {
+    U,
     Error,
-    UnnormalizedLagrangeBasis(usize),
-    Constant(<C::Curve as AffineCurve>::ScalarField),
-    /// A challenge used by the PIOP or the folding scheme.
-    Challenge(C::Challenge),
-    /// A list of randomizer to combine expressions
+    // from quadraticization
+    ExtendedWitness(usize),
     Alpha(usize),
-    /// A "virtual" selector that can be used to activate/deactivate expressions
-    /// while folding/accumulating multiple expressions.
+    // in case of using decomposable folding
     Selector(C::S),
 }
 
@@ -135,18 +125,6 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
             FoldingCompatibleExpr::Pow(_, _) => todo!(),
         }
     }
-}
-
-/// Extra expressions that can be created by folding
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExpExtension<C: FoldingConfig> {
-    U,
-    Error,
-    // from quadraticization
-    ExtendedWitness(usize),
-    Alpha(usize),
-    // in case of using decomposable folding
-    Selector(C::S),
 }
 
 /// Internal expression used for folding.
