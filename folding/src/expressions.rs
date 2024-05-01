@@ -190,6 +190,9 @@ impl<C: FoldingConfig> FoldingExp<C> {
 
 /// Converts an expression "compatible" with folding into a folded expression.
 // TODO: use "into"?
+// FIXME: add independent tests
+// FIXME: test independently the behavior of pow_to_mul, and explain only why 8
+// maximum
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
