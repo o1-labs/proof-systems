@@ -1,5 +1,7 @@
 use crate::{
-    circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
+    circuit_design::capabilities::{
+        ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap, MultiRowReadCap,
+    },
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
     proof::ProofInputs,
@@ -74,6 +76,28 @@ impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableI
     fn hcopy(&mut self, value: &Self::Variable, ix: CIx) -> Self::Variable {
         <WitnessBuilderEnv<F, CIX_COL_N, LT> as ColWriteCap<F, CIx>>::write_column(self, ix, value);
         *value
+    }
+}
+
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    MultiRowReadCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    /// Read value from a (row,column) position.
+    fn read_row_column(&mut self, row: usize, col: CIx) -> Self::Variable {
+        let Column::X(i) = col.to_column() else {
+            todo!()
+        };
+        self.witness[row].cols[i]
+    }
+
+    /// Progresses to the next row.
+    fn next_row(&mut self) {
+        self.next_row();
+    }
+
+    /// Returns the current row.
+    fn curr_row(&self) -> usize {
+        self.witness.len()
     }
 }
 

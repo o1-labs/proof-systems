@@ -1,5 +1,6 @@
 use crate::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn};
 use kimchi_msm::{
+    circuit_design::composition::MPrism,
     columns::{Column, ColumnIndexer},
     fec::columns::FECColumn,
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
@@ -40,20 +41,24 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///      0       ...     34*2    76    80
 ///
 ///
-///        Hashes (one hash at a row, passing data to the next one)
+///                      Hashes
+///     (one hash at a row, passing data to the next one)
+///     (for i∈N, the input row #i containing 4 150-bit elements
+///      is processed by hash rows 2*i and 2*i+1)
+///
 ///  1   |------------------------------------------|
 ///      |                                          |
 ///      |                                         .| . here is h_l
-///  N   |------------------------------------------|
-///      |                                          |
-///      |                                         .| . here is h_r
 ///  2N  |------------------------------------------|
 ///      |                                          |
+///      |                                         .| . here is h_r
+///  4N  |------------------------------------------|
+///      |                                          |
 ///      |                                         .| . here is h_o
-///  3N  |------------------------------------------|
+///  6N  |------------------------------------------|
 ///      |                                         .| r = h_lr = h(h_l,h_r)
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
-///      |------------------------------------------|
+/// 6N+2 |------------------------------------------|
 ///
 ///     constϕ
 ///      ϕ^i         ϕ^i        r*ϕ^i
@@ -131,10 +136,7 @@ pub enum IVCColumn {
     Block1InputRepacked150(usize),
 
     /// 1 hash per row
-    Block2Hashes(
-        PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
-        usize,
-    ),
+    Block2Hash(PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>),
 
     /// Constant phi
     Block3ConstPhi,
@@ -150,7 +152,7 @@ pub enum IVCColumn {
     Block3PhiRLimbs(usize),
 
     /// 1 addition per row
-    Block4ECAdd(FECColumn, usize),
+    Block4ECAdd(FECColumn),
 }
 
 impl ColumnIndexer for IVCColumn {
@@ -173,7 +175,38 @@ impl ColumnIndexer for IVCColumn {
                 assert!(i < 2 * N_LIMBS_XLARGE);
                 Column::X(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
             }
-            _ => panic!("Column not supported yet"),
+            IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
+            IVCColumn::Block3ConstPhi => Column::X(0),
+            IVCColumn::Block3ConstR => Column::X(1),
+            IVCColumn::Block3Phi => Column::X(2),
+            IVCColumn::Block3PhiR => Column::X(3),
+            IVCColumn::Block3PhiLimbs(i) => {
+                assert!(i < N_LIMBS_SMALL);
+                Column::X(4 + i)
+            }
+            IVCColumn::Block3PhiRLimbs(i) => {
+                assert!(i < N_LIMBS_SMALL);
+                Column::X(4 + N_LIMBS_SMALL + i)
+            }
+            IVCColumn::Block4ECAdd(fec_col) => fec_col.to_column(),
         }
+    }
+}
+
+pub struct IVCHashLens {}
+
+impl MPrism for IVCHashLens {
+    type Source = IVCColumn;
+    type Target = IVCPoseidonColumn;
+
+    fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
+        match source {
+            IVCColumn::Block2Hash(col) => Some(col),
+            _ => None,
+        }
+    }
+
+    fn re_get(&self, target: Self::Target) -> Self::Source {
+        IVCColumn::Block2Hash(target)
     }
 }
