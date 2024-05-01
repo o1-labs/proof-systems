@@ -251,7 +251,8 @@ pub trait FoldingEnv<F, I, W, Col, Chal, S> {
     // TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
-    /// Returns a vector of zeros with the same length as the number of rows in the circuit.
+    /// Returns a vector of zeros with the same length as the number of rows in
+    /// the circuit.
     fn zero_vec(&self) -> Vec<F>;
 
     /// Returns the evaluations of a given column witness at omega or zeta*omega.
@@ -268,8 +269,9 @@ pub trait FoldingEnv<F, I, W, Col, Chal, S> {
     /// Computes the i-th power of alpha for a given side.
     /// Folding itself will provide us with the alpha value.
     fn alpha(&self, i: usize, side: Side) -> F;
-    /// similar to col(), but folding may ask for a dynamic selector directly instead
-    /// of just column that happens to be a selector
+
+    /// similar to [Self::col], but folding may ask for a dynamic selector directly
+    /// instead of just column that happens to be a selector
     fn selector(&self, s: &S, side: Side) -> &Vec<F>;
 }
 
