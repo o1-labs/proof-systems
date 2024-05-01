@@ -49,7 +49,7 @@ impl std::ops::Mul for &Degree {
         match (self, rhs) {
             (Zero, other) | (other, Zero) => *other,
             (One, One) => Two,
-            _ => panic!("degree over 2"),
+            _ => panic!("The folding library does support only expressions of degree `2` maximum"),
         }
     }
 }
