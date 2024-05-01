@@ -30,6 +30,10 @@ mod examples;
 #[cfg(test)]
 mod mock;
 
+// Simple type alias as ScalarField is often used. Reduce type complexity for
+// clippy.
+// Should be moved into FoldingConfig, but associated type defaults are unstable
+// at the moment.
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
