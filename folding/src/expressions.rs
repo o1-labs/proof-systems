@@ -1,3 +1,10 @@
+/// Implement a library to represent expressions/multivariate polynomials that
+/// can be used with folding schemes like
+/// [Nova](https://eprint.iacr.org/2021/370).
+/// We do enforce expressions to be degree `2` maximum to apply our folding
+/// scheme.
+/// Before folding, we do suppose that each expression has been reduced to
+/// degree `2` using [quadraticization].
 use crate::{
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
@@ -13,6 +20,8 @@ use num_traits::Zero;
 
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
+
+    /// TODO: why witnesses are degree 1, otherwise 0?
     fn degree(&self) -> Degree {
         match self.is_witness() {
             true => Degree::One,
@@ -21,16 +30,26 @@ pub trait FoldingColumnTrait: Copy + Clone {
     }
 }
 
+/// Represents the types of additional columns that the folding scheme needs
+/// while relaxing an expression.
+/// It is parametrized by a configuration for the folding scheme, described in
+/// the trait [FoldingConfig]. For instance, the configuration describes the
+/// initial columns of the circuit, the challenges and the underlying field.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Inner(Variable<C::Column>),
-    ///for the extra columns added by quadraticization
+    /// For the extra columns added by quadraticization
     WitnessExtended(usize),
+    /// The error term introduced in the "relaxed" instance.
     Error,
     UnnormalizedLagrangeBasis(usize),
     Constant(<C::Curve as AffineCurve>::ScalarField),
+    /// A challenge used by the PIOP or the folding scheme.
     Challenge(C::Challenge),
+    /// A list of randomizer to combine expressions
     Alpha(usize),
+    /// A "virtual" selector that can be used to activate/deactivate expressions
+    /// while folding/accumulating multiple expressions.
     Selector(C::S),
 }
 
@@ -47,7 +66,7 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Extensions(ExpExtension<C>),
 }
 
-///designed for easy translation to and from most Expr
+/// Designed for easy translation to and from most Expr
 #[derive(Clone, PartialEq, Debug)]
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Atom(FoldingCompatibleExprInner<C>),
@@ -123,14 +142,14 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
 pub enum ExpExtension<C: FoldingConfig> {
     U,
     Error,
-    //from quadraticization
+    // from quadraticization
     ExtendedWitness(usize),
     Alpha(usize),
-    //in case of using decomposable folding
+    // in case of using decomposable folding
     Selector(C::S),
 }
 
-///Internal expression used for folding, simplified for that purpose
+/// Internal expression used for folding, simplified for that purpose
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FoldingExp<C: FoldingConfig> {
     Atom(ExtendedFoldingColumn<C>),
@@ -241,6 +260,8 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     }
 }
 
+/// Describe the degree of a constraint.
+/// Only degree up to `2` is supported.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Degree {
     Zero,
@@ -413,10 +434,10 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
     }
 }
 
-///A simplified expression with all terms separated by degree
+/// A simplified expression with all terms separated by degree
 #[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
-    //(exp,sign,alpha)
+    // (exp,sign,alpha)
     pub(super) degree_0: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_1: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_2: Vec<(FoldingExp<C>, Sign, usize)>,
@@ -433,10 +454,10 @@ impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
 }
 
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
-    ///combines constraints into single expression
+    /// Combines constraints into single expression
     pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
-        ///todo: should use powers of alpha
+        /// TODO: should use powers of alpha
         use FoldingCompatibleExprInner::*;
         let Self {
             degree_0,
