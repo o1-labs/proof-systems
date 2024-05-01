@@ -190,6 +190,20 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error_term::{eval_sided, ExtendedEnv, Side},
     expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
@@ -248,9 +262,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>new_constraints = BTreeMap::new();
         <span class="kw">for </span>(exp, id) <span class="kw">in </span>recorded_exprs.into_iter() {
             <span class="kw">let </span>left = FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id));
-            <span class="kw">let </span>constraint = FoldingExp::Sub(Box::new(left), Box::new(exp));
-            new_constraints.insert(id, constraint.clone());
-            witness_generator.push_front((id, constraint));
+            <span class="kw">let </span>constraint = FoldingExp::Sub(Box::new(left), Box::new(exp.clone()));
+            new_constraints.insert(id, constraint);
+            witness_generator.push_front((id, exp));
         }
         (new_constraints.into_values().collect(), witness_generator)
     }
@@ -282,11 +296,23 @@
     <span class="kw">let </span>degree = exp.degree();
     <span class="kw">match </span>degree {
         <span class="number">1 </span>=&gt; exp,
-        <span class="kw">_ </span>=&gt; {
-            <span class="kw">let </span>exp = lower_degree_to_2(exp, rec);
-            <span class="kw">let </span>id = rec.get_id(exp);
-            FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
-        }
+        <span class="kw">_ </span>=&gt; <span class="kw">match </span>exp {
+            FoldingExp::Add(e1, e2) =&gt; FoldingExp::Add(
+                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e1, rec)),
+                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e2, rec)),
+            ),
+            FoldingExp::Sub(e1, e2) =&gt; FoldingExp::Sub(
+                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e1, rec)),
+                Box::new(lower_degree_to_1(<span class="kw-2">*</span>e2, rec)),
+            ),
+            e @ FoldingExp::Square(<span class="kw">_</span>) | e @ FoldingExp::Mul(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>exp = lower_degree_to_2(e, rec);
+                <span class="kw">let </span>id = rec.get_id(exp);
+                FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
+            }
+            FoldingExp::Double(exp) =&gt; FoldingExp::Double(Box::new(lower_degree_to_1(<span class="kw-2">*</span>exp, rec))),
+            <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(),
+        },
     }
 }
 
@@ -350,14 +376,16 @@
         <span class="kw-2">mut </span>env: ExtendedEnv&lt;C&gt;,
         side: Side,
     ) -&gt; ExtendedEnv&lt;C&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>pending = <span class="self">self</span>.exprs.clone();
+        <span class="kw">if </span>env.needs_extension(side) {
+            <span class="kw">let </span><span class="kw-2">mut </span>pending = <span class="self">self</span>.exprs.clone();
 
-        <span class="kw">while let </span><span class="prelude-val">Some</span>((i, exp)) = pending.pop_front() {
-            <span class="kw">if </span>check_evaluable(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side) {
-                <span class="kw">let </span>evals = eval_sided(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side).unwrap();
-                env.add_witness_evals(i, evals, side);
-            } <span class="kw">else </span>{
-                pending.push_back((i, exp))
+            <span class="kw">while let </span><span class="prelude-val">Some</span>((i, exp)) = pending.pop_front() {
+                <span class="kw">if </span>check_evaluable(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side) {
+                    <span class="kw">let </span>evals = eval_sided(<span class="kw-2">&amp;</span>exp, <span class="kw-2">&amp;</span>env, side).unwrap();
+                    env.add_witness_evals(i, evals, side);
+                } <span class="kw">else </span>{
+                    pending.push_back((i, exp))
+                }
             }
         }
 

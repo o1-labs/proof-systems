@@ -381,6 +381,12 @@
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     decomposable_folding::check_selector,
     expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
@@ -422,19 +428,19 @@
     <span class="kw">match </span>exp {
         Atom(col) =&gt; env.col(col, side),
         Double(e) =&gt; {
-            <span class="kw">let </span>col = eval_exp_error(e, env, side);
+            <span class="kw">let </span>col = eval_sided(e, env, side);
             col.map(Field::double, |f| {
                 Field::double_in_place(f);
             })
         }
         Square(e) =&gt; {
-            <span class="kw">let </span>col = eval_exp_error(e, env, side);
+            <span class="kw">let </span>col = eval_sided(e, env, side);
             col.map(Field::square, |f| {
                 Field::square_in_place(f);
             })
         }
-        Add(e1, e2) =&gt; eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
-        Sub(e1, e2) =&gt; eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
+        Add(e1, e2) =&gt; eval_sided(e1, env, side) + eval_sided(e2, env, side),
+        Sub(e1, e2) =&gt; eval_sided(e1, env, side) - eval_sided(e2, env, side),
         Mul(e1, e2) =&gt; {
             <span class="comment">//this assumes to some degree that selectors don't multiply each other
             </span><span class="kw">let </span>selector = check_selector(e1)
@@ -460,9 +466,9 @@
         }
         Pow(e, i) =&gt; <span class="kw">match </span>i {
             <span class="number">0 </span>=&gt; EvalLeaf::Const(ScalarField::&lt;C&gt;::one()),
-            <span class="number">1 </span>=&gt; eval_exp_error(e, env, side),
+            <span class="number">1 </span>=&gt; eval_sided(e, env, side),
             i =&gt; {
-                <span class="kw">let </span>err = eval_exp_error(e, env, side);
+                <span class="kw">let </span>err = eval_sided(e, env, side);
                 <span class="kw">let </span><span class="kw-2">mut </span>acc = err.clone();
                 <span class="kw">for _ in </span><span class="number">1</span>..<span class="kw-2">*</span>i {
                     acc = acc * err.clone()
@@ -731,6 +737,12 @@
         };
         <span class="kw">let </span>evals = Evaluations::from_vec_and_domain(evals, <span class="self">self</span>.domain);
         witness.inner_mut().add_witness_evals(i, evals);
+    }
+    <span class="kw">pub fn </span>needs_extension(<span class="kw-2">&amp;</span><span class="self">self</span>, side: Side) -&gt; bool {
+        !<span class="kw">match </span>side {
+            Side::Left =&gt; <span class="self">self</span>.witnesses[<span class="number">0</span>].inner().is_extended(),
+            Side::Right =&gt; <span class="self">self</span>.witnesses[<span class="number">1</span>].inner().is_extended(),
+        }
     }
 
     <span class="doccomment">/// Computes the extended witness column and the corresponding commitments,

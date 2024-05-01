@@ -341,6 +341,10 @@
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::Evals;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>num_traits::One;
@@ -512,6 +516,10 @@
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_witness_evals(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize, evals: Evals&lt;G::ScalarField&gt;) {
         <span class="self">self</span>.extended.insert(i, evals);
+    }
+    <span class="doccomment">///allows to know if the extended witness comlumns are already computed, to avoid overriding them
+    </span><span class="kw">pub fn </span>is_extended(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        !<span class="self">self</span>.extended.is_empty()
     }
 }
 <span class="kw">impl</span>&lt;G: CommitmentCurve, I: Instance&lt;G&gt;&gt; ExtendedInstance&lt;G, I&gt; {
