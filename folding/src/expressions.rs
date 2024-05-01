@@ -28,6 +28,32 @@ pub enum Degree {
     Two,
 }
 
+impl std::ops::Add for Degree {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        use Degree::*;
+        match (self, rhs) {
+            (_, Two) | (Two, _) => Two,
+            (_, One) | (One, _) => One,
+            (Zero, Zero) => Zero,
+        }
+    }
+}
+
+impl std::ops::Mul for &Degree {
+    type Output = Degree;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        use Degree::*;
+        match (self, rhs) {
+            (Zero, other) | (other, Zero) => *other,
+            (One, One) => Two,
+            _ => panic!("degree over 2"),
+        }
+    }
+}
+
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
 
@@ -345,32 +371,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 }
                 acc
             }
-        }
-    }
-}
-
-impl std::ops::Add for Degree {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        use Degree::*;
-        match (self, rhs) {
-            (_, Two) | (Two, _) => Two,
-            (_, One) | (One, _) => One,
-            (Zero, Zero) => Zero,
-        }
-    }
-}
-
-impl std::ops::Mul for &Degree {
-    type Output = Degree;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        use Degree::*;
-        match (self, rhs) {
-            (Zero, other) | (other, Zero) => *other,
-            (One, One) => Two,
-            _ => panic!("degree over 2"),
         }
     }
 }
