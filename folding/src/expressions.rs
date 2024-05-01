@@ -19,6 +19,15 @@ use kimchi::circuits::{
 };
 use num_traits::Zero;
 
+/// Describe the degree of a constraint.
+/// Only degree up to `2` is supported.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Degree {
+    Zero,
+    One,
+    Two,
+}
+
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
 
@@ -244,15 +253,6 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
             _ => panic!("unsupported"),
         }
     }
-}
-
-/// Describe the degree of a constraint.
-/// Only degree up to `2` is supported.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Degree {
-    Zero,
-    One,
-    Two,
 }
 
 impl<C: FoldingConfig> FoldingExp<C> {
