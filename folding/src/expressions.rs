@@ -103,6 +103,8 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Pow(Box<Self>, u64),
 }
 
+/// Implement a human-readable version of a folding compatible expression.
+// FIXME: use Display instead, to follow the recommandation of the trait.
 impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
     fn to_string(&self) -> String {
         match self {
