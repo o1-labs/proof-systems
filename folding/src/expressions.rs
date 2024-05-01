@@ -188,6 +188,8 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 }
 
+/// Converts an expression "compatible" with folding into a folded expression.
+// TODO: use "into"?
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
