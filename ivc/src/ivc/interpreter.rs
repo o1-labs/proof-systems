@@ -8,9 +8,12 @@ use kimchi_msm::{
         ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap,
     },
     columns::ColumnIndexer,
-    serialization::interpreter::{
-        combine_limbs_m_to_n, combine_small_to_large, limb_decompose_ff, LIMB_BITSIZE_LARGE,
-        LIMB_BITSIZE_SMALL, N_LIMBS_LARGE, N_LIMBS_SMALL,
+    serialization::{
+        interpreter::{
+            combine_limbs_m_to_n, combine_small_to_large, limb_decompose_ff, LIMB_BITSIZE_LARGE,
+            LIMB_BITSIZE_SMALL, N_LIMBS_LARGE, N_LIMBS_SMALL,
+        },
+        lookups as serlookup,
     },
 };
 use std::marker::PhantomData;
@@ -98,9 +101,17 @@ fn range_check_small_limbs<F, Ff, Env>(
     for (i, x) in input_limbs_small.iter().enumerate() {
         if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
             // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(IVCLookupTable::RangeCheckFfHighest(PhantomData), x);
+            env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
+                    PhantomData,
+                )),
+                x,
+            );
         } else {
-            env.lookup(IVCLookupTable::RangeCheck15, x);
+            env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
+                x,
+            );
         }
     }
 }
