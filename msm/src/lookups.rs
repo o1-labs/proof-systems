@@ -5,10 +5,9 @@ use ark_ff::{FftField, PrimeField};
 use kimchi::circuits::domains::EvaluationDomains;
 use rand::{seq::SliceRandom, thread_rng, Rng};
 use std::{cmp::Ord, iter};
-use strum_macros::EnumIter;
 
 /// Dummy lookup table. For the cases when you don't need one -- a single dummy element 0.
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum DummyLookupTable {
     DummyLookupTable,
 }
@@ -41,6 +40,10 @@ impl LookupTableID for DummyLookupTable {
             panic!("Invalid value for DummyLookupTable")
         }
     }
+
+    fn all_variants() -> Vec<Self> {
+        vec![DummyLookupTable::DummyLookupTable]
+    }
 }
 
 impl DummyLookupTable {
@@ -53,7 +56,7 @@ impl DummyLookupTable {
 
 /// Lookup tables used in the MSM project
 // TODO: Add more built-in lookup tables
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum LookupTableIDs {
     RangeCheck16,
     /// Custom lookup table
@@ -91,6 +94,12 @@ impl LookupTableID for LookupTableIDs {
 
     fn ix_by_value<F: PrimeField>(&self, _value: F) -> usize {
         todo!()
+    }
+
+    fn all_variants() -> Vec<Self> {
+        // TODO in the future this must depend on some associated type
+        // that parameterises the lookup table.
+        vec![Self::RangeCheck16, Self::Custom(0)]
     }
 }
 

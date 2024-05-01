@@ -9,7 +9,6 @@ use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
 use log::debug;
 use std::{collections::BTreeMap, iter};
-use strum::IntoEnumIterator;
 
 /// Witness builder environment. Operates
 pub struct WitnessBuilderEnv<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> {
@@ -29,12 +28,8 @@ pub struct WitnessBuilderEnv<F: PrimeField, const CIX_COL_N: usize, LT: LookupTa
     pub lookups: Vec<BTreeMap<LT, Vec<Logup<F, LT>>>>,
 }
 
-impl<
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        const CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    > ColAccessCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    ColAccessCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     // Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
@@ -56,12 +51,8 @@ impl<
     }
 }
 
-impl<
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        const CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    > ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    ColWriteCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn write_column(&mut self, ix: CIx, value: &Self::Variable) {
         let Column::X(i) = ix.to_column() else {
@@ -77,12 +68,8 @@ impl<
 ///
 /// Sadly, rust does not allow "cover" instances to define this impl
 /// for every `T: ColWriteCap`.
-impl<
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        const CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    > HybridCopyCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    HybridCopyCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn hcopy(&mut self, value: &Self::Variable, ix: CIx) -> Self::Variable {
         <WitnessBuilderEnv<F, CIX_COL_N, LT> as ColWriteCap<F, CIx>>::write_column(self, ix, value);
@@ -90,12 +77,8 @@ impl<
     }
 }
 
-impl<
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        const CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    > LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    LookupCap<F, CIx, LT> for WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn lookup(&mut self, table_id: LT, value: &<Self as ColAccessCap<F, CIx>>::Variable) {
         let value_ix = table_id.ix_by_value(*value);
@@ -113,9 +96,7 @@ impl<
     }
 }
 
-impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
-    WitnessBuilderEnv<F, CIX_COL_N, LT>
-{
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> WitnessBuilderEnv<F, CIX_COL_N, LT> {
     pub fn write_column(&mut self, position: Column, value: F) {
         match position {
             Column::X(i) => self.witness.last_mut().unwrap().cols[i] = value,
@@ -152,7 +133,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
             cols: Box::new([F::zero(); CIX_COL_N]),
         });
         let mut lookups_row = BTreeMap::new();
-        for table_id in LT::iter() {
+        for table_id in LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
         }
         self.lookups.push(lookups_row);
@@ -175,14 +156,12 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
     }
 }
 
-impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator>
-    WitnessBuilderEnv<F, CIX_COL_N, LT>
-{
+impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID> WitnessBuilderEnv<F, CIX_COL_N, LT> {
     /// Create a new empty-state witness builder.
     pub fn create() -> Self {
         let mut lookups_row = BTreeMap::new();
         let mut lookup_multiplicities = BTreeMap::new();
-        for table_id in LT::iter() {
+        for table_id in LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
             lookup_multiplicities.insert(table_id, vec![F::zero(); table_id.length()]);
         }
@@ -226,7 +205,7 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
         // Building lookup values
         let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
         if !lookup_tables_data.is_empty() {
-            for table_id in LT::iter() {
+            for table_id in LT::all_variants().into_iter() {
                 // Find how many lookups are done per table.
                 let number_of_lookups = self.lookups[0].get(&table_id).unwrap().len();
                 // Technically the number of lookups must be the same per

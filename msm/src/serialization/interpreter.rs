@@ -3,7 +3,6 @@ use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::{sign::Signed, Euclid};
 use std::marker::PhantomData;
-use strum::IntoEnumIterator;
 
 use crate::{
     circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
@@ -35,8 +34,8 @@ pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID>
         Self: ColAccessCap<F, CIx>;
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
-    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::ConstraintBuilderEnv<F, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridSerHelpers<F, CIx, LT>
+    for crate::circuit_design::ConstraintBuilderEnv<F, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -54,12 +53,8 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
     }
 }
 
-impl<
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        const CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    > HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn bitmask_be(
         &mut self,

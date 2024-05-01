@@ -13,6 +13,7 @@ mod tests {
             interpreter::{constrain_ec_addition, ec_add_circuit},
             lookups::LookupTable,
         },
+        logup::LookupTableID,
         prover::prove,
         verifier::verify,
         witness::Witness,
@@ -23,7 +24,6 @@ mod tests {
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
     use std::collections::BTreeMap;
-    use strum::IntoEnumIterator;
 
     fn build_fec_addition_circuit<RNG: RngCore + CryptoRng>(
         rng: &mut RNG,
@@ -76,7 +76,7 @@ mod tests {
 
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
-        for table_id in LookupTable::<Ff1>::iter() {
+        for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);

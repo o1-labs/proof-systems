@@ -77,6 +77,15 @@ impl<Ff: PrimeField> LookupTableID for IVCLookupTable<Ff> {
             Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
         }
     }
+
+    fn all_variants() -> Vec<Self> {
+        vec![
+            Self::RangeCheck15,
+            Self::RangeCheck4,
+            Self::RangeCheck4Abs,
+            Self::RangeCheckFfHighest(PhantomData),
+        ]
+    }
 }
 
 impl<Ff: PrimeField> IVCLookupTable<Ff> {

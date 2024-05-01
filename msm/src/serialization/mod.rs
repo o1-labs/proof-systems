@@ -11,11 +11,11 @@ mod tests {
     use kimchi::circuits::domains::EvaluationDomains;
     use poly_commitment::pairing_proof::PairingSRS;
     use std::collections::BTreeMap;
-    use strum::IntoEnumIterator;
 
     use crate::{
         circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
         columns::{Column, ColumnIndexer},
+        logup::LookupTableID,
         precomputed_srs::get_bn254_srs,
         prover::prove,
         serialization::{
@@ -92,7 +92,7 @@ mod tests {
 
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
-        for table_id in LookupTable::<Ff1>::iter() {
+        for table_id in LookupTable::<Ff1>::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);

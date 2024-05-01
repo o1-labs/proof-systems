@@ -58,6 +58,10 @@ impl LookupTableID for LookupTable {
             }
         }
     }
+
+    fn all_variants() -> Vec<Self> {
+        vec![Self::RangeCheck15, Self::RangeCheck1BitSigned]
+    }
 }
 
 impl LookupTable {

@@ -13,6 +13,7 @@ mod tests {
             interpreter::{self as ffa_interpreter},
             lookups::LookupTable,
         },
+        logup::LookupTableID,
         precomputed_srs::get_bn254_srs,
         prover::prove,
         verifier::verify,
@@ -24,7 +25,6 @@ mod tests {
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, RngCore};
     use std::collections::BTreeMap;
-    use strum::IntoEnumIterator;
 
     /// Builds the FF addition circuit with random values. The witness
     /// environment enforces the constraints internally, so it is
@@ -73,7 +73,7 @@ mod tests {
 
         // Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         let mut lookup_tables_data = BTreeMap::new();
-        for table_id in LookupTable::iter() {
+        for table_id in LookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);

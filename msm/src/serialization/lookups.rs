@@ -71,6 +71,15 @@ impl<Ff: PrimeField> LookupTableID for LookupTable<Ff> {
             Self::RangeCheckFfHighest(_) => TryFrom::try_from(value.to_biguint()).unwrap(),
         }
     }
+
+    fn all_variants() -> Vec<Self> {
+        vec![
+            Self::RangeCheck15,
+            Self::RangeCheck4,
+            Self::RangeCheck4Abs,
+            Self::RangeCheckFfHighest(PhantomData),
+        ]
+    }
 }
 
 impl<Ff: PrimeField> LookupTable<Ff> {
@@ -131,7 +140,5 @@ impl<Ff: PrimeField> LookupTable<Ff> {
         }
     }
 }
-
-impl<Ff: PrimeField> LookupTable<Ff> {}
 
 pub type Lookup<F, Ff> = Logup<F, LookupTable<Ff>>;

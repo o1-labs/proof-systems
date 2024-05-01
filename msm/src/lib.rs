@@ -84,9 +84,8 @@ mod tests {
     use poly_commitment::pairing_proof::PairingSRS;
     use rand::{CryptoRng, Rng, RngCore};
     use std::collections::BTreeMap;
-    use strum::IntoEnumIterator;
 
-    fn build_test_circuit<RNG: RngCore + CryptoRng, LT: LookupTableID + IntoEnumIterator>(
+    fn build_test_circuit<RNG: RngCore + CryptoRng, LT: LookupTableID>(
         rng: &mut RNG,
         domain_size: usize,
     ) -> WitnessBuilderEnv<Fp, { <TestColumn as ColumnIndexer>::COL_N }, LT> {
@@ -132,7 +131,7 @@ mod tests {
         let constraints = constraint_env.get_relation_constraints();
 
         let mut lookup_tables_data = BTreeMap::new();
-        for table_id in DummyLookupTable::iter() {
+        for table_id in DummyLookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         let witness_env = build_test_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
@@ -189,7 +188,7 @@ mod tests {
         let constraints = constraint_env.get_relation_constraints();
 
         let mut lookup_tables_data = BTreeMap::new();
-        for table_id in DummyLookupTable::iter() {
+        for table_id in DummyLookupTable::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         let witness_env = build_test_circuit::<_, DummyLookupTable>(&mut rng, domain_size);
