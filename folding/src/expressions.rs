@@ -1,3 +1,11 @@
+use crate::columns::ExtendedFoldingColumn;
+/// Implement a library to represent expressions/multivariate polynomials that
+/// can be used with folding schemes like
+/// [Nova](https://eprint.iacr.org/2021/370).
+/// We do enforce expressions to be degree `2` maximum to apply our folding
+/// scheme.
+/// Before folding, we do suppose that each expression has been reduced to
+/// degree `2` using [quadraticization].
 use crate::{
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
@@ -11,8 +19,45 @@ use kimchi::circuits::{
 };
 use num_traits::Zero;
 
+/// Describe the degree of a constraint.
+/// Only degree up to `2` is supported.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Degree {
+    Zero,
+    One,
+    Two,
+}
+
+impl std::ops::Add for Degree {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        use Degree::*;
+        match (self, rhs) {
+            (_, Two) | (Two, _) => Two,
+            (_, One) | (One, _) => One,
+            (Zero, Zero) => Zero,
+        }
+    }
+}
+
+impl std::ops::Mul for &Degree {
+    type Output = Degree;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        use Degree::*;
+        match (self, rhs) {
+            (Zero, other) | (other, Zero) => *other,
+            (One, One) => Two,
+            _ => panic!("The folding library does support only expressions of degree `2` maximum"),
+        }
+    }
+}
+
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
+
+    // TODO: why witnesses are degree 1, otherwise 0?
     fn degree(&self) -> Degree {
         match self.is_witness() {
             true => Degree::One,
@@ -21,19 +66,20 @@ pub trait FoldingColumnTrait: Copy + Clone {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExtendedFoldingColumn<C: FoldingConfig> {
-    Inner(Variable<C::Column>),
-    ///for the extra columns added by quadraticization
-    WitnessExtended(usize),
+/// Extra expressions that can be created by folding
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExpExtension<C: FoldingConfig> {
+    U,
     Error,
-    UnnormalizedLagrangeBasis(usize),
-    Constant(<C::Curve as AffineCurve>::ScalarField),
-    Challenge(C::Challenge),
+    // from quadraticization
+    ExtendedWitness(usize),
     Alpha(usize),
+    // in case of using decomposable folding
     Selector(C::S),
 }
 
+/// Components to be used to convert multivariate polynomials into "compatible"
+/// multivariate polynomials that will be translated to folding expressions
 #[derive(Clone, PartialEq, Debug)]
 pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
@@ -43,11 +89,11 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
-    ///extra nodes created by folding, should not be passed to folding
+    /// extra nodes created by folding, should not be passed to folding
     Extensions(ExpExtension<C>),
 }
 
-///designed for easy translation to and from most Expr
+/// Designed for easy translation to and from most Expr
 #[derive(Clone, PartialEq, Debug)]
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Atom(FoldingCompatibleExprInner<C>),
@@ -57,17 +103,18 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Pow(Box<Self>, u64),
 }
 
+/// Implement a human-readable version of a folding compatible expression.
+// FIXME: use Display instead, to follow the recommandation of the trait.
 impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
     fn to_string(&self) -> String {
         match self {
             FoldingCompatibleExpr::Atom(c) => match c {
                 FoldingCompatibleExprInner::Constant(c) => {
-                    let c = if c.is_zero() {
+                    if c.is_zero() {
                         "0".to_string()
                     } else {
                         c.to_string()
-                    };
-                    c.to_string()
+                    }
                 }
                 FoldingCompatibleExprInner::Challenge(c) => {
                     format!("{:?}", c)
@@ -118,19 +165,15 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
     }
 }
 
-/// Extra expressions that can be created by folding
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExpExtension<C: FoldingConfig> {
-    U,
-    Error,
-    //from quadraticization
-    ExtendedWitness(usize),
-    Alpha(usize),
-    //in case of using decomposable folding
-    Selector(C::S),
-}
-
-///Internal expression used for folding, simplified for that purpose
+/// Internal expression used for folding.
+/// A "folding" expression is a multivariate polynomial like defined in
+/// [kimchi::circuits::expr] with the following differences:
+/// - No constructors related to zero-knowledge or lagrange basis (i.e. no
+/// constructors related to the PIOP)
+/// - The variables includes a set of columns that describes the initial circuit
+/// shape, with additional columns strictly related to the folding scheme (error
+/// term, etc).
+// TODO: renamed in "RelaxedExpression"?
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FoldingExp<C: FoldingConfig> {
     Atom(ExtendedFoldingColumn<C>),
@@ -172,6 +215,11 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 }
 
+/// Converts an expression "compatible" with folding into a folded expression.
+// TODO: use "into"?
+// FIXME: add independent tests
+// FIXME: test independently the behavior of pow_to_mul, and explain only why 8
+// maximum
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
@@ -241,13 +289,6 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Degree {
-    Zero,
-    One,
-    Two,
-}
-
 impl<C: FoldingConfig> FoldingExp<C> {
     pub(super) fn folding_degree(&self) -> Degree {
         use Degree::*;
@@ -281,6 +322,10 @@ impl<C: FoldingConfig> FoldingExp<C> {
         }
     }
 
+    /// Convert a folding expression into a compatible one.
+    // TODO: explain why do we need it. It is transformations between the two
+    // categories FoldingCompatibleExpr and FoldingExpr. Is there a one-to-one
+    // conversion?
     fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
         use FoldingCompatibleExprInner::*;
@@ -331,32 +376,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 }
 
-impl std::ops::Add for Degree {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        use Degree::*;
-        match (self, rhs) {
-            (_, Two) | (Two, _) => Two,
-            (_, One) | (One, _) => One,
-            (Zero, Zero) => Zero,
-        }
-    }
-}
-
-impl std::ops::Mul for &Degree {
-    type Output = Degree;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        use Degree::*;
-        match (self, rhs) {
-            (Zero, other) | (other, Zero) => *other,
-            (One, One) => Two,
-            _ => panic!("degree over 2"),
-        }
-    }
-}
-
+// TODO: doc - what is the sign?
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Sign {
     Pos,
@@ -374,6 +394,7 @@ impl std::ops::Neg for Sign {
     }
 }
 
+// TODO: doc - What is a term?
 #[derive(Clone, Debug)]
 pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
@@ -413,10 +434,10 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
     }
 }
 
-///A simplified expression with all terms separated by degree
+/// A simplified expression with all terms separated by degree
 #[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
-    //(exp,sign,alpha)
+    // (exp,sign,alpha)
     pub(super) degree_0: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_1: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_2: Vec<(FoldingExp<C>, Sign, usize)>,
@@ -433,10 +454,10 @@ impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
 }
 
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
-    ///combines constraints into single expression
+    /// Combines constraints into single expression
     pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
-        ///todo: should use powers of alpha
+        /// TODO: should use powers of alpha
         use FoldingCompatibleExprInner::*;
         let Self {
             degree_0,

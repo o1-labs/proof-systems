@@ -1,3 +1,11 @@
+/// This file shows how to use the folding trait with a simple configuration of
+/// 3 columns, and two selectors. See [tests::test_folding_instance] at the end
+/// for a test.
+/// The test requires the features `bn254`, therefore use the following command
+/// to execute it:
+/// ```text
+/// cargo nextest run examples::example::tests::test_folding_instance --release --all-features
+/// ```
 use crate::{
     error_term::Side,
     examples::{BaseSponge, Curve, Fp},
@@ -53,11 +61,12 @@ impl FoldingColumnTrait for TestColumn {
     }
 }
 
-/// The alphas are exceptional, their number cannot be known ahead of time as it will be defined by
-/// folding.
-/// The values will be computed as powers in new instances, but after folding each alfa will be a
-/// linear combination of other alphas, instand of a power of other element.
-/// This type represents that, allowing to also recognize which case is present
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding.
+/// The values will be computed as powers in new instances, but after folding
+/// each alpha will be a linear combination of other alphas, instand of a power
+/// of other element. This type represents that, allowing to also recognize
+/// which case is present.
 #[derive(Debug, Clone)]
 pub enum Alphas {
     Powers(Fp, Rc<AtomicUsize>),
@@ -102,6 +111,8 @@ impl Alphas {
 }
 
 /// The instance is the commitments to the polynomials and the challenges
+/// There are 3 commitments and challanges because there are 3 columns, A, B and
+/// C.
 #[derive(Debug, Clone)]
 struct TestInstance {
     commitments: [Curve; 3],
@@ -171,7 +182,8 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.iter_mut() {
-                //TODO: check this, while not relevant for this example I think it should be right rotation
+                // TODO: check this, while not relevant for this example I think
+                // it should be right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -304,14 +316,16 @@ fn instance_from_witness(
         alphas,
     }
 }
+
 fn circuit() -> [Vec<Fp>; 2] {
     [vec![Fp::one(), Fp::zero()], vec![Fp::zero(), Fp::one()]]
 }
 
-/// A kind of pseudo-prover, will compute the expressions over the witness a check row by row
-/// for a zero result.
+/// A kind of pseudo-prover, will compute the expressions over the witness a
+/// check row by row for a zero result.
 mod checker {
     use super::*;
+    use log::debug;
     pub struct Provider {
         structure: TestStructure<Fp>,
         instance: TestInstance,
@@ -364,7 +378,8 @@ mod checker {
                     };
 
                     let mut col = col.clone();
-                    //check this, while not relevant in this case I think it should be right rotation
+                    // check this, while not relevant in this case I think it
+                    // should be right rotation
                     if let CurrOrNext::Next = row {
                         col.rotate_left(1);
                     }
@@ -426,21 +441,21 @@ mod checker {
     }
 
     pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) -> Vec<Fp> {
+        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
             let e2 = exp.clone();
             let res = match exp {
                 FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
                 FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.double()).collect()
                 }
                 FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.square()).collect()
                 }
                 FoldingCompatibleExpr::BinOp(op, e1, e2) => {
-                    let v1 = self.check_rec(*e1, debug);
-                    let v2 = self.check_rec(*e2, debug);
+                    let v1 = self.check_rec(*e1);
+                    let v2 = self.check_rec(*e2);
                     let op = match op {
                         Op2::Add => |(a, b)| a + b,
                         Op2::Mul => |(a, b)| a * b,
@@ -449,22 +464,20 @@ mod checker {
                     v1.into_iter().zip(v2).map(op).collect()
                 }
                 FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.pow([exp])).collect()
                 }
             };
-            if debug {
-                println!("exp: {:?}", e2);
-                println!("res: [\n");
-                for e in res.iter() {
-                    println!("{e}\n");
-                }
-                println!("]");
+            debug!("exp: {:?}", e2);
+            debug!("res: [\n");
+            for e in res.iter() {
+                debug!("{e}\n");
             }
+            debug!("]");
             res
         }
-        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) {
-            let res = self.check_rec(exp, debug);
+        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) {
+            let res = self.check_rec(exp);
             for (i, row) in res.iter().enumerate() {
                 if !row.is_zero() {
                     panic!("check in row {i} failed, {row} != 0");
@@ -480,9 +493,10 @@ mod tests {
     use super::*;
     use crate::{examples::example::checker::ExtendedProvider, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations};
+    use std::println as debug;
 
-    // this checks a single folding, it would be good to expand it in the future to do several foldings,
-    // as a few thigs are trivial in the first fold
+    // this checks a single folding, it would be good to expand it in the future
+    // to do several foldings, as a few thigs are trivial in the first fold
     #[test]
     fn test_folding_instance() {
         use ark_poly::Radix2EvaluationDomain as D;
@@ -525,36 +539,36 @@ mod tests {
         let right_witness: TestWitness =
             right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
 
-        //instances
+        // instances
         let left_instance = instance_from_witness(&left_witness, &srs, domain);
         let right_instance = instance_from_witness(&left_witness, &srs, domain);
 
-        //check left
+        // check left
         {
-            // println!("check left");
+            debug!("check left");
             let checker = Provider::new(
                 structure.clone(),
                 left_instance.clone(),
                 left_witness.clone(),
             );
             for constraint in &constraints {
-                checker.check(constraint.clone(), false)
+                checker.check(constraint.clone())
             }
         }
-        //check right
+        // check right
         {
-            // println!("check right");
+            debug!("check right");
             let checker = Provider::new(
                 structure.clone(),
                 right_instance.clone(),
                 right_witness.clone(),
             );
             for constraint in &constraints {
-                checker.check(constraint.clone(), false)
+                checker.check(constraint.clone())
             }
         }
 
-        //pairs
+        // pairs
         let left = (left_instance, left_witness);
         let right = (right_instance, right_witness);
 
@@ -562,9 +576,9 @@ mod tests {
         let (folded_instance, folded_witness, [_t0, _t1]) = folded;
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
-            // println!("check folded");
-            checker.check(final_constraint, false);
+            debug!("exp: \n {:#?}", final_constraint);
+            debug!("check folded");
+            checker.check(final_constraint);
         }
     }
 }

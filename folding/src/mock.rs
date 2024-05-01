@@ -109,7 +109,7 @@ impl FoldingConfig for TestConfig {
 #[test]
 //not testing much right now, just to observe what quadraticization does
 fn test_term_separation() {
-    use crate::expressions::{ExtendedFoldingColumn, FoldingExp};
+    use crate::{columns::ExtendedFoldingColumn, expressions::FoldingExp};
     use kimchi::circuits::expr::Variable;
     let col = |col| FoldingExp::Atom(ExtendedFoldingColumn::Inner(Variable { col, row: Curr }));
     let t1: FoldingExp<TestConfig> = (col(0) + col(1)) * (col(2) + col(3));
