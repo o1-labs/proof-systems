@@ -11,17 +11,14 @@ use std::{fmt::Debug, hash::Hash};
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
 #[cfg(feature = "bn254")]
-pub use example::{Alphas, BaseSponge};
 pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 pub mod decomposable_folding;
 mod error_term;
-#[allow(dead_code)]
-#[cfg(feature = "bn254")]
-mod example;
 #[cfg(test)]
-mod example_decomposable_folding;
+#[cfg(feature = "bn254")]
+mod examples;
 pub mod expressions;
 mod instance_witness;
 #[cfg(test)]
@@ -295,7 +292,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn fold_instance_witness_pair<I, W, A, B>(
+    pub fn fold_instance_witness_pair<A, B>(
         &self,
         a: A,
         b: B,

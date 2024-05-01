@@ -5,8 +5,9 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::One;
 use itertools::Itertools;
-use kimchi::circuits::expr::{
-    ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
+use kimchi::circuits::{
+    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable},
+    gate::CurrOrNext,
 };
 use num_traits::Zero;
 
@@ -54,6 +55,67 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Square(Box<Self>),
     BinOp(Op2, Box<Self>, Box<Self>),
     Pow(Box<Self>, u64),
+}
+
+impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
+    fn to_string(&self) -> String {
+        match self {
+            FoldingCompatibleExpr::Atom(c) => match c {
+                FoldingCompatibleExprInner::Constant(c) => {
+                    let c = if c.is_zero() {
+                        "0".to_string()
+                    } else {
+                        c.to_string()
+                    };
+                    c.to_string()
+                }
+                FoldingCompatibleExprInner::Challenge(c) => {
+                    format!("{:?}", c)
+                }
+                FoldingCompatibleExprInner::Cell(cell) => {
+                    let Variable { col, row } = cell;
+                    let next = match row {
+                        CurrOrNext::Curr => "",
+                        CurrOrNext::Next => " * ω",
+                    };
+                    format!("Col({:?}){}", col, next)
+                }
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(_) => todo!(),
+                FoldingCompatibleExprInner::Extensions(e) => match e {
+                    ExpExtension::U => "U".to_string(),
+                    ExpExtension::Error => "E".to_string(),
+                    ExpExtension::ExtendedWitness(i) => {
+                        format!("ExWit({})", i)
+                    }
+                    ExpExtension::Alpha(i) => format!("α_{i}"),
+                    ExpExtension::Selector(s) => format!("Selec({:?})", s),
+                },
+            },
+            FoldingCompatibleExpr::Double(e) => {
+                format!("2 {}", e.to_string())
+            }
+            FoldingCompatibleExpr::Square(e) => {
+                format!("{} ^ 2", e.to_string())
+            }
+            FoldingCompatibleExpr::BinOp(op, e1, e2) => {
+                let op_char = match op {
+                    Op2::Add => "+",
+                    Op2::Mul => "*",
+                    Op2::Sub => "-",
+                };
+                match op {
+                    Op2::Add | Op2::Sub => {
+                        format!("{} {} {}", e1.to_string(), op_char, e2.to_string())
+                    }
+                    Op2::Mul => {
+                        format!("({}) {} ({})", e1.to_string(), op_char, e2.to_string())
+                    }
+                }
+            }
+            FoldingCompatibleExpr::Pow(_, _) => todo!(),
+        }
+    }
 }
 
 /// Extra expressions that can be created by folding
