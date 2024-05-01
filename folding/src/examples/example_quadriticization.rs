@@ -153,14 +153,16 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         instances: [&TestInstance; 2],
         witnesses: [&TestWitness; 2],
     ) -> Self {
-        // here it is mostly storing the pairs into self, and also computing other things we may need
-        // later like the shifted versions, note there are more efficient ways of handling the rotated
-        // witnesses, which are just for example as no contraint uses them anyway
+        // here it is mostly storing the pairs into self, and also computing
+        // other things we may need later like the shifted versions, note there
+        // are more efficient ways of handling the rotated witnesses, which are
+        // just for example as no contraint uses them anyway
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.iter_mut() {
-                //TODO: check this, while not relevant for this example I think it should be right rotation
+                // TODO: check this, while not relevant for this example I think
+                // it should be right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -172,11 +174,13 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     }
 
     fn zero_vec(&self) -> Vec<Fp> {
-        //this works in the example but is not the best way as the envionment could get circuits of any size
+        // this works in the example but is not the best way as the envionment
+        // could get circuits of any size
         vec![Fp::zero(); 2]
     }
 
-    //provide access to columns, here side refers to one of the two pairs you got in new()
+    // provide access to columns, here side refers to one of the two pairs you
+    // got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -241,12 +245,15 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
     type E = Box<FoldingCompatibleExpr<TestFoldingConfig>>;
     let op = |a: E, b: E, op| Box::new(FoldingCompatibleExpr::BinOp(op, a, b));
 
+    // Compute a + b - c
     let add = op(a.clone(), b.clone(), Op2::Add);
     let add = op(add, c.clone(), Op2::Sub);
 
+    // Compute a * b - c
     let mul = op(a, b, Op2::Mul);
     let mul = op(mul, c, Op2::Sub);
 
+    // Compute q_add (a + b - c) + q_mul (a * b - c)
     [
         (DynamicSelector::SelecAdd, vec![*add]),
         (DynamicSelector::SelecMul, vec![*mul]),
@@ -311,8 +318,8 @@ fn instance_from_witness(
     }
 }
 
-/// A kind of pseudo-prover, will compute the expressions over the witness a check row by row
-/// for a zero result.
+/// A kind of pseudo-prover, will compute the expressions over the witness a
+/// check row by row for a zero result.
 mod checker {
     use super::*;
     pub struct Provider {
