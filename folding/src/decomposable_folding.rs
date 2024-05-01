@@ -4,10 +4,9 @@
 //! from a set of list of constraints, each set associated with a particular selector, as opposed to a single list of constraints.
 
 use crate::{
+    columns::ExtendedFoldingColumn,
     error_term::{compute_error, ExtendedEnv},
-    expressions::{
-        ExtendedFoldingColumn, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp,
-    },
+    expressions::{FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
     FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };

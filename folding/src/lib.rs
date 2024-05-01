@@ -1,3 +1,18 @@
+//! This library implements basic components to fold computations expressed as
+//! multivariate polynomials of any degree. It is based on the "folding scheme"
+//! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
+//! It implements different components to achieve it:
+//! - quadriticization: a submodule to reduce multivariate polynomials to degree
+//! `2`
+//! - decomposable_folding: a submodule to "parallelize" folded computations
+//! Examples can be found in the directory `examples`.
+//! The folding library is meant to be used in harmony with the library `ivc`.
+//! To use the library, the user has to define first a "folding configuration"
+//! described in the trait [FoldingConfig]. Each expression has to be converted
+//! into [crate::expressions::FoldingCompatibleExpr] before being converted into
+//! [crate::expressions::FoldingExp].
+// TODO: the documentation above might need more descriptions.
+
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
@@ -14,26 +29,32 @@ pub use error_term::Side;
 pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
+pub mod columns;
 pub mod decomposable_folding;
 
 mod error_term;
+
+pub mod expressions;
+mod instance_witness;
+mod quadraticization;
+
+// Modules strictly related to tests
+// TODO: should we move them into an explicit subdirectory `test`?
 #[cfg(test)]
 #[cfg(feature = "bn254")]
 mod examples;
-pub mod expressions;
-
-mod instance_witness;
-
 #[cfg(test)]
 mod mock;
 
-mod quadraticization;
-
+// Simple type alias as ScalarField is often used. Reduce type complexity for
+// clippy.
+// Should be moved into FoldingConfig, but associated type defaults are unstable
+// at the moment.
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
-    //in case of using decomposable folding, if not it can be just ()
+    // in case of using docomposable folding, if not it can be just ()
     type Selector: Clone + Debug + Eq + Hash;
 
     /// The type of an abstract challenge that can be found in the expressions
@@ -45,15 +66,16 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
 
     type Srs: SRS<Self::Curve>;
 
-    /// FIXME: use Sponge from kimchi
     /// The sponge used to create challenges
+    // FIXME: use Sponge from kimchi
     type Sponge: Sponge<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
     type Instance: Instance<Self::Curve>;
 
-    /// For PlonK, it will be the polynomials in evaluation form that we commit to, i.e. the columns.
-    /// In the generic prover/verifier, it would be kimchi_msm::witness::Witness.
+    /// For PlonK, it will be the polynomials in evaluation form that we commit
+    /// to, i.e. the columns.
+    /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
     type Witness: Witness<Self::Curve>;
 
     type Structure;
@@ -230,7 +252,8 @@ pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
     // TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
-    /// Returns a vector of zeros with the same length as the number of rows in the circuit.
+    /// Returns a vector of zeros with the same length as the number of rows in
+    /// the circuit.
     fn zero_vec(&self) -> Vec<F>;
 
     /// Returns the evaluations of a given column witness at omega or zeta*omega.
@@ -247,8 +270,9 @@ pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
     /// Computes the i-th power of alpha for a given side.
     /// Folding itself will provide us with the alpha value.
     fn alpha(&self, i: usize, side: Side) -> F;
-    /// similar to col(), but folding may ask for a dynamic selector directly instead
-    /// of just column that happens to be a selector
+
+    /// similar to [Self::col], but folding may ask for a dynamic selector directly
+    /// instead of just column that happens to be a selector
     fn selector(&self, s: &Selector, side: Side) -> &Vec<F>;
 }
 

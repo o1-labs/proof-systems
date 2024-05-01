@@ -1,6 +1,7 @@
 use crate::{
+    columns::ExtendedFoldingColumn,
     error_term::{eval_sided, ExtendedEnv, Side},
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
+    expressions::{Degree, FoldingExp},
     FoldingConfig,
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};

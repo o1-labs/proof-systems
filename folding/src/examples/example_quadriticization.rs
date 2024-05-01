@@ -49,11 +49,12 @@ impl FoldingColumnTrait for TestColumn {
     }
 }
 
-/// The alphas are exceptional, their number cannot be known ahead of time as it will be defined by
-/// folding.
-/// The values will be computed as powers in new instances, but after folding each alfa will be a
-/// linear combination of other alphas, instand of a power of other element.
-/// This type represents that, allowing to also recognize which case is present
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding.
+/// The values will be computed as powers in new instances, but after folding
+/// each alpha will be a linear combination of other alphas, instead of a power
+/// of other element. This type represents that, allowing to also recognize
+/// which case is present
 #[derive(Debug, Clone)]
 pub enum Alphas {
     Powers(Fp, Rc<AtomicUsize>),
@@ -152,14 +153,16 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         instances: [&TestInstance; 2],
         witnesses: [&TestWitness; 2],
     ) -> Self {
-        // here it is mostly storing the pairs into self, and also computing other things we may need
-        // later like the shifted versions, note there are more efficient ways of handling the rotated
-        // witnesses, which are just for example as no contraint uses them anyway
+        // here it is mostly storing the pairs into self, and also computing
+        // other things we may need later like the shifted versions, note there
+        // are more efficient ways of handling the rotated witnesses, which are
+        // just for example as no contraint uses them anyway
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.iter_mut() {
-                //TODO: check this, while not relevant for this example I think it should be right rotation
+                // TODO: check this, while not relevant for this example I think
+                // it should be right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -171,11 +174,13 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     }
 
     fn zero_vec(&self) -> Vec<Fp> {
-        //this works in the example but is not the best way as the envionment could get circuits of any size
+        // this works in the example but is not the best way as the envionment
+        // could get circuits of any size
         vec![Fp::zero(); 2]
     }
 
-    //provide access to columns, here side refers to one of the two pairs you got in new()
+    // provide access to columns, here side refers to one of the two pairs you
+    // got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -240,12 +245,15 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
     type E = Box<FoldingCompatibleExpr<TestFoldingConfig>>;
     let op = |a: E, b: E, op| Box::new(FoldingCompatibleExpr::BinOp(op, a, b));
 
+    // Compute a + b - c
     let add = op(a.clone(), b.clone(), Op2::Add);
     let add = op(add, c.clone(), Op2::Sub);
 
+    // Compute a * b - c
     let mul = op(a, b, Op2::Mul);
     let mul = op(mul, c, Op2::Sub);
 
+    // Compute q_add (a + b - c) + q_mul (a * b - c)
     [
         (DynamicSelector::SelecAdd, vec![*add]),
         (DynamicSelector::SelecMul, vec![*mul]),
@@ -310,8 +318,8 @@ fn instance_from_witness(
     }
 }
 
-/// A kind of pseudo-prover, will compute the expressions over the witness a check row by row
-/// for a zero result.
+/// A kind of pseudo-prover, will compute the expressions over the witness a
+/// check row by row for a zero result.
 mod checker {
     use super::*;
     pub struct Provider {
@@ -477,11 +485,13 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Trick to print debug message while testing, as we in the test config env
     use crate::decomposable_folding::DecomposableFoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations};
     use checker::ExtendedProvider;
+    use std::println as debug;
 
-    //two functions to create the entire witness from just the a and b columns
+    // two functions to create the entire witness from just the a and b columns
     fn add_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
         let [a1, a2] = a;
         let [b1, b2] = b;
@@ -498,10 +508,11 @@ mod tests {
         x.map(|row| Evaluations::from_vec_and_domain(row.map(Fp::from).to_vec(), domain))
     }
 
-    // in this test we will create 2 add witnesses, fold them together, create 2 mul witnesses,
-    // fold them together, and then further fold the 2 resulting pairs into one mixed add-mul witness
-    // instances are also folded, but not that relevant in the examples as we don't make a proof for them
-    // and instead directly check the witness
+    // in this test we will create 2 add witnesses, fold them together, create 2
+    // mul witnesses, fold them together, and then further fold the 2 resulting
+    // pairs into one mixed add-mul witness
+    // instances are also folded, but not that relevant in the examples as we
+    // don't make a proof for them and instead directly check the witness
     #[test]
     fn test_quadriticization() {
         use ark_poly::Radix2EvaluationDomain as D;
@@ -512,7 +523,8 @@ mod tests {
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
 
-        //initiallize the scheme, also getting the final single expression for the entire constraint system
+        // initiallize the scheme, also getting the final single expression for
+        // the entire constraint system
         let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
             constraints.clone(),
             vec![],
@@ -521,21 +533,21 @@ mod tests {
             (),
         );
 
-        //some inputs to be used by both add and mul
+        // some inputs to be used by both add and mul
         let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
         let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
 
-        //creates an instance witness pair
+        // creates an instance witness pair
         let make_pair = |wit: TestWitness| {
             let ins = instance_from_witness(&wit, &srs, domain);
             (wit, ins)
         };
 
         // uncomment to see the expression
-        // println!("exp: \n {:#?}", final_constraint.to_string());
+        debug!("exp: \n {:#?}", final_constraint.to_string());
 
-        //fold adds
-        // println!("fold add");
+        // fold adds
+        debug!("fold add");
         let left = {
             let [a, b] = inputs1;
             let wit1 = add_witness(a, b);
@@ -547,7 +559,8 @@ mod tests {
 
             let left = (instance1, witness1);
             let right = (instance2, witness2);
-            // here we provide normal instance-witness pairs, which will be automatically relaxed
+            // here we provide normal instance-witness pairs, which will be
+            // automatically relaxed
             let folded =
                 scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
@@ -558,8 +571,8 @@ mod tests {
             } = checker;
             (instance, witness)
         };
-        //fold muls
-        // println!("fold muls");
+        // fold muls
+        debug!("fold muls");
         let right = {
             let [a, b] = inputs1;
             let wit1 = mul_witness(a, b);
@@ -583,8 +596,8 @@ mod tests {
             } = checker;
             (instance, witness)
         };
-        //fold mixed
-        // println!("fold mixed");
+        // fold mixed
+        debug!("fold mixed");
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
             let folded = scheme.fold_instance_witness_pair(left, right, None);
