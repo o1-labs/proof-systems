@@ -65,8 +65,8 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
 
     type Srs: SRS<Self::Curve>;
 
-    /// FIXME: use Sponge from kimchi
     /// The sponge used to create challenges
+    // FIXME: use Sponge from kimchi
     type Sponge: Sponge<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges

@@ -31,7 +31,7 @@ pub enum Degree {
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
 
-    /// TODO: why witnesses are degree 1, otherwise 0?
+    // TODO: why witnesses are degree 1, otherwise 0?
     fn degree(&self) -> Degree {
         match self.is_witness() {
             true => Degree::One,
