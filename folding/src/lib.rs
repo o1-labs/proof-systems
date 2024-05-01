@@ -7,6 +7,10 @@
 //! - decomposable_folding: a submodule to "parallelize" folded computations
 //! Examples can be found in the directory `examples`.
 //! The folding library is meant to be used in harmony with the library `ivc`.
+//! To use the library, the user has to define first a "folding configuration"
+//! described in the trait [FoldingConfig]. Each expression has to be converted
+//! into [crate::expressions::FoldingCompatibleExpr] before being converted into
+//! [crate::expressions::FoldingExp].
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
