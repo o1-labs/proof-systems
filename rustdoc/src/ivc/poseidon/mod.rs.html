@@ -202,6 +202,52 @@
     }
 
     <span class="attr">#[test]
+    </span><span class="doccomment">/// Tests that poseidon circuit is correctly formed (witness
+    /// generation + constraints match) and matches the CPU
+    /// specification of Poseidon. Fast to run, can be used for
+    /// debugging.
+    </span><span class="kw">pub fn </span>test_poseidon_circuit() {
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">4</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env: WitnessBuilderEnv&lt;Fp, N_COL, DummyLookupTable&gt; =
+            WitnessBuilderEnv::create();
+
+        <span class="comment">// Generate random inputs at each row
+        </span><span class="kw">for </span>_row <span class="kw">in </span><span class="number">0</span>..domain_size {
+            <span class="kw">let </span>x: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+            <span class="kw">let </span>y: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+            <span class="kw">let </span>z: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+
+            interpreter::poseidon_circuit(<span class="kw-2">&amp;mut </span>witness_env, PoseidonBN254Parameters, (x, y, z));
+
+            <span class="comment">// Check internal consistency of our circuit: that our
+            // computed values match the CPU-spec implementation of
+            // Poseidon.
+            </span>{
+                <span class="kw">let </span>exp_output: Vec&lt;Fp&gt; = {
+                    <span class="kw">let </span><span class="kw-2">mut </span>state: Vec&lt;Fp&gt; = <span class="macro">vec!</span>[x, y, z];
+                    poseidon_block_cipher::&lt;Fp, PlonkSpongeConstantsIVC&gt;(
+                        params::static_params(),
+                        <span class="kw-2">&amp;mut </span>state,
+                    );
+                    state
+                };
+                <span class="kw">let </span>x_col: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; =
+                    PoseidonColumn::Round(NB_FULL_ROUND - <span class="number">1</span>, <span class="number">0</span>);
+                <span class="kw">let </span>y_col: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; =
+                    PoseidonColumn::Round(NB_FULL_ROUND - <span class="number">1</span>, <span class="number">1</span>);
+                <span class="kw">let </span>z_col: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; =
+                    PoseidonColumn::Round(NB_FULL_ROUND - <span class="number">1</span>, <span class="number">2</span>);
+                <span class="macro">assert_eq!</span>(witness_env.read_column(x_col), exp_output[<span class="number">0</span>]);
+                <span class="macro">assert_eq!</span>(witness_env.read_column(y_col), exp_output[<span class="number">1</span>]);
+                <span class="macro">assert_eq!</span>(witness_env.read_column(z_col), exp_output[<span class="number">2</span>]);
+            }
+        }
+    }
+
+    <span class="attr">#[test]
+    </span><span class="doccomment">/// Checks that poseidon circuit can be proven and verified. Big domain.
     </span><span class="kw">pub fn </span>test_completeness() {
         <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
@@ -211,86 +257,40 @@
         <span class="kw">let </span><span class="kw-2">mut </span>srs: PairingSRS&lt;BN254&gt; = PairingSRS::create(srs_trapdoor, domain.d1.size <span class="kw">as </span>usize);
         srs.full_srs.add_lagrange_basis(domain.d1);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env: WitnessBuilderEnv&lt;Fp, N_COL, DummyLookupTable&gt; =
-            WitnessBuilderEnv::create();
-
-        <span class="comment">// Generate random inputs at each row
-        </span><span class="kw">for </span>_row <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
-            <span class="kw">let </span>x: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-            <span class="kw">let </span>y: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-            <span class="kw">let </span>z: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-            <span class="kw">let </span>exp_output: Vec&lt;Fp&gt; = {
-                <span class="kw">let </span><span class="kw-2">mut </span>state: Vec&lt;Fp&gt; = <span class="macro">vec!</span>[x, y, z];
-                poseidon_block_cipher::&lt;Fp, PlonkSpongeConstantsIVC&gt;(
-                    params::static_params(),
-                    <span class="kw-2">&amp;mut </span>state,
-                );
-                state
-            };
-
-            <span class="comment">// Initialize inputs in the circuit
-            </span>{
-                <span class="kw">let </span>input_x: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; = PoseidonColumn::Input(<span class="number">0</span>);
-                <span class="kw">let </span>input_y: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; = PoseidonColumn::Input(<span class="number">1</span>);
-                <span class="kw">let </span>input_z: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; = PoseidonColumn::Input(<span class="number">2</span>);
-
-                witness_env.write_column(input_x.to_column(), x);
-                witness_env.write_column(input_y.to_column(), y);
-                witness_env.write_column(input_z.to_column(), z);
-            }
-
-            {
-                <span class="comment">// FIXME:
-                // Round constants should not be considered as columns. We should
-                // handle differently constants. See the comment in the columns file.
-                // This must be improved!
-                </span><span class="kw">let </span>rc = PoseidonBN254Parameters.constants();
-                rc.iter().enumerate().for_each(|(round, rcs)| {
-                    rcs.iter().enumerate().for_each(|(j, rc)| {
-                        <span class="kw">let </span>rc_col: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; =
-                            PoseidonColumn::RoundConstant(round, j);
-                        witness_env.write_column(rc_col.to_column(), <span class="kw-2">*</span>rc);
-                    });
-                });
-            }
-
-            interpreter::apply_permutation(<span class="kw-2">&amp;mut </span>witness_env, PoseidonBN254Parameters);
-
-            <span class="comment">// Test verifying the output
-            </span>{
-                <span class="kw">let </span>x_col: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; =
-                    PoseidonColumn::Round(NB_FULL_ROUND - <span class="number">1</span>, <span class="number">0</span>);
-                <span class="kw">let </span>y_col: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; =
-                    PoseidonColumn::Round(NB_FULL_ROUND - <span class="number">1</span>, <span class="number">1</span>);
-                <span class="kw">let </span>z_col: PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt; =
-                    PoseidonColumn::Round(NB_FULL_ROUND - <span class="number">1</span>, <span class="number">2</span>);
-                <span class="kw">let </span>x = witness_env.read_column(x_col);
-                <span class="kw">let </span>y = witness_env.read_column(y_col);
-                <span class="kw">let </span>z = witness_env.read_column(z_col);
-                <span class="macro">assert_eq!</span>(x, exp_output[<span class="number">0</span>]);
-                <span class="macro">assert_eq!</span>(y, exp_output[<span class="number">1</span>]);
-                <span class="macro">assert_eq!</span>(z, exp_output[<span class="number">2</span>]);
-            }
-        }
-
         <span class="kw">let </span>empty_lookups = BTreeMap::new();
-        <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain, empty_lookups);
+        <span class="kw">let </span>proof_inputs = {
+            <span class="kw">let </span><span class="kw-2">mut </span>witness_env: WitnessBuilderEnv&lt;Fp, N_COL, DummyLookupTable&gt; =
+                WitnessBuilderEnv::create();
+
+            <span class="comment">// Generate random inputs at each row
+            </span><span class="kw">for </span>_row <span class="kw">in </span><span class="number">0</span>..domain.d1.size {
+                <span class="kw">let </span>x: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+                <span class="kw">let </span>y: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+                <span class="kw">let </span>z: Fp = Fp::rand(<span class="kw-2">&amp;mut </span>rng);
+
+                interpreter::poseidon_circuit(<span class="kw-2">&amp;mut </span>witness_env, PoseidonBN254Parameters, (x, y, z));
+            }
+
+            witness_env.get_proof_inputs(domain, empty_lookups)
+        };
 
         <span class="kw">let </span>constraints = {
             <span class="kw">let </span><span class="kw-2">mut </span>constraint_env = ConstraintBuilderEnv::&lt;Fp, DummyLookupTable&gt;::create();
             interpreter::apply_permutation(<span class="kw-2">&amp;mut </span>constraint_env, PoseidonBN254Parameters);
-            constraint_env.get_constraints()
-        };
+            <span class="kw">let </span>constraints = constraint_env.get_constraints();
 
-        <span class="comment">// Constraints properties check. For this test, we do have 165 constraints
-        </span><span class="macro">assert_eq!</span>(constraints.len(), STATE_SIZE * NB_FULL_ROUND);
-        <span class="comment">// Maximum degree of the constraints
-        </span><span class="macro">assert_eq!</span>(constraints.iter().map(|c| c.degree(<span class="number">1</span>, <span class="number">0</span>)).max().unwrap(), <span class="number">7</span>);
-        <span class="comment">// We only have degree 7 constraints
-        </span>constraints
-            .iter()
-            .map(|c| c.degree(<span class="number">1</span>, <span class="number">0</span>))
-            .for_each(|d| <span class="macro">assert_eq!</span>(d, <span class="number">7</span>));
+            <span class="comment">// Constraints properties check. For this test, we do have 165 constraints
+            </span><span class="macro">assert_eq!</span>(constraints.len(), STATE_SIZE * NB_FULL_ROUND);
+            <span class="comment">// Maximum degree of the constraints
+            </span><span class="macro">assert_eq!</span>(constraints.iter().map(|c| c.degree(<span class="number">1</span>, <span class="number">0</span>)).max().unwrap(), <span class="number">7</span>);
+            <span class="comment">// We only have degree 7 constraints
+            </span>constraints
+                .iter()
+                .map(|c| c.degree(<span class="number">1</span>, <span class="number">0</span>))
+                .for_each(|d| <span class="macro">assert_eq!</span>(d, <span class="number">7</span>));
+
+            constraints
+        };
 
         <span class="comment">// generate the proof
         </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N_COL, <span class="kw">_</span>&gt;(
