@@ -492,11 +492,13 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Trick to print debug message while testing, as we in the test config env
     use crate::decomposable_folding::DecomposableFoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations};
     use checker::ExtendedProvider;
+    use std::println as debug;
 
-    //two functions to create the entire witness from just the a and b columns
+    // two functions to create the entire witness from just the a and b columns
     fn add_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
         let [a1, a2] = a;
         let [b1, b2] = b;
@@ -513,9 +515,12 @@ mod tests {
         x.map(|row| Evaluations::from_vec_and_domain(row.map(Fp::from).to_vec(), domain))
     }
 
-    // in this test we will create 2 add witnesses, fold them together, create 2 sub witnesses,
-    // fold them together, and then further fold the 2 resulting pairs into one mixed add-sub witnes
-    // instances are also folded, but not that relevant in the examples as we don't make a proof for them
+    // in this test we will create 2 add witnesses, fold them together, create 2
+    // sub witnesses,
+    // fold them together, and then further fold the 2 resulting pairs into one
+    // mixed add-sub witnes
+    // instances are also folded, but not that relevant in the examples as we
+    // don't make a proof for them
     // and instead directly check the witness
     #[test]
     fn test_decomposable_folding() {
@@ -527,7 +532,8 @@ mod tests {
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
 
-        //initiallize the scheme, also getting the final single expression for the entire constraint system
+        // initiallize the scheme, also getting the final single expression for
+        // the entire constraint system
         let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
             constraints.clone(),
             vec![],
@@ -536,7 +542,7 @@ mod tests {
             (),
         );
 
-        //some inputs to be used by both add and sub
+        // some inputs to be used by both add and sub
         let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
         let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
 
@@ -546,8 +552,8 @@ mod tests {
             (wit, ins)
         };
 
-        //fold adds
-        // println!("fold add");
+        // fold adds
+        debug!("fold add");
         let left = {
             let [a, b] = inputs1;
             let wit1 = add_witness(a, b);
@@ -572,7 +578,7 @@ mod tests {
             (instance, witness)
         };
         //fold subs
-        // println!("fold subs");
+        debug!("fold subs");
         let right = {
             let [a, b] = inputs1;
             let wit1 = sub_witness(a, b);
@@ -589,7 +595,7 @@ mod tests {
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint.to_string());
+            debug!("exp: \n {:#?}", final_constraint.to_string());
 
             checker.check(&final_constraint, false);
             let ExtendedProvider {
@@ -598,14 +604,14 @@ mod tests {
             (instance, witness)
         };
         //fold mixed
-        // println!("fold mixed");
+        debug!("fold mixed");
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
             let folded = scheme.fold_instance_witness_pair(left, right, None);
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint.to_string());
+            debug!("exp: \n {:#?}", final_constraint.to_string());
 
             checker.check(&final_constraint, false);
         };
