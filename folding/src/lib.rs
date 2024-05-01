@@ -240,6 +240,7 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
 /// - `W`: The type of the witness, i.e. the private inputs
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
+/// - `S`: The type of selectors
 pub trait FoldingEnv<F, I, W, Col, Chal, S> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
