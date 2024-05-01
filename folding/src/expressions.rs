@@ -295,6 +295,10 @@ impl<C: FoldingConfig> FoldingExp<C> {
         }
     }
 
+    /// Convert a folding expression into a compatible one.
+    // TODO: explain why do we need it. It is transformations between the two
+    // categories FoldingCompatibleExpr and FoldingExpr. Is there a one-to-one
+    // conversion?
     fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
         use FoldingCompatibleExprInner::*;
