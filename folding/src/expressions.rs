@@ -376,6 +376,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 }
 
+// TODO: doc - what is the sign?
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Sign {
     Pos,
@@ -393,6 +394,7 @@ impl std::ops::Neg for Sign {
     }
 }
 
+// TODO: doc - What is a term?
 #[derive(Clone, Debug)]
 pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
