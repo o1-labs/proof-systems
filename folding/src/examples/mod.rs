@@ -14,7 +14,7 @@ mod example_quadriticization;
 type Fp = ark_bn254::Fr;
 type Curve = ark_bn254::G1Affine;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
 // TODO: get rid of trait Sponge in folding, and use the one from kimchi
 impl Sponge<Curve> for BaseSponge {
