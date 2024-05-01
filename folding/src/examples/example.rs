@@ -1,3 +1,11 @@
+/// This file shows how to use the folding trait with a simple configuration of
+/// 3 columns, and two selectors. See [tests::test_folding_instance] at the end
+/// for a test.
+/// The test requires the features `bn254`, therefore use the following command
+/// to execute it:
+/// ```text
+/// cargo nextest run examples::example::tests::test_folding_instance --release --all-features
+/// ```
 use crate::{
     error_term::Side,
     examples::{BaseSponge, Curve, Fp},
@@ -53,11 +61,12 @@ impl FoldingColumnTrait for TestColumn {
     }
 }
 
-/// The alphas are exceptional, their number cannot be known ahead of time as it will be defined by
-/// folding.
-/// The values will be computed as powers in new instances, but after folding each alfa will be a
-/// linear combination of other alphas, instand of a power of other element.
-/// This type represents that, allowing to also recognize which case is present
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding.
+/// The values will be computed as powers in new instances, but after folding
+/// each alpha will be a linear combination of other alphas, instand of a power
+/// of other element. This type represents that, allowing to also recognize
+/// which case is present.
 #[derive(Debug, Clone)]
 pub enum Alphas {
     Powers(Fp, Rc<AtomicUsize>),
@@ -102,6 +111,8 @@ impl Alphas {
 }
 
 /// The instance is the commitments to the polynomials and the challenges
+/// There are 3 commitments and challanges because there are 3 columns, A, B and
+/// C.
 #[derive(Debug, Clone)]
 struct TestInstance {
     commitments: [Curve; 3],
@@ -304,12 +315,13 @@ fn instance_from_witness(
         alphas,
     }
 }
+
 fn circuit() -> [Vec<Fp>; 2] {
     [vec![Fp::one(), Fp::zero()], vec![Fp::zero(), Fp::one()]]
 }
 
-/// A kind of pseudo-prover, will compute the expressions over the witness a check row by row
-/// for a zero result.
+/// A kind of pseudo-prover, will compute the expressions over the witness a
+/// check row by row for a zero result.
 mod checker {
     use super::*;
     pub struct Provider {
