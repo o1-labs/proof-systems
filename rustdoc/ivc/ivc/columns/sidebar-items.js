@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["IVC_POSEIDON_NB_FULL_ROUND","IVC_POSEIDON_STATE_SIZE"],"enum":["IVCColumn"]};

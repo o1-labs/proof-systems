@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["poseidon"]};
+window.SIDEBAR_ITEMS = {"mod":["ivc","poseidon"]};

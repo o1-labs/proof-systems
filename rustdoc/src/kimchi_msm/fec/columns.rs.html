@@ -95,6 +95,7 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::{Column, ColumnIndexer},
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
@@ -104,25 +105,26 @@
 </span><span class="kw">pub const </span>FEC_N_COLUMNS: usize = <span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">12 </span>* N_LIMBS_SMALL + <span class="number">9</span>;
 
 <span class="doccomment">/// Columns used by the serialization subcircuit.
+</span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub enum </span>FECColumn {
-    XP(usize),
-    YP(usize),
-    XQ(usize),
-    YQ(usize),
-    F(usize),
-    XR(usize),
-    YR(usize),
-    S(usize),
-    Q1(usize),
-    Q2(usize),
-    Q3(usize),
-    Q1Sign,
-    Q2Sign,
-    Q3Sign,
-    Carry1(usize),
-    Carry2(usize),
-    Carry3(usize),
-}
+    XP(usize),     <span class="comment">// 4
+    </span>YP(usize),     <span class="comment">// 4
+    </span>XQ(usize),     <span class="comment">// 4
+    </span>YQ(usize),     <span class="comment">// 4
+    </span>F(usize),      <span class="comment">// 4
+    </span>XR(usize),     <span class="comment">// 17
+    </span>YR(usize),     <span class="comment">// 17
+    </span>S(usize),      <span class="comment">// 17
+    </span>Q1(usize),     <span class="comment">// 17
+    </span>Q2(usize),     <span class="comment">// 17
+    </span>Q3(usize),     <span class="comment">// 17
+    </span>Q1Sign,        <span class="comment">// 1
+    </span>Q2Sign,        <span class="comment">// 1
+    </span>Q3Sign,        <span class="comment">// 1
+    </span>Carry1(usize), <span class="comment">// 36
+    </span>Carry2(usize), <span class="comment">// 36
+    </span>Carry3(usize), <span class="comment">// 36
+</span>}
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>FECColumn {
     <span class="kw">const </span>COL_N: usize = FEC_N_COLUMNS;
