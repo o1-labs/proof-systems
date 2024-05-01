@@ -49,7 +49,7 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
-    //in case of using docomposable folding, if not it can be just ()
+    // in case of using docomposable folding, if not it can be just ()
     type S: Clone + Debug + Eq + Hash;
 
     /// The type of an abstract challenge that can be found in the expressions
@@ -68,8 +68,9 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     /// For Plonk, it will be the commitments to the polynomials and the challenges
     type Instance: Instance<Self::Curve>;
 
-    /// For PlonK, it will be the polynomials in evaluation form that we commit to, i.e. the columns.
-    /// In the generic prover/verifier, it would be kimchi_msm::witness::Witness.
+    /// For PlonK, it will be the polynomials in evaluation form that we commit
+    /// to, i.e. the columns.
+    /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
     type Witness: Witness<Self::Curve>;
 
     type Structure;
