@@ -620,6 +620,9 @@
 <a href="#618" id="618">618</a>
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::{
         capabilities::{read_column_array, write_column_array_const, write_column_const},
@@ -764,9 +767,10 @@
 /// bits * 6 carries = 36 chunks, and every 6th chunk is 4 bits only.
 /// This matches the 2*S+2 = 36, since S = 17.
 ///
-/// TODO: on avoiding 16bit lookups.
-/// Our current packing is we have 6 batches x 6 elements, each batch is
-/// [16 16 16 16 16 4] bits. We could do [15 15 15 15 15 9] and avoid 16-bit lookups.
+/// Note however since 79-bit carry is signed, we will store it as a list of
+/// [15 15 15 15 15 9]-bit limbs, where limbs are signed.
+/// E.g. 15-bit limbs are in [-2^14, 2^14-1]. This allows us to use
+/// 14abs range checks.
 ///
 /// === Ranges
 ///
@@ -886,11 +890,10 @@
         <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
             <span class="comment">// This should be a diferent range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            </span>env.lookup(LookupTable::RangeCheck4Abs, x);
+            </span>env.lookup(LookupTable::RangeCheck9Abs, x);
         } <span class="kw">else </span>{
-            <span class="comment">// TODO add this table back
-            // env.lookup(LookupTable::RangeCheck15Abs, x);
-        </span>}
+            env.lookup(LookupTable::RangeCheck14Abs, x);
+        }
     }
 
     <span class="kw">let </span>xr_limbs_large =
@@ -1155,8 +1158,11 @@
                 };
                 <span class="kw">let </span>newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 <span class="comment">// Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                // But limbs are signed, so we split into 14-bit /signed/ limbs. + last chunk is signed 9 bit.
                 </span><span class="kw">let </span>newcarry_limbs: [F; <span class="number">6</span>] =
-                    limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, <span class="number">6</span>&gt;(newcarry_abs_bui.clone());
+                    limb_decompose_biguint::&lt;F, { LIMB_BITSIZE_SMALL - <span class="number">1 </span>}, <span class="number">6</span>&gt;(
+                        newcarry_abs_bui.clone(),
+                    );
 
                 <span class="kw">for </span>(j, limb) <span class="kw">in </span>newcarry_limbs.iter().enumerate() {
                     write_column_const(env, column_mapper(<span class="number">6 </span>* i + j), <span class="kw-2">&amp;</span>(newcarry_sign * limb));

@@ -786,6 +786,46 @@
 <a href="#784" id="784">784</a>
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
@@ -1124,7 +1164,7 @@
     <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
     std::array::from_fn(|i| {
         (<span class="number">0</span>..<span class="number">6</span>)
-            .map(|j| x[<span class="number">6 </span>* i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * LIMB_BITSIZE_SMALL)))
+            .map(|j| x[<span class="number">6 </span>* i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * (LIMB_BITSIZE_SMALL - <span class="number">1</span>))))
             .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
     })
 }
@@ -1176,10 +1216,11 @@
         <span class="kw">if </span>i % <span class="number">6 </span>== <span class="number">5 </span>{
             <span class="comment">// This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            </span>env.lookup(LookupTable::RangeCheck4Abs, x);
-        } <span class="kw">else </span>{
+            </span>env.lookup(LookupTable::RangeCheck9Abs, x); <span class="comment">// 4 + 5 ?
+        </span>} <span class="kw">else </span>{
             <span class="comment">// TODO add actual lookup
-            // env.range_check_abs15bit(x);
+            </span>env.lookup(LookupTable::RangeCheck14Abs, x);
+            <span class="comment">//env.range_check_abs15(x);
             // assert!(x &lt; F::from(1u64 &lt;&lt; 15) || x &gt;= F::zero() - F::from(1u64 &lt;&lt; 15));
         </span>}
     }
@@ -1373,8 +1414,13 @@
                 };
                 <span class="kw">let </span>newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 <span class="comment">// Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                // However we split them into 14-bit chunks -- each chunk is signed, so in the end
+                // the layout is [14bitabs,14bitabs,14bitabs,14bitabs,14bitabs,9bitabs]
+                // altogether giving a 79bit number (signed).
                 </span><span class="kw">let </span>newcarry_limbs: [F; <span class="number">6</span>] =
-                    limb_decompose_biguint::&lt;F, LIMB_BITSIZE_SMALL, <span class="number">6</span>&gt;(newcarry_abs_bui.clone());
+                    limb_decompose_biguint::&lt;F, { LIMB_BITSIZE_SMALL - <span class="number">1 </span>}, <span class="number">6</span>&gt;(
+                        newcarry_abs_bui.clone(),
+                    );
 
                 <span class="kw">for </span>(j, limb) <span class="kw">in </span>newcarry_limbs.iter().enumerate() {
                     env.write_column(
@@ -1414,8 +1460,10 @@
         circuit_design::{ColAccessCap, WitnessBuilderEnv},
         columns::ColumnIndexer,
         serialization::{
-            column::SerializationColumn, interpreter::deserialize_field_element,
-            lookups::LookupTable, N_INTERMEDIATE_LIMBS,
+            column::SerializationColumn,
+            interpreter::{deserialize_field_element, multiplication_circuit},
+            lookups::LookupTable,
+            N_INTERMEDIATE_LIMBS,
         },
         Ff1, LIMB_BITSIZE, N_LIMBS,
     };
@@ -1423,7 +1471,7 @@
     <span class="kw">use </span>mina_curves::pasta::Fp;
     <span class="kw">use </span>num_bigint::BigUint;
     <span class="kw">use </span>o1_utils::{tests::make_test_rng, FieldHelpers};
-    <span class="kw">use </span>rand::Rng;
+    <span class="kw">use </span>rand::{CryptoRng, Rng, RngCore};
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">fn </span>test_decomposition_generic(x: Fp) {
@@ -1570,6 +1618,38 @@
             - BigUint::from_str(<span class="string">"1"</span>).unwrap();
 
         test_decomposition_generic(Fp::from(x));
+    }
+
+    <span class="kw">fn </span>build_serialization_mul_circuit&lt;RNG: RngCore + CryptoRng&gt;(
+        rng: <span class="kw-2">&amp;mut </span>RNG,
+        domain_size: usize,
+    ) -&gt; WitnessBuilderEnv&lt;Fp, { &lt;SerializationColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, LookupTable&lt;Ff1&gt;&gt;
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
+
+        <span class="comment">// To support less rows than domain_size we need to have selectors.
+        //let row_num = rng.gen_range(0..domain_size);
+
+        </span><span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..domain_size {
+            <span class="kw">let </span>input_chal: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
+            <span class="kw">let </span>coeff_input: Ff1 = &lt;Ff1 <span class="kw">as </span>UniformRand&gt;::rand(rng);
+            multiplication_circuit(<span class="kw-2">&amp;mut </span>witness_env, input_chal, coeff_input, <span class="bool-val">true</span>);
+
+            <span class="kw">if </span>row_i &lt; domain_size - <span class="number">1 </span>{
+                witness_env.next_row();
+            }
+        }
+
+        witness_env
+    }
+
+    <span class="attr">#[test]
+    </span><span class="doccomment">/// Builds the FF addition circuit with random values. The witness
+    /// environment enforces the constraints internally, so it is
+    /// enough to just build the circuit to ensure it is satisfied.
+    </span><span class="kw">pub fn </span>test_serialization_mul_circuit() {
+        <span class="kw">let </span><span class="kw-2">mut </span>rng = o1_utils::tests::make_test_rng();
+        build_serialization_mul_circuit(<span class="kw-2">&amp;mut </span>rng, <span class="number">1 </span>&lt;&lt; <span class="number">4</span>);
     }
 }
 </code></pre></div></section></main></body></html>
