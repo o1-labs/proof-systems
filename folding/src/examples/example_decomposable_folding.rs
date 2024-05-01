@@ -22,6 +22,12 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+#[cfg(test)]
+use std::println as debug;
+
+#[cfg(not(test))]
+use log::debug;
+
 // the type representing our columns, in this case we have 3 witness columns
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum TestColumn {
@@ -186,11 +192,13 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
     }
 
     fn zero_vec(&self) -> Vec<Fp> {
-        //this works in the example but is not the best way as the envionment could get circuits of any size
+        // this works in the example but is not the best way as the envionment
+        // could get circuits of any size
         vec![Fp::zero(); 2]
     }
 
-    //provide access to columns, here side refers to one of the two pairs you got in new()
+    // provide access to columns, here side refers to one of the two pairs you
+    // got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -440,21 +448,21 @@ mod checker {
     }
 
     pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) -> Vec<Fp> {
+        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
             let e2 = exp.clone();
             let res = match exp {
                 FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
                 FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.double()).collect()
                 }
                 FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.square()).collect()
                 }
                 FoldingCompatibleExpr::BinOp(op, e1, e2) => {
-                    let v1 = self.check_rec(*e1, debug);
-                    let v2 = self.check_rec(*e2, debug);
+                    let v1 = self.check_rec(*e1);
+                    let v2 = self.check_rec(*e2);
                     let op = match op {
                         Op2::Add => |(a, b)| a + b,
                         Op2::Mul => |(a, b)| a * b,
@@ -463,22 +471,20 @@ mod checker {
                     v1.into_iter().zip(v2).map(op).collect()
                 }
                 FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.pow([exp])).collect()
                 }
             };
-            if debug {
-                println!("exp: {:?}", e2);
-                println!("res: [\n");
-                for e in res.iter() {
-                    println!("{e}\n");
-                }
-                println!("]");
+            debug!("exp: {:?}", e2);
+            debug!("res: [\n");
+            for e in res.iter() {
+                debug!("{e}\n");
             }
+            debug!("]");
             res
         }
-        fn check(&self, exp: &FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) {
-            let res = self.check_rec(exp.clone(), debug);
+        fn check(&self, exp: &FoldingCompatibleExpr<TestFoldingConfig>) {
+            let res = self.check_rec(exp.clone());
             for (i, row) in res.iter().enumerate() {
                 if !row.is_zero() {
                     panic!("check in row {i} failed, {row} != 0");
@@ -546,7 +552,7 @@ mod tests {
         let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
         let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
 
-        //creates an instance witness pair
+        // creates an instance witness pair
         let make_pair = |wit: TestWitness| {
             let ins = instance_from_witness(&wit, &srs, domain);
             (wit, ins)
@@ -565,13 +571,14 @@ mod tests {
 
             let left = (instance1, witness1);
             let right = (instance2, witness2);
-            // here we provide normal instance-witness pairs, which will be automatically relaxed
+            // here we provide normal instance-witness pairs, which will be
+            // automatically relaxed
             let folded =
                 scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint.to_string());
-            checker.check(&final_constraint, false);
+            debug!("exp: \n {:#?}", final_constraint.to_string());
+            checker.check(&final_constraint);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -597,7 +604,7 @@ mod tests {
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
 
-            checker.check(&final_constraint, false);
+            checker.check(&final_constraint);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
@@ -613,7 +620,7 @@ mod tests {
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
 
-            checker.check(&final_constraint, false);
+            checker.check(&final_constraint);
         };
     }
 }
