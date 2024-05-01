@@ -52,7 +52,7 @@ impl FoldingColumnTrait for TestColumn {
 /// The alphas are exceptional, their number cannot be known ahead of time as it
 /// will be defined by folding.
 /// The values will be computed as powers in new instances, but after folding
-/// each alpha will be a linear combination of other alphas, instand of a power
+/// each alpha will be a linear combination of other alphas, instead of a power
 /// of other element. This type represents that, allowing to also recognize
 /// which case is present
 #[derive(Debug, Clone)]
