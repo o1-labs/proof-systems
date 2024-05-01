@@ -149,7 +149,15 @@ pub enum ExpExtension<C: FoldingConfig> {
     Selector(C::S),
 }
 
-/// Internal expression used for folding, simplified for that purpose
+/// Internal expression used for folding.
+/// A "folding" expression is a multivariate polynomial like defined in
+/// [kimchi::circuits::expr] with the following differences:
+/// - No constructors related to zero-knowledge or lagrange basis (i.e. no
+/// constructors related to the PIOP)
+/// - The variables includes a set of columns that describes the initial circuit
+/// shape, with additional columns strictly related to the folding scheme (error
+/// term, etc).
+// TODO: renamed in "RelaxedExpression"?
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FoldingExp<C: FoldingConfig> {
     Atom(ExtendedFoldingColumn<C>),
