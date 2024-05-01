@@ -17,14 +17,18 @@ pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 pub mod columns;
 pub mod decomposable_folding;
 mod error_term;
+
+pub mod expressions;
+mod instance_witness;
+mod quadraticization;
+
+// Modules strictly related to tests
+// TODO: should we move them into an explicit subdirectory `test`?
 #[cfg(test)]
 #[cfg(feature = "bn254")]
 mod examples;
-pub mod expressions;
-mod instance_witness;
 #[cfg(test)]
 mod mock;
-mod quadraticization;
 
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
