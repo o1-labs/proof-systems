@@ -108,12 +108,11 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
         match self {
             FoldingCompatibleExpr::Atom(c) => match c {
                 FoldingCompatibleExprInner::Constant(c) => {
-                    let c = if c.is_zero() {
+                    if c.is_zero() {
                         "0".to_string()
                     } else {
                         c.to_string()
-                    };
-                    c.to_string()
+                    }
                 }
                 FoldingCompatibleExprInner::Challenge(c) => {
                     format!("{:?}", c)
