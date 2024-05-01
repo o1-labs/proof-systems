@@ -12,6 +12,7 @@ ark-bn254 = {workspace = true, optional = true }
 ark-serialize.workspace = true
 o1-utils.workspace = true
 itertools.workspace = true
+log.workspace = true
 kimchi.workspace = true
 poly-commitment.workspace = true
 groupmap.workspace = true

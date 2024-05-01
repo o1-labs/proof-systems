@@ -325,6 +325,7 @@ fn circuit() -> [Vec<Fp>; 2] {
 /// check row by row for a zero result.
 mod checker {
     use super::*;
+    use log::debug;
     pub struct Provider {
         structure: TestStructure<Fp>,
         instance: TestInstance,
@@ -440,21 +441,21 @@ mod checker {
     }
 
     pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) -> Vec<Fp> {
+        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
             let e2 = exp.clone();
             let res = match exp {
                 FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
                 FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.double()).collect()
                 }
                 FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.square()).collect()
                 }
                 FoldingCompatibleExpr::BinOp(op, e1, e2) => {
-                    let v1 = self.check_rec(*e1, debug);
-                    let v2 = self.check_rec(*e2, debug);
+                    let v1 = self.check_rec(*e1);
+                    let v2 = self.check_rec(*e2);
                     let op = match op {
                         Op2::Add => |(a, b)| a + b,
                         Op2::Mul => |(a, b)| a * b,
@@ -463,22 +464,20 @@ mod checker {
                     v1.into_iter().zip(v2).map(op).collect()
                 }
                 FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.pow([exp])).collect()
                 }
             };
-            if debug {
-                println!("exp: {:?}", e2);
-                println!("res: [\n");
-                for e in res.iter() {
-                    println!("{e}\n");
-                }
-                println!("]");
+            debug!("exp: {:?}", e2);
+            debug!("res: [\n");
+            for e in res.iter() {
+                debug!("{e}\n");
             }
+            debug!("]");
             res
         }
-        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) {
-            let res = self.check_rec(exp, debug);
+        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) {
+            let res = self.check_rec(exp);
             for (i, row) in res.iter().enumerate() {
                 if !row.is_zero() {
                     panic!("check in row {i} failed, {row} != 0");
@@ -492,6 +491,7 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use log::debug;
     use crate::{examples::example::checker::ExtendedProvider, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations};
 
@@ -545,14 +545,14 @@ mod tests {
 
         // check left
         {
-            // println!("check left");
+            // debug!("check left");
             let checker = Provider::new(
                 structure.clone(),
                 left_instance.clone(),
                 left_witness.clone(),
             );
             for constraint in &constraints {
-                checker.check(constraint.clone(), false)
+                checker.check(constraint.clone())
             }
         }
         // check right
@@ -564,7 +564,7 @@ mod tests {
                 right_witness.clone(),
             );
             for constraint in &constraints {
-                checker.check(constraint.clone(), false)
+                checker.check(constraint.clone())
             }
         }
 
@@ -576,9 +576,9 @@ mod tests {
         let (folded_instance, folded_witness, [_t0, _t1]) = folded;
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
-            // println!("check folded");
-            checker.check(final_constraint, false);
+            debug!("exp: \n {:#?}", final_constraint);
+            debug!("check folded");
+            checker.check(final_constraint);
         }
     }
 }
