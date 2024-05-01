@@ -63,7 +63,7 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
-    ///extra nodes created by folding, should not be passed to folding
+    /// extra nodes created by folding, should not be passed to folding
     Extensions(ExpExtension<C>),
 }
 
