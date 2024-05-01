@@ -1,15 +1,14 @@
 use crate::{
-    circuits::expr::{
-        ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
-    },
-    folding::{
-        quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
-        FoldingConfig, ScalarField,
-    },
+    quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
+    FoldingConfig, ScalarField,
 };
 use ark_ec::AffineCurve;
 use ark_ff::One;
 use itertools::Itertools;
+use kimchi::circuits::{
+    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable},
+    gate::CurrOrNext,
+};
 use num_traits::Zero;
 
 pub trait FoldingColumnTrait: Copy + Clone {
@@ -58,6 +57,67 @@ pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Pow(Box<Self>, u64),
 }
 
+impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
+    fn to_string(&self) -> String {
+        match self {
+            FoldingCompatibleExpr::Atom(c) => match c {
+                FoldingCompatibleExprInner::Constant(c) => {
+                    let c = if c.is_zero() {
+                        "0".to_string()
+                    } else {
+                        c.to_string()
+                    };
+                    c.to_string()
+                }
+                FoldingCompatibleExprInner::Challenge(c) => {
+                    format!("{:?}", c)
+                }
+                FoldingCompatibleExprInner::Cell(cell) => {
+                    let Variable { col, row } = cell;
+                    let next = match row {
+                        CurrOrNext::Curr => "",
+                        CurrOrNext::Next => " * ω",
+                    };
+                    format!("Col({:?}){}", col, next)
+                }
+                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
+                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(_) => todo!(),
+                FoldingCompatibleExprInner::Extensions(e) => match e {
+                    ExpExtension::U => "U".to_string(),
+                    ExpExtension::Error => "E".to_string(),
+                    ExpExtension::ExtendedWitness(i) => {
+                        format!("ExWit({})", i)
+                    }
+                    ExpExtension::Alpha(i) => format!("α_{i}"),
+                    ExpExtension::Selector(s) => format!("Selec({:?})", s),
+                },
+            },
+            FoldingCompatibleExpr::Double(e) => {
+                format!("2 {}", e.to_string())
+            }
+            FoldingCompatibleExpr::Square(e) => {
+                format!("{} ^ 2", e.to_string())
+            }
+            FoldingCompatibleExpr::BinOp(op, e1, e2) => {
+                let op_char = match op {
+                    Op2::Add => "+",
+                    Op2::Mul => "*",
+                    Op2::Sub => "-",
+                };
+                match op {
+                    Op2::Add | Op2::Sub => {
+                        format!("{} {} {}", e1.to_string(), op_char, e2.to_string())
+                    }
+                    Op2::Mul => {
+                        format!("({}) {} ({})", e1.to_string(), op_char, e2.to_string())
+                    }
+                }
+            }
+            FoldingCompatibleExpr::Pow(_, _) => todo!(),
+        }
+    }
+}
+
 /// Extra expressions that can be created by folding
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpExtension<C: FoldingConfig> {
@@ -71,7 +131,16 @@ pub enum ExpExtension<C: FoldingConfig> {
 }
 
 ///Internal expression used for folding, simplified for that purpose
-pub(crate) type FoldingExp<C> = Operations<ExtendedFoldingColumn<C>>;
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum FoldingExp<C: FoldingConfig> {
+    Atom(ExtendedFoldingColumn<C>),
+    Pow(Box<Self>, u64),
+    Add(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Double(Box<Self>),
+    Square(Box<Self>),
+}
 
 impl<C: FoldingConfig> std::ops::Add for FoldingExp<C> {
     type Output = Self;
@@ -106,7 +175,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
         type Ex<C> = ExtendedFoldingColumn<C>;
-        use Operations::*;
+        use FoldingExp::*;
         match self {
             FoldingCompatibleExpr::Atom(atom) => match atom {
                 FoldingCompatibleExprInner::Constant(c) => Atom(ExtendedFoldingColumn::Constant(c)),
@@ -150,7 +219,7 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
         C::Column: Clone,
         C::Challenge: Clone,
     {
-        use Operations::*;
+        use FoldingExp::*;
         let e = Box::new(exp);
         let e_2 = Box::new(Square(e.clone()));
         match p {
@@ -209,8 +278,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 }
                 acc
             }
-            FoldingExp::Cache(_, _) => todo!(),
-            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 
@@ -260,8 +327,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 }
                 acc
             }
-            FoldingExp::Cache(_, _) => todo!(),
-            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 }
@@ -293,7 +358,7 @@ impl std::ops::Mul for &Degree {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Sign {
+pub enum Sign {
     Pos,
     Neg,
 }
@@ -310,7 +375,7 @@ impl std::ops::Neg for Sign {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Term<C: FoldingConfig> {
+pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
     pub sign: Sign,
 }
@@ -409,10 +474,8 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     }
 }
 
-pub(crate) fn extract_terms<C: FoldingConfig>(
-    exp: FoldingExp<C>,
-) -> Box<dyn Iterator<Item = Term<C>>> {
-    use Operations::*;
+pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
+    use FoldingExp::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
         exp @ Atom(_) => Box::new(
             [Term {
@@ -479,8 +542,6 @@ pub(crate) fn extract_terms<C: FoldingConfig>(
             }
             Box::new(acc.into_iter())
         }
-        Cache(_, _) => todo!(),
-        IfFeature(_, _, _) => todo!(),
     };
     exps
 }

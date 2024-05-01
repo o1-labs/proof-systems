@@ -1,10 +1,12 @@
 use crate::{
-    folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
+    folding::{
+        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
+    },
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi::folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig};
+use folding::{expressions::FoldingColumnTrait, FoldingConfig};
 use std::ops::Index;
 
 pub(crate) type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;

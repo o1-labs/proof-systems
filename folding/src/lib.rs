@@ -1,32 +1,25 @@
-use crate::circuits::gate::CurrOrNext;
 use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
 use instance_witness::{RelaxableInstance, RelaxablePair};
+use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
 #[cfg(feature = "bn254")]
-pub use example::{Alphas, BaseSponge};
 pub use expressions::{ExpExtension, FoldingCompatibleExpr};
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 pub mod decomposable_folding;
 
 mod error_term;
-
-#[allow(dead_code)]
+#[cfg(test)]
 #[cfg(feature = "bn254")]
-mod example;
-
-#[allow(dead_code)]
-#[cfg(feature = "bn254")]
-mod example_decomposable_folding;
-
+mod examples;
 pub mod expressions;
 
 mod instance_witness;
@@ -304,7 +297,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn fold_instance_witness_pair<I, W, A, B>(
+    pub fn fold_instance_witness_pair<A, B>(
         &self,
         a: A,
         b: B,

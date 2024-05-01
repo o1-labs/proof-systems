@@ -1,29 +1,28 @@
+// this example is a copy of the decomposable folding one, but with a degree 3 gate
+// that triggers quadriticization
 use crate::{
-    circuits::{
-        expr::{Op2, Variable},
-        gate::CurrOrNext,
-    },
-    folding::{
-        error_term::Side,
-        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-        Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
-        RelaxedInstance, RelaxedWitness, Witness,
-    },
+    error_term::Side,
+    examples::{example_decomposable_folding::TestWitness, BaseSponge, Curve, Fp},
+    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
+    RelaxedWitness,
 };
-use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, UniformRand, Zero};
-use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use ark_ff::{Field, One, UniformRand, Zero};
+use ark_poly::Radix2EvaluationDomain;
 use itertools::Itertools;
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
+use kimchi::circuits::{
+    expr::{Op2, Variable},
+    gate::CurrOrNext,
+};
 use poly_commitment::SRS;
 use rand::thread_rng;
-use std::collections::BTreeMap;
-
-type Fp = ark_bn254::Fr;
-type Curve = ark_bn254::G1Affine;
-type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+use std::{
+    collections::BTreeMap,
+    iter::successors,
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 // the type representing our columns, in this case we have 3 witness columns
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -38,7 +37,7 @@ pub enum TestColumn {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum DynamicSelector {
     SelecAdd,
-    SelecSub,
+    SelecMul,
 }
 
 impl FoldingColumnTrait for TestColumn {
@@ -47,6 +46,54 @@ impl FoldingColumnTrait for TestColumn {
         match self {
             TestColumn::A | TestColumn::B | TestColumn::C => true,
         }
+    }
+}
+
+/// The alphas are exceptional, their number cannot be known ahead of time as it will be defined by
+/// folding.
+/// The values will be computed as powers in new instances, but after folding each alfa will be a
+/// linear combination of other alphas, instand of a power of other element.
+/// This type represents that, allowing to also recognize which case is present
+#[derive(Debug, Clone)]
+pub enum Alphas {
+    Powers(Fp, Rc<AtomicUsize>),
+    Combinations(Vec<Fp>),
+}
+
+impl Alphas {
+    pub fn new(alpha: Fp) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    }
+    pub fn get(&self, i: usize) -> Option<Fp> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
+                let i = [i as u64];
+                Some(alpha.pow(i))
+            }
+            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
+        }
+    }
+    pub fn powers(self) -> Vec<Fp> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let n = count.load(Ordering::Relaxed);
+                let alphas = successors(Some(Fp::one()), |last| Some(*last * alpha));
+                alphas.take(n).collect()
+            }
+            Alphas::Combinations(c) => c,
+        }
+    }
+    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
     }
 }
 
@@ -78,23 +125,6 @@ impl Instance<Curve> for TestInstance {
             ],
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
-    }
-}
-
-/// Our witness is going to be the polynomials that we will commit too.
-/// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
-/// This witness includes not only the 3 normal witness columns, but also the
-/// 2 dynamic selector columns that are esentially witness
-type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 5];
-
-impl Witness<Curve> for TestWitness {
-    fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
-        for (a, b) in a.iter_mut().zip(b) {
-            for (a, b) in a.evals.iter_mut().zip(b.evals) {
-                *a += challenge * b;
-            }
-        }
-        a
     }
 }
 
@@ -189,13 +219,13 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         let wit = &self.curr_witnesses[side as usize];
         match s {
             DynamicSelector::SelecAdd => &wit[3].evals,
-            DynamicSelector::SelecSub => &wit[4].evals,
+            DynamicSelector::SelecMul => &wit[4].evals,
         }
     }
 }
 
 // this creates 2 single-constraint gates, each with a selector,
-// an addition gate, and a subtraction gate
+// an addition gate, and a multiplication gate
 fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFoldingConfig>>> {
     let get_col = |col| {
         FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
@@ -213,12 +243,12 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
     let add = op(a.clone(), b.clone(), Op2::Add);
     let add = op(add, c.clone(), Op2::Sub);
 
-    let sub = op(a, b, Op2::Sub);
-    let sub = op(sub, c, Op2::Sub);
+    let mul = op(a, b, Op2::Mul);
+    let mul = op(mul, c, Op2::Sub);
 
     [
         (DynamicSelector::SelecAdd, vec![*add]),
-        (DynamicSelector::SelecSub, vec![*sub]),
+        (DynamicSelector::SelecMul, vec![*mul]),
     ]
     .into_iter()
     .collect()
@@ -384,7 +414,7 @@ mod checker {
                     ExpExtension::Selector(s) => {
                         let col = match s {
                             DynamicSelector::SelecAdd => &self.inner_provider.witness[3].evals,
-                            DynamicSelector::SelecSub => &self.inner_provider.witness[4].evals,
+                            DynamicSelector::SelecMul => &self.inner_provider.witness[4].evals,
                         };
                         col.clone()
                     }
@@ -447,11 +477,9 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::folding::{
-        decomposable_folding::DecomposableFoldingScheme,
-        example_decomposable_folding::checker::ExtendedProvider,
-    };
+    use crate::decomposable_folding::DecomposableFoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations};
+    use checker::ExtendedProvider;
 
     //two functions to create the entire witness from just the a and b columns
     fn add_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
@@ -460,22 +488,22 @@ mod tests {
         let c = [a1 + b1, a2 + b2];
         [a, b, c, [1, 1], [0, 0]]
     }
-    fn sub_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
+    fn mul_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
         let [a1, a2] = a;
         let [b1, b2] = b;
-        let c = [a1 - b1, a2 - b2];
+        let c = [a1 * b1, a2 * b2];
         [a, b, c, [0, 0], [1, 1]]
     }
     fn int_to_witness(x: [[u32; 2]; 5], domain: Radix2EvaluationDomain<Fp>) -> TestWitness {
         x.map(|row| Evaluations::from_vec_and_domain(row.map(Fp::from).to_vec(), domain))
     }
 
-    // in this test we will create 2 add witnesses, fold them together, create 2 sub witnesses,
-    // fold them together, and then further fold the 2 resulting pairs into one mixed add-sub witnes
+    // in this test we will create 2 add witnesses, fold them together, create 2 mul witnesses,
+    // fold them together, and then further fold the 2 resulting pairs into one mixed add-mul witness
     // instances are also folded, but not that relevant in the examples as we don't make a proof for them
     // and instead directly check the witness
     #[test]
-    fn test_decomposable_folding() {
+    fn test_quadriticization() {
         use ark_poly::Radix2EvaluationDomain as D;
         use checker::Checker;
 
@@ -493,7 +521,7 @@ mod tests {
             (),
         );
 
-        //some inputs to be used by both add and sub
+        //some inputs to be used by both add and mul
         let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
         let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
 
@@ -502,6 +530,9 @@ mod tests {
             let ins = instance_from_witness(&wit, &srs, domain);
             (wit, ins)
         };
+
+        // uncomment to see the expression
+        // println!("exp: \n {:#?}", final_constraint.to_string());
 
         //fold adds
         // println!("fold add");
@@ -517,42 +548,34 @@ mod tests {
             let left = (instance1, witness1);
             let right = (instance2, witness2);
             // here we provide normal instance-witness pairs, which will be automatically relaxed
-            let folded = scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(
-                left,
-                right,
-                Some(DynamicSelector::SelecAdd),
-            );
+            let folded =
+                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
             checker.check(&final_constraint, false);
             let ExtendedProvider {
                 instance, witness, ..
             } = checker;
             (instance, witness)
         };
-        //fold subs
-        // println!("fold subs");
+        //fold muls
+        // println!("fold muls");
         let right = {
             let [a, b] = inputs1;
-            let wit1 = sub_witness(a, b);
+            let wit1 = mul_witness(a, b);
             let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
 
             let [a, b] = inputs2;
-            let wit2 = sub_witness(a, b);
+            let wit2 = mul_witness(a, b);
             let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
 
             let left = (instance1, witness1);
             let right = (instance2, witness2);
-            let folded = scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(
-                left,
-                right,
-                Some(DynamicSelector::SelecSub),
-            );
+            let folded =
+                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecMul));
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
 
             checker.check(&final_constraint, false);
             let ExtendedProvider {
@@ -564,12 +587,10 @@ mod tests {
         // println!("fold mixed");
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
-            let folded = scheme
-                .fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(left, right, None);
+            let folded = scheme.fold_instance_witness_pair(left, right, None);
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
 
             checker.check(&final_constraint, false);
         };

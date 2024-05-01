@@ -1,138 +1,57 @@
 use crate::{
-    circuits::{
-        expr::{Op2, Variable},
-        gate::CurrOrNext,
-    },
-    curve::KimchiCurve,
-    folding::{
-        error_term::Side,
-        expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-        ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-        RelaxedWitness, Sponge, Witness,
-    },
+    error_term::Side,
+    examples::{BaseSponge, Curve, Fp},
+    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
+    RelaxedWitness, Witness,
 };
-use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{Field, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, ScalarChallenge},
-    FqSponge,
+use kimchi::circuits::{
+    expr::{Op2, Variable},
+    gate::CurrOrNext,
 };
-use poly_commitment::{PolyComm, SRS};
+use poly_commitment::SRS;
 use rand::thread_rng;
-use std::{
-    iter::successors,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::collections::BTreeMap;
 
-/// Field = BN254 prime field
-/// Statement: I know w such that C(x, y, w) = 0
-///   public
-///     |
-///   ----  |--- private
-/// C(x, y, w) = x + y - w
-/// I want to fold two instances
+use super::example::Alphas;
 
-/// (A Z) . (B Z) = (C Z)
-/// Z = (x, y, z)
-/// A = (1 1 -1)
-/// B = (0, 0, 0)
-/// C = (1 1 -1)
-
-type Fp = ark_bn254::Fr;
-type Curve = ark_bn254::G1Affine;
-type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
-
+// the type representing our columns, in this case we have 3 witness columns
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum TestColumn {
     A,
     B,
     C,
+}
+
+// the type for the dynamic selectors, which are esentially witness columns, but
+// get special treatment to enable optimizations
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub enum DynamicSelector {
     SelecAdd,
-    SelecMul,
+    SelecSub,
 }
 
 impl FoldingColumnTrait for TestColumn {
+    //in this case we have only witness, the other example shows non-witness columns
     fn is_witness(&self) -> bool {
         match self {
             TestColumn::A | TestColumn::B | TestColumn::C => true,
-            TestColumn::SelecAdd | TestColumn::SelecMul => false,
         }
-    }
-}
-
-// TODO: get rid of trait Sponge in folding, and use the one from kimchi
-impl Sponge<Curve> for BaseSponge {
-    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
-        // This function does not have a &self because it is meant to absorb and squeeze only once
-        let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
-        s.absorb_g(&absorb[0].elems);
-        s.absorb_g(&absorb[1].elems);
-        // Squeeze sponge
-        let chal = ScalarChallenge(s.challenge());
-        let (_, endo_r) = Curve::endos();
-        chal.to_field(endo_r)
-    }
-}
-
-/// The alphas are exceptional, their number cannot be known ahead of time as it will be defined by
-/// folding.
-/// The values will be computed as powers in new instances, but after folding each alfa will be a
-/// linear combination of other alphas, instand of a power of other element.
-/// This type represents that, allowing to also recognize which case is present
-#[derive(Debug, Clone)]
-pub enum Alphas {
-    Powers(Fp, Rc<AtomicUsize>),
-    Combinations(Vec<Fp>),
-}
-
-impl Alphas {
-    pub fn new(alpha: Fp) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
-    }
-    pub fn get(&self, i: usize) -> Option<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
-                let i = [i as u64];
-                Some(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
-        }
-    }
-    pub fn powers(self) -> Vec<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(Fp::one()), |last| Some(*last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) => c,
-        }
-    }
-    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
     }
 }
 
 /// The instance is the commitments to the polynomials and the challenges
 #[derive(Debug, Clone)]
-struct TestInstance {
-    commitments: [Curve; 3],
+pub struct TestInstance {
+    // 3 from the normal witness + 2 from the dynamic selectors
+    commitments: [Curve; 5],
+    // for ilustration only, no constraint in this example uses challenges
     challenges: [Fp; 3],
+    // also challenges, but segregated as folding gives them special treatment
     alphas: Alphas,
 }
 
@@ -143,6 +62,8 @@ impl Instance<Curve> for TestInstance {
                 a.commitments[0] + b.commitments[0].mul(challenge).into_affine(),
                 a.commitments[1] + b.commitments[1].mul(challenge).into_affine(),
                 a.commitments[2] + b.commitments[2].mul(challenge).into_affine(),
+                a.commitments[3] + b.commitments[3].mul(challenge).into_affine(),
+                a.commitments[4] + b.commitments[4].mul(challenge).into_affine(),
             ],
             challenges: [
                 a.challenges[0] + challenge * b.challenges[0],
@@ -156,7 +77,9 @@ impl Instance<Curve> for TestInstance {
 
 /// Our witness is going to be the polynomials that we will commit too.
 /// Vec<Fp> will be the evaluations of each x_1, x_2 and x_3 over the domain.
-type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 3];
+/// This witness includes not only the 3 normal witness columns, but also the
+/// 2 dynamic selector columns that are esentially witness
+pub type TestWitness = [Evaluations<Fp, Radix2EvaluationDomain<Fp>>; 5];
 
 impl Witness<Curve> for TestWitness {
     fn combine(mut a: Self, b: Self, challenge: Fp) -> Self {
@@ -169,15 +92,11 @@ impl Witness<Curve> for TestWitness {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct TestStructure<F: Clone> {
-    s_add: Vec<F>,
-    s_mul: Vec<F>,
-    constants: Vec<F>,
-}
-
-struct TestFoldingEnv {
-    structure: TestStructure<Fp>,
+// our environment, the way in which we provide access to the actual values in the
+// witness and instances, when folding evaluates expressions and reaches leaves (Atom)
+// it will call methods from here to resolve the types we have in the config like the
+// columns into the actual values.
+pub struct TestFoldingEnv {
     instances: [TestInstance; 2],
     // Corresponds to the omega evaluations, for both sides
     curr_witnesses: [TestWitness; 2],
@@ -186,14 +105,20 @@ struct TestFoldingEnv {
     next_witnesses: [TestWitness; 2],
 }
 
-impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> for TestFoldingEnv {
-    type Structure = TestStructure<Fp>;
+// implementing the an envionment trait compatible with our config
+impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, DynamicSelector>
+    for TestFoldingEnv
+{
+    type Structure = ();
 
     fn new(
-        structure: &Self::Structure,
+        _structure: &Self::Structure,
         instances: [&TestInstance; 2],
         witnesses: [&TestWitness; 2],
     ) -> Self {
+        // here it is mostly storing the pairs into self, and also computing other things we may need
+        // later like the shifted versions, note there are more efficient ways of handling the rotated
+        // witnesses, which are just for example as no contraint uses them anyway
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
@@ -203,7 +128,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
             }
         }
         TestFoldingEnv {
-            structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],
             curr_witnesses,
             next_witnesses,
@@ -211,9 +135,11 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
     }
 
     fn zero_vec(&self) -> Vec<Fp> {
+        //this works in the example but is not the best way as the envionment could get circuits of any size
         vec![Fp::zero(); 2]
     }
 
+    //provide access to columns, here side refers to one of the two pairs you got in new()
     fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
@@ -223,11 +149,10 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
             TestColumn::A => &wit[0].evals,
             TestColumn::B => &wit[1].evals,
             TestColumn::C => &wit[2].evals,
-            TestColumn::SelecAdd => &self.structure.s_add,
-            TestColumn::SelecMul => &self.structure.s_mul,
         }
     }
 
+    // same as column but for challenges, challenges are not constants
     fn challenge(&self, challenge: TestChallenge, side: Side) -> Fp {
         match challenge {
             TestChallenge::Beta => self.instances[side as usize].challenges[0],
@@ -236,21 +161,36 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
         }
     }
 
+    // not used, you can generate it here, or if you only want to compute once use
+    // something like HashMap<usize,OnceCell<Vec<Fp>>> to compute once and reuse
     fn lagrange_basis(&self, _i: usize) -> &Vec<Fp> {
         todo!()
     }
 
+    // access to the alphas, while folding will decide how many there are and how do
+    // they appear in the expressions, the instances should store them, and the environment
+    // should provide acces to them like this
     fn alpha(&self, i: usize, side: Side) -> Fp {
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
     }
 
-    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
-        unreachable!()
+    // this is exclusively for dynamic selectors aiming to make use of optimization
+    // as clasic static selectors will be handle as normal structure columns in col()
+    // the implementation of this if the same as col(), it is just separated as they
+    // have different types to resolve
+    fn selector(&self, s: &DynamicSelector, side: Side) -> &Vec<Fp> {
+        let wit = &self.curr_witnesses[side as usize];
+        match s {
+            DynamicSelector::SelecAdd => &wit[3].evals,
+            DynamicSelector::SelecSub => &wit[4].evals,
+        }
     }
 }
 
-fn constraints() -> Vec<FoldingCompatibleExpr<TestFoldingConfig>> {
+// this creates 2 single-constraint gates, each with a selector,
+// an addition gate, and a subtraction gate
+fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFoldingConfig>>> {
     let get_col = |col| {
         FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(Variable {
             col,
@@ -260,38 +200,40 @@ fn constraints() -> Vec<FoldingCompatibleExpr<TestFoldingConfig>> {
     let a = Box::new(get_col(TestColumn::A));
     let b = Box::new(get_col(TestColumn::B));
     let c = Box::new(get_col(TestColumn::C));
-    let s_add = Box::new(get_col(TestColumn::SelecAdd));
-    let s_mul = Box::new(get_col(TestColumn::SelecMul));
 
     type E = Box<FoldingCompatibleExpr<TestFoldingConfig>>;
     let op = |a: E, b: E, op| Box::new(FoldingCompatibleExpr::BinOp(op, a, b));
 
     let add = op(a.clone(), b.clone(), Op2::Add);
     let add = op(add, c.clone(), Op2::Sub);
-    let add = op(add, s_add, Op2::Mul);
 
-    let mul = op(a, b, Op2::Mul);
-    let mul = op(mul, c, Op2::Sub);
-    let mul = op(mul, s_mul, Op2::Mul);
+    let sub = op(a, b, Op2::Sub);
+    let sub = op(sub, c, Op2::Sub);
 
-    vec![*add, *mul]
+    [
+        (DynamicSelector::SelecAdd, vec![*add]),
+        (DynamicSelector::SelecSub, vec![*sub]),
+    ]
+    .into_iter()
+    .collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct TestFoldingConfig;
+pub struct TestFoldingConfig;
 
-// Does not contain alpha because this one should be provided by folding itself
+#[allow(dead_code)]
+// Does not contain alpha because it should be added to the expressions by folding
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-enum TestChallenge {
+pub enum TestChallenge {
     Beta,
     Gamma,
     JointCombiner,
 }
 
 impl FoldingConfig for TestFoldingConfig {
-    type Structure = TestStructure<Fp>;
+    type Structure = ();
     type Column = TestColumn;
-    type Selector = ();
+    type Selector = DynamicSelector;
     type Challenge = TestChallenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;
@@ -305,6 +247,7 @@ impl FoldingConfig for TestFoldingConfig {
     }
 }
 
+//creates an instance from its witness
 fn instance_from_witness(
     witness: &TestWitness,
     srs: &<TestFoldingConfig as FoldingConfig>::Srs,
@@ -315,7 +258,7 @@ fn instance_from_witness(
         .map(|w| srs.commit_evaluations_non_hiding(domain, w))
         .map(|c| c.elems[0])
         .collect_vec();
-    let commitments: [_; 3] = commitments.try_into().unwrap();
+    let commitments: [_; 5] = commitments.try_into().unwrap();
 
     // here we should absorve the commitments and similar things to later compute challenges
     // but for this example I just use random values
@@ -330,30 +273,21 @@ fn instance_from_witness(
         alphas,
     }
 }
-fn circuit() -> [Vec<Fp>; 2] {
-    [vec![Fp::one(), Fp::zero()], vec![Fp::zero(), Fp::one()]]
-}
 
 /// A kind of pseudo-prover, will compute the expressions over the witness a check row by row
 /// for a zero result.
 mod checker {
     use super::*;
     pub struct Provider {
-        structure: TestStructure<Fp>,
         instance: TestInstance,
         witness: TestWitness,
         rows: usize,
     }
 
     impl Provider {
-        pub(super) fn new(
-            structure: TestStructure<Fp>,
-            instance: TestInstance,
-            witness: TestWitness,
-        ) -> Self {
+        pub(super) fn new(instance: TestInstance, witness: TestWitness) -> Self {
             let rows = TestFoldingConfig::rows();
             Self {
-                structure,
                 instance,
                 witness,
                 rows,
@@ -385,8 +319,6 @@ mod checker {
                         TestColumn::A => &self.witness[0].evals,
                         TestColumn::B => &self.witness[1].evals,
                         TestColumn::C => &self.witness[2].evals,
-                        TestColumn::SelecAdd => &self.structure.s_add,
-                        TestColumn::SelecMul => &self.structure.s_mul,
                     };
 
                     let mut col = col.clone();
@@ -399,35 +331,31 @@ mod checker {
                 FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
                 FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(_) => todo!(),
                 FoldingCompatibleExprInner::Extensions(_) => {
-                    panic!("not handled")
+                    panic!("not handled here");
                 }
             }
         }
     }
     pub struct ExtendedProvider {
         inner_provider: Provider,
-        instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
-        witness: RelaxedWitness<<TestFoldingConfig as FoldingConfig>::Curve, TestWitness>,
-        rows: usize,
+        pub instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
+        pub witness: RelaxedWitness<<TestFoldingConfig as FoldingConfig>::Curve, TestWitness>,
     }
 
     impl ExtendedProvider {
         pub(super) fn new(
-            structure: TestStructure<Fp>,
             instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
             witness: RelaxedWitness<<TestFoldingConfig as FoldingConfig>::Curve, TestWitness>,
         ) -> Self {
             let inner_provider = {
                 let instance = instance.inner_instance().inner.clone();
                 let witness = witness.inner().inner.clone();
-                Provider::new(structure, instance, witness)
+                Provider::new(instance, witness)
             };
-            let rows = inner_provider.rows;
             Self {
                 inner_provider,
                 instance,
                 witness,
-                rows,
             }
         }
     }
@@ -447,7 +375,13 @@ mod checker {
                         let alpha = self.instance.inner_instance().inner.alphas.get(i).unwrap();
                         vec![alpha; self.inner_provider.rows]
                     }
-                    ExpExtension::Selector(_) => panic!("unused"),
+                    ExpExtension::Selector(s) => {
+                        let col = match s {
+                            DynamicSelector::SelecAdd => &self.inner_provider.witness[3].evals,
+                            DynamicSelector::SelecSub => &self.inner_provider.witness[4].evals,
+                        };
+                        col.clone()
+                    }
                 },
                 e => self.inner_provider.resolve(e),
             }
@@ -492,8 +426,8 @@ mod checker {
             }
             res
         }
-        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) {
-            let res = self.check_rec(exp, debug);
+        fn check(&self, exp: &FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) {
+            let res = self.check_rec(exp.clone(), debug);
             for (i, row) in res.iter().enumerate() {
                 if !row.is_zero() {
                     panic!("check in row {i} failed, {row} != 0");
@@ -507,94 +441,122 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::folding::{example::checker::ExtendedProvider, FoldingScheme};
+    use crate::decomposable_folding::DecomposableFoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations};
+    use checker::ExtendedProvider;
 
-    // this checks a single folding, it would be good to expand it in the future to do several foldings,
-    // as a few thigs are trivial in the first fold
+    //two functions to create the entire witness from just the a and b columns
+    fn add_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
+        let [a1, a2] = a;
+        let [b1, b2] = b;
+        let c = [a1 + b1, a2 + b2];
+        [a, b, c, [1, 1], [0, 0]]
+    }
+    fn sub_witness(a: [u32; 2], b: [u32; 2]) -> [[u32; 2]; 5] {
+        let [a1, a2] = a;
+        let [b1, b2] = b;
+        let c = [a1 - b1, a2 - b2];
+        [a, b, c, [0, 0], [1, 1]]
+    }
+    fn int_to_witness(x: [[u32; 2]; 5], domain: Radix2EvaluationDomain<Fp>) -> TestWitness {
+        x.map(|row| Evaluations::from_vec_and_domain(row.map(Fp::from).to_vec(), domain))
+    }
+
+    // in this test we will create 2 add witnesses, fold them together, create 2 sub witnesses,
+    // fold them together, and then further fold the 2 resulting pairs into one mixed add-sub witnes
+    // instances are also folded, but not that relevant in the examples as we don't make a proof for them
+    // and instead directly check the witness
     #[test]
-    fn test_folding_instance() {
+    fn test_decomposable_folding() {
         use ark_poly::Radix2EvaluationDomain as D;
-        use checker::{Checker, Provider};
+        use checker::Checker;
 
         let constraints = constraints();
         let domain = D::<Fp>::new(2).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
-        let [s_add, s_mul] = circuit();
-        let structure = TestStructure {
-            s_add,
-            s_mul,
-            constants: vec![],
-        };
 
-        let (scheme, final_constraint) = FoldingScheme::<TestFoldingConfig>::new(
+        //initiallize the scheme, also getting the final single expression for the entire constraint system
+        let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
             constraints.clone(),
+            vec![],
             srs.clone(),
             domain,
-            structure.clone(),
+            (),
         );
 
-        // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
+        //some inputs to be used by both add and sub
+        let inputs1 = [[4u32, 2u32], [2u32, 1u32]];
+        let inputs2 = [[5u32, 6u32], [4u32, 3u32]];
 
-        // Left: 1 + 2 - 3 = 0
-        let left_witness = [
-            vec![Fp::from(1u32), Fp::from(2u32)],
-            vec![Fp::from(2u32), Fp::from(3u32)],
-            vec![Fp::from(3u32), Fp::from(6u32)],
-        ];
-        let left_witness: TestWitness =
-            left_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
-        // Right: 4 + 5 - 9 = 0
-        let right_witness = [
-            vec![Fp::from(4u32), Fp::from(3u32)],
-            vec![Fp::from(5u32), Fp::from(6u32)],
-            vec![Fp::from(9u32), Fp::from(18u32)],
-        ];
-        let right_witness: TestWitness =
-            right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
+        //creates an instance witness pair
+        let make_pair = |wit: TestWitness| {
+            let ins = instance_from_witness(&wit, &srs, domain);
+            (wit, ins)
+        };
 
-        //instances
-        let left_instance = instance_from_witness(&left_witness, &srs, domain);
-        let right_instance = instance_from_witness(&left_witness, &srs, domain);
+        //fold adds
+        // println!("fold add");
+        let left = {
+            let [a, b] = inputs1;
+            let wit1 = add_witness(a, b);
+            let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
 
-        //check left
+            let [a, b] = inputs2;
+            let wit2 = add_witness(a, b);
+            let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
+
+            let left = (instance1, witness1);
+            let right = (instance2, witness2);
+            // here we provide normal instance-witness pairs, which will be automatically relaxed
+            let folded =
+                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
+            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+            let checker = ExtendedProvider::new(folded_instance, folded_witness);
+            // println!("exp: \n {:#?}", final_constraint.to_string());
+            checker.check(&final_constraint, false);
+            let ExtendedProvider {
+                instance, witness, ..
+            } = checker;
+            (instance, witness)
+        };
+        //fold subs
+        // println!("fold subs");
+        let right = {
+            let [a, b] = inputs1;
+            let wit1 = sub_witness(a, b);
+            let (witness1, instance1) = make_pair(int_to_witness(wit1, domain));
+
+            let [a, b] = inputs2;
+            let wit2 = sub_witness(a, b);
+            let (witness2, instance2) = make_pair(int_to_witness(wit2, domain));
+
+            let left = (instance1, witness1);
+            let right = (instance2, witness2);
+            let folded =
+                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecSub));
+            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+
+            let checker = ExtendedProvider::new(folded_instance, folded_witness);
+            // println!("exp: \n {:#?}", final_constraint.to_string());
+
+            checker.check(&final_constraint, false);
+            let ExtendedProvider {
+                instance, witness, ..
+            } = checker;
+            (instance, witness)
+        };
+        //fold mixed
+        // println!("fold mixed");
         {
-            // println!("check left");
-            let checker = Provider::new(
-                structure.clone(),
-                left_instance.clone(),
-                left_witness.clone(),
-            );
-            for constraint in &constraints {
-                checker.check(constraint.clone(), false)
-            }
-        }
-        //check right
-        {
-            // println!("check right");
-            let checker = Provider::new(
-                structure.clone(),
-                right_instance.clone(),
-                right_witness.clone(),
-            );
-            for constraint in &constraints {
-                checker.check(constraint.clone(), false)
-            }
-        }
+            // here we use already relaxed pairs, which have a trival x -> x implementation
+            let folded = scheme.fold_instance_witness_pair(left, right, None);
+            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
-        //pairs
-        let left = (left_instance, left_witness);
-        let right = (right_instance, right_witness);
+            let checker = ExtendedProvider::new(folded_instance, folded_witness);
+            // println!("exp: \n {:#?}", final_constraint.to_string());
 
-        let folded =
-            scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(left, right);
-        let (folded_instance, folded_witness, [_t0, _t1]) = folded;
-        {
-            let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
-            // println!("check folded");
-            checker.check(final_constraint, false);
-        }
+            checker.check(&final_constraint, false);
+        };
     }
 }
