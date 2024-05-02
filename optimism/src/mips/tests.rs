@@ -1,6 +1,8 @@
 use crate::{
+    folding::Curve,
     mips::{
         constraints::Env,
+        folding::MIPSConfig,
         interpreter::{
             ITypeInstruction::{self, *},
             Instruction::{self, *},
@@ -11,7 +13,11 @@ use crate::{
     },
     trace::Tracer,
 };
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use folding::{expressions::FoldingCompatibleExpr, FoldingScheme};
 use strum::{EnumCount, IntoEnumIterator};
+
+use super::folding::MIPSStructure;
 
 type Fp = ark_bn254::Fr;
 
@@ -107,4 +113,35 @@ fn test_mips_number_constraints() {
         i,
         RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT
     );
+}
+
+#[test]
+fn test_folding_mips_add_constraint() {
+    let domain_size = 1 << 8;
+    let domain = D::<Fp>::new(domain_size).unwrap();
+
+    let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+    srs.add_lagrange_basis(domain);
+
+    // Initialize the environment and run the interpreter
+    let mut constraints_env = Env::<Fp> {
+        scratch_state_idx: 0,
+        constraints: Vec::new(),
+        lookups: Vec::new(),
+    };
+
+    // Keep track of the constraints and lookups of the sub-circuits
+    let mips_circuit = MIPSTrace::<Fp>::new(domain_size, &mut constraints_env);
+    let add_constraints = &mips_circuit.constraints[&Instruction::RType(Add)];
+    let add_constraints: Vec<FoldingCompatibleExpr<MIPSConfig>> = add_constraints
+        .iter()
+        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+        .collect::<Vec<_>>();
+    let (folded_expr, ext_witness) = folding::expressions::folding_expression(add_constraints);
+    println!("{:?}", folded_expr.final_expression());
+    // println!("{:}", folded_expr);
+    // let structure = MIPSStructure {};
+
+    let scheme = FoldingScheme::new(add_constraints, srs, domain, structure);
+    // println!("{:?}", scheme.expression)
 }
