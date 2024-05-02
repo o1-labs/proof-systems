@@ -1,0 +1,3 @@
+[submodule "proof-systems-vendors"]
+	path = proof-systems-vendors
+	url = git@github.com:o1-labs/proof-systems-vendors.git

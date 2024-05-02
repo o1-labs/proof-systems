@@ -21,6 +21,8 @@ jobs:
 
       - name: Checkout PR
         uses: actions/checkout@v2
+        with:
+          submodules: true        
 
 #      - name: Run iai bench
 #        run: |
