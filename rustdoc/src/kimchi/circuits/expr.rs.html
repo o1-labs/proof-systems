@@ -3565,6 +3565,9 @@
 <a href="#3563" id="3563">3563</a>
 <a href="#3564" id="3564">3564</a>
 <a href="#3565" id="3565">3565</a>
+<a href="#3566" id="3566">3566</a>
+<a href="#3567" id="3567">3567</a>
+<a href="#3568" id="3568">3568</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -3749,7 +3752,10 @@
     <span class="kw">fn </span>literal(x: <span class="self">Self</span>::F) -&gt; <span class="self">Self</span>;
     <span class="kw">fn </span>to_literal(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::F, <span class="self">Self</span>&gt;;
     <span class="kw">fn </span>to_literal_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>::F&gt;;
-    <span class="kw">fn </span>as_literal(<span class="kw-2">&amp;</span><span class="self">self</span>, constants: <span class="kw-2">&amp;</span>Constants&lt;<span class="self">Self</span>::F&gt;) -&gt; <span class="self">Self</span>;
+    <span class="doccomment">/// Obtains the representation of some constants as a literal.
+    /// This is useful before converting Kimchi expressions with constants
+    /// to folding compatible expressions.
+    </span><span class="kw">fn </span>as_literal(<span class="kw-2">&amp;</span><span class="self">self</span>, constants: <span class="kw-2">&amp;</span>Constants&lt;<span class="self">Self</span>::F&gt;) -&gt; <span class="self">Self</span>;
 }
 
 <span class="kw">impl</span>&lt;F: Field&gt; Literal <span class="kw">for </span>F {

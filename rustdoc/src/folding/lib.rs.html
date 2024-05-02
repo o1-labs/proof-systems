@@ -382,6 +382,9 @@
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the "folding scheme"
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -401,7 +404,9 @@
 <span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>error_term::{compute_error, ExtendedEnv};
-<span class="kw">use </span>expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
+<span class="kw">use </span>expressions::{
+    folding_expression, FoldingColumnTrait, FoldingCompatibleExpr, IntegratedFoldingExpr,
+};
 <span class="kw">use </span>instance_witness::{RelaxableInstance, RelaxablePair};
 <span class="kw">use </span>kimchi::circuits::gate::CurrOrNext;
 <span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
@@ -410,11 +415,12 @@
 <span class="comment">// Make available outside the crate to avoid code duplication
 </span><span class="kw">pub use </span>error_term::Side;
 <span class="attr">#[cfg(feature = <span class="string">"bn254"</span>)]
-</span><span class="kw">pub use </span>expressions::{ExpExtension, FoldingCompatibleExpr};
+</span><span class="kw">pub use </span>expressions::ExpExtension;
 <span class="kw">pub use </span>instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 <span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>decomposable_folding;
+
 <span class="kw">mod </span>error_term;
 
 <span class="kw">pub mod </span>expressions;
@@ -438,7 +444,7 @@
 <span class="kw">pub trait </span>FoldingConfig: Clone + Debug + Eq + Hash + <span class="lifetime">'static </span>{
     <span class="kw">type </span>Column: FoldingColumnTrait + Debug + Eq + Hash;
     <span class="comment">// in case of using docomposable folding, if not it can be just ()
-    </span><span class="kw">type </span>S: Clone + Debug + Eq + Hash;
+    </span><span class="kw">type </span>Selector: Clone + Debug + Eq + Hash;
 
     <span class="doccomment">/// The type of an abstract challenge that can be found in the expressions
     /// provided as constraints.
@@ -469,7 +475,7 @@
         <span class="self">Self</span>::Witness,
         <span class="self">Self</span>::Column,
         <span class="self">Self</span>::Challenge,
-        <span class="self">Self</span>::S,
+        <span class="self">Self</span>::Selector,
         Structure = <span class="self">Self</span>::Structure,
     &gt;;
 
@@ -624,8 +630,8 @@
 /// - `W`: The type of the witness, i.e. the private inputs
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
-/// - `S`: The type of selectors
-</span><span class="kw">pub trait </span>FoldingEnv&lt;F, I, W, Col, Chal, S&gt; {
+/// - `Selector`: The type of the selector
+</span><span class="kw">pub trait </span>FoldingEnv&lt;F, I, W, Col, Chal, Selector&gt; {
     <span class="doccomment">/// Structure which could be storing useful information like selectors, etc.
     </span><span class="kw">type </span>Structure;
 
@@ -656,7 +662,7 @@
 
     <span class="doccomment">/// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector
-    </span><span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>S, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;F&gt;;
+    </span><span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>Selector, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;F&gt;;
 }
 
 <span class="doccomment">/// TODO: Use Sponge trait from kimchi

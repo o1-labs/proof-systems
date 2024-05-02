@@ -104,7 +104,6 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -113,7 +112,7 @@
 </span><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
     error_term::{compute_error, ExtendedEnv},
-    expressions::{FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
+    expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
     FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
@@ -129,7 +128,7 @@
 <span class="kw">impl</span>&lt;CF: FoldingConfig&gt; DecomposableFoldingScheme&lt;CF&gt; {
     <span class="kw">pub fn </span>new(
         <span class="comment">//constraints with a dynamic selector
-        </span>constraints: BTreeMap&lt;CF::S, Vec&lt;FoldingCompatibleExpr&lt;CF&gt;&gt;&gt;,
+        </span>constraints: BTreeMap&lt;CF::Selector, Vec&lt;FoldingCompatibleExpr&lt;CF&gt;&gt;&gt;,
         <span class="comment">//constraints to be applied to every single instance regardless of selectors
         </span>common_constraints: Vec&lt;FoldingCompatibleExpr&lt;CF&gt;&gt;,
         srs: CF::Srs,
@@ -140,9 +139,8 @@
             .into_iter()
             .flat_map(|(s, exps)| {
                 exps.into_iter().map(<span class="kw">move </span>|exp| {
-                    <span class="kw">let </span>s = FoldingCompatibleExprInner::Extensions(<span class="kw">super</span>::ExpExtension::Selector(
-                        s.clone(),
-                    ));
+                    <span class="kw">let </span>s =
+                        FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
                     <span class="kw">let </span>s = Box::new(FoldingCompatibleExpr::Atom(s));
                     FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
                 })
@@ -161,7 +159,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         a: A,
         b: B,
-        selector: <span class="prelude-ty">Option</span>&lt;CF::S&gt;,
+        selector: <span class="prelude-ty">Option</span>&lt;CF::Selector&gt;,
     ) -&gt; (
         RelaxedInstance&lt;CF::Curve, CF::Instance&gt;,
         RelaxedWitness&lt;CF::Curve, CF::Witness&gt;,
@@ -204,7 +202,7 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_selector&lt;C: FoldingConfig&gt;(exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>C::S&gt; {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_selector&lt;C: FoldingConfig&gt;(exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>C::Selector&gt; {
     <span class="kw">match </span>exp {
         FoldingExp::Atom(ExtendedFoldingColumn::Selector(s)) =&gt; <span class="prelude-val">Some</span>(s),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,

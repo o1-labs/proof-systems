@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Alphas"],"struct":["BaseSponge"],"type":["Curve","Fp","SpongeParams"]};

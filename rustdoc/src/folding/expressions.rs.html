@@ -667,6 +667,7 @@
 <a href="#665" id="665">665</a>
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::ExtendedFoldingColumn;
 <span class="doccomment">/// Implement a library to represent expressions/multivariate polynomials that
 /// can be used with folding schemes like
@@ -744,7 +745,7 @@
     </span>ExtendedWitness(usize),
     Alpha(usize),
     <span class="comment">// in case of using decomposable folding
-    </span>Selector(C::S),
+    </span>Selector(C::Selector),
 }
 
 <span class="doccomment">/// Components to be used to convert multivariate polynomials into "compatible"
@@ -1295,7 +1296,8 @@
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
     Config::Challenge: From&lt;ChallengeTerm&gt;,
 {
-    <span class="kw">fn </span>from(expr: ExprInner&lt;ConstantExprInner&lt;F&gt;, Col&gt;) -&gt; <span class="self">Self </span>{
+    <span class="comment">// TODO: check if this needs some special treatment for Extensions
+    </span><span class="kw">fn </span>from(expr: ExprInner&lt;ConstantExprInner&lt;F&gt;, Col&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
             ExprInner::Constant(cexpr) =&gt; cexpr.into(),
             ExprInner::Cell(col) =&gt; FoldingCompatibleExprInner::Cell(col),

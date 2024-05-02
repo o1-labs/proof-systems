@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"kimchi_optimism":[["impl Sponge&lt;GroupAffine&lt;&lt;Parameters as BnParameters&gt;::G1Parameters&gt;&gt; for <a class=\"struct\" href=\"kimchi_optimism/folding/struct.BaseSponge.html\" title=\"struct kimchi_optimism::folding::BaseSponge\">BaseSponge</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

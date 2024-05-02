@@ -114,14 +114,19 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{Index, IndexMut};
-
-<span class="kw">use </span><span class="kw">super</span>::witness::SCRATCH_SIZE;
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::{
+    witness::SCRATCH_SIZE,
+    Instruction,
+    Instruction::{IType, JType, RType},
+};
 <span class="kw">use </span>kimchi_msm::{
     columns::{Column, ColumnIndexer},
     witness::Witness,
 };
+<span class="kw">use </span>std::ops::{Index, IndexMut};
+<span class="kw">use </span>strum::EnumCount;
+
+<span class="kw">use super</span>::{ITypeInstruction, JTypeInstruction, RTypeInstruction};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HASH_COUNTER_OFFSET: usize = <span class="number">80</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_IS_SYSCALL_OFFSET: usize = <span class="number">81</span>;
@@ -132,6 +137,10 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_HAS_N_BYTES_OFFSET: usize = <span class="number">89</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>MIPS_CHUNK_BYTES_LENGTH: usize = <span class="number">4</span>;
 
+<span class="kw">pub const </span>MIPS_SELECTORS_OFFSET: usize = SCRATCH_SIZE + <span class="number">2</span>;
+<span class="kw">pub const </span>MIPS_SELECTORS_LENGTH: usize =
+    RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT;
+
 <span class="doccomment">/// Abstract columns (or variables of our multi-variate polynomials) that will be used to
 /// describe our constraints.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -139,12 +148,42 @@
     <span class="comment">// Can be seen as the abstract indexed variable X_{i}
     </span>ScratchState(usize),
     InstructionCounter,
+    Selector(Instruction),
+}
+
+<span class="doccomment">/// The columns used by the MIPS circuit.
+/// The MIPS circuit is split into three main opcodes: RType, JType, IType.
+/// The columns are shared between different instruction types.
+/// (the total number of columns refers to the maximum of columns used by each mode)
+</span><span class="kw">impl </span>ColumnAlias {
+    <span class="kw">pub fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="comment">// Note that SCRATCH_SIZE + 1 is for the error
+        </span><span class="kw">match </span><span class="kw-2">*</span><span class="self">self </span>{
+            ColumnAlias::ScratchState(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
+                i
+            }
+            ColumnAlias::InstructionCounter =&gt; SCRATCH_SIZE,
+            ColumnAlias::Selector(instruction) =&gt; <span class="kw">match </span>instruction {
+                RType(rtype) =&gt; MIPS_SELECTORS_OFFSET + rtype <span class="kw">as </span>usize,
+                JType(jtype) =&gt; MIPS_SELECTORS_OFFSET + RTypeInstruction::COUNT + jtype <span class="kw">as </span>usize,
+                IType(itype) =&gt; {
+                    MIPS_SELECTORS_OFFSET
+                        + RTypeInstruction::COUNT
+                        + JTypeInstruction::COUNT
+                        + itype <span class="kw">as </span>usize
+                }
+            },
+        }
+    }
 }
 
 <span class="doccomment">/// Represents one line of the execution trace of the virtual machine
-/// It does contain [SCRATCH_SIZE] columns + 2 additional columns to keep track
-/// of the instruction index and one for the system error code.
-/// The column are, in order,
+/// It does contain
+/// [MIPS_SELECTORS_LENGTH] columns for the instruction selectors
+/// + [SCRATCH_SIZE] columns
+/// + 2 additional columns to keep track of the instruction index and one for the system error code.
+/// The columns are, in order,
 /// - the 32 general purpose registers
 /// - the low and hi registers used by some arithmetic instructions
 /// - the current instruction pointer
@@ -165,69 +204,28 @@
 /// - 4 helpers to check if at least n bytes were read in the current row
 </span><span class="kw">pub type </span>MIPSWitness&lt;T&gt; = Witness&lt;MIPS_COLUMNS, T&gt;;
 
-<span class="kw">pub const </span>MIPS_COLUMNS: usize = SCRATCH_SIZE + <span class="number">2</span>;
-
-<span class="kw">pub trait </span>MIPSWitnessTrait&lt;T&gt; {
-    <span class="kw">fn </span>scratch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T];
-    <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T;
-    <span class="kw">fn </span>error(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T;
-}
-
-<span class="kw">impl</span>&lt;T: Clone&gt; MIPSWitnessTrait&lt;T&gt; <span class="kw">for </span>MIPSWitness&lt;T&gt; {
-    <span class="kw">fn </span>scratch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[T] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[..SCRATCH_SIZE]
-    }
-
-    <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[SCRATCH_SIZE]
-    }
-
-    <span class="kw">fn </span>error(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[SCRATCH_SIZE + <span class="number">1</span>]
-    }
-}
+<span class="kw">pub const </span>MIPS_COLUMNS: usize = SCRATCH_SIZE + <span class="number">2 </span>+ MIPS_SELECTORS_LENGTH;
 
 <span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;ColumnAlias&gt; <span class="kw">for </span>MIPSWitness&lt;T&gt; {
     <span class="kw">type </span>Output = T;
 
     <span class="doccomment">/// Map the column alias to the actual column index.
-    /// Note that the column index depends on the step kind (Sponge or Round).
-    /// For instance, the column 800 represents PadLength in the Sponge step, while it
-    /// is used by intermediary values when executing the Round step.
     </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: ColumnAlias) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw">match </span>index {
-            ColumnAlias::ScratchState(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
-                <span class="kw-2">&amp;</span><span class="self">self</span>.scratch()[i]
-            }
-            ColumnAlias::InstructionCounter =&gt; <span class="self">self</span>.instruction_counter(),
-        }
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[index.ix()]
     }
 }
 
 <span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;ColumnAlias&gt; <span class="kw">for </span>MIPSWitness&lt;T&gt; {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: ColumnAlias) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
-        <span class="kw">match </span>index {
-            ColumnAlias::ScratchState(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
-                <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[i]
-            }
-            ColumnAlias::InstructionCounter =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[SCRATCH_SIZE],
-        }
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[index.ix()]
     }
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
-    <span class="kw">const </span>COL_N: usize = MIPS_COLUMNS; <span class="comment">// TODO is this true?
-    </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+    <span class="kw">const </span>COL_N: usize = MIPS_COLUMNS;
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="comment">// TODO: what happens with error? It does not have a corresponding alias
-        </span><span class="kw">match </span><span class="self">self </span>{
-            ColumnAlias::ScratchState(i) =&gt; {
-                <span class="macro">assert!</span>(i &lt; SCRATCH_SIZE);
-                Column::X(i)
-            }
-            ColumnAlias::InstructionCounter =&gt; Column::X(SCRATCH_SIZE),
-        }
+        </span>Column::X(<span class="self">self</span>.ix())
     }
 }
 </code></pre></div></section></main></body></html>

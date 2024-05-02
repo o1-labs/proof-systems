@@ -27,6 +27,7 @@
 <a href="#25" id="25">25</a>
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements a zero-knowledge virtual machine (zkVM) for the MIPS
 //! architecture.
 //! A zkVM is used by a prover to convince a verifier that the execution trace
@@ -46,12 +47,13 @@
 
 </span><span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
-<span class="attr">#[cfg(feature = <span class="string">"bn254"</span>)]
-</span><span class="kw">pub mod </span>folding;
+<span class="kw">pub mod </span>folding;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>registers;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>tests;
 <span class="kw">pub mod </span>trace;
 <span class="kw">pub mod </span>witness;
+
+<span class="kw">pub use </span>interpreter::{ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction};
 </code></pre></div></section></main></body></html>

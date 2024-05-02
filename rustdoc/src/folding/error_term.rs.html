@@ -635,7 +635,7 @@
     instances: [RelaxedInstance&lt;CF::Curve, CF::Instance&gt;; <span class="number">2</span>],
     witnesses: [RelaxedWitness&lt;CF::Curve, CF::Witness&gt;; <span class="number">2</span>],
     domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
-    selector: <span class="prelude-ty">Option</span>&lt;CF::S&gt;,
+    selector: <span class="prelude-ty">Option</span>&lt;CF::Selector&gt;,
 }
 
 <span class="kw">impl</span>&lt;CF: FoldingConfig&gt; ExtendedEnv&lt;CF&gt; {
@@ -645,7 +645,7 @@
         </span>instances: [RelaxedInstance&lt;CF::Curve, CF::Instance&gt;; <span class="number">2</span>],
         witnesses: [RelaxedWitness&lt;CF::Curve, CF::Witness&gt;; <span class="number">2</span>],
         domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
-        selector: <span class="prelude-ty">Option</span>&lt;CF::S&gt;,
+        selector: <span class="prelude-ty">Option</span>&lt;CF::Selector&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>inner_instances = [
             instances[<span class="number">0</span>].inner_instance().inner(),
@@ -661,7 +661,7 @@
             selector,
         }
     }
-    <span class="kw">pub fn </span>enabled_selector(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>CF::S&gt; {
+    <span class="kw">pub fn </span>enabled_selector(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>CF::Selector&gt; {
         <span class="self">self</span>.selector.as_ref()
     }
 
