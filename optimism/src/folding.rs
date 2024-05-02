@@ -234,7 +234,7 @@ where
     }
 }
 
-#[cfg(bn254)]
+#[cfg(feature = "bn254")]
 #[cfg(test)]
 mod tests {
     use super::*;
