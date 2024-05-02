@@ -459,20 +459,6 @@
 <a href="#457" id="457">457</a>
 <a href="#458" id="458">458</a>
 <a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains the definition and implementation of the Keccak environment
 //! including the common functions between the witness and the constraints environments
 //! for arithmetic, boolean, and column operations.
@@ -482,11 +468,14 @@
             Absorbs::{<span class="self">self</span>, <span class="kw-2">*</span>},
             KeccakWitness,
             Sponges::{<span class="self">self</span>, <span class="kw-2">*</span>},
+            Steps,
             Steps::<span class="kw-2">*</span>,
             PAD_SUFFIX_LEN,
         },
         constraints::Env <span class="kw">as </span>ConstraintsEnv,
-        grid_index, pad_blocks,
+        grid_index,
+        interpreter::KeccakInterpreter,
+        pad_blocks, standardize,
         witness::Env <span class="kw">as </span>WitnessEnv,
         KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
     },
@@ -504,16 +493,16 @@
 };
 <span class="kw">use </span>std::array;
 
-<span class="kw">use super</span>::{column::Steps, interpreter::KeccakInterpreter};
-
 <span class="doccomment">/// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>KeccakEnv&lt;F&gt; {
-    <span class="doccomment">/// Environment for the constraints (includes lookups and selector (step)).
+    <span class="doccomment">/// Environment for the constraints (includes lookups).
     /// The step of the hash that is being executed can be None if just ended
     </span><span class="kw">pub </span>constraints_env: ConstraintsEnv&lt;F&gt;,
     <span class="doccomment">/// Environment for the witness (includes multiplicities)
     </span><span class="kw">pub </span>witness_env: WitnessEnv&lt;F&gt;,
+    <span class="doccomment">/// Current step
+    </span><span class="kw">pub </span>step: <span class="prelude-ty">Option</span>&lt;Steps&gt;,
 
     <span class="doccomment">/// Hash index in the circuit
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) hash_idx: u64,
@@ -543,6 +532,7 @@
         <span class="self">Self </span>{
             constraints_env: ConstraintsEnv::default(),
             witness_env: WitnessEnv::default(),
+            step: <span class="prelude-val">None</span>,
             hash_idx: <span class="number">0</span>,
             step_idx: <span class="number">0</span>,
             block_idx: <span class="number">0</span>,
@@ -572,7 +562,7 @@
         </span>env.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) <span class="kw">as </span>u64;
 
         <span class="comment">// Configure first step depending on number of blocks remaining, updating the selector for the row
-        </span>env.constraints_env.step = <span class="kw">if </span>env.blocks_left_to_absorb == <span class="number">1 </span>{
+        </span>env.step = <span class="kw">if </span>env.blocks_left_to_absorb == <span class="number">1 </span>{
             <span class="prelude-val">Some</span>(Sponge(Absorb(Only)))
         } <span class="kw">else </span>{
             <span class="prelude-val">Some</span>(Sponge(Absorb(First)))
@@ -609,15 +599,12 @@
         // The fixed tables are not modified.
         </span><span class="self">self</span>.constraints_env.constraints = <span class="macro">vec!</span>[];
         <span class="self">self</span>.constraints_env.lookups = <span class="macro">vec!</span>[];
-    }
+        <span class="comment">// Step is not reset between iterations
+    </span>}
 
-    <span class="doccomment">/// Returns the selector of the current step
+    <span class="doccomment">/// Returns the selector of the current step in standardized form
     </span><span class="kw">pub fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Steps {
-        <span class="kw">let </span><span class="kw-2">mut </span>step = <span class="self">self</span>.constraints_env.step.unwrap();
-        <span class="kw">if let </span>Round(<span class="kw">_</span>) = step {
-            step = Round(<span class="number">0</span>);
-        }
-        step
+        standardize(<span class="self">self</span>.step.unwrap())
     }
 
     <span class="doccomment">/// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
@@ -628,7 +615,7 @@
         <span class="comment">// Reset columns to zeros to avoid conflicts between steps
         </span><span class="self">self</span>.null_state();
 
-        <span class="kw">match </span><span class="self">self</span>.constraints_env.step.unwrap() {
+        <span class="kw">match </span><span class="self">self</span>.step.unwrap() {
             Sponge(typ) =&gt; <span class="self">self</span>.run_sponge(typ),
             Round(i) =&gt; <span class="self">self</span>.run_round(i),
         }
@@ -639,21 +626,21 @@
 
     <span class="doccomment">/// This function updates the next step of the environment depending on the current step
     </span><span class="kw">pub fn </span>update_step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">match </span><span class="self">self</span>.constraints_env.step {
+        <span class="kw">match </span><span class="self">self</span>.step {
             <span class="prelude-val">Some</span>(step) =&gt; <span class="kw">match </span>step {
                 Sponge(sponge) =&gt; <span class="kw">match </span>sponge {
-                    Absorb(<span class="kw">_</span>) =&gt; <span class="self">self</span>.constraints_env.step = <span class="prelude-val">Some</span>(Round(<span class="number">0</span>)),
-                    Squeeze =&gt; <span class="self">self</span>.constraints_env.step = <span class="prelude-val">None</span>,
+                    Absorb(<span class="kw">_</span>) =&gt; <span class="self">self</span>.step = <span class="prelude-val">Some</span>(Round(<span class="number">0</span>)),
+                    Squeeze =&gt; <span class="self">self</span>.step = <span class="prelude-val">None</span>,
                 },
                 Round(round) =&gt; {
                     <span class="kw">if </span>round &lt; ROUNDS <span class="kw">as </span>u64 - <span class="number">1 </span>{
-                        <span class="self">self</span>.constraints_env.step = <span class="prelude-val">Some</span>(Round(round + <span class="number">1</span>));
+                        <span class="self">self</span>.step = <span class="prelude-val">Some</span>(Round(round + <span class="number">1</span>));
                     } <span class="kw">else </span>{
                         <span class="self">self</span>.blocks_left_to_absorb -= <span class="number">1</span>;
                         <span class="kw">match </span><span class="self">self</span>.blocks_left_to_absorb {
-                            <span class="number">0 </span>=&gt; <span class="self">self</span>.constraints_env.step = <span class="prelude-val">Some</span>(Sponge(Squeeze)),
-                            <span class="number">1 </span>=&gt; <span class="self">self</span>.constraints_env.step = <span class="prelude-val">Some</span>(Sponge(Absorb(Last))),
-                            <span class="kw">_ </span>=&gt; <span class="self">self</span>.constraints_env.step = <span class="prelude-val">Some</span>(Sponge(Absorb(Middle))),
+                            <span class="number">0 </span>=&gt; <span class="self">self</span>.step = <span class="prelude-val">Some</span>(Sponge(Squeeze)),
+                            <span class="number">1 </span>=&gt; <span class="self">self</span>.step = <span class="prelude-val">Some</span>(Sponge(Absorb(Last))),
+                            <span class="kw">_ </span>=&gt; <span class="self">self</span>.step = <span class="prelude-val">Some</span>(Sponge(Absorb(Middle))),
                         }
                     }
                 }
@@ -663,31 +650,21 @@
         <span class="self">self</span>.step_idx += <span class="number">1</span>;
     }
 
-    <span class="doccomment">/// Updates the witness corresponding to the round selector to 1 and the round value in [0..23]
+    <span class="doccomment">/// Updates the witness corresponding to the round value in [0..23]
     </span><span class="kw">fn </span>set_flag_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, round: u64) {
         <span class="macro">assert!</span>(round &lt; ROUNDS <span class="kw">as </span>u64);
-        <span class="self">self</span>.write_column(KeccakColumn::Selector(Round(round)), <span class="number">1</span>); <span class="comment">// Could be Round(_) as it is not used in the column
-        </span><span class="self">self</span>.write_column(KeccakColumn::RoundNumber, round);
+        <span class="self">self</span>.write_column(KeccakColumn::RoundNumber, round);
     }
-    <span class="doccomment">/// Sets the witness corresponding to the squeeze selector to 1
-    </span><span class="kw">fn </span>set_flag_squeeze(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.write_column(KeccakColumn::Selector(Sponge(Squeeze)), <span class="number">1</span>);
-    }
-    <span class="doccomment">/// Sets the witness corresponding to the absorb selectors to 1 and
-    /// updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
+
+    <span class="doccomment">/// Updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
     </span><span class="kw">fn </span>set_flag_absorb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, absorb: Absorbs) {
         <span class="kw">match </span>absorb {
-            First =&gt; <span class="self">self</span>.write_column(KeccakColumn::Selector(Sponge(Absorb(First))), <span class="number">1</span>),
-            Last =&gt; {
-                <span class="self">self</span>.write_column(KeccakColumn::Selector(Sponge(Absorb(Last))), <span class="number">1</span>);
-                <span class="self">self</span>.set_flags_pad();
+            Last | Only =&gt; {
+                <span class="comment">// Step flag has been updated already
+                </span><span class="self">self</span>.set_flags_pad();
             }
-            Only =&gt; {
-                <span class="self">self</span>.write_column(KeccakColumn::Selector(Sponge(Absorb(Only))), <span class="number">1</span>);
-                <span class="self">self</span>.set_flags_pad()
-            }
-            Middle =&gt; <span class="self">self</span>.write_column(KeccakColumn::Selector(Sponge(Absorb(Middle))), <span class="number">1</span>),
-        }
+            First | Middle =&gt; (), <span class="comment">// Step flag has been updated already,
+        </span>}
     }
     <span class="doccomment">/// Sets the flag columns related to padding flags such as `PadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
     </span><span class="kw">fn </span>set_flags_pad(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -710,7 +687,6 @@
     <span class="doccomment">/// Assigns the witness values needed in a sponge step (absorb or squeeze)
     </span><span class="kw">fn </span>run_sponge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sponge: Sponges) {
         <span class="comment">// Keep track of the round number for ease of debugging
-        </span><span class="self">self</span>.witness_env.round = <span class="number">24</span>; <span class="comment">// invalid round number used in sponges
         </span><span class="kw">match </span>sponge {
             Absorb(absorb) =&gt; <span class="self">self</span>.run_absorb(absorb),
             Squeeze =&gt; <span class="self">self</span>.run_squeeze(),
@@ -768,9 +744,9 @@
     </span>}
     <span class="doccomment">/// Assigns the witness values needed in a squeeze step
     </span><span class="kw">fn </span>run_squeeze(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.set_flag_squeeze();
+        <span class="comment">// Squeeze step is already updated
 
-        <span class="comment">// Compute witness values
+        // Compute witness values
         </span><span class="kw">let </span>state = <span class="self">self</span>.prev_block.clone();
         <span class="kw">let </span>shifts = Keccak::shift(<span class="kw-2">&amp;</span>state);
         <span class="kw">let </span>dense = Keccak::collapse(<span class="kw-2">&amp;</span>Keccak::reset(<span class="kw-2">&amp;</span>shifts));
@@ -795,8 +771,6 @@
     <span class="doccomment">/// Assigns the witness values needed in the round step for the given round index
     </span><span class="kw">fn </span>run_round(<span class="kw-2">&amp;mut </span><span class="self">self</span>, round: u64) {
         <span class="self">self</span>.set_flag_round(round);
-        <span class="comment">// Keep track of the round number for ease of debugging
-        </span><span class="self">self</span>.witness_env.round = round;
 
         <span class="kw">let </span>state_a = <span class="self">self</span>.prev_block.clone();
         <span class="kw">let </span>state_e = <span class="self">self</span>.run_theta(<span class="kw-2">&amp;</span>state_a);
@@ -929,9 +903,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>env = ConstraintsEnv {
             constraints: <span class="macro">vec!</span>[],
             lookups: <span class="macro">vec!</span>[],
-            step: <span class="prelude-val">Some</span>(step),
         };
-        env.constraints();
+        env.constraints(step);
         env.constraints
     }
 
@@ -940,9 +913,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>env = ConstraintsEnv {
             constraints: <span class="macro">vec!</span>[],
             lookups: <span class="macro">vec!</span>[],
-            step: <span class="prelude-val">Some</span>(step),
         };
-        env.lookups();
+        env.lookups(step);
         env.lookups
     }
 }

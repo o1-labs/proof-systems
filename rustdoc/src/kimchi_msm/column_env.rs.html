@@ -137,6 +137,36 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 
@@ -150,7 +180,14 @@
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-</span><span class="kw">pub struct </span>ColumnEnvironment&lt;<span class="lifetime">'a</span>, <span class="kw">const </span>N: usize, F: FftField, ID: LookupTableID&gt; {
+</span><span class="kw">pub struct </span>ColumnEnvironment&lt;
+    <span class="lifetime">'a</span>,
+    <span class="kw">const </span>N: usize,
+    <span class="kw">const </span>N_REL: usize,
+    <span class="kw">const </span>N_SEL: usize,
+    F: FftField,
+    ID: LookupTableID,
+&gt; {
     <span class="doccomment">/// The witness column polynomials
     </span><span class="kw">pub </span>witness: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Witness&lt;N, Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
@@ -167,8 +204,14 @@
     </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;logup::prover::QuotientPolynomialEnvironment&lt;<span class="lifetime">'a</span>, F, ID&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, <span class="kw">const </span>N: usize, F: FftField, ID: LookupTableID&gt; TColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt;
-    <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">'a</span>, N, F, ID&gt;
+<span class="kw">impl</span>&lt;
+        <span class="lifetime">'a</span>,
+        <span class="kw">const </span>N: usize,
+        <span class="kw">const </span>N_REL: usize,
+        <span class="kw">const </span>N_SEL: usize,
+        F: FftField,
+        ID: LookupTableID,
+    &gt; TColumnEnvironment&lt;<span class="lifetime">'a</span>, F&gt; <span class="kw">for </span>ColumnEnvironment&lt;<span class="lifetime">'a</span>, N, N_REL, N_SEL, F, ID&gt;
 {
     <span class="kw">type </span>Column = <span class="kw">crate</span>::columns::Column;
 
@@ -176,16 +219,27 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt; {
-        <span class="kw">let </span>witness_length: usize = <span class="self">self</span>.witness.len();
+        <span class="comment">// TODO: when non-literal constant generics are available, substitute N with N_REG + N_SEL
+        </span><span class="macro">assert!</span>(N == N_REL + N_SEL);
+        <span class="macro">assert!</span>(N == <span class="self">self</span>.witness.len());
         <span class="kw">match </span><span class="kw-2">*</span>col {
-            <span class="comment">// Handling the "relation columns"
-            </span><span class="self">Self</span>::Column::X(i) =&gt; {
-                <span class="kw">if </span>i &lt; witness_length {
+            <span class="comment">// Handling the "relation columns" at the beginning of the witness columns
+            </span><span class="self">Self</span>::Column::Relation(i) =&gt; {
+                <span class="kw">if </span>i &lt; N_REL {
                     <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[i];
                     <span class="prelude-val">Some</span>(res)
                 } <span class="kw">else </span>{
                     <span class="comment">// TODO: add a test for this
-                    </span><span class="macro">panic!</span>(<span class="string">"Requested column with index {:?} but the given witness is meant for {:?} columns"</span>, i, witness_length)
+                    </span><span class="macro">panic!</span>(<span class="string">"Requested column with index {:?} but the given witness is meant for {:?} relation columns"</span>, i, N_REL)
+                }
+            }
+            <span class="comment">// Handling the "dynamic selector columns" at the end of the witness columns
+            </span><span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
+                <span class="kw">if </span>i &lt; N_SEL {
+                    <span class="kw">let </span>res = <span class="kw-2">&amp;</span><span class="self">self</span>.witness[N_REL + i];
+                    <span class="prelude-val">Some</span>(res)
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"Requested selector with index {:?} but the given witness is meant for {:?} selector columns"</span>, i, N_SEL)
                 }
             }
             <span class="self">Self</span>::Column::LookupPartialSum((table_id, i)) =&gt; {
@@ -231,8 +285,14 @@
 
     <span class="kw">fn </span>column_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; Domain {
         <span class="kw">match </span><span class="kw-2">*</span>col {
-            <span class="self">Self</span>::Column::X(i) =&gt; {
-                <span class="kw">let </span>domain_size = <span class="self">self</span>.witness[i].domain().size;
+            <span class="self">Self</span>::Column::Relation(i) | <span class="self">Self</span>::Column::DynamicSelector(i) =&gt; {
+                <span class="kw">let </span>domain_size = <span class="kw">if </span><span class="kw-2">*</span>col == <span class="self">Self</span>::Column::Relation(i) {
+                    <span class="comment">// Relation
+                    </span><span class="self">self</span>.witness[i].domain().size
+                } <span class="kw">else </span>{
+                    <span class="comment">// DynamicSelector
+                    </span><span class="self">self</span>.witness[N_REL + i].domain().size
+                };
                 <span class="kw">if </span><span class="self">self</span>.domain.d1.size == domain_size {
                     Domain::D1
                 } <span class="kw">else if </span><span class="self">self</span>.domain.d2.size == domain_size {

@@ -64,7 +64,7 @@
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
         <span class="kw">let </span>to_column_inner = |offset, i| {
             <span class="macro">assert!</span>(i &lt; N_LIMBS);
-            Column::X(N_LIMBS * offset + i)
+            Column::Relation(N_LIMBS * offset + i)
         };
         <span class="kw">match </span><span class="self">self </span>{
             TestColumn::A(i) =&gt; to_column_inner(<span class="number">0</span>, i),

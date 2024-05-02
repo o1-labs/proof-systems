@@ -14,19 +14,19 @@ Using the expression framework, this constraint would be</p>
 <span class="kw">pub type </span>Fp = ark_bn254::Fr;
 <span class="kw">let </span>x1 = E::&lt;Fp&gt;::Atom(
     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-        col: Column::X(<span class="number">1</span>),
+        col: Column::Relation(<span class="number">1</span>),
         row: CurrOrNext::Curr,
     }),
 );
 <span class="kw">let </span>x2 = E::&lt;Fp&gt;::Atom(
     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-        col: Column::X(<span class="number">1</span>),
+        col: Column::Relation(<span class="number">1</span>),
         row: CurrOrNext::Curr,
     }),
 );
 <span class="kw">let </span>x3 = E::&lt;Fp&gt;::Atom(
     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-        col: Column::X(<span class="number">1</span>),
+        col: Column::Relation(<span class="number">1</span>),
         row: CurrOrNext::Curr,
     }),
 );

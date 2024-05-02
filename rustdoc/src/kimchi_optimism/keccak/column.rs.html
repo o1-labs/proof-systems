@@ -371,10 +371,50 @@
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 </span><span class="kw">use </span><span class="self">self</span>::{Absorbs::<span class="kw-2">*</span>, Sponges::<span class="kw-2">*</span>, Steps::<span class="kw-2">*</span>};
-<span class="kw">use </span><span class="kw">crate</span>::keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT};
+<span class="kw">use crate</span>::{
+    keccak::{ZKVM_KECCAK_COLS_CURR, ZKVM_KECCAK_COLS_NEXT},
+    trace::Indexer,
+};
 <span class="kw">use </span>kimchi::circuits::polynomials::keccak::constants::{
     CHI_SHIFTS_B_LEN, CHI_SHIFTS_B_OFF, CHI_SHIFTS_SUM_LEN, CHI_SHIFTS_SUM_OFF, PIRHO_DENSE_E_LEN,
     PIRHO_DENSE_E_OFF, PIRHO_DENSE_ROT_E_LEN, PIRHO_DENSE_ROT_E_OFF, PIRHO_EXPAND_ROT_E_LEN,
@@ -396,18 +436,23 @@
 
 <span class="doccomment">/// The maximum total number of witness columns used by the Keccak circuit.
 /// Note that in round steps, the columns used to store padding information are not needed.
-</span><span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize = MODE_LEN + STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
+</span><span class="kw">pub const </span>ZKVM_KECCAK_REL: usize = STATUS_LEN + CURR_LEN + NEXT_LEN + RC_LEN;
 
-<span class="kw">const </span>MODE_OFF: usize = <span class="number">0</span>; <span class="comment">// The offset of the selector columns inside the witness
-</span><span class="kw">const </span>MODE_LEN: usize = <span class="number">6</span>; <span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
-</span><span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>; <span class="comment">// Offset of the Round selector inside the mode flags
-</span><span class="kw">const </span>FLAG_FST_OFF: usize = <span class="number">1</span>; <span class="comment">// Offset of the Absorb(First) selector inside the mode flags
-</span><span class="kw">const </span>FLAG_MID_OFF: usize = <span class="number">2</span>; <span class="comment">// Offset of the Absorb(Middle) selector inside the mode flags
-</span><span class="kw">const </span>FLAG_LST_OFF: usize = <span class="number">3</span>; <span class="comment">// Offset of the Absorb(Last) selector  inside the mode flags
-</span><span class="kw">const </span>FLAG_ONE_OFF: usize = <span class="number">4</span>; <span class="comment">// Offset of the Absorb(Only) selector  inside the mode flags
-</span><span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = <span class="number">5</span>; <span class="comment">// Offset of the Squeeze selector inside the mode flags
+<span class="doccomment">/// The number of columns required for the Keccak selectors
+</span><span class="kw">pub const </span>ZKVM_KECCAK_SEL: usize = MODE_LEN;
 
-</span><span class="kw">const </span>STATUS_OFF: usize = MODE_OFF + MODE_LEN; <span class="comment">// The offset of the columns reserved for the status indices
+<span class="doccomment">/// Total number of columns used in Keccak, including relation and selectors
+</span><span class="kw">pub const </span>ZKVM_KECCAK_COLS: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+
+<span class="kw">const </span>MODE_LEN: usize = <span class="number">6</span>; <span class="comment">// The number of columns used by the Keccak circuit to represent the mode flags.
+</span><span class="kw">const </span>FLAG_ROUND_OFF: usize = <span class="number">0</span>; <span class="comment">// Offset of the Round selector inside DynamicSelector
+</span><span class="kw">const </span>FLAG_FST_OFF: usize = FLAG_ROUND_OFF + <span class="number">1</span>; <span class="comment">// Offset of the Absorb(First) selector inside the mode flags
+</span><span class="kw">const </span>FLAG_MID_OFF: usize = FLAG_ROUND_OFF + <span class="number">2</span>; <span class="comment">// Offset of the Absorb(Middle) selector inside the mode flags
+</span><span class="kw">const </span>FLAG_LST_OFF: usize = FLAG_ROUND_OFF + <span class="number">3</span>; <span class="comment">// Offset of the Absorb(Last) selector  inside the mode flags
+</span><span class="kw">const </span>FLAG_ONE_OFF: usize = FLAG_ROUND_OFF + <span class="number">4</span>; <span class="comment">// Offset of the Absorb(Only) selector  inside the mode flags
+</span><span class="kw">const </span>FLAG_SQUEEZE_OFF: usize = FLAG_ROUND_OFF + <span class="number">5</span>; <span class="comment">// Offset of the Squeeze selector inside the mode flags
+
+</span><span class="kw">const </span>STATUS_OFF: usize = <span class="number">0</span>; <span class="comment">// The offset of the columns reserved for the status indices
 </span><span class="kw">const </span>STATUS_LEN: usize = <span class="number">3</span>; <span class="comment">// The number of columns used by the Keccak circuit to represent the status flags.
 
 </span><span class="kw">const </span>CURR_OFF: usize = STATUS_OFF + STATUS_LEN; <span class="comment">// The offset of the curr chunk inside the witness columns
@@ -437,12 +482,6 @@
 /// (Sponge or Round) that is currently being executed.
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 </span><span class="kw">pub enum </span>ColumnAlias {
-    <span class="doccomment">/// Selectors used to distinguish between different modes of the Keccak step
-    /// They are not located at the end because unlike with MIPS where it is very
-    /// costly to instantiate them at each step, these are very small in comparison
-    /// and the interpreter is already storing them at each step.
-    </span>Selector(Steps),
-
     <span class="doccomment">/// Hash identifier to distinguish inside the syscalls communication channel
     </span>HashIndex,
     <span class="doccomment">/// Block index inside the hash to enumerate preimage bytes
@@ -530,29 +569,35 @@
     }
 }
 
+<span class="doccomment">/// Returns the index of the column corresponding to the given selector.
+/// They are located at the end of the witness columns.
+</span><span class="kw">impl </span>Indexer <span class="kw">for </span>Steps {
+    <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="kw">match </span><span class="kw-2">*</span><span class="self">self </span>{
+            Round(<span class="kw">_</span>) =&gt; FLAG_ROUND_OFF,
+            Sponge(sponge) =&gt; <span class="kw">match </span>sponge {
+                Absorb(absorb) =&gt; <span class="kw">match </span>absorb {
+                    First =&gt; FLAG_FST_OFF,
+                    Middle =&gt; FLAG_MID_OFF,
+                    Last =&gt; FLAG_LST_OFF,
+                    Only =&gt; FLAG_ONE_OFF,
+                },
+                Squeeze =&gt; FLAG_SQUEEZE_OFF,
+            },
+        }
+    }
+}
+
 <span class="doccomment">/// The columns used by the Keccak circuit.
 /// The Keccak circuit is split into two main modes: Round and Sponge (split into Root, Absorb, Pad, RootPad, Squeeze).
 /// The columns are shared between the Sponge and Round steps
 /// (the total number of columns refers to the maximum of columns used by each mode)
 /// The hash, block, and step indices are shared between both modes.
-</span><span class="kw">impl </span>ColumnAlias {
+</span><span class="kw">impl </span>Indexer <span class="kw">for </span>ColumnAlias {
     <span class="doccomment">/// Returns the witness column index for the given alias
     </span><span class="comment">// TODO: move selector columns outside the main witness
-    </span><span class="kw">pub fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+    </span><span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="kw-2">*</span><span class="self">self </span>{
-            ColumnAlias::Selector(step) =&gt; <span class="kw">match </span>step {
-                Round(<span class="kw">_</span>) =&gt; FLAG_ROUND_OFF,
-                Sponge(sponge) =&gt; <span class="kw">match </span>sponge {
-                    Absorb(absorb) =&gt; <span class="kw">match </span>absorb {
-                        First =&gt; FLAG_FST_OFF,
-                        Middle =&gt; FLAG_MID_OFF,
-                        Last =&gt; FLAG_LST_OFF,
-                        Only =&gt; FLAG_ONE_OFF,
-                    },
-                    Squeeze =&gt; FLAG_SQUEEZE_OFF,
-                },
-            },
-
             ColumnAlias::HashIndex =&gt; STATUS_OFF,
             ColumnAlias::BlockIndex =&gt; STATUS_OFF + <span class="number">1</span>,
             ColumnAlias::StepIndex =&gt; STATUS_OFF + <span class="number">2</span>,
@@ -716,9 +761,11 @@
 ///             -&gt; 811..=815: PadSuffix
 ///             -&gt; 816..=951: PadBytesFlags
 ///
-</span><span class="kw">pub type </span>KeccakWitness&lt;T&gt; = Witness&lt;ZKVM_KECCAK_COLS, T&gt;;
+</span><span class="kw">pub type </span>KeccakWitness&lt;T&gt; = Witness&lt;ZKVM_KECCAK_REL, T&gt;;
 
-<span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;ColumnAlias&gt; <span class="kw">for </span>KeccakWitness&lt;T&gt; {
+<span class="doccomment">/// IMPLEMENTATIONS FOR COLUMN ALIAS
+
+</span><span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;ColumnAlias&gt; <span class="kw">for </span>KeccakWitness&lt;T&gt; {
     <span class="kw">type </span>Output = T;
 
     <span class="doccomment">/// Map the column alias to the actual column index.
@@ -737,9 +784,36 @@
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>ColumnAlias {
-    <span class="kw">const </span>COL_N: usize = ZKVM_KECCAK_COLS;
+    <span class="kw">const </span>COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
-        Column::X(<span class="self">self</span>.ix())
+        Column::Relation(<span class="self">self</span>.ix())
+    }
+}
+
+<span class="comment">// IMPLEMENTAIONS FOR SELECTOR
+
+</span><span class="kw">impl</span>&lt;T: Clone&gt; Index&lt;Steps&gt; <span class="kw">for </span>KeccakWitness&lt;T&gt; {
+    <span class="kw">type </span>Output = T;
+
+    <span class="doccomment">/// Map the column alias to the actual column index.
+    /// Note that the column index depends on the step kind (Sponge or Round).
+    /// For instance, the column 800 represents PadLength in the Sponge step, while it
+    /// is used by intermediary values when executing the Round step.
+    </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Steps) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.cols[index.ix()]
+    }
+}
+
+<span class="kw">impl</span>&lt;T: Clone&gt; IndexMut&lt;Steps&gt; <span class="kw">for </span>KeccakWitness&lt;T&gt; {
+    <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: Steps) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.cols[index.ix()]
+    }
+}
+
+<span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>Steps {
+    <span class="kw">const </span>COL_N: usize = ZKVM_KECCAK_REL + ZKVM_KECCAK_SEL;
+    <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
+        Column::DynamicSelector(<span class="self">self</span>.ix())
     }
 }
 </code></pre></div></section></main></body></html>

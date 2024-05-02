@@ -112,8 +112,14 @@
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    keccak::column::{ColumnAlias <span class="kw">as </span>KeccakColumn, PAD_SUFFIX_LEN},
+    keccak::column::{ColumnAlias <span class="kw">as </span>KeccakColumn, Steps::<span class="kw-2">*</span>, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 <span class="kw">use </span>ark_ff::Field;
@@ -150,16 +156,8 @@
 <span class="doccomment">/// Errors that can occur during the check of the witness
 </span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Error {
-    Selector(Selector),
     Constraint(Constraint),
     Lookup(LookupTableIDs),
-}
-
-<span class="doccomment">/// All the names for selector misconfigurations of the Keccak circuit
-</span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>Selector {
-    NotBoolean(Steps),
-    NotMutex,
 }
 
 <span class="doccomment">/// All the names for constraints involved in the Keccak circuit
@@ -183,6 +181,20 @@
     ChiShiftsB(usize, usize, usize),
     ChiShiftsSum(usize, usize, usize),
     IotaStateG(usize),
+}
+
+<span class="doccomment">/// Standardizes a Keccak step to a common opcode
+</span><span class="kw">pub fn </span>standardize(opcode: Steps) -&gt; Steps {
+    <span class="comment">// Note that steps of execution are obtained from the constraints environment.
+    // There, the round steps can be anything between 0 and 23 (for the 24 permutations).
+    // Nonetheless, all of them contain the same set of constraints and lookups.
+    // Therefore, we want to treat them as the same step when it comes to splitting the
+    // circuit into multiple instances with shared behaviour. By default, we use `Round(0)`.
+    </span><span class="kw">if let </span>Round(<span class="kw">_</span>) = opcode {
+        Round(<span class="number">0</span>)
+    } <span class="kw">else </span>{
+        opcode
+    }
 }
 
 <span class="comment">// This function maps a 4D index into a 1D index depending on the length of the grid

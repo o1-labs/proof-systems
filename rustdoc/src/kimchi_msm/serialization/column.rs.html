@@ -105,35 +105,35 @@
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::ChalKimchi(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; <span class="number">3</span>);
-                Column::X(j)
+                Column::Relation(j)
             }
             <span class="self">Self</span>::ChalIntermediate(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; N_INTERMEDIATE_LIMBS);
-                Column::X(<span class="number">3 </span>+ j)
+                Column::Relation(<span class="number">3 </span>+ j)
             }
             <span class="self">Self</span>::ChalConverted(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>+ j)
             }
             <span class="self">Self</span>::CoeffInput(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + N_LIMBS + <span class="number">3 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + N_LIMBS + <span class="number">3 </span>+ j)
             }
             <span class="self">Self</span>::FFieldModulus(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; <span class="number">4</span>);
-                Column::X(N_INTERMEDIATE_LIMBS + <span class="number">2 </span>* N_LIMBS + <span class="number">3 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">2 </span>* N_LIMBS + <span class="number">3 </span>+ j)
             }
             <span class="self">Self</span>::Quotient(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + <span class="number">2 </span>* N_LIMBS + <span class="number">7 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">2 </span>* N_LIMBS + <span class="number">7 </span>+ j)
             }
             <span class="self">Self</span>::Carry(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; <span class="number">2 </span>* N_LIMBS + <span class="number">2</span>);
-                Column::X(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>* N_LIMBS + <span class="number">7 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">3 </span>* N_LIMBS + <span class="number">7 </span>+ j)
             }
             <span class="self">Self</span>::CoeffResult(j) =&gt; {
                 <span class="macro">assert!</span>(j &lt; N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + <span class="number">5 </span>* N_LIMBS + <span class="number">9 </span>+ j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + <span class="number">5 </span>* N_LIMBS + <span class="number">9 </span>+ j)
             }
         }
     }

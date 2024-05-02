@@ -412,7 +412,6 @@
 <a href="#410" id="410">410</a>
 <a href="#411" id="411">411</a>
 <a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_bn254;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
@@ -623,8 +622,7 @@
         };
         <span class="comment">// The following is possible because Index is implemented for our circuit witnesses
         </span><span class="kw-2">&amp;</span>wit[col].evals
-        <span class="comment">// TODO: if selectors columns are used, then return selectors instead of real witness columns
-    </span>}
+    }
 
     <span class="kw">fn </span>challenge(<span class="kw-2">&amp;</span><span class="self">self</span>, challenge: Challenge, side: Side) -&gt; Fp {
         <span class="kw">match </span>challenge {

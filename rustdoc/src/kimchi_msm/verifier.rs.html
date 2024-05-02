@@ -268,6 +268,8 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::logup::LookupTableID;
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>R2D};
@@ -300,13 +302,15 @@
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
     EFrSponge: FrSponge&lt;G::ScalarField&gt;,
     <span class="kw">const </span>N: usize,
+    <span class="kw">const </span>N_REL: usize,
+    <span class="kw">const </span>N_SEL: usize,
     <span class="kw">const </span>NPUB: usize,
     ID: LookupTableID,
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
     srs: <span class="kw-2">&amp;</span>OpeningProof::SRS,
     constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
-    proof: <span class="kw-2">&amp;</span>Proof&lt;N, G, OpeningProof, ID&gt;,
+    proof: <span class="kw-2">&amp;</span>Proof&lt;N, N_REL, N_SEL, G, OpeningProof, ID&gt;,
     public_inputs: Witness&lt;NPUB, Vec&lt;G::ScalarField&gt;&gt;,
 ) -&gt; bool
 <span class="kw">where

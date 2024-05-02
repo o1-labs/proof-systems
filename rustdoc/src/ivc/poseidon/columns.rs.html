@@ -88,14 +88,14 @@
         <span class="kw">match </span><span class="self">self </span>{
             PoseidonColumn::Input(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; STATE_SIZE);
-                Column::X(i)
+                Column::Relation(i)
             }
             PoseidonColumn::Round(round, state_index) =&gt; {
                 <span class="macro">assert!</span>(state_index &lt; STATE_SIZE);
                 <span class="comment">// We start round 0
                 </span><span class="macro">assert!</span>(round &lt; NB_FULL_ROUND);
                 <span class="kw">let </span>idx = STATE_SIZE + (round * STATE_SIZE + state_index);
-                Column::X(idx)
+                Column::Relation(idx)
             }
             PoseidonColumn::RoundConstant(round, state_index) =&gt; {
                 <span class="macro">assert!</span>(state_index &lt; STATE_SIZE);
@@ -103,7 +103,7 @@
                 </span><span class="macro">assert!</span>(round &lt; NB_FULL_ROUND);
                 <span class="kw">let </span>offset = STATE_SIZE + STATE_SIZE * NB_FULL_ROUND;
                 <span class="kw">let </span>idx = offset + (round * STATE_SIZE + state_index);
-                Column::X(idx)
+                Column::Relation(idx)
             }
         }
     }

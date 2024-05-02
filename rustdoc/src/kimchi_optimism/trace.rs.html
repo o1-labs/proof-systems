@@ -74,78 +74,150 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lookups::Lookup, E};
-<span class="kw">use </span>ark_ff::Zero;
+<span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>kimchi_msm::witness::Witness;
 <span class="kw">use </span>std::{collections::HashMap, hash::Hash};
+
+<span class="doccomment">/// Returns the index of the witness column in the trace.
+</span><span class="kw">pub trait </span>Indexer {
+    <span class="kw">fn </span>ix(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
+}
 
 <span class="doccomment">/// Struct representing a circuit execution trace containing
 /// all the necessary information to generate a proof.
 /// It is parameterized by
-/// - COLUMNS: the number of columns (constant),
-/// - SELECTOR: an enum representing the different gate behaviours,
+/// - N: the total number of columns (constant), it must equal N_REL + N_SEL
+/// - N_REL: the number of relation columns (constant),
+/// - N_SEL: the number of selector columns (constant),
+/// - Selector: an enum representing the different gate behaviours,
 /// - F: the type of the witness data.
-</span><span class="kw">pub struct </span>Trace&lt;<span class="kw">const </span>COLUMNS: usize, SELECTOR, F&gt; {
+</span><span class="kw">pub struct </span>Trace&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, Selector, F&gt; {
     <span class="doccomment">/// The domain size of the circuit
     </span><span class="kw">pub </span>domain_size: usize,
     <span class="doccomment">/// The witness for a given selector
-    </span><span class="kw">pub </span>witness: HashMap&lt;SELECTOR, Witness&lt;COLUMNS, Vec&lt;F&gt;&gt;&gt;,
+    /// - the last N_SEL columns represent the selector columns
+    ///   and only the one for `Selector` should be all ones (the rest of selector columns should be all zeros)
+    </span><span class="kw">pub </span>witness: HashMap&lt;Selector, Witness&lt;N, Vec&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The vector of constraints for a given selector
-    </span><span class="kw">pub </span>constraints: HashMap&lt;SELECTOR, Vec&lt;E&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>constraints: HashMap&lt;Selector, Vec&lt;E&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The vector of lookups for a given selector
-    </span><span class="kw">pub </span>lookups: HashMap&lt;SELECTOR, Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>lookups: HashMap&lt;Selector, Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>COLUMNS: usize, SELECTOR: Eq + Hash, F: Zero&gt; Trace&lt;COLUMNS, SELECTOR, F&gt; {
+<span class="kw">impl</span>&lt;
+        <span class="kw">const </span>N: usize,
+        <span class="kw">const </span>N_REL: usize,
+        <span class="kw">const </span>N_SEL: usize,
+        Selector: Eq + Hash + Indexer + Copy,
+        F: Zero + One,
+    &gt; Trace&lt;N, N_REL, N_SEL, Selector, F&gt;
+{
     <span class="doccomment">/// Returns the number of rows that have been instantiated for the given selector.
-    </span><span class="kw">pub fn </span>number_of_rows(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: SELECTOR) -&gt; usize {
+    /// It is important that the column used is a relation column because selector columns
+    /// are only instantiated at the very end, so their length could be zero most times.
+    </span><span class="kw">pub fn </span>number_of_rows(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: Selector) -&gt; usize {
         <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len()
     }
 
     <span class="doccomment">/// Returns a boolean indicating whether the witness for the given selector was ever found in the cirucit or not.
-    </span><span class="kw">pub fn </span>in_circuit(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: SELECTOR) -&gt; bool {
+    </span><span class="kw">pub fn </span>in_circuit(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: Selector) -&gt; bool {
         <span class="self">self</span>.number_of_rows(opcode) != <span class="number">0
     </span>}
 
     <span class="doccomment">/// Resets the witness after folding
-    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR) {
+    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Selector) {
         (<span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>opcode).unwrap().cols.as_mut())
             .iter_mut()
             .for_each(Vec::clear);
     }
+
+    <span class="doccomment">/// Sets the selector column to all ones, and the rest to all zeros
+    </span><span class="kw">pub fn </span>set_selector_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, selector: Selector, number_of_rows: usize) {
+        (N_REL..N).for_each(|i| {
+            <span class="kw">if </span>i == selector.ix() {
+                <span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().cols[i]
+                    .extend((<span class="number">0</span>..number_of_rows).map(|<span class="kw">_</span>| F::one()))
+            } <span class="kw">else </span>{
+                <span class="self">self</span>.witness.get_mut(<span class="kw-2">&amp;</span>selector).unwrap().cols[i]
+                    .extend((<span class="number">0</span>..number_of_rows).map(|<span class="kw">_</span>| F::zero()))
+            }
+        });
+    }
 }
 
 <span class="doccomment">/// Tracer builds traces for some program executions.
-/// The constant type `COLUMNS` is defined as the maximum number of columns/"registers" the trace can use per row.
-/// The type `SELECTOR` encodes the information of the kind of information the trace encodes. Examples:
+/// The constant type `N` is defined as the maximum number of columns the trace can use per row.
+/// The constant type `N_REL` is defined as the maximum number of relation columns the trace can use per row.
+/// The constant type `N_SEL` is defined as the number of selector columns the trace can use per row.
+/// The type `Selector` encodes the information of the kind of information the trace encodes. Examples:
 /// - For Keccak, `Step` encodes the row being performed at a time: round, squeeze, padding, etc...
 /// - For MIPS, `Instruction` encodes the CPU instruction being executed: add, sub, load, store, etc...
 /// The type parameter `F` is the type the data points in the trace are encoded into. It can be a field or a native type (u64).
-</span><span class="kw">pub trait </span>Tracer&lt;<span class="kw">const </span>COLUMNS: usize, SELECTOR, F: Zero, Env&gt; {
+</span><span class="kw">pub trait </span>Tracer&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, Selector, F: Zero, Env&gt; {
     <span class="doccomment">/// Create a new circuit
     </span><span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env) -&gt; <span class="self">Self</span>;
 
-    <span class="doccomment">/// Add a witness row to the circuit
-    </span><span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR, row: <span class="kw-2">&amp;</span>[F; COLUMNS]);
+    <span class="doccomment">/// Add a witness row to the circuit (only for relation columns)
+    </span><span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Selector, row: <span class="kw-2">&amp;</span>[F; N_REL]);
 
     <span class="doccomment">/// Pad the rows of one opcode with the given row until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
-    </span><span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR, row: <span class="kw-2">&amp;</span>[F; COLUMNS]) -&gt; usize;
+    /// It does not add selector columns.
+    </span><span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Selector, row: <span class="kw-2">&amp;</span>[F; N_REL]) -&gt; usize;
 
     <span class="doccomment">/// Pads the rows of one opcode with zero rows until
     /// reaching the domain size if needed.
     /// Returns the number of rows that were added.
-    </span><span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR) -&gt; usize;
+    /// It does not add selector columns.
+    </span><span class="kw">fn </span>pad_with_zeros(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Selector) -&gt; usize;
 
     <span class="doccomment">/// Pad the rows of one opcode with the first row until
     /// reaching the domain size if needed.
     /// It only tries to pad witnesses which are non empty.
     /// Returns the number of rows that were added.
-    </span><span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: SELECTOR) -&gt; usize;
+    /// It does not add selector columns.
+    </span><span class="kw">fn </span>pad_dummy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Selector) -&gt; usize;
 
     <span class="doccomment">/// Pads the rows of the witnesses until reaching the domain size using the first
-    /// row repeatedly.
+    /// row repeatedly. It does not add selector columns.
     </span><span class="kw">fn </span>pad_witnesses(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 }
 </code></pre></div></section></main></body></html>

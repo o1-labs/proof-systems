@@ -486,6 +486,8 @@
 <a href="#484" id="484">484</a>
 <a href="#485" id="485">485</a>
 <a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -541,6 +543,8 @@
     EFrSponge: FrSponge&lt;G::ScalarField&gt;,
     RNG,
     <span class="kw">const </span>N: usize,
+    <span class="kw">const </span>N_REL: usize,
+    <span class="kw">const </span>N_SEL: usize,
     ID: LookupTableID,
 &gt;(
     domain: EvaluationDomains&lt;G::ScalarField&gt;,
@@ -548,7 +552,7 @@
     constraints: <span class="kw-2">&amp;</span>Vec&lt;E&lt;G::ScalarField&gt;&gt;,
     inputs: ProofInputs&lt;N, G::ScalarField, ID&gt;,
     rng: <span class="kw-2">&amp;mut </span>RNG,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;N, G, OpeningProof, ID&gt;, ProverError&gt;
+) -&gt; <span class="prelude-ty">Result</span>&lt;Proof&lt;N, N_REL, N_SEL, G, OpeningProof, ID&gt;, ProverError&gt;
 <span class="kw">where
     </span>OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
@@ -671,7 +675,7 @@
     </span><span class="kw">let </span>alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
     <span class="kw">let </span>zk_rows = <span class="number">0</span>;
-    <span class="kw">let </span>column_env = {
+    <span class="kw">let </span>column_env: ColumnEnvironment&lt;<span class="lifetime">'_</span>, N, N_REL, N_SEL, <span class="kw">_</span>, <span class="kw">_</span>&gt; = {
         <span class="kw">let </span>challenges = Challenges {
             alpha,
             <span class="comment">// NB: as there is on permutation argument, we do use the beta
@@ -954,7 +958,7 @@
         rng,
     );
 
-    <span class="kw">let </span>proof_evals: ProofEvaluations&lt;N, G::ScalarField, ID&gt; = {
+    <span class="kw">let </span>proof_evals: ProofEvaluations&lt;N, N_REL, N_SEL, G::ScalarField, ID&gt; = {
         ProofEvaluations {
             witness_evals,
             logup_evals,

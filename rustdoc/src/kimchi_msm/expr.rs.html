@@ -97,19 +97,19 @@
 /// pub type Fp = ark_bn254::Fr;
 /// let x1 = E::&lt;Fp&gt;::Atom(
 ///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x2 = E::&lt;Fp&gt;::Atom(
 ///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x3 = E::&lt;Fp&gt;::Atom(
 ///     ExprInner::&lt;Operations&lt;ConstantExprInner&lt;Fp&gt;&gt;, Column&gt;::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
@@ -136,6 +136,6 @@
 <span class="attr">#[test]
 </span><span class="kw">fn </span>test_debug_can_be_called_on_expr() {
     <span class="kw">use crate</span>::{columns::Column::<span class="kw-2">*</span>, Fp};
-    <span class="macro">println!</span>(<span class="string">"{:}"</span>, curr_cell::&lt;Fp&gt;(X(<span class="number">0</span>)) + curr_cell(X(<span class="number">1</span>)))
+    <span class="macro">println!</span>(<span class="string">"{:}"</span>, curr_cell::&lt;Fp&gt;(Relation(<span class="number">0</span>)) + curr_cell(Relation(<span class="number">1</span>)))
 }
 </code></pre></div></section></main></body></html>

@@ -132,62 +132,62 @@
         <span class="kw">match </span><span class="self">self </span>{
             FECColumn::XP(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
-                Column::X(i)
+                Column::Relation(i)
             }
             FECColumn::YP(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
-                Column::X(N_LIMBS_LARGE + i)
+                Column::Relation(N_LIMBS_LARGE + i)
             }
             FECColumn::XQ(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
-                Column::X(<span class="number">2 </span>* N_LIMBS_LARGE + i)
+                Column::Relation(<span class="number">2 </span>* N_LIMBS_LARGE + i)
             }
             FECColumn::YQ(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
-                Column::X(<span class="number">3 </span>* N_LIMBS_LARGE + i)
+                Column::Relation(<span class="number">3 </span>* N_LIMBS_LARGE + i)
             }
             FECColumn::F(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_LARGE);
-                Column::X(<span class="number">4 </span>* N_LIMBS_LARGE + i)
+                Column::Relation(<span class="number">4 </span>* N_LIMBS_LARGE + i)
             }
             FECColumn::XR(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + i)
             }
             FECColumn::YR(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + N_LIMBS_SMALL + i)
             }
             FECColumn::S(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">2 </span>* N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">2 </span>* N_LIMBS_SMALL + i)
             }
             FECColumn::Q1(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">3 </span>* N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">3 </span>* N_LIMBS_SMALL + i)
             }
             FECColumn::Q2(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">4 </span>* N_LIMBS_SMALL + i)
             }
             FECColumn::Q3(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">5 </span>* N_LIMBS_SMALL + i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">5 </span>* N_LIMBS_SMALL + i)
             }
-            FECColumn::Q1Sign =&gt; Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL),
-            FECColumn::Q2Sign =&gt; Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>),
-            FECColumn::Q3Sign =&gt; Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>),
+            FECColumn::Q1Sign =&gt; Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL),
+            FECColumn::Q2Sign =&gt; Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">1</span>),
+            FECColumn::Q3Sign =&gt; Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">2</span>),
             FECColumn::Carry1(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">6 </span>* N_LIMBS_SMALL + <span class="number">3 </span>+ i)
             }
             FECColumn::Carry2(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">8 </span>* N_LIMBS_SMALL + <span class="number">5 </span>+ i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">8 </span>* N_LIMBS_SMALL + <span class="number">5 </span>+ i)
             }
             FECColumn::Carry3(i) =&gt; {
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2</span>);
-                Column::X(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">7 </span>+ i)
+                Column::Relation(<span class="number">5 </span>* N_LIMBS_LARGE + <span class="number">10 </span>* N_LIMBS_SMALL + <span class="number">7 </span>+ i)
             }
         }
     }

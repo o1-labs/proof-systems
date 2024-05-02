@@ -293,6 +293,13 @@
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::{Column, ColumnIndexer},
@@ -344,7 +351,7 @@
     }
 
     <span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: CIx) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>Column::X(i) = ix.to_column() <span class="kw">else </span>{
+        <span class="kw">let </span>Column::Relation(i) = ix.to_column() <span class="kw">else </span>{
             <span class="macro">todo!</span>()
         };
         <span class="self">self</span>.witness.last().unwrap().cols[i]
@@ -359,7 +366,7 @@
     &gt; ColWriteCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
 {
     <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ix: CIx, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
-        <span class="kw">let </span>Column::X(i) = ix.to_column() <span class="kw">else </span>{
+        <span class="kw">let </span>Column::Relation(i) = ix.to_column() <span class="kw">else </span>{
             <span class="macro">todo!</span>()
         };
         <span class="self">self</span>.witness.last_mut().unwrap().cols[i] = <span class="kw-2">*</span>value;
@@ -413,7 +420,14 @@
 {
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, position: Column, value: F) {
         <span class="kw">match </span>position {
-            Column::X(i) =&gt; <span class="self">self</span>.witness.last_mut().unwrap().cols[i] = value,
+            Column::Relation(i) =&gt; <span class="self">self</span>.witness.last_mut().unwrap().cols[i] = value,
+            Column::DynamicSelector(<span class="kw">_</span>) =&gt; {
+                <span class="comment">// TODO: Do we want to allow writing to dynamic selector columns only 1 or 0?
+                </span><span class="macro">panic!</span>(
+                    <span class="string">"This is a dynamic selector column. The environment is
+                supposed to write only in witness columns"
+                </span>);
+            }
             Column::LookupPartialSum(<span class="kw">_</span>) =&gt; {
                 <span class="macro">panic!</span>(
                     <span class="string">"This is a lookup related column. The environment is

@@ -490,6 +490,8 @@
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
 <a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 
@@ -504,7 +506,7 @@
 
 <span class="comment">// Generic function to test with different circuits with the generic prover/verifier.
 // It doesn't use the interpreter to build the witness and compute the constraints.
-</span><span class="kw">pub fn </span>test_completeness_generic&lt;<span class="kw">const </span>N: usize, RNG&gt;(
+</span><span class="kw">pub fn </span>test_completeness_generic&lt;<span class="kw">const </span>N: usize, <span class="kw">const </span>N_REL: usize, <span class="kw">const </span>N_SEL: usize, RNG&gt;(
     constraints: Vec&lt;E&lt;Fp&gt;&gt;,
     evaluations: Witness&lt;N, Vec&lt;Fp&gt;&gt;,
     domain_size: usize,
@@ -526,14 +528,15 @@
         logups: <span class="macro">vec!</span>[],
     };
 
-    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, <span class="kw">_</span>, N, LookupTableIDs&gt;(
-        domain,
-        <span class="kw-2">&amp;</span>srs,
-        <span class="kw-2">&amp;</span>constraints,
-        proof_inputs,
-        rng,
-    )
-    .unwrap();
+    <span class="kw">let </span>proof =
+        prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, <span class="kw">_</span>, N, N_REL, N_SEL, LookupTableIDs&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            proof_inputs,
+            rng,
+        )
+        .unwrap();
 
     {
         <span class="comment">// Checking the proof size. We should have:
@@ -571,13 +574,14 @@
         }
     }
 
-    <span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N, <span class="number">0</span>, LookupTableIDs&gt;(
-        domain,
-        <span class="kw-2">&amp;</span>srs,
-        <span class="kw-2">&amp;</span>constraints,
-        <span class="kw-2">&amp;</span>proof,
-        Witness::zero_vec(domain_size),
-    );
+    <span class="kw">let </span>verifies =
+        verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, N, N_REL, N_SEL, <span class="number">0</span>, LookupTableIDs&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            <span class="kw-2">&amp;</span>proof,
+            Witness::zero_vec(domain_size),
+        );
     <span class="macro">assert!</span>(verifies)
 }
 
@@ -652,8 +656,8 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
             <span class="macro">vec!</span>[x0.clone() - x1]
         };
 
@@ -663,7 +667,7 @@
             cols: Box::new([random_x0s, exp_x1]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -682,9 +686,9 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
-            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">2</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
+            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">2</span>));
             <span class="macro">vec!</span>[x0.clone() * x0.clone() - x1.clone() - x2.clone()]
         };
 
@@ -699,7 +703,7 @@
             cols: Box::new([random_x0s, random_x1s, exp_x2]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -721,10 +725,10 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
-            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">2</span>));
-            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">3</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
+            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">2</span>));
+            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">3</span>));
             <span class="macro">vec!</span>[
                 x0.clone() * x0.clone() * x0.clone() - E::from(<span class="number">42</span>) * x1.clone() * x2.clone()
                     + x3.clone(),
@@ -744,7 +748,7 @@
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -763,10 +767,10 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
-            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">2</span>));
-            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">3</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
+            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">2</span>));
+            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">3</span>));
             <span class="kw">let </span>one = ConstantExpr::from(ConstantTerm::Literal(Fp::one()));
             <span class="macro">vec!</span>[x0.clone() * (x1.clone() * x2.clone() * x3.clone() + E::constant(one))]
         };
@@ -783,7 +787,7 @@
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -802,8 +806,8 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
             <span class="macro">vec!</span>[x0.clone() * x0.clone() * x0.clone() * x0.clone() * x0.clone() + x1.clone()]
         };
 
@@ -816,7 +820,7 @@
             cols: Box::new([random_x0s, exp_x1]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -835,11 +839,11 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
             <span class="kw">let </span>cst1 = x0.clone() * x0.clone() * x0.clone() + x1.clone();
-            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">2</span>));
-            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">3</span>));
+            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">2</span>));
+            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">3</span>));
             <span class="kw">let </span>three = ConstantExpr::from(ConstantTerm::Literal(Fp::from(<span class="number">3</span>)));
             <span class="kw">let </span>cst2 = x2.clone() * x2.clone() - E::constant(three) * x3.clone();
             <span class="macro">vec!</span>[cst1, cst2]
@@ -859,7 +863,7 @@
             cols: Box::new([random_x0s, exp_x1, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -878,10 +882,10 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
-            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">2</span>));
-            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">3</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
+            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">2</span>));
+            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">3</span>));
             <span class="kw">let </span>x0_square = x0.clone() * x0.clone();
             <span class="kw">let </span>x1_square = x1.clone() * x1.clone();
             <span class="kw">let </span>x2_square = x2.clone() * x2.clone();
@@ -914,7 +918,7 @@
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
@@ -933,10 +937,10 @@
         <span class="kw">let </span>domain_size = <span class="number">1 </span>&lt;&lt; <span class="number">8</span>;
 
         <span class="kw">let </span>constraints = {
-            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">0</span>));
-            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">1</span>));
-            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">2</span>));
-            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::X(<span class="number">3</span>));
+            <span class="kw">let </span>x0 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">0</span>));
+            <span class="kw">let </span>x1 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">1</span>));
+            <span class="kw">let </span>x2 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">2</span>));
+            <span class="kw">let </span>x3 = expr::curr_cell::&lt;Fp&gt;(Column::Relation(<span class="number">3</span>));
             <span class="kw">let </span>x0_square = x0.clone() * x0.clone();
             <span class="kw">let </span>x1_square = x1.clone() * x1.clone();
             <span class="kw">let </span>x2_square = x2.clone() * x2.clone();
@@ -969,7 +973,7 @@
             cols: Box::new([random_x0s, random_x1s, random_x2s, exp_x3]),
         };
 
-        test_completeness_generic::&lt;N, <span class="kw">_</span>&gt;(
+        test_completeness_generic::&lt;N, N, <span class="number">0</span>, <span class="kw">_</span>&gt;(
             constraints.clone(),
             witness.clone(),
             domain_size,
