@@ -7,7 +7,7 @@ mod tests {
 
     use crate::{
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         ffa::{
             columns::{FFAColumn, FFA_N_COLUMNS},
             interpreter::{self as ffa_interpreter},
@@ -84,7 +84,6 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             FFA_N_COLUMNS,
             FFA_N_COLUMNS,

@@ -2,8 +2,8 @@ pub mod columns;
 pub mod interpreter;
 
 use crate::{
-    columns::Column, expr::E, lookups::LookupTableIDs, proof::ProofInputs, prover::prove,
-    verifier::verify, witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
+    expr::E, lookups::LookupTableIDs, proof::ProofInputs, prover::prove, verifier::verify,
+    witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
 };
 use ark_ff::{UniformRand, Zero};
 use kimchi::circuits::domains::EvaluationDomains;
@@ -34,19 +34,15 @@ pub fn test_completeness_generic<const N: usize, const N_REL: usize, const N_SEL
         logups: vec![],
     };
 
-    let proof = prove::<
-        _,
-        OpeningProof,
-        BaseSponge,
-        ScalarSponge,
-        Column,
-        _,
-        N,
-        N_REL,
-        N_SEL,
-        LookupTableIDs,
-    >(domain, &srs, &constraints, proof_inputs, rng)
-    .unwrap();
+    let proof =
+        prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, N, N_REL, N_SEL, LookupTableIDs>(
+            domain,
+            &srs,
+            &constraints,
+            proof_inputs,
+            rng,
+        )
+        .unwrap();
 
     {
         // Checking the proof size. We should have:

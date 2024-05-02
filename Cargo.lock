@@ -1033,6 +1033,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "folding"
+version = "0.1.0"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "groupmap",
+ "itertools 0.12.1",
+ "kimchi",
+ "log",
+ "mina-curves",
+ "mina-poseidon",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "o1-utils",
+ "poly-commitment",
+ "rand",
+ "rayon",
+ "rmp-serde",
+ "serde",
+ "serde_json",
+ "serde_with 3.6.0",
+ "strum",
+ "strum_macros",
+ "thiserror",
+]
+
+[[package]]
 name = "fsevent"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1333,9 +1364,17 @@ checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
 name = "ivc"
 version = "0.1.0"
 dependencies = [
+ "ark-bn254",
  "ark-ff",
  "kimchi",
  "kimchi-msm",
+ "mina-poseidon",
+ "num-bigint",
+ "num-integer",
+ "o1-utils",
+ "once_cell",
+ "poly-commitment",
+ "rand",
 ]
 
 [[package]]
@@ -1383,6 +1422,7 @@ dependencies = [
  "iai",
  "internal-tracing",
  "itertools 0.12.1",
+ "log",
  "mina-curves",
  "mina-poseidon",
  "num-bigint",
@@ -1421,9 +1461,11 @@ dependencies = [
  "ark-ff",
  "ark-poly",
  "ark-serialize",
+ "folding",
  "groupmap",
  "itertools 0.12.1",
  "kimchi",
+ "log",
  "mina-curves",
  "mina-poseidon",
  "num-bigint",
@@ -1455,6 +1497,7 @@ dependencies = [
  "command-fds",
  "elf",
  "env_logger",
+ "folding",
  "groupmap",
  "hex",
  "kimchi",

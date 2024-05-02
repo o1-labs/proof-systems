@@ -546,7 +546,9 @@ fn test_keccak_decomposable_folding() {
         keccak::folding::{KeccakConfig, KeccakStructure},
     };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
-    use kimchi::folding::{decomposable_folding::DecomposableFoldingScheme, FoldingCompatibleExpr};
+    use folding::{
+        decomposable_folding::DecomposableFoldingScheme, expressions::FoldingCompatibleExpr,
+    };
 
     let mut rng = o1_utils::tests::make_test_rng();
     let domain_size = 1 << 8;

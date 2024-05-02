@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
-use kimchi::{
-    circuits::expr::{CacheId, FormattedOutput},
-    folding::expressions::FoldingColumnTrait,
-};
+use folding::expressions::FoldingColumnTrait;
+use kimchi::circuits::expr::{CacheId, FormattedOutput};
 
 /// Describe a generic indexed variable X_{i}.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]

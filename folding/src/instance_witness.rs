@@ -1,4 +1,4 @@
-use crate::folding::Evals;
+use crate::Evals;
 use ark_ff::Field;
 use num_traits::One;
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};
@@ -169,6 +169,10 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
     }
     pub(crate) fn add_witness_evals(&mut self, i: usize, evals: Evals<G::ScalarField>) {
         self.extended.insert(i, evals);
+    }
+    ///allows to know if the extended witness comlumns are already computed, to avoid overriding them
+    pub fn is_extended(&self) -> bool {
+        !self.extended.is_empty()
     }
 }
 impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
