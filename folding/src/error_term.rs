@@ -313,7 +313,6 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
                 .expect("extended column not present")
                 .evals),
             Error => panic!("shouldn't happen"),
-            UnnormalizedLagrangeBasis(i) => Col(self.inner().lagrange_basis(*i)),
             Constant(c) => EvalLeaf::Const(*c),
             Challenge(chall) => EvalLeaf::Const(self.inner().challenge(*chall, side)),
             Alpha(i) => EvalLeaf::Const(self.inner().alpha(*i, side)),
@@ -330,12 +329,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         match col {
             WitnessExtended(i) => witness.inner().extended.get(i).is_some(),
             Error => panic!("shouldn't happen"),
-            Inner(_)
-            | UnnormalizedLagrangeBasis(_)
-            | Constant(_)
-            | Challenge(_)
-            | Alpha(_)
-            | Selector(_) => true,
+            Inner(_) | Constant(_) | Challenge(_) | Alpha(_) | Selector(_) => true,
         }
     }
 

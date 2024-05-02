@@ -85,10 +85,6 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
     Constant(<C::Curve as AffineCurve>::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable<C::Column>),
-    VanishesOnZeroKnowledgeAndPreviousRows,
-    /// UnnormalizedLagrangeBasis(i) is
-    /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(usize),
     /// extra nodes created by folding, should not be passed to folding
     Extensions(ExpExtension<C>),
 }
@@ -129,8 +125,6 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
                     };
                     format!("Col({:?}){}", col, next)
                 }
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(_) => todo!(),
                 FoldingCompatibleExprInner::Extensions(e) => match e {
                     ExpExtension::U => "U".to_string(),
                     ExpExtension::Error => "E".to_string(),
@@ -218,7 +212,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
 // maximum
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
-        type Ex<C> = ExtendedFoldingColumn<C>;
         use FoldingExp::*;
         match self {
             FoldingCompatibleExpr::Atom(atom) => match atom {
@@ -227,10 +220,6 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
                     Atom(ExtendedFoldingColumn::Challenge(c))
                 }
                 FoldingCompatibleExprInner::Cell(col) => Atom(ExtendedFoldingColumn::Inner(col)),
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) => {
-                    Atom(Ex::UnnormalizedLagrangeBasis(i))
-                }
                 FoldingCompatibleExprInner::Extensions(ext) => {
                     match ext {
                         // TODO: this shouldn't be allowed, but is needed for now to add
@@ -299,7 +288,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Inner(col) => col.col.degree(),
                 ExtendedFoldingColumn::WitnessExtended(_) => One,
                 ExtendedFoldingColumn::Error => One,
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(_) => Zero,
                 ExtendedFoldingColumn::Constant(_) => Zero,
                 ExtendedFoldingColumn::Challenge(_) => One,
                 ExtendedFoldingColumn::Alpha(_) => One,
@@ -338,9 +326,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                     Atom(Extensions(ExpExtension::ExtendedWitness(i)))
                 }
                 ExtendedFoldingColumn::Error => Atom(Extensions(ExpExtension::Error)),
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => {
-                    Atom(UnnormalizedLagrangeBasis(i))
-                }
                 ExtendedFoldingColumn::Constant(c) => Atom(Constant(c)),
                 ExtendedFoldingColumn::Challenge(c) => Atom(Challenge(c)),
                 ExtendedFoldingColumn::Alpha(i) => Atom(Extensions(ExpExtension::Alpha(i))),
@@ -632,11 +617,11 @@ where
         match expr {
             ExprInner::Constant(cexpr) => cexpr.into(),
             ExprInner::Cell(col) => FoldingCompatibleExprInner::Cell(col),
-            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            ExprInner::UnnormalizedLagrangeBasis(_) => {
+                panic!("UnnormalizedLagrangeBasis should not be used in folding expressions")
             }
-            ExprInner::UnnormalizedLagrangeBasis(i) => {
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize)
+            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                panic!("VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions")
             }
         }
     }
