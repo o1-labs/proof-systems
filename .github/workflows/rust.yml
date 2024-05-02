@@ -1,3 +1,5 @@
+# We do use --frozen to be sure that we do not access the network
+
 name: CI
 
 on:
@@ -83,7 +85,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --tests --all-targets -- -D warnings
+          args: --all-features --tests --all-targets --frozen -- -D warnings
 
       - name: Run Clippy (beta)
         uses: actions-rs/clippy-check@v1
@@ -91,7 +93,7 @@ jobs:
         with:
           name: Clippy (beta)
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets -- -W clippy::all
+          args: --all-features --all-targets --frozen -- -W clippy::all
 
       #
       # Build
@@ -101,7 +103,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --all-targets --all-features
+          args: --all-targets --all-features --frozen
 
       #
       # Tests
@@ -115,10 +117,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --all-features --release
+          args: run --all-features --release --frozen
 
       - name: Doc tests
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features --release --doc
+          args: --all-features --release --doc --frozen
