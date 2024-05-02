@@ -1,6 +1,7 @@
 use crate::{
+    columns::ExtendedFoldingColumn,
     error_term::{eval_sided, ExtendedEnv, Side},
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
+    expressions::{Degree, FoldingExp},
     FoldingConfig,
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -56,9 +57,9 @@ impl<C: FoldingConfig> ExpRecorder<C> {
         let mut new_constraints = BTreeMap::new();
         for (exp, id) in recorded_exprs.into_iter() {
             let left = FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id));
-            let constraint = FoldingExp::Sub(Box::new(left), Box::new(exp));
-            new_constraints.insert(id, constraint.clone());
-            witness_generator.push_front((id, constraint));
+            let constraint = FoldingExp::Sub(Box::new(left), Box::new(exp.clone()));
+            new_constraints.insert(id, constraint);
+            witness_generator.push_front((id, exp));
         }
         (new_constraints.into_values().collect(), witness_generator)
     }
@@ -90,11 +91,23 @@ fn lower_degree_to_1<C: FoldingConfig>(
     let degree = exp.degree();
     match degree {
         1 => exp,
-        _ => {
-            let exp = lower_degree_to_2(exp, rec);
-            let id = rec.get_id(exp);
-            FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
-        }
+        _ => match exp {
+            FoldingExp::Add(e1, e2) => FoldingExp::Add(
+                Box::new(lower_degree_to_1(*e1, rec)),
+                Box::new(lower_degree_to_1(*e2, rec)),
+            ),
+            FoldingExp::Sub(e1, e2) => FoldingExp::Sub(
+                Box::new(lower_degree_to_1(*e1, rec)),
+                Box::new(lower_degree_to_1(*e2, rec)),
+            ),
+            e @ FoldingExp::Square(_) | e @ FoldingExp::Mul(_, _) => {
+                let exp = lower_degree_to_2(e, rec);
+                let id = rec.get_id(exp);
+                FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
+            }
+            FoldingExp::Double(exp) => FoldingExp::Double(Box::new(lower_degree_to_1(*exp, rec))),
+            _ => todo!(),
+        },
     }
 }
 
@@ -158,14 +171,16 @@ impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
         mut env: ExtendedEnv<C>,
         side: Side,
     ) -> ExtendedEnv<C> {
-        let mut pending = self.exprs.clone();
+        if env.needs_extension(side) {
+            let mut pending = self.exprs.clone();
 
-        while let Some((i, exp)) = pending.pop_front() {
-            if check_evaluable(&exp, &env, side) {
-                let evals = eval_sided(&exp, &env, side).unwrap();
-                env.add_witness_evals(i, evals, side);
-            } else {
-                pending.push_back((i, exp))
+            while let Some((i, exp)) = pending.pop_front() {
+                if check_evaluable(&exp, &env, side) {
+                    let evals = eval_sided(&exp, &env, side).unwrap();
+                    env.add_witness_evals(i, evals, side);
+                } else {
+                    pending.push_back((i, exp))
+                }
             }
         }
 

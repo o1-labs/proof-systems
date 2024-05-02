@@ -1,27 +1,24 @@
+/// This file shows how to use the folding trait with a simple configuration of
+/// 3 columns, and two selectors. See [tests::test_folding_instance] at the end
+/// for a test.
+/// The test requires the features `bn254`, therefore use the following command
+/// to execute it:
+/// ```text
+/// cargo nextest run examples::example::tests::test_folding_instance --release --all-features
+/// ```
 use crate::{
     error_term::Side,
+    examples::{BaseSponge, Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness, Sponge, Witness,
+    RelaxedWitness, Witness,
 };
-use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
-use kimchi::{
-    circuits::{
-        expr::{Op2, Variable},
-        gate::CurrOrNext,
-    },
-    curve::KimchiCurve,
-};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, ScalarChallenge},
-    FqSponge,
-};
-use poly_commitment::{PolyComm, SRS};
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
+use poly_commitment::SRS;
 use rand::thread_rng;
 use std::{
     iter::successors,
@@ -43,11 +40,6 @@ use std::{
 /// B = (0, 0, 0)
 /// C = (1 1 -1)
 
-type Fp = ark_bn254::Fr;
-type Curve = ark_bn254::G1Affine;
-type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum TestColumn {
     A,
@@ -66,25 +58,12 @@ impl FoldingColumnTrait for TestColumn {
     }
 }
 
-// TODO: get rid of trait Sponge in folding, and use the one from kimchi
-impl Sponge<Curve> for BaseSponge {
-    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
-        // This function does not have a &self because it is meant to absorb and squeeze only once
-        let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
-        s.absorb_g(&absorb[0].elems);
-        s.absorb_g(&absorb[1].elems);
-        // Squeeze sponge
-        let chal = ScalarChallenge(s.challenge());
-        let (_, endo_r) = Curve::endos();
-        chal.to_field(endo_r)
-    }
-}
-
-/// The alphas are exceptional, their number cannot be known ahead of time as it will be defined by
-/// folding.
-/// The values will be computed as powers in new instances, but after folding each alfa will be a
-/// linear combination of other alphas, instand of a power of other element.
-/// This type represents that, allowing to also recognize which case is present
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding.
+/// The values will be computed as powers in new instances, but after folding
+/// each alpha will be a linear combination of other alphas, instand of a power
+/// of other element. This type represents that, allowing to also recognize
+/// which case is present.
 #[derive(Debug, Clone)]
 pub enum Alphas {
     Powers(Fp, Rc<AtomicUsize>),
@@ -129,6 +108,8 @@ impl Alphas {
 }
 
 /// The instance is the commitments to the polynomials and the challenges
+/// There are 3 commitments and challanges because there are 3 columns, A, B and
+/// C.
 #[derive(Debug, Clone)]
 struct TestInstance {
     commitments: [Curve; 3],
@@ -198,7 +179,8 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
         let mut next_witnesses = curr_witnesses.clone();
         for side in next_witnesses.iter_mut() {
             for col in side.iter_mut() {
-                //TODO: check this, while not relevant for this example I think it should be right rotation
+                // TODO: check this, while not relevant for this example I think
+                // it should be right rotation
                 col.evals.rotate_left(1);
             }
         }
@@ -263,24 +245,22 @@ fn constraints() -> Vec<FoldingCompatibleExpr<TestFoldingConfig>> {
     let s_add = Box::new(get_col(TestColumn::SelecAdd));
     let s_mul = Box::new(get_col(TestColumn::SelecMul));
 
-    type E = Box<FoldingCompatibleExpr<TestFoldingConfig>>;
-    let op = |a: E, b: E, op| Box::new(FoldingCompatibleExpr::BinOp(op, a, b));
+    let add = FoldingCompatibleExpr::Add(a.clone(), b.clone());
+    let add = FoldingCompatibleExpr::Sub(add.into(), c.clone());
+    let add = FoldingCompatibleExpr::Mul(add.into(), s_add.clone());
 
-    let add = op(a.clone(), b.clone(), Op2::Add);
-    let add = op(add, c.clone(), Op2::Sub);
-    let add = op(add, s_add, Op2::Mul);
+    let mul = FoldingCompatibleExpr::Mul(a.clone(), b.clone());
+    let mul = FoldingCompatibleExpr::Sub(mul.into(), c.clone());
+    let mul = FoldingCompatibleExpr::Mul(mul.into(), s_mul.clone());
 
-    let mul = op(a, b, Op2::Mul);
-    let mul = op(mul, c, Op2::Sub);
-    let mul = op(mul, s_mul, Op2::Mul);
-
-    vec![*add, *mul]
+    vec![add, mul]
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct TestFoldingConfig;
 
 // Does not contain alpha because this one should be provided by folding itself
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum TestChallenge {
     Beta,
@@ -291,7 +271,7 @@ enum TestChallenge {
 impl FoldingConfig for TestFoldingConfig {
     type Structure = TestStructure<Fp>;
     type Column = TestColumn;
-    type S = ();
+    type Selector = ();
     type Challenge = TestChallenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;
@@ -330,14 +310,16 @@ fn instance_from_witness(
         alphas,
     }
 }
+
 fn circuit() -> [Vec<Fp>; 2] {
     [vec![Fp::one(), Fp::zero()], vec![Fp::zero(), Fp::one()]]
 }
 
-/// A kind of pseudo-prover, will compute the expressions over the witness a check row by row
-/// for a zero result.
+/// A kind of pseudo-prover, will compute the expressions over the witness a
+/// check row by row for a zero result.
 mod checker {
     use super::*;
+    use log::debug;
     pub struct Provider {
         structure: TestStructure<Fp>,
         instance: TestInstance,
@@ -390,14 +372,13 @@ mod checker {
                     };
 
                     let mut col = col.clone();
-                    //check this, while not relevant in this case I think it should be right rotation
+                    // check this, while not relevant in this case I think it
+                    // should be right rotation
                     if let CurrOrNext::Next = row {
                         col.rotate_left(1);
                     }
                     col
                 }
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(_) => todo!(),
                 FoldingCompatibleExprInner::Extensions(_) => {
                     panic!("not handled")
                 }
@@ -408,7 +389,6 @@ mod checker {
         inner_provider: Provider,
         instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
         witness: RelaxedWitness<<TestFoldingConfig as FoldingConfig>::Curve, TestWitness>,
-        rows: usize,
     }
 
     impl ExtendedProvider {
@@ -422,12 +402,10 @@ mod checker {
                 let witness = witness.inner().inner.clone();
                 Provider::new(structure, instance, witness)
             };
-            let rows = inner_provider.rows;
             Self {
                 inner_provider,
                 instance,
                 witness,
-                rows,
             }
         }
     }
@@ -455,45 +433,48 @@ mod checker {
     }
 
     pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) -> Vec<Fp> {
+        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
             let e2 = exp.clone();
             let res = match exp {
                 FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
                 FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.double()).collect()
                 }
                 FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.square()).collect()
                 }
-                FoldingCompatibleExpr::BinOp(op, e1, e2) => {
-                    let v1 = self.check_rec(*e1, debug);
-                    let v2 = self.check_rec(*e2, debug);
-                    let op = match op {
-                        Op2::Add => |(a, b)| a + b,
-                        Op2::Mul => |(a, b)| a * b,
-                        Op2::Sub => |(a, b)| a - b,
-                    };
-                    v1.into_iter().zip(v2).map(op).collect()
+                FoldingCompatibleExpr::Add(e1, e2) => {
+                    let v1 = self.check_rec(*e1);
+                    let v2 = self.check_rec(*e2);
+                    v1.into_iter().zip(v2).map(|(a, b)| a + b).collect()
+                }
+                FoldingCompatibleExpr::Sub(e1, e2) => {
+                    let v1 = self.check_rec(*e1);
+                    let v2 = self.check_rec(*e2);
+                    v1.into_iter().zip(v2).map(|(a, b)| a - b).collect()
+                }
+                FoldingCompatibleExpr::Mul(e1, e2) => {
+                    let v1 = self.check_rec(*e1);
+                    let v2 = self.check_rec(*e2);
+                    v1.into_iter().zip(v2).map(|(a, b)| a * b).collect()
                 }
                 FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e, debug);
+                    let v = self.check_rec(*e);
                     v.into_iter().map(|x| x.pow([exp])).collect()
                 }
             };
-            if debug {
-                println!("exp: {:?}", e2);
-                println!("res: [\n");
-                for e in res.iter() {
-                    println!("{e}\n");
-                }
-                println!("]");
+            debug!("exp: {:?}", e2);
+            debug!("res: [\n");
+            for e in res.iter() {
+                debug!("{e}\n");
             }
+            debug!("]");
             res
         }
-        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>, debug: bool) {
-            let res = self.check_rec(exp, debug);
+        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) {
+            let res = self.check_rec(exp);
             for (i, row) in res.iter().enumerate() {
                 if !row.is_zero() {
                     panic!("check in row {i} failed, {row} != 0");
@@ -507,11 +488,12 @@ mod checker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::folding::{example::checker::ExtendedProvider, FoldingScheme};
+    use crate::{examples::example::checker::ExtendedProvider, FoldingScheme};
     use ark_poly::{EvaluationDomain, Evaluations};
+    use std::println as debug;
 
-    // this checks a single folding, it would be good to expand it in the future to do several foldings,
-    // as a few thigs are trivial in the first fold
+    // this checks a single folding, it would be good to expand it in the future
+    // to do several foldings, as a few thigs are trivial in the first fold
     #[test]
     fn test_folding_instance() {
         use ark_poly::Radix2EvaluationDomain as D;
@@ -554,47 +536,46 @@ mod tests {
         let right_witness: TestWitness =
             right_witness.map(|evals| Evaluations::from_vec_and_domain(evals, domain));
 
-        //instances
+        // instances
         let left_instance = instance_from_witness(&left_witness, &srs, domain);
         let right_instance = instance_from_witness(&left_witness, &srs, domain);
 
-        //check left
+        // check left
         {
-            // println!("check left");
+            debug!("check left");
             let checker = Provider::new(
                 structure.clone(),
                 left_instance.clone(),
                 left_witness.clone(),
             );
             for constraint in &constraints {
-                checker.check(constraint.clone(), false)
+                checker.check(constraint.clone())
             }
         }
-        //check right
+        // check right
         {
-            // println!("check right");
+            debug!("check right");
             let checker = Provider::new(
                 structure.clone(),
                 right_instance.clone(),
                 right_witness.clone(),
             );
             for constraint in &constraints {
-                checker.check(constraint.clone(), false)
+                checker.check(constraint.clone())
             }
         }
 
-        //pairs
+        // pairs
         let left = (left_instance, left_witness);
         let right = (right_instance, right_witness);
 
-        let folded =
-            scheme.fold_instance_witness_pair::<TestInstance, TestWitness, _, _>(left, right);
+        let folded = scheme.fold_instance_witness_pair(left, right);
         let (folded_instance, folded_witness, [_t0, _t1]) = folded;
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
-            // println!("exp: \n {:#?}", final_constraint);
-            // println!("check folded");
-            checker.check(final_constraint, false);
+            debug!("exp: \n {:#?}", final_constraint);
+            debug!("check folded");
+            checker.check(final_constraint);
         }
     }
 }

@@ -14,7 +14,7 @@ mod tests {
     use kimchi::circuits::domains::EvaluationDomains;
     use kimchi_msm::{
         circuit_design::{ColAccessCap, ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         lookups::DummyLookupTable,
         prover::prove,
         verifier::verify,
@@ -29,6 +29,7 @@ mod tests {
     pub const STATE_SIZE: usize = 3;
     pub const NB_FULL_ROUND: usize = 55;
     pub const N_COL: usize = PoseidonColumn::<STATE_SIZE, NB_FULL_ROUND>::COL_N;
+    pub const N_SEL: usize = 0;
 
     impl PoseidonParams<Fp, STATE_SIZE, NB_FULL_ROUND> for PoseidonBN254Parameters {
         fn constants(&self) -> [[Fp; STATE_SIZE]; NB_FULL_ROUND] {
@@ -138,17 +139,31 @@ mod tests {
         };
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, N_COL, _>(
-            domain,
-            &srs,
-            &constraints,
-            proof_inputs,
-            &mut rng,
-        )
+        let proof = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            _,
+            N_COL,
+            N_COL,
+            N_SEL,
+            DummyLookupTable,
+        >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, N_COL, 0, _>(
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            N_COL,
+            N_COL,
+            N_SEL,
+            0,
+            DummyLookupTable,
+        >(
             domain,
             &srs,
             &constraints,

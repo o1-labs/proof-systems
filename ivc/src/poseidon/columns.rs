@@ -32,14 +32,14 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
         match self {
             PoseidonColumn::Input(i) => {
                 assert!(i < STATE_SIZE);
-                Column::X(i)
+                Column::Relation(i)
             }
             PoseidonColumn::Round(round, state_index) => {
                 assert!(state_index < STATE_SIZE);
                 // We start round 0
                 assert!(round < NB_FULL_ROUND);
                 let idx = STATE_SIZE + (round * STATE_SIZE + state_index);
-                Column::X(idx)
+                Column::Relation(idx)
             }
             PoseidonColumn::RoundConstant(round, state_index) => {
                 assert!(state_index < STATE_SIZE);
@@ -47,7 +47,7 @@ impl<const STATE_SIZE: usize, const NB_FULL_ROUND: usize> ColumnIndexer
                 assert!(round < NB_FULL_ROUND);
                 let offset = STATE_SIZE + STATE_SIZE * NB_FULL_ROUND;
                 let idx = offset + (round * STATE_SIZE + state_index);
-                Column::X(idx)
+                Column::Relation(idx)
             }
         }
     }

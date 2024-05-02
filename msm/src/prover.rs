@@ -51,9 +51,10 @@ pub fn prove<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
-    Column,
     RNG,
     const N: usize,
+    const N_REL: usize,
+    const N_SEL: usize,
     ID: LookupTableID,
 >(
     domain: EvaluationDomains<G::ScalarField>,
@@ -61,7 +62,7 @@ pub fn prove<
     constraints: &Vec<E<G::ScalarField>>,
     inputs: ProofInputs<N, G::ScalarField, ID>,
     rng: &mut RNG,
-) -> Result<Proof<N, G, OpeningProof, ID>, ProverError>
+) -> Result<Proof<N, N_REL, N_SEL, G, OpeningProof, ID>, ProverError>
 where
     OpeningProof::SRS: Sync,
     RNG: RngCore + CryptoRng,
@@ -184,7 +185,7 @@ where
     let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
 
     let zk_rows = 0;
-    let column_env = {
+    let column_env: ColumnEnvironment<'_, N, N_REL, N_SEL, _, _> = {
         let challenges = Challenges {
             alpha,
             // NB: as there is on permutation argument, we do use the beta
@@ -467,7 +468,7 @@ where
         rng,
     );
 
-    let proof_evals: ProofEvaluations<N, G::ScalarField, ID> = {
+    let proof_evals: ProofEvaluations<N, N_REL, N_SEL, G::ScalarField, ID> = {
         ProofEvaluations {
             witness_evals,
             logup_evals,
