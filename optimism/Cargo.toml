@@ -18,6 +18,7 @@ path = "src/test_preimage_read.rs"
 
 [dependencies]
 ark-bn254.workspace = true
+folding.workspace = true
 kimchi = { workspace = true, features = [ "bn254" ] }
 kimchi-msm.workspace = true
 poly-commitment.workspace = true

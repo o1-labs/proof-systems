@@ -17,7 +17,6 @@
 
 pub mod column;
 pub mod constraints;
-#[cfg(feature = "bn254")]
 pub mod folding;
 pub mod interpreter;
 pub mod registers;
@@ -25,3 +24,5 @@ pub mod registers;
 pub mod tests;
 pub mod trace;
 pub mod witness;
+
+pub use interpreter::{ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction};

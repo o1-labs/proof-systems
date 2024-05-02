@@ -65,7 +65,7 @@ pub type OpeningProof = PairingProof<BN254>;
 mod tests {
     use crate::{
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         logup::LookupTableID,
         lookups::{DummyLookupTable, Lookup, LookupTableIDs},
         precomputed_srs::get_bn254_srs,
@@ -145,9 +145,10 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -159,6 +160,8 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             0,
             DummyLookupTable,
         >(
@@ -201,9 +204,10 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -219,9 +223,10 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs_prime, &mut rng)
         .unwrap();
@@ -236,6 +241,8 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
+                TEST_N_COLUMNS,
+                0,
                 0,
                 DummyLookupTable,
             >(
@@ -260,6 +267,8 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
+                TEST_N_COLUMNS,
+                0,
                 0,
                 DummyLookupTable,
             >(
@@ -285,6 +294,8 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
+                TEST_N_COLUMNS,
+                0,
                 0,
                 DummyLookupTable,
             >(
@@ -334,9 +345,10 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             LOOKUP_TEST_N_COL,
+            LOOKUP_TEST_N_COL,
+            0,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
@@ -346,6 +358,8 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             LOOKUP_TEST_N_COL,
+            LOOKUP_TEST_N_COL,
+            0,
             0,
             LookupTableIDs,
         >(

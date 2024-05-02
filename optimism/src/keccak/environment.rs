@@ -7,11 +7,14 @@ use crate::{
             Absorbs::{self, *},
             KeccakWitness,
             Sponges::{self, *},
+            Steps,
             Steps::*,
             PAD_SUFFIX_LEN,
         },
         constraints::Env as ConstraintsEnv,
-        grid_index, pad_blocks,
+        grid_index,
+        interpreter::KeccakInterpreter,
+        pad_blocks, standardize,
         witness::Env as WitnessEnv,
         KeccakColumn, DIM, HASH_BYTELENGTH, QUARTERS, WORDS_IN_HASH,
     },
@@ -29,16 +32,16 @@ use kimchi::{
 };
 use std::array;
 
-use super::{column::Steps, interpreter::KeccakInterpreter};
-
 /// This struct contains all that needs to be kept track of during the execution of the Keccak step interpreter
 #[derive(Clone, Debug)]
 pub struct KeccakEnv<F> {
-    /// Environment for the constraints (includes lookups and selector (step)).
+    /// Environment for the constraints (includes lookups).
     /// The step of the hash that is being executed can be None if just ended
     pub constraints_env: ConstraintsEnv<F>,
     /// Environment for the witness (includes multiplicities)
     pub witness_env: WitnessEnv<F>,
+    /// Current step
+    pub step: Option<Steps>,
 
     /// Hash index in the circuit
     pub(crate) hash_idx: u64,
@@ -68,6 +71,7 @@ impl<F: Field> Default for KeccakEnv<F> {
         Self {
             constraints_env: ConstraintsEnv::default(),
             witness_env: WitnessEnv::default(),
+            step: None,
             hash_idx: 0,
             step_idx: 0,
             block_idx: 0,
@@ -97,7 +101,7 @@ impl<F: Field> KeccakEnv<F> {
         env.blocks_left_to_absorb = Keccak::num_blocks(preimage.len()) as u64;
 
         // Configure first step depending on number of blocks remaining, updating the selector for the row
-        env.constraints_env.step = if env.blocks_left_to_absorb == 1 {
+        env.step = if env.blocks_left_to_absorb == 1 {
             Some(Sponge(Absorb(Only)))
         } else {
             Some(Sponge(Absorb(First)))
@@ -134,15 +138,12 @@ impl<F: Field> KeccakEnv<F> {
         // The fixed tables are not modified.
         self.constraints_env.constraints = vec![];
         self.constraints_env.lookups = vec![];
+        // Step is not reset between iterations
     }
 
-    /// Returns the selector of the current step
+    /// Returns the selector of the current step in standardized form
     pub fn selector(&self) -> Steps {
-        let mut step = self.constraints_env.step.unwrap();
-        if let Round(_) = step {
-            step = Round(0);
-        }
-        step
+        standardize(self.step.unwrap())
     }
 
     /// Entrypoint for the interpreter. It executes one step of the Keccak circuit (one row),
@@ -153,7 +154,7 @@ impl<F: Field> KeccakEnv<F> {
         // Reset columns to zeros to avoid conflicts between steps
         self.null_state();
 
-        match self.constraints_env.step.unwrap() {
+        match self.step.unwrap() {
             Sponge(typ) => self.run_sponge(typ),
             Round(i) => self.run_round(i),
         }
@@ -164,21 +165,21 @@ impl<F: Field> KeccakEnv<F> {
 
     /// This function updates the next step of the environment depending on the current step
     pub fn update_step(&mut self) {
-        match self.constraints_env.step {
+        match self.step {
             Some(step) => match step {
                 Sponge(sponge) => match sponge {
-                    Absorb(_) => self.constraints_env.step = Some(Round(0)),
-                    Squeeze => self.constraints_env.step = None,
+                    Absorb(_) => self.step = Some(Round(0)),
+                    Squeeze => self.step = None,
                 },
                 Round(round) => {
                     if round < ROUNDS as u64 - 1 {
-                        self.constraints_env.step = Some(Round(round + 1));
+                        self.step = Some(Round(round + 1));
                     } else {
                         self.blocks_left_to_absorb -= 1;
                         match self.blocks_left_to_absorb {
-                            0 => self.constraints_env.step = Some(Sponge(Squeeze)),
-                            1 => self.constraints_env.step = Some(Sponge(Absorb(Last))),
-                            _ => self.constraints_env.step = Some(Sponge(Absorb(Middle))),
+                            0 => self.step = Some(Sponge(Squeeze)),
+                            1 => self.step = Some(Sponge(Absorb(Last))),
+                            _ => self.step = Some(Sponge(Absorb(Middle))),
                         }
                     }
                 }
@@ -188,30 +189,20 @@ impl<F: Field> KeccakEnv<F> {
         self.step_idx += 1;
     }
 
-    /// Updates the witness corresponding to the round selector to 1 and the round value in [0..23]
+    /// Updates the witness corresponding to the round value in [0..23]
     fn set_flag_round(&mut self, round: u64) {
         assert!(round < ROUNDS as u64);
-        self.write_column(KeccakColumn::Selector(Round(round)), 1); // Could be Round(_) as it is not used in the column
         self.write_column(KeccakColumn::RoundNumber, round);
     }
-    /// Sets the witness corresponding to the squeeze selector to 1
-    fn set_flag_squeeze(&mut self) {
-        self.write_column(KeccakColumn::Selector(Sponge(Squeeze)), 1);
-    }
-    /// Sets the witness corresponding to the absorb selectors to 1 and
-    /// updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
+
+    /// Updates and any other sponge flag depending on the kind of absorb step (root, padding, both).
     fn set_flag_absorb(&mut self, absorb: Absorbs) {
         match absorb {
-            First => self.write_column(KeccakColumn::Selector(Sponge(Absorb(First))), 1),
-            Last => {
-                self.write_column(KeccakColumn::Selector(Sponge(Absorb(Last))), 1);
+            Last | Only => {
+                // Step flag has been updated already
                 self.set_flags_pad();
             }
-            Only => {
-                self.write_column(KeccakColumn::Selector(Sponge(Absorb(Only))), 1);
-                self.set_flags_pad()
-            }
-            Middle => self.write_column(KeccakColumn::Selector(Sponge(Absorb(Middle))), 1),
+            First | Middle => (), // Step flag has been updated already,
         }
     }
     /// Sets the flag columns related to padding flags such as `PadLength`, `TwoToPad`, `PadBytesFlags`, and `PadSuffix`.
@@ -235,7 +226,6 @@ impl<F: Field> KeccakEnv<F> {
     /// Assigns the witness values needed in a sponge step (absorb or squeeze)
     fn run_sponge(&mut self, sponge: Sponges) {
         // Keep track of the round number for ease of debugging
-        self.witness_env.round = 24; // invalid round number used in sponges
         match sponge {
             Absorb(absorb) => self.run_absorb(absorb),
             Squeeze => self.run_squeeze(),
@@ -293,7 +283,7 @@ impl<F: Field> KeccakEnv<F> {
     }
     /// Assigns the witness values needed in a squeeze step
     fn run_squeeze(&mut self) {
-        self.set_flag_squeeze();
+        // Squeeze step is already updated
 
         // Compute witness values
         let state = self.prev_block.clone();
@@ -320,8 +310,6 @@ impl<F: Field> KeccakEnv<F> {
     /// Assigns the witness values needed in the round step for the given round index
     fn run_round(&mut self, round: u64) {
         self.set_flag_round(round);
-        // Keep track of the round number for ease of debugging
-        self.witness_env.round = round;
 
         let state_a = self.prev_block.clone();
         let state_e = self.run_theta(&state_a);
@@ -454,9 +442,8 @@ impl<F: Field> KeccakEnv<F> {
         let mut env = ConstraintsEnv {
             constraints: vec![],
             lookups: vec![],
-            step: Some(step),
         };
-        env.constraints();
+        env.constraints(step);
         env.constraints
     }
 
@@ -465,9 +452,8 @@ impl<F: Field> KeccakEnv<F> {
         let mut env = ConstraintsEnv {
             constraints: vec![],
             lookups: vec![],
-            step: Some(step),
         };
-        env.lookups();
+        env.lookups(step);
         env.lookups
     }
 }

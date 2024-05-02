@@ -4,15 +4,13 @@
 //! from a set of list of constraints, each set associated with a particular selector, as opposed to a single list of constraints.
 
 use crate::{
+    columns::ExtendedFoldingColumn,
     error_term::{compute_error, ExtendedEnv},
-    expressions::{
-        ExtendedFoldingColumn, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp,
-    },
+    expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
     FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi::circuits::expr::Op2;
 use poly_commitment::{PolyComm, SRS};
 use std::collections::BTreeMap;
 
@@ -23,7 +21,7 @@ pub struct DecomposableFoldingScheme<CF: FoldingConfig> {
 impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     pub fn new(
         //constraints with a dynamic selector
-        constraints: BTreeMap<CF::S, Vec<FoldingCompatibleExpr<CF>>>,
+        constraints: BTreeMap<CF::Selector, Vec<FoldingCompatibleExpr<CF>>>,
         //constraints to be applied to every single instance regardless of selectors
         common_constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: CF::Srs,
@@ -34,11 +32,10 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
             .into_iter()
             .flat_map(|(s, exps)| {
                 exps.into_iter().map(move |exp| {
-                    let s = FoldingCompatibleExprInner::Extensions(super::ExpExtension::Selector(
-                        s.clone(),
-                    ));
+                    let s =
+                        FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
                     let s = Box::new(FoldingCompatibleExpr::Atom(s));
-                    FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
+                    FoldingCompatibleExpr::Mul(s, Box::new(exp))
                 })
             })
             .chain(common_constraints)
@@ -51,11 +48,11 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     /// folding with a selector will assume that only the selector in question is enabled (1)
     /// in all rows, and any other selector is 0 over all rows.
     /// If that is not the case, providing None will fold without assumptions
-    pub fn fold_instance_witness_pair<I, W, A, B>(
+    pub fn fold_instance_witness_pair<A, B>(
         &self,
         a: A,
         b: B,
-        selector: Option<CF::S>,
+        selector: Option<CF::Selector>,
     ) -> (
         RelaxedInstance<CF::Curve, CF::Instance>,
         RelaxedWitness<CF::Curve, CF::Witness>,
@@ -98,7 +95,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     }
 }
 
-pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::S> {
+pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::Selector> {
     match exp {
         FoldingExp::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
         _ => None,

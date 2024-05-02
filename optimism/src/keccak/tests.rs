@@ -26,6 +26,8 @@ use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
 
+use super::column::{ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL};
+
 pub type Fp = ark_bn254::Fr;
 
 #[test]
@@ -150,10 +152,12 @@ fn test_keccak_witness_satisfies_constraints() {
 
     // Initialize the environment and run the interpreter
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    while keccak_env.constraints_env.step.is_some() {
+    while keccak_env.step.is_some() {
+        let step = keccak_env.step.unwrap();
         keccak_env.step();
         // Simulate the constraints for each row
-        keccak_env.witness_env.constraints();
+        keccak_env.witness_env.constraints(step);
+        assert!(keccak_env.witness_env.errors.is_empty());
     }
     // Extract the hash from the witness
     let output = keccak_env.witness_env.sponge_bytes()[0..32]
@@ -179,14 +183,14 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
     // Execute the interpreter to obtain constraints for each step
-    while keccak_env.constraints_env.step.is_some() {
+    while keccak_env.step.is_some() {
         // Current step to be executed
-        let step = keccak_env.constraints_env.step.unwrap();
+        let step = keccak_env.step.unwrap();
 
         // Push constraints for the current step
-        keccak_env.constraints_env.constraints();
+        keccak_env.constraints_env.constraints(step);
         // Push lookups for the current step
-        keccak_env.constraints_env.lookups();
+        keccak_env.constraints_env.lookups(step);
 
         // Checking relation constraints for each step selector
         let mut constraint_degrees: HashMap<u64, u32> = HashMap::new();
@@ -262,7 +266,8 @@ fn test_regression_number_of_lookups_and_constraints_and_degree() {
         }
         // Execute the step updating the witness
         // (no need to happen before constraints if we are not checking the witness)
-        keccak_env.step(); // This updates the step for the next
+        // This updates the step for the next
+        keccak_env.step();
     }
 }
 
@@ -275,9 +280,10 @@ fn test_keccak_witness_satisfies_lookups() {
 
     // Initialize the environment and run the interpreter
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    while keccak_env.constraints_env.step.is_some() {
+    while keccak_env.step.is_some() {
+        let step = keccak_env.step.unwrap();
         keccak_env.step();
-        keccak_env.witness_env.lookups();
+        keccak_env.witness_env.lookups(step);
         assert!(keccak_env.witness_env.errors.is_empty());
     }
 }
@@ -300,12 +306,13 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
     // Run the interpreter and keep track of the witness
-    while keccak_env.constraints_env.step.is_some() {
+    while keccak_env.step.is_some() {
+        let step = keccak_env.step.unwrap();
         keccak_env.step();
         // Store a copy of the witness to be altered later
         witness_env.push(keccak_env.witness_env.clone());
         // Make sure that the constraints of that row hold
-        keccak_env.witness_env.constraints();
+        keccak_env.witness_env.constraints(step);
         assert!(keccak_env.witness_env.errors.is_empty());
     }
     assert_eq!(witness_env.len(), n_steps);
@@ -313,7 +320,8 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     // NEGATIVIZE THE WITNESS
 
     // Break padding constraints
-    assert_eq!(witness_env[0].is_pad(), Fp::one());
+    let step = Sponge(Absorb(Only));
+    assert_eq!(witness_env[0].is_pad(step), Fp::one());
     // Padding can only occur in suffix[3] and suffix[4] because length is 100 bytes
     assert_eq!(witness_env[0].pad_suffix(0), Fp::zero());
     assert_eq!(witness_env[0].pad_suffix(1), Fp::zero());
@@ -329,8 +337,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     );
     witness_env[0].witness[KeccakColumn::PadBytesFlags(0)] = Fp::from(1u32);
     // Now that PadBytesFlags(0) is 1, then block_in_padding(0) should be 0b10*
-    println!("{:?}", witness_env[0].block_in_padding(0).to_hex());
-    witness_env[0].constrain_padding();
+    witness_env[0].constrain_padding(step);
     // When the byte(0) is different than 0 then the padding suffix constraint also fails
     if witness_env[0].sponge_bytes()[0] != Fp::zero() {
         assert_eq!(
@@ -348,7 +355,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
 
     // Break booleanity constraints
     witness_env[0].witness[KeccakColumn::PadBytesFlags(0)] = Fp::from(2u32);
-    witness_env[0].constrain_booleanity();
+    witness_env[0].constrain_booleanity(step);
     assert_eq!(
         witness_env[0].errors,
         vec![Error::Constraint(BooleanityPadding(0))]
@@ -359,7 +366,7 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[0].witness[KeccakColumn::Input(68)] += Fp::from(1u32);
     witness_env[0].witness[KeccakColumn::SpongeNewState(68)] += Fp::from(1u32);
     witness_env[0].witness[KeccakColumn::Output(68)] += Fp::from(1u32);
-    witness_env[0].constrain_absorb();
+    witness_env[0].constrain_absorb(step);
     assert_eq!(
         witness_env[0].errors,
         vec![
@@ -372,8 +379,9 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[0].errors.clear();
 
     // Break squeeze constraints
+    let step = Sponge(Squeeze);
     witness_env[25].witness[KeccakColumn::Input(0)] += Fp::from(1u32);
-    witness_env[25].constrain_squeeze();
+    witness_env[25].constrain_squeeze(step);
     assert_eq!(
         witness_env[25].errors,
         vec![Error::Constraint(SqueezeShifts(0))]
@@ -381,9 +389,10 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[25].errors.clear();
 
     // Break theta constraints
+    let step = Round(0);
     witness_env[1].witness[KeccakColumn::ThetaQuotientC(0)] += Fp::from(2u32);
     witness_env[1].witness[KeccakColumn::ThetaShiftsC(0)] += Fp::from(1u32);
-    witness_env[1].constrain_theta();
+    witness_env[1].constrain_theta(step);
     assert_eq!(
         witness_env[1].errors,
         vec![
@@ -396,13 +405,13 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[1].errors.clear();
     witness_env[1].witness[KeccakColumn::ThetaQuotientC(0)] -= Fp::from(2u32);
     witness_env[1].witness[KeccakColumn::ThetaShiftsC(0)] -= Fp::from(1u32);
-    let state_e = witness_env[1].constrain_theta();
+    let state_e = witness_env[1].constrain_theta(step);
     assert!(witness_env[1].errors.is_empty());
 
     // Break pi-rho constraints
     witness_env[1].witness[KeccakColumn::PiRhoRemainderE(0)] += Fp::from(1u32);
     witness_env[1].witness[KeccakColumn::PiRhoShiftsE(0)] += Fp::from(1u32);
-    witness_env[1].constrain_pirho(state_e.clone());
+    witness_env[1].constrain_pirho(step, state_e.clone());
     assert_eq!(
         witness_env[1].errors,
         vec![
@@ -414,13 +423,13 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[1].errors.clear();
     witness_env[1].witness[KeccakColumn::PiRhoRemainderE(0)] -= Fp::from(1u32);
     witness_env[1].witness[KeccakColumn::PiRhoShiftsE(0)] -= Fp::from(1u32);
-    let state_b = witness_env[1].constrain_pirho(state_e);
+    let state_b = witness_env[1].constrain_pirho(step, state_e);
     assert!(witness_env[1].errors.is_empty());
 
     // Break chi constraints
     witness_env[1].witness[KeccakColumn::ChiShiftsB(0)] += Fp::from(1u32);
     witness_env[1].witness[KeccakColumn::ChiShiftsSum(0)] += Fp::from(1u32);
-    witness_env[1].constrain_chi(state_b.clone());
+    witness_env[1].constrain_chi(step, state_b.clone());
     assert_eq!(
         witness_env[1].errors,
         vec![
@@ -433,12 +442,12 @@ fn test_keccak_fake_witness_wont_satisfy_constraints() {
     witness_env[1].errors.clear();
     witness_env[1].witness[KeccakColumn::ChiShiftsB(0)] -= Fp::from(1u32);
     witness_env[1].witness[KeccakColumn::ChiShiftsSum(0)] -= Fp::from(1u32);
-    let state_f = witness_env[1].constrain_chi(state_b);
+    let state_f = witness_env[1].constrain_chi(step, state_b);
     assert!(witness_env[1].errors.is_empty());
 
     // Break iota constraints
     witness_env[1].witness[KeccakColumn::Output(0)] += Fp::from(1u32);
-    witness_env[1].constrain_iota(state_f);
+    witness_env[1].constrain_iota(step, state_f);
     assert_eq!(
         witness_env[1].errors,
         vec![Error::Constraint(IotaStateG(0))]
@@ -464,9 +473,10 @@ fn test_keccak_multiplicities() {
 
     // Run the interpreter and keep track of the witness
     let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
-    while keccak_env.constraints_env.step.is_some() {
+    while keccak_env.step.is_some() {
+        let step = keccak_env.step.unwrap();
         keccak_env.step();
-        keccak_env.witness_env.lookups();
+        keccak_env.witness_env.lookups(step);
         // Store a copy of the witness
         witness_env.push(keccak_env.witness_env.clone());
     }
@@ -505,8 +515,8 @@ fn test_keccak_prover_constraints() {
         // Keep track of the constraints and lookups of the sub-circuits
         let mut keccak_circuit = KeccakTrace::<Fp>::new(domain_size, &mut keccak_env);
 
-        while keccak_env.constraints_env.step.is_some() {
-            let step = keccak_env.constraints_env.step.unwrap();
+        while keccak_env.step.is_some() {
+            let step = keccak_env.step.unwrap();
 
             // Run the interpreter, which sets the witness columns
             keccak_env.step();
@@ -518,7 +528,7 @@ fn test_keccak_prover_constraints() {
 
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
             if keccak_circuit.in_circuit(step) {
-                test_completeness_generic::<ZKVM_KECCAK_COLS, _>(
+                test_completeness_generic::<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, _>(
                     keccak_circuit.constraints[&step].clone(),
                     keccak_circuit.witness[&step].clone(),
                     domain_size,

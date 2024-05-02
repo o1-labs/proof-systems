@@ -168,28 +168,28 @@ impl ColumnIndexer for IVCColumn {
         match self {
             IVCColumn::Block1Input(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL);
-                Column::X(i)
+                Column::Relation(i)
             }
             IVCColumn::Block1InputRepacked75(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::X(2 * N_LIMBS_SMALL + i)
+                Column::Relation(2 * N_LIMBS_SMALL + i)
             }
             IVCColumn::Block1InputRepacked150(i) => {
                 assert!(i < 2 * N_LIMBS_XLARGE);
-                Column::X(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
+                Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
             }
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
-            IVCColumn::Block3ConstPhi => Column::X(0),
-            IVCColumn::Block3ConstR => Column::X(1),
-            IVCColumn::Block3PhiPow => Column::X(2),
-            IVCColumn::Block3PhiPowR => Column::X(3),
+            IVCColumn::Block3ConstPhi => Column::Relation(0),
+            IVCColumn::Block3ConstR => Column::Relation(1),
+            IVCColumn::Block3PhiPow => Column::Relation(2),
+            IVCColumn::Block3PhiPowR => Column::Relation(3),
             IVCColumn::Block3PhiPowLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::X(4 + i)
+                Column::Relation(4 + i)
             }
             IVCColumn::Block3PhiPowRLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::X(4 + N_LIMBS_SMALL + i)
+                Column::Relation(4 + N_LIMBS_SMALL + i)
             }
             IVCColumn::Block4ECAdd(fec_col) => fec_col.to_column(),
         }

@@ -1,10 +1,10 @@
 use crate::{
+    columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
-    expressions::{Degree, ExtendedFoldingColumn, FoldingExp, IntegratedFoldingExpr, Sign},
+    expressions::{Degree, FoldingExp, IntegratedFoldingExpr, Sign},
     quadraticization::ExtendedWitnessGenerator,
-    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness,
+    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness, ScalarField,
 };
-use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::circuits::expr::Variable;
@@ -26,8 +26,6 @@ impl Side {
     }
 }
 
-type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
-
 /// Evaluates the expression in the provided side
 pub(crate) fn eval_sided<'a, C: FoldingConfig>(
     exp: &FoldingExp<C>,
@@ -39,19 +37,19 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
     match exp {
         Atom(col) => env.col(col, side),
         Double(e) => {
-            let col = eval_exp_error(e, env, side);
+            let col = eval_sided(e, env, side);
             col.map(Field::double, |f| {
                 Field::double_in_place(f);
             })
         }
         Square(e) => {
-            let col = eval_exp_error(e, env, side);
+            let col = eval_sided(e, env, side);
             col.map(Field::square, |f| {
                 Field::square_in_place(f);
             })
         }
-        Add(e1, e2) => eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
-        Sub(e1, e2) => eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
+        Add(e1, e2) => eval_sided(e1, env, side) + eval_sided(e2, env, side),
+        Sub(e1, e2) => eval_sided(e1, env, side) - eval_sided(e2, env, side),
         Mul(e1, e2) => {
             //this assumes to some degree that selectors don't multiply each other
             let selector = check_selector(e1)
@@ -77,9 +75,9 @@ pub(crate) fn eval_sided<'a, C: FoldingConfig>(
         }
         Pow(e, i) => match i {
             0 => EvalLeaf::Const(ScalarField::<C>::one()),
-            1 => eval_exp_error(e, env, side),
+            1 => eval_sided(e, env, side),
             i => {
-                let err = eval_exp_error(e, env, side);
+                let err = eval_sided(e, env, side);
                 let mut acc = err.clone();
                 for _ in 1..*i {
                     acc = acc * err.clone()
@@ -250,7 +248,7 @@ pub(crate) struct ExtendedEnv<CF: FoldingConfig> {
     instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
     witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
     domain: Radix2EvaluationDomain<ScalarField<CF>>,
-    selector: Option<CF::S>,
+    selector: Option<CF::Selector>,
 }
 
 impl<CF: FoldingConfig> ExtendedEnv<CF> {
@@ -260,7 +258,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
         witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
-        selector: Option<CF::S>,
+        selector: Option<CF::Selector>,
     ) -> Self {
         let inner_instances = [
             instances[0].inner_instance().inner(),
@@ -276,7 +274,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
             selector,
         }
     }
-    pub fn enabled_selector(&self) -> Option<&CF::S> {
+    pub fn enabled_selector(&self) -> Option<&CF::Selector> {
         self.selector.as_ref()
     }
 
@@ -315,7 +313,6 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
                 .expect("extended column not present")
                 .evals),
             Error => panic!("shouldn't happen"),
-            UnnormalizedLagrangeBasis(i) => Col(self.inner().lagrange_basis(*i)),
             Constant(c) => EvalLeaf::Const(*c),
             Challenge(chall) => EvalLeaf::Const(self.inner().challenge(*chall, side)),
             Alpha(i) => EvalLeaf::Const(self.inner().alpha(*i, side)),
@@ -332,12 +329,7 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         match col {
             WitnessExtended(i) => witness.inner().extended.get(i).is_some(),
             Error => panic!("shouldn't happen"),
-            Inner(_)
-            | UnnormalizedLagrangeBasis(_)
-            | Constant(_)
-            | Challenge(_)
-            | Alpha(_)
-            | Selector(_) => true,
+            Inner(_) | Constant(_) | Challenge(_) | Alpha(_) | Selector(_) => true,
         }
     }
 
@@ -348,6 +340,12 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
         };
         let evals = Evaluations::from_vec_and_domain(evals, self.domain);
         witness.inner_mut().add_witness_evals(i, evals);
+    }
+    pub fn needs_extension(&self, side: Side) -> bool {
+        !match side {
+            Side::Left => self.witnesses[0].inner().is_extended(),
+            Side::Right => self.witnesses[1].inner().is_extended(),
+        }
     }
 
     /// Computes the extended witness column and the corresponding commitments,
