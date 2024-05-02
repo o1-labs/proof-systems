@@ -147,7 +147,7 @@ pub fn write_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap
 /// Write an array of /field/ values simultaneously.
 pub fn write_column_array_const<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
     env: &mut Env,
-    input: [F; ARR_N],
+    input: &[F; ARR_N],
     column_map: ColMap,
 ) where
     F: PrimeField,

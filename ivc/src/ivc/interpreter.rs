@@ -2,22 +2,25 @@
 
 use crate::{
     ivc::{
-        columns::{IVCColumn, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE},
-        lookups::IVCLookupTable,
+        columns::{
+            IVCColumn, IVCFECLens, IVCHashLens, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE,
+        },
+        lookups::{IVCFECLookupLens, IVCLookupTable},
     },
-    poseidon::{
-        columns::PoseidonColumn,
-        interpreter::{poseidon_circuit, PoseidonParams},
-    },
+    poseidon::interpreter::{poseidon_circuit, PoseidonParams},
 };
 use ark_ff::PrimeField;
 use kimchi_msm::{
     circuit_design::{
         capabilities::{read_column_array, write_column_array_const},
-        composition::SubEnvColumn,
+        composition::{SubEnvColumn, SubEnvLookup},
         ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
     },
     columns::ColumnIndexer,
+    fec::{
+        columns::FECColumn,
+        interpreter::{constrain_ec_addition, ec_add_circuit},
+    },
     serialization::{
         interpreter::{
             combine_limbs_m_to_n, combine_small_to_large, limb_decompose_ff, LIMB_BITSIZE_LARGE,
@@ -26,12 +29,98 @@ use kimchi_msm::{
         lookups as serlookup,
     },
 };
+use num_bigint::BigUint;
 use std::marker::PhantomData;
 
 /// The biggest packing variant for foreign field. Used for hashing. 150-bit limbs.
 pub const LIMB_BITSIZE_XLARGE: usize = 150;
 /// The biggest packing format, 2 limbs.
 pub const N_LIMBS_XLARGE: usize = 2;
+
+fn range_check_scalar_limbs<F, Ff, Env>(
+    env: &mut Env,
+    input_limbs_small: &[Env::Variable; N_LIMBS_SMALL],
+) where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+{
+    for (i, x) in input_limbs_small.iter().enumerate() {
+        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
+            // If it's the highest limb, we need to check that it's representing a field element.
+            env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
+                    PhantomData,
+                )),
+                x,
+            );
+        } else {
+            // TODO Add this lookup.
+            // env.lookup(IVCLookupTable::RangeCheckFHighest, x);
+        }
+    }
+}
+
+fn range_check_small_limbs<F, Ff, Env>(
+    env: &mut Env,
+    input_limbs_small: &[Env::Variable; N_LIMBS_SMALL],
+) where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+{
+    for (i, x) in input_limbs_small.iter().enumerate() {
+        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
+            // If it's the highest limb, we need to check that it's representing a field element.
+            env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
+                    PhantomData,
+                )),
+                x,
+            );
+        } else {
+            env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
+                x,
+            );
+        }
+    }
+}
+
+// TODO double-check it works
+/// Helper. Combines large limbs into one element. Computation is over the field.
+pub fn combine_large_to_full_field<Ff: PrimeField>(x: [Ff; N_LIMBS_LARGE]) -> Ff {
+    let [res] =
+        combine_limbs_m_to_n::<N_LIMBS_LARGE, 1, LIMB_BITSIZE_LARGE, 300, Ff, Ff, _>(|f| f, x);
+    res
+}
+
+/// Helper. Combines small limbs into big limbs.
+pub fn combine_large_to_xlarge<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+    x: [Env::Variable; N_LIMBS_LARGE],
+) -> [Env::Variable; N_LIMBS_XLARGE] {
+    combine_limbs_m_to_n::<
+        N_LIMBS_LARGE,
+        N_LIMBS_XLARGE,
+        LIMB_BITSIZE_LARGE,
+        LIMB_BITSIZE_XLARGE,
+        F,
+        Env::Variable,
+        _,
+    >(|f| Env::constant(f), x)
+}
+
+/// Helper. Combines 17x15bit limbs into 1 native field element.
+pub fn combine_small_to_full<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+    x: [Env::Variable; N_LIMBS_SMALL],
+) -> Env::Variable {
+    let [res] =
+        combine_limbs_m_to_n::<N_LIMBS_SMALL, 1, LIMB_BITSIZE_SMALL, 255, F, Env::Variable, _>(
+            |f| Env::constant(f),
+            x,
+        );
+    res
+}
 
 /// Constraints for the inputs block.
 pub fn constrain_inputs<F, Ff, Env>(env: &mut Env)
@@ -97,82 +186,127 @@ pub fn write_inputs_row<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
     target_comms: [(Ff, Ff); N_COL_TOTAL],
     row_num_local: usize,
-) where
+) -> (Vec<F>, Vec<F>, Vec<F>)
+where
     F: PrimeField,
     Ff: PrimeField,
     Env: ColWriteCap<F, IVCColumn>,
 {
-    write_column_array_const(
-        env,
-        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(
-            &target_comms[row_num_local].0,
-        ),
-        IVCColumn::Block1Input,
+    let small_limbs_1 = limb_decompose_ff::<F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(
+        &target_comms[row_num_local].0,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(
-            &target_comms[row_num_local].1,
-        ),
-        |x| IVCColumn::Block1Input(N_LIMBS_SMALL + x),
+    let small_limbs_2 = limb_decompose_ff::<F, Ff, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(
+        &target_comms[row_num_local].1,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(
-            &target_comms[row_num_local].0,
-        ),
-        IVCColumn::Block1InputRepacked75,
+    let small_limbs_1_2: [_; 2 * N_LIMBS_SMALL] = small_limbs_1
+        .into_iter()
+        .chain(small_limbs_2)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    let large_limbs_1 = limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(
+        &target_comms[row_num_local].0,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(
-            &target_comms[row_num_local].1,
-        ),
-        |x| IVCColumn::Block1InputRepacked75(N_LIMBS_LARGE + x),
+    let large_limbs_2 = limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(
+        &target_comms[row_num_local].1,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE>(
-            &target_comms[row_num_local].0,
-        ),
-        IVCColumn::Block1InputRepacked150,
+    let large_limbs_1_2: [_; 2 * N_LIMBS_LARGE] = large_limbs_1
+        .into_iter()
+        .chain(large_limbs_2)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    let xlarge_limbs_1 = limb_decompose_ff::<F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE>(
+        &target_comms[row_num_local].0,
     );
-    write_column_array_const(
-        env,
-        limb_decompose_ff::<F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE>(
-            &target_comms[row_num_local].1,
-        ),
-        |x| IVCColumn::Block1InputRepacked150(N_LIMBS_XLARGE + x),
+    let xlarge_limbs_2 = limb_decompose_ff::<F, Ff, LIMB_BITSIZE_XLARGE, N_LIMBS_XLARGE>(
+        &target_comms[row_num_local].1,
     );
+    let xlarge_limbs_1_2: [_; 2 * N_LIMBS_XLARGE] = xlarge_limbs_1
+        .into_iter()
+        .chain(xlarge_limbs_2)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+
+    write_column_array_const(env, &small_limbs_1_2, IVCColumn::Block1Input);
+    write_column_array_const(env, &large_limbs_1_2, IVCColumn::Block1InputRepacked75);
+    write_column_array_const(env, &xlarge_limbs_1_2, IVCColumn::Block1InputRepacked150);
+
+    (
+        small_limbs_1_2.to_vec(),
+        large_limbs_1_2.to_vec(),
+        xlarge_limbs_1_2.to_vec(),
+    )
 }
 
+/// `comms` is lefts, rights, and outs. Returns the packed commitments
+/// in three different representations.
+#[allow(clippy::type_complexity)]
 pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
     env: &mut Env,
-    comms_left: [(Ff, Ff); N_COL_TOTAL],
-    comms_right: [(Ff, Ff); N_COL_TOTAL],
-    comms_out: [(Ff, Ff); N_COL_TOTAL],
-) where
+    comms: [[(Ff, Ff); N_COL_TOTAL]; 3],
+) -> (
+    [[[F; 2 * N_LIMBS_SMALL]; N_COL_TOTAL]; 3],
+    [[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
+    [[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
+)
+where
     F: PrimeField,
     Ff: PrimeField,
     Env: MultiRowReadCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
+    let mut comms_limbs: [[Vec<Vec<F>>; 3]; 3] =
+        std::array::from_fn(|_| std::array::from_fn(|_| vec![]));
+
     for _block_row_i in 0..(3 * N_COL_TOTAL) {
         let row_num = env.curr_row();
 
-        let (target_comms, row_num_local) = if row_num < N_COL_TOTAL {
-            (comms_left, row_num)
+        let (target_comms, row_num_local, comtype) = if row_num < N_COL_TOTAL {
+            (comms[0], row_num, 0)
         } else if row_num < 2 * N_COL_TOTAL {
-            (comms_right, row_num - N_COL_TOTAL)
+            (comms[1], row_num - N_COL_TOTAL, 1)
         } else {
-            (comms_out, row_num - 2 * N_COL_TOTAL)
+            (comms[2], row_num - 2 * N_COL_TOTAL, 2)
         };
 
-        write_inputs_row(env, target_comms, row_num_local);
+        let (limbs_small, limbs_large, limbs_xlarge) =
+            write_inputs_row(env, target_comms, row_num_local);
+
+        comms_limbs[0][comtype].push(limbs_small);
+        comms_limbs[1][comtype].push(limbs_large);
+        comms_limbs[2][comtype].push(limbs_xlarge);
 
         constrain_inputs(env);
 
         env.next_row();
     }
+
+    // Transforms nested Vec<Vec<_>> into fixed-size arrays. Returns
+    // Left-Right-Output for a given limb size.
+    fn repack_output<F: PrimeField, const TWO_LIMB_SIZE: usize, const N_COL_TOTAL: usize>(
+        input: [Vec<Vec<F>>; 3],
+    ) -> [[[F; TWO_LIMB_SIZE]; N_COL_TOTAL]; 3] {
+        input
+            .into_iter()
+            .map(|vector: Vec<Vec<_>>| {
+                vector
+                    .into_iter()
+                    .map(|subvec: Vec<_>| subvec.try_into().unwrap())
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap()
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
+    }
+
+    (
+        repack_output(comms_limbs[0].clone()),
+        repack_output(comms_limbs[1].clone()),
+        repack_output(comms_limbs[2].clone()),
+    )
 }
 
 // FIXME Highly (!!!!) POC! Not trying to make things work at this moment.
@@ -181,7 +315,9 @@ pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
 pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
     env: &mut Env,
     poseidon_params: &PParams,
-) where
+    comms_xlarge: &[[[F; 2 * N_LIMBS_XLARGE]; N_COL_TOTAL]; 3],
+) -> (Env::Variable, Env::Variable)
+where
     F: PrimeField,
     PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
     Env: MultiRowReadCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
@@ -189,30 +325,36 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
     let n = N_COL_TOTAL;
 
     // These should be some proper seeds. Passed from the outside
-    let sponge_l_init: F = F::one();
-    let sponge_r_init: F = F::one();
-    let sponge_o_init: F = F::one();
-    let sponge_lr_init: F = F::one();
-    let sponge_lro_init: F = F::one();
+    let sponge_l_init: F = F::zero();
+    let sponge_r_init: F = F::zero();
+    let sponge_o_init: F = F::zero();
+    let sponge_lr_init: F = F::zero();
+    let sponge_lro_init: F = F::zero();
+
+    let mut prev_hash_output = Env::constant(F::zero());
+    let mut hash_l = Env::constant(F::zero());
+    let mut hash_r = Env::constant(F::zero());
+    let mut hash_o = Env::constant(F::zero());
+    let mut r = Env::constant(F::zero());
+    let mut phi = Env::constant(F::zero());
 
     // Relative position in the hashing block
     for block_row_i in 0..6 * N_COL_TOTAL + 2 {
-        // Absolute row
-        let row_i = env.curr_row();
-
         // Computing h_l, h_r, h_o independently
         if block_row_i < 6 * n {
-            // The block 1 row we target
-            let block1_row_i = block_row_i / 2;
+            // Left, right, or output
+            let comm_type = block_row_i / (2 * n);
+            // The commitment we target. Commitment i is processed in hash rows 2*i and 2*i+1.
+            let comm_i = (block_row_i % (2 * N_COL_TOTAL)) / 2;
             let (input1, input2) = if block_row_i % 2 == 0 {
                 (
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(0)),
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(1)),
+                    comms_xlarge[comm_type][comm_i][0],
+                    comms_xlarge[comm_type][comm_i][1],
                 )
             } else {
                 (
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(2)),
-                    env.read_row_column(block1_row_i, IVCColumn::Block1InputRepacked150(3)),
+                    comms_xlarge[comm_type][comm_i][2],
+                    comms_xlarge[comm_type][comm_i][3],
                 )
             };
             let input3 = if block_row_i == 0 {
@@ -222,71 +364,50 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
             } else if block_row_i == 4 * n {
                 Env::constant(sponge_o_init)
             } else {
-                // otherwise read from the previous row
-                env.read_row_column(
-                    row_i - 1,
-                    IVCColumn::Block2Hash(PoseidonColumn::Round(
-                        IVC_POSEIDON_NB_FULL_ROUND - 1,
-                        IVC_POSEIDON_STATE_SIZE - 1,
-                    )),
-                )
+                prev_hash_output.clone()
             };
 
-            poseidon_circuit(
+            let [_, _, output] = poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                [input1, input2, input3],
+                [Env::constant(input1), Env::constant(input2), input3],
             );
+
+            if block_row_i == 2 * N_COL_TOTAL {
+                hash_l = output;
+            } else if block_row_i == 4 * N_COL_TOTAL {
+                hash_r = output;
+            } else if block_row_i == 6 * N_COL_TOTAL {
+                hash_o = output;
+            } else {
+                prev_hash_output = output;
+            }
         } else if block_row_i == 6 * n {
-            let input1_hl = env.read_row_column(
-                5 * n,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - 1,
-                    IVC_POSEIDON_STATE_SIZE - 1,
-                )),
-            );
-            let input2_hr = env.read_row_column(
-                7 * n,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - 1,
-                    IVC_POSEIDON_STATE_SIZE - 1,
-                )),
-            );
-            let input3 = Env::constant(sponge_lr_init);
-
             // Computing r
-            poseidon_circuit(
+            let [_, _, r_res] = poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                [input1_hl, input2_hr, input3],
+                [
+                    hash_l.clone(),
+                    hash_r.clone(),
+                    Env::constant(sponge_lr_init),
+                ],
             );
+            r = r_res;
         } else if block_row_i == 6 * n + 1 {
-            let input1_ho = env.read_row_column(
-                9 * n,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - 1,
-                    IVC_POSEIDON_STATE_SIZE - 1,
-                )),
-            );
-            let input2_r = env.read_row_column(
-                row_i - 1,
-                IVCColumn::Block2Hash(PoseidonColumn::Round(
-                    IVC_POSEIDON_NB_FULL_ROUND - 1,
-                    IVC_POSEIDON_STATE_SIZE - 1,
-                )),
-            );
-            let input3 = Env::constant(sponge_lro_init);
-
             // Computing phi
-            poseidon_circuit(
+            let [_, _, phi_res] = poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                [input1_ho, input2_r, input3],
+                [hash_o.clone(), r.clone(), Env::constant(sponge_lro_init)],
             );
+            phi = phi_res;
         }
 
         env.next_row();
     }
+
+    (r, phi)
 }
 
 pub fn constrain_scalars<F, Ff, Env>(env: &mut Env)
@@ -318,29 +439,6 @@ where
     env.assert_zero(phi_pow_r_expected - phi_i_r);
 }
 
-pub fn prepare_scalars<F, Env, const N_COL_TOTAL: usize>(env: &mut Env) -> (F, F)
-where
-    F: PrimeField,
-    Env: DirectWitnessCap<F, IVCColumn>,
-{
-    // relative position in the phi block
-    let r = env.read_row_column(
-        9 * N_COL_TOTAL,
-        IVCColumn::Block2Hash(PoseidonColumn::Round(
-            IVC_POSEIDON_NB_FULL_ROUND - 1,
-            IVC_POSEIDON_STATE_SIZE - 1,
-        )),
-    );
-    let phi = env.read_row_column(
-        9 * N_COL_TOTAL + 1,
-        IVCColumn::Block2Hash(PoseidonColumn::Round(
-            IVC_POSEIDON_NB_FULL_ROUND - 1,
-            IVC_POSEIDON_STATE_SIZE - 1,
-        )),
-    );
-    (Env::variable_to_field(r), Env::variable_to_field(phi))
-}
-
 pub fn write_scalars_row<F, Env>(env: &mut Env, r_f: F, phi_f: F, phi_prev_power_f: F) -> F
 where
     F: PrimeField,
@@ -357,28 +455,27 @@ where
     // TODO check that limb_decompose_ff works with <F,F,_,_>
     write_column_array_const(
         env,
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_f),
+        &limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_f),
         IVCColumn::Block3PhiPowLimbs,
     );
     write_column_array_const(
         env,
-        limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r_f),
+        &limb_decompose_ff::<F, F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(&phi_cur_power_r_f),
         IVCColumn::Block3PhiPowRLimbs,
     );
 
     phi_cur_power_f
 }
 
-pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize>(env: &mut Env)
+pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize>(env: &mut Env, r: F, phi: F)
 where
     F: PrimeField,
     Ff: PrimeField,
     Env: DirectWitnessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
-    let (r_f, phi_f) = prepare_scalars::<_, _, N_COL_TOTAL>(env);
     let mut phi_prev_power_f = F::one();
     for _block_row_i in 0..N_COL_TOTAL {
-        phi_prev_power_f = write_scalars_row(env, r_f, phi_f, phi_prev_power_f);
+        phi_prev_power_f = write_scalars_row(env, r, phi, phi_prev_power_f);
 
         // Checking our constraints
         constrain_scalars(env);
@@ -387,11 +484,90 @@ where
     }
 }
 
-pub fn process_ecadds<F, Env, const N_COL_TOTAL: usize>(_env: &mut Env)
+pub fn constrain_ecadds<F, Ff, Env>(env: &mut Env)
 where
     F: PrimeField,
-    Env: MultiRowReadCap<F, IVCColumn>,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
+    constrain_ec_addition::<F, Ff, _>(&mut SubEnvLookup::new(
+        &mut SubEnvColumn::new(env, IVCFECLens {}),
+        IVCFECLookupLens(PhantomData),
+    ));
+}
+
+pub fn process_ecadds<F, Ff, Env, const N_COL_TOTAL: usize>(
+    env: &mut Env,
+    _r: F,
+    _phi: F,
+    comms_large: &[[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]; 3],
+) where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: DirectWitnessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+{
+    // TODO FIXME multiply by r. For now these are just C_{R,i}, they must be {r * C_{R,i}}
+    let r_hat_large: Box<[[F; 2 * N_LIMBS_LARGE]; N_COL_TOTAL]> = Box::new(comms_large[1]);
+
+    for block_row_i in 0..35 * N_COL_TOTAL {
+        // Number of the commitment we're processing
+        let com_i = block_row_i % N_COL_TOTAL;
+        let (xp_limbs, yp_limbs) =
+            if block_row_i < 17 * N_COL_TOTAL || block_row_i >= 34 * N_COL_TOTAL {
+                // Our main commitment input
+                (
+                    comms_large[1][com_i][..N_LIMBS_LARGE].try_into().unwrap(),
+                    comms_large[1][com_i][N_LIMBS_LARGE..].try_into().unwrap(),
+                )
+            } else {
+                (
+                    r_hat_large[com_i][..N_LIMBS_LARGE].try_into().unwrap(),
+                    r_hat_large[com_i][N_LIMBS_LARGE..].try_into().unwrap(),
+                )
+            };
+        write_column_array_const(env, &xp_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::XP(i)));
+        write_column_array_const(env, &yp_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::YP(i)));
+
+        // FIXME This is a STUB right now it uses C_{L,i} commitments.
+        // Must use bucket input which is looked up.
+        let xq_limbs: [F; N_LIMBS_LARGE] =
+            comms_large[0][com_i][..N_LIMBS_LARGE].try_into().unwrap();
+        let yq_limbs: [F; N_LIMBS_LARGE] =
+            comms_large[0][com_i][..N_LIMBS_LARGE].try_into().unwrap();
+        write_column_array_const(env, &xq_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::XQ(i)));
+        write_column_array_const(env, &yq_limbs, |i| IVCColumn::Block4ECAdd(FECColumn::YQ(i)));
+
+        let limbs_f_to_ff = |limbs: &[F; N_LIMBS_LARGE]| {
+            limbs
+                .iter()
+                .map(|f| Ff::from(BigUint::try_from(*f).unwrap()))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
+        };
+        let xp_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(&xp_limbs);
+        let yp_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(&yp_limbs);
+        let xq_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(&xq_limbs);
+        let yq_limbs_ff: [Ff; N_LIMBS_LARGE] = limbs_f_to_ff(&yq_limbs);
+
+        let xp = combine_large_to_full_field(xp_limbs_ff);
+        let xq = combine_large_to_full_field(xq_limbs_ff);
+        let yp = combine_large_to_full_field(yp_limbs_ff);
+        let yq = combine_large_to_full_field(yq_limbs_ff);
+
+        ec_add_circuit(
+            &mut SubEnvLookup::new(
+                &mut SubEnvColumn::new(env, IVCFECLens {}),
+                IVCFECLookupLens(PhantomData),
+            ),
+            xp,
+            yp,
+            xq,
+            yq,
+        );
+
+        constrain_ecadds::<F, Ff, Env>(env);
+    }
 }
 
 pub fn process_misc<F, Env, const N_COL_TOTAL: usize>(_env: &mut Env)
@@ -420,82 +596,13 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     // Total height of all blocks. Probably higher than this number. WIP
     assert!(45 * N_COL_TOTAL + 2 < domain_size);
 
-    process_inputs(env, comms_left, comms_right, comms_out);
-    process_hashes::<_, _, _, N_COL_TOTAL>(env, poseidon_params);
-    process_scalars::<_, Ff, _, N_COL_TOTAL>(env);
-    process_ecadds::<_, _, N_COL_TOTAL>(env);
+    let (_comms_small, comms_large, comms_xlarge) =
+        process_inputs(env, [comms_left, comms_right, comms_out]);
+    let (r_var, phi_var) =
+        process_hashes::<_, _, _, N_COL_TOTAL>(env, poseidon_params, &comms_xlarge);
+    let r: F = Env::variable_to_field(r_var);
+    let phi: F = Env::variable_to_field(phi_var);
+    process_scalars::<_, Ff, _, N_COL_TOTAL>(env, r, phi);
+    process_ecadds::<_, Ff, _, N_COL_TOTAL>(env, r, phi, &comms_large);
     process_misc::<_, _, N_COL_TOTAL>(env);
-}
-
-fn range_check_scalar_limbs<F, Ff, Env>(
-    env: &mut Env,
-    input_limbs_small: &[Env::Variable; N_LIMBS_SMALL],
-) where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    for (i, x) in input_limbs_small.iter().enumerate() {
-        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
-                    PhantomData,
-                )),
-                x,
-            );
-        } else {
-            // TODO Add this lookup.
-            // env.lookup(IVCLookupTable::RangeCheckFHighest, x);
-        }
-    }
-}
-
-fn range_check_small_limbs<F, Ff, Env>(
-    env: &mut Env,
-    input_limbs_small: &[Env::Variable; N_LIMBS_SMALL],
-) where
-    F: PrimeField,
-    Ff: PrimeField,
-    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
-{
-    for (i, x) in input_limbs_small.iter().enumerate() {
-        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
-            // If it's the highest limb, we need to check that it's representing a field element.
-            env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
-                    PhantomData,
-                )),
-                x,
-            );
-        } else {
-            env.lookup(
-                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheck15),
-                x,
-            );
-        }
-    }
-}
-
-/// Helper. Combines small limbs into big limbs.
-pub fn combine_large_to_xlarge<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
-    x: [Env::Variable; N_LIMBS_LARGE],
-) -> [Env::Variable; N_LIMBS_XLARGE] {
-    combine_limbs_m_to_n::<
-        N_LIMBS_LARGE,
-        N_LIMBS_XLARGE,
-        LIMB_BITSIZE_LARGE,
-        LIMB_BITSIZE_XLARGE,
-        F,
-        CIx,
-        Env,
-    >(x)
-}
-
-/// Helper. Combines 17x15bit limbs into 1 native field element.
-pub fn combine_small_to_full<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
-    x: [Env::Variable; N_LIMBS_SMALL],
-) -> Env::Variable {
-    let [res] = combine_limbs_m_to_n::<N_LIMBS_SMALL, 1, LIMB_BITSIZE_SMALL, 255, F, CIx, Env>(x);
-    res
 }
