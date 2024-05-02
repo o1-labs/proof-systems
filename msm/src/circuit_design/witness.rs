@@ -97,7 +97,7 @@ impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableI
 
     /// Returns the current row.
     fn curr_row(&self) -> usize {
-        self.witness.len()
+        self.witness.len() - 1
     }
 }
 

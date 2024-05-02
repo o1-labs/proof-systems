@@ -154,9 +154,9 @@ pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
 ) where
     F: PrimeField,
     Ff: PrimeField,
-    Env: MultiRowReadCap<F, IVCColumn>,
+    Env: MultiRowReadCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
-    for _block_row_i in 0..3 * N_COL_TOTAL {
+    for _block_row_i in 0..(3 * N_COL_TOTAL) {
         let row_num = env.curr_row();
 
         let (target_comms, row_num_local) = if row_num < N_COL_TOTAL {
@@ -168,6 +168,8 @@ pub fn process_inputs<F, Ff, Env, const N_COL_TOTAL: usize>(
         };
 
         write_inputs_row(env, target_comms, row_num_local);
+
+        constrain_inputs(env);
 
         env.next_row();
     }
@@ -378,7 +380,9 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
     F: PrimeField,
     Ff: PrimeField,
     PParams: PoseidonParams<F, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>,
-    Env: DirectWitnessCap<F, IVCColumn> + HybridCopyCap<F, IVCColumn>,
+    Env: DirectWitnessCap<F, IVCColumn>
+        + HybridCopyCap<F, IVCColumn>
+        + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
     // Total height of all blocks. Probably higher than this number. WIP
     assert!(45 * N_COL_TOTAL + 2 < domain_size);
