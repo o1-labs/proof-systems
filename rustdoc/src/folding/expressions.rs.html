@@ -668,6 +668,7 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::ExtendedFoldingColumn;
 <span class="doccomment">/// Implement a library to represent expressions/multivariate polynomials that
 /// can be used with folding schemes like
@@ -684,7 +685,7 @@
 <span class="kw">use </span>ark_ff::One;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>kimchi::circuits::{
-    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable},
+    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 <span class="kw">use </span>num_traits::Zero;
@@ -767,10 +768,12 @@
 </span><span class="attr">#[derive(Clone, PartialEq, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
     Atom(FoldingCompatibleExprInner&lt;C&gt;),
+    Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
+    Add(Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    Sub(Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
+    Mul(Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
     Double(Box&lt;<span class="self">Self</span>&gt;),
     Square(Box&lt;<span class="self">Self</span>&gt;),
-    BinOp(Op2, Box&lt;<span class="self">Self</span>&gt;, Box&lt;<span class="self">Self</span>&gt;),
-    Pow(Box&lt;<span class="self">Self</span>&gt;, u64),
 }
 
 <span class="doccomment">/// Implement a human-readable version of a folding compatible expression.
@@ -815,20 +818,14 @@
             FoldingCompatibleExpr::Square(e) =&gt; {
                 <span class="macro">format!</span>(<span class="string">"{} ^ 2"</span>, e.to_string())
             }
-            FoldingCompatibleExpr::BinOp(op, e1, e2) =&gt; {
-                <span class="kw">let </span>op_char = <span class="kw">match </span>op {
-                    Op2::Add =&gt; <span class="string">"+"</span>,
-                    Op2::Mul =&gt; <span class="string">"*"</span>,
-                    Op2::Sub =&gt; <span class="string">"-"</span>,
-                };
-                <span class="kw">match </span>op {
-                    Op2::Add | Op2::Sub =&gt; {
-                        <span class="macro">format!</span>(<span class="string">"{} {} {}"</span>, e1.to_string(), op_char, e2.to_string())
-                    }
-                    Op2::Mul =&gt; {
-                        <span class="macro">format!</span>(<span class="string">"({}) {} ({})"</span>, e1.to_string(), op_char, e2.to_string())
-                    }
-                }
+            FoldingCompatibleExpr::Add(e1, e2) =&gt; {
+                <span class="macro">format!</span>(<span class="string">"{} + {}"</span>, e1.to_string(), e2.to_string())
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) =&gt; {
+                <span class="macro">format!</span>(<span class="string">"{} - {}"</span>, e1.to_string(), e2.to_string())
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) =&gt; {
+                <span class="macro">format!</span>(<span class="string">"({}) ({})"</span>, e1.to_string(), e2.to_string())
             }
             FoldingCompatibleExpr::Pow(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
@@ -919,14 +916,20 @@
             },
             FoldingCompatibleExpr::Double(exp) =&gt; Double(Box::new((<span class="kw-2">*</span>exp).simplify())),
             FoldingCompatibleExpr::Square(exp) =&gt; Square(Box::new((<span class="kw-2">*</span>exp).simplify())),
-            FoldingCompatibleExpr::BinOp(op, e1, e2) =&gt; {
+            FoldingCompatibleExpr::Add(e1, e2) =&gt; {
                 <span class="kw">let </span>e1 = Box::new(e1.simplify());
                 <span class="kw">let </span>e2 = Box::new(e2.simplify());
-                <span class="kw">match </span>op {
-                    Op2::Add =&gt; Add(e1, e2),
-                    Op2::Mul =&gt; Mul(e1, e2),
-                    Op2::Sub =&gt; Sub(e1, e2),
-                }
+                Add(e1, e2)
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) =&gt; {
+                <span class="kw">let </span>e1 = Box::new(e1.simplify());
+                <span class="kw">let </span>e2 = Box::new(e2.simplify());
+                Sub(e1, e2)
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) =&gt; {
+                <span class="kw">let </span>e1 = Box::new(e1.simplify());
+                <span class="kw">let </span>e2 = Box::new(e2.simplify());
+                Mul(e1, e2)
             }
             FoldingCompatibleExpr::Pow(e, p) =&gt; <span class="self">Self</span>::pow_to_mul(e.simplify(), p),
         }
@@ -1019,17 +1022,17 @@
             FoldingExp::Add(e1, e2) =&gt; {
                 <span class="kw">let </span>e1 = Box::new(e1.into_compatible());
                 <span class="kw">let </span>e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Add, e1, e2)
+                Add(e1, e2)
             }
             FoldingExp::Sub(e1, e2) =&gt; {
                 <span class="kw">let </span>e1 = Box::new(e1.into_compatible());
                 <span class="kw">let </span>e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Sub, e1, e2)
+                Sub(e1, e2)
             }
             FoldingExp::Mul(e1, e2) =&gt; {
                 <span class="kw">let </span>e1 = Box::new(e1.into_compatible());
                 <span class="kw">let </span>e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Mul, e1, e2)
+                Mul(e1, e2)
             }
             <span class="comment">// TODO: Replace with `Pow`
             </span>FoldingExp::Pow(<span class="kw">_</span>, <span class="number">0</span>) =&gt; Atom(Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField::one())),
@@ -1038,7 +1041,7 @@
                 <span class="kw">let </span>e = e.into_compatible();
                 <span class="kw">let </span><span class="kw-2">mut </span>acc = e.clone();
                 <span class="kw">for _ in </span><span class="number">1</span>..i {
-                    acc = BinOp(Op2::Mul, Box::new(e.clone()), Box::new(acc))
+                    acc = Mul(Box::new(e.clone()), Box::new(acc))
                 }
                 acc
             }
@@ -1152,14 +1155,13 @@
             .map(|e| e.into_compatible());
         <span class="kw">let </span>u = || Box::new(Atom(Extensions(ExpExtension::U)));
         <span class="kw">let </span>u2 = || Box::new(Square(u()));
-        <span class="kw">let </span>d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));
-        <span class="kw">let </span>d1 = Box::new(BinOp(Op2::Mul, Box::new(d1), u()));
+        <span class="kw">let </span>d0 = FoldingCompatibleExpr::Mul(Box::new(d0), u2());
+        <span class="kw">let </span>d1 = FoldingCompatibleExpr::Mul(Box::new(d1), u());
         <span class="kw">let </span>d2 = Box::new(d2);
-        <span class="kw">let </span>exp = Box::new(BinOp(Op2::Add, d0, d1));
-        <span class="kw">let </span>exp = Box::new(BinOp(Op2::Add, exp, d2));
-        BinOp(
-            Op2::Add,
-            exp,
+        <span class="kw">let </span>exp = FoldingCompatibleExpr::Add(Box::new(d0), Box::new(d1));
+        <span class="kw">let </span>exp = FoldingCompatibleExpr::Add(Box::new(exp), d2);
+        FoldingCompatibleExpr::Add(
+            Box::new(exp),
             Box::new(Atom(Extensions(ExpExtension::Error))),
         )
     }
@@ -1321,13 +1323,13 @@
         <span class="kw">match </span>expr {
             Operations::Atom(inner) =&gt; FoldingCompatibleExpr::Atom(inner.into()),
             Operations::Add(x, y) =&gt; {
-                FoldingCompatibleExpr::BinOp(Op2::Add, Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+                FoldingCompatibleExpr::Add(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
             }
             Operations::Mul(x, y) =&gt; {
-                FoldingCompatibleExpr::BinOp(Op2::Mul, Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+                FoldingCompatibleExpr::Mul(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
             }
             Operations::Sub(x, y) =&gt; {
-                FoldingCompatibleExpr::BinOp(Op2::Sub, Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+                FoldingCompatibleExpr::Sub(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
             }
             Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
             Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),

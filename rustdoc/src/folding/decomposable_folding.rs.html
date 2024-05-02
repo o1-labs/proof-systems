@@ -103,7 +103,6 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -117,7 +116,6 @@
     FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
-<span class="kw">use </span>kimchi::circuits::expr::Op2;
 <span class="kw">use </span>poly_commitment::{PolyComm, SRS};
 <span class="kw">use </span>std::collections::BTreeMap;
 
@@ -142,7 +140,7 @@
                     <span class="kw">let </span>s =
                         FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
                     <span class="kw">let </span>s = Box::new(FoldingCompatibleExpr::Atom(s));
-                    FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
+                    FoldingCompatibleExpr::Mul(s, Box::new(exp))
                 })
             })
             .chain(common_constraints)

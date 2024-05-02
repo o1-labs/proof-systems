@@ -3560,14 +3560,6 @@
 <a href="#3558" id="3558">3558</a>
 <a href="#3559" id="3559">3559</a>
 <a href="#3560" id="3560">3560</a>
-<a href="#3561" id="3561">3561</a>
-<a href="#3562" id="3562">3562</a>
-<a href="#3563" id="3563">3563</a>
-<a href="#3564" id="3564">3564</a>
-<a href="#3565" id="3565">3565</a>
-<a href="#3566" id="3566">3566</a>
-<a href="#3567" id="3567">3567</a>
-<a href="#3568" id="3568">3568</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns,
@@ -4134,14 +4126,6 @@
     <span class="kw">pub fn </span>cache&lt;F: Field, T: ExprOps&lt;F&gt;&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, e: T) -&gt; T {
         e.cache(<span class="self">self</span>)
     }
-}
-
-<span class="doccomment">/// A binary operation
-</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>Op2 {
-    Add,
-    Mul,
-    Sub,
 }
 
 <span class="doccomment">/// The feature flags that can be used to enable or disable parts of constraints.
