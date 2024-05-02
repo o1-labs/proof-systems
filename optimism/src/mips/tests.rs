@@ -108,3 +108,107 @@ fn test_mips_number_constraints() {
         RTypeInstruction::COUNT + JTypeInstruction::COUNT + ITypeInstruction::COUNT
     );
 }
+
+mod folding {
+    use crate::mips::{
+        interpreter::{debugging::InstructionParts, interpret_itype},
+        ITypeInstruction,
+    };
+    use crate::{
+        cannon::{HostProgram, PAGE_SIZE},
+        mips::{
+            // constraints::Env as CEnv,
+            registers::Registers,
+            witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
+        },
+        preimage_oracle::PreImageOracle,
+    };
+    use kimchi::o1_utils;
+    use mina_curves::pasta::Fp;
+    use rand::{CryptoRng, RngCore};
+
+    const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
+
+    fn dummy_env<RNG>(_rng: &mut RNG) -> WEnv<Fp>
+    where
+        RNG: RngCore + CryptoRng,
+    {
+        let host_program = Some(HostProgram {
+            name: String::from("true"),
+            arguments: vec![],
+        });
+        let dummy_preimage_oracle = PreImageOracle::create(&host_program);
+        WEnv {
+            instruction_counter: 0,
+            // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
+            memory: vec![
+                // Read/write memory
+                (0, vec![0; PAGE_SIZE as usize]),
+                // Executable memory
+                (PAGE_INDEX_EXECUTABLE_MEMORY, vec![0; PAGE_SIZE as usize]),
+            ],
+            last_memory_accesses: [0; 3],
+            memory_write_index: vec![
+                // Read/write memory
+                (0, vec![0; PAGE_SIZE as usize]),
+                // Executable memory
+                (PAGE_INDEX_EXECUTABLE_MEMORY, vec![0; PAGE_SIZE as usize]),
+            ],
+            last_memory_write_index_accesses: [0; 3],
+            registers: Registers::default(),
+            registers_write_index: Registers::default(),
+            scratch_state_idx: 0,
+            scratch_state: [Fp::from(0); SCRATCH_SIZE],
+            halt: false,
+            // Keccak related
+            syscall_env: SyscallEnv::default(),
+            preimage: None,
+            preimage_oracle: dummy_preimage_oracle,
+            preimage_bytes_read: 0,
+            preimage_key: None,
+            keccak_env: None,
+            hash_counter: 0,
+        }
+    }
+
+    // Write the instruction to the second memory page, and first memory
+    // location.
+    // This is because in the dummy environment, the instruction pointer is
+    // always at the first memory location of the second memory page, which is
+    // considered as the "executable memory".
+    fn write_instruction(env: &mut WEnv<Fp>, instruction_parts: InstructionParts) {
+        let instr = instruction_parts.encode();
+        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[0] = ((instr >> 24) & 0xFF) as u8;
+        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[1] = ((instr >> 16) & 0xFF) as u8;
+        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[2] = ((instr >> 8) & 0xFF) as u8;
+        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[3] = (instr & 0xFF) as u8;
+    }
+
+    #[test]
+    fn test_unit_addiu_instruction() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env(&mut rng);
+        let reg_at = 1;
+        // Instruction: 0b00100100001000010110110011101000
+        // addiu $at, $at, 27880
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b001001,
+                rs: 0b00001, // source register
+                rt: 0b00001, // destination register
+                // The rest is the immediate value
+                rd: 0b01101,
+                shamt: 0b10011,
+                funct: 0b101000,
+            },
+        );
+        dummy_env.registers.current_instruction_pointer = PAGE_INDEX_EXECUTABLE_MEMORY * PAGE_SIZE;
+        dummy_env.registers.next_instruction_pointer =
+            dummy_env.registers.current_instruction_pointer + 4;
+        let exp_res = dummy_env.registers[reg_at] + 27880;
+        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
+        assert_eq!(dummy_env.registers.general_purpose[reg_at], exp_res);
+    }
+}
