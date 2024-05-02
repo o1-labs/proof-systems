@@ -289,6 +289,35 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
     }
 }
 
+pub fn constrain_scalars<F, Ff, Env>(env: &mut Env)
+where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+{
+    let _phi = env.read_column(IVCColumn::Block3ConstPhi);
+    let r = env.read_column(IVCColumn::Block3ConstR);
+    let phi_i = env.read_column(IVCColumn::Block3PhiPow);
+    let phi_i_r = env.read_column(IVCColumn::Block3PhiPowR);
+    let phi_pow_limbs: [_; N_LIMBS_SMALL] = read_column_array(env, IVCColumn::Block3PhiPowLimbs);
+    let phi_pow_r_limbs: [_; N_LIMBS_SMALL] = read_column_array(env, IVCColumn::Block3PhiPowRLimbs);
+
+    let phi_pow_expected = combine_small_to_full::<_, _, Env>(phi_pow_limbs.clone());
+    let phi_pow_r_expected = combine_small_to_full::<_, _, Env>(phi_pow_r_limbs.clone());
+
+    {
+        range_check_scalar_limbs::<F, Ff, Env>(env, &phi_pow_limbs);
+        range_check_scalar_limbs::<F, Ff, Env>(env, &phi_pow_r_limbs);
+    }
+
+    // TODO Add expression asserting data with the next row. E.g.
+    // let phi_i_next = env.read_column_(IVCColumn::Block3ConstR)
+    // env.assert_zero(phi_i_next - phi_i * phi)
+    env.assert_zero(phi_i_r.clone() - phi_i.clone() * r.clone());
+    env.assert_zero(phi_pow_expected - phi_i);
+    env.assert_zero(phi_pow_r_expected - phi_i_r);
+}
+
 pub fn prepare_scalars<F, Env, const N_COL_TOTAL: usize>(env: &mut Env) -> (F, F)
 where
     F: PrimeField,
@@ -318,7 +347,7 @@ where
     Env: ColWriteCap<F, IVCColumn>,
 {
     let phi_cur_power_f = phi_prev_power_f * phi_f;
-    let phi_cur_power_r_f = phi_prev_power_f * phi_f;
+    let phi_cur_power_r_f = phi_prev_power_f * phi_f * r_f;
 
     env.write_column(IVCColumn::Block3ConstPhi, &Env::constant(phi_f));
     env.write_column(IVCColumn::Block3ConstR, &Env::constant(r_f));
@@ -340,15 +369,19 @@ where
     phi_cur_power_f
 }
 
-pub fn process_scalars<F, Env, const N_COL_TOTAL: usize>(env: &mut Env)
+pub fn process_scalars<F, Ff, Env, const N_COL_TOTAL: usize>(env: &mut Env)
 where
     F: PrimeField,
-    Env: DirectWitnessCap<F, IVCColumn>,
+    Ff: PrimeField,
+    Env: DirectWitnessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
 {
     let (r_f, phi_f) = prepare_scalars::<_, _, N_COL_TOTAL>(env);
     let mut phi_prev_power_f = F::one();
     for _block_row_i in 0..N_COL_TOTAL {
         phi_prev_power_f = write_scalars_row(env, r_f, phi_f, phi_prev_power_f);
+
+        // Checking our constraints
+        constrain_scalars(env);
 
         env.next_row();
     }
@@ -389,9 +422,33 @@ pub fn ivc_circuit<F, Ff, Env, PParams, const N_COL_TOTAL: usize>(
 
     process_inputs(env, comms_left, comms_right, comms_out);
     process_hashes::<_, _, _, N_COL_TOTAL>(env, poseidon_params);
-    process_scalars::<_, _, N_COL_TOTAL>(env);
+    process_scalars::<_, Ff, _, N_COL_TOTAL>(env);
     process_ecadds::<_, _, N_COL_TOTAL>(env);
     process_misc::<_, _, N_COL_TOTAL>(env);
+}
+
+fn range_check_scalar_limbs<F, Ff, Env>(
+    env: &mut Env,
+    input_limbs_small: &[Env::Variable; N_LIMBS_SMALL],
+) where
+    F: PrimeField,
+    Ff: PrimeField,
+    Env: ColAccessCap<F, IVCColumn> + LookupCap<F, IVCColumn, IVCLookupTable<Ff>>,
+{
+    for (i, x) in input_limbs_small.iter().enumerate() {
+        if i % N_LIMBS_SMALL == N_LIMBS_SMALL - 1 {
+            // If it's the highest limb, we need to check that it's representing a field element.
+            env.lookup(
+                IVCLookupTable::SerLookupTable(serlookup::LookupTable::RangeCheckFfHighest(
+                    PhantomData,
+                )),
+                x,
+            );
+        } else {
+            // TODO Add this lookup.
+            // env.lookup(IVCLookupTable::RangeCheckFHighest, x);
+        }
+    }
 }
 
 fn range_check_small_limbs<F, Ff, Env>(
@@ -420,9 +477,7 @@ fn range_check_small_limbs<F, Ff, Env>(
     }
 }
 
-/// Helper function for limb recombination.
-///
-/// Combines small limbs into big limbs.
+/// Helper. Combines small limbs into big limbs.
 pub fn combine_large_to_xlarge<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
     x: [Env::Variable; N_LIMBS_LARGE],
 ) -> [Env::Variable; N_LIMBS_XLARGE] {
@@ -435,4 +490,12 @@ pub fn combine_large_to_xlarge<F: PrimeField, CIx: ColumnIndexer, Env: ColAccess
         CIx,
         Env,
     >(x)
+}
+
+/// Helper. Combines 17x15bit limbs into 1 native field element.
+pub fn combine_small_to_full<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+    x: [Env::Variable; N_LIMBS_SMALL],
+) -> Env::Variable {
+    let [res] = combine_limbs_m_to_n::<N_LIMBS_SMALL, 1, LIMB_BITSIZE_SMALL, 255, F, CIx, Env>(x);
+    res
 }
