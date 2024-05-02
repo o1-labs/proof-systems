@@ -79,17 +79,31 @@ mod tests {
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
         // generate the proof
-        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, FFA_N_COLUMNS, _>(
-            domain,
-            &srs,
-            &constraints,
-            proof_inputs,
-            &mut rng,
-        )
+        let proof = prove::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            _,
+            FFA_N_COLUMNS,
+            FFA_N_COLUMNS,
+            0,
+            _,
+        >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
 
         // verify the proof
-        let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS, 0, _>(
+        let verifies = verify::<
+            _,
+            OpeningProof,
+            BaseSponge,
+            ScalarSponge,
+            FFA_N_COLUMNS,
+            FFA_N_COLUMNS,
+            0,
+            0,
+            _,
+        >(
             domain,
             &srs,
             &constraints,

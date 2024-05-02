@@ -148,6 +148,8 @@ mod tests {
             ScalarSponge,
             _,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -159,6 +161,8 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             0,
             DummyLookupTable,
         >(
@@ -203,6 +207,8 @@ mod tests {
             ScalarSponge,
             _,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -220,6 +226,8 @@ mod tests {
             ScalarSponge,
             _,
             TEST_N_COLUMNS,
+            TEST_N_COLUMNS,
+            0,
             DummyLookupTable,
         >(domain, &srs, &constraints, proof_inputs_prime, &mut rng)
         .unwrap();
@@ -234,6 +242,8 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
+                TEST_N_COLUMNS,
+                0,
                 0,
                 DummyLookupTable,
             >(
@@ -258,6 +268,8 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
+                TEST_N_COLUMNS,
+                0,
                 0,
                 DummyLookupTable,
             >(
@@ -283,6 +295,8 @@ mod tests {
                 BaseSponge,
                 ScalarSponge,
                 TEST_N_COLUMNS,
+                TEST_N_COLUMNS,
+                0,
                 0,
                 DummyLookupTable,
             >(
@@ -334,6 +348,8 @@ mod tests {
             ScalarSponge,
             _,
             LOOKUP_TEST_N_COL,
+            LOOKUP_TEST_N_COL,
+            0,
             LookupTableIDs,
         >(domain, &srs, &constraints, inputs, &mut rng)
         .unwrap();
@@ -343,6 +359,8 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             LOOKUP_TEST_N_COL,
+            LOOKUP_TEST_N_COL,
+            0,
             0,
             LookupTableIDs,
         >(

@@ -26,19 +26,19 @@ use crate::columns::Column;
 /// pub type Fp = ark_bn254::Fr;
 /// let x1 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x2 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
 /// let x3 = E::<Fp>::Atom(
 ///     ExprInner::<Operations<ConstantExprInner<Fp>>, Column>::Cell(Variable {
-///         col: Column::X(1),
+///         col: Column::Relation(1),
 ///         row: CurrOrNext::Curr,
 ///     }),
 /// );
@@ -65,5 +65,5 @@ pub fn next_cell<F: Field>(col: Column) -> E<F> {
 #[test]
 fn test_debug_can_be_called_on_expr() {
     use crate::{columns::Column::*, Fp};
-    println!("{:}", curr_cell::<Fp>(X(0)) + curr_cell(X(1)))
+    println!("{:}", curr_cell::<Fp>(Relation(0)) + curr_cell(Relation(1)))
 }

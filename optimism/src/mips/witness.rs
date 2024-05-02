@@ -846,9 +846,6 @@ impl<Fp: Field> Env<Fp> {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
             Column::InstructionCounter => panic!("Cannot overwrite the column {:?}", column),
-            Column::Selector(_) => {
-                panic!("Selectors should be configured in the caller function")
-            }
         }
     }
 

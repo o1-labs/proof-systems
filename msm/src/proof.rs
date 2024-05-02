@@ -59,7 +59,13 @@ impl<const N: usize, F: PrimeField, ID: LookupTableID> Default for ProofInputs<N
 }
 
 #[derive(Debug, Clone)]
-pub struct ProofEvaluations<const N: usize, F, ID: LookupTableID> {
+pub struct ProofEvaluations<
+    const N: usize,
+    const N_REL: usize,
+    const N_SEL: usize,
+    F,
+    ID: LookupTableID,
+> {
     /// Witness evaluations, including public inputs
     pub(crate) witness_evals: Witness<N, PointEvaluations<F>>,
     /// Logup argument evaluations
@@ -71,16 +77,25 @@ pub struct ProofEvaluations<const N: usize, F, ID: LookupTableID> {
 /// The trait ColumnEvaluations is used by the verifier.
 /// It will return the evaluation of the corresponding column at the
 /// evaluation points coined by the verifier during the protocol.
-impl<const N: usize, F: Clone, ID: LookupTableID> ColumnEvaluations<F>
-    for ProofEvaluations<N, F, ID>
+impl<const N: usize, const N_REL: usize, const N_SEL: usize, F: Clone, ID: LookupTableID>
+    ColumnEvaluations<F> for ProofEvaluations<N, N_REL, N_SEL, F, ID>
 {
     type Column = crate::columns::Column;
 
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
+        // TODO: substitute when non-literal generic constants are available
+        assert!(N == N_REL + N_SEL);
         let res = match col {
-            Self::Column::X(i) => {
-                if i < N {
+            Self::Column::Relation(i) => {
+                if i < N_REL {
                     self.witness_evals[i].clone()
+                } else {
+                    panic!("Index out of bounds")
+                }
+            }
+            Self::Column::DynamicSelector(i) => {
+                if i < N_SEL {
+                    self.witness_evals[N_REL + i].clone()
                 } else {
                     panic!("Index out of bounds")
                 }
@@ -132,8 +147,15 @@ pub struct ProofCommitments<const N: usize, G: KimchiCurve, ID: LookupTableID> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Proof<const N: usize, G: KimchiCurve, OpeningProof: OpenProof<G>, ID: LookupTableID> {
+pub struct Proof<
+    const N: usize,
+    const N_REL: usize,
+    const N_SEL: usize,
+    G: KimchiCurve,
+    OpeningProof: OpenProof<G>,
+    ID: LookupTableID,
+> {
     pub(crate) proof_comms: ProofCommitments<N, G, ID>,
-    pub(crate) proof_evals: ProofEvaluations<N, G::ScalarField, ID>,
+    pub(crate) proof_evals: ProofEvaluations<N, N_REL, N_SEL, G::ScalarField, ID>,
     pub(crate) opening_proof: OpeningProof,
 }
