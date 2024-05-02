@@ -15,7 +15,7 @@ mod tests {
 
     use crate::{
         circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         precomputed_srs::get_bn254_srs,
         prover::prove,
         serialization::{
@@ -97,17 +97,15 @@ mod tests {
         }
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
-        let proof = prove::<
-            _,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            Column,
-            _,
-            SER_N_COLUMNS,
-            LookupTable<Ff1>,
-        >(domain, &srs, &constraints, proof_inputs, &mut rng)
-        .unwrap();
+        let proof =
+            prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, SER_N_COLUMNS, LookupTable<Ff1>>(
+                domain,
+                &srs,
+                &constraints,
+                proof_inputs,
+                &mut rng,
+            )
+            .unwrap();
 
         let verifies = verify::<
             _,
