@@ -29,7 +29,7 @@ pub trait ColAccessCap<F: PrimeField, CIx: ColumnIndexer> {
     fn constant(value: F) -> Self::Variable;
 }
 
-/// Environment capability similar to `ColAcessT` but for /also
+/// Environment capability similar to `ColAccessCap` but for /also
 /// writing/ columns. Used on the witness side.
 pub trait ColWriteCap<F: PrimeField, CIx: ColumnIndexer>
 where
@@ -44,4 +44,83 @@ where
     Self: ColAccessCap<F, CIx>,
 {
     fn lookup(&mut self, lookup_id: LT, value: &Self::Variable);
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Hybrid capabilities
+////////////////////////////////////////////////////////////////////////////
+
+/// Capability for computing arithmetic functions and enforcing
+/// constraints simultaneously.
+///
+/// The "hybrid" in the name of the trait (and other traits here)
+/// means "maybe".
+///
+/// That is, it allows computations which /might be/ no-ops (even
+/// partially) in the constraint builder case. For example, "hcopy",
+/// despite its name, does not do any "write", so hcopy !=>
+/// write_column.
+pub trait HybridCopyCap<F: PrimeField, CIx: ColumnIndexer>
+where
+    Self: ColAccessCap<F, CIx>,
+{
+    /// Given variable `x` and position `ix`, it (hybrid) writes `x`
+    /// into `ix`, and returns the value.
+    fn hcopy(&mut self, x: &Self::Variable, ix: CIx) -> Self::Variable;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Helpers
+////////////////////////////////////////////////////////////////////////////
+
+/// Write an array of values simultaneously.
+pub fn read_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
+    env: &mut Env,
+    column_map: ColMap,
+) -> [Env::Variable; ARR_N]
+where
+    F: PrimeField,
+    Env: ColAccessCap<F, CIx>,
+    ColMap: Fn(usize) -> CIx,
+{
+    core::array::from_fn(|i| env.read_column(column_map(i)))
+}
+
+/// Write a field element directly as a constant.
+pub fn write_column_const<F, Env, CIx: ColumnIndexer>(env: &mut Env, col: CIx, var: &F)
+where
+    F: PrimeField,
+    Env: ColWriteCap<F, CIx>,
+{
+    env.write_column(col, &Env::constant(*var));
+}
+
+/// Write an array of values simultaneously.
+pub fn write_column_array<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
+    env: &mut Env,
+    input: [Env::Variable; ARR_N],
+    column_map: ColMap,
+) where
+    F: PrimeField,
+    Env: ColWriteCap<F, CIx>,
+    ColMap: Fn(usize) -> CIx,
+{
+    input.iter().enumerate().for_each(|(i, var)| {
+        env.write_column(column_map(i), var);
+    })
+}
+
+/// Write an array of /field/ values simultaneously.
+pub fn write_column_array_const<F, Env, const ARR_N: usize, CIx: ColumnIndexer, ColMap>(
+    env: &mut Env,
+    input: [F; ARR_N],
+    column_map: ColMap,
+) where
+    F: PrimeField,
+    Env: ColWriteCap<F, CIx>,
+    ColMap: Fn(usize) -> CIx,
+{
+    input.iter().enumerate().for_each(|(i, var)| {
+        env.write_column(column_map(i), &Env::constant(*var));
+    })
 }

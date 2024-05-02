@@ -40,7 +40,7 @@ mod tests {
             let xq: Ff1 = <Ff1 as UniformRand>::rand(rng);
             let yq: Ff1 = <Ff1 as UniformRand>::rand(rng);
 
-            ec_add_circuit(&mut witness_env, 0, xp, yp, xq, yq);
+            ec_add_circuit(&mut witness_env, xp, yp, xq, yq);
             if row_i < domain_size - 1 {
                 witness_env.next_row();
             }
@@ -69,7 +69,7 @@ mod tests {
         srs.full_srs.add_lagrange_basis(domain.d1);
 
         let mut constraint_env = ConstraintBuilderEnv::<Fp, LookupTable<Ff1>>::create();
-        constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env, 0);
+        constrain_ec_addition::<Fp, Ff1, _>(&mut constraint_env);
         let constraints = constraint_env.get_constraints();
 
         let witness_env = build_fec_addition_circuit(&mut rng, domain_size);

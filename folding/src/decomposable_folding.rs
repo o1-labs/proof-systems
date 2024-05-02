@@ -4,17 +4,14 @@
 //! from a set of list of constraints, each set associated with a particular selector, as opposed to a single list of constraints.
 
 use crate::{
-    circuits::expr::{Op2, Operations},
-    folding::{
-        error_term::{compute_error, ExtendedEnv},
-        expressions::{
-            ExtendedFoldingColumn, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp,
-        },
-        instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
-        FoldingConfig, FoldingScheme, ScalarField, Sponge,
-    },
+    columns::ExtendedFoldingColumn,
+    error_term::{compute_error, ExtendedEnv},
+    expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
+    instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
+    FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use kimchi::circuits::expr::Op2;
 use poly_commitment::{PolyComm, SRS};
 use std::collections::BTreeMap;
 
@@ -36,9 +33,8 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
             .into_iter()
             .flat_map(|(s, exps)| {
                 exps.into_iter().map(move |exp| {
-                    let s = FoldingCompatibleExprInner::Extensions(super::ExpExtension::Selector(
-                        s.clone(),
-                    ));
+                    let s =
+                        FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
                     let s = Box::new(FoldingCompatibleExpr::Atom(s));
                     FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
                 })
@@ -53,7 +49,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     /// folding with a selector will assume that only the selector in question is enabled (1)
     /// in all rows, and any other selector is 0 over all rows.
     /// If that is not the case, providing None will fold without assumptions
-    pub fn fold_instance_witness_pair<I, W, A, B>(
+    pub fn fold_instance_witness_pair<A, B>(
         &self,
         a: A,
         b: B,
@@ -102,7 +98,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
 
 pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::Selector> {
     match exp {
-        Operations::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
+        FoldingExp::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
         _ => None,
     }
 }

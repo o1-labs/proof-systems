@@ -1,5 +1,8 @@
 use crate::{
-    circuit_design::{ColAccessCap, ColWriteCap, LookupCap},
+    circuit_design::{
+        capabilities::{read_column_array, write_column_array_const, write_column_const},
+        ColAccessCap, ColWriteCap, LookupCap,
+    },
     fec::{columns::FECColumn, lookups::LookupTable},
     serialization::interpreter::{
         bigint_to_biguint_f, combine_carry, combine_small_to_large, fold_choice2,
@@ -139,9 +142,10 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 /// bits * 6 carries = 36 chunks, and every 6th chunk is 4 bits only.
 /// This matches the 2*S+2 = 36, since S = 17.
 ///
-/// TODO: on avoiding 16bit lookups.
-/// Our current packing is we have 6 batches x 6 elements, each batch is
-/// [16 16 16 16 16 4] bits. We could do [15 15 15 15 15 9] and avoid 16-bit lookups.
+/// Note however since 79-bit carry is signed, we will store it as a list of
+/// [15 15 15 15 15 9]-bit limbs, where limbs are signed.
+/// E.g. 15-bit limbs are in [-2^14, 2^14-1]. This allows us to use
+/// 14abs range checks.
 ///
 /// === Ranges
 ///
@@ -196,57 +200,26 @@ pub fn constrain_ec_addition<
     Env: ColAccessCap<F, FECColumn> + LookupCap<F, FECColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
-    mem_offset: usize,
 ) {
-    let read_array_small = |env: &mut Env, extra_offset: usize| -> [Env::Variable; N_LIMBS_SMALL] {
-        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
-    };
-    let read_array_large = |env: &mut Env, extra_offset: usize| -> [Env::Variable; N_LIMBS_LARGE] {
-        core::array::from_fn(|i| env.read_column(FECColumn(mem_offset + extra_offset + i)))
-    };
+    let xp_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::XP);
+    let yp_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::YP);
+    let xq_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::XQ);
+    let yq_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::YQ);
+    let f_limbs_large: [_; N_LIMBS_LARGE] = read_column_array(env, FECColumn::F);
+    let xr_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::XR);
+    let yr_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::YR);
+    let s_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::S);
 
-    let xp_limbs_large: [_; N_LIMBS_LARGE] = read_array_large(env, 0);
-    let yp_limbs_large: [_; N_LIMBS_LARGE] = read_array_large(env, N_LIMBS_LARGE);
-    let xq_limbs_large: [_; N_LIMBS_LARGE] = read_array_large(env, 2 * N_LIMBS_LARGE);
-    let yq_limbs_large: [_; N_LIMBS_LARGE] = read_array_large(env, 3 * N_LIMBS_LARGE);
-    let f_limbs_large: [_; N_LIMBS_LARGE] = read_array_large(env, 4 * N_LIMBS_LARGE);
-    let xr_limbs_small: [_; N_LIMBS_SMALL] = read_array_small(env, 5 * N_LIMBS_LARGE);
-    let yr_limbs_small: [_; N_LIMBS_SMALL] =
-        read_array_small(env, 5 * N_LIMBS_LARGE + N_LIMBS_SMALL);
-    let s_limbs_small: [_; N_LIMBS_SMALL] =
-        read_array_small(env, 5 * N_LIMBS_LARGE + 2 * N_LIMBS_SMALL);
+    let q1_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q1);
+    let q2_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q2);
+    let q3_limbs_small: [_; N_LIMBS_SMALL] = read_column_array(env, FECColumn::Q3);
+    let q1_sign = env.read_column(FECColumn::Q1Sign);
+    let q2_sign = env.read_column(FECColumn::Q2Sign);
+    let q3_sign = env.read_column(FECColumn::Q3Sign);
 
-    let q1_limbs_small: [_; N_LIMBS_SMALL] =
-        read_array_small(env, 5 * N_LIMBS_LARGE + 3 * N_LIMBS_SMALL);
-    let q2_limbs_small: [_; N_LIMBS_SMALL] =
-        read_array_small(env, 5 * N_LIMBS_LARGE + 4 * N_LIMBS_SMALL);
-    let q3_limbs_small: [_; N_LIMBS_SMALL] =
-        read_array_small(env, 5 * N_LIMBS_LARGE + 5 * N_LIMBS_SMALL);
-    let q1_sign = env.read_column(FECColumn(
-        mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL,
-    ));
-    let q2_sign = env.read_column(FECColumn(
-        mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1,
-    ));
-    let q3_sign = env.read_column(FECColumn(
-        mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2,
-    ));
-
-    let carry1_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = core::array::from_fn(|i| {
-        env.read_column(FECColumn(
-            mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 3 + i,
-        ))
-    });
-    let carry2_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = core::array::from_fn(|i| {
-        env.read_column(FECColumn(
-            mem_offset + 5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL + 5 + i,
-        ))
-    });
-    let carry3_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = core::array::from_fn(|i| {
-        env.read_column(FECColumn(
-            mem_offset + 5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL + 7 + i,
-        ))
-    });
+    let carry1_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = read_column_array(env, FECColumn::Carry1);
+    let carry2_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = read_column_array(env, FECColumn::Carry2);
+    let carry3_limbs_small: [_; 2 * N_LIMBS_SMALL + 2] = read_column_array(env, FECColumn::Carry3);
 
     // FIXME get rid of cloning
 
@@ -292,10 +265,9 @@ pub fn constrain_ec_addition<
         if i % 6 == 5 {
             // This should be a diferent range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.lookup(LookupTable::RangeCheck4Abs, x);
+            env.lookup(LookupTable::RangeCheck9Abs, x);
         } else {
-            // TODO add this table back
-            // env.lookup(LookupTable::RangeCheck15Abs, x);
+            env.lookup(LookupTable::RangeCheck14Abs, x);
         }
     }
 
@@ -405,7 +377,6 @@ pub fn ec_add_circuit<
     Env: ColWriteCap<F, FECColumn> + LookupCap<F, FECColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
-    mem_offset: usize,
     xp: Ff,
     yp: Ff,
     xq: Ff,
@@ -452,36 +423,14 @@ pub fn ec_add_circuit<
     let slope_limbs_large: [F; N_LIMBS_LARGE] =
         limb_decompose_ff::<F, Ff, LIMB_BITSIZE_LARGE, N_LIMBS_LARGE>(&slope);
 
-    let write_array = |env: &mut Env, input: [F; N_LIMBS_SMALL], extra_offset: usize| {
-        input.iter().enumerate().for_each(|(i, var)| {
-            env.write_column(
-                FECColumn(mem_offset + extra_offset + i),
-                &Env::constant(*var),
-            );
-        })
-    };
-
-    let write_array_large = |env: &mut Env, input: [F; N_LIMBS_LARGE], extra_offset: usize| {
-        input.iter().enumerate().for_each(|(i, var)| {
-            env.write_column(
-                FECColumn(mem_offset + extra_offset + i),
-                &Env::constant(*var),
-            );
-        })
-    };
-
-    write_array_large(env, xp_limbs_large, 0);
-    write_array_large(env, yp_limbs_large, N_LIMBS_LARGE);
-    write_array_large(env, xq_limbs_large, 2 * N_LIMBS_LARGE);
-    write_array_large(env, yq_limbs_large, 3 * N_LIMBS_LARGE);
-    write_array_large(env, f_limbs_large, 4 * N_LIMBS_LARGE);
-    write_array(env, xr_limbs_small, 5 * N_LIMBS_LARGE);
-    write_array(env, yr_limbs_small, 5 * N_LIMBS_LARGE + N_LIMBS_SMALL);
-    write_array(
-        env,
-        slope_limbs_small,
-        5 * N_LIMBS_LARGE + 2 * N_LIMBS_SMALL,
-    );
+    write_column_array_const(env, xp_limbs_large, FECColumn::XP);
+    write_column_array_const(env, yp_limbs_large, FECColumn::YP);
+    write_column_array_const(env, xq_limbs_large, FECColumn::XQ);
+    write_column_array_const(env, yq_limbs_large, FECColumn::YQ);
+    write_column_array_const(env, f_limbs_large, FECColumn::F);
+    write_column_array_const(env, xr_limbs_small, FECColumn::XR);
+    write_column_array_const(env, yr_limbs_small, FECColumn::YR);
+    write_column_array_const(env, slope_limbs_small, FECColumn::S);
 
     let xp_bi: BigInt = FieldHelpers::to_bigint_positive(&xp);
     let yp_bi: BigInt = FieldHelpers::to_bigint_positive(&yp);
@@ -535,33 +484,12 @@ pub fn ec_add_circuit<
     let q3_limbs_small: [F; N_LIMBS_SMALL] =
         limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, N_LIMBS_SMALL>(q3_bi.to_biguint().unwrap());
 
-    write_array(
-        env,
-        q1_limbs_small,
-        mem_offset + 5 * N_LIMBS_LARGE + 3 * N_LIMBS_SMALL,
-    );
-    write_array(
-        env,
-        q2_limbs_small,
-        mem_offset + 5 * N_LIMBS_LARGE + 4 * N_LIMBS_SMALL,
-    );
-    write_array(
-        env,
-        q3_limbs_small,
-        mem_offset + 5 * N_LIMBS_LARGE + 5 * N_LIMBS_SMALL,
-    );
-    env.write_column(
-        FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL),
-        &Env::constant(q1_sign),
-    );
-    env.write_column(
-        FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 1),
-        &Env::constant(q2_sign),
-    );
-    env.write_column(
-        FECColumn(mem_offset + 5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 2),
-        &Env::constant(q3_sign),
-    );
+    write_column_array_const(env, q1_limbs_small, FECColumn::Q1);
+    write_column_array_const(env, q2_limbs_small, FECColumn::Q2);
+    write_column_array_const(env, q3_limbs_small, FECColumn::Q3);
+    write_column_const(env, FECColumn::Q1Sign, &q1_sign);
+    write_column_const(env, FECColumn::Q2Sign, &q2_sign);
+    write_column_const(env, FECColumn::Q3Sign, &q3_sign);
 
     let mut carry1: F = From::from(0u64);
     let mut carry2: F = From::from(0u64);
@@ -583,25 +511,36 @@ pub fn ec_add_circuit<
             F::from_biguint(&carry_f).unwrap()
         };
 
-        let assign_carry = |env: &mut Env, newcarry: F, carryvar: &mut F, extra_offset: usize| {
+        fn assign_carry<F, Env, ColMap>(
+            env: &mut Env,
+            n_half_bi: &BigInt,
+            i: usize,
+            newcarry: F,
+            carryvar: &mut F,
+            column_mapper: ColMap,
+        ) where
+            F: PrimeField,
+            Env: ColWriteCap<F, FECColumn>,
+            ColMap: Fn(usize) -> FECColumn,
+        {
             // Last carry should be zero, otherwise we record it
             if i < N_LIMBS_LARGE * 2 - 2 {
                 // Carries will often not fit into 5 limbs, but they /should/ fit in 6 limbs I think.
-                let newcarry_sign = if newcarry.to_bigint_positive() > n_half_bi {
+                let newcarry_sign = if &newcarry.to_bigint_positive() > n_half_bi {
                     F::zero() - F::one()
                 } else {
                     F::one()
                 };
                 let newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 // Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                // But limbs are signed, so we split into 14-bit /signed/ limbs. + last chunk is signed 9 bit.
                 let newcarry_limbs: [F; 6] =
-                    limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
+                    limb_decompose_biguint::<F, { LIMB_BITSIZE_SMALL - 1 }, 6>(
+                        newcarry_abs_bui.clone(),
+                    );
 
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
-                    env.write_column(
-                        FECColumn(mem_offset + extra_offset + 6 * i + j),
-                        &Env::constant(newcarry_sign * limb),
-                    );
+                    write_column_const(env, column_mapper(6 * i + j), &(newcarry_sign * limb));
                 }
 
                 *carryvar = newcarry;
@@ -609,7 +548,7 @@ pub fn ec_add_circuit<
                 // should this be in circiut?
                 assert!(newcarry.is_zero(), "Last carry is non-zero");
             }
-        };
+        }
 
         // Equation 1: s (xP - xQ) - (yP - yQ) - q_1 f =  0
         let mut res1 = fold_choice2(N_LIMBS_LARGE, i, |j, k| {
@@ -626,9 +565,11 @@ pub fn ec_add_circuit<
         let newcarry1 = compute_carry(res1);
         assign_carry(
             env,
+            &n_half_bi,
+            i,
             newcarry1,
             &mut carry1,
-            5 * N_LIMBS_LARGE + 6 * N_LIMBS_SMALL + 3,
+            FECColumn::Carry1,
         );
 
         // Equation 2: xR - s^2 + xP + xQ - q_2 f = 0
@@ -647,9 +588,11 @@ pub fn ec_add_circuit<
         let newcarry2 = compute_carry(res2);
         assign_carry(
             env,
+            &n_half_bi,
+            i,
             newcarry2,
             &mut carry2,
-            5 * N_LIMBS_LARGE + 8 * N_LIMBS_SMALL + 5,
+            FECColumn::Carry2,
         );
 
         // Equation 3: yR + yP - s (xP - xR) - q_3 f = 0
@@ -668,11 +611,13 @@ pub fn ec_add_circuit<
         let newcarry3 = compute_carry(res3);
         assign_carry(
             env,
+            &n_half_bi,
+            i,
             newcarry3,
             &mut carry3,
-            5 * N_LIMBS_LARGE + 10 * N_LIMBS_SMALL + 7,
+            FECColumn::Carry3,
         );
     }
 
-    constrain_ec_addition::<F, Ff, Env>(env, mem_offset);
+    constrain_ec_addition::<F, Ff, Env>(env);
 }

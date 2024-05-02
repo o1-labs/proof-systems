@@ -1,10 +1,8 @@
 use crate::{
-    circuits::expr::Operations,
-    folding::{
-        error_term::{eval_sided, ExtendedEnv, Side},
-        expressions::{Degree, ExtendedFoldingColumn, FoldingExp},
-        FoldingConfig,
-    },
+    columns::ExtendedFoldingColumn,
+    error_term::{eval_sided, ExtendedEnv, Side},
+    expressions::{Degree, FoldingExp},
+    FoldingConfig,
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
@@ -59,9 +57,9 @@ impl<C: FoldingConfig> ExpRecorder<C> {
         let mut new_constraints = BTreeMap::new();
         for (exp, id) in recorded_exprs.into_iter() {
             let left = FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id));
-            let constraint = FoldingExp::Sub(Box::new(left), Box::new(exp));
-            new_constraints.insert(id, constraint.clone());
-            witness_generator.push_front((id, constraint));
+            let constraint = FoldingExp::Sub(Box::new(left), Box::new(exp.clone()));
+            new_constraints.insert(id, constraint);
+            witness_generator.push_front((id, exp));
         }
         (new_constraints.into_values().collect(), witness_generator)
     }
@@ -82,8 +80,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
             }
             FoldingExp::Mul(e1, e2) => e1.degree() + e2.degree(),
             FoldingExp::Pow(e, i) => e.degree() * (*i as usize),
-            FoldingExp::Cache(_, _) => todo!(),
-            FoldingExp::IfFeature(_, _, _) => todo!(),
         }
     }
 }
@@ -95,11 +91,23 @@ fn lower_degree_to_1<C: FoldingConfig>(
     let degree = exp.degree();
     match degree {
         1 => exp,
-        _ => {
-            let exp = lower_degree_to_2(exp, rec);
-            let id = rec.get_id(exp);
-            FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
-        }
+        _ => match exp {
+            FoldingExp::Add(e1, e2) => FoldingExp::Add(
+                Box::new(lower_degree_to_1(*e1, rec)),
+                Box::new(lower_degree_to_1(*e2, rec)),
+            ),
+            FoldingExp::Sub(e1, e2) => FoldingExp::Sub(
+                Box::new(lower_degree_to_1(*e1, rec)),
+                Box::new(lower_degree_to_1(*e2, rec)),
+            ),
+            e @ FoldingExp::Square(_) | e @ FoldingExp::Mul(_, _) => {
+                let exp = lower_degree_to_2(e, rec);
+                let id = rec.get_id(exp);
+                FoldingExp::Atom(ExtendedFoldingColumn::WitnessExtended(id))
+            }
+            FoldingExp::Double(exp) => FoldingExp::Double(Box::new(lower_degree_to_1(*exp, rec))),
+            _ => todo!(),
+        },
     }
 }
 
@@ -107,7 +115,7 @@ fn lower_degree_to_2<C: FoldingConfig>(
     exp: FoldingExp<C>,
     rec: &mut ExpRecorder<C>,
 ) -> FoldingExp<C> {
-    use Operations::*;
+    use FoldingExp::*;
     let degree = exp.degree();
     if degree <= 2 {
         return exp;
@@ -150,8 +158,6 @@ fn lower_degree_to_2<C: FoldingConfig>(
             }
             FoldingExp::Mul(Box::new(e.clone()), Box::new(acc))
         }
-        FoldingExp::Cache(_, _) => todo!(),
-        FoldingExp::IfFeature(_, _, _) => todo!(),
     }
 }
 
@@ -165,14 +171,16 @@ impl<C: FoldingConfig> ExtendedWitnessGenerator<C> {
         mut env: ExtendedEnv<C>,
         side: Side,
     ) -> ExtendedEnv<C> {
-        let mut pending = self.exprs.clone();
+        if env.needs_extension(side) {
+            let mut pending = self.exprs.clone();
 
-        while let Some((i, exp)) = pending.pop_front() {
-            if check_evaluable(&exp, &env, side) {
-                let evals = eval_sided(&exp, &env, side).unwrap();
-                env.add_witness_evals(i, evals, side);
-            } else {
-                pending.push_back((i, exp))
+            while let Some((i, exp)) = pending.pop_front() {
+                if check_evaluable(&exp, &env, side) {
+                    let evals = eval_sided(&exp, &env, side).unwrap();
+                    env.add_witness_evals(i, evals, side);
+                } else {
+                    pending.push_back((i, exp))
+                }
             }
         }
 
@@ -193,7 +201,5 @@ fn check_evaluable<C: FoldingConfig>(
             check_evaluable(e1, env, side) && check_evaluable(e2, env, side)
         }
         FoldingExp::Pow(e, _) => check_evaluable(e, env, side),
-        FoldingExp::Cache(_, _) => todo!(),
-        FoldingExp::IfFeature(_, _, _) => todo!(),
     }
 }

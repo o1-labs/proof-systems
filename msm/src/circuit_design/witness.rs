@@ -1,5 +1,5 @@
 use crate::{
-    circuit_design::capabilities::{ColAccessCap, ColWriteCap, LookupCap},
+    circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
     proof::ProofInputs,
@@ -7,6 +7,7 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use kimchi::circuits::domains::EvaluationDomains;
+use log::debug;
 use std::{collections::BTreeMap, iter};
 use strum::IntoEnumIterator;
 
@@ -67,6 +68,25 @@ impl<
             todo!()
         };
         self.witness.last_mut().unwrap().cols[i] = *value;
+    }
+}
+
+/// If `Env` implements real write ("for sure" writes), you can implement
+/// hybrid copy (that is only required to "maybe" copy). The other way
+/// around violates the semantics.
+///
+/// Sadly, rust does not allow "cover" instances to define this impl
+/// for every `T: ColWriteCap`.
+impl<
+        F: PrimeField,
+        CIx: ColumnIndexer,
+        const CIX_COL_N: usize,
+        LT: LookupTableID + IntoEnumIterator,
+    > HybridCopyCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    fn hcopy(&mut self, value: &Self::Variable, ix: CIx) -> Self::Variable {
+        <WitnessBuilderEnv<F, CIX_COL_N, LT> as ColWriteCap<F, CIx>>::write_column(self, ix, value);
+        *value
     }
 }
 
@@ -196,23 +216,6 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
             cols: Box::new(std::array::from_fn(|_| Vec::with_capacity(domain_size))),
         });
 
-        let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
-        for table_id in LT::iter() {
-            // Find how many lookups are done per table.
-            let number_of_lookups = self.lookups[0].get(&table_id).unwrap().len();
-            // Technically the number of lookups must be the same per
-            // row, but let's check if it's actually so.
-            for (i, lookup_row) in self.lookups.iter().enumerate().take(domain_size) {
-                let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
-                assert!(
-                    number_of_lookups == number_of_lookups_currow,
-                    "Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookups:?}"
-                );
-            }
-            // +1 for the fixed table
-            lookup_tables.insert(table_id, vec![vec![]; number_of_lookups + 1]);
-        }
-
         // Filling actually used rows first
         for witness_row in self.witness.iter().take(domain_size) {
             for j in 0..CIX_COL_N {
@@ -225,6 +228,28 @@ impl<F: PrimeField, const CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator
             for i in 0..CIX_COL_N {
                 witness.cols[i].extend(vec![F::zero(); domain_size - self.witness.len()]);
             }
+        }
+
+        // Building lookup values
+        let mut lookup_tables: BTreeMap<LT, Vec<Vec<Logup<F, LT>>>> = BTreeMap::new();
+        if !lookup_tables_data.is_empty() {
+            for table_id in LT::iter() {
+                // Find how many lookups are done per table.
+                let number_of_lookups = self.lookups[0].get(&table_id).unwrap().len();
+                // Technically the number of lookups must be the same per
+                // row, but let's check if it's actually so.
+                for (i, lookup_row) in self.lookups.iter().enumerate().take(domain_size) {
+                    let number_of_lookups_currow = lookup_row.get(&table_id).unwrap().len();
+                    assert!(
+                        number_of_lookups == number_of_lookups_currow,
+                        "Different number of lookups in row {i:?} and row 0: {number_of_lookups_currow:?} vs {number_of_lookups:?}"
+                    );
+                }
+                // +1 for the fixed table
+                lookup_tables.insert(table_id, vec![vec![]; number_of_lookups + 1]);
+            }
+        } else {
+            debug!("No lookup tables data provided. Skipping lookup tables.");
         }
 
         for lookup_row in self.lookups.iter().take(domain_size) {

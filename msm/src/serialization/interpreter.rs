@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use strum::IntoEnumIterator;
 
 use crate::{
-    circuit_design::{ColAccessCap, LookupCap},
+    circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::ColumnIndexer,
     logup::LookupTableID,
     serialization::{column::SerializationColumn, lookups::LookupTable, N_INTERMEDIATE_LIMBS},
@@ -20,7 +20,7 @@ use o1_utils::{field_helpers::FieldHelpers, foreign_field::ForeignElement};
 
 // Such "helpers" defeat the whole purpose of the interpreter.
 // TODO remove
-pub trait SerializationHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
+pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> {
     /// Returns the bits between [highest_bit, lowest_bit] of the variable `x`,
     /// and copy the result in the column `position`.
     /// The value `x` is expected to be encoded in big-endian
@@ -33,15 +33,10 @@ pub trait SerializationHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTabl
     ) -> Self::Variable
     where
         Self: ColAccessCap<F, CIx>;
-
-    /// This is kind of like write_column & read_column right after... And asserting it.
-    fn copy(&mut self, x: &Self::Variable, position: CIx) -> Self::Variable
-    where
-        Self: ColAccessCap<F, CIx>;
 }
 
 impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
-    SerializationHelpers<F, CIx, LT> for crate::circuit_design::ConstraintBuilderEnv<F, LT>
+    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::ConstraintBuilderEnv<F, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -57,20 +52,6 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
             row: CurrOrNext::Curr,
         }))
     }
-
-    fn copy(
-        &mut self,
-        x: &<Self as ColAccessCap<F, CIx>>::Variable,
-        position: CIx,
-    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
-        let y = Expr::Atom(ExprInner::Cell(Variable {
-            col: position.to_column(),
-            row: CurrOrNext::Curr,
-        }));
-        let diff = y.clone() - x.clone();
-        <Self as ColAccessCap<F, CIx>>::assert_zero(self, diff);
-        y
-    }
 }
 
 impl<
@@ -78,8 +59,7 @@ impl<
         CIx: ColumnIndexer,
         const CIX_COL_N: usize,
         LT: LookupTableID + IntoEnumIterator,
-    > SerializationHelpers<F, CIx, LT>
-    for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
+    > HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -96,15 +76,6 @@ impl<
         let res_fp: F = res.into();
         self.write_column(position.to_column(), res_fp);
         res_fp
-    }
-
-    fn copy(
-        &mut self,
-        x: &<Self as ColAccessCap<F, CIx>>::Variable,
-        position: CIx,
-    ) -> <Self as ColAccessCap<F, CIx>>::Variable {
-        self.write_column(position.to_column(), *x);
-        *x
     }
 }
 
@@ -148,7 +119,8 @@ pub fn deserialize_field_element<
     Ff: PrimeField,
     Env: ColAccessCap<F, SerializationColumn>
         + LookupCap<F, SerializationColumn, LookupTable<Ff>>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
+        + HybridCopyCap<F, SerializationColumn>
+        + HybridSerHelpers<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     limbs: [BigUint; 3],
@@ -167,9 +139,9 @@ pub fn deserialize_field_element<
     assert!(limbs[1] < BigUint::from(2u128.pow(88)));
     assert!(limbs[2] < BigUint::from(2u128.pow(79)));
 
-    let limb0_var = env.copy(&input_limb0, SerializationColumn::ChalKimchi(0));
-    let limb1_var = env.copy(&input_limb1, SerializationColumn::ChalKimchi(1));
-    let limb2_var = env.copy(&input_limb2, SerializationColumn::ChalKimchi(2));
+    let limb0_var = env.hcopy(&input_limb0, SerializationColumn::ChalKimchi(0));
+    let limb1_var = env.hcopy(&input_limb1, SerializationColumn::ChalKimchi(1));
+    let limb2_var = env.hcopy(&input_limb2, SerializationColumn::ChalKimchi(2));
 
     let mut limb2_vars = vec![];
 
@@ -215,7 +187,7 @@ pub fn deserialize_field_element<
             let res_prime = limbs[j + 1].clone() & BigUint::from((1u128 << shift) - 1);
             let res: BigUint = res + (res_prime << (15 - shift));
             let res = Env::constant(F::from(res));
-            let c5_var = env.copy(&res, SerializationColumn::ChalConverted(6 * j + 5));
+            let c5_var = env.hcopy(&res, SerializationColumn::ChalConverted(6 * j + 5));
             fifteen_bits_vars.push(c5_var);
         }
     }
@@ -364,7 +336,7 @@ pub fn combine_carry<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx
     let constant_u128 = |x: u128| Env::constant(From::from(x));
     std::array::from_fn(|i| {
         (0..6)
-            .map(|j| x[6 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
+            .map(|j| x[6 * i + j].clone() * constant_u128(1u128 << (j * (LIMB_BITSIZE_SMALL - 1))))
             .fold(Env::Variable::from(0u64), |acc, v| acc + v)
     })
 }
@@ -373,9 +345,7 @@ pub fn combine_carry<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx
 pub fn constrain_multiplication<
     F: PrimeField,
     Ff: PrimeField,
-    Env: ColAccessCap<F, SerializationColumn>
-        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColAccessCap<F, SerializationColumn> + LookupCap<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
 ) {
@@ -418,10 +388,11 @@ pub fn constrain_multiplication<
         if i % 6 == 5 {
             // This should be a different range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.lookup(LookupTable::RangeCheck4Abs, x);
+            env.lookup(LookupTable::RangeCheck9Abs, x); // 4 + 5 ?
         } else {
             // TODO add actual lookup
-            // env.range_check_abs15bit(x);
+            env.lookup(LookupTable::RangeCheck14Abs, x);
+            //env.range_check_abs15(x);
             // assert!(x < F::from(1u64 << 15) || x >= F::zero() - F::from(1u64 << 15));
         }
     }
@@ -489,9 +460,7 @@ pub fn constrain_multiplication<
 pub fn multiplication_circuit<
     F: PrimeField,
     Ff: PrimeField,
-    Env: ColAccessCap<F, SerializationColumn>
-        + LookupCap<F, SerializationColumn, LookupTable<Ff>>
-        + SerializationHelpers<F, SerializationColumn, LookupTable<Ff>>,
+    Env: ColWriteCap<F, SerializationColumn> + LookupCap<F, SerializationColumn, LookupTable<Ff>>,
 >(
     env: &mut Env,
     chal: Ff,
@@ -535,7 +504,7 @@ pub fn multiplication_circuit<
          input: [F; N_LIMBS_SMALL],
          f_column: &dyn Fn(usize) -> SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(&Env::constant(*var), f_column(i));
+                env.write_column(f_column(i), &Env::constant(*var));
             })
         };
 
@@ -544,7 +513,7 @@ pub fn multiplication_circuit<
          input: [F; N_LIMBS_LARGE],
          f_column: &dyn Fn(usize) -> SerializationColumn| {
             input.iter().enumerate().for_each(|(i, var)| {
-                env.copy(&Env::constant(*var), f_column(i));
+                env.write_column(f_column(i), &Env::constant(*var));
             })
         };
 
@@ -617,13 +586,18 @@ pub fn multiplication_circuit<
                 };
                 let newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 // Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                // However we split them into 14-bit chunks -- each chunk is signed, so in the end
+                // the layout is [14bitabs,14bitabs,14bitabs,14bitabs,14bitabs,9bitabs]
+                // altogether giving a 79bit number (signed).
                 let newcarry_limbs: [F; 6] =
-                    limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
+                    limb_decompose_biguint::<F, { LIMB_BITSIZE_SMALL - 1 }, 6>(
+                        newcarry_abs_bui.clone(),
+                    );
 
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
-                    env.copy(
-                        &Env::constant(newcarry_sign * limb),
+                    env.write_column(
                         SerializationColumn::Carry(6 * i + j),
+                        &Env::constant(newcarry_sign * limb),
                     );
                 }
 
@@ -658,8 +632,10 @@ mod tests {
         circuit_design::{ColAccessCap, WitnessBuilderEnv},
         columns::ColumnIndexer,
         serialization::{
-            column::SerializationColumn, interpreter::deserialize_field_element,
-            lookups::LookupTable, N_INTERMEDIATE_LIMBS,
+            column::SerializationColumn,
+            interpreter::{deserialize_field_element, multiplication_circuit},
+            lookups::LookupTable,
+            N_INTERMEDIATE_LIMBS,
         },
         Ff1, LIMB_BITSIZE, N_LIMBS,
     };
@@ -667,7 +643,7 @@ mod tests {
     use mina_curves::pasta::Fp;
     use num_bigint::BigUint;
     use o1_utils::{tests::make_test_rng, FieldHelpers};
-    use rand::Rng;
+    use rand::{CryptoRng, Rng, RngCore};
     use std::str::FromStr;
 
     fn test_decomposition_generic(x: Fp) {
@@ -814,5 +790,37 @@ mod tests {
             - BigUint::from_str("1").unwrap();
 
         test_decomposition_generic(Fp::from(x));
+    }
+
+    fn build_serialization_mul_circuit<RNG: RngCore + CryptoRng>(
+        rng: &mut RNG,
+        domain_size: usize,
+    ) -> WitnessBuilderEnv<Fp, { <SerializationColumn as ColumnIndexer>::COL_N }, LookupTable<Ff1>>
+    {
+        let mut witness_env = WitnessBuilderEnv::create();
+
+        // To support less rows than domain_size we need to have selectors.
+        //let row_num = rng.gen_range(0..domain_size);
+
+        for row_i in 0..domain_size {
+            let input_chal: Ff1 = <Ff1 as UniformRand>::rand(rng);
+            let coeff_input: Ff1 = <Ff1 as UniformRand>::rand(rng);
+            multiplication_circuit(&mut witness_env, input_chal, coeff_input, true);
+
+            if row_i < domain_size - 1 {
+                witness_env.next_row();
+            }
+        }
+
+        witness_env
+    }
+
+    #[test]
+    /// Builds the FF addition circuit with random values. The witness
+    /// environment enforces the constraints internally, so it is
+    /// enough to just build the circuit to ensure it is satisfied.
+    pub fn test_serialization_mul_circuit() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        build_serialization_mul_circuit(&mut rng, 1 << 4);
     }
 }
