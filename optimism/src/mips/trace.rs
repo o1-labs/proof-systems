@@ -1,6 +1,6 @@
 use crate::{
     mips::{
-        column::MIPS_COLUMNS,
+        column::{MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS},
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
@@ -12,9 +12,11 @@ use std::{array, collections::HashMap};
 use strum::IntoEnumIterator;
 
 /// The MIPS circuit trace
-pub type MIPSTrace<F> = Trace<MIPS_COLUMNS, Instruction, F>;
+pub type MIPSTrace<F> = Trace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F>;
 
-impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
+impl<F: Field> Tracer<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F, Env<F>>
+    for MIPSTrace<F>
+{
     fn new(domain_size: usize, env: &mut Env<F>) -> Self {
         let mut circuit = Self {
             domain_size,
@@ -40,7 +42,7 @@ impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
         circuit
     }
 
-    fn push_row(&mut self, opcode: Instruction, row: &[F; MIPS_COLUMNS]) {
+    fn push_row(&mut self, opcode: Instruction, row: &[F; MIPS_REL_COLS]) {
         self.witness.entry(opcode).and_modify(|wit| {
             for (i, value) in row.iter().enumerate() {
                 if wit.cols[i].len() < wit.cols[i].capacity() {
@@ -50,7 +52,7 @@ impl<F: Field> Tracer<MIPS_COLUMNS, Instruction, F, Env<F>> for MIPSTrace<F> {
         });
     }
 
-    fn pad_with_row(&mut self, opcode: Instruction, row: &[F; MIPS_COLUMNS]) -> usize {
+    fn pad_with_row(&mut self, opcode: Instruction, row: &[F; MIPS_REL_COLS]) -> usize {
         let len = self.witness[&opcode].cols[0].len();
         assert!(len <= self.domain_size);
         let rows_to_add = self.domain_size - len;

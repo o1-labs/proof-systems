@@ -1,3 +1,11 @@
+use crate::columns::ExtendedFoldingColumn;
+/// Implement a library to represent expressions/multivariate polynomials that
+/// can be used with folding schemes like
+/// [Nova](https://eprint.iacr.org/2021/370).
+/// We do enforce expressions to be degree `2` maximum to apply our folding
+/// scheme.
+/// Before folding, we do suppose that each expression has been reduced to
+/// degree `2` using [quadraticization].
 use crate::{
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
@@ -5,13 +13,51 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::One;
 use itertools::Itertools;
-use kimchi::circuits::expr::{
-    ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable,
+use kimchi::circuits::{
+    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
+    gate::CurrOrNext,
 };
 use num_traits::Zero;
 
+/// Describe the degree of a constraint.
+/// Only degree up to `2` is supported.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Degree {
+    Zero,
+    One,
+    Two,
+}
+
+impl std::ops::Add for Degree {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        use Degree::*;
+        match (self, rhs) {
+            (_, Two) | (Two, _) => Two,
+            (_, One) | (One, _) => One,
+            (Zero, Zero) => Zero,
+        }
+    }
+}
+
+impl std::ops::Mul for &Degree {
+    type Output = Degree;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        use Degree::*;
+        match (self, rhs) {
+            (Zero, other) | (other, Zero) => *other,
+            (One, One) => Two,
+            _ => panic!("The folding library does support only expressions of degree `2` maximum"),
+        }
+    }
+}
+
 pub trait FoldingColumnTrait: Copy + Clone {
     fn is_witness(&self) -> bool;
+
+    // TODO: why witnesses are degree 1, otherwise 0?
     fn degree(&self) -> Degree {
         match self.is_witness() {
             true => Degree::One,
@@ -20,55 +66,104 @@ pub trait FoldingColumnTrait: Copy + Clone {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExtendedFoldingColumn<C: FoldingConfig> {
-    Inner(Variable<C::Column>),
-    ///for the extra columns added by quadraticization
-    WitnessExtended(usize),
-    Error,
-    UnnormalizedLagrangeBasis(usize),
-    Constant(<C::Curve as AffineCurve>::ScalarField),
-    Challenge(C::Challenge),
-    Alpha(usize),
-    Selector(C::S),
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
-    Constant(<C::Curve as AffineCurve>::ScalarField),
-    Challenge(C::Challenge),
-    Cell(Variable<C::Column>),
-    VanishesOnZeroKnowledgeAndPreviousRows,
-    /// UnnormalizedLagrangeBasis(i) is
-    /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(usize),
-    ///extra nodes created by folding, should not be passed to folding
-    Extensions(ExpExtension<C>),
-}
-
-///designed for easy translation to and from most Expr
-#[derive(Clone, PartialEq, Debug)]
-pub enum FoldingCompatibleExpr<C: FoldingConfig> {
-    Atom(FoldingCompatibleExprInner<C>),
-    Double(Box<Self>),
-    Square(Box<Self>),
-    BinOp(Op2, Box<Self>, Box<Self>),
-    Pow(Box<Self>, u64),
-}
-
 /// Extra expressions that can be created by folding
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpExtension<C: FoldingConfig> {
     U,
     Error,
-    //from quadraticization
+    // from quadraticization
     ExtendedWitness(usize),
     Alpha(usize),
-    //in case of using decomposable folding
-    Selector(C::S),
+    // in case of using decomposable folding
+    Selector(C::Selector),
 }
 
-///Internal expression used for folding, simplified for that purpose
+/// Components to be used to convert multivariate polynomials into "compatible"
+/// multivariate polynomials that will be translated to folding expressions
+#[derive(Clone, PartialEq, Debug)]
+pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
+    Constant(<C::Curve as AffineCurve>::ScalarField),
+    Challenge(C::Challenge),
+    Cell(Variable<C::Column>),
+    /// extra nodes created by folding, should not be passed to folding
+    Extensions(ExpExtension<C>),
+}
+
+/// Designed for easy translation to and from most Expr
+#[derive(Clone, PartialEq, Debug)]
+pub enum FoldingCompatibleExpr<C: FoldingConfig> {
+    Atom(FoldingCompatibleExprInner<C>),
+    Pow(Box<Self>, u64),
+    Add(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
+    Double(Box<Self>),
+    Square(Box<Self>),
+}
+
+/// Implement a human-readable version of a folding compatible expression.
+// FIXME: use Display instead, to follow the recommandation of the trait.
+impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
+    fn to_string(&self) -> String {
+        match self {
+            FoldingCompatibleExpr::Atom(c) => match c {
+                FoldingCompatibleExprInner::Constant(c) => {
+                    if c.is_zero() {
+                        "0".to_string()
+                    } else {
+                        c.to_string()
+                    }
+                }
+                FoldingCompatibleExprInner::Challenge(c) => {
+                    format!("{:?}", c)
+                }
+                FoldingCompatibleExprInner::Cell(cell) => {
+                    let Variable { col, row } = cell;
+                    let next = match row {
+                        CurrOrNext::Curr => "",
+                        CurrOrNext::Next => " * ω",
+                    };
+                    format!("Col({:?}){}", col, next)
+                }
+                FoldingCompatibleExprInner::Extensions(e) => match e {
+                    ExpExtension::U => "U".to_string(),
+                    ExpExtension::Error => "E".to_string(),
+                    ExpExtension::ExtendedWitness(i) => {
+                        format!("ExWit({})", i)
+                    }
+                    ExpExtension::Alpha(i) => format!("α_{i}"),
+                    ExpExtension::Selector(s) => format!("Selec({:?})", s),
+                },
+            },
+            FoldingCompatibleExpr::Double(e) => {
+                format!("2 {}", e.to_string())
+            }
+            FoldingCompatibleExpr::Square(e) => {
+                format!("{} ^ 2", e.to_string())
+            }
+            FoldingCompatibleExpr::Add(e1, e2) => {
+                format!("{} + {}", e1.to_string(), e2.to_string())
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                format!("{} - {}", e1.to_string(), e2.to_string())
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                format!("({}) ({})", e1.to_string(), e2.to_string())
+            }
+            FoldingCompatibleExpr::Pow(_, _) => todo!(),
+        }
+    }
+}
+
+/// Internal expression used for folding.
+/// A "folding" expression is a multivariate polynomial like defined in
+/// [kimchi::circuits::expr] with the following differences:
+/// - No constructors related to zero-knowledge or lagrange basis (i.e. no
+/// constructors related to the PIOP)
+/// - The variables includes a set of columns that describes the initial circuit
+/// shape, with additional columns strictly related to the folding scheme (error
+/// term, etc).
+// TODO: renamed in "RelaxedExpression"?
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FoldingExp<C: FoldingConfig> {
     Atom(ExtendedFoldingColumn<C>),
@@ -110,9 +205,13 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 }
 
+/// Converts an expression "compatible" with folding into a folded expression.
+// TODO: use "into"?
+// FIXME: add independent tests
+// FIXME: test independently the behavior of pow_to_mul, and explain only why 8
+// maximum
 impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     pub(crate) fn simplify(self) -> FoldingExp<C> {
-        type Ex<C> = ExtendedFoldingColumn<C>;
         use FoldingExp::*;
         match self {
             FoldingCompatibleExpr::Atom(atom) => match atom {
@@ -121,10 +220,6 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
                     Atom(ExtendedFoldingColumn::Challenge(c))
                 }
                 FoldingCompatibleExprInner::Cell(col) => Atom(ExtendedFoldingColumn::Inner(col)),
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) => {
-                    Atom(Ex::UnnormalizedLagrangeBasis(i))
-                }
                 FoldingCompatibleExprInner::Extensions(ext) => {
                     match ext {
                         // TODO: this shouldn't be allowed, but is needed for now to add
@@ -139,14 +234,20 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
             },
             FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::Square(exp) => Square(Box::new((*exp).simplify())),
-            FoldingCompatibleExpr::BinOp(op, e1, e2) => {
+            FoldingCompatibleExpr::Add(e1, e2) => {
                 let e1 = Box::new(e1.simplify());
                 let e2 = Box::new(e2.simplify());
-                match op {
-                    Op2::Add => Add(e1, e2),
-                    Op2::Mul => Mul(e1, e2),
-                    Op2::Sub => Sub(e1, e2),
-                }
+                Add(e1, e2)
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                let e1 = Box::new(e1.simplify());
+                let e2 = Box::new(e2.simplify());
+                Sub(e1, e2)
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                let e1 = Box::new(e1.simplify());
+                let e2 = Box::new(e2.simplify());
+                Mul(e1, e2)
             }
             FoldingCompatibleExpr::Pow(e, p) => Self::pow_to_mul(e.simplify(), p),
         }
@@ -179,13 +280,6 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Degree {
-    Zero,
-    One,
-    Two,
-}
-
 impl<C: FoldingConfig> FoldingExp<C> {
     pub(super) fn folding_degree(&self) -> Degree {
         use Degree::*;
@@ -194,7 +288,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 ExtendedFoldingColumn::Inner(col) => col.col.degree(),
                 ExtendedFoldingColumn::WitnessExtended(_) => One,
                 ExtendedFoldingColumn::Error => One,
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(_) => Zero,
                 ExtendedFoldingColumn::Constant(_) => Zero,
                 ExtendedFoldingColumn::Challenge(_) => One,
                 ExtendedFoldingColumn::Alpha(_) => One,
@@ -219,6 +312,10 @@ impl<C: FoldingConfig> FoldingExp<C> {
         }
     }
 
+    /// Convert a folding expression into a compatible one.
+    // TODO: explain why do we need it. It is transformations between the two
+    // categories FoldingCompatibleExpr and FoldingExpr. Is there a one-to-one
+    // conversion?
     fn into_compatible(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
         use FoldingCompatibleExprInner::*;
@@ -229,9 +326,6 @@ impl<C: FoldingConfig> FoldingExp<C> {
                     Atom(Extensions(ExpExtension::ExtendedWitness(i)))
                 }
                 ExtendedFoldingColumn::Error => Atom(Extensions(ExpExtension::Error)),
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => {
-                    Atom(UnnormalizedLagrangeBasis(i))
-                }
                 ExtendedFoldingColumn::Constant(c) => Atom(Constant(c)),
                 ExtendedFoldingColumn::Challenge(c) => Atom(Challenge(c)),
                 ExtendedFoldingColumn::Alpha(i) => Atom(Extensions(ExpExtension::Alpha(i))),
@@ -242,17 +336,17 @@ impl<C: FoldingConfig> FoldingExp<C> {
             FoldingExp::Add(e1, e2) => {
                 let e1 = Box::new(e1.into_compatible());
                 let e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Add, e1, e2)
+                Add(e1, e2)
             }
             FoldingExp::Sub(e1, e2) => {
                 let e1 = Box::new(e1.into_compatible());
                 let e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Sub, e1, e2)
+                Sub(e1, e2)
             }
             FoldingExp::Mul(e1, e2) => {
                 let e1 = Box::new(e1.into_compatible());
                 let e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Mul, e1, e2)
+                Mul(e1, e2)
             }
             // TODO: Replace with `Pow`
             FoldingExp::Pow(_, 0) => Atom(Constant(<C::Curve as AffineCurve>::ScalarField::one())),
@@ -261,7 +355,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 let e = e.into_compatible();
                 let mut acc = e.clone();
                 for _ in 1..i {
-                    acc = BinOp(Op2::Mul, Box::new(e.clone()), Box::new(acc))
+                    acc = Mul(Box::new(e.clone()), Box::new(acc))
                 }
                 acc
             }
@@ -269,32 +363,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
     }
 }
 
-impl std::ops::Add for Degree {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        use Degree::*;
-        match (self, rhs) {
-            (_, Two) | (Two, _) => Two,
-            (_, One) | (One, _) => One,
-            (Zero, Zero) => Zero,
-        }
-    }
-}
-
-impl std::ops::Mul for &Degree {
-    type Output = Degree;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        use Degree::*;
-        match (self, rhs) {
-            (Zero, other) | (other, Zero) => *other,
-            (One, One) => Two,
-            _ => panic!("degree over 2"),
-        }
-    }
-}
-
+// TODO: doc - what is the sign?
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Sign {
     Pos,
@@ -312,6 +381,7 @@ impl std::ops::Neg for Sign {
     }
 }
 
+// TODO: doc - What is a term?
 #[derive(Clone, Debug)]
 pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
@@ -351,10 +421,10 @@ impl<C: FoldingConfig> std::ops::Neg for Term<C> {
     }
 }
 
-///A simplified expression with all terms separated by degree
+/// A simplified expression with all terms separated by degree
 #[derive(Clone, Debug)]
 pub struct IntegratedFoldingExpr<C: FoldingConfig> {
-    //(exp,sign,alpha)
+    // (exp,sign,alpha)
     pub(super) degree_0: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_1: Vec<(FoldingExp<C>, Sign, usize)>,
     pub(super) degree_2: Vec<(FoldingExp<C>, Sign, usize)>,
@@ -371,10 +441,10 @@ impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
 }
 
 impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
-    ///combines constraints into single expression
+    /// Combines constraints into single expression
     pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
         use FoldingCompatibleExpr::*;
-        ///todo: should use powers of alpha
+        /// TODO: should use powers of alpha
         use FoldingCompatibleExprInner::*;
         let Self {
             degree_0,
@@ -399,14 +469,13 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
             .map(|e| e.into_compatible());
         let u = || Box::new(Atom(Extensions(ExpExtension::U)));
         let u2 = || Box::new(Square(u()));
-        let d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));
-        let d1 = Box::new(BinOp(Op2::Mul, Box::new(d1), u()));
+        let d0 = FoldingCompatibleExpr::Mul(Box::new(d0), u2());
+        let d1 = FoldingCompatibleExpr::Mul(Box::new(d1), u());
         let d2 = Box::new(d2);
-        let exp = Box::new(BinOp(Op2::Add, d0, d1));
-        let exp = Box::new(BinOp(Op2::Add, exp, d2));
-        BinOp(
-            Op2::Add,
-            exp,
+        let exp = FoldingCompatibleExpr::Add(Box::new(d0), Box::new(d1));
+        let exp = FoldingCompatibleExpr::Add(Box::new(exp), d2);
+        FoldingCompatibleExpr::Add(
+            Box::new(exp),
             Box::new(Atom(Extensions(ExpExtension::Error))),
         )
     }
@@ -543,15 +612,16 @@ where
     Config::Curve: AffineCurve<ScalarField = F>,
     Config::Challenge: From<ChallengeTerm>,
 {
+    // TODO: check if this needs some special treatment for Extensions
     fn from(expr: ExprInner<ConstantExprInner<F>, Col>) -> Self {
         match expr {
             ExprInner::Constant(cexpr) => cexpr.into(),
             ExprInner::Cell(col) => FoldingCompatibleExprInner::Cell(col),
-            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            ExprInner::UnnormalizedLagrangeBasis(_) => {
+                panic!("UnnormalizedLagrangeBasis should not be used in folding expressions")
             }
-            ExprInner::UnnormalizedLagrangeBasis(i) => {
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize)
+            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                panic!("VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions")
             }
         }
     }
@@ -567,13 +637,13 @@ where
         match expr {
             Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
             Operations::Add(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Add, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Mul(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Mul, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Sub(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Sub, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
             Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),

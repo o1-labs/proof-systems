@@ -15,7 +15,7 @@ mod tests {
 
     use crate::{
         circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         precomputed_srs::get_bn254_srs,
         prover::prove,
         serialization::{
@@ -68,7 +68,7 @@ mod tests {
             // Sanity checks.
             assert!(constraints_env.lookups[&LookupTable::RangeCheck15].len() == (3 * 17 - 1));
             assert!(constraints_env.lookups[&LookupTable::RangeCheck4].len() == 20);
-            assert!(constraints_env.lookups[&LookupTable::RangeCheck4Abs].len() == 6);
+            assert!(constraints_env.lookups[&LookupTable::RangeCheck9Abs].len() == 6);
             assert!(
                 constraints_env.lookups
                     [&LookupTable::RangeCheckFfHighest(std::marker::PhantomData)]
@@ -102,9 +102,10 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             SER_N_COLUMNS,
+            SER_N_COLUMNS,
+            0,
             LookupTable<Ff1>,
         >(domain, &srs, &constraints, proof_inputs, &mut rng)
         .unwrap();
@@ -115,6 +116,8 @@ mod tests {
             BaseSponge,
             ScalarSponge,
             SER_N_COLUMNS,
+            SER_N_COLUMNS,
+            0,
             0,
             LookupTable<Ff1>,
         >(

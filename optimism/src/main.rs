@@ -1,20 +1,18 @@
 use ark_ec::{bn::Bn, AffineCurve};
 use ark_ff::UniformRand;
 use kimchi::o1_utils;
-use kimchi_msm::{
-    columns::Column, proof::ProofInputs, prover::prove, verifier::verify, witness::Witness,
-};
+use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
     keccak::{
-        column::{Steps, ZKVM_KECCAK_COLS},
+        column::{Steps, ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
         environment::KeccakEnv,
         trace::KeccakTrace,
     },
     lookups::LookupTableIDs,
     mips::{
-        column::{MIPSWitnessTrait, MIPS_COLUMNS},
+        column::{MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS},
         constraints as mips_constraints,
         interpreter::Instruction,
         trace::MIPSTrace,
@@ -31,7 +29,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use poly_commitment::pairing_proof::PairingProof;
-use std::{collections::HashMap, fs::File, io::BufReader, process::ExitCode};
+use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;
 
 type Fp = ark_bn254::Fr;
@@ -124,13 +122,12 @@ pub fn main() -> ExitCode {
             >::default(),
         );
     }
-
     while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
 
         if let Some(ref mut keccak_env) = mips_wit_env.keccak_env {
             // Run all steps of hash
-            while keccak_env.constraints_env.step.is_some() {
+            while keccak_env.step.is_some() {
                 // Get the current step that will be
                 let step = keccak_env.selector();
                 // Run the interpreter, which sets the witness columns
@@ -139,7 +136,9 @@ pub fn main() -> ExitCode {
                 keccak_trace.push_row(step, &keccak_env.witness_env.witness.cols);
 
                 // If the witness is full, fold it and reset the pre-folding witness
-                if keccak_trace.witness[&step].cols[0].len() == DOMAIN_SIZE {
+                if keccak_trace.number_of_rows(step) == DOMAIN_SIZE {
+                    // Set to zero all selectors except for the one corresponding to the current instruction
+                    keccak_trace.set_selector_column(step, DOMAIN_SIZE);
                     proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                         domain,
                         &srs,
@@ -153,22 +152,24 @@ pub fn main() -> ExitCode {
             mips_wit_env.keccak_env = None;
         }
 
-        // TODO: unify witness of MIPS to include the instruction and the error
-        for i in 0..MIPS_COLUMNS {
-            if i < SCRATCH_SIZE {
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(mips_wit_env.scratch_state[i]);
-            } else if i == MIPS_COLUMNS - 2 {
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(Fp::from(mips_wit_env.instruction_counter));
-            } else {
-                // TODO: error
-                mips_trace.witness.get_mut(&instr).unwrap().cols[i]
-                    .push(Fp::rand(&mut rand::rngs::OsRng));
+        // TODO: unify witness of MIPS to include scratch state, instruction counter, and error
+        for i in 0..MIPS_REL_COLS {
+            match i.cmp(&SCRATCH_SIZE) {
+                Ordering::Less => mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                    .push(mips_wit_env.scratch_state[i]),
+                Ordering::Equal => mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                    .push(Fp::from(mips_wit_env.instruction_counter)),
+                Ordering::Greater => {
+                    // TODO: error
+                    mips_trace.witness.get_mut(&instr).unwrap().cols[i]
+                        .push(Fp::rand(&mut rand::rngs::OsRng))
+                }
             }
         }
 
-        if mips_trace.witness[&instr].instruction_counter().len() == DOMAIN_SIZE {
+        if mips_trace.number_of_rows(instr) == DOMAIN_SIZE {
+            // Set to zero all selectors except for the one corresponding to the current instruction
+            mips_trace.set_selector_column(instr, DOMAIN_SIZE);
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -181,8 +182,13 @@ pub fn main() -> ExitCode {
 
     // Pad any possible remaining rows if the execution was not a multiple of the domain size
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
+        // Start by padding with the first row
         let needs_folding = mips_trace.pad_dummy(instr) != 0;
         if needs_folding {
+            // Then set the selector columns (all of them, none has selectors set)
+            mips_trace.set_selector_column(instr, DOMAIN_SIZE);
+
+            // Finally fold instance
             proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -194,6 +200,8 @@ pub fn main() -> ExitCode {
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
         let needs_folding = keccak_trace.pad_dummy(step) != 0;
         if needs_folding {
+            keccak_trace.set_selector_column(step, DOMAIN_SIZE);
+
             proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
                 domain,
                 &srs,
@@ -215,9 +223,10 @@ pub fn main() -> ExitCode {
                     OpeningProof,
                     BaseSponge,
                     ScalarSponge,
-                    Column,
                     _,
                     MIPS_COLUMNS,
+                    MIPS_REL_COLS,
+                    MIPS_SEL_COLS,
                     LookupTableIDs,
                 >(
                     domain,
@@ -234,6 +243,8 @@ pub fn main() -> ExitCode {
                     BaseSponge,
                     ScalarSponge,
                     MIPS_COLUMNS,
+                    MIPS_REL_COLS,
+                    MIPS_SEL_COLS,
                     0,
                     LookupTableIDs,
                 >(
@@ -264,9 +275,10 @@ pub fn main() -> ExitCode {
                     OpeningProof,
                     BaseSponge,
                     ScalarSponge,
-                    Column,
                     _,
                     ZKVM_KECCAK_COLS,
+                    ZKVM_KECCAK_REL,
+                    ZKVM_KECCAK_SEL,
                     LookupTableIDs,
                 >(
                     domain,
@@ -283,6 +295,8 @@ pub fn main() -> ExitCode {
                     BaseSponge,
                     ScalarSponge,
                     ZKVM_KECCAK_COLS,
+                    ZKVM_KECCAK_REL,
+                    ZKVM_KECCAK_SEL,
                     0,
                     LookupTableIDs,
                 >(

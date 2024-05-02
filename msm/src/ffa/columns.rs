@@ -25,7 +25,7 @@ impl ColumnIndexer for FFAColumn {
     fn to_column(self) -> Column {
         let to_column_inner = |offset, i| {
             assert!(i < N_LIMBS);
-            Column::X(N_LIMBS * offset + i)
+            Column::Relation(N_LIMBS * offset + i)
         };
         match self {
             FFAColumn::InputA(i) => to_column_inner(0, i),

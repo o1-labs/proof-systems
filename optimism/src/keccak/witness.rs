@@ -10,11 +10,10 @@ use std::collections::HashMap;
 
 use crate::{
     keccak::{
-        column::{Absorbs::*, KeccakWitness, Sponges::*, Steps::*},
+        column::KeccakWitness,
         helpers::{ArithHelpers, BoolHelpers, LogupHelpers},
         interpreter::{Interpreter, KeccakInterpreter},
         Constraint, Error, KeccakColumn,
-        Selector::{self, *},
     },
     lookups::{
         FixedLookupTables, Lookup, LookupTable,
@@ -37,8 +36,6 @@ pub struct Env<F> {
     pub multiplicities: HashMap<LookupTableIDs, Vec<u32>>,
     /// If any, an error that occurred during the execution of the constraints, to help with debugging
     pub(crate) errors: Vec<Error>,
-    /// The round number [0..23]
-    pub(crate) round: u64,
 }
 
 impl<F: Field> Default for Env<F> {
@@ -66,7 +63,6 @@ impl<F: Field> Default for Env<F> {
                 m
             },
             errors: vec![],
-            round: 0,
         }
     }
 }
@@ -122,87 +118,4 @@ impl<F: Field> Interpreter<F> for Env<F> {
     }
 }
 
-impl<F: Field> KeccakInterpreter<F> for Env<F> {
-    fn check(&mut self, tag: Selector, x: <Env<F> as Interpreter<F>>::Variable) {
-        if x != F::zero() {
-            self.errors.push(Error::Selector(tag));
-        }
-    }
-
-    fn checks(&mut self) {
-        // BOOLEANITY CHECKS
-        {
-            // Round is either true or false
-            self.check(
-                NotBoolean(Round(self.round)),
-                Self::is_boolean(self.mode_round()),
-            );
-            // Absorb is either true or false
-            self.check(
-                NotBoolean(Sponge(Absorb(Middle))),
-                Self::is_boolean(self.mode_absorb()),
-            );
-            // Squeeze is either true or false
-            self.check(
-                NotBoolean(Sponge(Squeeze)),
-                Self::is_boolean(self.mode_squeeze()),
-            );
-            // Root is either true or false
-            self.check(
-                NotBoolean(Sponge(Absorb(First))),
-                Self::is_boolean(self.mode_root()),
-            );
-            // Pad is either true or false
-            self.check(
-                NotBoolean(Sponge(Absorb(Last))),
-                Self::is_boolean(self.mode_pad()),
-            );
-            // RootPad is either true or false
-            self.check(
-                NotBoolean(Sponge(Absorb(Only))),
-                Self::is_boolean(self.mode_rootpad()),
-            );
-        }
-
-        // MUTUAL EXCLUSIVITY CHECKS
-        {
-            // Check only one of them is one
-            self.check(
-                NotMutex,
-                Self::is_one(
-                    self.mode_round()
-                        + self.mode_absorb()
-                        + self.mode_squeeze()
-                        + self.mode_root()
-                        + self.mode_pad()
-                        + self.mode_rootpad(),
-                ),
-            );
-        }
-    }
-
-    /////////////////////////
-    // SELECTOR OPERATIONS //
-    /////////////////////////
-
-    fn mode_absorb(&self) -> <Env<F> as Interpreter<F>>::Variable {
-        self.variable(KeccakColumn::Selector(Sponge(Absorb(Middle))))
-    }
-    fn mode_squeeze(&self) -> <Env<F> as Interpreter<F>>::Variable {
-        self.variable(KeccakColumn::Selector(Sponge(Squeeze)))
-    }
-    fn mode_root(&self) -> <Env<F> as Interpreter<F>>::Variable {
-        self.variable(KeccakColumn::Selector(Sponge(Absorb(First))))
-    }
-    fn mode_pad(&self) -> <Env<F> as Interpreter<F>>::Variable {
-        self.variable(KeccakColumn::Selector(Sponge(Absorb(Last))))
-    }
-    fn mode_rootpad(&self) -> <Env<F> as Interpreter<F>>::Variable {
-        self.variable(KeccakColumn::Selector(Sponge(Absorb(Only))))
-    }
-    fn mode_round(&self) -> <Env<F> as Interpreter<F>>::Variable {
-        // The actual round number in the selector carries no information for witness nor constraints
-        // because in the witness, any usize is mapped to the same index inside the mode flags
-        self.variable(KeccakColumn::Selector(Round(self.round)))
-    }
-}
+impl<F: Field> KeccakInterpreter<F> for Env<F> {}
