@@ -182,6 +182,9 @@ pub trait Literal: Sized + Clone {
     fn literal(x: Self::F) -> Self;
     fn to_literal(self) -> Result<Self::F, Self>;
     fn to_literal_ref(&self) -> Option<&Self::F>;
+    /// Obtains the representation of some constants as a literal.
+    /// This is useful before converting Kimchi expressions with constants
+    /// to folding compatible expressions.
     fn as_literal(&self, constants: &Constants<Self::F>) -> Self;
 }
 
@@ -561,14 +564,6 @@ impl Cache {
     pub fn cache<F: Field, T: ExprOps<F>>(&mut self, e: T) -> T {
         e.cache(self)
     }
-}
-
-/// A binary operation
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Op2 {
-    Add,
-    Mul,
-    Sub,
 }
 
 /// The feature flags that can be used to enable or disable parts of constraints.

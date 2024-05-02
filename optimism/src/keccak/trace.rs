@@ -5,32 +5,23 @@ use kimchi_msm::witness::Witness;
 use strum::IntoEnumIterator;
 
 use crate::{
-    keccak::column::{
-        Steps::{self, *},
-        ZKVM_KECCAK_COLS,
+    keccak::{
+        column::{
+            Steps::{self},
+            ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL,
+        },
+        environment::KeccakEnv,
+        standardize,
     },
     trace::{Trace, Tracer},
 };
 
-use super::environment::KeccakEnv;
-
 /// The Keccak circuit trace
-pub type KeccakTrace<F> = Trace<ZKVM_KECCAK_COLS, Steps, F>;
+pub type KeccakTrace<F> = Trace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps, F>;
 
-fn standardize(opcode: Steps) -> Steps {
-    // Note that steps of execution are obtained from the constraints environment.
-    // There, the round steps can be anything between 0 and 23 (for the 24 permutations).
-    // Nonetheless, all of them contain the same set of constraints and lookups.
-    // Therefore, we want to treat them as the same step when it comes to splitting the
-    // circuit into multiple instances with shared behaviour. By default, we use `Round(0)`.
-    if let Round(_) = opcode {
-        Round(0)
-    } else {
-        opcode
-    }
-}
-
-impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<F> {
+impl<F: Field> Tracer<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps, F, KeccakEnv<F>>
+    for KeccakTrace<F>
+{
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
             domain_size,
@@ -56,7 +47,7 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<
         circuit
     }
 
-    fn push_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_COLS]) {
+    fn push_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_REL]) {
         // Make sure we are using the same round number to refer to round steps
         let opcode = standardize(opcode);
         self.witness.entry(opcode).and_modify(|wit| {
@@ -68,7 +59,7 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, Steps, F, KeccakEnv<F>> for KeccakTrace<
         });
     }
 
-    fn pad_with_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_COLS]) -> usize {
+    fn pad_with_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_REL]) -> usize {
         let opcode = standardize(opcode);
         let len = self.witness[&opcode].cols[0].len();
         assert!(len <= self.domain_size);

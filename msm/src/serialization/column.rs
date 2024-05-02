@@ -34,35 +34,35 @@ impl ColumnIndexer for SerializationColumn {
         match self {
             Self::ChalKimchi(j) => {
                 assert!(j < 3);
-                Column::X(j)
+                Column::Relation(j)
             }
             Self::ChalIntermediate(j) => {
                 assert!(j < N_INTERMEDIATE_LIMBS);
-                Column::X(3 + j)
+                Column::Relation(3 + j)
             }
             Self::ChalConverted(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + 3 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 3 + j)
             }
             Self::CoeffInput(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + N_LIMBS + 3 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + N_LIMBS + 3 + j)
             }
             Self::FFieldModulus(j) => {
                 assert!(j < 4);
-                Column::X(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 3 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 3 + j)
             }
             Self::Quotient(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 7 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 2 * N_LIMBS + 7 + j)
             }
             Self::Carry(j) => {
                 assert!(j < 2 * N_LIMBS + 2);
-                Column::X(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + 7 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 3 * N_LIMBS + 7 + j)
             }
             Self::CoeffResult(j) => {
                 assert!(j < N_LIMBS);
-                Column::X(N_INTERMEDIATE_LIMBS + 5 * N_LIMBS + 9 + j)
+                Column::Relation(N_INTERMEDIATE_LIMBS + 5 * N_LIMBS + 9 + j)
             }
         }
     }

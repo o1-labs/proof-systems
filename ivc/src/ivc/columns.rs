@@ -163,15 +163,15 @@ impl ColumnIndexer for IVCColumn {
         match self {
             IVCColumn::Block1Input(i) => {
                 assert!(i < 2 * N_LIMBS_SMALL);
-                Column::X(i)
+                Column::Relation(i)
             }
             IVCColumn::Block1InputRepacked75(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
-                Column::X(2 * N_LIMBS_SMALL + i)
+                Column::Relation(2 * N_LIMBS_SMALL + i)
             }
             IVCColumn::Block1InputRepacked150(i) => {
                 assert!(i < 2 * N_LIMBS_XLARGE);
-                Column::X(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
+                Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
             }
             _ => panic!("Column not supported yet"),
         }

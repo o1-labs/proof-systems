@@ -1,27 +1,101 @@
 use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::Zero;
+use ark_ff::{Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use core::sync::atomic::Ordering;
+use folding::{FoldingEnv, Instance, Side, Sponge, Witness};
 use kimchi::{
     circuits::{expr::ChallengeTerm, gate::CurrOrNext},
-    folding::{Alphas, FoldingEnv, Instance, Side, Witness},
+    curve::KimchiCurve,
 };
 use kimchi_msm::witness::Witness as GenericWitness;
-use std::{array, ops::Index};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, ScalarChallenge},
+    FqSponge,
+};
+use poly_commitment::PolyComm;
+use std::{array, iter::successors, ops::Index, rc::Rc, sync::atomic::AtomicUsize};
 
 use crate::DOMAIN_SIZE;
 
 // Instantiate it with the desired group and field
 pub type Fp = ark_bn254::Fr;
 pub type Curve = ark_bn254::G1Affine;
+pub type SpongeParams = PlonkSpongeConstantsKimchi;
+
+pub struct BaseSponge(DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>);
+
+// TODO: get rid of trait Sponge in folding, and use the one from kimchi
+impl Sponge<Curve> for BaseSponge {
+    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
+        // This function does not have a &self because it is meant to absorb and
+        // squeeze only once
+        let x = DefaultFqSponge::new(Curve::other_curve_sponge_params());
+        let mut s = BaseSponge(x);
+        s.0.absorb_g(&absorb[0].elems);
+        s.0.absorb_g(&absorb[1].elems);
+        // Squeeze sponge
+        let chal = ScalarChallenge(s.0.challenge());
+        let (_, endo_r) = Curve::endos();
+        chal.to_field(endo_r)
+    }
+}
 
 // Does not contain alpha because this one should be provided by folding itself
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) enum Challenge {
     Beta,
     Gamma,
     JointCombiner,
+}
+
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding. The values will be computed as powers in new
+/// instances, but after folding each alfa will be a linear combination of other
+/// alphas, instand of a power of other element. This type represents that,
+/// allowing to also recognize which case is present
+#[derive(Debug, Clone)]
+pub enum Alphas {
+    Powers(Fp, Rc<AtomicUsize>),
+    Combinations(Vec<Fp>),
+}
+
+impl Alphas {
+    pub fn new(alpha: Fp) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    }
+    pub fn get(&self, i: usize) -> Option<Fp> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
+                let i = [i as u64];
+                Some(alpha.pow(i))
+            }
+            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
+        }
+    }
+    pub fn powers(self) -> Vec<Fp> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let n = count.load(Ordering::Relaxed);
+                let alphas = successors(Some(Fp::one()), |last| Some(*last * alpha));
+                alphas.take(n).collect()
+            }
+            Alphas::Combinations(c) => c,
+        }
+    }
+    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
+    }
 }
 
 // Needed to transform from expressions to folding expressions
@@ -39,8 +113,11 @@ impl From<ChallengeTerm> for Challenge {
 /// Folding instance containing the commitment to a witness of N columns, challenges for the proof, and the alphas
 #[derive(Debug, Clone)]
 pub(crate) struct FoldingInstance<const N: usize> {
+    /// Commitments to the witness columns, including the dynamic selectors
     pub(crate) commitments: [Curve; N],
+    /// Challenges for the proof
     pub(crate) challenges: [Fp; 3],
+    /// Reuses the Alphas defined in the example of folding
     pub(crate) alphas: Alphas,
 }
 
@@ -60,6 +137,7 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
     }
 }
 
+/// Includes the data witness columns and also the dynamic selector columns
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct FoldingWitness<const N: usize> {
     pub(crate) witness: GenericWitness<N, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
@@ -77,10 +155,10 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
 }
 
 /// Environment for the folding protocol, for a given number of witness columns and structure
-pub(crate) struct FoldingEnvironment<const N: usize, S> {
-    /// Structure of the folded circuit
+pub(crate) struct FoldingEnvironment<const N: usize, Structure> {
+    /// Structure of the folded circuit (not used right now)
     #[allow(dead_code)]
-    pub(crate) structure: S,
+    pub(crate) structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub(crate) instances: [FoldingInstance<N>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -90,13 +168,14 @@ pub(crate) struct FoldingEnvironment<const N: usize, S> {
     pub(crate) next_witnesses: [FoldingWitness<N>; 2],
 }
 
-impl<const N: usize, Col, S: Clone>
-    FoldingEnv<Fp, FoldingInstance<N>, FoldingWitness<N>, Col, Challenge, ()>
-    for FoldingEnvironment<N, S>
+impl<const N: usize, Col, Selector: Copy + Clone, Structure: Clone>
+    FoldingEnv<Fp, FoldingInstance<N>, FoldingWitness<N>, Col, Challenge, Selector>
+    for FoldingEnvironment<N, Structure>
 where
     FoldingWitness<N>: Index<Col, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+    FoldingWitness<N>: Index<Selector, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
 {
-    type Structure = S;
+    type Structure = Structure;
 
     fn new(
         structure: &Self::Structure,
@@ -129,7 +208,6 @@ where
         };
         // The following is possible because Index is implemented for our circuit witnesses
         &wit[col].evals
-        // TODO: if selectors columns are used, then return selectors instead of real witness columns
     }
 
     fn challenge(&self, challenge: Challenge, side: Side) -> Fp {
@@ -149,13 +227,14 @@ where
         instance.alphas.get(i).unwrap()
     }
 
-    fn selector(&self, _s: &(), _side: Side) -> &Vec<Fp> {
-        todo!()
+    fn selector(&self, s: &Selector, side: Side) -> &Vec<Fp> {
+        let witness = &self.curr_witnesses[side as usize];
+        &witness[*s].evals
     }
 }
 
-#[cfg(test)]
 #[cfg(feature = "bn254")]
+#[cfg(test)]
 mod tests {
     use super::*;
     use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -200,6 +279,15 @@ mod tests {
         }
     }
 
+    // Implemented for decomposable folding compatibility (Selector is usize in this case)
+    impl Index<usize> for TestFoldingWitness {
+        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+        fn index(&self, index: usize) -> &Self::Output {
+            &self.witness.cols[index]
+        }
+    }
+
     impl FoldingColumnTrait for TestColumn {
         fn is_witness(&self) -> bool {
             true
@@ -219,7 +307,7 @@ mod tests {
 
     impl FoldingConfig for TestConfig {
         type Column = TestColumn;
-        type S = ();
+        type Selector = usize;
         type Challenge = Challenge;
         type Curve = Curve;
         type Srs = poly_commitment::srs::SRS<Curve>;
@@ -235,7 +323,7 @@ mod tests {
     }
 
     #[test]
-    fn test_conversion() {
+    fn test_expr_translation() {
         use super::*;
         use kimchi::circuits::expr::ChallengeTerm;
 

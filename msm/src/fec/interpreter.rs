@@ -142,9 +142,10 @@ pub fn limbs_to_bigints<F: PrimeField, const N: usize>(input: [F; N]) -> Vec<Big
 /// bits * 6 carries = 36 chunks, and every 6th chunk is 4 bits only.
 /// This matches the 2*S+2 = 36, since S = 17.
 ///
-/// TODO: on avoiding 16bit lookups.
-/// Our current packing is we have 6 batches x 6 elements, each batch is
-/// [16 16 16 16 16 4] bits. We could do [15 15 15 15 15 9] and avoid 16-bit lookups.
+/// Note however since 79-bit carry is signed, we will store it as a list of
+/// [15 15 15 15 15 9]-bit limbs, where limbs are signed.
+/// E.g. 15-bit limbs are in [-2^14, 2^14-1]. This allows us to use
+/// 14abs range checks.
 ///
 /// === Ranges
 ///
@@ -264,10 +265,9 @@ pub fn constrain_ec_addition<
         if i % 6 == 5 {
             // This should be a diferent range check depending on which big-limb we're processing?
             // So instead of one type of lookup we will have 5 different ones?
-            env.lookup(LookupTable::RangeCheck4Abs, x);
+            env.lookup(LookupTable::RangeCheck9Abs, x);
         } else {
-            // TODO add this table back
-            // env.lookup(LookupTable::RangeCheck15Abs, x);
+            env.lookup(LookupTable::RangeCheck14Abs, x);
         }
     }
 
@@ -527,8 +527,11 @@ pub fn ec_add_circuit<
                 };
                 let newcarry_abs_bui = (newcarry * newcarry_sign).to_biguint();
                 // Our big carries are at most 79 bits, so we need 6 small limbs per each.
+                // But limbs are signed, so we split into 14-bit /signed/ limbs. + last chunk is signed 9 bit.
                 let newcarry_limbs: [F; 6] =
-                    limb_decompose_biguint::<F, LIMB_BITSIZE_SMALL, 6>(newcarry_abs_bui.clone());
+                    limb_decompose_biguint::<F, { LIMB_BITSIZE_SMALL - 1 }, 6>(
+                        newcarry_abs_bui.clone(),
+                    );
 
                 for (j, limb) in newcarry_limbs.iter().enumerate() {
                     write_column_const(env, column_mapper(6 * i + j), &(newcarry_sign * limb));
