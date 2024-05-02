@@ -1,6 +1,6 @@
 use crate::{
     circuit_design::capabilities::{
-        ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap, MultiRowReadCap,
+        ColAccessCap, ColWriteCap, DirectWitnessCap, HybridCopyCap, LookupCap, MultiRowReadCap,
     },
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
@@ -98,6 +98,15 @@ impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableI
     /// Returns the current row.
     fn curr_row(&self) -> usize {
         self.witness.len()
+    }
+}
+
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    DirectWitnessCap<F, CIx> for WitnessBuilderEnv<F, CIX_COL_N, LT>
+{
+    /// Convert an abstract variable to a field element! Inverse of Env::constant().
+    fn variable_to_field(value: Self::Variable) -> F {
+        value
     }
 }
 

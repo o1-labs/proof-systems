@@ -64,6 +64,22 @@ where
     fn curr_row(&self) -> usize;
 }
 
+// TODO this trait is very powerful. It basically abstract
+// WitnessBuilderEnv (and other, similar environments). Nothing
+// similar can be implemented for constraint building envs.
+//
+// Where possible, do your computation over Variable or directly via
+// F-typed inputs to a function.
+/// A direct field access capability modelling an abstract witness
+/// builder. Not for constraint building.
+pub trait DirectWitnessCap<F: PrimeField, CIx: ColumnIndexer>
+where
+    Self: MultiRowReadCap<F, CIx>,
+{
+    /// Convert an abstract variable to a field element! Inverse of Env::constant().
+    fn variable_to_field(value: Self::Variable) -> F;
+}
+
 ////////////////////////////////////////////////////////////////////////////
 // Hybrid capabilities
 ////////////////////////////////////////////////////////////////////////////

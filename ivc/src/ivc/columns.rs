@@ -61,21 +61,24 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// 6N+2 |------------------------------------------|
 ///
 ///     constϕ
-///      ϕ^i         ϕ^i        r*ϕ^i
-///       r*ϕ^i   in 17 limbs  in 17 limbs
-///                 each        each
-///   1  |-|-|-|------------|------------|
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///  i   |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///      |     |            |            |
-///  N   |-----|------------|------------|
-///       1 2 3 4 ...     4+17          4+2*17
+///         constr
+///                ϕ^i             ϕ^i        r*ϕ^i
+///                      r*ϕ^i  in 17 limbs  in 17 limbs
+///                               each        each
+///   1  |---|---|-----|------|------------|------------|
+///      | ϕ   r    ϕ     rϕ  |            |            |
+///      | ϕ   r   ϕ^2   rϕ^2 |            |            |
+///      | ϕ   r   ϕ^3   rϕ^3 |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///  i   |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///      |                    |            |            |
+///  N   |--------------------|------------|------------|
+///       1    2   3   4 ...        4+17          4+2*17
 ///
 ///
 ///
@@ -142,14 +145,14 @@ pub enum IVCColumn {
     Block3ConstPhi,
     /// Constant r
     Block3ConstR,
-    /// Scalar coeff #1, phi^i
-    Block3Phi,
+    /// Scalar coeff #1, powers of Phi, phi^i
+    Block3PhiPow,
     /// Scalar coeff #2, r * phi^i
-    Block3PhiR,
+    Block3PhiPowR,
     /// 17 15-bit limbs
-    Block3PhiLimbs(usize),
+    Block3PhiPowLimbs(usize),
     /// 17 15-bit limbs
-    Block3PhiRLimbs(usize),
+    Block3PhiPowRLimbs(usize),
 
     /// 1 addition per row
     Block4ECAdd(FECColumn),
@@ -178,13 +181,13 @@ impl ColumnIndexer for IVCColumn {
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
             IVCColumn::Block3ConstPhi => Column::X(0),
             IVCColumn::Block3ConstR => Column::X(1),
-            IVCColumn::Block3Phi => Column::X(2),
-            IVCColumn::Block3PhiR => Column::X(3),
-            IVCColumn::Block3PhiLimbs(i) => {
+            IVCColumn::Block3PhiPow => Column::X(2),
+            IVCColumn::Block3PhiPowR => Column::X(3),
+            IVCColumn::Block3PhiPowLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
                 Column::X(4 + i)
             }
-            IVCColumn::Block3PhiRLimbs(i) => {
+            IVCColumn::Block3PhiPowRLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
                 Column::X(4 + N_LIMBS_SMALL + i)
             }
