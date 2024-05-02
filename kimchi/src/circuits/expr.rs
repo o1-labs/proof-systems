@@ -566,14 +566,6 @@ impl Cache {
     }
 }
 
-/// A binary operation
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Op2 {
-    Add,
-    Mul,
-    Sub,
-}
-
 /// The feature flags that can be used to enable or disable parts of constraints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[cfg_attr(
