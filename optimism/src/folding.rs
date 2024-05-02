@@ -110,7 +110,8 @@ impl From<ChallengeTerm> for Challenge {
     }
 }
 
-/// Folding instance containing the commitment to a witness of N columns, challenges for the proof, and the alphas
+/// Folding instance containing the commitment to a witness of N columns,
+/// challenges for the proof, and the alphas
 #[derive(Debug, Clone)]
 pub(crate) struct FoldingInstance<const N: usize> {
     /// Commitments to the witness columns, including the dynamic selectors
@@ -154,7 +155,8 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
     }
 }
 
-/// Environment for the folding protocol, for a given number of witness columns and structure
+/// Environment for the folding protocol, for a given number of witness columns
+/// and structure
 pub(crate) struct FoldingEnvironment<const N: usize, Structure> {
     /// Structure of the folded circuit (not used right now)
     #[allow(dead_code)]
