@@ -49,7 +49,7 @@ where
 {
     // Write inputs
     init_state.iter().enumerate().for_each(|(i, value)| {
-        env.write_column(PoseidonColumn::Input(i), &value);
+        env.write_column(PoseidonColumn::Input(i), value);
     });
 
     // Write constants
