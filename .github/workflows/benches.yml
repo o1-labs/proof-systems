@@ -22,7 +22,7 @@ jobs:
       - name: Checkout PR
         uses: actions/checkout@v2
         with:
-          submodules: true        
+          submodules: true
 
 #      - name: Run iai bench
 #        run: |
@@ -47,7 +47,7 @@ jobs:
             const criterion_bench = fs.readFileSync("criterion_bench", {encoding:'utf8', flag:'r'});
 
             // form message
-            const message = `Hello there👋 
+            const message = `Hello there👋
             Here are some benchmark results using [criterion](https://bheisler.github.io/criterion.rs/). Keep in mind that since this runs in CI, it is not really accurate (as it depends on the host load)
 
             <pre><code>${criterion_bench}</code></pre>`;
