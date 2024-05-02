@@ -379,8 +379,6 @@ mod checker {
                     }
                     col
                 }
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(_) => todo!(),
                 FoldingCompatibleExprInner::Extensions(_) => {
                     panic!("not handled")
                 }

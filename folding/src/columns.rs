@@ -17,7 +17,6 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     WitnessExtended(usize),
     /// The error term introduced in the "relaxed" instance.
     Error,
-    UnnormalizedLagrangeBasis(usize),
     Constant(<C::Curve as AffineCurve>::ScalarField),
     /// A challenge used by the PIOP or the folding scheme.
     Challenge(C::Challenge),
