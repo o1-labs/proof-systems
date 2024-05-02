@@ -102,7 +102,6 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -112,7 +111,7 @@
 
     <span class="kw">use crate</span>::{
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         ffa::{
             columns::{FFAColumn, FFA_N_COLUMNS},
             interpreter::{<span class="self">self </span><span class="kw">as </span>ffa_interpreter},
@@ -184,15 +183,14 @@
         <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof =
-            prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, FFA_N_COLUMNS, <span class="kw">_</span>&gt;(
-                domain,
-                <span class="kw-2">&amp;</span>srs,
-                <span class="kw-2">&amp;</span>constraints,
-                proof_inputs,
-                <span class="kw-2">&amp;mut </span>rng,
-            )
-            .unwrap();
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, <span class="kw">_</span>, FFA_N_COLUMNS, <span class="kw">_</span>&gt;(
+            domain,
+            <span class="kw-2">&amp;</span>srs,
+            <span class="kw-2">&amp;</span>constraints,
+            proof_inputs,
+            <span class="kw-2">&amp;mut </span>rng,
+        )
+        .unwrap();
 
         <span class="comment">// verify the proof
         </span><span class="kw">let </span>verifies = verify::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, FFA_N_COLUMNS, <span class="number">0</span>, <span class="kw">_</span>&gt;(

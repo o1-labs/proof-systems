@@ -127,8 +127,6 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -146,7 +144,7 @@
 
     <span class="kw">use crate</span>::{
         circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         precomputed_srs::get_bn254_srs,
         prover::prove,
         serialization::{
@@ -228,17 +226,15 @@
         }
         <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
-        <span class="kw">let </span>proof = prove::&lt;
-            <span class="kw">_</span>,
-            OpeningProof,
-            BaseSponge,
-            ScalarSponge,
-            Column,
-            <span class="kw">_</span>,
-            SER_N_COLUMNS,
-            LookupTable&lt;Ff1&gt;,
-        &gt;(domain, <span class="kw-2">&amp;</span>srs, <span class="kw-2">&amp;</span>constraints, proof_inputs, <span class="kw-2">&amp;mut </span>rng)
-        .unwrap();
+        <span class="kw">let </span>proof =
+            prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, <span class="kw">_</span>, SER_N_COLUMNS, LookupTable&lt;Ff1&gt;&gt;(
+                domain,
+                <span class="kw-2">&amp;</span>srs,
+                <span class="kw-2">&amp;</span>constraints,
+                proof_inputs,
+                <span class="kw-2">&amp;mut </span>rng,
+            )
+            .unwrap();
 
         <span class="kw">let </span>verifies = verify::&lt;
             <span class="kw">_</span>,

@@ -494,8 +494,8 @@
 <span class="kw">pub mod </span>interpreter;
 
 <span class="kw">use crate</span>::{
-    columns::Column, expr::E, lookups::LookupTableIDs, proof::ProofInputs, prover::prove,
-    verifier::verify, witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
+    expr::E, lookups::LookupTableIDs, proof::ProofInputs, prover::prove, verifier::verify,
+    witness::Witness, BaseSponge, Fp, OpeningProof, ScalarSponge, BN254,
 };
 <span class="kw">use </span>ark_ff::{UniformRand, Zero};
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
@@ -526,7 +526,7 @@
         logups: <span class="macro">vec!</span>[],
     };
 
-    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N, LookupTableIDs&gt;(
+    <span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, <span class="kw">_</span>, N, LookupTableIDs&gt;(
         domain,
         <span class="kw-2">&amp;</span>srs,
         <span class="kw-2">&amp;</span>constraints,

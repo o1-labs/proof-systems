@@ -173,7 +173,7 @@
     <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
     <span class="kw">use </span>kimchi_msm::{
         circuit_design::{ColAccessCap, ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         lookups::DummyLookupTable,
         prover::prove,
         verifier::verify,
@@ -293,7 +293,7 @@
         };
 
         <span class="comment">// generate the proof
-        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, Column, <span class="kw">_</span>, N_COL, <span class="kw">_</span>&gt;(
+        </span><span class="kw">let </span>proof = prove::&lt;<span class="kw">_</span>, OpeningProof, BaseSponge, ScalarSponge, <span class="kw">_</span>, N_COL, <span class="kw">_</span>&gt;(
             domain,
             <span class="kw-2">&amp;</span>srs,
             <span class="kw-2">&amp;</span>constraints,
