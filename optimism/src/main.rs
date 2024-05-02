@@ -1,9 +1,7 @@
 use ark_ec::{bn::Bn, AffineCurve};
 use ark_ff::UniformRand;
 use kimchi::o1_utils;
-use kimchi_msm::{
-    columns::Column, proof::ProofInputs, prover::prove, verifier::verify, witness::Witness,
-};
+use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State},
     cannon_cli,
@@ -225,7 +223,6 @@ pub fn main() -> ExitCode {
                     OpeningProof,
                     BaseSponge,
                     ScalarSponge,
-                    Column,
                     _,
                     MIPS_COLUMNS,
                     MIPS_REL_COLS,
@@ -278,7 +275,6 @@ pub fn main() -> ExitCode {
                     OpeningProof,
                     BaseSponge,
                     ScalarSponge,
-                    Column,
                     _,
                     ZKVM_KECCAK_COLS,
                     ZKVM_KECCAK_REL,

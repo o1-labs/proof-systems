@@ -15,7 +15,7 @@ mod tests {
 
     use crate::{
         circuit_design::{constraints::ConstraintBuilderEnv, witness::WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         precomputed_srs::get_bn254_srs,
         prover::prove,
         serialization::{
@@ -102,7 +102,6 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             SER_N_COLUMNS,
             SER_N_COLUMNS,

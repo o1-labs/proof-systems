@@ -7,7 +7,7 @@ mod tests {
 
     use crate::{
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         fec::{
             columns::{FECColumn, FEC_N_COLUMNS},
             interpreter::{constrain_ec_addition, ec_add_circuit},
@@ -87,7 +87,6 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             FEC_N_COLUMNS,
             FEC_N_COLUMNS,

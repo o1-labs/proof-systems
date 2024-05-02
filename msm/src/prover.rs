@@ -51,7 +51,6 @@ pub fn prove<
     OpeningProof: OpenProof<G>,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
-    Column,
     RNG,
     const N: usize,
     const N_REL: usize,

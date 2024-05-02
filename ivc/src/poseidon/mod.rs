@@ -14,7 +14,7 @@ mod tests {
     use kimchi::circuits::domains::EvaluationDomains;
     use kimchi_msm::{
         circuit_design::{ColAccessCap, ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         lookups::DummyLookupTable,
         prover::prove,
         verifier::verify,
@@ -140,7 +140,6 @@ mod tests {
             OpeningProof,
             BaseSponge,
             ScalarSponge,
-            Column,
             _,
             N_COL,
             N_COL,
