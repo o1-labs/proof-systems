@@ -6,7 +6,7 @@
 use crate::{
     columns::ExtendedFoldingColumn,
     error_term::{compute_error, ExtendedEnv},
-    expressions::{FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
+    expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
     FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
@@ -33,9 +33,8 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
             .into_iter()
             .flat_map(|(s, exps)| {
                 exps.into_iter().map(move |exp| {
-                    let s = FoldingCompatibleExprInner::Extensions(super::ExpExtension::Selector(
-                        s.clone(),
-                    ));
+                    let s =
+                        FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
                     let s = Box::new(FoldingCompatibleExpr::Atom(s));
                     FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
                 })
