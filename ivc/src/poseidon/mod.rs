@@ -60,7 +60,7 @@ mod tests {
             let y: Fp = Fp::rand(&mut rng);
             let z: Fp = Fp::rand(&mut rng);
 
-            interpreter::poseidon_circuit(&mut witness_env, &PoseidonBN254Parameters, (x, y, z));
+            interpreter::poseidon_circuit(&mut witness_env, &PoseidonBN254Parameters, [x, y, z]);
 
             // Check internal consistency of our circuit: that our
             // computed values match the CPU-spec implementation of
@@ -112,7 +112,7 @@ mod tests {
                 interpreter::poseidon_circuit(
                     &mut witness_env,
                     &PoseidonBN254Parameters,
-                    (x, y, z),
+                    [x, y, z],
                 );
             }
 

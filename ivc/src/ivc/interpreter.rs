@@ -233,7 +233,7 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
             poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                (input1, input2, input3),
+                [input1, input2, input3],
             );
         } else if block_row_i == 6 * n {
             let input1_hl = env.read_row_column(
@@ -256,7 +256,7 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
             poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                (input1_hl, input2_hr, input3),
+                [input1_hl, input2_hr, input3],
             );
         } else if block_row_i == 6 * n + 1 {
             let input1_ho = env.read_row_column(
@@ -279,7 +279,7 @@ pub fn process_hashes<F, Env, PParams, const N_COL_TOTAL: usize>(
             poseidon_circuit(
                 &mut SubEnvColumn::new(env, IVCHashLens {}),
                 poseidon_params,
-                (input1_ho, input2_r, input3),
+                [input1_ho, input2_r, input3],
             );
         }
 
