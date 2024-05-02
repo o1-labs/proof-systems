@@ -11,10 +11,7 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::Radix2EvaluationDomain;
 use itertools::Itertools;
-use kimchi::circuits::{
-    expr::{Op2, Variable},
-    gate::CurrOrNext,
-};
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::SRS;
 use rand::thread_rng;
 use std::{
@@ -242,21 +239,18 @@ fn constraints() -> BTreeMap<DynamicSelector, Vec<FoldingCompatibleExpr<TestFold
     let b = Box::new(get_col(TestColumn::B));
     let c = Box::new(get_col(TestColumn::C));
 
-    type E = Box<FoldingCompatibleExpr<TestFoldingConfig>>;
-    let op = |a: E, b: E, op| Box::new(FoldingCompatibleExpr::BinOp(op, a, b));
-
     // Compute a + b - c
-    let add = op(a.clone(), b.clone(), Op2::Add);
-    let add = op(add, c.clone(), Op2::Sub);
+    let add = FoldingCompatibleExpr::Add(a.clone(), b.clone());
+    let add = FoldingCompatibleExpr::Sub(Box::new(add), c.clone());
 
     // Compute a * b - c
-    let mul = op(a, b, Op2::Mul);
-    let mul = op(mul, c, Op2::Sub);
+    let mul = FoldingCompatibleExpr::Mul(a.clone(), b.clone());
+    let mul = FoldingCompatibleExpr::Sub(Box::new(mul), c.clone());
 
     // Compute q_add (a + b - c) + q_mul (a * b - c)
     [
-        (DynamicSelector::SelecAdd, vec![*add]),
-        (DynamicSelector::SelecMul, vec![*mul]),
+        (DynamicSelector::SelecAdd, vec![add]),
+        (DynamicSelector::SelecMul, vec![mul]),
     ]
     .into_iter()
     .collect()
@@ -445,15 +439,20 @@ mod checker {
                     let v = self.check_rec(*e, debug);
                     v.into_iter().map(|x| x.square()).collect()
                 }
-                FoldingCompatibleExpr::BinOp(op, e1, e2) => {
+                FoldingCompatibleExpr::Add(e1, e2) => {
                     let v1 = self.check_rec(*e1, debug);
                     let v2 = self.check_rec(*e2, debug);
-                    let op = match op {
-                        Op2::Add => |(a, b)| a + b,
-                        Op2::Mul => |(a, b)| a * b,
-                        Op2::Sub => |(a, b)| a - b,
-                    };
-                    v1.into_iter().zip(v2).map(op).collect()
+                    v1.into_iter().zip(v2).map(|(a, b)| a + b).collect()
+                }
+                FoldingCompatibleExpr::Sub(e1, e2) => {
+                    let v1 = self.check_rec(*e1, debug);
+                    let v2 = self.check_rec(*e2, debug);
+                    v1.into_iter().zip(v2).map(|(a, b)| a - b).collect()
+                }
+                FoldingCompatibleExpr::Mul(e1, e2) => {
+                    let v1 = self.check_rec(*e1, debug);
+                    let v2 = self.check_rec(*e2, debug);
+                    v1.into_iter().zip(v2).map(|(a, b)| a * b).collect()
                 }
                 FoldingCompatibleExpr::Pow(e, exp) => {
                     let v = self.check_rec(*e, debug);

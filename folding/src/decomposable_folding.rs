@@ -11,7 +11,6 @@ use crate::{
     FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi::circuits::expr::Op2;
 use poly_commitment::{PolyComm, SRS};
 use std::collections::BTreeMap;
 
@@ -36,7 +35,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
                     let s =
                         FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
                     let s = Box::new(FoldingCompatibleExpr::Atom(s));
-                    FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
+                    FoldingCompatibleExpr::Mul(s, Box::new(exp))
                 })
             })
             .chain(common_constraints)

@@ -14,7 +14,7 @@ use ark_ec::AffineCurve;
 use ark_ff::One;
 use itertools::Itertools;
 use kimchi::circuits::{
-    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Op2, Operations, Variable},
+    expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
     gate::CurrOrNext,
 };
 use num_traits::Zero;
@@ -97,10 +97,12 @@ pub enum FoldingCompatibleExprInner<C: FoldingConfig> {
 #[derive(Clone, PartialEq, Debug)]
 pub enum FoldingCompatibleExpr<C: FoldingConfig> {
     Atom(FoldingCompatibleExprInner<C>),
+    Pow(Box<Self>, u64),
+    Add(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
     Double(Box<Self>),
     Square(Box<Self>),
-    BinOp(Op2, Box<Self>, Box<Self>),
-    Pow(Box<Self>, u64),
 }
 
 /// Implement a human-readable version of a folding compatible expression.
@@ -145,20 +147,14 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
             FoldingCompatibleExpr::Square(e) => {
                 format!("{} ^ 2", e.to_string())
             }
-            FoldingCompatibleExpr::BinOp(op, e1, e2) => {
-                let op_char = match op {
-                    Op2::Add => "+",
-                    Op2::Mul => "*",
-                    Op2::Sub => "-",
-                };
-                match op {
-                    Op2::Add | Op2::Sub => {
-                        format!("{} {} {}", e1.to_string(), op_char, e2.to_string())
-                    }
-                    Op2::Mul => {
-                        format!("({}) {} ({})", e1.to_string(), op_char, e2.to_string())
-                    }
-                }
+            FoldingCompatibleExpr::Add(e1, e2) => {
+                format!("{} + {}", e1.to_string(), e2.to_string())
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                format!("{} - {}", e1.to_string(), e2.to_string())
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                format!("({}) ({})", e1.to_string(), e2.to_string())
             }
             FoldingCompatibleExpr::Pow(_, _) => todo!(),
         }
@@ -249,14 +245,20 @@ impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
             },
             FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
             FoldingCompatibleExpr::Square(exp) => Square(Box::new((*exp).simplify())),
-            FoldingCompatibleExpr::BinOp(op, e1, e2) => {
+            FoldingCompatibleExpr::Add(e1, e2) => {
                 let e1 = Box::new(e1.simplify());
                 let e2 = Box::new(e2.simplify());
-                match op {
-                    Op2::Add => Add(e1, e2),
-                    Op2::Mul => Mul(e1, e2),
-                    Op2::Sub => Sub(e1, e2),
-                }
+                Add(e1, e2)
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                let e1 = Box::new(e1.simplify());
+                let e2 = Box::new(e2.simplify());
+                Sub(e1, e2)
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                let e1 = Box::new(e1.simplify());
+                let e2 = Box::new(e2.simplify());
+                Mul(e1, e2)
             }
             FoldingCompatibleExpr::Pow(e, p) => Self::pow_to_mul(e.simplify(), p),
         }
@@ -349,17 +351,17 @@ impl<C: FoldingConfig> FoldingExp<C> {
             FoldingExp::Add(e1, e2) => {
                 let e1 = Box::new(e1.into_compatible());
                 let e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Add, e1, e2)
+                Add(e1, e2)
             }
             FoldingExp::Sub(e1, e2) => {
                 let e1 = Box::new(e1.into_compatible());
                 let e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Sub, e1, e2)
+                Sub(e1, e2)
             }
             FoldingExp::Mul(e1, e2) => {
                 let e1 = Box::new(e1.into_compatible());
                 let e2 = Box::new(e2.into_compatible());
-                BinOp(Op2::Mul, e1, e2)
+                Mul(e1, e2)
             }
             // TODO: Replace with `Pow`
             FoldingExp::Pow(_, 0) => Atom(Constant(<C::Curve as AffineCurve>::ScalarField::one())),
@@ -368,7 +370,7 @@ impl<C: FoldingConfig> FoldingExp<C> {
                 let e = e.into_compatible();
                 let mut acc = e.clone();
                 for _ in 1..i {
-                    acc = BinOp(Op2::Mul, Box::new(e.clone()), Box::new(acc))
+                    acc = Mul(Box::new(e.clone()), Box::new(acc))
                 }
                 acc
             }
@@ -482,14 +484,13 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
             .map(|e| e.into_compatible());
         let u = || Box::new(Atom(Extensions(ExpExtension::U)));
         let u2 = || Box::new(Square(u()));
-        let d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));
-        let d1 = Box::new(BinOp(Op2::Mul, Box::new(d1), u()));
+        let d0 = FoldingCompatibleExpr::Mul(Box::new(d0), u2());
+        let d1 = FoldingCompatibleExpr::Mul(Box::new(d1), u());
         let d2 = Box::new(d2);
-        let exp = Box::new(BinOp(Op2::Add, d0, d1));
-        let exp = Box::new(BinOp(Op2::Add, exp, d2));
-        BinOp(
-            Op2::Add,
-            exp,
+        let exp = FoldingCompatibleExpr::Add(Box::new(d0), Box::new(d1));
+        let exp = FoldingCompatibleExpr::Add(Box::new(exp), d2);
+        FoldingCompatibleExpr::Add(
+            Box::new(exp),
             Box::new(Atom(Extensions(ExpExtension::Error))),
         )
     }
@@ -651,13 +652,13 @@ where
         match expr {
             Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
             Operations::Add(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Add, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Mul(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Mul, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Sub(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Sub, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
             Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
