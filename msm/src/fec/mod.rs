@@ -7,7 +7,7 @@ mod tests {
 
     use crate::{
         circuit_design::{ConstraintBuilderEnv, WitnessBuilderEnv},
-        columns::{Column, ColumnIndexer},
+        columns::ColumnIndexer,
         fec::{
             columns::{FECColumn, FEC_N_COLUMNS},
             interpreter::{constrain_ec_addition, ec_add_circuit},
@@ -82,15 +82,14 @@ mod tests {
         let proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
 
         // generate the proof
-        let proof =
-            prove::<_, OpeningProof, BaseSponge, ScalarSponge, Column, _, FEC_N_COLUMNS, _>(
-                domain,
-                &srs,
-                &constraints,
-                proof_inputs,
-                &mut rng,
-            )
-            .unwrap();
+        let proof = prove::<_, OpeningProof, BaseSponge, ScalarSponge, _, FEC_N_COLUMNS, _>(
+            domain,
+            &srs,
+            &constraints,
+            proof_inputs,
+            &mut rng,
+        )
+        .unwrap();
 
         // verify the proof
         let verifies = verify::<_, OpeningProof, BaseSponge, ScalarSponge, FEC_N_COLUMNS, 0, _>(
