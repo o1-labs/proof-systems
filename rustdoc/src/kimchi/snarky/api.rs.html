@@ -361,6 +361,7 @@
 
 <span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::PrimeField;
+<span class="kw">use </span>log::debug;
 <span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, OpenProof, SRS};
 
 <span class="kw">use super</span>::{errors::SnarkyResult, runner::RunState, snarky_type::SnarkyType};
@@ -475,11 +476,10 @@
         </span><span class="kw">let </span>public_output =
             Circuit::PublicOutput::value_of_field_elements(public_output_values, aux);
 
-        witness.debug();
-
         <span class="comment">// verify the witness
         // TODO: return error instead of panicking
         </span><span class="kw">if </span>debug {
+            witness.debug();
             <span class="self">self</span>.index
                 .verify(<span class="kw-2">&amp;</span>witness.<span class="number">0</span>, <span class="kw-2">&amp;</span>public_input_and_output)
                 .unwrap();
@@ -661,7 +661,7 @@
         srs.add_lagrange_basis(cs.domain.d1);
         <span class="kw">let </span>srs = std::sync::Arc::new(srs);
 
-        <span class="macro">println!</span>(<span class="string">"using an SRS of size {}"</span>, srs.size());
+        <span class="macro">debug!</span>(<span class="string">"using an SRS of size {}"</span>, srs.size());
 
         <span class="comment">// create indexes
         </span><span class="kw">let </span>endo_q = &lt;&lt;<span class="self">Self </span><span class="kw">as </span>SnarkyCircuit&gt;::Curve <span class="kw">as </span>KimchiCurve&gt;::other_curve_endo();

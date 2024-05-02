@@ -1036,6 +1036,7 @@
 <a href="#1034" id="1034">1034</a>
 <a href="#1035" id="1035">1035</a>
 <a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1130,6 +1131,7 @@
     proof::ProofEvaluations,
 };
 <span class="kw">use </span>ark_ff::{FftField, Field, PrimeField, SquareRootField};
+<span class="kw">use </span>log::error;
 <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
 <span class="kw">use </span>std::{array, marker::PhantomData};
 <span class="kw">use </span>turshi::{
@@ -1284,7 +1286,7 @@
                 }
             }
             <span class="prelude-val">Err</span>(x) =&gt; {
-                <span class="macro">println!</span>(<span class="string">"{x:?}"</span>);
+                <span class="macro">error!</span>(<span class="string">"{x:?}"</span>);
                 <span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">"Failed to evaluate {:?} constraint"</span>, <span class="self">self</span>.typ))
             }
         }
