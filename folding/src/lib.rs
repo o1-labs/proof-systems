@@ -17,7 +17,9 @@ use ark_ec::AffineCurve;
 use ark_ff::Zero;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
-use expressions::{folding_expression, FoldingColumnTrait, IntegratedFoldingExpr};
+use expressions::{
+    folding_expression, FoldingColumnTrait, FoldingCompatibleExpr, IntegratedFoldingExpr,
+};
 use instance_witness::{RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
@@ -26,11 +28,12 @@ use std::{fmt::Debug, hash::Hash};
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
 #[cfg(feature = "bn254")]
-pub use expressions::{ExpExtension, FoldingCompatibleExpr};
+pub use expressions::ExpExtension;
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 pub mod columns;
 pub mod decomposable_folding;
+
 mod error_term;
 
 pub mod expressions;
@@ -54,7 +57,7 @@ type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
     // in case of using docomposable folding, if not it can be just ()
-    type S: Clone + Debug + Eq + Hash;
+    type Selector: Clone + Debug + Eq + Hash;
 
     /// The type of an abstract challenge that can be found in the expressions
     /// provided as constraints.
@@ -85,7 +88,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
         Self::Witness,
         Self::Column,
         Self::Challenge,
-        Self::S,
+        Self::Selector,
         Structure = Self::Structure,
     >;
 
@@ -240,8 +243,8 @@ impl<'a, F: Clone> EvalLeaf<'a, F> {
 /// - `W`: The type of the witness, i.e. the private inputs
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
-/// - `S`: The type of selectors
-pub trait FoldingEnv<F, I, W, Col, Chal, S> {
+/// - `Selector`: The type of the selector
+pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
@@ -272,7 +275,7 @@ pub trait FoldingEnv<F, I, W, Col, Chal, S> {
 
     /// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector
-    fn selector(&self, s: &S, side: Side) -> &Vec<F>;
+    fn selector(&self, s: &Selector, side: Side) -> &Vec<F>;
 }
 
 /// TODO: Use Sponge trait from kimchi

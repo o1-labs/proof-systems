@@ -6,7 +6,7 @@ use crate::{
     RelaxedWitness, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{Field, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{
@@ -15,12 +15,9 @@ use kimchi::circuits::{
 };
 use poly_commitment::SRS;
 use rand::thread_rng;
-use std::{
-    collections::BTreeMap,
-    iter::successors,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::collections::BTreeMap;
+
+use super::example::Alphas;
 
 #[cfg(test)]
 use std::println as debug;
@@ -50,54 +47,6 @@ impl FoldingColumnTrait for TestColumn {
         match self {
             TestColumn::A | TestColumn::B | TestColumn::C => true,
         }
-    }
-}
-
-/// The alphas are exceptional, their number cannot be known ahead of time as it will be defined by
-/// folding.
-/// The values will be computed as powers in new instances, but after folding each alfa will be a
-/// linear combination of other alphas, instand of a power of other element.
-/// This type represents that, allowing to also recognize which case is present
-#[derive(Debug, Clone)]
-pub enum Alphas {
-    Powers(Fp, Rc<AtomicUsize>),
-    Combinations(Vec<Fp>),
-}
-
-impl Alphas {
-    pub fn new(alpha: Fp) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
-    }
-    pub fn get(&self, i: usize) -> Option<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
-                let i = [i as u64];
-                Some(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
-        }
-    }
-    pub fn powers(self) -> Vec<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(Fp::one()), |last| Some(*last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) => c,
-        }
-    }
-    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
     }
 }
 
@@ -292,7 +241,7 @@ pub enum TestChallenge {
 impl FoldingConfig for TestFoldingConfig {
     type Structure = ();
     type Column = TestColumn;
-    type S = DynamicSelector;
+    type Selector = DynamicSelector;
     type Challenge = TestChallenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;

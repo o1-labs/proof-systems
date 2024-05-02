@@ -65,6 +65,9 @@ pub(crate) const PAD_BYTES_LEN: usize = RATE_IN_BYTES;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum ColumnAlias {
     /// Selectors used to distinguish between different modes of the Keccak step
+    /// They are not located at the end because unlike with MIPS where it is very
+    /// costly to instantiate them at each step, these are very small in comparison
+    /// and the interpreter is already storing them at each step.
     Selector(Steps),
 
     /// Hash identifier to distinguish inside the syscalls communication channel
@@ -162,7 +165,7 @@ impl IntoIterator for Steps {
 impl ColumnAlias {
     /// Returns the witness column index for the given alias
     // TODO: move selector columns outside the main witness
-    fn ix(&self) -> usize {
+    pub fn ix(&self) -> usize {
         match *self {
             ColumnAlias::Selector(step) => match step {
                 Round(_) => FLAG_ROUND_OFF,
@@ -361,7 +364,7 @@ impl<T: Clone> IndexMut<ColumnAlias> for KeccakWitness<T> {
 }
 
 impl ColumnIndexer for ColumnAlias {
-    const COL_N: usize = ZKVM_KECCAK_COLS; // TODO is this true?
+    const COL_N: usize = ZKVM_KECCAK_COLS;
     fn to_column(self) -> Column {
         Column::X(self.ix())
     }

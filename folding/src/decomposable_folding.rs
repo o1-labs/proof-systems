@@ -6,7 +6,7 @@
 use crate::{
     columns::ExtendedFoldingColumn,
     error_term::{compute_error, ExtendedEnv},
-    expressions::{FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
+    expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
     FoldingConfig, FoldingScheme, ScalarField, Sponge,
 };
@@ -22,7 +22,7 @@ pub struct DecomposableFoldingScheme<CF: FoldingConfig> {
 impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     pub fn new(
         //constraints with a dynamic selector
-        constraints: BTreeMap<CF::S, Vec<FoldingCompatibleExpr<CF>>>,
+        constraints: BTreeMap<CF::Selector, Vec<FoldingCompatibleExpr<CF>>>,
         //constraints to be applied to every single instance regardless of selectors
         common_constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: CF::Srs,
@@ -33,9 +33,8 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
             .into_iter()
             .flat_map(|(s, exps)| {
                 exps.into_iter().map(move |exp| {
-                    let s = FoldingCompatibleExprInner::Extensions(super::ExpExtension::Selector(
-                        s.clone(),
-                    ));
+                    let s =
+                        FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
                     let s = Box::new(FoldingCompatibleExpr::Atom(s));
                     FoldingCompatibleExpr::BinOp(Op2::Mul, s, Box::new(exp))
                 })
@@ -54,7 +53,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
         &self,
         a: A,
         b: B,
-        selector: Option<CF::S>,
+        selector: Option<CF::Selector>,
     ) -> (
         RelaxedInstance<CF::Curve, CF::Instance>,
         RelaxedWitness<CF::Curve, CF::Witness>,
@@ -97,7 +96,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     }
 }
 
-pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::S> {
+pub(crate) fn check_selector<C: FoldingConfig>(exp: &FoldingExp<C>) -> Option<&C::Selector> {
     match exp {
         FoldingExp::Atom(ExtendedFoldingColumn::Selector(s)) => Some(s),
         _ => None,

@@ -1,9 +1,5 @@
 use crate::{
-    keccak::column::{
-        ColumnAlias as KeccakColumn,
-        Steps::{self},
-        PAD_SUFFIX_LEN,
-    },
+    keccak::column::{ColumnAlias as KeccakColumn, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
 };
 use ark_ff::Field;
@@ -14,7 +10,6 @@ use kimchi::circuits::polynomials::keccak::constants::{
 pub mod column;
 pub mod constraints;
 pub mod environment;
-#[cfg(feature = "bn254")]
 pub mod folding;
 pub mod helpers;
 pub mod interpreter;
@@ -22,6 +17,8 @@ pub mod interpreter;
 pub mod tests;
 pub mod trace;
 pub mod witness;
+
+pub use column::{Absorbs, Sponges, Steps};
 
 /// Desired output length of the hash in bits
 pub(crate) const HASH_BITLENGTH: usize = 256;

@@ -21,9 +21,14 @@ pub struct Trace<const COLUMNS: usize, SELECTOR, F> {
 }
 
 impl<const COLUMNS: usize, SELECTOR: Eq + Hash, F: Zero> Trace<COLUMNS, SELECTOR, F> {
+    /// Returns the number of rows that have been instantiated for the given selector.
+    pub fn number_of_rows(&self, opcode: SELECTOR) -> usize {
+        self.witness[&opcode].cols[0].len()
+    }
+
     /// Returns a boolean indicating whether the witness for the given selector was ever found in the cirucit or not.
     pub fn in_circuit(&self, opcode: SELECTOR) -> bool {
-        !self.witness[&opcode].cols[0].is_empty()
+        self.number_of_rows(opcode) != 0
     }
 
     /// Resets the witness after folding

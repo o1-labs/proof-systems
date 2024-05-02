@@ -1,10 +1,15 @@
 use crate::{
-    folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
-    mips::column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
+    folding::{
+        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
+    },
+    mips::{
+        column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
+        Instruction,
+    },
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi::folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig};
+use folding::{expressions::FoldingColumnTrait, FoldingConfig};
 use std::ops::Index;
 
 pub(crate) type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS>;
@@ -16,6 +21,16 @@ impl Index<MIPSColumn> for MIPSFoldingWitness {
 
     fn index(&self, index: MIPSColumn) -> &Self::Output {
         &self.witness[index]
+    }
+}
+
+// Implemented for decomposable folding compatibility
+impl Index<Instruction> for MIPSFoldingWitness {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    /// Map a selector column to the corresponding witness column.
+    fn index(&self, index: Instruction) -> &Self::Output {
+        &self.witness.cols[MIPSColumn::Selector(index).ix()]
     }
 }
 
@@ -36,7 +51,7 @@ impl FoldingColumnTrait for MIPSColumn {
 
 impl FoldingConfig for MIPSConfig {
     type Column = MIPSColumn;
-    type S = ();
+    type Selector = Instruction;
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;

@@ -182,6 +182,9 @@ pub trait Literal: Sized + Clone {
     fn literal(x: Self::F) -> Self;
     fn to_literal(self) -> Result<Self::F, Self>;
     fn to_literal_ref(&self) -> Option<&Self::F>;
+    /// Obtains the representation of some constants as a literal.
+    /// This is useful before converting Kimchi expressions with constants
+    /// to folding compatible expressions.
     fn as_literal(&self, constants: &Constants<Self::F>) -> Self;
 }
 

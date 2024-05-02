@@ -1,10 +1,12 @@
 use crate::{
-    folding::{Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp},
-    keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn},
+    folding::{
+        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
+    },
+    keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use kimchi::folding::{expressions::FoldingColumnTrait, BaseSponge, FoldingConfig};
+use folding::{expressions::FoldingColumnTrait, FoldingConfig};
 use std::ops::Index;
 
 pub(crate) type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
@@ -19,6 +21,16 @@ impl Index<KeccakColumn> for KeccakFoldingWitness {
     }
 }
 
+// Implemented for decomposable folding compatibility
+impl Index<Steps> for KeccakFoldingWitness {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    /// Map a selector column to the corresponding witness column.
+    fn index(&self, index: Steps) -> &Self::Output {
+        &self.witness.cols[KeccakColumn::Selector(index).ix()]
+    }
+}
+
 // TODO: will contain information about the circuit structure
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct KeccakStructure;
@@ -29,13 +41,14 @@ pub(crate) struct KeccakConfig;
 
 impl FoldingColumnTrait for KeccakColumn {
     fn is_witness(&self) -> bool {
-        !matches!(self, KeccakColumn::Selector(_))
+        // dynamic selectors KeccakColumn::Selector() count as witnesses
+        true
     }
 }
 
 impl FoldingConfig for KeccakConfig {
     type Column = KeccakColumn;
-    type S = ();
+    type Selector = Steps;
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = poly_commitment::srs::SRS<Curve>;

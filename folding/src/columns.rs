@@ -25,5 +25,5 @@ pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Alpha(usize),
     /// A "virtual" selector that can be used to activate/deactivate expressions
     /// while folding/accumulating multiple expressions.
-    Selector(C::S),
+    Selector(C::Selector),
 }
