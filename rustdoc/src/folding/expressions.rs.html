@@ -654,21 +654,6 @@
 <a href="#652" id="652">652</a>
 <a href="#653" id="653">653</a>
 <a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::ExtendedFoldingColumn;
 <span class="doccomment">/// Implement a library to represent expressions/multivariate polynomials that
 /// can be used with folding schemes like
@@ -756,10 +741,6 @@
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
     Challenge(C::Challenge),
     Cell(Variable&lt;C::Column&gt;),
-    VanishesOnZeroKnowledgeAndPreviousRows,
-    <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is
-    /// (x^n - 1) / (x - omega^i)
-    </span>UnnormalizedLagrangeBasis(usize),
     <span class="doccomment">/// extra nodes created by folding, should not be passed to folding
     </span>Extensions(ExpExtension&lt;C&gt;),
 }
@@ -800,8 +781,6 @@
                     };
                     <span class="macro">format!</span>(<span class="string">"Col({:?}){}"</span>, col, next)
                 }
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; <span class="macro">todo!</span>(),
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
                 FoldingCompatibleExprInner::Extensions(e) =&gt; <span class="kw">match </span>e {
                     ExpExtension::U =&gt; <span class="string">"U"</span>.to_string(),
                     ExpExtension::Error =&gt; <span class="string">"E"</span>.to_string(),
@@ -889,7 +868,6 @@
 // maximum
 </span><span class="kw">impl</span>&lt;C: FoldingConfig&gt; FoldingCompatibleExpr&lt;C&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>simplify(<span class="self">self</span>) -&gt; FoldingExp&lt;C&gt; {
-        <span class="kw">type </span>Ex&lt;C&gt; = ExtendedFoldingColumn&lt;C&gt;;
         <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             FoldingCompatibleExpr::Atom(atom) =&gt; <span class="kw">match </span>atom {
@@ -898,10 +876,6 @@
                     Atom(ExtendedFoldingColumn::Challenge(c))
                 }
                 FoldingCompatibleExprInner::Cell(col) =&gt; Atom(ExtendedFoldingColumn::Inner(col)),
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; <span class="macro">todo!</span>(),
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i) =&gt; {
-                    Atom(Ex::UnnormalizedLagrangeBasis(i))
-                }
                 FoldingCompatibleExprInner::Extensions(ext) =&gt; {
                     <span class="kw">match </span>ext {
                         <span class="comment">// TODO: this shouldn't be allowed, but is needed for now to add
@@ -970,7 +944,6 @@
                 ExtendedFoldingColumn::Inner(col) =&gt; col.col.degree(),
                 ExtendedFoldingColumn::WitnessExtended(<span class="kw">_</span>) =&gt; One,
                 ExtendedFoldingColumn::Error =&gt; One,
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; Zero,
                 ExtendedFoldingColumn::Constant(<span class="kw">_</span>) =&gt; Zero,
                 ExtendedFoldingColumn::Challenge(<span class="kw">_</span>) =&gt; One,
                 ExtendedFoldingColumn::Alpha(<span class="kw">_</span>) =&gt; One,
@@ -1009,9 +982,6 @@
                     Atom(Extensions(ExpExtension::ExtendedWitness(i)))
                 }
                 ExtendedFoldingColumn::Error =&gt; Atom(Extensions(ExpExtension::Error)),
-                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) =&gt; {
-                    Atom(UnnormalizedLagrangeBasis(i))
-                }
                 ExtendedFoldingColumn::Constant(c) =&gt; Atom(Constant(c)),
                 ExtendedFoldingColumn::Challenge(c) =&gt; Atom(Challenge(c)),
                 ExtendedFoldingColumn::Alpha(i) =&gt; Atom(Extensions(ExpExtension::Alpha(i))),
@@ -1303,11 +1273,11 @@
         <span class="kw">match </span>expr {
             ExprInner::Constant(cexpr) =&gt; cexpr.into(),
             ExprInner::Cell(col) =&gt; FoldingCompatibleExprInner::Cell(col),
-            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
-                FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows
+            ExprInner::UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; {
+                <span class="macro">panic!</span>(<span class="string">"UnnormalizedLagrangeBasis should not be used in folding expressions"</span>)
             }
-            ExprInner::UnnormalizedLagrangeBasis(i) =&gt; {
-                FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset <span class="kw">as </span>usize)
+            ExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+                <span class="macro">panic!</span>(<span class="string">"VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions"</span>)
             }
         }
     }

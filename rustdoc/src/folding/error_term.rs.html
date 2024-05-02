@@ -379,12 +379,6 @@
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
@@ -700,7 +694,6 @@
                 .expect(<span class="string">"extended column not present"</span>)
                 .evals),
             Error =&gt; <span class="macro">panic!</span>(<span class="string">"shouldn't happen"</span>),
-            UnnormalizedLagrangeBasis(i) =&gt; Col(<span class="self">self</span>.inner().lagrange_basis(<span class="kw-2">*</span>i)),
             Constant(c) =&gt; EvalLeaf::Const(<span class="kw-2">*</span>c),
             Challenge(chall) =&gt; EvalLeaf::Const(<span class="self">self</span>.inner().challenge(<span class="kw-2">*</span>chall, side)),
             Alpha(i) =&gt; EvalLeaf::Const(<span class="self">self</span>.inner().alpha(<span class="kw-2">*</span>i, side)),
@@ -717,12 +710,7 @@
         <span class="kw">match </span>col {
             WitnessExtended(i) =&gt; witness.inner().extended.get(i).is_some(),
             Error =&gt; <span class="macro">panic!</span>(<span class="string">"shouldn't happen"</span>),
-            Inner(<span class="kw">_</span>)
-            | UnnormalizedLagrangeBasis(<span class="kw">_</span>)
-            | Constant(<span class="kw">_</span>)
-            | Challenge(<span class="kw">_</span>)
-            | Alpha(<span class="kw">_</span>)
-            | Selector(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            Inner(<span class="kw">_</span>) | Constant(<span class="kw">_</span>) | Challenge(<span class="kw">_</span>) | Alpha(<span class="kw">_</span>) | Selector(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
         }
     }
 
