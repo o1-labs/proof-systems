@@ -93,6 +93,7 @@ fn lower_degree_to_1<C: FoldingConfig>(
 ) -> FoldingExp<C> {
     let degree = exp.degree();
     match degree {
+        0 => exp,
         1 => exp,
         _ => match exp {
             FoldingExp::Add(e1, e2) => FoldingExp::Add(
