@@ -8,13 +8,13 @@
 /// ```
 use crate::{
     error_term::Side,
-    examples::generic::{Alphas, BaseSponge, Column, Curve, Fp},
+    examples::generic::{Alphas, BaseSponge, Checker, Column, Curve, Fp, Provide},
     expressions::FoldingCompatibleExprInner,
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
@@ -236,7 +236,7 @@ fn circuit() -> [Vec<Fp>; 2] {
 /// check row by row for a zero result.
 mod checker {
     use super::*;
-    use log::debug;
+
     pub struct Provider {
         structure: TestStructure<Fp>,
         instance: TestInstance,
@@ -260,10 +260,7 @@ mod checker {
         }
     }
 
-    pub(super) trait Provide {
-        fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp>;
-    }
-    impl Provide for Provider {
+    impl Provide<TestFoldingConfig> for Provider {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
                 FoldingCompatibleExprInner::Constant(c) => {
@@ -305,6 +302,7 @@ mod checker {
             }
         }
     }
+
     pub struct ExtendedProvider {
         inner_provider: Provider,
         instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
@@ -329,7 +327,8 @@ mod checker {
             }
         }
     }
-    impl Provide for ExtendedProvider {
+
+    impl Provide<TestFoldingConfig> for ExtendedProvider {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
                 FoldingCompatibleExprInner::Extensions(ext) => match ext {
@@ -352,73 +351,22 @@ mod checker {
         }
     }
 
-    pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
-            let e2 = exp.clone();
-            let res = match exp {
-                FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
-                FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.double()).collect()
-                }
-                FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.square()).collect()
-                }
-                FoldingCompatibleExpr::Add(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a + b).collect()
-                }
-                FoldingCompatibleExpr::Sub(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a - b).collect()
-                }
-                FoldingCompatibleExpr::Mul(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a * b).collect()
-                }
-                FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.pow([exp])).collect()
-                }
-            };
-            debug!("exp: {:?}", e2);
-            debug!("res: [\n");
-            for e in res.iter() {
-                debug!("{e}\n");
-            }
-            debug!("]");
-            res
-        }
-        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) {
-            let res = self.check_rec(exp);
-            for (i, row) in res.iter().enumerate() {
-                if !row.is_zero() {
-                    panic!("check in row {i} failed, {row} != 0");
-                }
-            }
-        }
-    }
-    impl<T: Provide> Checker for T {}
+    impl Checker<TestFoldingConfig> for Provider {}
+    impl Checker<TestFoldingConfig> for ExtendedProvider {}
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{examples::example::checker::ExtendedProvider, FoldingScheme};
-    use ark_poly::{EvaluationDomain, Evaluations};
+    use crate::FoldingScheme;
+    use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+    use checker::{ExtendedProvider, Provider};
     use std::println as debug;
 
     // this checks a single folding, it would be good to expand it in the future
     // to do several foldings, as a few thigs are trivial in the first fold
     #[test]
     fn test_folding_instance() {
-        use ark_poly::Radix2EvaluationDomain as D;
-        use checker::{Checker, Provider};
-
         let constraints = constraints();
         let domain = D::<Fp>::new(2).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
@@ -468,9 +416,9 @@ mod tests {
                 left_instance.clone(),
                 left_witness.clone(),
             );
-            for constraint in &constraints {
-                checker.check(constraint.clone())
-            }
+            constraints
+                .iter()
+                .for_each(|constraint| checker.check(constraint));
         }
         // check right
         {
@@ -480,9 +428,9 @@ mod tests {
                 right_instance.clone(),
                 right_witness.clone(),
             );
-            for constraint in &constraints {
-                checker.check(constraint.clone())
-            }
+            constraints
+                .iter()
+                .for_each(|constraint| checker.check(constraint));
         }
 
         // pairs
@@ -495,7 +443,7 @@ mod tests {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint);
             debug!("check folded");
-            checker.check(final_constraint);
+            checker.check(&final_constraint);
         }
     }
 }

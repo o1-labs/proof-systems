@@ -1,5 +1,8 @@
-use crate::{expressions::FoldingColumnTrait, Sponge};
-use ark_ff::{Field, One};
+use crate::{
+    expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
+    FoldingConfig, Sponge,
+};
+use ark_ff::{Field, One, Zero};
 use kimchi::curve::KimchiCurve;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -12,6 +15,11 @@ use std::{
     rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
+
+#[cfg(not(test))]
+use log::debug;
+#[cfg(test)]
+use std::println as debug;
 
 // 0. We start by defining the field and the curve that will be used in the
 // constraint system, in addition to the sponge that will be used to generate
@@ -94,6 +102,64 @@ impl Alphas {
             .map(|(a, b)| a + b * challenge)
             .collect();
         Self::Combinations(comb)
+    }
+}
+
+// 4. We define differen traits that can be used generically by the folding examples.
+// It can be used by "pseudo-provers".
+pub(crate) trait Provide<C: FoldingConfig> {
+    fn resolve(&self, inner: FoldingCompatibleExprInner<C>) -> Vec<Fp>;
+}
+
+pub(crate) trait Checker<C: FoldingConfig>: Provide<C> {
+    fn check_rec(&self, exp: FoldingCompatibleExpr<C>) -> Vec<Fp> {
+        let e2 = exp.clone();
+        let res = match exp {
+            FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
+            FoldingCompatibleExpr::Double(e) => {
+                let v = self.check_rec(*e);
+                v.into_iter().map(|x| x.double()).collect()
+            }
+            FoldingCompatibleExpr::Square(e) => {
+                let v = self.check_rec(*e);
+                v.into_iter().map(|x| x.square()).collect()
+            }
+            FoldingCompatibleExpr::Add(e1, e2) => {
+                let v1 = self.check_rec(*e1);
+                let v2 = self.check_rec(*e2);
+                v1.into_iter().zip(v2).map(|(a, b)| a + b).collect()
+            }
+            FoldingCompatibleExpr::Sub(e1, e2) => {
+                let v1 = self.check_rec(*e1);
+                let v2 = self.check_rec(*e2);
+                v1.into_iter().zip(v2).map(|(a, b)| a - b).collect()
+            }
+            FoldingCompatibleExpr::Mul(e1, e2) => {
+                let v1 = self.check_rec(*e1);
+                let v2 = self.check_rec(*e2);
+                v1.into_iter().zip(v2).map(|(a, b)| a * b).collect()
+            }
+            FoldingCompatibleExpr::Pow(e, exp) => {
+                let v = self.check_rec(*e);
+                v.into_iter().map(|x| x.pow([exp])).collect()
+            }
+        };
+        debug!("exp: {:?}", e2);
+        debug!("res: [\n");
+        for e in res.iter() {
+            debug!("{e}\n");
+        }
+        debug!("]");
+        res
+    }
+
+    fn check(&self, exp: &FoldingCompatibleExpr<C>) {
+        let res = self.check_rec(exp.clone());
+        for (i, row) in res.iter().enumerate() {
+            if !row.is_zero() {
+                panic!("check in row {i} failed, {row} != 0");
+            }
+        }
     }
 }
 

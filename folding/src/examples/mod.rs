@@ -9,9 +9,9 @@
 //! code and adapt it to their needs. The generic structures are defined in the
 //! `generic` module.
 
-mod example;
-mod example_decomposable_folding;
-mod example_quadriticization;
+pub mod example;
+pub mod example_decomposable_folding;
+pub mod example_quadriticization;
 
 /// Define the different structures requires for the examples.
-mod generic;
+pub mod generic;
