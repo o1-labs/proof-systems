@@ -691,6 +691,8 @@ where
         match expr {
             Operations::Atom(inner) => match inner {
                 ExprInner::Constant(op) => match op {
+                    // The constant expressions nodes are considered as top level
+                    // expressions in folding
                     Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
                     Operations::Add(x, y) => {
                         FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
@@ -709,7 +711,12 @@ where
                 ExprInner::Cell(col) => {
                     FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(col))
                 }
-                _ => panic!("Unsopported operation in folding expressions"),
+                ExprInner::UnnormalizedLagrangeBasis(_) => {
+                    panic!("UnnormalizedLagrangeBasis should not be used in folding expressions")
+                }
+                ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                    panic!("VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions")
+                }
             },
             Operations::Add(x, y) => {
                 FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
