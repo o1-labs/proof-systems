@@ -8,104 +8,18 @@
 /// ```
 use crate::{
     error_term::Side,
-    examples::{BaseSponge, Curve, Fp},
-    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    examples::generic::{Alphas, BaseSponge, Checker, Column, Curve, Fp, Provide},
+    expressions::FoldingCompatibleExprInner,
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::SRS;
 use rand::thread_rng;
-use std::{
-    iter::successors,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-};
-
-/// Field = BN254 prime field
-/// Statement: I know w such that C(x, y, w) = 0
-///   public
-///     |
-///   ----  |--- private
-/// C(x, y, w) = x + y - w
-/// I want to fold two instances
-
-/// (A Z) . (B Z) = (C Z)
-/// Z = (x, y, z)
-/// A = (1 1 -1)
-/// B = (0, 0, 0)
-/// C = (1 1 -1)
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum TestColumn {
-    A,
-    B,
-    C,
-    SelecAdd,
-    SelecMul,
-}
-
-impl FoldingColumnTrait for TestColumn {
-    fn is_witness(&self) -> bool {
-        match self {
-            TestColumn::A | TestColumn::B | TestColumn::C => true,
-            TestColumn::SelecAdd | TestColumn::SelecMul => false,
-        }
-    }
-}
-
-/// The alphas are exceptional, their number cannot be known ahead of time as it
-/// will be defined by folding.
-/// The values will be computed as powers in new instances, but after folding
-/// each alpha will be a linear combination of other alphas, instand of a power
-/// of other element. This type represents that, allowing to also recognize
-/// which case is present.
-#[derive(Debug, Clone)]
-pub enum Alphas {
-    Powers(Fp, Rc<AtomicUsize>),
-    Combinations(Vec<Fp>),
-}
-
-impl Alphas {
-    pub fn new(alpha: Fp) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
-    }
-    pub fn get(&self, i: usize) -> Option<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
-                let i = [i as u64];
-                Some(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
-        }
-    }
-    pub fn powers(self) -> Vec<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(Fp::one()), |last| Some(*last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) => c,
-        }
-    }
-    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
-    }
-}
 
 /// The instance is the commitments to the polynomials and the challenges
 /// There are 3 commitments and challanges because there are 3 columns, A, B and
@@ -167,7 +81,7 @@ struct TestFoldingEnv {
     next_witnesses: [TestWitness; 2],
 }
 
-impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> for TestFoldingEnv {
+impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for TestFoldingEnv {
     type Structure = TestStructure<Fp>;
 
     fn new(
@@ -196,17 +110,20 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
         vec![Fp::zero(); 2]
     }
 
-    fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
+    fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
         };
         match col {
-            TestColumn::A => &wit[0].evals,
-            TestColumn::B => &wit[1].evals,
-            TestColumn::C => &wit[2].evals,
-            TestColumn::SelecAdd => &self.structure.s_add,
-            TestColumn::SelecMul => &self.structure.s_mul,
+            Column::X(0) => &wit[0].evals,
+            Column::X(1) => &wit[1].evals,
+            Column::X(2) => &wit[2].evals,
+            Column::Selector(0) => &self.structure.s_add,
+            Column::Selector(1) => &self.structure.s_mul,
+            // Only 3 columns and 2 selectors
+            Column::X(_) => unreachable!(),
+            Column::Selector(_) => unreachable!(),
         }
     }
 
@@ -239,11 +156,11 @@ fn constraints() -> Vec<FoldingCompatibleExpr<TestFoldingConfig>> {
             row: CurrOrNext::Curr,
         }))
     };
-    let a = Box::new(get_col(TestColumn::A));
-    let b = Box::new(get_col(TestColumn::B));
-    let c = Box::new(get_col(TestColumn::C));
-    let s_add = Box::new(get_col(TestColumn::SelecAdd));
-    let s_mul = Box::new(get_col(TestColumn::SelecMul));
+    let a = Box::new(get_col(Column::X(0)));
+    let b = Box::new(get_col(Column::X(1)));
+    let c = Box::new(get_col(Column::X(2)));
+    let s_add = Box::new(get_col(Column::Selector(0)));
+    let s_mul = Box::new(get_col(Column::Selector(1)));
 
     let add = FoldingCompatibleExpr::Add(a.clone(), b.clone());
     let add = FoldingCompatibleExpr::Sub(add.into(), c.clone());
@@ -270,7 +187,7 @@ enum TestChallenge {
 
 impl FoldingConfig for TestFoldingConfig {
     type Structure = TestStructure<Fp>;
-    type Column = TestColumn;
+    type Column = Column;
     type Selector = ();
     type Challenge = TestChallenge;
     type Curve = Curve;
@@ -319,7 +236,7 @@ fn circuit() -> [Vec<Fp>; 2] {
 /// check row by row for a zero result.
 mod checker {
     use super::*;
-    use log::debug;
+
     pub struct Provider {
         structure: TestStructure<Fp>,
         instance: TestInstance,
@@ -343,10 +260,7 @@ mod checker {
         }
     }
 
-    pub(super) trait Provide {
-        fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp>;
-    }
-    impl Provide for Provider {
+    impl Provide<TestFoldingConfig> for Provider {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
                 FoldingCompatibleExprInner::Constant(c) => {
@@ -364,11 +278,14 @@ mod checker {
                 FoldingCompatibleExprInner::Cell(var) => {
                     let Variable { col, row } = var;
                     let col = match col {
-                        TestColumn::A => &self.witness[0].evals,
-                        TestColumn::B => &self.witness[1].evals,
-                        TestColumn::C => &self.witness[2].evals,
-                        TestColumn::SelecAdd => &self.structure.s_add,
-                        TestColumn::SelecMul => &self.structure.s_mul,
+                        Column::X(0) => &self.witness[0].evals,
+                        Column::X(1) => &self.witness[1].evals,
+                        Column::X(2) => &self.witness[2].evals,
+                        Column::Selector(0) => &self.structure.s_add,
+                        Column::Selector(1) => &self.structure.s_mul,
+                        // Only 3 columns and 2 selectors
+                        Column::X(_) => unreachable!(),
+                        Column::Selector(_) => unreachable!(),
                     };
 
                     let mut col = col.clone();
@@ -385,6 +302,7 @@ mod checker {
             }
         }
     }
+
     pub struct ExtendedProvider {
         inner_provider: Provider,
         instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
@@ -409,7 +327,8 @@ mod checker {
             }
         }
     }
-    impl Provide for ExtendedProvider {
+
+    impl Provide<TestFoldingConfig> for ExtendedProvider {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
                 FoldingCompatibleExprInner::Extensions(ext) => match ext {
@@ -432,73 +351,22 @@ mod checker {
         }
     }
 
-    pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
-            let e2 = exp.clone();
-            let res = match exp {
-                FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
-                FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.double()).collect()
-                }
-                FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.square()).collect()
-                }
-                FoldingCompatibleExpr::Add(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a + b).collect()
-                }
-                FoldingCompatibleExpr::Sub(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a - b).collect()
-                }
-                FoldingCompatibleExpr::Mul(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a * b).collect()
-                }
-                FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.pow([exp])).collect()
-                }
-            };
-            debug!("exp: {:?}", e2);
-            debug!("res: [\n");
-            for e in res.iter() {
-                debug!("{e}\n");
-            }
-            debug!("]");
-            res
-        }
-        fn check(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) {
-            let res = self.check_rec(exp);
-            for (i, row) in res.iter().enumerate() {
-                if !row.is_zero() {
-                    panic!("check in row {i} failed, {row} != 0");
-                }
-            }
-        }
-    }
-    impl<T: Provide> Checker for T {}
+    impl Checker<TestFoldingConfig> for Provider {}
+    impl Checker<TestFoldingConfig> for ExtendedProvider {}
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{examples::example::checker::ExtendedProvider, FoldingScheme};
-    use ark_poly::{EvaluationDomain, Evaluations};
+    use crate::FoldingScheme;
+    use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+    use checker::{ExtendedProvider, Provider};
     use std::println as debug;
 
     // this checks a single folding, it would be good to expand it in the future
     // to do several foldings, as a few thigs are trivial in the first fold
     #[test]
     fn test_folding_instance() {
-        use ark_poly::Radix2EvaluationDomain as D;
-        use checker::{Checker, Provider};
-
         let constraints = constraints();
         let domain = D::<Fp>::new(2).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
@@ -548,9 +416,9 @@ mod tests {
                 left_instance.clone(),
                 left_witness.clone(),
             );
-            for constraint in &constraints {
-                checker.check(constraint.clone())
-            }
+            constraints
+                .iter()
+                .for_each(|constraint| checker.check(constraint));
         }
         // check right
         {
@@ -560,9 +428,9 @@ mod tests {
                 right_instance.clone(),
                 right_witness.clone(),
             );
-            for constraint in &constraints {
-                checker.check(constraint.clone())
-            }
+            constraints
+                .iter()
+                .for_each(|constraint| checker.check(constraint));
         }
 
         // pairs
@@ -575,7 +443,7 @@ mod tests {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint);
             debug!("check folded");
-            checker.check(final_constraint);
+            checker.check(&final_constraint);
         }
     }
 }

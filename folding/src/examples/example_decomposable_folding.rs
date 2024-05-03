@@ -1,26 +1,18 @@
 use crate::{
     error_term::Side,
-    examples::{BaseSponge, Curve, Fp},
+    examples::generic::{Alphas, BaseSponge, Checker, Curve, Fp, Provide},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, UniformRand, Zero};
+use ark_ff::{UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::SRS;
 use rand::thread_rng;
 use std::collections::BTreeMap;
-
-use super::example::Alphas;
-
-#[cfg(test)]
-use std::println as debug;
-
-#[cfg(not(test))]
-use log::debug;
 
 // the type representing our columns, in this case we have 3 witness columns
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -297,10 +289,7 @@ mod checker {
         }
     }
 
-    pub(super) trait Provide {
-        fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp>;
-    }
-    impl Provide for Provider {
+    impl Provide<TestFoldingConfig> for Provider {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
                 FoldingCompatibleExprInner::Constant(c) => {
@@ -336,6 +325,7 @@ mod checker {
             }
         }
     }
+
     pub struct ExtendedProvider {
         inner_provider: Provider,
         pub instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
@@ -359,7 +349,8 @@ mod checker {
             }
         }
     }
-    impl Provide for ExtendedProvider {
+
+    impl Provide<TestFoldingConfig> for ExtendedProvider {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
                 FoldingCompatibleExprInner::Extensions(ext) => match ext {
@@ -388,57 +379,7 @@ mod checker {
         }
     }
 
-    pub(super) trait Checker: Provide {
-        fn check_rec(&self, exp: FoldingCompatibleExpr<TestFoldingConfig>) -> Vec<Fp> {
-            let e2 = exp.clone();
-            let res = match exp {
-                FoldingCompatibleExpr::Atom(inner) => self.resolve(inner),
-                FoldingCompatibleExpr::Double(e) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.double()).collect()
-                }
-                FoldingCompatibleExpr::Square(e) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.square()).collect()
-                }
-                FoldingCompatibleExpr::Add(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a + b).collect()
-                }
-                FoldingCompatibleExpr::Sub(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a - b).collect()
-                }
-                FoldingCompatibleExpr::Mul(e1, e2) => {
-                    let v1 = self.check_rec(*e1);
-                    let v2 = self.check_rec(*e2);
-                    v1.into_iter().zip(v2).map(|(a, b)| a * b).collect()
-                }
-                FoldingCompatibleExpr::Pow(e, exp) => {
-                    let v = self.check_rec(*e);
-                    v.into_iter().map(|x| x.pow([exp])).collect()
-                }
-            };
-            debug!("exp: {:?}", e2);
-            debug!("res: [\n");
-            for e in res.iter() {
-                debug!("{e}\n");
-            }
-            debug!("]");
-            res
-        }
-        fn check(&self, exp: &FoldingCompatibleExpr<TestFoldingConfig>) {
-            let res = self.check_rec(exp.clone());
-            for (i, row) in res.iter().enumerate() {
-                if !row.is_zero() {
-                    panic!("check in row {i} failed, {row} != 0");
-                }
-            }
-        }
-    }
-    impl<T: Provide> Checker for T {}
+    impl Checker<TestFoldingConfig> for ExtendedProvider {}
 }
 
 #[cfg(test)]
@@ -446,7 +387,7 @@ mod tests {
     use super::*;
     // Trick to print debug message while testing, as we in the test config env
     use crate::decomposable_folding::DecomposableFoldingScheme;
-    use ark_poly::{EvaluationDomain, Evaluations};
+    use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::ExtendedProvider;
     use std::println as debug;
 
@@ -476,9 +417,6 @@ mod tests {
     // and instead directly check the witness
     #[test]
     fn test_decomposable_folding() {
-        use ark_poly::Radix2EvaluationDomain as D;
-        use checker::Checker;
-
         let constraints = constraints();
         let domain = D::<Fp>::new(2).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
