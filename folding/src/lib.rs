@@ -2,15 +2,19 @@
 //! multivariate polynomials of any degree. It is based on the "folding scheme"
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
 //! It implements different components to achieve it:
-//! - quadriticization: a submodule to reduce multivariate polynomials to degree
-//! `2`
-//! - decomposable_folding: a submodule to "parallelize" folded computations
+//! - [quadraticization]: a submodule to reduce multivariate polynomials
+//! to degree `2`.
+//! - [decomposable_folding]: a submodule to "parallelize" folded
+//! computations.
+//!
 //! Examples can be found in the directory `examples`.
+//!
 //! The folding library is meant to be used in harmony with the library `ivc`.
 //! To use the library, the user has to define first a "folding configuration"
-//! described in the trait [FoldingConfig]. Each expression has to be converted
-//! into [crate::expressions::FoldingCompatibleExpr] before being converted into
-//! [crate::expressions::FoldingExp].
+//! described in the trait [FoldingConfig].
+//! After that, the user can provide folding compatible expressions and build a
+//! folding scheme [FoldingScheme]. The process is described in the module
+//! [expressions].
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
@@ -38,7 +42,7 @@ mod error_term;
 
 pub mod expressions;
 mod instance_witness;
-mod quadraticization;
+pub mod quadraticization;
 
 // Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
@@ -287,13 +291,13 @@ pub trait Sponge<G: CommitmentCurve> {
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
 pub struct FoldingScheme<CF: FoldingConfig> {
-    expression: IntegratedFoldingExpr<CF>,
-    srs: CF::Srs,
-    domain: Radix2EvaluationDomain<ScalarField<CF>>,
-    zero_commitment: PolyComm<CF::Curve>,
-    zero_vec: Evals<ScalarField<CF>>,
-    structure: CF::Structure,
-    extended_witness_generator: ExtendedWitnessGenerator<CF>,
+    pub expression: IntegratedFoldingExpr<CF>,
+    pub srs: CF::Srs,
+    pub domain: Radix2EvaluationDomain<ScalarField<CF>>,
+    pub zero_commitment: PolyComm<CF::Curve>,
+    pub zero_vec: Evals<ScalarField<CF>>,
+    pub structure: CF::Structure,
+    pub extended_witness_generator: ExtendedWitnessGenerator<CF>,
 }
 
 impl<CF: FoldingConfig> FoldingScheme<CF> {

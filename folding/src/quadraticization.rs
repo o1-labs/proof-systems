@@ -1,3 +1,6 @@
+//! A library to reduce constraints into degree 2.
+// TODO: more documentation
+
 use crate::{
     columns::ExtendedFoldingColumn,
     error_term::{eval_sided, ExtendedEnv, Side},
@@ -6,15 +9,15 @@ use crate::{
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
-pub(crate) struct Quadraticized<C: FoldingConfig> {
-    pub(crate) original_constraints: Vec<FoldingExp<C>>,
-    pub(crate) extra_constraints: Vec<FoldingExp<C>>,
-    pub(crate) extended_witness_generator: ExtendedWitnessGenerator<C>,
+pub struct Quadraticized<C: FoldingConfig> {
+    pub original_constraints: Vec<FoldingExp<C>>,
+    pub extra_constraints: Vec<FoldingExp<C>>,
+    pub extended_witness_generator: ExtendedWitnessGenerator<C>,
 }
 
 /// Returns the constraints converted into degree 2 or less and the extra
 /// contraints added in the process
-pub(crate) fn quadraticize<C: FoldingConfig>(constraints: Vec<FoldingExp<C>>) -> Quadraticized<C> {
+pub fn quadraticize<C: FoldingConfig>(constraints: Vec<FoldingExp<C>>) -> Quadraticized<C> {
     let mut recorder = ExpRecorder::new();
     let original_constraints = constraints
         .into_iter()
