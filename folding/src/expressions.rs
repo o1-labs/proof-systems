@@ -6,6 +6,11 @@ use crate::columns::ExtendedFoldingColumn;
 /// scheme.
 /// Before folding, we do suppose that each expression has been reduced to
 /// degree `2` using [quadraticization].
+/// The library is designed to be compatible with [kimchi::circuits::expr]
+/// by providing conversions from [kimchi::circuits::expr::E<F>] to
+/// [FoldingCompatibleExpr].
+/// A value of type [FoldingCompatibleExpr] can be printed in a human-readable
+/// way using the trait [ToString].
 use crate::{
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
@@ -157,7 +162,7 @@ impl<C: FoldingConfig> ToString for FoldingCompatibleExpr<C> {
 
 /// Internal expression used for folding.
 /// A "folding" expression is a multivariate polynomial like defined in
-/// [kimchi::circuits::expr] with the following differences:
+/// [kimchi::circuits::expr] with the following differences.
 /// - No constructors related to zero-knowledge or lagrange basis (i.e. no
 /// constructors related to the PIOP)
 /// - The variables includes a set of columns that describes the initial circuit
