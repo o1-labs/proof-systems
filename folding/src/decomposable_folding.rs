@@ -20,9 +20,9 @@ pub struct DecomposableFoldingScheme<CF: FoldingConfig> {
 
 impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
     pub fn new(
-        //constraints with a dynamic selector
+        // constraints with a dynamic selector
         constraints: BTreeMap<CF::Selector, Vec<FoldingCompatibleExpr<CF>>>,
-        //constraints to be applied to every single instance regardless of selectors
+        // constraints to be applied to every single instance regardless of selectors
         common_constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: CF::Srs,
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
