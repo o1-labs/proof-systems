@@ -16,6 +16,8 @@ use mina_poseidon::{
 };
 use poly_commitment::PolyComm;
 use std::{array, iter::successors, ops::Index, rc::Rc, sync::atomic::AtomicUsize};
+use strum::EnumCount;
+use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
 use crate::DOMAIN_SIZE;
 
@@ -43,7 +45,7 @@ impl Sponge<Curve> for BaseSponge {
 }
 
 // Does not contain alpha because this one should be provided by folding itself
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
 pub(crate) enum Challenge {
     Beta,
     Gamma,
@@ -116,8 +118,12 @@ impl From<ChallengeTerm> for Challenge {
 pub(crate) struct FoldingInstance<const N: usize> {
     /// Commitments to the witness columns, including the dynamic selectors
     pub(crate) commitments: [Curve; N],
-    /// Challenges for the proof
-    pub(crate) challenges: [Fp; 3],
+    /// Challenges for the proof.
+    /// We do use 3 challenges:
+    /// - β as the evaluation point for the logup argument
+    /// - j: the joint combiner for vector lookups
+    /// - γ (set to 0 for now)
+    pub(crate) challenges: [Fp; Challenge::COUNT],
     /// Reuses the Alphas defined in the example of folding
     pub(crate) alphas: Alphas,
 }
@@ -128,11 +134,7 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
             commitments: array::from_fn(|i| {
                 a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
             }),
-            challenges: [
-                a.challenges[0] + challenge * b.challenges[0],
-                a.challenges[1] + challenge * b.challenges[1],
-                a.challenges[2] + challenge * b.challenges[2],
-            ],
+            challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
