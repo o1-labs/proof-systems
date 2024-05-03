@@ -21,7 +21,7 @@ use expressions::{
     folding_expression, FoldingColumnTrait, FoldingCompatibleExpr, IntegratedFoldingExpr,
 };
 use instance_witness::{RelaxableInstance, RelaxablePair};
-use kimchi::circuits::gate::CurrOrNext;
+use kimchi::{circuits::gate::CurrOrNext, plonk_sponge::FrSponge};
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
@@ -69,8 +69,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Srs: SRS<Self::Curve>;
 
     /// The sponge used to create challenges
-    // FIXME: use Sponge from kimchi
-    type Sponge: Sponge<Self::Curve>;
+    type Sponge: FrSponge<<Self::Curve as AffineCurve>::ScalarField>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
     type Instance: Instance<Self::Curve>;
@@ -276,12 +275,6 @@ pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
     /// similar to [Self::col], but folding may ask for a dynamic selector directly
     /// instead of just column that happens to be a selector
     fn selector(&self, s: &Selector, side: Side) -> &Vec<F>;
-}
-
-/// TODO: Use Sponge trait from kimchi
-pub trait Sponge<G: CommitmentCurve> {
-    /// Compute a challenge from two commitments
-    fn challenge(absorbe: &[PolyComm<G>; 2]) -> G::ScalarField;
 }
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
