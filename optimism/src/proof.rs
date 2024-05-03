@@ -41,6 +41,9 @@ pub fn fold<
         absorb_commitment(&mut fq_sponge, &comm);
     });
 
+    // FIXME: here relax + fold instance + witness + generate challenges + call
+    // folding scheme
+
     // TODO: fold mvlookups as well
     accumulator
         .evaluations
