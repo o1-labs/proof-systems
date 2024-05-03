@@ -1,32 +1,17 @@
-use crate::Sponge;
-use kimchi::curve::KimchiCurve;
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, ScalarChallenge},
-    FqSponge,
-};
-use poly_commitment::PolyComm;
+//! This module provides examples on how to use the different submodules of the library.
+//! The examples are meant to be run with the `cargo nextest` command.
+//! The user is encouraged to read the code and understand the different steps of the protocol.
+//! The examples are built over a generic type of columns and selectors.
+//! The user is encouraged to start reading this module and then move to the
+//! modules specialised for the different folding implementations.
+//!
+//! The examples are generic enough to be reused externally. The users can copy the
+//! code and adapt it to their needs. The generic structures are defined in the
+//! `generic` module.
 
 mod example;
 mod example_decomposable_folding;
 mod example_quadriticization;
 
-type Fp = ark_bn254::Fr;
-type Curve = ark_bn254::G1Affine;
-type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
-
-// TODO: get rid of trait Sponge in folding, and use the one from kimchi
-impl Sponge<Curve> for BaseSponge {
-    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
-        // This function does not have a &self because it is meant to absorb and
-        // squeeze only once
-        let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
-        s.absorb_g(&absorb[0].elems);
-        s.absorb_g(&absorb[1].elems);
-        // Squeeze sponge
-        let chal = ScalarChallenge(s.challenge());
-        let (_, endo_r) = Curve::endos();
-        chal.to_field(endo_r)
-    }
-}
+/// Define the different structures requires for the examples.
+mod generic;

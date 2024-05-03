@@ -1,6 +1,6 @@
 use crate::{
     error_term::Side,
-    examples::{BaseSponge, Curve, Fp},
+    examples::generic::{Alphas, BaseSponge, Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness, Witness,
@@ -13,8 +13,6 @@ use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::SRS;
 use rand::thread_rng;
 use std::collections::BTreeMap;
-
-use super::example::Alphas;
 
 #[cfg(test)]
 use std::println as debug;

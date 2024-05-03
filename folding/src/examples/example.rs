@@ -8,8 +8,8 @@
 /// ```
 use crate::{
     error_term::Side,
-    examples::{BaseSponge, Curve, Fp},
-    expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
+    examples::generic::{Alphas, BaseSponge, Column, Curve, Fp},
+    expressions::FoldingCompatibleExprInner,
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness, Witness,
 };
@@ -20,92 +20,6 @@ use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::SRS;
 use rand::thread_rng;
-use std::{
-    iter::successors,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-};
-
-/// Field = BN254 prime field
-/// Statement: I know w such that C(x, y, w) = 0
-///   public
-///     |
-///   ----  |--- private
-/// C(x, y, w) = x + y - w
-/// I want to fold two instances
-
-/// (A Z) . (B Z) = (C Z)
-/// Z = (x, y, z)
-/// A = (1 1 -1)
-/// B = (0, 0, 0)
-/// C = (1 1 -1)
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub enum TestColumn {
-    A,
-    B,
-    C,
-    SelecAdd,
-    SelecMul,
-}
-
-impl FoldingColumnTrait for TestColumn {
-    fn is_witness(&self) -> bool {
-        match self {
-            TestColumn::A | TestColumn::B | TestColumn::C => true,
-            TestColumn::SelecAdd | TestColumn::SelecMul => false,
-        }
-    }
-}
-
-/// The alphas are exceptional, their number cannot be known ahead of time as it
-/// will be defined by folding.
-/// The values will be computed as powers in new instances, but after folding
-/// each alpha will be a linear combination of other alphas, instand of a power
-/// of other element. This type represents that, allowing to also recognize
-/// which case is present.
-#[derive(Debug, Clone)]
-pub enum Alphas {
-    Powers(Fp, Rc<AtomicUsize>),
-    Combinations(Vec<Fp>),
-}
-
-impl Alphas {
-    pub fn new(alpha: Fp) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
-    }
-    pub fn get(&self, i: usize) -> Option<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
-                let i = [i as u64];
-                Some(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
-        }
-    }
-    pub fn powers(self) -> Vec<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(Fp::one()), |last| Some(*last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) => c,
-        }
-    }
-    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
-    }
-}
 
 /// The instance is the commitments to the polynomials and the challenges
 /// There are 3 commitments and challanges because there are 3 columns, A, B and
@@ -167,7 +81,7 @@ struct TestFoldingEnv {
     next_witnesses: [TestWitness; 2],
 }
 
-impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> for TestFoldingEnv {
+impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for TestFoldingEnv {
     type Structure = TestStructure<Fp>;
 
     fn new(
@@ -196,17 +110,20 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, ()> fo
         vec![Fp::zero(); 2]
     }
 
-    fn col(&self, col: TestColumn, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
+    fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
         };
         match col {
-            TestColumn::A => &wit[0].evals,
-            TestColumn::B => &wit[1].evals,
-            TestColumn::C => &wit[2].evals,
-            TestColumn::SelecAdd => &self.structure.s_add,
-            TestColumn::SelecMul => &self.structure.s_mul,
+            Column::X(0) => &wit[0].evals,
+            Column::X(1) => &wit[1].evals,
+            Column::X(2) => &wit[2].evals,
+            Column::Selector(0) => &self.structure.s_add,
+            Column::Selector(1) => &self.structure.s_mul,
+            // Only 3 columns and 2 selectors
+            Column::X(_) => unreachable!(),
+            Column::Selector(_) => unreachable!(),
         }
     }
 
@@ -239,11 +156,11 @@ fn constraints() -> Vec<FoldingCompatibleExpr<TestFoldingConfig>> {
             row: CurrOrNext::Curr,
         }))
     };
-    let a = Box::new(get_col(TestColumn::A));
-    let b = Box::new(get_col(TestColumn::B));
-    let c = Box::new(get_col(TestColumn::C));
-    let s_add = Box::new(get_col(TestColumn::SelecAdd));
-    let s_mul = Box::new(get_col(TestColumn::SelecMul));
+    let a = Box::new(get_col(Column::X(0)));
+    let b = Box::new(get_col(Column::X(1)));
+    let c = Box::new(get_col(Column::X(2)));
+    let s_add = Box::new(get_col(Column::Selector(0)));
+    let s_mul = Box::new(get_col(Column::Selector(1)));
 
     let add = FoldingCompatibleExpr::Add(a.clone(), b.clone());
     let add = FoldingCompatibleExpr::Sub(add.into(), c.clone());
@@ -270,7 +187,7 @@ enum TestChallenge {
 
 impl FoldingConfig for TestFoldingConfig {
     type Structure = TestStructure<Fp>;
-    type Column = TestColumn;
+    type Column = Column;
     type Selector = ();
     type Challenge = TestChallenge;
     type Curve = Curve;
@@ -364,11 +281,14 @@ mod checker {
                 FoldingCompatibleExprInner::Cell(var) => {
                     let Variable { col, row } = var;
                     let col = match col {
-                        TestColumn::A => &self.witness[0].evals,
-                        TestColumn::B => &self.witness[1].evals,
-                        TestColumn::C => &self.witness[2].evals,
-                        TestColumn::SelecAdd => &self.structure.s_add,
-                        TestColumn::SelecMul => &self.structure.s_mul,
+                        Column::X(0) => &self.witness[0].evals,
+                        Column::X(1) => &self.witness[1].evals,
+                        Column::X(2) => &self.witness[2].evals,
+                        Column::Selector(0) => &self.structure.s_add,
+                        Column::Selector(1) => &self.structure.s_mul,
+                        // Only 3 columns and 2 selectors
+                        Column::X(_) => unreachable!(),
+                        Column::Selector(_) => unreachable!(),
                     };
 
                     let mut col = col.clone();

@@ -2,7 +2,10 @@
 // that triggers quadriticization
 use crate::{
     error_term::Side,
-    examples::{example_decomposable_folding::TestWitness, BaseSponge, Curve, Fp},
+    examples::{
+        example_decomposable_folding::TestWitness,
+        generic::{BaseSponge, Curve, Fp},
+    },
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness,
@@ -12,7 +15,7 @@ use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::Radix2EvaluationDomain;
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::SRS;
+use poly_commitment::SRS as _;
 use rand::thread_rng;
 use std::{
     collections::BTreeMap,
