@@ -736,15 +736,60 @@
 <a href="#734" id="734">734</a>
 <a href="#735" id="735">735</a>
 <a href="#736" id="736">736</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::ExtendedFoldingColumn;
-<span class="doccomment">/// Implement a library to represent expressions/multivariate polynomials that
-/// can be used with folding schemes like
-/// [Nova](https://eprint.iacr.org/2021/370).
-/// We do enforce expressions to be degree `2` maximum to apply our folding
-/// scheme.
-/// Before folding, we do suppose that each expression has been reduced to
-/// degree `2` using [quadraticization].
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+</pre></div><pre class="rust"><code><span class="doccomment">//! Implement a library to represent expressions/multivariate polynomials that
+//! can be used with folding schemes like
+//! [Nova](https://eprint.iacr.org/2021/370).
+//!
+//! We do enforce expressions to be degree `2` maximum to apply our folding
+//! scheme.
+//!
+//! Before folding, we do suppose that each expression has been reduced to
+//! degree `2` using [crate::quadraticization].
+//!
+//! The library introduces different types of expressions:
+//! - [FoldingCompatibleExpr]: an expression that can be used with folding. It
+//! aims to be an intermediate representation from
+//! [kimchi::circuits::expr::Expr]. It can be printed in a human-readable way
+//! using the trait [ToString].
+//! - [FoldingExp]: an internal representation of a folded expression.
+//! - [IntegratedFoldingExpr]: a simplified expression with all terms separated
+//!
+//! When using the library, the user should:
+//! - Convert an expression from [kimchi::circuits::expr::Expr] into a
+//! [FoldingCompatibleExpr] using the trait [From].
+//! - Convert a list of [FoldingCompatibleExpr] into a [IntegratedFoldingExpr]
+//! using the function [folding_expression].
+//!
+//! The user can also choose to build a structure [crate::FoldingScheme] from a
+//! list of [FoldingCompatibleExpr].
+
 </span><span class="kw">use crate</span>::{
+    columns::ExtendedFoldingColumn,
     quadraticization::{quadraticize, ExtendedWitnessGenerator, Quadraticized},
     FoldingConfig, ScalarField,
 };
@@ -817,7 +862,7 @@
 }
 
 <span class="doccomment">/// Components to be used to convert multivariate polynomials into "compatible"
-/// multivariate polynomials that will be translated to folding expressions
+/// multivariate polynomials that will be translated to folding expressions.
 </span><span class="attr">#[derive(Clone, PartialEq, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
     Constant(&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField),
@@ -827,7 +872,11 @@
     </span>Extensions(ExpExtension&lt;C&gt;),
 }
 
-<span class="doccomment">/// Designed for easy translation to and from most Expr
+<span class="doccomment">/// Compatible folding expressions that can be used with folding schemes.
+/// An expression from [kimchi::circuits::expr::Expr] can be converted into a
+/// [FoldingCompatibleExpr] using the trait [From].
+/// From there, an expression of type [IntegratedFoldingExpr] can be created
+/// using the function [folding_expression].
 </span><span class="attr">#[derive(Clone, PartialEq, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExpr&lt;C: FoldingConfig&gt; {
     Atom(FoldingCompatibleExprInner&lt;C&gt;),
@@ -895,7 +944,7 @@
 
 <span class="doccomment">/// Internal expression used for folding.
 /// A "folding" expression is a multivariate polynomial like defined in
-/// [kimchi::circuits::expr] with the following differences:
+/// [kimchi::circuits::expr] with the following differences.
 /// - No constructors related to zero-knowledge or lagrange basis (i.e. no
 /// constructors related to the PIOP)
 /// - The variables includes a set of columns that describes the initial circuit
@@ -1291,7 +1340,8 @@
     exps
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>folding_expression&lt;C: FoldingConfig&gt;(
+<span class="doccomment">/// Convert a list of folding compatible expression into the folded form.
+</span><span class="kw">pub fn </span>folding_expression&lt;C: FoldingConfig&gt;(
     exps: Vec&lt;FoldingCompatibleExpr&lt;C&gt;&gt;,
 ) -&gt; (IntegratedFoldingExpr&lt;C&gt;, ExtendedWitnessGenerator&lt;C&gt;) {
     <span class="kw">let </span>simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();

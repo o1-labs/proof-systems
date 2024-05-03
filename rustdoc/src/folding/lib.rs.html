@@ -385,19 +385,27 @@
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the "folding scheme"
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
 //! It implements different components to achieve it:
-//! - quadriticization: a submodule to reduce multivariate polynomials to degree
-//! `2`
-//! - decomposable_folding: a submodule to "parallelize" folded computations
+//! - [quadraticization]: a submodule to reduce multivariate polynomials
+//! to degree `2`.
+//! - [decomposable_folding]: a submodule to "parallelize" folded
+//! computations.
+//!
 //! Examples can be found in the directory `examples`.
+//!
 //! The folding library is meant to be used in harmony with the library `ivc`.
 //! To use the library, the user has to define first a "folding configuration"
-//! described in the trait [FoldingConfig]. Each expression has to be converted
-//! into [crate::expressions::FoldingCompatibleExpr] before being converted into
-//! [crate::expressions::FoldingExp].
+//! described in the trait [FoldingConfig].
+//! After that, the user can provide folding compatible expressions and build a
+//! folding scheme [FoldingScheme]. The process is described in the module
+//! [expressions].
 </span><span class="comment">// TODO: the documentation above might need more descriptions.
 
 </span><span class="kw">use </span>ark_ec::AffineCurve;
@@ -425,7 +433,7 @@
 
 <span class="kw">pub mod </span>expressions;
 <span class="kw">mod </span>instance_witness;
-<span class="kw">mod </span>quadraticization;
+<span class="kw">pub mod </span>quadraticization;
 
 <span class="comment">// Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
@@ -674,13 +682,13 @@
 <span class="kw">type </span>Evals&lt;F&gt; = Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;;
 
 <span class="kw">pub struct </span>FoldingScheme&lt;CF: FoldingConfig&gt; {
-    expression: IntegratedFoldingExpr&lt;CF&gt;,
-    srs: CF::Srs,
-    domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
-    zero_commitment: PolyComm&lt;CF::Curve&gt;,
-    zero_vec: Evals&lt;ScalarField&lt;CF&gt;&gt;,
-    structure: CF::Structure,
-    extended_witness_generator: ExtendedWitnessGenerator&lt;CF&gt;,
+    <span class="kw">pub </span>expression: IntegratedFoldingExpr&lt;CF&gt;,
+    <span class="kw">pub </span>srs: CF::Srs,
+    <span class="kw">pub </span>domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
+    <span class="kw">pub </span>zero_commitment: PolyComm&lt;CF::Curve&gt;,
+    <span class="kw">pub </span>zero_vec: Evals&lt;ScalarField&lt;CF&gt;&gt;,
+    <span class="kw">pub </span>structure: CF::Structure,
+    <span class="kw">pub </span>extended_witness_generator: ExtendedWitnessGenerator&lt;CF&gt;,
 }
 
 <span class="kw">impl</span>&lt;CF: FoldingConfig&gt; FoldingScheme&lt;CF&gt; {
