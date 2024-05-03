@@ -11,7 +11,7 @@ use crate::{
     FoldingConfig, ScalarField,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One};
+use ark_ff::One;
 use itertools::Itertools;
 use kimchi::circuits::{
     expr::{ChallengeTerm, ConstantExprInner, ConstantTerm, ExprInner, Operations, Variable},
@@ -662,13 +662,13 @@ where
     fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
         match expr {
             Operations::Add(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Add, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Mul(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Mul, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Sub(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Sub, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
             Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
@@ -689,22 +689,18 @@ where
         match expr {
             Operations::Atom(inner) => match inner {
                 ExprInner::Constant(op) => match op {
+                    // The constant expressions nodes are considered as top level
+                    // expressions in folding
                     Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
-                    Operations::Add(x, y) => FoldingCompatibleExpr::BinOp(
-                        Op2::Add,
-                        Box::new((*x).into()),
-                        Box::new((*y).into()),
-                    ),
-                    Operations::Mul(x, y) => FoldingCompatibleExpr::BinOp(
-                        Op2::Mul,
-                        Box::new((*x).into()),
-                        Box::new((*y).into()),
-                    ),
-                    Operations::Sub(x, y) => FoldingCompatibleExpr::BinOp(
-                        Op2::Sub,
-                        Box::new((*x).into()),
-                        Box::new((*y).into()),
-                    ),
+                    Operations::Add(x, y) => {
+                        FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
+                    }
+                    Operations::Mul(x, y) => {
+                        FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
+                    }
+                    Operations::Sub(x, y) => {
+                        FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
+                    }
                     Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
                     Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
                     Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(Box::new((*e).into()), p),
@@ -713,21 +709,21 @@ where
                 ExprInner::Cell(col) => {
                     FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(col))
                 }
-                ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => FoldingCompatibleExpr::Atom(
-                    FoldingCompatibleExprInner::VanishesOnZeroKnowledgeAndPreviousRows,
-                ),
-                ExprInner::UnnormalizedLagrangeBasis(i) => FoldingCompatibleExpr::Atom(
-                    FoldingCompatibleExprInner::UnnormalizedLagrangeBasis(i.offset as usize),
-                ),
+                ExprInner::UnnormalizedLagrangeBasis(_) => {
+                    panic!("UnnormalizedLagrangeBasis should not be used in folding expressions")
+                }
+                ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                    panic!("VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions")
+                }
             },
             Operations::Add(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Add, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Mul(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Mul, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Sub(x, y) => {
-                FoldingCompatibleExpr::BinOp(Op2::Sub, Box::new((*x).into()), Box::new((*y).into()))
+                FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
             }
             Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
             Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
