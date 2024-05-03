@@ -29,7 +29,7 @@ pub type Curve = ark_bn254::G1Affine;
 pub type SpongeParams = PlonkSpongeConstantsKimchi;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
-// 1. We start by defining a generic type of columns and selectors.
+// 1. We continue by defining a generic type of columns and selectors.
 // The selectors can be seen as additional (public) columns that are not part of
 // the witness.
 // The column must implement the trait [Hash] as it will be used by internal
@@ -105,7 +105,8 @@ impl Alphas {
     }
 }
 
-// 4. We define differen traits that can be used generically by the folding examples.
+// 4. We define different traits that can be used generically by the folding
+// examples.
 // It can be used by "pseudo-provers".
 pub(crate) trait Provide<C: FoldingConfig> {
     fn resolve(&self, inner: FoldingCompatibleExprInner<C>) -> Vec<Fp>;
