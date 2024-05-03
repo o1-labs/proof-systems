@@ -66,12 +66,22 @@
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
+<span class="kw">use </span>folding::expressions::FoldingColumnTrait;
 <span class="kw">use </span>kimchi::circuits::expr::{CacheId, FormattedOutput};
 
 <span class="doccomment">/// Describe a generic indexed variable X_{i}.
-</span><span class="attr">#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+</span><span class="attr">#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 </span><span class="kw">pub enum </span>Column {
     <span class="doccomment">/// Columns related to the relation encoded in the circuit
     </span>Relation(usize),
@@ -131,5 +141,13 @@
 
     <span class="doccomment">/// Flatten the column "alias" into the integer-like column.
     </span><span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column;
+}
+
+<span class="comment">// Implementation to be compatible with folding if we use generic column constraints
+</span><span class="kw">impl </span>FoldingColumnTrait <span class="kw">for </span>Column {
+    <span class="kw">fn </span>is_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="comment">// TODO: check if we want to treat lookups differently
+        </span><span class="bool-val">true
+    </span>}
 }
 </code></pre></div></section></main></body></html>

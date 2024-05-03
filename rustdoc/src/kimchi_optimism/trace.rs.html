@@ -110,6 +110,11 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lookups::Lookup, E};
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>kimchi_msm::witness::Witness;
@@ -160,6 +165,11 @@
     </span><span class="kw">pub fn </span>in_circuit(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: Selector) -&gt; bool {
         <span class="self">self</span>.number_of_rows(opcode) != <span class="number">0
     </span>}
+
+    <span class="doccomment">/// Returns whether the witness for the given selector has achieved a number of rows that is equal to the domain size.
+    </span><span class="kw">pub fn </span>is_full(<span class="kw-2">&amp;</span><span class="self">self</span>, opcode: Selector) -&gt; bool {
+        <span class="self">self</span>.domain_size == <span class="self">self</span>.number_of_rows(opcode)
+    }
 
     <span class="doccomment">/// Resets the witness after folding
     </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Selector) {

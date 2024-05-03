@@ -654,6 +654,88 @@
 <a href="#652" id="652">652</a>
 <a href="#653" id="653">653</a>
 <a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::columns::ExtendedFoldingColumn;
 <span class="doccomment">/// Implement a library to represent expressions/multivariate polynomials that
 /// can be used with folding schemes like
@@ -1242,7 +1324,9 @@
     (integrated, extended_witness_generator)
 }
 
-<span class="kw">impl</span>&lt;F, Config: FoldingConfig&gt; From&lt;ConstantExprInner&lt;F&gt;&gt; <span class="kw">for </span>FoldingCompatibleExprInner&lt;Config&gt;
+<span class="comment">// CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
+
+</span><span class="kw">impl</span>&lt;F, Config: FoldingConfig&gt; From&lt;ConstantExprInner&lt;F&gt;&gt; <span class="kw">for </span>FoldingCompatibleExprInner&lt;Config&gt;
 <span class="kw">where
     </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
     Config::Challenge: From&lt;ChallengeTerm&gt;,
@@ -1292,6 +1376,86 @@
     <span class="kw">fn </span>from(expr: Operations&lt;ExprInner&lt;ConstantExprInner&lt;F&gt;, Col&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>expr {
             Operations::Atom(inner) =&gt; FoldingCompatibleExpr::Atom(inner.into()),
+            Operations::Add(x, y) =&gt; {
+                FoldingCompatibleExpr::Add(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+            }
+            Operations::Mul(x, y) =&gt; {
+                FoldingCompatibleExpr::Mul(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+            }
+            Operations::Sub(x, y) =&gt; {
+                FoldingCompatibleExpr::Sub(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+            }
+            Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
+            Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),
+            Operations::Pow(e, p) =&gt; FoldingCompatibleExpr::Pow(Box::new((<span class="kw-2">*</span>e).into()), p),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Operation not supported in folding expressions"</span>),
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt; From&lt;Operations&lt;ConstantExprInner&lt;F&gt;&gt;&gt;
+    <span class="kw">for </span>FoldingCompatibleExpr&lt;Config&gt;
+<span class="kw">where
+    </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
+    Config::Challenge: From&lt;ChallengeTerm&gt;,
+{
+    <span class="kw">fn </span>from(expr: Operations&lt;ConstantExprInner&lt;F&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>expr {
+            Operations::Add(x, y) =&gt; {
+                FoldingCompatibleExpr::Add(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+            }
+            Operations::Mul(x, y) =&gt; {
+                FoldingCompatibleExpr::Mul(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+            }
+            Operations::Sub(x, y) =&gt; {
+                FoldingCompatibleExpr::Sub(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+            }
+            Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
+            Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),
+            Operations::Pow(e, p) =&gt; FoldingCompatibleExpr::Pow(Box::new((<span class="kw-2">*</span>e).into()), p),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Operation not supported in folding expressions"</span>),
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;F, Col, Config: FoldingConfig&lt;Column = Col&gt;&gt;
+    From&lt;Operations&lt;ExprInner&lt;Operations&lt;ConstantExprInner&lt;F&gt;&gt;, Col&gt;&gt;&gt;
+    <span class="kw">for </span>FoldingCompatibleExpr&lt;Config&gt;
+<span class="kw">where
+    </span>Config::Curve: AffineCurve&lt;ScalarField = F&gt;,
+    Config::Challenge: From&lt;ChallengeTerm&gt;,
+{
+    <span class="kw">fn </span>from(expr: Operations&lt;ExprInner&lt;Operations&lt;ConstantExprInner&lt;F&gt;&gt;, Col&gt;&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">match </span>expr {
+            Operations::Atom(inner) =&gt; <span class="kw">match </span>inner {
+                ExprInner::Constant(op) =&gt; <span class="kw">match </span>op {
+                    <span class="comment">// The constant expressions nodes are considered as top level
+                    // expressions in folding
+                    </span>Operations::Atom(inner) =&gt; FoldingCompatibleExpr::Atom(inner.into()),
+                    Operations::Add(x, y) =&gt; {
+                        FoldingCompatibleExpr::Add(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+                    }
+                    Operations::Mul(x, y) =&gt; {
+                        FoldingCompatibleExpr::Mul(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+                    }
+                    Operations::Sub(x, y) =&gt; {
+                        FoldingCompatibleExpr::Sub(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
+                    }
+                    Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
+                    Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),
+                    Operations::Pow(e, p) =&gt; FoldingCompatibleExpr::Pow(Box::new((<span class="kw-2">*</span>e).into()), p),
+                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Operation not supported in folding expressions"</span>),
+                },
+                ExprInner::Cell(col) =&gt; {
+                    FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(col))
+                }
+                ExprInner::UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; {
+                    <span class="macro">panic!</span>(<span class="string">"UnnormalizedLagrangeBasis should not be used in folding expressions"</span>)
+                }
+                ExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
+                    <span class="macro">panic!</span>(<span class="string">"VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions"</span>)
+                }
+            },
             Operations::Add(x, y) =&gt; {
                 FoldingCompatibleExpr::Add(Box::new((<span class="kw-2">*</span>x).into()), Box::new((<span class="kw-2">*</span>y).into()))
             }

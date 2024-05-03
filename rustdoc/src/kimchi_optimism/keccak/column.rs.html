@@ -408,6 +408,10 @@
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
 <a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines the custom columns used in the Keccak witness, which
 //! are aliases for the actual Keccak witness columns also defined here.
 </span><span class="kw">use </span><span class="self">self</span>::{Absorbs::<span class="kw-2">*</span>, Sponges::<span class="kw-2">*</span>, Steps::<span class="kw-2">*</span>};
@@ -524,7 +528,7 @@
 <span class="doccomment">/// Variants of Keccak steps available for the interpreter.
 /// These selectors determine the specific behaviour so that Keccak steps
 /// can be split into different instances for folding
-</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, EnumIter, EnumCount)]
 </span><span class="kw">pub enum </span>Steps {
     <span class="doccomment">/// Current step performs a round of the permutation.
     /// The round number stored in the Step is only used for the environment execution.
@@ -533,7 +537,9 @@
     </span>Sponge(Sponges),
 }
 <span class="doccomment">/// Variants of Keccak sponges
-</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount, Default)]
+</span><span class="attr">#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, EnumIter, EnumCount, Default,
+)]
 </span><span class="kw">pub enum </span>Sponges {
     Absorb(Absorbs),
     <span class="attr">#[default]
@@ -541,7 +547,9 @@
 }
 
 <span class="doccomment">/// Order of absorb steps in the computation depending on the number of blocks to absorb
-</span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount, Default)]
+</span><span class="attr">#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, EnumIter, EnumCount, Default,
+)]
 </span><span class="kw">pub enum </span>Absorbs {
     First,  <span class="comment">// Also known as the root absorb
     </span>Middle, <span class="comment">// Any other absorb
