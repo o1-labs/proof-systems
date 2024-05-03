@@ -52,7 +52,6 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     }
 
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
-        // TODO: why involve sponge_5_wires here?
         ScalarChallenge(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
