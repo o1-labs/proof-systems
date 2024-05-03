@@ -114,7 +114,7 @@ pub enum ColumnAlias {
 /// Variants of Keccak steps available for the interpreter.
 /// These selectors determine the specific behaviour so that Keccak steps
 /// can be split into different instances for folding
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, EnumIter, EnumCount)]
 pub enum Steps {
     /// Current step performs a round of the permutation.
     /// The round number stored in the Step is only used for the environment execution.
@@ -123,7 +123,9 @@ pub enum Steps {
     Sponge(Sponges),
 }
 /// Variants of Keccak sponges
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount, Default)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, EnumIter, EnumCount, Default,
+)]
 pub enum Sponges {
     Absorb(Absorbs),
     #[default]
@@ -131,7 +133,9 @@ pub enum Sponges {
 }
 
 /// Order of absorb steps in the computation depending on the number of blocks to absorb
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, EnumIter, EnumCount, Default)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, EnumIter, EnumCount, Default,
+)]
 pub enum Absorbs {
     First,  // Also known as the root absorb
     Middle, // Any other absorb

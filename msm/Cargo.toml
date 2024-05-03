@@ -19,6 +19,7 @@ log.workspace = true
 o1-utils.workspace = true
 itertools.workspace = true
 kimchi.workspace = true
+folding.workspace = true
 poly-commitment.workspace = true
 groupmap.workspace = true
 mina-curves.workspace = true

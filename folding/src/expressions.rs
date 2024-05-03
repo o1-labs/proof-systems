@@ -586,6 +586,8 @@ pub(crate) fn folding_expression<C: FoldingConfig>(
     (integrated, extended_witness_generator)
 }
 
+// CONVERSIONS FROM EXPR TO FOLDING COMPATIBLE EXPRESSIONS
+
 impl<F, Config: FoldingConfig> From<ConstantExprInner<F>> for FoldingCompatibleExprInner<Config>
 where
     Config::Curve: AffineCurve<ScalarField = F>,
@@ -636,6 +638,86 @@ where
     fn from(expr: Operations<ExprInner<ConstantExprInner<F>, Col>>) -> Self {
         match expr {
             Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
+            Operations::Add(x, y) => {
+                FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Mul(x, y) => {
+                FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Sub(x, y) => {
+                FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
+            Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
+            Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(Box::new((*e).into()), p),
+            _ => panic!("Operation not supported in folding expressions"),
+        }
+    }
+}
+
+impl<F, Col, Config: FoldingConfig<Column = Col>> From<Operations<ConstantExprInner<F>>>
+    for FoldingCompatibleExpr<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: Operations<ConstantExprInner<F>>) -> Self {
+        match expr {
+            Operations::Add(x, y) => {
+                FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Mul(x, y) => {
+                FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Sub(x, y) => {
+                FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
+            }
+            Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
+            Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
+            Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(Box::new((*e).into()), p),
+            _ => panic!("Operation not supported in folding expressions"),
+        }
+    }
+}
+
+impl<F, Col, Config: FoldingConfig<Column = Col>>
+    From<Operations<ExprInner<Operations<ConstantExprInner<F>>, Col>>>
+    for FoldingCompatibleExpr<Config>
+where
+    Config::Curve: AffineCurve<ScalarField = F>,
+    Config::Challenge: From<ChallengeTerm>,
+{
+    fn from(expr: Operations<ExprInner<Operations<ConstantExprInner<F>>, Col>>) -> Self {
+        match expr {
+            Operations::Atom(inner) => match inner {
+                ExprInner::Constant(op) => match op {
+                    // The constant expressions nodes are considered as top level
+                    // expressions in folding
+                    Operations::Atom(inner) => FoldingCompatibleExpr::Atom(inner.into()),
+                    Operations::Add(x, y) => {
+                        FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
+                    }
+                    Operations::Mul(x, y) => {
+                        FoldingCompatibleExpr::Mul(Box::new((*x).into()), Box::new((*y).into()))
+                    }
+                    Operations::Sub(x, y) => {
+                        FoldingCompatibleExpr::Sub(Box::new((*x).into()), Box::new((*y).into()))
+                    }
+                    Operations::Double(x) => FoldingCompatibleExpr::Double(Box::new((*x).into())),
+                    Operations::Square(x) => FoldingCompatibleExpr::Square(Box::new((*x).into())),
+                    Operations::Pow(e, p) => FoldingCompatibleExpr::Pow(Box::new((*e).into()), p),
+                    _ => panic!("Operation not supported in folding expressions"),
+                },
+                ExprInner::Cell(col) => {
+                    FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(col))
+                }
+                ExprInner::UnnormalizedLagrangeBasis(_) => {
+                    panic!("UnnormalizedLagrangeBasis should not be used in folding expressions")
+                }
+                ExprInner::VanishesOnZeroKnowledgeAndPreviousRows => {
+                    panic!("VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions")
+                }
+            },
             Operations::Add(x, y) => {
                 FoldingCompatibleExpr::Add(Box::new((*x).into()), Box::new((*y).into()))
             }

@@ -49,6 +49,11 @@ impl<
         self.number_of_rows(opcode) != 0
     }
 
+    /// Returns whether the witness for the given selector has achieved a number of rows that is equal to the domain size.
+    pub fn is_full(&self, opcode: Selector) -> bool {
+        self.domain_size == self.number_of_rows(opcode)
+    }
+
     /// Resets the witness after folding
     pub fn reset(&mut self, opcode: Selector) {
         (self.witness.get_mut(&opcode).unwrap().cols.as_mut())

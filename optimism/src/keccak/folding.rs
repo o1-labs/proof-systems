@@ -8,7 +8,10 @@ use crate::{
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{expressions::FoldingColumnTrait, FoldingConfig};
+use kimchi_msm::columns::Column;
 use std::ops::Index;
+
+use super::column::ZKVM_KECCAK_REL;
 
 pub(crate) type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
 pub(crate) type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS>;
@@ -32,6 +35,20 @@ impl Index<Steps> for KeccakFoldingWitness {
     }
 }
 
+// Implementing this so that generic constraints can be used in folding
+impl Index<Column> for KeccakFoldingWitness {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
+
+    /// Map a column alias to the corresponding witness column.
+    fn index(&self, index: Column) -> &Self::Output {
+        match index {
+            Column::Relation(ix) => &self.witness.cols[ix],
+            Column::DynamicSelector(ix) => &self.witness.cols[ZKVM_KECCAK_REL + ix],
+            _ => panic!("Invalid column type"),
+        }
+    }
+}
+
 // TODO: will contain information about the circuit structure
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct KeccakStructure;
@@ -48,7 +65,7 @@ impl FoldingColumnTrait for KeccakColumn {
 }
 
 impl FoldingConfig for KeccakConfig {
-    type Column = KeccakColumn;
+    type Column = Column;
     type Selector = Steps;
     type Challenge = Challenge;
     type Curve = Curve;
