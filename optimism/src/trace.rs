@@ -1,7 +1,7 @@
 use crate::{
-    folding::{Alphas, Curve, FoldingInstance, FoldingWitness, Fp},
+    folding::{Alphas, FoldingInstance, FoldingWitness},
     lookups::Lookup,
-    E,
+    Curve, Fp, E,
 };
 use ark_ff::{FftField, One, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
