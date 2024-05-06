@@ -7,11 +7,8 @@
 //!
 //! The examples are generic enough to be reused externally. The users can copy the
 //! code and adapt it to their needs. The generic structures are defined in the
-//! `generic` module.
+//! `checker` module.
 
 pub mod example;
 pub mod example_decomposable_folding;
 pub mod example_quadriticization;
-
-/// Define the different structures requires for the examples.
-pub mod generic;

@@ -1,8 +1,7 @@
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, Zero};
+use ark_ff::Zero;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use core::sync::atomic::Ordering;
-use folding::{FoldingEnv, Instance, Side, Sponge, Witness};
+use folding::{checker::Alphas, FoldingEnv, Instance, Side, Sponge, Witness};
 use kimchi::{
     circuits::{expr::ChallengeTerm, gate::CurrOrNext},
     curve::KimchiCurve,
@@ -13,7 +12,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use poly_commitment::PolyComm;
-use std::{array, iter::successors, ops::Index, rc::Rc, sync::atomic::AtomicUsize};
+use std::{array, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
@@ -47,54 +46,6 @@ pub enum Challenge {
     JointCombiner,
 }
 
-/// The alphas are exceptional, their number cannot be known ahead of time as it
-/// will be defined by folding. The values will be computed as powers in new
-/// instances, but after folding each alfa will be a linear combination of other
-/// alphas, instand of a power of other element. This type represents that,
-/// allowing to also recognize which case is present
-#[derive(Debug, Clone)]
-pub enum Alphas {
-    Powers(Fp, Rc<AtomicUsize>),
-    Combinations(Vec<Fp>),
-}
-
-impl Alphas {
-    pub fn new(alpha: Fp) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
-    }
-    pub fn get(&self, i: usize) -> Option<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
-                let i = [i as u64];
-                Some(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
-        }
-    }
-    pub fn powers(self) -> Vec<Fp> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(Fp::one()), |last| Some(*last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) => c,
-        }
-    }
-    pub fn combine(a: Self, b: Self, challenge: Fp) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
-    }
-}
-
 // Needed to transform from expressions to folding expressions
 impl From<ChallengeTerm> for Challenge {
     fn from(chal: ChallengeTerm) -> Self {
@@ -120,7 +71,7 @@ pub struct FoldingInstance<const N: usize> {
     /// - γ (set to 0 for now)
     pub challenges: [Fp; Challenge::COUNT],
     /// Reuses the Alphas defined in the example of folding
-    pub alphas: Alphas,
+    pub alphas: Alphas<Curve>,
 }
 
 impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
@@ -131,6 +82,26 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
             }),
             challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
+        }
+    }
+
+    fn alphas(&self) -> &Alphas<Curve> {
+        &self.alphas
+    }
+
+    fn challenges(&self) -> &[Fp] {
+        &self.challenges
+    }
+}
+
+impl<const N: usize> Index<Challenge> for FoldingInstance<N> {
+    type Output = Fp;
+
+    fn index(&self, index: Challenge) -> &Self::Output {
+        match index {
+            Challenge::Beta => &self.challenges[0],
+            Challenge::Gamma => &self.challenges[1],
+            Challenge::JointCombiner => &self.challenges[2],
         }
     }
 }

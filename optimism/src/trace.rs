@@ -1,10 +1,11 @@
 use crate::{
-    folding::{Alphas, FoldingInstance, FoldingWitness},
+    folding::{FoldingInstance, FoldingWitness},
     lookups::Lookup,
     Curve, Fp, E,
 };
 use ark_ff::{FftField, One, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use folding::checker::Alphas;
 use itertools::Itertools;
 use kimchi_msm::witness::Witness;
 use poly_commitment::SRS;

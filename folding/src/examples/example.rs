@@ -7,8 +7,8 @@
 /// cargo nextest run examples::example::tests::test_folding_instance --release --all-features
 /// ```
 use crate::{
+    checker::{Alphas, BaseSponge, Checker, Column, Curve, Fp, Provide},
     error_term::Side,
-    examples::generic::{Alphas, BaseSponge, Checker, Column, Curve, Fp, Provide},
     expressions::FoldingCompatibleExprInner,
     ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
     RelaxedWitness, Witness,
@@ -28,7 +28,7 @@ use rand::thread_rng;
 struct TestInstance {
     commitments: [Curve; 3],
     challenges: [Fp; 3],
-    alphas: Alphas,
+    alphas: Alphas<Curve>,
 }
 
 impl Instance<Curve> for TestInstance {
@@ -40,6 +40,14 @@ impl Instance<Curve> for TestInstance {
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
+    }
+
+    fn alphas(&self) -> &Alphas<Curve> {
+        &self.alphas
+    }
+
+    fn challenges(&self) -> &[Fp] {
+        &self.challenges
     }
 }
 

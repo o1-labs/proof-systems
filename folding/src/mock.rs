@@ -1,4 +1,5 @@
 use crate::{
+    checker::Alphas,
     error_term::Side,
     expressions::{extract_terms, FoldingColumnTrait},
     FoldingConfig, FoldingEnv, Instance, Sponge, Witness,
@@ -36,6 +37,12 @@ impl<G: CommitmentCurve> Sponge<G> for Mock {
 impl<G: CommitmentCurve> Instance<G> for Mock {
     fn combine(_a: Self, _b: Self, _challenge: G::ScalarField) -> Self {
         Mock
+    }
+    fn alphas(&self) -> &Alphas<G> {
+        todo!()
+    }
+    fn challenges(&self) -> &[<G>::ScalarField] {
+        todo!()
     }
 }
 

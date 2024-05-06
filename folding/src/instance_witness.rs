@@ -1,4 +1,4 @@
-use crate::Evals;
+use crate::{checker::Alphas, Evals};
 use ark_ff::Field;
 use num_traits::One;
 use poly_commitment::commitment::{CommitmentCurve, PolyComm};
@@ -17,6 +17,12 @@ pub trait Instance<G: CommitmentCurve>: Sized {
             error_commitment: zero_commit,
         }
     }
+
+    /// Returns the alphas values for the instance
+    fn alphas(&self) -> &Alphas<G>;
+
+    /// Returns the challenges for the instance
+    fn challenges(&self) -> &[G::ScalarField];
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized {
@@ -85,7 +91,7 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
-    pub(crate) fn inner(&self) -> &ExtendedWitness<G, W> {
+    pub fn inner(&self) -> &ExtendedWitness<G, W> {
         &self.witness
     }
 
@@ -162,6 +168,14 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
             .map(|(a, b)| &a + &b.scale(challenge))
             .collect();
         Self { inner, extended }
+    }
+
+    fn alphas(&self) -> &Alphas<G> {
+        self.inner.alphas()
+    }
+
+    fn challenges(&self) -> &[G::ScalarField] {
+        self.inner.challenges()
     }
 }
 

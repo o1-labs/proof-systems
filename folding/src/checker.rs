@@ -198,6 +198,7 @@ where
             Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
         >,
     >,
+    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineCurve>::ScalarField>,
 {
     fn resolve(
         &self,
@@ -207,19 +208,14 @@ where
             FoldingCompatibleExprInner::Constant(c) => {
                 vec![c; self.rows]
             }
-            FoldingCompatibleExprInner::Challenge(chall) => {
-                let chals = self.instance.challenges();
-                let v = match chall {
-                    Challenge::Beta => chals[0],
-                    Challenge::Gamma => chals[1],
-                    Challenge::JointCombiner => chals[2],
-                };
+            FoldingCompatibleExprInner::Challenge(chal) => {
+                let v = self.instance[chal];
                 vec![v; self.rows]
             }
             FoldingCompatibleExprInner::Cell(var) => {
                 let Variable { col, row } = var;
 
-                let mut col = &self.witness[col].evals;
+                let col = &self.witness[col].evals;
 
                 let mut col = col.clone();
                 //check this, while not relevant in this case I think it should be right rotation
@@ -251,6 +247,7 @@ where
             Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
         >,
     >,
+    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineCurve>::ScalarField>,
 {
     fn resolve(
         &self,

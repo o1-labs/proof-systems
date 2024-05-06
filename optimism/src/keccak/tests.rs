@@ -16,11 +16,13 @@ use crate::{
     trace::{Folder, Tracer},
 };
 use ark_ff::{One, Zero};
+use folding::checker::{Checker, ExtendedProvider};
 use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
     o1_utils::{self, FieldHelpers, Two},
 };
 use kimchi_msm::test::test_completeness_generic;
+use log::debug;
 use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
@@ -620,7 +622,7 @@ fn test_keccak_decomposable_folding() {
         .into_iter()
         .collect();
 
-        let (_scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
+        let (scheme, final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
             constraints,
             vec![],
             &srs,
@@ -630,26 +632,31 @@ fn test_keccak_decomposable_folding() {
 
         // Fold Sponge(Absorb(Only))
         let _right_only = {
-            let _left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
-            let _right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
+            let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
+            let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
             // TODO: Fix domain size used in folding because it is using 2^15 instead of 1<<8
-            /*  let (folded_instance, folded_witness, [_t0, _t1]) =
+            let (folded_instance, folded_witness, [_t0, _t1]) =
                 scheme.fold_instance_witness_pair(left, right, Some(Sponge(Absorb(Only))));
+            let checker = ExtendedProvider::new(folded_instance, folded_witness);
+            debug!("exp: \n {:#?}", final_constraint.to_string());
+            checker.check(&final_constraint);
+            let ExtendedProvider {
+                instance, witness, ..
+            } = checker;
 
-            (folded_instance, folded_witness)
-            */
+            (instance, witness)
         };
 
         // Fold Round(0)
+        /*
         let _left_round = {
             let _left = keccak_trace[0].to_folding_pair(Round(0), &srs);
             let _right = keccak_trace[1].to_folding_pair(Round(0), &srs);
-            /*
             let (folded_instance, folded_witness, [_t0, _t1]) =
                 scheme.fold_instance_witness_pair(left, right, Some(Round(0)));
 
             (folded_instance, folded_witness)
-            */
         };
+        */
     });
 }

@@ -52,6 +52,10 @@ mod examples;
 #[cfg(test)]
 mod mock;
 
+/// Define the different structures required for the examples (both internal and external)
+#[cfg(feature = "bn254")]
+pub mod checker;
+
 // Simple type alias as ScalarField is often used. Reduce type complexity for
 // clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
@@ -77,12 +81,12 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Sponge: Sponge<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
-    type Instance: Instance<Self::Curve>;
+    type Instance: Instance<Self::Curve> + Clone;
 
     /// For PlonK, it will be the polynomials in evaluation form that we commit
     /// to, i.e. the columns.
     /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
-    type Witness: Witness<Self::Curve>;
+    type Witness: Witness<Self::Curve> + Clone;
 
     type Structure;
 
