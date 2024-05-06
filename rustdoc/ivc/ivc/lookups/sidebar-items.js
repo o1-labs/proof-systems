@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["IVCLookupTable"]};
+window.SIDEBAR_ITEMS = {"enum":["IVCLookupTable"],"struct":["IVCLookupTableIter"]};

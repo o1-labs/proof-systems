@@ -180,15 +180,6 @@
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiate the Logup protocol for the MSM project.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::logup::{Logup, LogupWitness, LookupTableID};
@@ -196,9 +187,10 @@
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>rand::{seq::SliceRandom, thread_rng, Rng};
 <span class="kw">use </span>std::{cmp::Ord, iter};
+<span class="kw">use </span>strum_macros::EnumIter;
 
 <span class="doccomment">/// Dummy lookup table. For the cases when you don't need one -- a single dummy element 0.
-</span><span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
 </span><span class="kw">pub enum </span>DummyLookupTable {
     DummyLookupTable,
 }
@@ -231,10 +223,6 @@
             <span class="macro">panic!</span>(<span class="string">"Invalid value for DummyLookupTable"</span>)
         }
     }
-
-    <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-        <span class="macro">vec!</span>[DummyLookupTable::DummyLookupTable]
-    }
 }
 
 <span class="kw">impl </span>DummyLookupTable {
@@ -247,7 +235,7 @@
 
 <span class="doccomment">/// Lookup tables used in the MSM project
 </span><span class="comment">// TODO: Add more built-in lookup tables
-</span><span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, EnumIter)]
 </span><span class="kw">pub enum </span>LookupTableIDs {
     RangeCheck16,
     <span class="doccomment">/// Custom lookup table
@@ -285,12 +273,6 @@
 
     <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _value: F) -&gt; usize {
         <span class="macro">todo!</span>()
-    }
-
-    <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt; {
-        <span class="comment">// TODO in the future this must depend on some associated type
-        // that parameterises the lookup table.
-        </span><span class="macro">vec!</span>[<span class="self">Self</span>::RangeCheck16, <span class="self">Self</span>::Custom(<span class="number">0</span>)]
     }
 }
 

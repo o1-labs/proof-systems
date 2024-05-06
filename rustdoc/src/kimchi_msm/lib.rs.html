@@ -375,6 +375,7 @@
 <a href="#373" id="373">373</a>
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -461,8 +462,9 @@
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
     <span class="kw">use </span>rand::{CryptoRng, Rng, RngCore};
     <span class="kw">use </span>std::collections::BTreeMap;
+    <span class="kw">use </span>strum::IntoEnumIterator;
 
-    <span class="kw">fn </span>build_test_circuit&lt;RNG: RngCore + CryptoRng, LT: LookupTableID&gt;(
+    <span class="kw">fn </span>build_test_circuit&lt;RNG: RngCore + CryptoRng, LT: LookupTableID + IntoEnumIterator&gt;(
         rng: <span class="kw-2">&amp;mut </span>RNG,
         domain_size: usize,
     ) -&gt; WitnessBuilderEnv&lt;Fp, { &lt;TestColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, LT&gt; {
@@ -508,7 +510,7 @@
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();
-        <span class="kw">for </span>table_id <span class="kw">in </span>DummyLookupTable::all_variants().into_iter() {
+        <span class="kw">for </span>table_id <span class="kw">in </span>DummyLookupTable::iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         <span class="kw">let </span>witness_env = build_test_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
@@ -568,7 +570,7 @@
         </span><span class="kw">let </span>constraints = constraint_env.get_relation_constraints();
 
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();
-        <span class="kw">for </span>table_id <span class="kw">in </span>DummyLookupTable::all_variants().into_iter() {
+        <span class="kw">for </span>table_id <span class="kw">in </span>DummyLookupTable::iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         <span class="kw">let </span>witness_env = build_test_circuit::&lt;<span class="kw">_</span>, DummyLookupTable&gt;(<span class="kw-2">&amp;mut </span>rng, domain_size);
