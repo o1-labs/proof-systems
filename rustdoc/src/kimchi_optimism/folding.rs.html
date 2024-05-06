@@ -183,60 +183,10 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
-<span class="kw">use </span>ark_ff::{Field, One, Zero};
+<span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
-<span class="kw">use </span>core::sync::atomic::Ordering;
-<span class="kw">use </span>folding::{FoldingEnv, Instance, Side, Sponge, Witness};
+<span class="kw">use </span>folding::{Alphas, FoldingEnv, Instance, Side, Sponge, Witness};
 <span class="kw">use </span>kimchi::{
     circuits::{expr::ChallengeTerm, gate::CurrOrNext},
     curve::KimchiCurve,
@@ -247,7 +197,7 @@
     FqSponge,
 };
 <span class="kw">use </span>poly_commitment::PolyComm;
-<span class="kw">use </span>std::{array, iter::successors, ops::Index, rc::Rc, sync::atomic::AtomicUsize};
+<span class="kw">use </span>std::{array, ops::Index};
 <span class="kw">use </span>strum::EnumCount;
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
 
@@ -281,54 +231,6 @@
     JointCombiner,
 }
 
-<span class="doccomment">/// The alphas are exceptional, their number cannot be known ahead of time as it
-/// will be defined by folding. The values will be computed as powers in new
-/// instances, but after folding each alfa will be a linear combination of other
-/// alphas, instand of a power of other element. This type represents that,
-/// allowing to also recognize which case is present
-</span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub enum </span>Alphas {
-    Powers(Fp, Rc&lt;AtomicUsize&gt;),
-    Combinations(Vec&lt;Fp&gt;),
-}
-
-<span class="kw">impl </span>Alphas {
-    <span class="kw">pub fn </span>new(alpha: Fp) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::Powers(alpha, Rc::new(AtomicUsize::from(<span class="number">0</span>)))
-    }
-    <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize) -&gt; <span class="prelude-ty">Option</span>&lt;Fp&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            Alphas::Powers(alpha, count) =&gt; {
-                <span class="kw">let _ </span>= count.fetch_max(i + <span class="number">1</span>, Ordering::Relaxed);
-                <span class="kw">let </span>i = [i <span class="kw">as </span>u64];
-                <span class="prelude-val">Some</span>(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) =&gt; alphas.get(i).cloned(),
-        }
-    }
-    <span class="kw">pub fn </span>powers(<span class="self">self</span>) -&gt; Vec&lt;Fp&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            Alphas::Powers(alpha, count) =&gt; {
-                <span class="kw">let </span>n = count.load(Ordering::Relaxed);
-                <span class="kw">let </span>alphas = successors(<span class="prelude-val">Some</span>(Fp::one()), |last| <span class="prelude-val">Some</span>(<span class="kw-2">*</span>last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) =&gt; c,
-        }
-    }
-    <span class="kw">pub fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: Fp) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>a = a.powers();
-        <span class="kw">let </span>b = b.powers();
-        <span class="macro">assert_eq!</span>(a.len(), b.len());
-        <span class="kw">let </span>comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        <span class="self">Self</span>::Combinations(comb)
-    }
-}
-
 <span class="comment">// Needed to transform from expressions to folding expressions
 </span><span class="kw">impl </span>From&lt;ChallengeTerm&gt; <span class="kw">for </span>Challenge {
     <span class="kw">fn </span>from(chal: ChallengeTerm) -&gt; <span class="self">Self </span>{
@@ -354,7 +256,7 @@
     /// - γ (set to 0 for now)
     </span><span class="kw">pub </span>challenges: [Fp; Challenge::COUNT],
     <span class="doccomment">/// Reuses the Alphas defined in the example of folding
-    </span><span class="kw">pub </span>alphas: Alphas,
+    </span><span class="kw">pub </span>alphas: Alphas&lt;Fp&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; Instance&lt;Curve&gt; <span class="kw">for </span>FoldingInstance&lt;N&gt; {
