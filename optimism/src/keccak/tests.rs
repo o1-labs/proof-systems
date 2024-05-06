@@ -541,10 +541,7 @@ fn test_keccak_prover_constraints() {
 
 #[test]
 fn test_keccak_decomposable_folding() {
-    use crate::{
-        keccak::folding::{KeccakConfig, KeccakStructure},
-        Curve,
-    };
+    use crate::{keccak::folding::KeccakConfig, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
         decomposable_folding::DecomposableFoldingScheme, expressions::FoldingCompatibleExpr,
@@ -610,11 +607,6 @@ fn test_keccak_decomposable_folding() {
     .into_iter()
     .collect();
 
-    let (_scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
-        constraints,
-        vec![],
-        &srs,
-        domain,
-        KeccakStructure {},
-    );
+    let (_scheme, _final_constraint) =
+        DecomposableFoldingScheme::<KeccakConfig>::new(constraints, vec![], &srs, domain, ());
 }

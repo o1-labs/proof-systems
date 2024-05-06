@@ -154,10 +154,9 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
 
 /// Environment for the folding protocol, for a given number of witness columns
 /// and structure
-pub struct FoldingEnvironment<const N: usize, Structure> {
+pub struct FoldingEnvironment<const N: usize> {
     /// Structure of the folded circuit (not used right now)
-    #[allow(dead_code)]
-    pub structure: Structure,
+    pub structure: (),
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -167,17 +166,17 @@ pub struct FoldingEnvironment<const N: usize, Structure> {
     pub next_witnesses: [FoldingWitness<N>; 2],
 }
 
-impl<const N: usize, Col, Selector: Copy + Clone, Structure: Clone>
+impl<const N: usize, Col, Selector: Copy + Clone>
     FoldingEnv<Fp, FoldingInstance<N>, FoldingWitness<N>, Col, Challenge, Selector>
-    for FoldingEnvironment<N, Structure>
+    for FoldingEnvironment<N>
 where
     FoldingWitness<N>: Index<Col, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
     FoldingWitness<N>: Index<Selector, Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
 {
-    type Structure = Structure;
+    type Structure = ();
 
     fn new(
-        structure: &Self::Structure,
+        _structure: &Self::Structure,
         instances: [&FoldingInstance<N>; 2],
         witnesses: [&FoldingWitness<N>; 2],
     ) -> Self {
@@ -189,7 +188,7 @@ where
             }
         }
         FoldingEnvironment {
-            structure: structure.clone(),
+            structure: (),
             instances: [instances[0].clone(), instances[1].clone()],
             curr_witnesses,
             next_witnesses,
