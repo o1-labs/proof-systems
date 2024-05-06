@@ -1,3 +1,19 @@
+//! This module defines a list of traits and structures that are used by the folding scheme
+//! The folding library is built over generic traits like [Instance] and
+//! [Witness] that defines the the NP relation.
+//!
+//! Here a brief description of the traits and structures:
+//! - [Instance]: represents the instance (public input)
+//! - [Witness]: represents the witness (private input)
+//! - [ExtendedInstance]: represents the instance extended with extra columns
+//! - [ExtendedWitness]: represents the witness extended with extra columns
+//! - [RelaxedInstance]: represents a relaxed instance
+//! - [RelaxedWitness]: represents a relaxed witness
+//! - [RelaxableInstance]: a trait that allows to relax an instance. It is
+//! implemented for [Instance] and [RelaxedInstance] so methods that require a
+//! relaxed instance can also be called on a normal instance
+//! - [RelaxableWitness]: same than [RelaxableInstance] but for witnesses.
+
 use crate::Evals;
 use ark_ff::Field;
 use num_traits::One;
@@ -52,15 +68,11 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     }
 }
 
+// -- Relaxed instances
 pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
     instance: ExtendedInstance<G, I>,
     pub u: G::ScalarField,
     error_commitment: PolyComm<G>,
-}
-
-pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
-    pub witness: ExtendedWitness<G, W>,
-    pub error_vec: Evals<G::ScalarField>,
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
@@ -84,6 +96,12 @@ impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     }
 }
 
+// -- Relaxed witnesses
+pub struct RelaxedWitness<G: CommitmentCurve, W: Witness<G>> {
+    pub witness: ExtendedWitness<G, W>,
+    pub error_vec: Evals<G::ScalarField>,
+}
+
 impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
     pub(crate) fn inner(&self) -> &ExtendedWitness<G, W> {
         &self.witness
@@ -104,16 +122,11 @@ impl<G: CommitmentCurve, W: Witness<G>> RelaxedWitness<G, W> {
     }
 }
 
+// -- Extended witness
 pub struct ExtendedWitness<G: CommitmentCurve, W: Witness<G>> {
     pub inner: W,
     //extra columns added by quadraticization to lower the degree of expressions to 2
     pub extended: BTreeMap<usize, Evals<G::ScalarField>>,
-}
-
-pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
-    pub inner: I,
-    //commitments to extra columns
-    pub extended: Vec<PolyComm<G>>,
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
@@ -145,6 +158,26 @@ impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
     }
 }
 
+impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
+    pub(crate) fn inner(&self) -> &W {
+        &self.inner
+    }
+    pub(crate) fn add_witness_evals(&mut self, i: usize, evals: Evals<G::ScalarField>) {
+        self.extended.insert(i, evals);
+    }
+    ///allows to know if the extended witness comlumns are already computed, to avoid overriding them
+    pub fn is_extended(&self) -> bool {
+        !self.extended.is_empty()
+    }
+}
+
+// -- Extended instance
+pub struct ExtendedInstance<G: CommitmentCurve, I: Instance<G>> {
+    pub inner: I,
+    //commitments to extra columns
+    pub extended: Vec<PolyComm<G>>,
+}
+
 impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> {
     fn combine(a: Self, b: Self, challenge: <G>::ScalarField) -> Self {
         let Self {
@@ -165,23 +198,13 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
     }
 }
 
-impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
-    pub(crate) fn inner(&self) -> &W {
-        &self.inner
-    }
-    pub(crate) fn add_witness_evals(&mut self, i: usize, evals: Evals<G::ScalarField>) {
-        self.extended.insert(i, evals);
-    }
-    ///allows to know if the extended witness comlumns are already computed, to avoid overriding them
-    pub fn is_extended(&self) -> bool {
-        !self.extended.is_empty()
-    }
-}
 impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
     pub(crate) fn inner(&self) -> &I {
         &self.inner
     }
 }
+
+// -- Relaxable instance
 pub trait RelaxableInstance<G: CommitmentCurve, I: Instance<G>> {
     fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I>;
 }
@@ -221,6 +244,7 @@ pub trait RelaxablePair<G: CommitmentCurve, I: Instance<G>, W: Witness<G>> {
         zero_commitment: PolyComm<G>,
     ) -> (RelaxedInstance<G, I>, RelaxedWitness<G, W>);
 }
+
 impl<G, I, W> RelaxablePair<G, I, W> for (I, W)
 where
     G: CommitmentCurve,
