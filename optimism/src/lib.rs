@@ -33,9 +33,15 @@ pub mod ramlookup;
 /// Defines a trace struct used for testing / demo purposes
 pub mod trace;
 
+use ark_ec::bn::Bn;
 use kimchi::circuits::expr::{ConstantExpr, Expr};
 use kimchi_msm::columns::Column;
 
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use poly_commitment::pairing_proof::PairingProof;
 pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 
 /// Type to represent a constraint on the individual columns of the execution
@@ -51,3 +57,11 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 /// To represent this multi-variate polynomial using the expression framework,
 /// we would use 3 different columns.
 pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
+
+// Instantiate it with the desired group and field
+pub type Fp = ark_bn254::Fr;
+pub type Curve = ark_bn254::G1Affine;
+pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+pub type SpongeParams = PlonkSpongeConstantsKimchi;
+pub type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
