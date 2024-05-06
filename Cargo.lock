@@ -1375,6 +1375,8 @@ dependencies = [
  "once_cell",
  "poly-commitment",
  "rand",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
