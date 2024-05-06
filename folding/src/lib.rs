@@ -18,7 +18,7 @@
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
-use ark_ff::Zero;
+use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{
@@ -28,7 +28,14 @@ use instance_witness::{RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
-use std::{fmt::Debug, hash::Hash};
+use std::{
+    fmt::Debug,
+    hash::Hash,
+    iter::successors,
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
 #[cfg(feature = "bn254")]
@@ -52,11 +59,66 @@ mod examples;
 #[cfg(test)]
 mod mock;
 
+/// Define the different structures required for the examples (both internal and external)
+#[cfg(feature = "bn254")]
+pub mod checker;
+
 // Simple type alias as ScalarField is often used. Reduce type complexity for
 // clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+
+// We define the combinators that will be used to fold the constraints,
+// called the "alphas".
+// The alphas are exceptional, their number cannot be known ahead of time as it
+// will be defined by folding.
+// The values will be computed as powers in new instances, but after folding
+// each alpha will be a linear combination of other alphas, instand of a power
+// of other element. This type represents that, allowing to also recognize
+// which case is present.
+#[derive(Debug, Clone)]
+pub enum Alphas<G: AffineCurve> {
+    Powers(G::ScalarField, Rc<AtomicUsize>),
+    Combinations(Vec<G::ScalarField>),
+}
+
+impl<G: AffineCurve> Alphas<G> {
+    pub fn new(alpha: G::ScalarField) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    }
+    pub fn get(&self, i: usize) -> Option<G::ScalarField> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
+                let i = [i as u64];
+                Some(alpha.pow(i))
+            }
+            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
+        }
+    }
+    pub fn powers(self) -> Vec<G::ScalarField> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let n = count.load(Ordering::Relaxed);
+                let alphas = successors(Some(G::ScalarField::one()), |last| Some(*last * alpha));
+                alphas.take(n).collect()
+            }
+            Alphas::Combinations(c) => c,
+        }
+    }
+    pub fn combine(a: Self, b: Self, challenge: <G as AffineCurve>::ScalarField) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
+    }
+}
 
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
@@ -77,12 +139,12 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Sponge: Sponge<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
-    type Instance: Instance<Self::Curve>;
+    type Instance: Instance<Self::Curve> + Clone;
 
     /// For PlonK, it will be the polynomials in evaluation form that we commit
     /// to, i.e. the columns.
     /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
-    type Witness: Witness<Self::Curve>;
+    type Witness: Witness<Self::Curve> + Clone;
 
     type Structure;
 
