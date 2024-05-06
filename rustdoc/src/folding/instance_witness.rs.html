@@ -345,6 +345,8 @@
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::Evals;
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>num_traits::One;
@@ -352,8 +354,10 @@
 <span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">pub trait </span>Instance&lt;G: CommitmentCurve&gt;: Sized {
-    <span class="doccomment">/// Should return a linear combination
+    <span class="doccomment">/// Combine two instances 'a' and 'b' into a new instance.
+    /// See page 15.
     </span><span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self</span>;
+
     <span class="kw">fn </span>relax(<span class="self">self</span>, zero_commit: PolyComm&lt;G&gt;) -&gt; RelaxedInstance&lt;G, <span class="self">Self</span>&gt; {
         <span class="kw">let </span>instance = ExtendedInstance::extend(<span class="self">self</span>);
         RelaxedInstance {
