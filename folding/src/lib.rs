@@ -50,8 +50,6 @@ pub mod quadraticization;
 #[cfg(test)]
 #[cfg(feature = "bn254")]
 mod examples;
-#[cfg(test)]
-mod mock;
 
 // Simple type alias as ScalarField is often used. Reduce type complexity for
 // clippy.
