@@ -67,57 +67,6 @@ pub mod checker;
 // at the moment.
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
-/// Combinators that will be used to fold the constraints,
-/// called the "alphas".
-/// The alphas are exceptional, their number cannot be known ahead of time as it
-/// will be defined by folding.
-/// The values will be computed as powers in new instances, but after folding
-/// each alpha will be a linear combination of other alphas, instand of a power
-/// of other element. This type represents that, allowing to also recognize
-/// which case is present.
-#[derive(Debug, Clone)]
-pub enum Alphas<G: AffineCurve> {
-    Powers(G::ScalarField, Rc<AtomicUsize>),
-    Combinations(Vec<G::ScalarField>),
-}
-
-impl<G: AffineCurve> Alphas<G> {
-    pub fn new(alpha: G::ScalarField) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
-    }
-    pub fn get(&self, i: usize) -> Option<G::ScalarField> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
-                let i = [i as u64];
-                Some(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
-        }
-    }
-    pub fn powers(self) -> Vec<G::ScalarField> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(G::ScalarField::one()), |last| Some(*last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) => c,
-        }
-    }
-    pub fn combine(a: Self, b: Self, challenge: <G as AffineCurve>::ScalarField) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
-    }
-}
-
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
     // in case of using docomposable folding, if not it can be just ()
@@ -305,5 +254,56 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax(self.zero_commitment.clone());
         let challenge = <CF::Sponge>::challenge(&error_commitments);
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
+    }
+}
+
+/// Combinators that will be used to fold the constraints,
+/// called the "alphas".
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding.
+/// The values will be computed as powers in new instances, but after folding
+/// each alpha will be a linear combination of other alphas, instand of a power
+/// of other element. This type represents that, allowing to also recognize
+/// which case is present.
+#[derive(Debug, Clone)]
+pub enum Alphas<G: AffineCurve> {
+    Powers(G::ScalarField, Rc<AtomicUsize>),
+    Combinations(Vec<G::ScalarField>),
+}
+
+impl<G: AffineCurve> Alphas<G> {
+    pub fn new(alpha: G::ScalarField) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    }
+    pub fn get(&self, i: usize) -> Option<G::ScalarField> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
+                let i = [i as u64];
+                Some(alpha.pow(i))
+            }
+            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
+        }
+    }
+    pub fn powers(self) -> Vec<G::ScalarField> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let n = count.load(Ordering::Relaxed);
+                let alphas = successors(Some(G::ScalarField::one()), |last| Some(*last * alpha));
+                alphas.take(n).collect()
+            }
+            Alphas::Combinations(c) => c,
+        }
+    }
+    pub fn combine(a: Self, b: Self, challenge: <G as AffineCurve>::ScalarField) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
     }
 }
