@@ -464,7 +464,7 @@
 
 <span class="comment">// Does not contain alpha because this one should be provided by folding itself
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>Challenge {
+</span><span class="kw">pub enum </span>Challenge {
     Beta,
     Gamma,
     JointCombiner,
@@ -533,17 +533,17 @@
 <span class="doccomment">/// Folding instance containing the commitment to a witness of N columns,
 /// challenges for the proof, and the alphas
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>FoldingInstance&lt;<span class="kw">const </span>N: usize&gt; {
+</span><span class="kw">pub struct </span>FoldingInstance&lt;<span class="kw">const </span>N: usize&gt; {
     <span class="doccomment">/// Commitments to the witness columns, including the dynamic selectors
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) commitments: [Curve; N],
+    </span><span class="kw">pub </span>commitments: [Curve; N],
     <span class="doccomment">/// Challenges for the proof.
     /// We do use 3 challenges:
     /// - β as the evaluation point for the logup argument
     /// - j: the joint combiner for vector lookups
     /// - γ (set to 0 for now)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) challenges: [Fp; Challenge::COUNT],
+    </span><span class="kw">pub </span>challenges: [Fp; Challenge::COUNT],
     <span class="doccomment">/// Reuses the Alphas defined in the example of folding
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) alphas: Alphas,
+    </span><span class="kw">pub </span>alphas: Alphas,
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; Instance&lt;Curve&gt; <span class="kw">for </span>FoldingInstance&lt;N&gt; {
@@ -560,8 +560,8 @@
 
 <span class="doccomment">/// Includes the data witness columns and also the dynamic selector columns
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>FoldingWitness&lt;<span class="kw">const </span>N: usize&gt; {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) witness: GenericWitness&lt;N, Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;&gt;,
+</span><span class="kw">pub struct </span>FoldingWitness&lt;<span class="kw">const </span>N: usize&gt; {
+    <span class="kw">pub </span>witness: GenericWitness&lt;N, Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; Witness&lt;Curve&gt; <span class="kw">for </span>FoldingWitness&lt;N&gt; {
@@ -577,17 +577,17 @@
 
 <span class="doccomment">/// Environment for the folding protocol, for a given number of witness columns
 /// and structure
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, Structure&gt; {
+</span><span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, Structure&gt; {
     <span class="doccomment">/// Structure of the folded circuit (not used right now)
     </span><span class="attr">#[allow(dead_code)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) structure: Structure,
+    </span><span class="kw">pub </span>structure: Structure,
     <span class="doccomment">/// Commitments to the witness columns, for both sides
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) instances: [FoldingInstance&lt;N&gt;; <span class="number">2</span>],
+    </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) curr_witnesses: [FoldingWitness&lt;N&gt;; <span class="number">2</span>],
+    </span><span class="kw">pub </span>curr_witnesses: [FoldingWitness&lt;N&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the zeta*omega evaluations, for both sides
     /// This is curr_witness but left shifted by 1
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) next_witnesses: [FoldingWitness&lt;N&gt;; <span class="number">2</span>],
+    </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N&gt;; <span class="number">2</span>],
 }
 
 <span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, Col, Selector: Copy + Clone, Structure: Clone&gt;

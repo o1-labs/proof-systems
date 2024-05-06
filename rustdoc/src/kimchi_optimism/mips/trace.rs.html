@@ -101,7 +101,7 @@
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>kimchi_msm::witness::Witness;
-<span class="kw">use </span>std::{array, collections::HashMap};
+<span class="kw">use </span>std::{array, collections::BTreeMap};
 <span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="doccomment">/// The MIPS circuit trace
@@ -113,7 +113,7 @@
     <span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env&lt;F&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>circuit = <span class="self">Self </span>{
             domain_size,
-            witness: HashMap::new(),
+            witness: BTreeMap::new(),
             constraints: Default::default(),
             lookups: Default::default(),
         };

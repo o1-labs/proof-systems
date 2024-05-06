@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {};
+window.SIDEBAR_ITEMS = {"struct":["MIPSFoldingConfig","MIPSStructure"],"type":["MIPSFoldingEnvironment","MIPSFoldingInstance","MIPSFoldingWitness"]};

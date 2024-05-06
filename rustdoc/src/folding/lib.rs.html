@@ -681,9 +681,9 @@
 
 <span class="kw">type </span>Evals&lt;F&gt; = Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;;
 
-<span class="kw">pub struct </span>FoldingScheme&lt;CF: FoldingConfig&gt; {
+<span class="kw">pub struct </span>FoldingScheme&lt;<span class="lifetime">'a</span>, CF: FoldingConfig&gt; {
     <span class="kw">pub </span>expression: IntegratedFoldingExpr&lt;CF&gt;,
-    <span class="kw">pub </span>srs: CF::Srs,
+    <span class="kw">pub </span>srs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CF::Srs,
     <span class="kw">pub </span>domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
     <span class="kw">pub </span>zero_commitment: PolyComm&lt;CF::Curve&gt;,
     <span class="kw">pub </span>zero_vec: Evals&lt;ScalarField&lt;CF&gt;&gt;,
@@ -691,10 +691,10 @@
     <span class="kw">pub </span>extended_witness_generator: ExtendedWitnessGenerator&lt;CF&gt;,
 }
 
-<span class="kw">impl</span>&lt;CF: FoldingConfig&gt; FoldingScheme&lt;CF&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, CF: FoldingConfig&gt; FoldingScheme&lt;<span class="lifetime">'a</span>, CF&gt; {
     <span class="kw">pub fn </span>new(
         constraints: Vec&lt;FoldingCompatibleExpr&lt;CF&gt;&gt;,
-        srs: CF::Srs,
+        srs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CF::Srs,
         domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
         structure: CF::Structure,
     ) -&gt; (<span class="self">Self</span>, FoldingCompatibleExpr&lt;CF&gt;) {
@@ -745,7 +745,7 @@
             <span class="self">self</span>.domain,
             <span class="prelude-val">None</span>,
         );
-        <span class="kw">let </span>env = env.compute_extension(<span class="kw-2">&amp;</span><span class="self">self</span>.extended_witness_generator, <span class="kw-2">&amp;</span><span class="self">self</span>.srs);
+        <span class="kw">let </span>env = env.compute_extension(<span class="kw-2">&amp;</span><span class="self">self</span>.extended_witness_generator, <span class="self">self</span>.srs);
         <span class="kw">let </span>error = compute_error(<span class="kw-2">&amp;</span><span class="self">self</span>.expression, <span class="kw-2">&amp;</span>env, u);
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, <span class="self">self</span>.domain));
 

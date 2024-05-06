@@ -2567,6 +2567,12 @@
 <a href="#2565" id="2565">2565</a>
 <a href="#2566" id="2566">2566</a>
 <a href="#2567" id="2567">2567</a>
+<a href="#2568" id="2568">2568</a>
+<a href="#2569" id="2569">2569</a>
+<a href="#2570" id="2570">2570</a>
+<a href="#2571" id="2571">2571</a>
+<a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     lookups::{Lookup, LookupTableIDs},
@@ -2595,14 +2601,16 @@
 <span class="kw">pub const </span>SYSCALL_WRITE: u32 = <span class="number">4004</span>;
 <span class="kw">pub const </span>SYSCALL_FCNTL: u32 = <span class="number">4055</span>;
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
+<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd)]
 </span><span class="kw">pub enum </span>Instruction {
     RType(RTypeInstruction),
     JType(JTypeInstruction),
     IType(ITypeInstruction),
 }
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
+<span class="attr">#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
 </span><span class="kw">pub enum </span>RTypeInstruction {
     <span class="attr">#[default]
     </span>ShiftLeftLogical, <span class="comment">// sll
@@ -2649,14 +2657,18 @@
     </span>CountLeadingZeros,            <span class="comment">// clz
 </span>}
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
+<span class="attr">#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
 </span><span class="kw">pub enum </span>JTypeInstruction {
     <span class="attr">#[default]
     </span>Jump, <span class="comment">// j
     </span>JumpAndLink, <span class="comment">// jal
 </span>}
 
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
+<span class="attr">#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
 </span><span class="kw">pub enum </span>ITypeInstruction {
     <span class="attr">#[default]
     </span>BranchEq, <span class="comment">// beq

@@ -118,7 +118,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{lookups::Lookup, E};
 <span class="kw">use </span>ark_ff::{One, Zero};
 <span class="kw">use </span>kimchi_msm::witness::Witness;
-<span class="kw">use </span>std::{collections::HashMap, hash::Hash};
+<span class="kw">use </span>std::{collections::BTreeMap, hash::Hash};
 
 <span class="doccomment">/// Returns the index of the witness column in the trace.
 </span><span class="kw">pub trait </span>Indexer {
@@ -139,18 +139,18 @@
     <span class="doccomment">/// The witness for a given selector
     /// - the last N_SEL columns represent the selector columns
     ///   and only the one for `Selector` should be all ones (the rest of selector columns should be all zeros)
-    </span><span class="kw">pub </span>witness: HashMap&lt;Selector, Witness&lt;N, Vec&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>witness: BTreeMap&lt;Selector, Witness&lt;N, Vec&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The vector of constraints for a given selector
-    </span><span class="kw">pub </span>constraints: HashMap&lt;Selector, Vec&lt;E&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>constraints: BTreeMap&lt;Selector, Vec&lt;E&lt;F&gt;&gt;&gt;,
     <span class="doccomment">/// The vector of lookups for a given selector
-    </span><span class="kw">pub </span>lookups: HashMap&lt;Selector, Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>lookups: BTreeMap&lt;Selector, Vec&lt;Lookup&lt;E&lt;F&gt;&gt;&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;
         <span class="kw">const </span>N: usize,
         <span class="kw">const </span>N_REL: usize,
         <span class="kw">const </span>N_SEL: usize,
-        Selector: Eq + Hash + Indexer + Copy,
+        Selector: Eq + Hash + Indexer + Copy + Ord + PartialOrd,
         F: Zero + One,
     &gt; Trace&lt;N, N_REL, N_SEL, Selector, F&gt;
 {
