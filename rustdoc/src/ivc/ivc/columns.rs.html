@@ -141,39 +141,141 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::poseidon::columns::PoseidonColumn;
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn};
 <span class="kw">use </span>kimchi_msm::{
     columns::{Column, ColumnIndexer},
     fec::columns::FECColumn,
-    serialization::interpreter::N_LIMBS_SMALL,
+    serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
 };
 
 <span class="kw">pub const </span>IVC_POSEIDON_STATE_SIZE: usize = <span class="number">3</span>;
 <span class="kw">pub const </span>IVC_POSEIDON_NB_FULL_ROUND: usize = <span class="number">55</span>;
 
-<span class="doccomment">/// N := N_IVC + N_APP is the total number of columns in the circuit.
+<span class="kw">pub type </span>IVCPoseidonColumn = PoseidonColumn&lt;IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;;
+
+<span class="doccomment">/// The IVC circuit is tiled vertically. We assume we have as much
+/// rows as we need: if we don't, we wrap around and continue.
+///
+/// The biggest blocks are hashes and ECAdds, so other blocks may be wider.
+///
+/// N := N_IVC + N_APP is the total number of columns in the circuit.
+///
+/// Vertically stacked blocks are as follows:
 ///
 ///```text
-///           34         34         34      8   8   8  4  4  4             constϕ
-///                                                  (repacked 150)          ϕ^i    same ϕs but
-///                                      (repacked 75)             (hashes)   r*ϕ^i  in 17 limbs       153
-///         Input1     Input2     Input3    R1  R2  R3 R1 R2 R3   H1 ... H6     -ϕ^i   each         FEC ADDs
-///  1   |----------|----------|----------|---|---|---|--|--|--|-------------|-|-|-|-|---|---|---|----------------|
-///      |   C_L1   |   C_L2   |   C_L3   |           |        |             |       |           |                |
-///      |   C_L4   |   C_L5   |   ...    |           |        |             |       |           |                |
-///      |   ...    |   ...    |   ...    |           |        |             |       |           |                |
-/// N/3  |----------|----------|----------|           |        |             |       |           |                |
-///      |   C_R1   |   C_R2   |   C_R3   |           |        |             |       |           |                |
-///      |   ...    |   ...    |   ...    |           |        |             |       |           |                |
-/// 2N/3 |----------|----------|----------|           |        |             |       |           |                |
-///      |   C_O1   |   C_O2   |   C_O3   |           |        |             |       |           |                |
-///      |   ...    |   ...    |   ...    |           |        |             |       |           |                |
-/// N    |----------|----------|----------|-----------|--------|-------------|-------|-----------|----------------|
-/// N+1  |        default_instance?       |
-///      |            ....                |              ...       FEC ADDs       ...
-///      |  ...??? empty space?
-///      |     reuse w/ selectors?
-/// 2^15 |---------------
+///
+///              34            8      4
+///            Input1         R75   R150
+///  1   |-----------------|-------|----|
+///      |      C_L1       |       |    |
+///      |      C_L2       |       |    |
+///      |                 |       |    |
+///      |      ...        |       |    |
+///   N  |-----------------|       |    |
+///      |      C_R1       |       |    |
+///      |                 |       |    |
+///      |      ...        |       |    |
+///  2N  |-----------------|       |    |
+///      |      C_O1       |       |    |
+///      |                 |       |    |
+///      |      ...        |       |    |
+///  3N  |-----------------|-------|----|
+///      0       ...     34*2    76    80
+///
+///
+///        Hashes (one hash at a row, passing data to the next one)
+///  1   |------------------------------------------|
+///      |                                          |
+///      |                                         .| . here is h_l
+///  N   |------------------------------------------|
+///      |                                          |
+///      |                                         .| . here is h_r
+///  2N  |------------------------------------------|
+///      |                                          |
+///      |                                         .| . here is h_o
+///  3N  |------------------------------------------|
+///      |                                         .| r = h_lr = h(h_l,h_r)
+///      |                                         .| ϕ = h_lro = h(r,h_o)
+///      |------------------------------------------|
+///
+///     constϕ
+///      ϕ^i         ϕ^i        r*ϕ^i
+///       r*ϕ^i   in 17 limbs  in 17 limbs
+///                 each        each
+///   1  |-|-|-|------------|------------|
+///      |     |            |            |
+///      |     |            |            |
+///      |     |            |            |
+///      |     |            |            |
+///  i   |     |            |            |
+///      |     |            |            |
+///      |     |            |            |
+///      |     |            |            |
+///      |     |            |            |
+///  N   |-----|------------|------------|
+///       1 2 3 4 ...     4+17          4+2*17
+///
+///
+///
+///          FEC Additions, one per row, each one is ~230 columns
+///
+///          input#1    input#2          FEC ADD computation          output
+///   1   |------------------------------------------------------|-------------|
+///       |  C_{R'_i} | bucket[ϕ^i]_k   |      ϕ^i·C_{R'_i}      |  newbucket  |
+///       |           |                 |                        |             |
+///       |           |                 |                        |             |
+///  17*N |------------------------------------------------------|-------------|
+///       |  C_{R_i}  | bucket[r·ϕ^i]_k |   r·ϕ^i·C_{R_i}        |  newbucket  |
+///       |           |                 |                        |             |
+///       |           |                 |                        |             |
+///  34*N |------------------------------------------------------|-------------|
+///       |  C_{L}    |  C_{R}          |    C_{L} + C_{R}'      |    C_{O}'   | // assert that C_O' == C_O
+/// 35*N  |------------------------------------------------------|-------------|
+///
+///
+///           The mystery block (undefined now)
+///      |-------------------------------------------|
+///      |   default_instance                        |
+///      |   computing error term T (one line)       |
+/// 2^15 |---- --------------------------------------|
 ///```
 ///
 /// Counting cells:
@@ -182,8 +284,8 @@
 /// - Inputs repacked 150: 2 * 2 * 3N = 12N
 /// - Hashes:              2 * 165 * 3N = 990N (max 4 * 165 * 3N if we add 165 constants to every call)
 /// - scalars:             4 N + 17 * 3 * N = 55 N
-/// - ECADDs:              230 * 35 * 3N = 24150N
-/// Total:                 25333*N
+/// - ECADDs:              230 * 35 * N = 8050N
+/// Total (CELL):         ~9233*N
 ///
 ///     ...which is less than 32k*N
 ///
@@ -193,93 +295,67 @@
 ///    N = (1/(1 - CELL/2^15)) * N_APP = (2^15 / (2^15 - CELL)) * N_APP
 ///    N_IVC = (1/(1 - CELL/2^15) - 1) * N_APP = (2^15 / (2^15 - CELL) - 1) * N_APP
 ///
-/// In our particular case, CELL = 25333, so
-///    N_IVC = 3.41 N_APP
+/// In our particular case, CELL = 9233, so
+///    N_IVC = 0.39 N_APP
 ///
-/// It is also useful to know that N / 2^15 = N_APP / (2^15 - CELL).
-/// In our case it means that N / 2^15 = N_APP / 7414, so if e.g.
-/// N_APP &lt; 2170, N / 2^15 &gt; 3 which means we can fit all 3N
-/// commitments in a single column!
-///
-/// I'm hopeful that this is the case, in which case the design will be as follows:
-///
-/// Layout under assumption that 3N &lt; 2^15!
-///```text
-///           34      8    4        constϕ
-///                                   ϕ^i    same ϕs but
-///                                    r*ϕ^i  in 17 limbs  35*3 - BOT
-///         Input1    R75 R150  H1 H2          each         FEC ADDs
-///  1   |----------|----|----|-------|-|-|-|---|---|----------------|
-///      |   C_L1   |    |    |       |     |       |                |
-///      |   C_L2   |    |    |       |     |       |                |
-///      |   ...    |    |    |       |     |       |                |
-///   N  |----------|    |    |       |     |       |                |
-///      |   C_R1   |    |    |       |     |       |                |
-///      |   ...    |    |    |       |     |       |                |
-///  2N  |----------|    |    |       |     |       |                |
-///      |   C_O1   |    |    |       |     |       |                |
-///      |   ...    |    |    |       |     |       |                |
-///  3N  |----------|----|----|-------|-----|-------|----------------|
-///      |        default_instance?                                  |
-///      |                      ....... BOT FEC ADDs .......         |
-/// 2^15 |-----------------------------------------------------------|
-///```
-///
-///
+/// Which means for e.g. 50 columns we'll need extra 20 of IVC.
 
 </span><span class="comment">// NB: We can reuse hash constants.
 // TODO: Can we pass just one coordinate and sign (x, sign) instead of (x,y) for hashing?
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub enum </span>IVCColumn {
     <span class="doccomment">/// 2*17 15-bit limbs (two base field points)
-    </span>Input(usize),
+    </span>Block1Input(usize),
     <span class="doccomment">/// 2*4 75-bit limbs
-    </span>InputRepacked75(usize),
+    </span>Block1InputRepacked75(usize),
     <span class="doccomment">/// 2*2 150-bit limbs
-    </span>InputRepacked150(usize),
-    <span class="doccomment">/// We need to absorb 4 elements per row (1 input = 2 base field
-    /// elements = 4 limbs of 150bit).
-    ///
-    /// We can hash 2 elements at the same time, so 6 hash invocations.
-    ///
-    /// NB: We can probably even do more absorbing.
-    </span>Hashes(
+    </span>Block1InputRepacked150(usize),
+
+    <span class="doccomment">/// 1 hash per row
+    </span>Block2Hashes(
         PoseidonColumn&lt;IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;,
         usize,
     ),
+
     <span class="doccomment">/// Constant phi
-    </span>ConstPhi,
+    </span>Block3ConstPhi,
     <span class="doccomment">/// Constant r
-    </span>ConstR,
+    </span>Block3ConstR,
     <span class="doccomment">/// Scalar coeff #1, phi^i
-    </span>Phi,
+    </span>Block3Phi,
     <span class="doccomment">/// Scalar coeff #2, r * phi^i
-    </span>PhiR,
+    </span>Block3PhiR,
     <span class="doccomment">/// 17 15-bit limbs
-    </span>PhiLimbs(usize),
+    </span>Block3PhiLimbs(usize),
     <span class="doccomment">/// 17 15-bit limbs
-    </span>PhiRLimbs(usize),
-    <span class="doccomment">/// 35 additions per row at most.
-    ///
-    /// We have 1 input per row, each one requires 2*17+1 ECAdds. Note
-    /// that coefficients are generally located on a different row, so
-    /// must be looked up.
-    </span>ECAdds(FECColumn, usize),
-    <span class="doccomment">/// Overlapping, bottom ECADDs
-    </span>ECAddsBottom(FECColumn, usize),
+    </span>Block3PhiRLimbs(usize),
+
+    <span class="doccomment">/// 1 addition per row
+    </span>Block4ECAdd(FECColumn, usize),
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>IVCColumn {
-    <span class="kw">const </span>COL_N: usize = <span class="number">2 </span>* N_LIMBS_SMALL
-        + <span class="number">2 </span>* <span class="number">4
-        </span>+ <span class="number">2 </span>* <span class="number">2
-        </span>+ <span class="number">2 </span>* PoseidonColumn::&lt;IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;::COL_N
-        + <span class="number">3
-        </span>+ <span class="number">2 </span>* N_LIMBS_SMALL
-        + <span class="number">35 </span>* FECColumn::COL_N;
+    <span class="comment">// This should be
+    //   const COL_N: usize = std::cmp::max(IVCPoseidonColumn::COL_N, FECColumn::COL_N);
+    // which is runtime-only expression..?
+    </span><span class="kw">const </span>COL_N: usize = IVCPoseidonColumn::COL_N;
 
     <span class="kw">fn </span>to_column(<span class="self">self</span>) -&gt; Column {
-        <span class="macro">todo!</span>()
+        <span class="kw">match </span><span class="self">self </span>{
+            IVCColumn::Block1Input(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_SMALL);
+                Column::Relation(i)
+            }
+            IVCColumn::Block1InputRepacked75(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_LARGE);
+                Column::Relation(<span class="number">2 </span>* N_LIMBS_SMALL + i)
+            }
+            IVCColumn::Block1InputRepacked150(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_XLARGE);
+                Column::Relation(<span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2 </span>* N_LIMBS_LARGE + i)
+            }
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Column not supported yet"</span>),
+        }
     }
 }
 </code></pre></div></section></main></body></html>

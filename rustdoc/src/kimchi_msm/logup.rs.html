@@ -847,6 +847,8 @@
 <a href="#845" id="845">845</a>
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement a variant of the logarithmic derivative lookups based on the
 //! equations described in the paper ["Multivariate lookups based on logarithmic
 //! derivatives"](https://eprint.iacr.org/2022/1530.pdf).
@@ -1058,6 +1060,8 @@
 
     <span class="doccomment">/// Given a value, returns an index of this value in the table.
     </span><span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, value: F) -&gt; usize;
+
+    <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt;;
 }
 
 <span class="doccomment">/// A table of values that can be used for a lookup, along with the ID for the table.

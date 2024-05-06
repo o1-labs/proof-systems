@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {};
+window.SIDEBAR_ITEMS = {"constant":["LIMB_BITSIZE_XLARGE","N_LIMBS_XLARGE"],"fn":["combine_large_to_xlarge","ivc_circuit","ivc_constraint"]};

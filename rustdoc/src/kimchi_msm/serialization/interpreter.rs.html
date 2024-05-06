@@ -826,12 +826,21 @@
 <a href="#824" id="824">824</a>
 <a href="#825" id="825">825</a>
 <a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::{FpParameters, PrimeField, Zero};
 <span class="kw">use </span>num_bigint::{BigInt, BigUint, ToBigInt};
 <span class="kw">use </span>num_integer::Integer;
 <span class="kw">use </span>num_traits::{sign::Signed, Euclid};
 <span class="kw">use </span>std::marker::PhantomData;
-<span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="kw">use crate</span>::{
     circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
@@ -863,8 +872,8 @@
         </span><span class="self">Self</span>: ColAccessCap&lt;F, CIx&gt;;
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator&gt;
-    HybridSerHelpers&lt;F, CIx, LT&gt; <span class="kw">for </span><span class="kw">crate</span>::circuit_design::ConstraintBuilderEnv&lt;F, LT&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID&gt; HybridSerHelpers&lt;F, CIx, LT&gt;
+    <span class="kw">for </span><span class="kw">crate</span>::circuit_design::ConstraintBuilderEnv&lt;F, LT&gt;
 {
     <span class="kw">fn </span>bitmask_be(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -882,12 +891,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        <span class="kw">const </span>CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    &gt; HybridSerHelpers&lt;F, CIx, LT&gt; <span class="kw">for </span><span class="kw">crate</span>::circuit_design::WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt;
+    HybridSerHelpers&lt;F, CIx, LT&gt; <span class="kw">for </span><span class="kw">crate</span>::circuit_design::WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
 {
     <span class="kw">fn </span>bitmask_be(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1129,30 +1134,51 @@
 ///
 /// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
-/// chunks `a_i` of size `5` from the first, and recombining them as
+/// chunks `a_i` of size `K = BITSIZE_N / BITSIZE_M` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-</span><span class="kw">pub fn </span>combine_small_to_large&lt;
+</span><span class="kw">pub fn </span>combine_limbs_m_to_n&lt;
     <span class="kw">const </span>M: usize,
     <span class="kw">const </span>N: usize,
+    <span class="kw">const </span>BITSIZE_M: usize,
+    <span class="kw">const </span>BITSIZE_N: usize,
     F: PrimeField,
     CIx: ColumnIndexer,
     Env: ColAccessCap&lt;F, CIx&gt;,
 &gt;(
     x: [Env::Variable; M],
 ) -&gt; [Env::Variable; N] {
+    <span class="macro">assert!</span>(BITSIZE_N % BITSIZE_M == <span class="number">0</span>);
+    <span class="kw">let </span>k = BITSIZE_N / BITSIZE_M;
     <span class="kw">let </span>constant_u128 = |x: u128| Env::constant(From::from(x));
-    <span class="kw">let </span>disparity: usize = M % <span class="number">5</span>;
+    <span class="kw">let </span>disparity: usize = M % k;
     std::array::from_fn(|i| {
         <span class="comment">// We have less small limbs in the last large limb
         </span><span class="kw">let </span>upper_bound = <span class="kw">if </span>disparity != <span class="number">0 </span>&amp;&amp; i == N - <span class="number">1 </span>{
             disparity
         } <span class="kw">else </span>{
-            <span class="number">5
-        </span>};
+            k
+        };
         (<span class="number">0</span>..upper_bound)
-            .map(|j| x[<span class="number">5 </span>* i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * LIMB_BITSIZE_SMALL)))
+            .map(|j| x[k * i + j].clone() * constant_u128(<span class="number">1u128 </span>&lt;&lt; (j * BITSIZE_M)))
             .fold(Env::Variable::from(<span class="number">0u64</span>), |acc, v| acc + v)
     })
+}
+
+<span class="doccomment">/// Helper function for limb recombination.
+///
+/// Combines small limbs into big limbs.
+</span><span class="kw">pub fn </span>combine_small_to_large&lt;F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap&lt;F, CIx&gt;&gt;(
+    x: [Env::Variable; N_LIMBS_SMALL],
+) -&gt; [Env::Variable; N_LIMBS_LARGE] {
+    combine_limbs_m_to_n::&lt;
+        N_LIMBS_SMALL,
+        N_LIMBS_LARGE,
+        LIMB_BITSIZE_SMALL,
+        LIMB_BITSIZE_LARGE,
+        F,
+        CIx,
+        Env,
+    &gt;(x)
 }
 
 <span class="doccomment">/// Helper function for limb recombination for carry specifically.
@@ -1228,18 +1254,12 @@
     <span class="comment">// FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
 
     </span><span class="kw">let </span>chal_converted_limbs_large =
-        combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(
-            chal_converted_limbs_small.clone(),
-        );
-    <span class="kw">let </span>coeff_input_limbs_large = combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(
-        coeff_input_limbs_small.clone(),
-    );
-    <span class="kw">let </span>coeff_result_limbs_large = combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(
-        coeff_result_limbs_small.clone(),
-    );
-    <span class="kw">let </span>quotient_limbs_large = combine_small_to_large::&lt;N_LIMBS_SMALL, N_LIMBS_LARGE, <span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(
-        quotient_limbs_small.clone(),
-    );
+        combine_small_to_large::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(chal_converted_limbs_small.clone());
+    <span class="kw">let </span>coeff_input_limbs_large =
+        combine_small_to_large::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(coeff_input_limbs_small.clone());
+    <span class="kw">let </span>coeff_result_limbs_large =
+        combine_small_to_large::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(coeff_result_limbs_small.clone());
+    <span class="kw">let </span>quotient_limbs_large = combine_small_to_large::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(quotient_limbs_small.clone());
     <span class="kw">let </span>carry_limbs_large: [<span class="kw">_</span>; <span class="number">2 </span>* N_LIMBS_LARGE - <span class="number">2</span>] =
         combine_carry::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Env&gt;(carry_limbs_small.clone());
 

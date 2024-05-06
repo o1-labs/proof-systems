@@ -173,6 +173,14 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{logup::LookupTableID, Logup, LIMB_BITSIZE, N_LIMBS};
 <span class="kw">use </span>ark_ff::{FpParameters, PrimeField};
 <span class="kw">use </span>num_bigint::BigUint;
@@ -267,6 +275,16 @@
             }
         }
     }
+
+    <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+        <span class="macro">vec!</span>[
+            <span class="self">Self</span>::RangeCheck15,
+            <span class="self">Self</span>::RangeCheck14Abs,
+            <span class="self">Self</span>::RangeCheck9Abs,
+            <span class="self">Self</span>::RangeCheck1Abs,
+            <span class="self">Self</span>::RangeCheckFfHighest(PhantomData),
+        ]
+    }
 }
 
 <span class="kw">impl</span>&lt;Ff: PrimeField&gt; LookupTable&lt;Ff&gt; {
@@ -342,8 +360,6 @@
         }
     }
 }
-
-<span class="kw">impl</span>&lt;Ff: PrimeField&gt; LookupTable&lt;Ff&gt; {}
 
 <span class="kw">pub type </span>Lookup&lt;F, Ff&gt; = Logup&lt;F, LookupTable&lt;Ff&gt;&gt;;
 </code></pre></div></section></main></body></html>

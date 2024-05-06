@@ -279,27 +279,6 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
     columns::{Column, ColumnIndexer},
@@ -311,7 +290,6 @@
 <span class="kw">use </span>kimchi::circuits::domains::EvaluationDomains;
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>std::{collections::BTreeMap, iter};
-<span class="kw">use </span>strum::IntoEnumIterator;
 
 <span class="doccomment">/// Witness builder environment. Operates
 </span><span class="kw">pub struct </span>WitnessBuilderEnv&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt; {
@@ -331,12 +309,8 @@
     </span><span class="kw">pub </span>lookups: Vec&lt;BTreeMap&lt;LT, Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        <span class="kw">const </span>CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    &gt; ColAccessCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt;
+    ColAccessCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
 {
     <span class="comment">// Requiring an F element as we would need to compute values up to 180 bits
     // in the 15 bits decomposition.
@@ -358,12 +332,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        <span class="kw">const </span>CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    &gt; ColWriteCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt;
+    ColWriteCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
 {
     <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ix: CIx, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="kw">let </span>Column::Relation(i) = ix.to_column() <span class="kw">else </span>{
@@ -379,12 +349,8 @@
 ///
 /// Sadly, rust does not allow "cover" instances to define this impl
 /// for every `T: ColWriteCap`.
-</span><span class="kw">impl</span>&lt;
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        <span class="kw">const </span>CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    &gt; HybridCopyCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+</span><span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt;
+    HybridCopyCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
 {
     <span class="kw">fn </span>hcopy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, ix: CIx) -&gt; <span class="self">Self</span>::Variable {
         &lt;WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt; <span class="kw">as </span>ColWriteCap&lt;F, CIx&gt;&gt;::write_column(<span class="self">self</span>, ix, value);
@@ -392,12 +358,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        <span class="kw">const </span>CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    &gt; LookupCap&lt;F, CIx, LT&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt;
+    LookupCap&lt;F, CIx, LT&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
 {
     <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, table_id: LT, value: <span class="kw-2">&amp;</span>&lt;<span class="self">Self </span><span class="kw">as </span>ColAccessCap&lt;F, CIx&gt;&gt;::Variable) {
         <span class="kw">let </span>value_ix = table_id.ix_by_value(<span class="kw-2">*</span>value);
@@ -415,9 +377,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator&gt;
-    WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
-{
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt; WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt; {
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, position: Column, value: F) {
         <span class="kw">match </span>position {
             Column::Relation(i) =&gt; <span class="self">self</span>.witness.last_mut().unwrap().cols[i] = value,
@@ -461,7 +421,7 @@
             cols: Box::new([F::zero(); CIX_COL_N]),
         });
         <span class="kw">let </span><span class="kw-2">mut </span>lookups_row = BTreeMap::new();
-        <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
+        <span class="kw">for </span>table_id <span class="kw">in </span>LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
         }
         <span class="self">self</span>.lookups.push(lookups_row);
@@ -484,14 +444,12 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID + IntoEnumIterator&gt;
-    WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
-{
+<span class="kw">impl</span>&lt;F: PrimeField, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt; WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt; {
     <span class="doccomment">/// Create a new empty-state witness builder.
     </span><span class="kw">pub fn </span>create() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>lookups_row = BTreeMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>lookup_multiplicities = BTreeMap::new();
-        <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
+        <span class="kw">for </span>table_id <span class="kw">in </span>LT::all_variants().into_iter() {
             lookups_row.insert(table_id, Vec::new());
             lookup_multiplicities.insert(table_id, <span class="macro">vec!</span>[F::zero(); table_id.length()]);
         }
@@ -535,7 +493,7 @@
         <span class="comment">// Building lookup values
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables: BTreeMap&lt;LT, Vec&lt;Vec&lt;Logup&lt;F, LT&gt;&gt;&gt;&gt; = BTreeMap::new();
         <span class="kw">if </span>!lookup_tables_data.is_empty() {
-            <span class="kw">for </span>table_id <span class="kw">in </span>LT::iter() {
+            <span class="kw">for </span>table_id <span class="kw">in </span>LT::all_variants().into_iter() {
                 <span class="comment">// Find how many lookups are done per table.
                 </span><span class="kw">let </span>number_of_lookups = <span class="self">self</span>.lookups[<span class="number">0</span>].get(<span class="kw-2">&amp;</span>table_id).unwrap().len();
                 <span class="comment">// Technically the number of lookups must be the same per

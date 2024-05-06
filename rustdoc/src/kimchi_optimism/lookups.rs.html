@@ -242,6 +242,21 @@
 <a href="#240" id="240">240</a>
 <a href="#241" id="241">241</a>
 <a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Instantiation of the lookups for the VM project.
 
 </span><span class="kw">use </span><span class="self">self</span>::LookupTableIDs::<span class="kw-2">*</span>;
@@ -338,6 +353,21 @@
 
     <span class="kw">fn </span>ix_by_value&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _value: F) -&gt; usize {
         <span class="macro">todo!</span>()
+    }
+
+    <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+        <span class="macro">vec!</span>[
+            <span class="self">Self</span>::PadLookup,
+            <span class="self">Self</span>::RoundConstantsLookup,
+            <span class="self">Self</span>::ByteLookup,
+            <span class="self">Self</span>::RangeCheck16Lookup,
+            <span class="self">Self</span>::SparseLookup,
+            <span class="self">Self</span>::ResetLookup,
+            <span class="self">Self</span>::MemoryLookup,
+            <span class="self">Self</span>::RegisterLookup,
+            <span class="self">Self</span>::SyscallLookup,
+            <span class="self">Self</span>::KeccakStepLookup,
+        ]
     }
 }
 
