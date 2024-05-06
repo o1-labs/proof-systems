@@ -18,7 +18,7 @@
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
-use ark_ff::Zero;
+use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{
@@ -28,10 +28,16 @@ use instance_witness::{RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
-use std::{fmt::Debug, hash::Hash};
+use std::{
+    fmt::Debug,
+    hash::Hash,
+    iter::successors,
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
-#[cfg(feature = "bn254")]
 pub use expressions::ExpExtension;
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
@@ -40,6 +46,7 @@ pub mod decomposable_folding;
 
 mod error_term;
 
+mod eval_leaf;
 pub mod expressions;
 mod instance_witness;
 pub mod quadraticization;
@@ -49,8 +56,6 @@ pub mod quadraticization;
 #[cfg(test)]
 #[cfg(feature = "bn254")]
 mod examples;
-#[cfg(test)]
-mod mock;
 
 // Simple type alias as ScalarField is often used. Reduce type complexity for
 // clippy.
@@ -98,146 +103,6 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
 
     /// Return the size of the circuit, i.e. the number of rows
     fn rows() -> usize;
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum EvalLeaf<'a, F> {
-    Const(F),
-    Col(&'a Vec<F>),
-    Result(Vec<F>),
-}
-
-impl<'a, F: std::fmt::Display> std::fmt::Display for EvalLeaf<'a, F> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let vec = match self {
-            EvalLeaf::Const(c) => {
-                write!(f, "Const: {}", c)?;
-                return Ok(());
-            }
-            EvalLeaf::Col(a) => a,
-            EvalLeaf::Result(a) => a,
-        };
-        writeln!(f, "[")?;
-        for e in vec.iter() {
-            writeln!(f, "{e}")?;
-        }
-        write!(f, "]")?;
-        Ok(())
-    }
-}
-
-impl<'a, F: std::ops::Add<Output = F> + Clone> std::ops::Add for EvalLeaf<'a, F> {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        Self::bin_op(|a, b| a + b, self, rhs)
-    }
-}
-
-impl<'a, F: std::ops::Sub<Output = F> + Clone> std::ops::Sub for EvalLeaf<'a, F> {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self {
-        Self::bin_op(|a, b| a - b, self, rhs)
-    }
-}
-
-impl<'a, F: std::ops::Mul<Output = F> + Clone> std::ops::Mul for EvalLeaf<'a, F> {
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self {
-        Self::bin_op(|a, b| a * b, self, rhs)
-    }
-}
-
-impl<'a, F: std::ops::Mul<Output = F> + Clone> std::ops::Mul<F> for EvalLeaf<'a, F> {
-    type Output = Self;
-
-    fn mul(self, rhs: F) -> Self {
-        self * Self::Const(rhs)
-    }
-}
-
-impl<'a, F: Clone> EvalLeaf<'a, F> {
-    fn map<M: Fn(&F) -> F, I: Fn(&mut F)>(self, map: M, in_place: I) -> Self {
-        use EvalLeaf::*;
-        match self {
-            Const(c) => Const(map(&c)),
-            Col(col) => {
-                let res = col.iter().map(map).collect();
-                Result(res)
-            }
-            Result(mut col) => {
-                for cell in col.iter_mut() {
-                    in_place(cell);
-                }
-                Result(col)
-            }
-        }
-    }
-
-    fn bin_op<M: Fn(F, F) -> F>(f: M, a: Self, b: Self) -> Self {
-        use EvalLeaf::*;
-        match (a, b) {
-            (Const(a), Const(b)) => Const(f(a, b)),
-            (Const(a), Col(b)) => {
-                let res = b.iter().map(|b| f(a.clone(), b.clone())).collect();
-                Result(res)
-            }
-            (Col(a), Const(b)) => {
-                let res = a.iter().map(|a| f(a.clone(), b.clone())).collect();
-                Result(res)
-            }
-            (Col(a), Col(b)) => {
-                let res = (a.iter())
-                    .zip(b.iter())
-                    .map(|(a, b)| f(a.clone(), b.clone()))
-                    .collect();
-                Result(res)
-            }
-            (Result(mut a), Const(b)) => {
-                for a in a.iter_mut() {
-                    *a = f(a.clone(), b.clone())
-                }
-                Result(a)
-            }
-            (Const(a), Result(mut b)) => {
-                for b in b.iter_mut() {
-                    *b = f(a.clone(), b.clone())
-                }
-                Result(b)
-            }
-            (Result(mut a), Col(b)) => {
-                for (a, b) in a.iter_mut().zip(b.iter()) {
-                    *a = f(a.clone(), b.clone())
-                }
-                Result(a)
-            }
-            (Col(a), Result(mut b)) => {
-                for (a, b) in a.iter().zip(b.iter_mut()) {
-                    *b = f(b.clone(), a.clone())
-                }
-                Result(b)
-            }
-            (Result(mut a), Result(b)) => {
-                for (a, b) in a.iter_mut().zip(b.into_iter()) {
-                    *a = f(a.clone(), b)
-                }
-                Result(a)
-            }
-        }
-    }
-
-    fn unwrap(self) -> Vec<F>
-    where
-        F: Clone,
-    {
-        match self {
-            EvalLeaf::Col(res) => res.to_vec(),
-            EvalLeaf::Result(res) => res,
-            EvalLeaf::Const(_) => panic!("Attempted to unwrap a constant"),
-        }
-    }
 }
 
 /// Describe a folding environment.
@@ -385,5 +250,56 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax(self.zero_commitment.clone());
         let challenge = <CF::Sponge>::challenge(&error_commitments);
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
+    }
+}
+
+/// Combinators that will be used to fold the constraints,
+/// called the "alphas".
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding.
+/// The values will be computed as powers in new instances, but after folding
+/// each alpha will be a linear combination of other alphas, instand of a power
+/// of other element. This type represents that, allowing to also recognize
+/// which case is present.
+#[derive(Debug, Clone)]
+pub enum Alphas<F: Field> {
+    Powers(F, Rc<AtomicUsize>),
+    Combinations(Vec<F>),
+}
+
+impl<F: Field> Alphas<F> {
+    pub fn new(alpha: F) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    }
+    pub fn get(&self, i: usize) -> Option<F> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
+                let i = [i as u64];
+                Some(alpha.pow(i))
+            }
+            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
+        }
+    }
+    pub fn powers(self) -> Vec<F> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let n = count.load(Ordering::Relaxed);
+                let alphas = successors(Some(F::one()), |last| Some(*last * alpha));
+                alphas.take(n).collect()
+            }
+            Alphas::Combinations(c) => c,
+        }
+    }
+    pub fn combine(a: Self, b: Self, challenge: F) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
     }
 }
