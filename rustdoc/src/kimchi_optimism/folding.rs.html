@@ -232,7 +232,6 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -389,10 +388,9 @@
 
 <span class="doccomment">/// Environment for the folding protocol, for a given number of witness columns
 /// and structure
-</span><span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, Structure&gt; {
+</span><span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize&gt; {
     <span class="doccomment">/// Structure of the folded circuit (not used right now)
-    </span><span class="attr">#[allow(dead_code)]
-    </span><span class="kw">pub </span>structure: Structure,
+    </span><span class="kw">pub </span>structure: (),
     <span class="doccomment">/// Commitments to the witness columns, for both sides
     </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
@@ -402,17 +400,17 @@
     </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N&gt;; <span class="number">2</span>],
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, Col, Selector: Copy + Clone, Structure: Clone&gt;
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, Col, Selector: Copy + Clone&gt;
     FoldingEnv&lt;Fp, FoldingInstance&lt;N&gt;, FoldingWitness&lt;N&gt;, Col, Challenge, Selector&gt;
-    <span class="kw">for </span>FoldingEnvironment&lt;N, Structure&gt;
+    <span class="kw">for </span>FoldingEnvironment&lt;N&gt;
 <span class="kw">where
     </span>FoldingWitness&lt;N&gt;: Index&lt;Col, Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;&gt;,
     FoldingWitness&lt;N&gt;: Index&lt;Selector, Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;&gt;,
 {
-    <span class="kw">type </span>Structure = Structure;
+    <span class="kw">type </span>Structure = ();
 
     <span class="kw">fn </span>new(
-        structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure,
+        _structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure,
         instances: [<span class="kw-2">&amp;</span>FoldingInstance&lt;N&gt;; <span class="number">2</span>],
         witnesses: [<span class="kw-2">&amp;</span>FoldingWitness&lt;N&gt;; <span class="number">2</span>],
     ) -&gt; <span class="self">Self </span>{
@@ -424,7 +422,7 @@
             }
         }
         FoldingEnvironment {
-            structure: structure.clone(),
+            structure: (),
             instances: [instances[<span class="number">0</span>].clone(), instances[<span class="number">1</span>].clone()],
             curr_witnesses,
             next_witnesses,
