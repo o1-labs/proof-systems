@@ -2,7 +2,7 @@ use crate::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn}
 use kimchi_msm::{
     circuit_design::composition::MPrism,
     columns::{Column, ColumnIndexer},
-    fec::columns::FECColumn,
+    fec::columns::{FECColumn, FECColumnInput, FECColumnInter, FECColumnOutput},
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
 };
 
@@ -76,34 +76,85 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///      |                    |            |            |
 ///      |                    |            |            |
 ///      |                    |            |            |
-///      |                    |            |            |
-///  N   |--------------------|------------|------------|
+///      |       ϕ^{N+1}      |            |            |
+///  N+1 |--------------------|------------|------------|
 ///       1    2   3   4 ...        4+17          4+2*17
 ///
 ///
 ///
-///          FEC Additions, one per row, each one is ~230 columns
+/// We compute the following equations, where equations in "quotes" are
+/// what we /want/ to prove, and non-quoted is an equavilant version
+/// that we actually prove instead:
+/// - "C_{O,i} = C_{L,i} + r·C_{R,i}":
+///   - C_{O,i} = C_{L,i} + C_{R',i}
+///   - "C_{R',i} = r·C_{R,i}"
+///     - bucket[ϕ^i]_k -= C_{R',i}
+///     - bucket[r·ϕ^i]_k += C_{R,i}
+/// - "E_O = E_L + r·T_0 + r^2·T_1 + r^3·E_R":
+///   - E_O = E_L + E_R'
+///   - "E_R' = r·T_0 + r^2·T_1 + r^3·E_R"
+///     - bucket[ϕ^{n+1}] += E_R'
+///     - bucket[r·ϕ^{n+1}] += T_0
+///     - bucket[r^2·ϕ^{n+1}] += T_1
+///     - bucket[r^3·ϕ^{n+1}] += E_R
 ///
-///          input#1    input#2          FEC ADD computation          output
-///   1   |------------------------------------------------------|-------------|
-///       |  C_{R',i} | bucket[ϕ^i]_k   |      ϕ^i·C_{R',i}      |  newbucket  |
-///       |           |                 |                        |             |
-///       |           |                 |                        |             |
-///  17*N |------------------------------------------------------|-------------|
-///       |  C_{R,i}  | bucket[r·ϕ^i]_k |   r·ϕ^i·C_{R,i}        |  newbucket  |
-///       |           |                 |                        |             |
-///       |           |                 |                        |             |
-///  34*N |------------------------------------------------------|-------------|
-///       |  C_{R,i}  |  C_{L,i}        |  C_{L,i} + C_{R,i}'    |    C_{O}'   | // assert that C_O' == C_O
-/// 35*N  |------------------------------------------------------|-------------|
+/// Runtime access time is represented by ? because it's not known in advance.
+///
+/// Output and input RAM invocations in the same row use the same coeff/memory index.
+///
+/// FEC Additions, one per row, each one is ~230 columns:
+///
+///                  .           input #2 (looked up)                  .                  Output
+///                  .                  Access        input#2          .     FEC ADD      access    output
+///          input#1 .  Coeff/mem ix     Time         Value            .   computation     time     value
+///   1   |-------------------------------------------------------------------------------|-----|------------|
+///       | C_{R',1} | ϕ^1_0           |  ?  | bucket[ϕ^1_0]           |                  |  ?  | newbucket  |
+///       | C_{R',2} | ϕ^2_0           |  ?  | bucket[ϕ^2_0]           |                  |  ?  | newbucket  |
+///       |          |      ...        | ... |                         |                  | ... |            |
+///       | C_{R',N} | ϕ^N_0           |  ?  | bucket[ϕ^N_0]           |                  |  ?  | newbucket  |
+///       | C_{R',1} | ϕ^1_1           |  ?  | bucket[ϕ^0_1]           |                  |  ?  | newbucket  |
+///       |          |      ...        | ... |                         |                  | ... |            |
+///       | C_{R',i} | ϕ^i_k           |  ?  | bucket[ϕ^i_k]           |                  |  ?  | newbucket  |
+///       |          |                 |     |                         |                  |     |            |
+///       |          |      ...        | ... |                         |                  | ... |            |
+///  17*N |--------------------------------------------------------------------------------------------------|
+///       | C_{R,i}  | r·(ϕ^i_k)       |  ?  | bucket[r·(ϕ^i_k)]       |                  |  ?  | newbucket  |
+///       |          |                 |     |                         |                  |     |            |
+///       |          |      ...        | ... |                         |                  | ... |            |
+///  34*N |--------------------------------------------------------------------------------------------------|
+///       |-C_{R',i} |      -          |  -  | C_{L,i}                 |                  |  -  | C_{O,i}    |
+///       |          |     ...         | ... |                         |                  | ... |            |
+///  35*N |--------------------------------------------------------------------------------------------------|
+///       | -E_R'    | ϕ^{n+1}_k       |  ?  | bucket[ϕ^{n+1}_k]       |                  |     | newbucket  |
+///       |          |     ...         | ... |                         |                  | ... |            |
+///       |  T_0     | r·(ϕ^{n+1})     |  ?  | bucket[r·(ϕ^{n+1})]     |                  |     | newbucket  |
+///       |          |     ...         | ... |                         |                  | ... |            |
+///       |  T_1     | r^2·(ϕ^{n+1}_k) |  ?  | bucket[r^2·(ϕ^{n+1}_k)] |                  |     | newbucket  |
+///       |          |     ...         | ... |                         |                  | ... |            |
+///       |  E_R     | r^3·(ϕ^{n+1}_k) |  ?  | bucket[r^3·(ϕ^{n+1}_k)] |                  |     | newbucket  |
+///       |          |     ...         | ... |                         |                  | ... |            |
+/// 35*N+ |  E_L     |      -          |  -  |      E_R'               |                  |  -  |    E_O     |
+/// 4*17+ |--------------------------------------------------------------------------------------------------|
+/// 1
 ///
 ///
 ///           The mystery block (undefined now)
 ///      |-------------------------------------------|
 ///      |   default_instance                        |
-///      |   computing error term T (one line)       |
+///      |   ???                                     |
 /// 2^15 |---- --------------------------------------|
 ///```
+///
+///
+/// Assume that IVC circuit takess CELL cells, e.g. CELL = 10000*N.
+/// Then we can calculate N_IVC as dependency of N_APP in this way:
+///    N = N_APP + (CELL/2^15)*N
+///    (1 - CELL/2^15)*N = N_APP
+///    N = (1/(1 - CELL/2^15)) * N_APP = (2^15 / (2^15 - CELL)) * N_APP
+///    N_IVC = (1/(1 - CELL/2^15) - 1) * N_APP = (2^15 / (2^15 - CELL) - 1) * N_APP
+///
+///
+/// --- (slightly) OUTDATED BELOW ---
 ///
 /// Counting cells:
 /// - Inputs:              2 * 17 * 3N = 102N
@@ -115,12 +166,6 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 /// Total (CELL):         ~9233*N
 ///
 ///     ...which is less than 32k*N
-///
-/// We can calculate N_IVC as dependency of N_APP in this way:
-///    N = N_APP + (CELL/2^15)*N
-///    (1 - CELL/2^15)*N = N_APP
-///    N = (1/(1 - CELL/2^15)) * N_APP = (2^15 / (2^15 - CELL)) * N_APP
-///    N_IVC = (1/(1 - CELL/2^15) - 1) * N_APP = (2^15 / (2^15 - CELL) - 1) * N_APP
 ///
 /// In our particular case, CELL = 9233, so
 ///    N_IVC = 0.39 N_APP
@@ -154,8 +199,23 @@ pub enum IVCColumn {
     /// 17 15-bit limbs
     Block3PhiPowRLimbs(usize),
 
-    /// 1 addition per row
-    Block4ECAdd(FECColumn),
+    /// 2*4 75-bit limbs
+    Block4Input1(usize),
+    /// Coeffifient which is indexing a bucket. Used for both lookups in this row.
+    Block4Coeff,
+    /// RAM lookup access time for input 1.
+    Block4Input2AccessTime,
+    /// 2*4 75-bit limbs
+    Block4Input2(usize),
+    /// EC ADD intermediate wires
+    Block4ECAddInter(FECColumnInter),
+    /// 2*17 15-bit limbs
+    Block4OutputRaw(FECColumnOutput),
+    // TODO: this might be just Input2AccessTime + 1?
+    /// RAM lookup access time for output.
+    Block4OutputAccessTime,
+    /// 2*4 75-bit limbs
+    Block4OutputRepacked(usize),
 }
 
 impl ColumnIndexer for IVCColumn {
@@ -191,7 +251,27 @@ impl ColumnIndexer for IVCColumn {
                 assert!(i < N_LIMBS_SMALL);
                 Column::Relation(4 + N_LIMBS_SMALL + i)
             }
-            IVCColumn::Block4ECAdd(fec_col) => fec_col.to_column(),
+            IVCColumn::Block4Input1(i) => {
+                assert!(i < 2 * N_LIMBS_LARGE);
+                Column::Relation(i)
+            }
+            IVCColumn::Block4Coeff => Column::Relation(8),
+            IVCColumn::Block4Input2AccessTime => Column::Relation(9),
+            IVCColumn::Block4Input2(i) => {
+                assert!(i < 2 * N_LIMBS_LARGE);
+                Column::Relation(10 + i)
+            }
+            IVCColumn::Block4ECAddInter(fec_inter) => fec_inter.to_column().add_rel_offset(18),
+            IVCColumn::Block4OutputRaw(fec_output) => fec_output
+                .to_column()
+                .add_rel_offset(18 + FECColumnInter::N_COL),
+            IVCColumn::Block4OutputAccessTime => {
+                Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL)
+            }
+            IVCColumn::Block4OutputRepacked(i) => {
+                assert!(i < 2 * N_LIMBS_LARGE);
+                Column::Relation(18 + FECColumnInter::N_COL + FECColumnOutput::N_COL + 1 + i)
+            }
         }
     }
 }
@@ -222,12 +302,34 @@ impl MPrism for IVCFECLens {
 
     fn traverse(&self, source: Self::Source) -> Option<Self::Target> {
         match source {
-            IVCColumn::Block4ECAdd(col) => Some(col),
+            IVCColumn::Block4Input1(i) => {
+                if i < 4 {
+                    Some(FECColumn::Input(FECColumnInput::XP(i)))
+                } else {
+                    Some(FECColumn::Input(FECColumnInput::YP(i)))
+                }
+            }
+            IVCColumn::Block4Input2(i) => {
+                if i < 4 {
+                    Some(FECColumn::Input(FECColumnInput::XQ(i)))
+                } else {
+                    Some(FECColumn::Input(FECColumnInput::YQ(i)))
+                }
+            }
+            IVCColumn::Block4OutputRaw(output) => Some(FECColumn::Output(output)),
+            IVCColumn::Block4ECAddInter(inter) => Some(FECColumn::Inter(inter)),
             _ => None,
         }
     }
 
     fn re_get(&self, target: Self::Target) -> Self::Source {
-        IVCColumn::Block4ECAdd(target)
+        match target {
+            FECColumn::Input(FECColumnInput::XP(i)) => IVCColumn::Block4Input1(i),
+            FECColumn::Input(FECColumnInput::YP(i)) => IVCColumn::Block4Input1(4 + i),
+            FECColumn::Input(FECColumnInput::XQ(i)) => IVCColumn::Block4Input2(i),
+            FECColumn::Input(FECColumnInput::YQ(i)) => IVCColumn::Block4Input2(4 + i),
+            FECColumn::Output(output) => IVCColumn::Block4OutputRaw(output),
+            FECColumn::Inter(inter) => IVCColumn::Block4ECAddInter(inter),
+        }
     }
 }
