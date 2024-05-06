@@ -412,8 +412,6 @@
 <a href="#410" id="410">410</a>
 <a href="#411" id="411">411</a>
 <a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_bn254;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
@@ -526,8 +524,7 @@
     }
 }
 
-<span class="doccomment">/// Folding instance containing the commitment to a witness of N columns,
-/// challenges for the proof, and the alphas
+<span class="doccomment">/// Folding instance containing the commitment to a witness of N columns, challenges for the proof, and the alphas
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>FoldingInstance&lt;<span class="kw">const </span>N: usize&gt; {
     <span class="doccomment">/// Commitments to the witness columns, including the dynamic selectors
@@ -571,8 +568,7 @@
     }
 }
 
-<span class="doccomment">/// Environment for the folding protocol, for a given number of witness columns
-/// and structure
+<span class="doccomment">/// Environment for the folding protocol, for a given number of witness columns and structure
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, Structure&gt; {
     <span class="doccomment">/// Structure of the folded circuit (not used right now)
     </span><span class="attr">#[allow(dead_code)]
