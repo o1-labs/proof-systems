@@ -1,4 +1,4 @@
-use ark_ec::{bn::Bn, AffineCurve};
+use ark_ec::bn::Bn;
 use ark_ff::UniformRand;
 use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
@@ -104,24 +104,17 @@ pub fn main() -> ExitCode {
     for instr in Instruction::iter().flat_map(|x| x.into_iter()) {
         mips_folded_instance.insert(
             instr,
-            ProofInputs::<
-                MIPS_COLUMNS,
-                <ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters> as AffineCurve>::ScalarField,
-                LookupTableIDs,
-            >::default(),
+            ProofInputs::<MIPS_COLUMNS, Fp, LookupTableIDs>::default(),
         );
     }
     let mut keccak_folded_instance = HashMap::new();
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
         keccak_folded_instance.insert(
             step,
-            ProofInputs::<
-                ZKVM_KECCAK_COLS,
-                <ark_ec::short_weierstrass_jacobian::GroupAffine<ark_bn254::g1::Parameters> as AffineCurve>::ScalarField,
-                LookupTableIDs,
-            >::default(),
+            ProofInputs::<ZKVM_KECCAK_COLS, Fp, LookupTableIDs>::default(),
         );
     }
+
     while !mips_wit_env.halt {
         let instr = mips_wit_env.step(&configuration, &meta, &start);
 
