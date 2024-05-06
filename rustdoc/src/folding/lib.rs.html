@@ -420,10 +420,10 @@
 <span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 <span class="kw">use </span>quadraticization::ExtendedWitnessGenerator;
 <span class="kw">use </span>std::{fmt::Debug, hash::Hash};
+
 <span class="comment">// Make available outside the crate to avoid code duplication
 </span><span class="kw">pub use </span>error_term::Side;
-<span class="attr">#[cfg(feature = <span class="string">"bn254"</span>)]
-</span><span class="kw">pub use </span>expressions::ExpExtension;
+<span class="kw">pub use </span>expressions::ExpExtension;
 <span class="kw">pub use </span>instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
 <span class="kw">pub mod </span>columns;
