@@ -7,7 +7,7 @@ use crate::{
     ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness, Sponge,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, Zero};
 use ark_poly::Evaluations;
 use kimchi::{
     circuits::{expr::Variable, gate::CurrOrNext},
@@ -19,12 +19,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use poly_commitment::PolyComm;
-use std::{
-    iter::successors,
-    ops::Index,
-    rc::Rc,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use std::ops::Index;
 
 #[cfg(not(test))]
 use log::debug;
@@ -64,57 +59,6 @@ impl FoldingColumnTrait for Column {
     }
 }
 
-// 3. We define the combinators that will be used to fold the constraints,
-// called the "alphas".
-// The alphas are exceptional, their number cannot be known ahead of time as it
-// will be defined by folding.
-// The values will be computed as powers in new instances, but after folding
-// each alpha will be a linear combination of other alphas, instand of a power
-// of other element. This type represents that, allowing to also recognize
-// which case is present.
-#[derive(Debug, Clone)]
-pub enum Alphas<G: AffineCurve> {
-    Powers(G::ScalarField, Rc<AtomicUsize>),
-    Combinations(Vec<G::ScalarField>),
-}
-
-impl<G: AffineCurve> Alphas<G> {
-    pub fn new(alpha: G::ScalarField) -> Self {
-        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
-    }
-    pub fn get(&self, i: usize) -> Option<G::ScalarField> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
-                let i = [i as u64];
-                Some(alpha.pow(i))
-            }
-            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
-        }
-    }
-    pub fn powers(self) -> Vec<G::ScalarField> {
-        match self {
-            Alphas::Powers(alpha, count) => {
-                let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(G::ScalarField::one()), |last| Some(*last * alpha));
-                alphas.take(n).collect()
-            }
-            Alphas::Combinations(c) => c,
-        }
-    }
-    pub fn combine(a: Self, b: Self, challenge: <G as AffineCurve>::ScalarField) -> Self {
-        let a = a.powers();
-        let b = b.powers();
-        assert_eq!(a.len(), b.len());
-        let comb = a
-            .into_iter()
-            .zip(b)
-            .map(|(a, b)| a + b * challenge)
-            .collect();
-        Self::Combinations(comb)
-    }
-}
-
 // TODO: get rid of trait Sponge in folding, and use the one from kimchi
 impl Sponge<Curve> for BaseSponge {
     fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
@@ -130,7 +74,7 @@ impl Sponge<Curve> for BaseSponge {
     }
 }
 
-// 4. We define different traits that can be used generically by the folding
+// 3. We define different traits that can be used generically by the folding
 // examples.
 // It can be used by "pseudo-provers".
 
@@ -198,6 +142,7 @@ where
             Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
         >,
     >,
+    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineCurve>::ScalarField>,
 {
     fn resolve(
         &self,
@@ -207,19 +152,14 @@ where
             FoldingCompatibleExprInner::Constant(c) => {
                 vec![c; self.rows]
             }
-            FoldingCompatibleExprInner::Challenge(chall) => {
-                let chals = self.instance.challenges();
-                let v = match chall {
-                    Challenge::Beta => chals[0],
-                    Challenge::Gamma => chals[1],
-                    Challenge::JointCombiner => chals[2],
-                };
+            FoldingCompatibleExprInner::Challenge(chal) => {
+                let v = self.instance[chal];
                 vec![v; self.rows]
             }
             FoldingCompatibleExprInner::Cell(var) => {
                 let Variable { col, row } = var;
 
-                let mut col = &self.witness[col].evals;
+                let col = &self.witness[col].evals;
 
                 let mut col = col.clone();
                 //check this, while not relevant in this case I think it should be right rotation
@@ -251,6 +191,7 @@ where
             Radix2EvaluationDomain<<C::Curve as AffineCurve>::ScalarField>,
         >,
     >,
+    C::Instance: Index<C::Challenge, Output = <C::Curve as AffineCurve>::ScalarField>,
 {
     fn resolve(
         &self,
