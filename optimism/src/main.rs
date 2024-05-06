@@ -11,6 +11,7 @@ use kimchi_optimism::{
     keccak::{
         column::{Steps, ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
         environment::KeccakEnv,
+        folding::KeccakConfig,
         trace::KeccakTrace,
     },
     lookups::LookupTableIDs,
@@ -159,11 +160,20 @@ pub fn main() -> ExitCode {
                 if keccak_trace.number_of_rows(step) == DOMAIN_SIZE {
                     // Set to zero all selectors except for the one corresponding to the current instruction
                     keccak_trace.set_selector_column(step, DOMAIN_SIZE);
-                    proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
+                    proof::fold::<
+                        ZKVM_KECCAK_COLS,
+                        _,
+                        OpeningProof,
+                        BaseSponge,
+                        ScalarSponge,
+                        KeccakConfig,
+                    >(
                         domain,
                         &srs,
                         keccak_folded_instance.get_mut(&step).unwrap(),
                         &keccak_trace.witness[&step],
+                        // FIXME: folding config
+                        None,
                     );
                     keccak_trace.reset(step);
                 }
@@ -190,11 +200,17 @@ pub fn main() -> ExitCode {
         if mips_trace.number_of_rows(instr) == DOMAIN_SIZE {
             // Set to zero all selectors except for the one corresponding to the current instruction
             mips_trace.set_selector_column(instr, DOMAIN_SIZE);
-            proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
+
+            // FIXME: folding config
+            proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge, MIPSFoldingConfig>(
                 domain,
                 &srs,
+                // FIXME: this is the left witness/instance. We must keep track of the last one
                 mips_folded_instance.get_mut(&instr).unwrap(),
+                // FIXME: this is the right witness/instance. We must keep track of the last one
                 &mips_trace.witness[&instr],
+                // FIXME: folding config
+                None,
             );
             mips_trace.reset(instr);
         }
@@ -209,11 +225,14 @@ pub fn main() -> ExitCode {
             mips_trace.set_selector_column(instr, DOMAIN_SIZE);
 
             // Finally fold instance
-            proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge>(
+            // FIXME: folding config
+            proof::fold::<MIPS_COLUMNS, _, OpeningProof, BaseSponge, ScalarSponge, MIPSFoldingConfig>(
                 domain,
                 &srs,
                 mips_folded_instance.get_mut(&instr).unwrap(),
                 &mips_trace.witness[&instr],
+                // FIXME: folding config
+                None,
             );
         }
     }
@@ -222,11 +241,14 @@ pub fn main() -> ExitCode {
         if needs_folding {
             keccak_trace.set_selector_column(step, DOMAIN_SIZE);
 
-            proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge>(
+            // FIXME: folding config
+            proof::fold::<ZKVM_KECCAK_COLS, _, OpeningProof, BaseSponge, ScalarSponge, KeccakConfig>(
                 domain,
                 &srs,
                 keccak_folded_instance.get_mut(&step).unwrap(),
                 &keccak_trace.witness[&step],
+                // FIXME: folding config
+                None,
             );
         }
     }
