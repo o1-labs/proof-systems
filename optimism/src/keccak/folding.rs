@@ -7,7 +7,6 @@ use crate::{
     trace::Indexer,
     Curve,
     Fp,
-    DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{expressions::FoldingColumnTrait, FoldingConfig};
@@ -80,6 +79,6 @@ impl FoldingConfig for KeccakConfig {
     type Env = KeccakFoldingEnvironment;
 
     fn rows() -> usize {
-        DOMAIN_SIZE
+        1 << 8
     }
 }
