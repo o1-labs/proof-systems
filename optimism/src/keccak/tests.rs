@@ -13,7 +13,7 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    trace::Tracer,
+    trace::{Folder, Tracer},
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -554,54 +554,60 @@ fn test_keccak_decomposable_folding() {
     let domain_size = 1 << 8;
 
     let domain = D::<Fp>::new(domain_size).unwrap();
-    let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+    let mut srs = poly_commitment::srs::SRS::<Curve>::create(domain_size);
     srs.add_lagrange_basis(domain);
 
     // Generate domain_size random preimages of 1 block for Keccak
     // to obtain full witnesses for two different types of instructions: Absorb(Only) and Round(0)
     // We will fold them together and check that all the constraints hold for the folded circuit
 
-    // Keep track of the constraints of the sub-circuits
-    let mut keccak_trace: crate::trace::Trace<
+    // Create two instances for each selector to be folded
+    let mut keccak_trace: [crate::trace::Trace<
         ZKVM_KECCAK_COLS,
         ZKVM_KECCAK_REL,
         ZKVM_KECCAK_SEL,
         Steps,
         ark_ff::Fp256<ark_bn254::FrParameters>,
-    > = KeccakTrace::<Fp>::new(domain_size, &mut KeccakEnv::<Fp>::default());
+    >; 2] = std::array::from_fn(|_| {
+        KeccakTrace::<Fp>::new(domain_size, &mut KeccakEnv::<Fp>::default())
+    });
 
-    for _ in 0..domain_size {
-        // random 1-block preimages
-        let bytelength = rng.gen_range(0..RATE_IN_BYTES);
-        let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
-        // Initialize the environment and run the interpreter
-        let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+    for trace in &mut keccak_trace {
+        // Keep track of the constraints of the sub-circuits
 
-        for _ in 0..2 {
-            let step = keccak_env.step.unwrap(); // Either Absorb(Only) or Round(0)
-            keccak_env.step(); // Create the relation witness columns
-            keccak_trace.push_row(step, &keccak_env.witness_env.witness.cols);
+        for _ in 0..domain_size {
+            // random 1-block preimages
+            let bytelength = rng.gen_range(0..RATE_IN_BYTES);
+            let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
+            // Initialize the environment and run the interpreter
+            let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
+
+            for _ in 0..2 {
+                let step = keccak_env.step.unwrap(); // Either Absorb(Only) or Round(0)
+                keccak_env.step(); // Create the relation witness columns
+                trace.push_row(step, &keccak_env.witness_env.witness.cols);
+            }
         }
-    }
-    // Check there is no need for padding because we reached domain_size rows for these two selectors
-    assert!(keccak_trace.is_full(Sponge(Absorb(Only))));
-    assert!(keccak_trace.is_full(Round(0)));
+        // Check there is no need for padding because we reached domain_size rows for these two selectors
+        assert!(trace.is_full(Sponge(Absorb(Only))));
+        assert!(trace.is_full(Round(0)));
 
-    // Add the columns of the two selectors to the circuit
-    keccak_trace.set_selector_column(Sponge(Absorb(Only)), domain_size);
-    keccak_trace.set_selector_column(Round(0), domain_size);
+        // Add the columns of the two selectors to the circuit
+        trace.set_selector_column(Sponge(Absorb(Only)), domain_size);
+        trace.set_selector_column(Round(0), domain_size);
+    }
 
     let constraints = [
         (
             Sponge(Absorb(Only)),
-            keccak_trace.constraints[&Sponge(Absorb(Only))]
+            keccak_trace[0].constraints[&Sponge(Absorb(Only))]
                 .iter()
                 .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
                 .collect(),
         ),
         (
             Round(0),
-            keccak_trace.constraints[&Sponge(Absorb(Only))]
+            keccak_trace[0].constraints[&Sponge(Absorb(Only))]
                 .iter()
                 .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
                 .collect(),
@@ -610,11 +616,32 @@ fn test_keccak_decomposable_folding() {
     .into_iter()
     .collect();
 
-    let (_scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
+    let (scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
         constraints,
         vec![],
         srs.clone(),
         domain,
         KeccakStructure {},
     );
+
+    // Fold Sponge(Absorb(Only))
+    let _right_only = {
+        let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
+        let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
+        let (folded_instance, folded_witness, [_t0, _t1]) =
+            scheme.fold_instance_witness_pair(left, right, Some(Sponge(Absorb(Only))));
+
+        (folded_instance, folded_witness)
+    };
+
+    let _left_round = {
+        let left = keccak_trace[0].to_folding_pair(Round(0), &srs);
+        let right = keccak_trace[1].to_folding_pair(Round(0), &srs);
+        let (folded_instance, folded_witness, [_t0, _t1]) =
+            scheme.fold_instance_witness_pair(left, right, Some(Round(0)));
+
+        (folded_instance, folded_witness)
+    };
+
+    // Fold Round(0)
 }

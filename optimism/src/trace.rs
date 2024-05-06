@@ -1,6 +1,14 @@
-use crate::{lookups::Lookup, E};
-use ark_ff::{One, Zero};
+use crate::{
+    folding::{Alphas, Curve, FoldingInstance, FoldingWitness, Fp},
+    lookups::Lookup,
+    E,
+};
+use ark_ff::{FftField, One, UniformRand, Zero};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use itertools::Itertools;
 use kimchi_msm::witness::Witness;
+use poly_commitment::SRS;
+use rand::thread_rng;
 use std::{collections::HashMap, hash::Hash};
 
 /// Returns the index of the witness column in the trace.
@@ -34,7 +42,7 @@ impl<
         const N_REL: usize,
         const N_SEL: usize,
         Selector: Eq + Hash + Indexer + Copy,
-        F: Zero + One,
+        F: One + Zero,
     > Trace<N, N_REL, N_SEL, Selector, F>
 {
     /// Returns the number of rows that have been instantiated for the given selector.
@@ -72,6 +80,66 @@ impl<
                     .extend((0..number_of_rows).map(|_| F::zero()))
             }
         });
+    }
+}
+
+pub(crate) trait Folder<const N: usize, Selector: Eq + Hash + Indexer + Copy, F: FftField> {
+    /// Returns the witness for the given selector as a folding witness nd folding instance pair.
+    fn to_folding_pair(
+        &self,
+        selector: Selector,
+        srs: &poly_commitment::srs::SRS<Curve>,
+    ) -> (FoldingInstance<N>, FoldingWitness<N>);
+}
+
+impl<
+        const N: usize,
+        const N_REL: usize,
+        const N_SEL: usize,
+        Selector: Eq + Hash + Indexer + Copy,
+    > Folder<N, Selector, Fp> for Trace<N, N_REL, N_SEL, Selector, Fp>
+{
+    fn to_folding_pair(
+        &self,
+        selector: Selector,
+        srs: &poly_commitment::srs::SRS<Curve>,
+    ) -> (FoldingInstance<N>, FoldingWitness<N>) {
+        let domain = Radix2EvaluationDomain::<Fp>::new(self.domain_size).unwrap();
+        let witness = FoldingWitness {
+            witness: Witness {
+                cols: Box::new(
+                    self.witness[&selector]
+                        .cols
+                        .clone()
+                        .map(|col| Evaluations::from_vec_and_domain(col, domain)),
+                ),
+            },
+        };
+
+        let commitments: [_; N] = witness
+            .witness
+            .cols
+            .iter()
+            .map(|w| srs.commit_evaluations_non_hiding(domain, w))
+            .map(|c| c.elems[0])
+            .collect_vec()
+            .try_into()
+            .unwrap();
+
+        // here we should absorb the commitments and similar things to later compute challenges
+        // but for this example I just use random values
+        let mut rng = thread_rng();
+        let mut challenge = || Fp::rand(&mut rng);
+        let challenges = [(); 3].map(|_| challenge());
+        let alpha = challenge();
+        let alphas = Alphas::new(alpha);
+        let instance = FoldingInstance {
+            commitments,
+            challenges,
+            alphas,
+        };
+
+        (instance, witness)
     }
 }
 

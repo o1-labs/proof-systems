@@ -254,7 +254,7 @@ fn instance_from_witness(
         .collect_vec();
     let commitments: [_; 5] = commitments.try_into().unwrap();
 
-    // here we should absorve the commitments and similar things to later compute challenges
+    // here we should absorb the commitments and similar things to later compute challenges
     // but for this example I just use random values
     let mut rng = thread_rng();
     let mut challenge = || Fp::rand(&mut rng);

@@ -1500,6 +1500,7 @@ dependencies = [
  "folding",
  "groupmap",
  "hex",
+ "itertools 0.12.1",
  "kimchi",
  "kimchi-msm",
  "libc",
