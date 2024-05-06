@@ -1,4 +1,5 @@
 use crate::{
+    folding::BaseSponge,
     keccak::{
         column::{
             Absorbs::*,
@@ -18,6 +19,7 @@ use crate::{
 use ark_ff::{One, Zero};
 use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
+    curve::KimchiCurve,
     o1_utils::{self, FieldHelpers, Two},
 };
 use kimchi_msm::test::test_completeness_generic;
@@ -557,9 +559,9 @@ fn test_keccak_decomposable_folding() {
     let mut srs = poly_commitment::srs::SRS::<Curve>::create(domain_size);
     srs.add_lagrange_basis(domain);
 
-    // Generate domain_size random preimages of 1 block for Keccak
-    // to obtain full witnesses for two different types of instructions: Absorb(Only) and Round(0)
-    // We will fold them together and check that all the constraints hold for the folded circuit
+    // Create sponge
+    // FIXME: when Sponge trait in folding is gone
+    //let mut sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
     // Create two instances for each selector to be folded
     let mut keccak_trace: [crate::trace::Trace<
@@ -573,8 +575,9 @@ fn test_keccak_decomposable_folding() {
     });
 
     for trace in &mut keccak_trace {
-        // Keep track of the constraints of the sub-circuits
-
+        // Generate domain_size random preimages of 1 block for Keccak
+        // to obtain full witnesses for two different types of instructions: Absorb(Only) and Round(0)
+        // We will fold them together and check that all the constraints hold for the folded circuit
         for _ in 0..domain_size {
             // random 1-block preimages
             let bytelength = rng.gen_range(0..RATE_IN_BYTES);
@@ -582,6 +585,7 @@ fn test_keccak_decomposable_folding() {
             // Initialize the environment and run the interpreter
             let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
+            // Keep track of the constraints of the sub-circuits
             for _ in 0..2 {
                 let step = keccak_env.step.unwrap(); // Either Absorb(Only) or Round(0)
                 keccak_env.step(); // Create the relation witness columns

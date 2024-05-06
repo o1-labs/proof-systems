@@ -85,6 +85,7 @@ impl<
 
 pub(crate) trait Folder<const N: usize, Selector: Eq + Hash + Indexer + Copy, F: FftField> {
     /// Returns the witness for the given selector as a folding witness nd folding instance pair.
+    // FIXME: pass the sponge for the challenges of the instance
     fn to_folding_pair(
         &self,
         selector: Selector,
@@ -126,8 +127,7 @@ impl<
             .try_into()
             .unwrap();
 
-        // here we should absorb the commitments and similar things to later compute challenges
-        // but for this example I just use random values
+        // FIXME: this would need the sponge instead to obtain the challenges from
         let mut rng = thread_rng();
         let mut challenge = || Fp::rand(&mut rng);
         let challenges = [(); 3].map(|_| challenge());
