@@ -1,4 +1,3 @@
-use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -10,7 +9,6 @@ use kimchi::{
 };
 use kimchi_msm::witness::Witness as GenericWitness;
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, ScalarChallenge},
     FqSponge,
 };
@@ -19,14 +17,11 @@ use std::{array, iter::successors, ops::Index, rc::Rc, sync::atomic::AtomicUsize
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-use crate::DOMAIN_SIZE;
+use crate::{BaseSponge as BaseSpongeT, Curve, Fp, DOMAIN_SIZE};
 
-// Instantiate it with the desired group and field
-pub type Fp = ark_bn254::Fr;
-pub type Curve = ark_bn254::G1Affine;
-pub type SpongeParams = PlonkSpongeConstantsKimchi;
-
-pub struct BaseSponge(DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>);
+// FIXME: Using a struct as Rust asks for it, but we should change how folding
+// uses the sponge.
+pub struct BaseSponge(BaseSpongeT);
 
 // TODO: get rid of trait Sponge in folding, and use the one from kimchi
 impl Sponge<Curve> for BaseSponge {
