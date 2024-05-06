@@ -8,10 +8,10 @@
 /// ```
 use crate::{
     error_term::Side,
-    examples::generic::{Alphas, BaseSponge, Checker, Column, Curve, Fp, Provide},
+    examples::generic::{BaseSponge, Checker, Column, Curve, Fp, Provide},
     expressions::FoldingCompatibleExprInner,
-    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness, Witness,
+    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
+    RelaxedInstance, RelaxedWitness, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{One, UniformRand, Zero};
@@ -28,7 +28,7 @@ use rand::thread_rng;
 struct TestInstance {
     commitments: [Curve; 3],
     challenges: [Fp; 3],
-    alphas: Alphas,
+    alphas: Alphas<Fp>,
 }
 
 impl Instance<Curve> for TestInstance {

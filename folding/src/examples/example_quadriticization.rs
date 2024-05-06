@@ -4,11 +4,11 @@ use crate::{
     error_term::Side,
     examples::{
         example_decomposable_folding::TestWitness,
-        generic::{Alphas, BaseSponge, Checker, Curve, Fp, Provide},
+        generic::{BaseSponge, Checker, Curve, Fp, Provide},
     },
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness,
+    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
+    RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{UniformRand, Zero};
@@ -52,7 +52,7 @@ pub struct TestInstance {
     // for ilustration only, no constraint in this example uses challenges
     challenges: [Fp; 3],
     // also challenges, but segregated as folding gives them special treatment
-    alphas: Alphas,
+    alphas: Alphas<Fp>,
 }
 
 impl Instance<Curve> for TestInstance {
