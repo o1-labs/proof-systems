@@ -1,4 +1,4 @@
-use ark_ec::{bn::Bn, AffineCurve};
+use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
 use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
@@ -21,22 +21,11 @@ use kimchi_optimism::{
     preimage_oracle::PreImageOracle,
     proof,
     trace::Tracer,
-    DOMAIN_SIZE,
+    BaseSponge, Fp, OpeningProof, ScalarSponge, DOMAIN_SIZE,
 };
 use log::debug;
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use poly_commitment::pairing_proof::PairingProof;
 use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
 use strum::IntoEnumIterator;
-
-type Fp = ark_bn254::Fr;
-type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type OpeningProof = PairingProof<Bn<ark_bn254::Parameters>>;
 
 pub fn main() -> ExitCode {
     let cli = cannon_cli::main_cli();

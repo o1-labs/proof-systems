@@ -1,9 +1,12 @@
 use crate::{
-    folding::{
-        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
-    },
+    // FIXME: using BaseSponge from folding as it does require a struct, but we
+    // should simply have a type by modifying how folding uses the sponge
+    folding::BaseSponge,
+    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     trace::Indexer,
+    Curve,
+    Fp,
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
