@@ -29,9 +29,9 @@ use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
+
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
-#[cfg(feature = "bn254")]
 pub use expressions::ExpExtension;
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
