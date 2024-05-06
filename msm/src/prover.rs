@@ -178,11 +178,8 @@ where
 
     let (_, endo_r) = G::endos();
 
-    //~ 1. Sample $\alpha'$ with the Fq-Sponge.
-    let alpha_chal = ScalarChallenge(fq_sponge.challenge());
-
-    //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-    let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
+    // Sample α with the Fq-Sponge.
+    let alpha: G::ScalarField = fq_sponge.challenge();
 
     let zk_rows = 0;
     let column_env: ColumnEnvironment<'_, N, N_REL, N_SEL, _, _> = {

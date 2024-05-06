@@ -135,10 +135,8 @@ where
         }
     };
 
-    //~ 1. Sample $\alpha'$ with the Fq-Sponge.
-    let alpha_chal = ScalarChallenge(fq_sponge.challenge());
-    let (_, endo_r) = G::endos();
-    let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
+    // Sample α with the Fq-Sponge.
+    let alpha = fq_sponge.challenge();
 
     ////////////////////////////////////////////////////////////////////////////
     // Quotient polynomial
