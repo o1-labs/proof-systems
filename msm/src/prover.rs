@@ -278,16 +278,15 @@ where
     let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
 
     ////////////////////////////////////////////////////////////////////////////
-    // Round 3: Evaluations at zeta and zeta_omega
+    // Round 3: Evaluations at ζ and ζω
     ////////////////////////////////////////////////////////////////////////////
 
     //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
     absorb_commitment(&mut fq_sponge, &t_comm);
 
-    //~ 1. Sample $\zeta'$ with the Fq-Sponge.
+    //~ 1. Sample ζ with the Fq-Sponge.
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
-    //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
     let zeta = zeta_chal.to_field(endo_r);
 
     let omega = domain.d1.group_gen;

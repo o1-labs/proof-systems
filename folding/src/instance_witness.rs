@@ -5,8 +5,10 @@ use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 use std::collections::BTreeMap;
 
 pub trait Instance<G: CommitmentCurve>: Sized {
-    /// Should return a linear combination
+    /// Combine two instances 'a' and 'b' into a new instance.
+    /// See page 15.
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
+
     fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
         let instance = ExtendedInstance::extend(self);
         RelaxedInstance {
