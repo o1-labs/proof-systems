@@ -41,7 +41,7 @@ impl Sponge<Curve> for BaseSponge {
 
 // Does not contain alpha because this one should be provided by folding itself
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
-pub(crate) enum Challenge {
+pub enum Challenge {
     Beta,
     Gamma,
     JointCombiner,
@@ -110,17 +110,17 @@ impl From<ChallengeTerm> for Challenge {
 /// Folding instance containing the commitment to a witness of N columns,
 /// challenges for the proof, and the alphas
 #[derive(Debug, Clone)]
-pub(crate) struct FoldingInstance<const N: usize> {
+pub struct FoldingInstance<const N: usize> {
     /// Commitments to the witness columns, including the dynamic selectors
-    pub(crate) commitments: [Curve; N],
+    pub commitments: [Curve; N],
     /// Challenges for the proof.
     /// We do use 3 challenges:
     /// - β as the evaluation point for the logup argument
     /// - j: the joint combiner for vector lookups
     /// - γ (set to 0 for now)
-    pub(crate) challenges: [Fp; Challenge::COUNT],
+    pub challenges: [Fp; Challenge::COUNT],
     /// Reuses the Alphas defined in the example of folding
-    pub(crate) alphas: Alphas,
+    pub alphas: Alphas,
 }
 
 impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
@@ -137,8 +137,8 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
 
 /// Includes the data witness columns and also the dynamic selector columns
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct FoldingWitness<const N: usize> {
-    pub(crate) witness: GenericWitness<N, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+pub struct FoldingWitness<const N: usize> {
+    pub witness: GenericWitness<N, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
 }
 
 impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
@@ -154,17 +154,17 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
 
 /// Environment for the folding protocol, for a given number of witness columns
 /// and structure
-pub(crate) struct FoldingEnvironment<const N: usize, Structure> {
+pub struct FoldingEnvironment<const N: usize, Structure> {
     /// Structure of the folded circuit (not used right now)
     #[allow(dead_code)]
-    pub(crate) structure: Structure,
+    pub structure: Structure,
     /// Commitments to the witness columns, for both sides
-    pub(crate) instances: [FoldingInstance<N>; 2],
+    pub instances: [FoldingInstance<N>; 2],
     /// Corresponds to the omega evaluations, for both sides
-    pub(crate) curr_witnesses: [FoldingWitness<N>; 2],
+    pub curr_witnesses: [FoldingWitness<N>; 2],
     /// Corresponds to the zeta*omega evaluations, for both sides
     /// This is curr_witness but left shifted by 1
-    pub(crate) next_witnesses: [FoldingWitness<N>; 2],
+    pub next_witnesses: [FoldingWitness<N>; 2],
 }
 
 impl<const N: usize, Col, Selector: Copy + Clone, Structure: Clone>

@@ -1,4 +1,7 @@
 use ark_ff::UniformRand;
+use folding::{
+    decomposable_folding::DecomposableFoldingScheme, expressions::FoldingCompatibleExpr,
+};
 use kimchi::o1_utils;
 use kimchi_msm::{proof::ProofInputs, prover::prove, verifier::verify, witness::Witness};
 use kimchi_optimism::{
@@ -13,6 +16,7 @@ use kimchi_optimism::{
     mips::{
         column::{MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS},
         constraints as mips_constraints,
+        folding::{MIPSFoldingConfig, MIPSStructure},
         interpreter::Instruction,
         trace::MIPSTrace,
         witness::{self as mips_witness, SCRATCH_SIZE},
@@ -23,7 +27,13 @@ use kimchi_optimism::{
     BaseSponge, Fp, OpeningProof, ScalarSponge, DOMAIN_SIZE,
 };
 use log::debug;
-use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, process::ExitCode};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, HashMap},
+    fs::File,
+    io::BufReader,
+    process::ExitCode,
+};
 use strum::IntoEnumIterator;
 
 pub fn main() -> ExitCode {
@@ -76,16 +86,36 @@ pub fn main() -> ExitCode {
     // Initialize the environments
     // The Keccak environment is extracted inside the loop
     let mut mips_wit_env = mips_witness::Env::<Fp>::create(cannon::PAGE_SIZE as usize, state, po);
-    let mut mips_con_env = mips_constraints::Env::<Fp> {
-        scratch_state_idx: 0,
-        constraints: Vec::new(),
-        lookups: Vec::new(),
-    };
+    let mut mips_con_env = mips_constraints::Env::<Fp>::default();
     // The keccak environment is extracted inside the loop
 
     // Initialize the circuits. Includes pre-folding witnesses.
     let mut mips_trace = MIPSTrace::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
     let mut keccak_trace = KeccakTrace::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
+
+    let _mips_folding = {
+        let constraints: BTreeMap<Instruction, Vec<FoldingCompatibleExpr<MIPSFoldingConfig>>> =
+            mips_trace
+                .constraints
+                .iter()
+                .map(|(k, constraints)| {
+                    (
+                        *k,
+                        constraints
+                            .iter()
+                            .map(|x| FoldingCompatibleExpr::from(x.clone()))
+                            .collect(),
+                    )
+                })
+                .collect();
+        DecomposableFoldingScheme::<MIPSFoldingConfig>::new(
+            constraints,
+            vec![],
+            &srs.full_srs,
+            domain.d1,
+            MIPSStructure,
+        )
+    };
 
     // Initialize folded instances of the sub circuits
     let mut mips_folded_instance = HashMap::new();
@@ -95,6 +125,7 @@ pub fn main() -> ExitCode {
             ProofInputs::<MIPS_COLUMNS, Fp, LookupTableIDs>::default(),
         );
     }
+
     let mut keccak_folded_instance = HashMap::new();
     for step in Steps::iter().flat_map(|x| x.into_iter()) {
         keccak_folded_instance.insert(
