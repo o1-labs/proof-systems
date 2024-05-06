@@ -18,7 +18,7 @@
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
-use ark_ff::Zero;
+use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{
@@ -28,7 +28,13 @@ use instance_witness::{RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
-use std::{fmt::Debug, hash::Hash};
+use std::{
+    fmt::Debug,
+    hash::Hash,
+    iter::successors,
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
@@ -244,5 +250,56 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax(self.zero_commitment.clone());
         let challenge = <CF::Sponge>::challenge(&error_commitments);
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
+    }
+}
+
+/// Combinators that will be used to fold the constraints,
+/// called the "alphas".
+/// The alphas are exceptional, their number cannot be known ahead of time as it
+/// will be defined by folding.
+/// The values will be computed as powers in new instances, but after folding
+/// each alpha will be a linear combination of other alphas, instand of a power
+/// of other element. This type represents that, allowing to also recognize
+/// which case is present.
+#[derive(Debug, Clone)]
+pub enum Alphas<F: Field> {
+    Powers(F, Rc<AtomicUsize>),
+    Combinations(Vec<F>),
+}
+
+impl<F: Field> Alphas<F> {
+    pub fn new(alpha: F) -> Self {
+        Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
+    }
+    pub fn get(&self, i: usize) -> Option<F> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let _ = count.fetch_max(i + 1, Ordering::Relaxed);
+                let i = [i as u64];
+                Some(alpha.pow(i))
+            }
+            Alphas::Combinations(alphas) => alphas.get(i).cloned(),
+        }
+    }
+    pub fn powers(self) -> Vec<F> {
+        match self {
+            Alphas::Powers(alpha, count) => {
+                let n = count.load(Ordering::Relaxed);
+                let alphas = successors(Some(F::one()), |last| Some(*last * alpha));
+                alphas.take(n).collect()
+            }
+            Alphas::Combinations(c) => c,
+        }
+    }
+    pub fn combine(a: Self, b: Self, challenge: F) -> Self {
+        let a = a.powers();
+        let b = b.powers();
+        assert_eq!(a.len(), b.len());
+        let comb = a
+            .into_iter()
+            .zip(b)
+            .map(|(a, b)| a + b * challenge)
+            .collect();
+        Self::Combinations(comb)
     }
 }
