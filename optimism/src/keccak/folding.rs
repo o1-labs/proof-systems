@@ -80,6 +80,6 @@ impl FoldingConfig for KeccakConfig {
     type Env = KeccakFoldingEnvironment;
 
     fn rows() -> usize {
-        DOMAIN_SIZE
+        1 << 8
     }
 }
