@@ -613,7 +613,7 @@ fn test_keccak_decomposable_folding() {
     let (_scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
         constraints,
         vec![],
-        srs.clone(),
+        &srs,
         domain,
         KeccakStructure {},
     );

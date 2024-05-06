@@ -14,17 +14,17 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use poly_commitment::{PolyComm, SRS};
 use std::collections::BTreeMap;
 
-pub struct DecomposableFoldingScheme<CF: FoldingConfig> {
-    inner: FoldingScheme<CF>,
+pub struct DecomposableFoldingScheme<'a, CF: FoldingConfig> {
+    inner: FoldingScheme<'a, CF>,
 }
 
-impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
+impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
     pub fn new(
         // constraints with a dynamic selector
         constraints: BTreeMap<CF::Selector, Vec<FoldingCompatibleExpr<CF>>>,
         // constraints to be applied to every single instance regardless of selectors
         common_constraints: Vec<FoldingCompatibleExpr<CF>>,
-        srs: CF::Srs,
+        srs: &'a CF::Srs,
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         structure: CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
@@ -77,7 +77,7 @@ impl<CF: FoldingConfig> DecomposableFoldingScheme<CF> {
             scheme.domain,
             selector,
         );
-        let env = env.compute_extension(&scheme.extended_witness_generator, &scheme.srs);
+        let env = env.compute_extension(&scheme.extended_witness_generator, scheme.srs);
         let error = compute_error(&scheme.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, scheme.domain));
 

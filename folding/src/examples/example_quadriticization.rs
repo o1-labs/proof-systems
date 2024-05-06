@@ -418,7 +418,7 @@ mod tests {
         let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
             constraints.clone(),
             vec![],
-            srs.clone(),
+            &srs,
             domain,
             (),
         );
