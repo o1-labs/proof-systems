@@ -380,7 +380,7 @@ mod tests {
 
         let (scheme, final_constraint) = FoldingScheme::<TestFoldingConfig>::new(
             constraints.clone(),
-            srs.clone(),
+            &srs,
             domain,
             structure.clone(),
         );

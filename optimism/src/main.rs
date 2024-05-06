@@ -123,8 +123,7 @@ pub fn main() -> ExitCode {
         DecomposableFoldingScheme::<MIPSFoldingConfig>::new(
             constraints,
             vec![],
-            // FIXME
-            srs.full_srs.clone(),
+            &srs.full_srs,
             domain.d1,
             MIPSStructure,
         )
