@@ -629,7 +629,7 @@ fn test_keccak_decomposable_folding() {
         );
 
         // Fold Sponge(Absorb(Only))
-        let _right_only = {
+        {
             let _left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
             let _right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
             // TODO: Fix domain size used in folding because it is using 2^15 instead of 1<<8
@@ -641,15 +641,15 @@ fn test_keccak_decomposable_folding() {
         };
 
         // Fold Round(0)
-        let _left_round = {
-            let _left = keccak_trace[0].to_folding_pair(Round(0), &srs);
-            let _right = keccak_trace[1].to_folding_pair(Round(0), &srs);
-            /*
-            let (folded_instance, folded_witness, [_t0, _t1]) =
-                scheme.fold_instance_witness_pair(left, right, Some(Round(0)));
+        /*
+                let _left_round = {
+                    let _left = keccak_trace[0].to_folding_pair(Round(0), &srs);
+                    let _right = keccak_trace[1].to_folding_pair(Round(0), &srs);
+                    let (folded_instance, folded_witness, [_t0, _t1]) =
+                        scheme.fold_instance_witness_pair(left, right, Some(Round(0)));
 
-            (folded_instance, folded_witness)
-            */
-        };
+                    (folded_instance, folded_witness)
+                };
+        */
     });
 }

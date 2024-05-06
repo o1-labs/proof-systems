@@ -7,7 +7,6 @@ use crate::{
     trace::Indexer,
     Curve,
     Fp,
-    DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{expressions::FoldingColumnTrait, FoldingConfig};
