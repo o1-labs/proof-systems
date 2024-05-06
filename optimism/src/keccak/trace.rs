@@ -1,4 +1,4 @@
-use std::{array, collections::HashMap};
+use std::{array, collections::BTreeMap};
 
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;
@@ -25,7 +25,7 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps,
     fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
         let mut circuit = Self {
             domain_size,
-            witness: HashMap::new(),
+            witness: BTreeMap::new(),
             constraints: Default::default(),
             lookups: Default::default(),
         };

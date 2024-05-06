@@ -1,4 +1,3 @@
-use ark_bn254;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -10,21 +9,19 @@ use kimchi::{
 };
 use kimchi_msm::witness::Witness as GenericWitness;
 use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, ScalarChallenge},
     FqSponge,
 };
 use poly_commitment::PolyComm;
 use std::{array, iter::successors, ops::Index, rc::Rc, sync::atomic::AtomicUsize};
+use strum::EnumCount;
+use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-use crate::DOMAIN_SIZE;
+use crate::{BaseSponge as BaseSpongeT, Curve, Fp, DOMAIN_SIZE};
 
-// Instantiate it with the desired group and field
-pub type Fp = ark_bn254::Fr;
-pub type Curve = ark_bn254::G1Affine;
-pub type SpongeParams = PlonkSpongeConstantsKimchi;
-
-pub struct BaseSponge(DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>);
+// FIXME: Using a struct as Rust asks for it, but we should change how folding
+// uses the sponge.
+pub struct BaseSponge(BaseSpongeT);
 
 // TODO: get rid of trait Sponge in folding, and use the one from kimchi
 impl Sponge<Curve> for BaseSponge {
@@ -43,8 +40,8 @@ impl Sponge<Curve> for BaseSponge {
 }
 
 // Does not contain alpha because this one should be provided by folding itself
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum Challenge {
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
+pub enum Challenge {
     Beta,
     Gamma,
     JointCombiner,
@@ -110,15 +107,20 @@ impl From<ChallengeTerm> for Challenge {
     }
 }
 
-/// Folding instance containing the commitment to a witness of N columns, challenges for the proof, and the alphas
+/// Folding instance containing the commitment to a witness of N columns,
+/// challenges for the proof, and the alphas
 #[derive(Debug, Clone)]
-pub(crate) struct FoldingInstance<const N: usize> {
+pub struct FoldingInstance<const N: usize> {
     /// Commitments to the witness columns, including the dynamic selectors
-    pub(crate) commitments: [Curve; N],
-    /// Challenges for the proof
-    pub(crate) challenges: [Fp; 3],
+    pub commitments: [Curve; N],
+    /// Challenges for the proof.
+    /// We do use 3 challenges:
+    /// - β as the evaluation point for the logup argument
+    /// - j: the joint combiner for vector lookups
+    /// - γ (set to 0 for now)
+    pub challenges: [Fp; Challenge::COUNT],
     /// Reuses the Alphas defined in the example of folding
-    pub(crate) alphas: Alphas,
+    pub alphas: Alphas,
 }
 
 impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
@@ -127,11 +129,7 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
             commitments: array::from_fn(|i| {
                 a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
             }),
-            challenges: [
-                a.challenges[0] + challenge * b.challenges[0],
-                a.challenges[1] + challenge * b.challenges[1],
-                a.challenges[2] + challenge * b.challenges[2],
-            ],
+            challenges: array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
@@ -139,8 +137,8 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
 
 /// Includes the data witness columns and also the dynamic selector columns
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct FoldingWitness<const N: usize> {
-    pub(crate) witness: GenericWitness<N, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
+pub struct FoldingWitness<const N: usize> {
+    pub witness: GenericWitness<N, Evaluations<Fp, Radix2EvaluationDomain<Fp>>>,
 }
 
 impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
@@ -154,18 +152,19 @@ impl<const N: usize> Witness<Curve> for FoldingWitness<N> {
     }
 }
 
-/// Environment for the folding protocol, for a given number of witness columns and structure
-pub(crate) struct FoldingEnvironment<const N: usize, Structure> {
+/// Environment for the folding protocol, for a given number of witness columns
+/// and structure
+pub struct FoldingEnvironment<const N: usize, Structure> {
     /// Structure of the folded circuit (not used right now)
     #[allow(dead_code)]
-    pub(crate) structure: Structure,
+    pub structure: Structure,
     /// Commitments to the witness columns, for both sides
-    pub(crate) instances: [FoldingInstance<N>; 2],
+    pub instances: [FoldingInstance<N>; 2],
     /// Corresponds to the omega evaluations, for both sides
-    pub(crate) curr_witnesses: [FoldingWitness<N>; 2],
+    pub curr_witnesses: [FoldingWitness<N>; 2],
     /// Corresponds to the zeta*omega evaluations, for both sides
     /// This is curr_witness but left shifted by 1
-    pub(crate) next_witnesses: [FoldingWitness<N>; 2],
+    pub next_witnesses: [FoldingWitness<N>; 2],
 }
 
 impl<const N: usize, Col, Selector: Copy + Clone, Structure: Clone>
@@ -230,183 +229,5 @@ where
     fn selector(&self, s: &Selector, side: Side) -> &Vec<Fp> {
         let witness = &self.curr_witnesses[side as usize];
         &witness[*s].evals
-    }
-}
-
-#[cfg(feature = "bn254")]
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ark_poly::{Evaluations, Radix2EvaluationDomain};
-    use kimchi::{
-        circuits::expr::{
-            ConstantExprInner, ConstantTerm, Constants, Expr, ExprInner, Literal, Op2, Variable,
-        },
-        curve::KimchiCurve,
-        folding::{
-            expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-            BaseSponge, FoldingCompatibleExpr, FoldingConfig,
-        },
-    };
-    use std::ops::Index;
-
-    use super::{FoldingEnvironment, FoldingInstance, FoldingWitness};
-
-    #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-    enum TestColumn {
-        X,
-        Y,
-        Z,
-    }
-
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    struct TestStructure;
-
-    // TODO
-    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-    struct TestConfig;
-
-    type TestWitness<T> = kimchi_msm::witness::Witness<3, T>;
-    type TestFoldingWitness = FoldingWitness<3>;
-    type TestFoldingInstance = FoldingInstance<3>;
-    type TestFoldingEnvironment = FoldingEnvironment<3, TestStructure>;
-
-    impl Index<TestColumn> for TestFoldingWitness {
-        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
-
-        fn index(&self, index: TestColumn) -> &Self::Output {
-            &self.witness[index]
-        }
-    }
-
-    // Implemented for decomposable folding compatibility (Selector is usize in this case)
-    impl Index<usize> for TestFoldingWitness {
-        type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
-
-        fn index(&self, index: usize) -> &Self::Output {
-            &self.witness.cols[index]
-        }
-    }
-
-    impl FoldingColumnTrait for TestColumn {
-        fn is_witness(&self) -> bool {
-            true
-        }
-    }
-
-    impl<T: Clone> Index<TestColumn> for TestWitness<T> {
-        type Output = T;
-        fn index(&self, index: TestColumn) -> &Self::Output {
-            match index {
-                TestColumn::X => &self.cols[0],
-                TestColumn::Y => &self.cols[1],
-                TestColumn::Z => &self.cols[2],
-            }
-        }
-    }
-
-    impl FoldingConfig for TestConfig {
-        type Column = TestColumn;
-        type Selector = usize;
-        type Challenge = Challenge;
-        type Curve = Curve;
-        type Srs = poly_commitment::srs::SRS<Curve>;
-        type Sponge = BaseSponge;
-        type Instance = TestFoldingInstance;
-        type Witness = TestFoldingWitness;
-        type Structure = TestStructure;
-        type Env = TestFoldingEnvironment;
-
-        fn rows() -> usize {
-            4
-        }
-    }
-
-    #[test]
-    fn test_expr_translation() {
-        use super::*;
-        use kimchi::circuits::expr::ChallengeTerm;
-
-        // Check that the conversion from ChallengeTerm to Challenge works as expected
-        assert_eq!(Challenge::Beta, ChallengeTerm::Beta.into());
-        assert_eq!(Challenge::Gamma, ChallengeTerm::Gamma.into());
-        assert_eq!(
-            Challenge::JointCombiner,
-            ChallengeTerm::JointCombiner.into()
-        );
-
-        // Create my special constants
-        let constants = Constants {
-            endo_coefficient: Fp::from(3),
-            mds: &Curve::sponge_params().mds,
-            zk_rows: 0,
-        };
-
-        // Define variables to be used in larger expressions
-        let x = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
-            Variable {
-                col: TestColumn::X,
-                row: CurrOrNext::Curr,
-            },
-        ));
-        let y = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
-            Variable {
-                col: TestColumn::Y,
-                row: CurrOrNext::Curr,
-            },
-        ));
-        let z = Expr::Atom(ExprInner::Cell::<ConstantExprInner<Fp>, TestColumn>(
-            Variable {
-                col: TestColumn::Z,
-                row: CurrOrNext::Curr,
-            },
-        ));
-        let endo = Expr::Atom(ExprInner::<ConstantExprInner<Fp>, TestColumn>::Constant(
-            ConstantExprInner::Constant(ConstantTerm::EndoCoefficient),
-        ));
-
-        // Define variables with folding expressions
-        let x_f =
-            FoldingCompatibleExpr::<TestConfig>::Atom(FoldingCompatibleExprInner::Cell(Variable {
-                col: TestColumn::X,
-                row: CurrOrNext::Curr,
-            }));
-        let y_f =
-            FoldingCompatibleExpr::<TestConfig>::Atom(FoldingCompatibleExprInner::Cell(Variable {
-                col: TestColumn::Y,
-                row: CurrOrNext::Curr,
-            }));
-        let z_f =
-            FoldingCompatibleExpr::<TestConfig>::Atom(FoldingCompatibleExprInner::Cell(Variable {
-                col: TestColumn::Z,
-                row: CurrOrNext::Curr,
-            }));
-
-        // Check conversion of general expressions
-        let xyz = x.clone() * y * z;
-        let xyz_f = FoldingCompatibleExpr::<TestConfig>::BinOp(
-            Op2::Mul,
-            Box::new(FoldingCompatibleExpr::<TestConfig>::BinOp(
-                Op2::Mul,
-                Box::new(x_f.clone()),
-                Box::new(y_f),
-            )),
-            Box::new(z_f),
-        );
-        assert_eq!(FoldingCompatibleExpr::<TestConfig>::from(xyz), xyz_f);
-
-        let x_endo = x + endo;
-        let x_endo_f = FoldingCompatibleExpr::<TestConfig>::BinOp(
-            Op2::Add,
-            Box::new(x_f),
-            Box::new(FoldingCompatibleExpr::<TestConfig>::Atom(
-                FoldingCompatibleExprInner::Constant(constants.endo_coefficient),
-            )),
-        );
-        let x_endo_lit = x_endo.as_literal(&constants);
-        assert_eq!(
-            FoldingCompatibleExpr::<TestConfig>::from(x_endo_lit),
-            x_endo_f
-        );
     }
 }

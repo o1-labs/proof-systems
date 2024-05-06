@@ -26,14 +26,16 @@ pub const SYSCALL_READ: u32 = 4003;
 pub const SYSCALL_WRITE: u32 = 4004;
 pub const SYSCALL_FCNTL: u32 = 4055;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Hash, Ord, PartialOrd)]
 pub enum Instruction {
     RType(RTypeInstruction),
     JType(JTypeInstruction),
     IType(ITypeInstruction),
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
 pub enum RTypeInstruction {
     #[default]
     ShiftLeftLogical, // sll
@@ -80,14 +82,18 @@ pub enum RTypeInstruction {
     CountLeadingZeros,            // clz
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
 pub enum JTypeInstruction {
     #[default]
     Jump, // j
     JumpAndLink, // jal
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash)]
+#[derive(
+    Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter, Default, Hash, Ord, PartialOrd,
+)]
 pub enum ITypeInstruction {
     #[default]
     BranchEq, // beq

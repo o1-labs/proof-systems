@@ -2,15 +2,19 @@
 //! multivariate polynomials of any degree. It is based on the "folding scheme"
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
 //! It implements different components to achieve it:
-//! - quadriticization: a submodule to reduce multivariate polynomials to degree
-//! `2`
-//! - decomposable_folding: a submodule to "parallelize" folded computations
+//! - [quadraticization]: a submodule to reduce multivariate polynomials
+//! to degree `2`.
+//! - [decomposable_folding]: a submodule to "parallelize" folded
+//! computations.
+//!
 //! Examples can be found in the directory `examples`.
+//!
 //! The folding library is meant to be used in harmony with the library `ivc`.
 //! To use the library, the user has to define first a "folding configuration"
-//! described in the trait [FoldingConfig]. Each expression has to be converted
-//! into [crate::expressions::FoldingCompatibleExpr] before being converted into
-//! [crate::expressions::FoldingExp].
+//! described in the trait [FoldingConfig].
+//! After that, the user can provide folding compatible expressions and build a
+//! folding scheme [FoldingScheme]. The process is described in the module
+//! [expressions].
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
@@ -25,9 +29,9 @@ use kimchi::{circuits::gate::CurrOrNext, plonk_sponge::FrSponge};
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{fmt::Debug, hash::Hash};
+
 // Make available outside the crate to avoid code duplication
 pub use error_term::Side;
-#[cfg(feature = "bn254")]
 pub use expressions::ExpExtension;
 pub use instance_witness::{Instance, RelaxedInstance, RelaxedWitness, Witness};
 
@@ -38,7 +42,7 @@ mod error_term;
 
 pub mod expressions;
 mod instance_witness;
-mod quadraticization;
+pub mod quadraticization;
 
 // Modules strictly related to tests
 // TODO: should we move them into an explicit subdirectory `test`?
@@ -279,20 +283,20 @@ pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
-pub struct FoldingScheme<CF: FoldingConfig> {
-    expression: IntegratedFoldingExpr<CF>,
-    srs: CF::Srs,
-    domain: Radix2EvaluationDomain<ScalarField<CF>>,
-    zero_commitment: PolyComm<CF::Curve>,
-    zero_vec: Evals<ScalarField<CF>>,
-    structure: CF::Structure,
-    extended_witness_generator: ExtendedWitnessGenerator<CF>,
+pub struct FoldingScheme<'a, CF: FoldingConfig> {
+    pub expression: IntegratedFoldingExpr<CF>,
+    pub srs: &'a CF::Srs,
+    pub domain: Radix2EvaluationDomain<ScalarField<CF>>,
+    pub zero_commitment: PolyComm<CF::Curve>,
+    pub zero_vec: Evals<ScalarField<CF>>,
+    pub structure: CF::Structure,
+    pub extended_witness_generator: ExtendedWitnessGenerator<CF>,
 }
 
-impl<CF: FoldingConfig> FoldingScheme<CF> {
+impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
     pub fn new(
         constraints: Vec<FoldingCompatibleExpr<CF>>,
-        srs: CF::Srs,
+        srs: &'a CF::Srs,
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         structure: CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
@@ -343,7 +347,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
             self.domain,
             None,
         );
-        let env = env.compute_extension(&self.extended_witness_generator, &self.srs);
+        let env = env.compute_extension(&self.extended_witness_generator, self.srs);
         let error = compute_error(&self.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 

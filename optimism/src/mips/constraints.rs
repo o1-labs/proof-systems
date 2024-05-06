@@ -28,6 +28,16 @@ pub struct Env<Fp> {
     pub lookups: Vec<Lookup<E<Fp>>>,
 }
 
+impl<Fp: Field> Default for Env<Fp> {
+    fn default() -> Self {
+        Self {
+            scratch_state_idx: 0,
+            constraints: Vec::new(),
+            lookups: Vec::new(),
+        }
+    }
+}
+
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
     /// In the concrete implementation for the constraints, the interpreter will
     /// work over columns. The position in this case can be seen as a new

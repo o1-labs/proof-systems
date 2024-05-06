@@ -1,12 +1,15 @@
 use crate::{
-    folding::{
-        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
-    },
+    // FIXME: using BaseSponge from folding as it does require a struct, but we
+    // should simply have a type by modifying how folding uses the sponge
+    folding::BaseSponge,
+    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
         Instruction,
     },
     trace::Indexer,
+    Curve,
+    Fp,
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -16,9 +19,9 @@ use std::ops::Index;
 
 use super::column::MIPS_REL_COLS;
 
-pub(crate) type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS>;
-pub(crate) type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS>;
-pub(crate) type MIPSFoldingEnvironment = FoldingEnvironment<MIPS_COLUMNS, MIPSStructure>;
+pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS>;
+pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS>;
+pub type MIPSFoldingEnvironment = FoldingEnvironment<MIPS_COLUMNS, MIPSStructure>;
 
 impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -54,11 +57,11 @@ impl Index<Column> for MIPSFoldingWitness {
 
 // TODO: will contain information about the circuit structure
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct MIPSStructure;
+pub struct MIPSStructure;
 
 // TODO
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct MIPSConfig;
+pub struct MIPSFoldingConfig;
 
 impl FoldingColumnTrait for MIPSColumn {
     fn is_witness(&self) -> bool {
@@ -67,7 +70,7 @@ impl FoldingColumnTrait for MIPSColumn {
     }
 }
 
-impl FoldingConfig for MIPSConfig {
+impl FoldingConfig for MIPSFoldingConfig {
     type Column = Column;
     type Selector = Instruction;
     type Challenge = Challenge;

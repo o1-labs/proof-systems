@@ -1,9 +1,12 @@
 use crate::{
-    folding::{
-        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
-    },
+    // FIXME: using BaseSponge from folding as it does require a struct, but we
+    // should simply have a type by modifying how folding uses the sponge
+    folding::BaseSponge,
+    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     trace::Indexer,
+    Curve,
+    Fp,
     DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -13,9 +16,9 @@ use std::ops::Index;
 
 use super::column::ZKVM_KECCAK_REL;
 
-pub(crate) type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
-pub(crate) type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS>;
-pub(crate) type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS, KeccakStructure>;
+pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
+pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS>;
+pub type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS, KeccakStructure>;
 
 impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -51,11 +54,11 @@ impl Index<Column> for KeccakFoldingWitness {
 
 // TODO: will contain information about the circuit structure
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KeccakStructure;
+pub struct KeccakStructure;
 
 // TODO
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct KeccakConfig;
+pub struct KeccakConfig;
 
 impl FoldingColumnTrait for KeccakColumn {
     fn is_witness(&self) -> bool {

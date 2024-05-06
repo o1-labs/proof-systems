@@ -178,11 +178,8 @@ where
 
     let (_, endo_r) = G::endos();
 
-    //~ 1. Sample $\alpha'$ with the Fq-Sponge.
-    let alpha_chal = ScalarChallenge(fq_sponge.challenge());
-
-    //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-    let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
+    // Sample α with the Fq-Sponge.
+    let alpha: G::ScalarField = fq_sponge.challenge();
 
     let zk_rows = 0;
     let column_env: ColumnEnvironment<'_, N, N_REL, N_SEL, _, _> = {
@@ -281,16 +278,15 @@ where
     let t_comm = srs.commit_non_hiding(&quotient_poly, num_chunks);
 
     ////////////////////////////////////////////////////////////////////////////
-    // Round 3: Evaluations at zeta and zeta_omega
+    // Round 3: Evaluations at ζ and ζω
     ////////////////////////////////////////////////////////////////////////////
 
     //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
     absorb_commitment(&mut fq_sponge, &t_comm);
 
-    //~ 1. Sample $\zeta'$ with the Fq-Sponge.
+    //~ 1. Sample ζ with the Fq-Sponge.
     let zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
-    //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
     let zeta = zeta_chal.to_field(endo_r);
 
     let omega = domain.d1.group_gen;
