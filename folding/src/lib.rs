@@ -290,9 +290,9 @@ pub trait Sponge<G: CommitmentCurve> {
 
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
-pub struct FoldingScheme<CF: FoldingConfig> {
+pub struct FoldingScheme<'a, CF: FoldingConfig> {
     pub expression: IntegratedFoldingExpr<CF>,
-    pub srs: CF::Srs,
+    pub srs: &'a CF::Srs,
     pub domain: Radix2EvaluationDomain<ScalarField<CF>>,
     pub zero_commitment: PolyComm<CF::Curve>,
     pub zero_vec: Evals<ScalarField<CF>>,
@@ -300,10 +300,10 @@ pub struct FoldingScheme<CF: FoldingConfig> {
     pub extended_witness_generator: ExtendedWitnessGenerator<CF>,
 }
 
-impl<CF: FoldingConfig> FoldingScheme<CF> {
+impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
     pub fn new(
         constraints: Vec<FoldingCompatibleExpr<CF>>,
-        srs: CF::Srs,
+        srs: &'a CF::Srs,
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
         structure: CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
@@ -354,7 +354,7 @@ impl<CF: FoldingConfig> FoldingScheme<CF> {
             self.domain,
             None,
         );
-        let env = env.compute_extension(&self.extended_witness_generator, &self.srs);
+        let env = env.compute_extension(&self.extended_witness_generator, self.srs);
         let error = compute_error(&self.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 

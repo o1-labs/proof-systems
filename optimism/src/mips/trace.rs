@@ -8,7 +8,7 @@ use crate::{
 };
 use ark_ff::Field;
 use kimchi_msm::witness::Witness;
-use std::{array, collections::HashMap};
+use std::{array, collections::BTreeMap};
 use strum::IntoEnumIterator;
 
 /// The MIPS circuit trace
@@ -20,7 +20,7 @@ impl<F: Field> Tracer<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F
     fn new(domain_size: usize, env: &mut Env<F>) -> Self {
         let mut circuit = Self {
             domain_size,
-            witness: HashMap::new(),
+            witness: BTreeMap::new(),
             constraints: Default::default(),
             lookups: Default::default(),
         };

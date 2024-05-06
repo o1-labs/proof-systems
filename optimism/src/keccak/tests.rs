@@ -1,5 +1,4 @@
 use crate::{
-    folding::BaseSponge,
     keccak::{
         column::{
             Absorbs::*,
@@ -19,7 +18,6 @@ use crate::{
 use ark_ff::{One, Zero};
 use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
-    curve::KimchiCurve,
     o1_utils::{self, FieldHelpers, Two},
 };
 use kimchi_msm::test::test_completeness_generic;
@@ -623,7 +621,7 @@ fn test_keccak_decomposable_folding() {
     let (scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
         constraints,
         vec![],
-        srs.clone(),
+        &srs,
         domain,
         KeccakStructure {},
     );

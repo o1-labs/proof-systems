@@ -9,7 +9,7 @@ use itertools::Itertools;
 use kimchi_msm::witness::Witness;
 use poly_commitment::SRS;
 use rand::thread_rng;
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::BTreeMap, hash::Hash};
 
 /// Returns the index of the witness column in the trace.
 pub trait Indexer {
@@ -30,18 +30,18 @@ pub struct Trace<const N: usize, const N_REL: usize, const N_SEL: usize, Selecto
     /// The witness for a given selector
     /// - the last N_SEL columns represent the selector columns
     ///   and only the one for `Selector` should be all ones (the rest of selector columns should be all zeros)
-    pub witness: HashMap<Selector, Witness<N, Vec<F>>>,
+    pub witness: BTreeMap<Selector, Witness<N, Vec<F>>>,
     /// The vector of constraints for a given selector
-    pub constraints: HashMap<Selector, Vec<E<F>>>,
+    pub constraints: BTreeMap<Selector, Vec<E<F>>>,
     /// The vector of lookups for a given selector
-    pub lookups: HashMap<Selector, Vec<Lookup<E<F>>>>,
+    pub lookups: BTreeMap<Selector, Vec<Lookup<E<F>>>>,
 }
 
 impl<
         const N: usize,
         const N_REL: usize,
         const N_SEL: usize,
-        Selector: Eq + Hash + Indexer + Copy,
+        Selector: Eq + Hash + Indexer + Copy + Ord + PartialOrd,
         F: One + Zero,
     > Trace<N, N_REL, N_SEL, Selector, F>
 {
@@ -97,7 +97,7 @@ impl<
         const N: usize,
         const N_REL: usize,
         const N_SEL: usize,
-        Selector: Eq + Hash + Indexer + Copy,
+        Selector: Eq + Hash + Indexer + Copy + Ord + PartialOrd,
     > Folder<N, Selector, Fp> for Trace<N, N_REL, N_SEL, Selector, Fp>
 {
     fn to_folding_pair(

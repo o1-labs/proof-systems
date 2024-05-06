@@ -53,18 +53,10 @@ pub struct TestInstance {
 impl Instance<Curve> for TestInstance {
     fn combine(a: Self, b: Self, challenge: Fp) -> Self {
         TestInstance {
-            commitments: [
-                a.commitments[0] + b.commitments[0].mul(challenge).into_affine(),
-                a.commitments[1] + b.commitments[1].mul(challenge).into_affine(),
-                a.commitments[2] + b.commitments[2].mul(challenge).into_affine(),
-                a.commitments[3] + b.commitments[3].mul(challenge).into_affine(),
-                a.commitments[4] + b.commitments[4].mul(challenge).into_affine(),
-            ],
-            challenges: [
-                a.challenges[0] + challenge * b.challenges[0],
-                a.challenges[1] + challenge * b.challenges[1],
-                a.challenges[2] + challenge * b.challenges[2],
-            ],
+            commitments: std::array::from_fn(|i| {
+                a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
+            }),
+            challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
@@ -427,7 +419,7 @@ mod tests {
         let (scheme, final_constraint) = DecomposableFoldingScheme::<TestFoldingConfig>::new(
             constraints.clone(),
             vec![],
-            srs.clone(),
+            &srs,
             domain,
             (),
         );
