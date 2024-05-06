@@ -542,8 +542,8 @@ fn test_keccak_prover_constraints() {
 #[test]
 fn test_keccak_decomposable_folding() {
     use crate::{
-        folding::Curve,
         keccak::folding::{KeccakConfig, KeccakStructure},
+        Curve,
     };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
