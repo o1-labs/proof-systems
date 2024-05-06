@@ -16,7 +16,7 @@ use kimchi_optimism::{
     mips::{
         column::{MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS},
         constraints as mips_constraints,
-        folding::{MIPSFoldingConfig, MIPSStructure},
+        folding::MIPSFoldingConfig,
         interpreter::Instruction,
         trace::MIPSTrace,
         witness::{self as mips_witness, SCRATCH_SIZE},
@@ -113,7 +113,7 @@ pub fn main() -> ExitCode {
             vec![],
             &srs.full_srs,
             domain.d1,
-            MIPSStructure,
+            (),
         )
     };
 

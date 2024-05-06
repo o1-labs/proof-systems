@@ -1,9 +1,10 @@
 use crate::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
+    eval_leaf::EvalLeaf,
     expressions::{Degree, FoldingExp, IntegratedFoldingExpr, Sign},
     quadraticization::ExtendedWitnessGenerator,
-    EvalLeaf, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness, ScalarField,
+    FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness, ScalarField,
 };
 use ark_ff::{Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};

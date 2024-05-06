@@ -18,10 +18,11 @@ use kimchi_msm::columns::Column;
 use std::ops::Index;
 
 use super::column::MIPS_REL_COLS;
+use poly_commitment::srs::SRS;
 
 pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS>;
 pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS>;
-pub type MIPSFoldingEnvironment = FoldingEnvironment<MIPS_COLUMNS, MIPSStructure>;
+pub type MIPSFoldingEnvironment = FoldingEnvironment<MIPS_COLUMNS>;
 
 impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -55,11 +56,6 @@ impl Index<Column> for MIPSFoldingWitness {
     }
 }
 
-// TODO: will contain information about the circuit structure
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct MIPSStructure;
-
-// TODO
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MIPSFoldingConfig;
 
@@ -75,11 +71,13 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Selector = Instruction;
     type Challenge = Challenge;
     type Curve = Curve;
-    type Srs = poly_commitment::srs::SRS<Curve>;
+    type Srs = SRS<Curve>;
     type Sponge = BaseSponge;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
-    type Structure = MIPSStructure;
+    // The structure is empty as we don't need to store any additional
+    // information that is static for the relation
+    type Structure = ();
     type Env = MIPSFoldingEnvironment;
 
     fn rows() -> usize {

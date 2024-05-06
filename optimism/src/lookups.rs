@@ -95,6 +95,21 @@ impl LookupTableID for LookupTableIDs {
     fn ix_by_value<F: PrimeField>(&self, _value: F) -> usize {
         todo!()
     }
+
+    fn all_variants() -> Vec<Self> {
+        vec![
+            Self::PadLookup,
+            Self::RoundConstantsLookup,
+            Self::ByteLookup,
+            Self::RangeCheck16Lookup,
+            Self::SparseLookup,
+            Self::ResetLookup,
+            Self::MemoryLookup,
+            Self::RegisterLookup,
+            Self::SyscallLookup,
+            Self::KeccakStepLookup,
+        ]
+    }
 }
 
 /// Trait that creates all the fixed lookup tables used in the VM

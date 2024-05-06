@@ -13,7 +13,7 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    trace::{Folder, Tracer},
+    trace::Tracer,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -542,10 +542,7 @@ fn test_keccak_prover_constraints() {
 #[cfg(feature = "bn254")]
 #[test]
 fn test_keccak_decomposable_folding() {
-    use crate::{
-        keccak::folding::{KeccakConfig, KeccakStructure},
-        Curve,
-    };
+    use crate::{keccak::folding::KeccakConfig, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
         decomposable_folding::DecomposableFoldingScheme, expressions::FoldingCompatibleExpr,
@@ -621,13 +618,8 @@ fn test_keccak_decomposable_folding() {
         .into_iter()
         .collect();
 
-        let (_scheme, _final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
-            constraints,
-            vec![],
-            &srs,
-            domain,
-            KeccakStructure {},
-        );
+        let (_scheme, _final_constraint) =
+            DecomposableFoldingScheme::<KeccakConfig>::new(constraints, vec![], &srs, domain, ());
 
         // Fold Sponge(Absorb(Only))
         {
