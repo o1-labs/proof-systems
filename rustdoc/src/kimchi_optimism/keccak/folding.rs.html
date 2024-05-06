@@ -82,12 +82,18 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    folding::{
-        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
-    },
+    <span class="comment">// FIXME: using BaseSponge from folding as it does require a struct, but we
+    // should simply have a type by modifying how folding uses the sponge
+    </span>folding::BaseSponge,
+    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     trace::Indexer,
+    Curve,
+    Fp,
     DOMAIN_SIZE,
 };
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};

@@ -411,13 +411,7 @@
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
 <a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_bn254;
-<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{Field, One, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>core::sync::atomic::Ordering;
@@ -428,7 +422,6 @@
 };
 <span class="kw">use </span>kimchi_msm::witness::Witness <span class="kw">as </span>GenericWitness;
 <span class="kw">use </span>mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, ScalarChallenge},
     FqSponge,
 };
@@ -437,14 +430,11 @@
 <span class="kw">use </span>strum::EnumCount;
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
 
-<span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
+<span class="kw">use crate</span>::{BaseSponge <span class="kw">as </span>BaseSpongeT, Curve, Fp, DOMAIN_SIZE};
 
-<span class="comment">// Instantiate it with the desired group and field
-</span><span class="kw">pub type </span>Fp = ark_bn254::Fr;
-<span class="kw">pub type </span>Curve = ark_bn254::G1Affine;
-<span class="kw">pub type </span>SpongeParams = PlonkSpongeConstantsKimchi;
-
-<span class="kw">pub struct </span>BaseSponge(DefaultFqSponge&lt;ark_bn254::g1::Parameters, SpongeParams&gt;);
+<span class="comment">// FIXME: Using a struct as Rust asks for it, but we should change how folding
+// uses the sponge.
+</span><span class="kw">pub struct </span>BaseSponge(BaseSpongeT);
 
 <span class="comment">// TODO: get rid of trait Sponge in folding, and use the one from kimchi
 </span><span class="kw">impl </span>Sponge&lt;Curve&gt; <span class="kw">for </span>BaseSponge {

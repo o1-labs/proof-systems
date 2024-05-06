@@ -85,15 +85,21 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    folding::{
-        BaseSponge, Challenge, Curve, FoldingEnvironment, FoldingInstance, FoldingWitness, Fp,
-    },
+    <span class="comment">// FIXME: using BaseSponge from folding as it does require a struct, but we
+    // should simply have a type by modifying how folding uses the sponge
+    </span>folding::BaseSponge,
+    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias <span class="kw">as </span>MIPSColumn, MIPS_COLUMNS},
         Instruction,
     },
     trace::Indexer,
+    Curve,
+    Fp,
     DOMAIN_SIZE,
 };
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
