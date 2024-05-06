@@ -484,7 +484,6 @@
 <a href="#482" id="482">482</a>
 <a href="#483" id="483">483</a>
 <a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     column_env::ColumnEnvironment,
     expr::E,
@@ -765,17 +764,16 @@
     </span><span class="kw">let </span>t_comm = srs.commit_non_hiding(<span class="kw-2">&amp;</span>quotient_poly, num_chunks);
 
     <span class="comment">////////////////////////////////////////////////////////////////////////////
-    // Round 3: Evaluations at zeta and zeta_omega
+    // Round 3: Evaluations at ζ and ζω
     ////////////////////////////////////////////////////////////////////////////
 
     //~ 1. Absorb the commitment of the quotient polynomial with the Fq-Sponge.
     </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>t_comm);
 
-    <span class="comment">//~ 1. Sample $\zeta'$ with the Fq-Sponge.
+    <span class="comment">//~ 1. Sample ζ with the Fq-Sponge.
     </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
 
-    <span class="comment">//~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
-    </span><span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
+    <span class="kw">let </span>zeta = zeta_chal.to_field(endo_r);
 
     <span class="kw">let </span>omega = domain.d1.group_gen;
     <span class="comment">// We will also evaluate at ζω as lookups do require to go to the next row.
