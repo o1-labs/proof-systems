@@ -10,7 +10,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::SRS;
+use poly_commitment::{srs::SRS, SRS as _};
 use rand::thread_rng;
 use std::collections::BTreeMap;
 
@@ -222,8 +222,7 @@ impl FoldingConfig for TestFoldingConfig {
     type Selector = DynamicSelector;
     type Challenge = TestChallenge;
     type Curve = Curve;
-    type Srs = poly_commitment::srs::SRS<Curve>;
-    type Sponge = BaseSponge;
+    type Srs = SRS<Curve>;
     type Instance = TestInstance;
     type Witness = TestWitness;
     type Env = TestFoldingEnv;
@@ -381,6 +380,8 @@ mod tests {
     use crate::decomposable_folding::DecomposableFoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::ExtendedProvider;
+    use kimchi::curve::KimchiCurve;
+    use mina_poseidon::FqSponge;
     use std::println as debug;
 
     // two functions to create the entire witness from just the a and b columns
@@ -411,8 +412,10 @@ mod tests {
     fn test_decomposable_folding() {
         let constraints = constraints();
         let domain = D::<Fp>::new(2).unwrap();
-        let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+        let mut srs = SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
+
+        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // initiallize the scheme, also getting the final single expression for
         // the entire constraint system
@@ -449,8 +452,12 @@ mod tests {
             let right = (instance2, witness2);
             // here we provide normal instance-witness pairs, which will be
             // automatically relaxed
-            let folded =
-                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
+            let folded = scheme.fold_instance_witness_pair(
+                left,
+                right,
+                Some(DynamicSelector::SelecAdd),
+                &mut fq_sponge,
+            );
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             debug!("exp: \n {:#?}", final_constraint.to_string());
@@ -473,8 +480,12 @@ mod tests {
 
             let left = (instance1, witness1);
             let right = (instance2, witness2);
-            let folded =
-                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecSub));
+            let folded = scheme.fold_instance_witness_pair(
+                left,
+                right,
+                Some(DynamicSelector::SelecSub),
+                &mut fq_sponge,
+            );
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
@@ -490,7 +501,7 @@ mod tests {
         debug!("fold mixed");
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
-            let folded = scheme.fold_instance_witness_pair(left, right, None);
+            let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
