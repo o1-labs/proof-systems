@@ -1,15 +1,17 @@
 use crate::{
-    folding::{Alphas, FoldingInstance, FoldingWitness},
+    folding::{Challenge, FoldingInstance, FoldingWitness},
     lookups::Lookup,
     Curve, Fp, E,
 };
 use ark_ff::{FftField, One, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use folding::Alphas;
 use itertools::Itertools;
 use kimchi_msm::witness::Witness;
 use poly_commitment::SRS;
 use rand::thread_rng;
 use std::{collections::BTreeMap, hash::Hash};
+use strum::EnumCount;
 
 /// Returns the index of the witness column in the trace.
 pub trait Indexer {
@@ -130,7 +132,7 @@ impl<
         // FIXME: this would need the sponge instead to obtain the challenges from
         let mut rng = thread_rng();
         let mut challenge = || Fp::rand(&mut rng);
-        let challenges = [(); 3].map(|_| challenge());
+        let challenges = [(); Challenge::COUNT].map(|_| challenge());
         let alpha = challenge();
         let alphas = Alphas::new(alpha);
         let instance = FoldingInstance {
