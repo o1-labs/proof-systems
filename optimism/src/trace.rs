@@ -7,8 +7,9 @@ use ark_ff::{FftField, One, UniformRand, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi_msm::witness::Witness;
-use poly_commitment::SRS;
+use poly_commitment::{srs::SRS, PolyComm, SRS as _};
 use rand::thread_rng;
+use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use std::{collections::BTreeMap, hash::Hash};
 
 /// Returns the index of the witness column in the trace.
@@ -89,7 +90,7 @@ pub(crate) trait Folder<const N: usize, Selector: Eq + Hash + Indexer + Copy, F:
     fn to_folding_pair(
         &self,
         selector: Selector,
-        srs: &poly_commitment::srs::SRS<Curve>,
+        srs: &SRS<Curve>,
     ) -> (FoldingInstance<N>, FoldingWitness<N>);
 }
 
@@ -103,10 +104,10 @@ impl<
     fn to_folding_pair(
         &self,
         selector: Selector,
-        srs: &poly_commitment::srs::SRS<Curve>,
+        srs: &SRS<Curve>,
     ) -> (FoldingInstance<N>, FoldingWitness<N>) {
         let domain = Radix2EvaluationDomain::<Fp>::new(self.domain_size).unwrap();
-        let witness = FoldingWitness {
+        let folding_witness = FoldingWitness {
             witness: Witness {
                 cols: Box::new(
                     self.witness[&selector]
@@ -117,11 +118,12 @@ impl<
             },
         };
 
-        let commitments: [_; N] = witness
-            .witness
-            .cols
-            .iter()
+        let commitments: Witness<N, PolyComm<Curve>> = (&folding_witness.witness)
+            .into_par_iter()
             .map(|w| srs.commit_evaluations_non_hiding(domain, w))
+            .collect();
+        let commitments: [Curve; N] = commitments
+            .into_iter()
             .map(|c| c.elems[0])
             .collect_vec()
             .try_into()
@@ -139,7 +141,7 @@ impl<
             alphas,
         };
 
-        (instance, witness)
+        (instance, folding_witness)
     }
 }
 
