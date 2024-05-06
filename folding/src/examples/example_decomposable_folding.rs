@@ -1,9 +1,9 @@
 use crate::{
+    checker::{BaseSponge, Checker, Curve, Fp, Provide},
     error_term::Side,
-    examples::generic::{Alphas, BaseSponge, Checker, Curve, Fp, Provide},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness, Witness,
+    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
+    RelaxedInstance, RelaxedWitness, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{UniformRand, Zero};
@@ -47,7 +47,7 @@ pub struct TestInstance {
     // for ilustration only, no constraint in this example uses challenges
     challenges: [Fp; 3],
     // also challenges, but segregated as folding gives them special treatment
-    alphas: Alphas,
+    alphas: Alphas<Curve>,
 }
 
 impl Instance<Curve> for TestInstance {
@@ -59,6 +59,10 @@ impl Instance<Curve> for TestInstance {
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
+    }
+
+    fn alphas(&self) -> &Alphas<Curve> {
+        &self.alphas
     }
 }
 

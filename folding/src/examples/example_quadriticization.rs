@@ -1,14 +1,12 @@
 // this example is a copy of the decomposable folding one, but with a degree 3 gate
 // that triggers quadriticization
 use crate::{
+    checker::{BaseSponge, Checker, Curve, Fp, Provide},
     error_term::Side,
-    examples::{
-        example_decomposable_folding::TestWitness,
-        generic::{Alphas, BaseSponge, Checker, Curve, Fp, Provide},
-    },
+    examples::example_decomposable_folding::TestWitness,
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness,
+    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
+    RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{UniformRand, Zero};
@@ -52,7 +50,7 @@ pub struct TestInstance {
     // for ilustration only, no constraint in this example uses challenges
     challenges: [Fp; 3],
     // also challenges, but segregated as folding gives them special treatment
-    alphas: Alphas,
+    alphas: Alphas<Curve>,
 }
 
 impl Instance<Curve> for TestInstance {
@@ -64,6 +62,10 @@ impl Instance<Curve> for TestInstance {
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
+    }
+
+    fn alphas(&self) -> &Alphas<Curve> {
+        &self.alphas
     }
 }
 
