@@ -538,7 +538,6 @@ fn test_keccak_prover_constraints() {
 }
 
 #[test]
-#[cfg(feature = "bn254")]
 fn test_keccak_decomposable_folding() {
     use crate::{keccak::folding::KeccakConfig, trace::Folder, BaseSponge, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
