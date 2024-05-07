@@ -59,7 +59,10 @@ pub use ramlookup::{LookupMode as RAMLookupMode, RAMLookup};
 pub(crate) type E<F> = Expr<ConstantExpr<F>, Column>;
 
 // Instantiate it with the desired group and field
+
+/// Scalar field of BN254
 pub type Fp = ark_bn254::Fr;
+/// Elliptic curve group of BN254
 pub type Curve = ark_bn254::G1Affine;
 pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;

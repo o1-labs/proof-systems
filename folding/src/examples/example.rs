@@ -9,7 +9,7 @@
 use crate::{
     checker::{Checker, Column, Provide},
     error_term::Side,
-    examples::{Curve, Fp, BaseSponge},
+    examples::{BaseSponge, Curve, Fp},
     expressions::FoldingCompatibleExprInner,
     Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
     RelaxedInstance, RelaxedWitness, Witness,

@@ -14,6 +14,7 @@ use crate::{
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
     trace::Tracer,
+    BaseSponge,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -539,7 +540,7 @@ fn test_keccak_prover_constraints() {
 
 #[test]
 fn test_keccak_decomposable_folding() {
-    use crate::{keccak::folding::KeccakConfig, trace::Folder, BaseSponge, Curve};
+    use crate::{keccak::folding::KeccakConfig, trace::Folder, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
         checker::{Checker, ExtendedProvider},
@@ -560,10 +561,7 @@ fn test_keccak_decomposable_folding() {
         srs.add_lagrange_basis(domain);
 
         // Create sponge
-        let mut fq_sponge: mina_poseidon::sponge::DefaultFqSponge<
-            ark_bn254::g1::Parameters,
-            mina_poseidon::constants::PlonkSpongeConstantsKimchi,
-        > = BaseSponge::new(Curve::other_curve_sponge_params());
+        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // Create two instances for each selector to be folded
         let mut keccak_trace: [crate::trace::Trace<
@@ -627,8 +625,8 @@ fn test_keccak_decomposable_folding() {
 
         // Fold Sponge(Absorb(Only))
         {
-            let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
-            let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
+            let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
+            let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
             // TODO: Fix domain size used in folding because it is using 2^15 instead of 1<<8
             let (folded_instance, folded_witness, [_t0, _t1]) = scheme.fold_instance_witness_pair(
                 left,
