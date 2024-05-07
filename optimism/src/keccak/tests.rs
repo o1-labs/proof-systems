@@ -14,13 +14,16 @@ use crate::{
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
     trace::Tracer,
+    BaseSponge,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
     circuits::polynomials::keccak::{constants::RATE_IN_BYTES, Keccak},
+    curve::KimchiCurve,
     o1_utils::{self, FieldHelpers, Two},
 };
 use kimchi_msm::test::test_completeness_generic;
+use mina_poseidon::FqSponge;
 use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
@@ -552,6 +555,8 @@ fn test_keccak_decomposable_folding() {
         let mut rng = o1_utils::tests::make_test_rng();
         let domain_size = 1 << 8;
 
+        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+
         let domain = D::<Fp>::new(domain_size).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(domain_size);
         srs.add_lagrange_basis(domain);
@@ -622,8 +627,9 @@ fn test_keccak_decomposable_folding() {
 
         // Fold Sponge(Absorb(Only))
         {
-            let _left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
-            let _right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
+            let _left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
+            let _right =
+                keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
             // TODO: Fix domain size used in folding because it is using 2^15 instead of 1<<8
             /*  let (folded_instance, folded_witness, [_t0, _t1]) =
                 scheme.fold_instance_witness_pair(left, right, Some(Sponge(Absorb(Only))));
