@@ -74,7 +74,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
 
     // in case of using docomposable folding, if not it can be just ()
-    type Selector: Clone + Debug + Eq + Hash + Copy;
+    type Selector: Clone + Debug + Eq + Hash + Copy + Ord + PartialOrd;
 
     /// The type of an abstract challenge that can be found in the expressions
     /// provided as constraints.

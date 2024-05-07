@@ -43,7 +43,7 @@ pub struct Trace<const N: usize, const N_REL: usize, const N_SEL: usize, C: Fold
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
     Trace<N, N_REL, N_SEL, C>
 where
-    C::Selector: Ord + PartialOrd + Indexer,
+    C::Selector: Indexer,
 {
     /// Returns the number of rows that have been instantiated for the given selector.
     /// It is important that the column used is a relation column because selector columns
@@ -102,7 +102,7 @@ pub(crate) trait Folder<const N: usize, C: FoldingConfig, Sponge> {
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Sponge>
     Folder<N, C, Sponge> for Trace<N, N_REL, N_SEL, C>
 where
-    C::Selector: Ord + PartialOrd + Indexer,
+    C::Selector: Indexer,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
 {
     fn to_folding_pair(
