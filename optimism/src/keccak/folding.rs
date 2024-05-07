@@ -16,10 +16,10 @@ use std::ops::Index;
 
 use super::column::ZKVM_KECCAK_REL;
 
-pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
-pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS>;
+pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS, Fp>;
+pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS, Curve>;
 
-pub type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS>;
+pub type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS, Curve>;
 
 impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
