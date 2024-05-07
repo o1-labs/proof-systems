@@ -183,21 +183,26 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    folding::{Challenge, FoldingInstance, FoldingWitness},
+    folding::{FoldingInstance, FoldingWitness},
     lookups::Lookup,
-    Curve, Fp, E,
+    BaseSponge, Curve, Fp, E,
 };
-<span class="kw">use </span>ark_ff::{FftField, One, UniformRand, Zero};
+<span class="kw">use </span>ark_ff::{FftField, One, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 <span class="kw">use </span>folding::Alphas;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>kimchi_msm::witness::Witness;
+<span class="kw">use </span>mina_poseidon::sponge::FqSponge;
 <span class="kw">use </span>poly_commitment::{srs::SRS, PolyComm, SRS <span class="kw">as _</span>};
-<span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 <span class="kw">use </span>std::{collections::BTreeMap, hash::Hash};
-<span class="kw">use </span>strum::EnumCount;
 
 <span class="doccomment">/// Returns the index of the witness column in the trace.
 </span><span class="kw">pub trait </span>Indexer {
@@ -272,12 +277,15 @@
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Folder&lt;<span class="kw">const </span>N: usize, Selector: Eq + Hash + Indexer + Copy, F: FftField&gt; {
-    <span class="doccomment">/// Returns the witness for the given selector as a folding witness nd folding instance pair.
-    </span><span class="comment">// FIXME: pass the sponge for the challenges of the instance
+    <span class="doccomment">/// Returns the witness for the given selector as a folding witness and
+    /// folding instance pair.
+    /// Note that this function will also absorb all commitments to the columns
+    /// to coin challenges appropriately.
     </span><span class="kw">fn </span>to_folding_pair(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         selector: Selector,
         srs: <span class="kw-2">&amp;</span>SRS&lt;Curve&gt;,
+        fq_sponge: <span class="kw-2">&amp;mut </span>BaseSponge,
     ) -&gt; (FoldingInstance&lt;N&gt;, FoldingWitness&lt;N&gt;);
 }
 
@@ -292,7 +300,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         selector: Selector,
         srs: <span class="kw-2">&amp;</span>SRS&lt;Curve&gt;,
-    ) -&gt; (FoldingInstance&lt;N&gt;, FoldingWitness&lt;N&gt;) {
+        fq_sponge: <span class="kw-2">&amp;mut </span>BaseSponge,
+    ) -&gt; (FoldingInstance&lt;N&gt;, FoldingWitness&lt;N&gt;)
+<span class="kw">where </span>{
         <span class="kw">let </span>domain = Radix2EvaluationDomain::&lt;Fp&gt;::new(<span class="self">self</span>.domain_size).unwrap();
         <span class="kw">let </span>folding_witness = FoldingWitness {
             witness: (<span class="kw-2">&amp;</span><span class="self">self</span>.witness[<span class="kw-2">&amp;</span>selector])
@@ -312,11 +322,13 @@
             .try_into()
             .unwrap();
 
-        <span class="comment">// FIXME: this would need the sponge instead to obtain the challenges from
-        </span><span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
-        <span class="kw">let </span><span class="kw-2">mut </span>challenge = || Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-        <span class="kw">let </span>challenges = [(); Challenge::COUNT].map(|<span class="kw">_</span>| challenge());
-        <span class="kw">let </span>alpha = challenge();
+        <span class="comment">// FIXME: absorb commitments
+
+        </span><span class="kw">let </span>beta: Fp = fq_sponge.challenge();
+        <span class="kw">let </span>gamma: Fp = fq_sponge.challenge();
+        <span class="kw">let </span>joint_combiner: Fp = fq_sponge.challenge();
+        <span class="kw">let </span>alpha: Fp = fq_sponge.challenge();
+        <span class="kw">let </span>challenges = [beta, gamma, joint_combiner];
         <span class="kw">let </span>alphas = Alphas::new(alpha);
         <span class="kw">let </span>instance = FoldingInstance {
             commitments,
