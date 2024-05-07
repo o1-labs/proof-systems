@@ -330,6 +330,10 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This library implements basic components to fold computations expressed as
 //! multivariate polynomials of any degree. It is based on the "folding scheme"
 //! described in the [Nova](https://eprint.iacr.org/2021/370.pdf) paper.
@@ -581,7 +585,11 @@
         (instance, witness, error_commitments)
     }
 
-    <span class="kw">pub fn </span>fold_instance_pair&lt;A, B, Sponge&gt;(
+    <span class="doccomment">/// Fold two relaxable instances into a relaxed instance.
+    /// It is parametrized by two different types `A` and `B` that represent
+    /// "relaxable" instances to be able to fold a normal and "already relaxed"
+    /// instance.
+    </span><span class="kw">pub fn </span>fold_instance_pair&lt;A, B, Sponge&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         a: A,
         b: B,
