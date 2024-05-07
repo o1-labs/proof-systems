@@ -74,7 +74,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
 
     // in case of using docomposable folding, if not it can be just ()
-    type Selector: Clone + Debug + Eq + Hash;
+    type Selector: Clone + Debug + Eq + Hash + Copy;
 
     /// The type of an abstract challenge that can be found in the expressions
     /// provided as constraints.
@@ -287,7 +287,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 /// of other element. This type represents that, allowing to also recognize
 /// which case is present.
 #[derive(Debug, Clone)]
-pub enum Alphas<F> {
+pub enum Alphas<F: Field> {
     Powers(F, Rc<AtomicUsize>),
     Combinations(Vec<F>),
 }

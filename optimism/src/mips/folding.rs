@@ -15,9 +15,9 @@ use std::ops::Index;
 use super::column::MIPS_REL_COLS;
 use poly_commitment::srs::SRS;
 
-pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS>;
-pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS>;
-pub type MIPSFoldingEnvironment = FoldingEnvironment<MIPS_COLUMNS>;
+pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS, Fp>;
+pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS, Curve>;
+pub type MIPSFoldingEnvironment = FoldingEnvironment<MIPS_COLUMNS, Curve>;
 
 impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
