@@ -1,7 +1,18 @@
-use crate::{lookups::Lookup, E};
-use ark_ff::{One, Zero};
+use crate::{
+    folding::{Challenge, FoldingInstance, FoldingWitness},
+    lookups::Lookup,
+    Curve, Fp, E,
+};
+use ark_ff::{FftField, One, UniformRand, Zero};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
+use folding::Alphas;
+use itertools::Itertools;
 use kimchi_msm::witness::Witness;
+use poly_commitment::{srs::SRS, PolyComm, SRS as _};
+use rand::thread_rng;
+use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use std::{collections::BTreeMap, hash::Hash};
+use strum::EnumCount;
 
 /// Returns the index of the witness column in the trace.
 pub trait Indexer {
@@ -34,7 +45,7 @@ impl<
         const N_REL: usize,
         const N_SEL: usize,
         Selector: Eq + Hash + Indexer + Copy + Ord + PartialOrd,
-        F: Zero + One,
+        F: One + Zero,
     > Trace<N, N_REL, N_SEL, Selector, F>
 {
     /// Returns the number of rows that have been instantiated for the given selector.
@@ -72,6 +83,63 @@ impl<
                     .extend((0..number_of_rows).map(|_| F::zero()))
             }
         });
+    }
+}
+
+pub(crate) trait Folder<const N: usize, Selector: Eq + Hash + Indexer + Copy, F: FftField> {
+    /// Returns the witness for the given selector as a folding witness nd folding instance pair.
+    // FIXME: pass the sponge for the challenges of the instance
+    fn to_folding_pair(
+        &self,
+        selector: Selector,
+        srs: &SRS<Curve>,
+    ) -> (FoldingInstance<N>, FoldingWitness<N>);
+}
+
+impl<
+        const N: usize,
+        const N_REL: usize,
+        const N_SEL: usize,
+        Selector: Eq + Hash + Indexer + Copy + Ord + PartialOrd,
+    > Folder<N, Selector, Fp> for Trace<N, N_REL, N_SEL, Selector, Fp>
+{
+    fn to_folding_pair(
+        &self,
+        selector: Selector,
+        srs: &SRS<Curve>,
+    ) -> (FoldingInstance<N>, FoldingWitness<N>) {
+        let domain = Radix2EvaluationDomain::<Fp>::new(self.domain_size).unwrap();
+        let folding_witness = FoldingWitness {
+            witness: (&self.witness[&selector])
+                .into_par_iter()
+                .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain))
+                .collect(),
+        };
+
+        let commitments: Witness<N, PolyComm<Curve>> = (&folding_witness.witness)
+            .into_par_iter()
+            .map(|w| srs.commit_evaluations_non_hiding(domain, w))
+            .collect();
+        let commitments: [Curve; N] = commitments
+            .into_iter()
+            .map(|c| c.elems[0])
+            .collect_vec()
+            .try_into()
+            .unwrap();
+
+        // FIXME: this would need the sponge instead to obtain the challenges from
+        let mut rng = thread_rng();
+        let mut challenge = || Fp::rand(&mut rng);
+        let challenges = [(); Challenge::COUNT].map(|_| challenge());
+        let alpha = challenge();
+        let alphas = Alphas::new(alpha);
+        let instance = FoldingInstance {
+            commitments,
+            challenges,
+            alphas,
+        };
+
+        (instance, folding_witness)
     }
 }
 

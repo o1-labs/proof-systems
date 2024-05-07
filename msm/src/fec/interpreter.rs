@@ -271,18 +271,12 @@ pub fn constrain_ec_addition<
         }
     }
 
-    let xr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(xr_limbs_small.clone());
-    let yr_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(yr_limbs_small.clone());
-    let s_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(s_limbs_small.clone());
-    let q1_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(q1_limbs_small.clone());
-    let q2_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(q2_limbs_small.clone());
-    let q3_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(q3_limbs_small.clone());
+    let xr_limbs_large = combine_small_to_large::<_, _, Env>(xr_limbs_small.clone());
+    let yr_limbs_large = combine_small_to_large::<_, _, Env>(yr_limbs_small.clone());
+    let s_limbs_large = combine_small_to_large::<_, _, Env>(s_limbs_small.clone());
+    let q1_limbs_large = combine_small_to_large::<_, _, Env>(q1_limbs_small.clone());
+    let q2_limbs_large = combine_small_to_large::<_, _, Env>(q2_limbs_small.clone());
+    let q3_limbs_large = combine_small_to_large::<_, _, Env>(q3_limbs_small.clone());
 
     let carry1_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
         combine_carry::<F, _, Env>(carry1_limbs_small.clone());

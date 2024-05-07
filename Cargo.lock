@@ -1375,6 +1375,8 @@ dependencies = [
  "once_cell",
  "poly-commitment",
  "rand",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
@@ -1500,6 +1502,7 @@ dependencies = [
  "folding",
  "groupmap",
  "hex",
+ "itertools 0.12.1",
  "kimchi",
  "kimchi-msm",
  "libc",

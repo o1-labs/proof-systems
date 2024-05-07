@@ -3,7 +3,6 @@ use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_integer::Integer;
 use num_traits::{sign::Signed, Euclid};
 use std::marker::PhantomData;
-use strum::IntoEnumIterator;
 
 use crate::{
     circuit_design::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
@@ -35,8 +34,8 @@ pub trait HybridSerHelpers<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID>
         Self: ColAccessCap<F, CIx>;
 }
 
-impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
-    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::ConstraintBuilderEnv<F, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID> HybridSerHelpers<F, CIx, LT>
+    for crate::circuit_design::ConstraintBuilderEnv<F, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -54,12 +53,8 @@ impl<F: PrimeField, CIx: ColumnIndexer, LT: LookupTableID + IntoEnumIterator>
     }
 }
 
-impl<
-        F: PrimeField,
-        CIx: ColumnIndexer,
-        const CIX_COL_N: usize,
-        LT: LookupTableID + IntoEnumIterator,
-    > HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
+impl<F: PrimeField, CIx: ColumnIndexer, const CIX_COL_N: usize, LT: LookupTableID>
+    HybridSerHelpers<F, CIx, LT> for crate::circuit_design::WitnessBuilderEnv<F, CIX_COL_N, LT>
 {
     fn bitmask_be(
         &mut self,
@@ -301,30 +296,51 @@ where
 ///
 /// Combines an array of `M` elements (think `N_LIMBS_SMALL`) into an
 /// array of `N` elements (think `N_LIMBS_LARGE`) elements by taking
-/// chunks `a_i` of size `5` from the first, and recombining them as
+/// chunks `a_i` of size `K = BITSIZE_N / BITSIZE_M` from the first, and recombining them as
 /// `a_i * 2^{i * 2^LIMB_BITSIZE_SMALL}`.
-pub fn combine_small_to_large<
+pub fn combine_limbs_m_to_n<
     const M: usize,
     const N: usize,
+    const BITSIZE_M: usize,
+    const BITSIZE_N: usize,
     F: PrimeField,
     CIx: ColumnIndexer,
     Env: ColAccessCap<F, CIx>,
 >(
     x: [Env::Variable; M],
 ) -> [Env::Variable; N] {
+    assert!(BITSIZE_N % BITSIZE_M == 0);
+    let k = BITSIZE_N / BITSIZE_M;
     let constant_u128 = |x: u128| Env::constant(From::from(x));
-    let disparity: usize = M % 5;
+    let disparity: usize = M % k;
     std::array::from_fn(|i| {
         // We have less small limbs in the last large limb
         let upper_bound = if disparity != 0 && i == N - 1 {
             disparity
         } else {
-            5
+            k
         };
         (0..upper_bound)
-            .map(|j| x[5 * i + j].clone() * constant_u128(1u128 << (j * LIMB_BITSIZE_SMALL)))
+            .map(|j| x[k * i + j].clone() * constant_u128(1u128 << (j * BITSIZE_M)))
             .fold(Env::Variable::from(0u64), |acc, v| acc + v)
     })
+}
+
+/// Helper function for limb recombination.
+///
+/// Combines small limbs into big limbs.
+pub fn combine_small_to_large<F: PrimeField, CIx: ColumnIndexer, Env: ColAccessCap<F, CIx>>(
+    x: [Env::Variable; N_LIMBS_SMALL],
+) -> [Env::Variable; N_LIMBS_LARGE] {
+    combine_limbs_m_to_n::<
+        N_LIMBS_SMALL,
+        N_LIMBS_LARGE,
+        LIMB_BITSIZE_SMALL,
+        LIMB_BITSIZE_LARGE,
+        F,
+        CIx,
+        Env,
+    >(x)
 }
 
 /// Helper function for limb recombination for carry specifically.
@@ -400,18 +416,12 @@ pub fn constrain_multiplication<
     // FIXME: Some of these /have/ to be in the [0,F), and carries have very specific ranges!
 
     let chal_converted_limbs_large =
-        combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-            chal_converted_limbs_small.clone(),
-        );
-    let coeff_input_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-        coeff_input_limbs_small.clone(),
-    );
-    let coeff_result_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-        coeff_result_limbs_small.clone(),
-    );
-    let quotient_limbs_large = combine_small_to_large::<N_LIMBS_SMALL, N_LIMBS_LARGE, _, _, Env>(
-        quotient_limbs_small.clone(),
-    );
+        combine_small_to_large::<_, _, Env>(chal_converted_limbs_small.clone());
+    let coeff_input_limbs_large =
+        combine_small_to_large::<_, _, Env>(coeff_input_limbs_small.clone());
+    let coeff_result_limbs_large =
+        combine_small_to_large::<_, _, Env>(coeff_result_limbs_small.clone());
+    let quotient_limbs_large = combine_small_to_large::<_, _, Env>(quotient_limbs_small.clone());
     let carry_limbs_large: [_; 2 * N_LIMBS_LARGE - 2] =
         combine_carry::<_, _, Env>(carry_limbs_small.clone());
 
