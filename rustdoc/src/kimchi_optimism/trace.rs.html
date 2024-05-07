@@ -184,8 +184,9 @@
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    folding::{FoldingInstance, FoldingWitness},
+    folding::{Challenge, FoldingInstance, FoldingWitness},
     lookups::Lookup,
     Curve, Fp, E,
 };
@@ -197,6 +198,7 @@
 <span class="kw">use </span>poly_commitment::SRS;
 <span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>std::{collections::BTreeMap, hash::Hash};
+<span class="kw">use </span>strum::EnumCount;
 
 <span class="doccomment">/// Returns the index of the witness column in the trace.
 </span><span class="kw">pub trait </span>Indexer {
@@ -317,7 +319,7 @@
         <span class="comment">// FIXME: this would need the sponge instead to obtain the challenges from
         </span><span class="kw">let </span><span class="kw-2">mut </span>rng = thread_rng();
         <span class="kw">let </span><span class="kw-2">mut </span>challenge = || Fp::rand(<span class="kw-2">&amp;mut </span>rng);
-        <span class="kw">let </span>challenges = [(); <span class="number">3</span>].map(|<span class="kw">_</span>| challenge());
+        <span class="kw">let </span>challenges = [(); Challenge::COUNT].map(|<span class="kw">_</span>| challenge());
         <span class="kw">let </span>alpha = challenge();
         <span class="kw">let </span>alphas = Alphas::new(alpha);
         <span class="kw">let </span>instance = FoldingInstance {

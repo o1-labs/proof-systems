@@ -347,7 +347,14 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::Evals;
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{Alphas, Evals};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>num_traits::One;
 <span class="kw">use </span>poly_commitment::commitment::{CommitmentCurve, PolyComm};
@@ -366,6 +373,9 @@
             error_commitment: zero_commit,
         }
     }
+
+    <span class="doccomment">/// Returns the alphas values for the instance
+    </span><span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt;;
 }
 
 <span class="kw">pub trait </span>Witness&lt;G: CommitmentCurve&gt;: Sized {
@@ -511,6 +521,10 @@
             .map(|(a, b)| <span class="kw-2">&amp;</span>a + <span class="kw-2">&amp;</span>b.scale(challenge))
             .collect();
         <span class="self">Self </span>{ inner, extended }
+    }
+
+    <span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
+        <span class="self">self</span>.inner.alphas()
     }
 }
 
