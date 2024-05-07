@@ -33,8 +33,7 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
             .into_iter()
             .flat_map(|(s, exps)| {
                 exps.into_iter().map(move |exp| {
-                    let s =
-                        FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
+                    let s = FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s));
                     let s = Box::new(FoldingCompatibleExpr::Atom(s));
                     FoldingCompatibleExpr::Mul(s, Box::new(exp))
                 })
