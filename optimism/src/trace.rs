@@ -110,14 +110,10 @@ impl<
     ) -> (FoldingInstance<N>, FoldingWitness<N>) {
         let domain = Radix2EvaluationDomain::<Fp>::new(self.domain_size).unwrap();
         let folding_witness = FoldingWitness {
-            witness: Witness {
-                cols: Box::new(
-                    self.witness[&selector]
-                        .cols
-                        .clone()
-                        .map(|col| Evaluations::from_vec_and_domain(col, domain)),
-                ),
-            },
+            witness: (&self.witness[&selector])
+                .into_par_iter()
+                .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain))
+                .collect(),
         };
 
         let commitments: Witness<N, PolyComm<Curve>> = (&folding_witness.witness)
