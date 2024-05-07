@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"kimchi_optimism":[["impl Checker&lt;<a class=\"struct\" href=\"kimchi_optimism/keccak/folding/struct.KeccakConfig.html\" title=\"struct kimchi_optimism::keccak::folding::KeccakConfig\">KeccakConfig</a>&gt; for ExtendedProvider&lt;<a class=\"struct\" href=\"kimchi_optimism/keccak/folding/struct.KeccakConfig.html\" title=\"struct kimchi_optimism::keccak::folding::KeccakConfig\">KeccakConfig</a>&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -183,10 +183,6 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::{Challenge, FoldingInstance, FoldingWitness},
     lookups::Lookup,
@@ -299,14 +295,10 @@
     ) -&gt; (FoldingInstance&lt;N&gt;, FoldingWitness&lt;N&gt;) {
         <span class="kw">let </span>domain = Radix2EvaluationDomain::&lt;Fp&gt;::new(<span class="self">self</span>.domain_size).unwrap();
         <span class="kw">let </span>folding_witness = FoldingWitness {
-            witness: Witness {
-                cols: Box::new(
-                    <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>selector]
-                        .cols
-                        .clone()
-                        .map(|col| Evaluations::from_vec_and_domain(col, domain)),
-                ),
-            },
+            witness: (<span class="kw-2">&amp;</span><span class="self">self</span>.witness[<span class="kw-2">&amp;</span>selector])
+                .into_par_iter()
+                .map(|w| Evaluations::from_vec_and_domain(w.to_vec(), domain))
+                .collect(),
         };
 
         <span class="kw">let </span>commitments: Witness&lt;N, PolyComm&lt;Curve&gt;&gt; = (<span class="kw-2">&amp;</span>folding_witness.witness)

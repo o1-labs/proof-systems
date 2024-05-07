@@ -118,7 +118,6 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     keccak::column::{ColumnAlias <span class="kw">as </span>KeccakColumn, Steps::<span class="kw-2">*</span>, PAD_SUFFIX_LEN},
     lookups::LookupTableIDs,
@@ -131,8 +130,7 @@
 <span class="kw">pub mod </span>column;
 <span class="kw">pub mod </span>constraints;
 <span class="kw">pub mod </span>environment;
-<span class="attr">#[cfg(feature = <span class="string">"bn254"</span>)]
-</span><span class="kw">pub mod </span>folding;
+<span class="kw">pub mod </span>folding;
 <span class="kw">pub mod </span>helpers;
 <span class="kw">pub mod </span>interpreter;
 <span class="attr">#[cfg(test)]
