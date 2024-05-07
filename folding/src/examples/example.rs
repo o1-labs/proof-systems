@@ -7,8 +7,9 @@
 /// cargo nextest run examples::example::tests::test_folding_instance --release --all-features
 /// ```
 use crate::{
-    checker::{BaseSponge, Checker, Column, Curve, Fp, Provide},
+    checker::{Checker, Column, Provide},
     error_term::Side,
+    examples::{BaseSponge, Curve, Fp},
     expressions::FoldingCompatibleExprInner,
     Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
     RelaxedInstance, RelaxedWitness, Witness,

@@ -10,21 +10,12 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, Zero};
 use ark_poly::Evaluations;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use std::ops::Index;
 
 #[cfg(not(test))]
 use log::debug;
 #[cfg(test)]
 use std::println as debug;
-
-// 0. We start by defining the field and the curve that will be used in the
-// constraint system, in addition to the sponge that will be used to generate
-// challenges.
-pub type Fp = ark_bn254::Fr;
-pub type Curve = ark_bn254::G1Affine;
-pub type SpongeParams = PlonkSpongeConstantsKimchi;
-pub type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
 
 // 1. We continue by defining a generic type of columns and selectors.
 // The selectors can be seen as additional (public) columns that are not part of
