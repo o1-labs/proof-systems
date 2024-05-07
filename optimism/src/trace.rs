@@ -1,15 +1,16 @@
 use crate::{
-    folding::{FoldingInstance, FoldingWitness},
+    folding::{BaseField, FoldingInstance, FoldingWitness, ScalarField},
     lookups::Lookup,
-    BaseSponge, Curve, Fp, E,
+    E,
 };
+use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
-use folding::Alphas;
+use folding::{Alphas, FoldingConfig};
 use itertools::Itertools;
 use kimchi_msm::witness::Witness;
 use mina_poseidon::sponge::FqSponge;
-use poly_commitment::{srs::SRS, PolyComm, SRS as _};
+use poly_commitment::{PolyComm, SRS as _};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use std::{collections::BTreeMap, hash::Hash};
 
@@ -85,34 +86,39 @@ impl<
     }
 }
 
-pub(crate) trait Folder<const N: usize, Selector: Eq + Hash + Indexer + Copy, F: FftField> {
+pub(crate) trait Folder<const N: usize, C: FoldingConfig, Sponge, F: FftField> {
     /// Returns the witness for the given selector as a folding witness and
     /// folding instance pair.
     /// Note that this function will also absorb all commitments to the columns
     /// to coin challenges appropriately.
     fn to_folding_pair(
         &self,
-        selector: Selector,
-        srs: &SRS<Curve>,
-        fq_sponge: &mut BaseSponge,
-    ) -> (FoldingInstance<N>, FoldingWitness<N>);
+        selector: C::Selector,
+        srs: &poly_commitment::srs::SRS<C::Curve>,
+        sponge: &mut Sponge,
+    ) -> (
+        FoldingInstance<N, C::Curve>,
+        FoldingWitness<N, <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField>,
+    );
 }
 
-impl<
-        const N: usize,
-        const N_REL: usize,
-        const N_SEL: usize,
-        Selector: Eq + Hash + Indexer + Copy + Ord + PartialOrd,
-    > Folder<N, Selector, Fp> for Trace<N, N_REL, N_SEL, Selector, Fp>
+impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Sponge>
+    Folder<N, C, Sponge, ScalarField<C>> for Trace<N, N_REL, N_SEL, C::Selector, ScalarField<C>>
+where
+    C::Selector: Ord + PartialOrd + Indexer,
+    Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
 {
     fn to_folding_pair(
         &self,
-        selector: Selector,
-        srs: &SRS<Curve>,
-        fq_sponge: &mut BaseSponge,
-    ) -> (FoldingInstance<N>, FoldingWitness<N>)
-where {
-        let domain = Radix2EvaluationDomain::<Fp>::new(self.domain_size).unwrap();
+        selector: C::Selector,
+        srs: &poly_commitment::srs::SRS<C::Curve>,
+        fq_sponge: &mut Sponge,
+    ) -> (
+        FoldingInstance<N, C::Curve>,
+        FoldingWitness<N, ScalarField<C>>,
+    ) {
+        println!("domain size in tracer {}", self.domain_size);
+        let domain = Radix2EvaluationDomain::<ScalarField<C>>::new(self.domain_size).unwrap();
         let folding_witness = FoldingWitness {
             witness: (&self.witness[&selector])
                 .into_par_iter()
@@ -120,11 +126,11 @@ where {
                 .collect(),
         };
 
-        let commitments: Witness<N, PolyComm<Curve>> = (&folding_witness.witness)
+        let commitments: Witness<N, PolyComm<C::Curve>> = (&folding_witness.witness)
             .into_par_iter()
             .map(|w| srs.commit_evaluations_non_hiding(domain, w))
             .collect();
-        let commitments: [Curve; N] = commitments
+        let commitments: [C::Curve; N] = commitments
             .into_iter()
             .map(|c| c.elems[0])
             .collect_vec()
@@ -133,10 +139,10 @@ where {
 
         // FIXME: absorb commitments
 
-        let beta: Fp = fq_sponge.challenge();
-        let gamma: Fp = fq_sponge.challenge();
-        let joint_combiner: Fp = fq_sponge.challenge();
-        let alpha: Fp = fq_sponge.challenge();
+        let beta = fq_sponge.challenge();
+        let gamma = fq_sponge.challenge();
+        let joint_combiner = fq_sponge.challenge();
+        let alpha = fq_sponge.challenge();
         let challenges = [beta, gamma, joint_combiner];
         let alphas = Alphas::new(alpha);
         let instance = FoldingInstance {
