@@ -26,6 +26,7 @@ use expressions::{
 };
 use instance_witness::{RelaxableInstance, RelaxablePair};
 use kimchi::circuits::gate::CurrOrNext;
+use mina_poseidon::FqSponge;
 use poly_commitment::{commitment::CommitmentCurve, PolyComm, SRS};
 use quadraticization::ExtendedWitnessGenerator;
 use std::{
@@ -57,14 +58,17 @@ pub mod quadraticization;
 #[cfg(feature = "bn254")]
 mod examples;
 
-// Simple type alias as ScalarField is often used. Reduce type complexity for
-// clippy.
+// Simple type alias as ScalarField/BaseField is often used. Reduce type
+// complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
 // at the moment.
 type ScalarField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+type BaseField<C> = <<C as FoldingConfig>::Curve as AffineCurve>::BaseField;
 
+// 'static seems to be used for expressions. Can we get rid of it?
 pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Column: FoldingColumnTrait + Debug + Eq + Hash;
+
     // in case of using docomposable folding, if not it can be just ()
     type Selector: Clone + Debug + Eq + Hash;
 
@@ -76,10 +80,6 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Curve: CommitmentCurve;
 
     type Srs: SRS<Self::Curve>;
-
-    /// The sponge used to create challenges
-    // FIXME: use Sponge from kimchi
-    type Sponge: Sponge<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
     type Instance: Instance<Self::Curve>;
@@ -147,12 +147,6 @@ pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
     fn selector(&self, s: &Selector, side: Side) -> &Vec<F>;
 }
 
-/// TODO: Use Sponge trait from kimchi
-pub trait Sponge<G: CommitmentCurve> {
-    /// Compute a challenge from two commitments
-    fn challenge(absorbe: &[PolyComm<G>; 2]) -> G::ScalarField;
-}
-
 type Evals<F> = Evaluations<F, Radix2EvaluationDomain<F>>;
 
 pub struct FoldingScheme<'a, CF: FoldingConfig> {
@@ -192,10 +186,11 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn fold_instance_witness_pair<A, B>(
+    pub fn fold_instance_witness_pair<A, B, Sponge>(
         &self,
         a: A,
         b: B,
+        fq_sponge: &mut Sponge,
     ) -> (
         RelaxedInstance<CF::Curve, CF::Instance>,
         RelaxedWitness<CF::Curve, CF::Witness>,
@@ -204,6 +199,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
     where
         A: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
+        Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
         let a = a.relax(&self.zero_vec, self.zero_commitment.clone());
         let b = b.relax(&self.zero_vec, self.zero_commitment.clone());
@@ -219,16 +215,29 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             self.domain,
             None,
         );
-        let env = env.compute_extension(&self.extended_witness_generator, self.srs);
-        let error = compute_error(&self.expression, &env, u);
+        let env: ExtendedEnv<CF> =
+            env.compute_extension(&self.extended_witness_generator, self.srs);
+        let error: [Vec<ScalarField<CF>>; 2] = compute_error(&self.expression, &env, u);
+
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, self.domain));
 
-        //can use array::each_ref() when stable
-        let error_commitments = [&error_evals[0], &error_evals[1]]
-            .map(|e| self.srs.commit_evaluations_non_hiding(self.domain, e));
+        let error_commitments = error_evals
+            .iter()
+            .map(|e| self.srs.commit_evaluations_non_hiding(self.domain, e))
+            .collect::<Vec<_>>();
+        let error_commitments: [PolyComm<CF::Curve>; 2] = error_commitments.try_into().unwrap();
+
+        // sanity check to verify that we only have one commitment in polycomm
+        // (i.e. domain = poly size)
+        assert_eq!(error_commitments[0].elems.len(), 1);
+        assert_eq!(error_commitments[1].elems.len(), 1);
+
+        fq_sponge.absorb_g(&error_commitments[0].elems);
+        fq_sponge.absorb_g(&error_commitments[1].elems);
+
+        let challenge = fq_sponge.challenge();
 
         let error = error_evals.map(|e| e.evals);
-        let challenge = <CF::Sponge>::challenge(&error_commitments);
         let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
         let instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
@@ -236,19 +245,31 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         (instance, witness, error_commitments)
     }
 
-    pub fn fold_instance_pair<A, B>(
+    pub fn fold_instance_pair<A, B, Sponge>(
         &self,
         a: A,
         b: B,
         error_commitments: [PolyComm<CF::Curve>; 2],
+        fq_sponge: &mut Sponge,
     ) -> RelaxedInstance<CF::Curve, CF::Instance>
     where
         A: RelaxableInstance<CF::Curve, CF::Instance>,
         B: RelaxableInstance<CF::Curve, CF::Instance>,
+        Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
         let a: RelaxedInstance<CF::Curve, CF::Instance> = a.relax(self.zero_commitment.clone());
         let b: RelaxedInstance<CF::Curve, CF::Instance> = b.relax(self.zero_commitment.clone());
-        let challenge = <CF::Sponge>::challenge(&error_commitments);
+
+        // sanity check to verify that we only have one commitment in polycomm
+        // (i.e. domain = poly size)
+        assert_eq!(error_commitments[0].elems.len(), 1);
+        assert_eq!(error_commitments[1].elems.len(), 1);
+
+        fq_sponge.absorb_g(&error_commitments[0].elems);
+        fq_sponge.absorb_g(&error_commitments[1].elems);
+
+        let challenge = fq_sponge.challenge();
+
         RelaxedInstance::combine_and_sub_error(a, b, challenge, &error_commitments)
     }
 }

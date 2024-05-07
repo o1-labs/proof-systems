@@ -8,9 +8,10 @@ use crate::{
     error_term::{compute_error, ExtendedEnv},
     expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
-    FoldingConfig, FoldingScheme, ScalarField, Sponge,
+    BaseField, FoldingConfig, FoldingScheme, ScalarField,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use mina_poseidon::FqSponge;
 use poly_commitment::{PolyComm, SRS};
 use std::collections::BTreeMap;
 
@@ -48,11 +49,12 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
     /// folding with a selector will assume that only the selector in question is enabled (1)
     /// in all rows, and any other selector is 0 over all rows.
     /// If that is not the case, providing None will fold without assumptions
-    pub fn fold_instance_witness_pair<A, B>(
+    pub fn fold_instance_witness_pair<A, B, Sponge>(
         &self,
         a: A,
         b: B,
         selector: Option<CF::Selector>,
+        fq_sponge: &mut Sponge,
     ) -> (
         RelaxedInstance<CF::Curve, CF::Instance>,
         RelaxedWitness<CF::Curve, CF::Witness>,
@@ -61,6 +63,7 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
     where
         A: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
         B: RelaxablePair<CF::Curve, CF::Instance, CF::Witness>,
+        Sponge: FqSponge<BaseField<CF>, CF::Curve, ScalarField<CF>>,
     {
         let scheme = &self.inner;
         let a = a.relax(&scheme.zero_vec, scheme.zero_commitment.clone());
@@ -81,12 +84,25 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         let error = compute_error(&scheme.expression, &env, u);
         let error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, scheme.domain));
 
-        //can use array::each_ref() when stable
-        let error_commitments = [&error_evals[0], &error_evals[1]]
-            .map(|e| scheme.srs.commit_evaluations_non_hiding(scheme.domain, e));
+        let error_commitments = error_evals
+            .iter()
+            .map(|e| scheme.srs.commit_evaluations_non_hiding(scheme.domain, e))
+            .collect::<Vec<_>>();
+        let error_commitments: [PolyComm<CF::Curve>; 2] = error_commitments.try_into().unwrap();
 
-        let error = error_evals.map(|e| e.evals);
-        let challenge = <CF::Sponge>::challenge(&error_commitments);
+        let error = error_evals.into_iter().map(|e| e.evals).collect::<Vec<_>>();
+        let error: [Vec<_>; 2] = error.try_into().unwrap();
+
+        // sanity check to verify that we only have one commitment in polycomm
+        // (i.e. domain = poly size)
+        assert_eq!(error_commitments[0].elems.len(), 1);
+        assert_eq!(error_commitments[1].elems.len(), 1);
+
+        fq_sponge.absorb_g(&error_commitments[0].elems);
+        fq_sponge.absorb_g(&error_commitments[1].elems);
+
+        let challenge = fq_sponge.challenge();
+
         let ([ins1, ins2], [wit1, wit2]) = env.unwrap();
         let instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, &error_commitments);
