@@ -249,6 +249,10 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         (instance, witness, error_commitments)
     }
 
+    /// Fold two relaxable instances into a relaxed instance.
+    /// It is parametrized by two different types `A` and `B` that represent
+    /// "relaxable" instances to be able to fold a normal and "already relaxed"
+    /// instance.
     pub fn fold_instance_pair<A, B, Sponge>(
         &self,
         a: A,
