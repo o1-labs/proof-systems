@@ -58,8 +58,8 @@ pub mod quadraticization;
 #[cfg(feature = "bn254")]
 mod examples;
 
-/// Define the different structures required for the examples (both internal and external)
-#[cfg(feature = "bn254")]
+/// Define the different structures required for the examples (both internal and
+/// external)
 pub mod checker;
 
 // Simple type alias as ScalarField/BaseField is often used. Reduce type
