@@ -1,24 +1,21 @@
 use crate::{
-    // FIXME: using BaseSponge from folding as it does require a struct, but we
-    // should simply have a type by modifying how folding uses the sponge
-    folding::BaseSponge,
     folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     trace::Indexer,
-    Curve,
-    Fp,
-    DOMAIN_SIZE,
+    Curve, Fp, DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{expressions::FoldingColumnTrait, FoldingConfig};
 use kimchi_msm::columns::Column;
+use poly_commitment::srs::SRS;
 use std::ops::Index;
 
 use super::column::ZKVM_KECCAK_REL;
 
 pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS>;
 pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS>;
-pub type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS, KeccakStructure>;
+
+pub type KeccakFoldingEnvironment = FoldingEnvironment<ZKVM_KECCAK_COLS>;
 
 impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -52,11 +49,6 @@ impl Index<Column> for KeccakFoldingWitness {
     }
 }
 
-// TODO: will contain information about the circuit structure
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct KeccakStructure;
-
-// TODO
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct KeccakConfig;
 
@@ -72,11 +64,12 @@ impl FoldingConfig for KeccakConfig {
     type Selector = Steps;
     type Challenge = Challenge;
     type Curve = Curve;
-    type Srs = poly_commitment::srs::SRS<Curve>;
-    type Sponge = BaseSponge;
+    type Srs = SRS<Curve>;
     type Instance = KeccakFoldingInstance;
     type Witness = KeccakFoldingWitness;
-    type Structure = KeccakStructure;
+    // The structure is empty as we don't need to store any additional
+    // information that is static for the relation
+    type Structure = ();
     type Env = KeccakFoldingEnvironment;
 
     fn rows() -> usize {

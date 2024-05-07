@@ -4,18 +4,18 @@ use crate::{
     error_term::Side,
     examples::{
         example_decomposable_folding::TestWitness,
-        generic::{Alphas, BaseSponge, Checker, Curve, Fp, Provide},
+        generic::{BaseSponge, Checker, Curve, Fp, Provide},
     },
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness,
+    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
+    RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::Radix2EvaluationDomain;
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::SRS as _;
+use poly_commitment::{srs::SRS, SRS as _};
 use rand::thread_rng;
 use std::collections::BTreeMap;
 
@@ -52,7 +52,7 @@ pub struct TestInstance {
     // for ilustration only, no constraint in this example uses challenges
     challenges: [Fp; 3],
     // also challenges, but segregated as folding gives them special treatment
-    alphas: Alphas,
+    alphas: Alphas<Fp>,
 }
 
 impl Instance<Curve> for TestInstance {
@@ -215,8 +215,7 @@ impl FoldingConfig for TestFoldingConfig {
     type Selector = DynamicSelector;
     type Challenge = TestChallenge;
     type Curve = Curve;
-    type Srs = poly_commitment::srs::SRS<Curve>;
-    type Sponge = BaseSponge;
+    type Srs = SRS<Curve>;
     type Instance = TestInstance;
     type Witness = TestWitness;
     type Env = TestFoldingEnv;
@@ -374,6 +373,8 @@ mod tests {
     use crate::decomposable_folding::DecomposableFoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::ExtendedProvider;
+    use kimchi::curve::KimchiCurve;
+    use mina_poseidon::FqSponge;
     use std::println as debug;
 
     // two functions to create the entire witness from just the a and b columns
@@ -402,8 +403,10 @@ mod tests {
     fn test_quadriticization() {
         let constraints = constraints();
         let domain = D::<Fp>::new(2).unwrap();
-        let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
+        let mut srs = SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
+
+        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // initiallize the scheme, also getting the final single expression for
         // the entire constraint system
@@ -443,8 +446,12 @@ mod tests {
             let right = (instance2, witness2);
             // here we provide normal instance-witness pairs, which will be
             // automatically relaxed
-            let folded =
-                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecAdd));
+            let folded = scheme.fold_instance_witness_pair(
+                left,
+                right,
+                Some(DynamicSelector::SelecAdd),
+                &mut fq_sponge,
+            );
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
             checker.check(&final_constraint);
@@ -467,8 +474,12 @@ mod tests {
 
             let left = (instance1, witness1);
             let right = (instance2, witness2);
-            let folded =
-                scheme.fold_instance_witness_pair(left, right, Some(DynamicSelector::SelecMul));
+            let folded = scheme.fold_instance_witness_pair(
+                left,
+                right,
+                Some(DynamicSelector::SelecMul),
+                &mut fq_sponge,
+            );
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);
@@ -484,7 +495,7 @@ mod tests {
 
         {
             // here we use already relaxed pairs, which have a trival x -> x implementation
-            let folded = scheme.fold_instance_witness_pair(left, right, None);
+            let folded = scheme.fold_instance_witness_pair(left, right, None, &mut fq_sponge);
             let (folded_instance, folded_witness, [_t0, _t1]) = folded;
 
             let checker = ExtendedProvider::new(folded_instance, folded_witness);

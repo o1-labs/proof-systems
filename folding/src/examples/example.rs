@@ -8,17 +8,17 @@
 /// ```
 use crate::{
     error_term::Side,
-    examples::generic::{Alphas, BaseSponge, Checker, Column, Curve, Fp, Provide},
+    examples::generic::{BaseSponge, Checker, Column, Curve, Fp, Provide},
     expressions::FoldingCompatibleExprInner,
-    ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, RelaxedInstance,
-    RelaxedWitness, Witness,
+    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
+    RelaxedInstance, RelaxedWitness, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
-use poly_commitment::SRS;
+use poly_commitment::{srs::SRS, SRS as _};
 use rand::thread_rng;
 
 /// The instance is the commitments to the polynomials and the challenges
@@ -28,7 +28,7 @@ use rand::thread_rng;
 struct TestInstance {
     commitments: [Curve; 3],
     challenges: [Fp; 3],
-    alphas: Alphas,
+    alphas: Alphas<Fp>,
 }
 
 impl Instance<Curve> for TestInstance {
@@ -185,8 +185,7 @@ impl FoldingConfig for TestFoldingConfig {
     type Selector = ();
     type Challenge = TestChallenge;
     type Curve = Curve;
-    type Srs = poly_commitment::srs::SRS<Curve>;
-    type Sponge = BaseSponge;
+    type Srs = SRS<Curve>;
     type Instance = TestInstance;
     type Witness = TestWitness;
     type Env = TestFoldingEnv;
@@ -355,6 +354,8 @@ mod tests {
     use crate::FoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use checker::{ExtendedProvider, Provider};
+    use kimchi::curve::KimchiCurve;
+    use mina_poseidon::FqSponge;
     use std::println as debug;
 
     // this checks a single folding, it would be good to expand it in the future
@@ -365,6 +366,9 @@ mod tests {
         let domain = D::<Fp>::new(2).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(2);
         srs.add_lagrange_basis(domain);
+
+        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+
         let [s_add, s_mul] = circuit();
         let structure = TestStructure {
             s_add,
@@ -431,7 +435,7 @@ mod tests {
         let left = (left_instance, left_witness);
         let right = (right_instance, right_witness);
 
-        let folded = scheme.fold_instance_witness_pair(left, right);
+        let folded = scheme.fold_instance_witness_pair(left, right, &mut fq_sponge);
         let (folded_instance, folded_witness, [_t0, _t1]) = folded;
         {
             let checker = ExtendedProvider::new(structure, folded_instance, folded_witness);
