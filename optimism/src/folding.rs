@@ -1,42 +1,14 @@
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::Zero;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use folding::{Alphas, FoldingEnv, Instance, Side, Sponge, Witness};
-use kimchi::{
-    circuits::{expr::ChallengeTerm, gate::CurrOrNext},
-    curve::KimchiCurve,
-};
+use folding::{Alphas, FoldingEnv, Instance, Side, Witness};
+use kimchi::circuits::{expr::ChallengeTerm, gate::CurrOrNext};
 use kimchi_msm::witness::Witness as GenericWitness;
-use mina_poseidon::{
-    sponge::{DefaultFqSponge, ScalarChallenge},
-    FqSponge,
-};
-use poly_commitment::PolyComm;
 use std::{array, ops::Index};
 use strum::EnumCount;
 use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-use crate::{BaseSponge as BaseSpongeT, Curve, Fp, DOMAIN_SIZE};
-
-// FIXME: Using a struct as Rust asks for it, but we should change how folding
-// uses the sponge.
-pub struct BaseSponge(BaseSpongeT);
-
-// TODO: get rid of trait Sponge in folding, and use the one from kimchi
-impl Sponge<Curve> for BaseSponge {
-    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
-        // This function does not have a &self because it is meant to absorb and
-        // squeeze only once
-        let x = DefaultFqSponge::new(Curve::other_curve_sponge_params());
-        let mut s = BaseSponge(x);
-        s.0.absorb_g(&absorb[0].elems);
-        s.0.absorb_g(&absorb[1].elems);
-        // Squeeze sponge
-        let chal = ScalarChallenge(s.0.challenge());
-        let (_, endo_r) = Curve::endos();
-        chal.to_field(endo_r)
-    }
-}
+use crate::{Curve, Fp, DOMAIN_SIZE};
 
 // Does not contain alpha because this one should be provided by folding itself
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]

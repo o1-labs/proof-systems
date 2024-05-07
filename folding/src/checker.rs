@@ -4,21 +4,13 @@
 use crate::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
     instance_witness::Instance,
-    ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness, Sponge,
+    ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, Zero};
 use ark_poly::Evaluations;
-use kimchi::{
-    circuits::{expr::Variable, gate::CurrOrNext},
-    curve::KimchiCurve,
-};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, ScalarChallenge},
-    FqSponge,
-};
-use poly_commitment::PolyComm;
+use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 use std::ops::Index;
 
 #[cfg(not(test))]
@@ -56,21 +48,6 @@ impl FoldingColumnTrait for Column {
             Column::X(_) => true,
             Column::Selector(_) => false,
         }
-    }
-}
-
-// TODO: get rid of trait Sponge in folding, and use the one from kimchi
-impl Sponge<Curve> for BaseSponge {
-    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
-        // This function does not have a &self because it is meant to absorb and
-        // squeeze only once
-        let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
-        s.absorb_g(&absorb[0].elems);
-        s.absorb_g(&absorb[1].elems);
-        // Squeeze sponge
-        let chal = ScalarChallenge(s.challenge());
-        let (_, endo_r) = Curve::endos();
-        chal.to_field(endo_r)
     }
 }
 
