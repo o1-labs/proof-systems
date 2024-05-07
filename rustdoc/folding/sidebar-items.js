@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Alphas","Side"],"mod":["columns","decomposable_folding","expressions","quadraticization"],"struct":["FoldingScheme","RelaxedInstance","RelaxedWitness"],"trait":["FoldingConfig","FoldingEnv","Instance","Sponge","Witness"]};
+window.SIDEBAR_ITEMS = {"enum":["Alphas","Side"],"mod":["columns","decomposable_folding","expressions","quadraticization"],"struct":["FoldingScheme","RelaxedInstance","RelaxedWitness"],"trait":["FoldingConfig","FoldingEnv","Instance","Witness"]};

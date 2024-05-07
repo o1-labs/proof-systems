@@ -85,6 +85,10 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::logup::LookupTableID;
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
@@ -144,6 +148,10 @@
                 }
             }
         }
+    }
+
+    <span class="kw">fn </span>all_variants() -&gt; Vec&lt;<span class="self">Self</span>&gt; {
+        <span class="macro">vec!</span>[<span class="self">Self</span>::RangeCheck15, <span class="self">Self</span>::RangeCheck1BitSigned]
     }
 }
 

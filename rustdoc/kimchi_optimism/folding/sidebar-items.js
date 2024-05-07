@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Challenge"],"struct":["BaseSponge","ChallengeIter","FoldingEnvironment","FoldingInstance","FoldingWitness"]};
+window.SIDEBAR_ITEMS = {"enum":["Challenge"],"struct":["ChallengeIter","FoldingEnvironment","FoldingInstance","FoldingWitness"]};

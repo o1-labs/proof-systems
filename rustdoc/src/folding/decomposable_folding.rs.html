@@ -103,6 +103,22 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -113,9 +129,10 @@
     error_term::{compute_error, ExtendedEnv},
     expressions::{ExpExtension, FoldingCompatibleExpr, FoldingCompatibleExprInner, FoldingExp},
     instance_witness::{RelaxablePair, RelaxedInstance, RelaxedWitness},
-    FoldingConfig, FoldingScheme, ScalarField, Sponge,
+    BaseField, FoldingConfig, FoldingScheme, ScalarField,
 };
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
+<span class="kw">use </span>mina_poseidon::FqSponge;
 <span class="kw">use </span>poly_commitment::{PolyComm, SRS};
 <span class="kw">use </span>std::collections::BTreeMap;
 
@@ -153,11 +170,12 @@
     </span><span class="doccomment">/// folding with a selector will assume that only the selector in question is enabled (1)
     /// in all rows, and any other selector is 0 over all rows.
     /// If that is not the case, providing None will fold without assumptions
-    </span><span class="kw">pub fn </span>fold_instance_witness_pair&lt;A, B&gt;(
+    </span><span class="kw">pub fn </span>fold_instance_witness_pair&lt;A, B, Sponge&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         a: A,
         b: B,
         selector: <span class="prelude-ty">Option</span>&lt;CF::Selector&gt;,
+        fq_sponge: <span class="kw-2">&amp;mut </span>Sponge,
     ) -&gt; (
         RelaxedInstance&lt;CF::Curve, CF::Instance&gt;,
         RelaxedWitness&lt;CF::Curve, CF::Witness&gt;,
@@ -166,6 +184,7 @@
     <span class="kw">where
         </span>A: RelaxablePair&lt;CF::Curve, CF::Instance, CF::Witness&gt;,
         B: RelaxablePair&lt;CF::Curve, CF::Instance, CF::Witness&gt;,
+        Sponge: FqSponge&lt;BaseField&lt;CF&gt;, CF::Curve, ScalarField&lt;CF&gt;&gt;,
     {
         <span class="kw">let </span>scheme = <span class="kw-2">&amp;</span><span class="self">self</span>.inner;
         <span class="kw">let </span>a = a.relax(<span class="kw-2">&amp;</span>scheme.zero_vec, scheme.zero_commitment.clone());
@@ -186,12 +205,25 @@
         <span class="kw">let </span>error = compute_error(<span class="kw-2">&amp;</span>scheme.expression, <span class="kw-2">&amp;</span>env, u);
         <span class="kw">let </span>error_evals = error.map(|e| Evaluations::from_vec_and_domain(e, scheme.domain));
 
-        <span class="comment">//can use array::each_ref() when stable
-        </span><span class="kw">let </span>error_commitments = [<span class="kw-2">&amp;</span>error_evals[<span class="number">0</span>], <span class="kw-2">&amp;</span>error_evals[<span class="number">1</span>]]
-            .map(|e| scheme.srs.commit_evaluations_non_hiding(scheme.domain, e));
+        <span class="kw">let </span>error_commitments = error_evals
+            .iter()
+            .map(|e| scheme.srs.commit_evaluations_non_hiding(scheme.domain, e))
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>error_commitments: [PolyComm&lt;CF::Curve&gt;; <span class="number">2</span>] = error_commitments.try_into().unwrap();
 
-        <span class="kw">let </span>error = error_evals.map(|e| e.evals);
-        <span class="kw">let </span>challenge = &lt;CF::Sponge&gt;::challenge(<span class="kw-2">&amp;</span>error_commitments);
+        <span class="kw">let </span>error = error_evals.into_iter().map(|e| e.evals).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>error: [Vec&lt;<span class="kw">_</span>&gt;; <span class="number">2</span>] = error.try_into().unwrap();
+
+        <span class="comment">// sanity check to verify that we only have one commitment in polycomm
+        // (i.e. domain = poly size)
+        </span><span class="macro">assert_eq!</span>(error_commitments[<span class="number">0</span>].elems.len(), <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(error_commitments[<span class="number">1</span>].elems.len(), <span class="number">1</span>);
+
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>error_commitments[<span class="number">0</span>].elems);
+        fq_sponge.absorb_g(<span class="kw-2">&amp;</span>error_commitments[<span class="number">1</span>].elems);
+
+        <span class="kw">let </span>challenge = fq_sponge.challenge();
+
         <span class="kw">let </span>([ins1, ins2], [wit1, wit2]) = env.unwrap();
         <span class="kw">let </span>instance =
             RelaxedInstance::combine_and_sub_error(ins1, ins2, challenge, <span class="kw-2">&amp;</span>error_commitments);

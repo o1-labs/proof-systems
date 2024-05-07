@@ -134,6 +134,7 @@
             interpreter::{constrain_ec_addition, ec_add_circuit},
             lookups::LookupTable,
         },
+        logup::LookupTableID,
         prover::prove,
         verifier::verify,
         witness::Witness,
@@ -144,7 +145,6 @@
     <span class="kw">use </span>poly_commitment::pairing_proof::PairingSRS;
     <span class="kw">use </span>rand::{CryptoRng, RngCore};
     <span class="kw">use </span>std::collections::BTreeMap;
-    <span class="kw">use </span>strum::IntoEnumIterator;
 
     <span class="kw">fn </span>build_fec_addition_circuit&lt;RNG: RngCore + CryptoRng&gt;(
         rng: <span class="kw-2">&amp;mut </span>RNG,
@@ -197,7 +197,7 @@
 
         <span class="comment">// Fixed tables can be generated inside lookup_tables_data. Runtime should be generated here.
         </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_tables_data = BTreeMap::new();
-        <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::iter() {
+        <span class="kw">for </span>table_id <span class="kw">in </span>LookupTable::&lt;Ff1&gt;::all_variants().into_iter() {
             lookup_tables_data.insert(table_id, table_id.entries(domain.d1.size));
         }
         <span class="kw">let </span>proof_inputs = witness_env.get_proof_inputs(domain, lookup_tables_data);
