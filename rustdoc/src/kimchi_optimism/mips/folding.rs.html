@@ -97,9 +97,9 @@
 <span class="kw">use </span><span class="kw">super</span>::column::MIPS_REL_COLS;
 <span class="kw">use </span>poly_commitment::srs::SRS;
 
-<span class="kw">pub type </span>MIPSFoldingWitness = FoldingWitness&lt;MIPS_COLUMNS&gt;;
-<span class="kw">pub type </span>MIPSFoldingInstance = FoldingInstance&lt;MIPS_COLUMNS&gt;;
-<span class="kw">pub type </span>MIPSFoldingEnvironment = FoldingEnvironment&lt;MIPS_COLUMNS&gt;;
+<span class="kw">pub type </span>MIPSFoldingWitness = FoldingWitness&lt;MIPS_COLUMNS, Fp&gt;;
+<span class="kw">pub type </span>MIPSFoldingInstance = FoldingInstance&lt;MIPS_COLUMNS, Curve&gt;;
+<span class="kw">pub type </span>MIPSFoldingEnvironment = FoldingEnvironment&lt;MIPS_COLUMNS, Curve&gt;;
 
 <span class="kw">impl </span>Index&lt;MIPSColumn&gt; <span class="kw">for </span>MIPSFoldingWitness {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;

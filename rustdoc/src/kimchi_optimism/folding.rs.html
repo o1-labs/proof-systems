@@ -171,17 +171,41 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
-<span class="kw">use </span>ark_ff::Zero;
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
+<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+<span class="kw">use </span>ark_ff::{FftField, Zero};
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
-<span class="kw">use </span>folding::{Alphas, FoldingEnv, Instance, Side, Witness};
+<span class="kw">use </span>folding::{Alphas, FoldingConfig, FoldingEnv, Instance, Side, Witness};
 <span class="kw">use </span>kimchi::circuits::{expr::ChallengeTerm, gate::CurrOrNext};
 <span class="kw">use </span>kimchi_msm::witness::Witness <span class="kw">as </span>GenericWitness;
+<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
 <span class="kw">use </span>std::{array, ops::Index};
 <span class="kw">use </span>strum::EnumCount;
 <span class="kw">use </span>strum_macros::{EnumCount <span class="kw">as </span>EnumCountMacro, EnumIter};
 
-<span class="kw">use crate</span>::{Curve, Fp, DOMAIN_SIZE};
+<span class="comment">// Simple type alias as ScalarField/BaseField is often used. Reduce type
+// complexity for clippy.
+// Should be moved into FoldingConfig, but associated type defaults are unstable
+// at the moment.
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>ScalarField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>BaseField&lt;C&gt; = &lt;&lt;C <span class="kw">as </span>FoldingConfig&gt;::Curve <span class="kw">as </span>AffineCurve&gt;::BaseField;
 
 <span class="comment">// Does not contain alpha because this one should be provided by folding itself
 </span><span class="attr">#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, EnumIter, EnumCountMacro)]
@@ -206,21 +230,21 @@
 <span class="doccomment">/// Folding instance containing the commitment to a witness of N columns,
 /// challenges for the proof, and the alphas
 </span><span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">pub struct </span>FoldingInstance&lt;<span class="kw">const </span>N: usize&gt; {
+</span><span class="kw">pub struct </span>FoldingInstance&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; {
     <span class="doccomment">/// Commitments to the witness columns, including the dynamic selectors
-    </span><span class="kw">pub </span>commitments: [Curve; N],
+    </span><span class="kw">pub </span>commitments: [G; N],
     <span class="doccomment">/// Challenges for the proof.
     /// We do use 3 challenges:
     /// - β as the evaluation point for the logup argument
     /// - j: the joint combiner for vector lookups
     /// - γ (set to 0 for now)
-    </span><span class="kw">pub </span>challenges: [Fp; Challenge::COUNT],
+    </span><span class="kw">pub </span>challenges: [&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField; Challenge::COUNT],
     <span class="doccomment">/// Reuses the Alphas defined in the example of folding
-    </span><span class="kw">pub </span>alphas: Alphas&lt;Fp&gt;,
+    </span><span class="kw">pub </span>alphas: Alphas&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; Instance&lt;Curve&gt; <span class="kw">for </span>FoldingInstance&lt;N&gt; {
-    <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: Fp) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Instance&lt;G&gt; <span class="kw">for </span>FoldingInstance&lt;N, G&gt; {
+    <span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
         FoldingInstance {
             commitments: array::from_fn(|i| {
                 a.commitments[i] + b.commitments[i].mul(challenge).into_affine()
@@ -230,13 +254,13 @@
         }
     }
 
-    <span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;Fp&gt; {
+    <span class="kw">fn </span>alphas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Alphas&lt;G::ScalarField&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.alphas
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; Index&lt;Challenge&gt; <span class="kw">for </span>FoldingInstance&lt;N&gt; {
-    <span class="kw">type </span>Output = Fp;
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Index&lt;Challenge&gt; <span class="kw">for </span>FoldingInstance&lt;N, G&gt; {
+    <span class="kw">type </span>Output = G::ScalarField;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: Challenge) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
@@ -249,12 +273,12 @@
 
 <span class="doccomment">/// Includes the data witness columns and also the dynamic selector columns
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-</span><span class="kw">pub struct </span>FoldingWitness&lt;<span class="kw">const </span>N: usize&gt; {
-    <span class="kw">pub </span>witness: GenericWitness&lt;N, Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;&gt;,
+</span><span class="kw">pub struct </span>FoldingWitness&lt;<span class="kw">const </span>N: usize, F: FftField&gt; {
+    <span class="kw">pub </span>witness: GenericWitness&lt;N, Evaluations&lt;F, Radix2EvaluationDomain&lt;F&gt;&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize&gt; Witness&lt;Curve&gt; <span class="kw">for </span>FoldingWitness&lt;N&gt; {
-    <span class="kw">fn </span>combine(<span class="kw-2">mut </span>a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: Fp) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; Witness&lt;G&gt; <span class="kw">for </span>FoldingWitness&lt;N, G::ScalarField&gt; {
+    <span class="kw">fn </span>combine(<span class="kw-2">mut </span>a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self </span>{
         <span class="kw">for </span>(a, b) <span class="kw">in </span>(<span class="kw-2">*</span>a.witness.cols).iter_mut().zip(<span class="kw-2">*</span>(b.witness.cols)) {
             <span class="kw">for </span>(a, b) <span class="kw">in </span>a.evals.iter_mut().zip(b.evals) {
                 <span class="kw-2">*</span>a += challenge * b;
@@ -266,31 +290,41 @@
 
 <span class="doccomment">/// Environment for the folding protocol, for a given number of witness columns
 /// and structure
-</span><span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize&gt; {
+</span><span class="kw">pub struct </span>FoldingEnvironment&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve&gt; {
     <span class="doccomment">/// Structure of the folded circuit (not used right now)
     </span><span class="kw">pub </span>structure: (),
     <span class="doccomment">/// Commitments to the witness columns, for both sides
-    </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N&gt;; <span class="number">2</span>],
+    </span><span class="kw">pub </span>instances: [FoldingInstance&lt;N, G&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the omega evaluations, for both sides
-    </span><span class="kw">pub </span>curr_witnesses: [FoldingWitness&lt;N&gt;; <span class="number">2</span>],
+    </span><span class="kw">pub </span>curr_witnesses: [FoldingWitness&lt;N, G::ScalarField&gt;; <span class="number">2</span>],
     <span class="doccomment">/// Corresponds to the zeta*omega evaluations, for both sides
     /// This is curr_witness but left shifted by 1
-    </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N&gt;; <span class="number">2</span>],
+    </span><span class="kw">pub </span>next_witnesses: [FoldingWitness&lt;N, G::ScalarField&gt;; <span class="number">2</span>],
 }
 
-<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, Col, Selector: Copy + Clone&gt;
-    FoldingEnv&lt;Fp, FoldingInstance&lt;N&gt;, FoldingWitness&lt;N&gt;, Col, Challenge, Selector&gt;
-    <span class="kw">for </span>FoldingEnvironment&lt;N&gt;
+<span class="kw">impl</span>&lt;<span class="kw">const </span>N: usize, G: CommitmentCurve, Col, Selector: Copy + Clone&gt;
+    FoldingEnv&lt;
+        G::ScalarField,
+        FoldingInstance&lt;N, G&gt;,
+        FoldingWitness&lt;N, G::ScalarField&gt;,
+        Col,
+        Challenge,
+        Selector,
+    &gt; <span class="kw">for </span>FoldingEnvironment&lt;N, G&gt;
 <span class="kw">where
-    </span>FoldingWitness&lt;N&gt;: Index&lt;Col, Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;&gt;,
-    FoldingWitness&lt;N&gt;: Index&lt;Selector, Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;&gt;,
+    </span>FoldingWitness&lt;N, G::ScalarField&gt;:
+        Index&lt;Col, Output = Evaluations&lt;G::ScalarField, Radix2EvaluationDomain&lt;G::ScalarField&gt;&gt;&gt;,
+    FoldingWitness&lt;N, G::ScalarField&gt;: Index&lt;
+        Selector,
+        Output = Evaluations&lt;G::ScalarField, Radix2EvaluationDomain&lt;G::ScalarField&gt;&gt;,
+    &gt;,
 {
     <span class="kw">type </span>Structure = ();
 
     <span class="kw">fn </span>new(
         _structure: <span class="kw-2">&amp;</span><span class="self">Self</span>::Structure,
-        instances: [<span class="kw-2">&amp;</span>FoldingInstance&lt;N&gt;; <span class="number">2</span>],
-        witnesses: [<span class="kw-2">&amp;</span>FoldingWitness&lt;N&gt;; <span class="number">2</span>],
+        instances: [<span class="kw-2">&amp;</span>FoldingInstance&lt;N, G&gt;; <span class="number">2</span>],
+        witnesses: [<span class="kw-2">&amp;</span>FoldingWitness&lt;N, G::ScalarField&gt;; <span class="number">2</span>],
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>curr_witnesses = [witnesses[<span class="number">0</span>].clone(), witnesses[<span class="number">1</span>].clone()];
         <span class="kw">let </span><span class="kw-2">mut </span>next_witnesses = curr_witnesses.clone();
@@ -307,11 +341,11 @@
         }
     }
 
-    <span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Fp&gt; {
-        <span class="macro">vec!</span>[Fp::zero(); DOMAIN_SIZE]
+    <span class="kw">fn </span>zero_vec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;G::ScalarField&gt; {
+        <span class="macro">vec!</span>[G::ScalarField::zero(); DOMAIN_SIZE]
     }
 
-    <span class="kw">fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Col, curr_or_next: CurrOrNext, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;Fp&gt; {
+    <span class="kw">fn </span>col(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Col, curr_or_next: CurrOrNext, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt; {
         <span class="kw">let </span>wit = <span class="kw">match </span>curr_or_next {
             CurrOrNext::Curr =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.curr_witnesses[side <span class="kw">as </span>usize],
             CurrOrNext::Next =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.next_witnesses[side <span class="kw">as </span>usize],
@@ -320,7 +354,7 @@
         </span><span class="kw-2">&amp;</span>wit[col].evals
     }
 
-    <span class="kw">fn </span>challenge(<span class="kw-2">&amp;</span><span class="self">self</span>, challenge: Challenge, side: Side) -&gt; Fp {
+    <span class="kw">fn </span>challenge(<span class="kw-2">&amp;</span><span class="self">self</span>, challenge: Challenge, side: Side) -&gt; G::ScalarField {
         <span class="kw">match </span>challenge {
             Challenge::Beta =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">0</span>],
             Challenge::Gamma =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">1</span>],
@@ -328,16 +362,16 @@
         }
     }
 
-    <span class="kw">fn </span>lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, _i: usize) -&gt; <span class="kw-2">&amp;</span>Vec&lt;Fp&gt; {
+    <span class="kw">fn </span>lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, _i: usize) -&gt; <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt; {
         <span class="macro">todo!</span>()
     }
 
-    <span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; Fp {
+    <span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; G::ScalarField {
         <span class="kw">let </span>instance = <span class="kw-2">&amp;</span><span class="self">self</span>.instances[side <span class="kw">as </span>usize];
         instance.alphas.get(i).unwrap()
     }
 
-    <span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>Selector, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;Fp&gt; {
+    <span class="kw">fn </span>selector(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>Selector, side: Side) -&gt; <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt; {
         <span class="kw">let </span>witness = <span class="kw-2">&amp;</span><span class="self">self</span>.curr_witnesses[side <span class="kw">as </span>usize];
         <span class="kw-2">&amp;</span>witness[<span class="kw-2">*</span>s].evals
     }

@@ -104,10 +104,10 @@
 
 <span class="kw">use </span><span class="kw">super</span>::column::ZKVM_KECCAK_REL;
 
-<span class="kw">pub type </span>KeccakFoldingWitness = FoldingWitness&lt;ZKVM_KECCAK_COLS&gt;;
-<span class="kw">pub type </span>KeccakFoldingInstance = FoldingInstance&lt;ZKVM_KECCAK_COLS&gt;;
+<span class="kw">pub type </span>KeccakFoldingWitness = FoldingWitness&lt;ZKVM_KECCAK_COLS, Fp&gt;;
+<span class="kw">pub type </span>KeccakFoldingInstance = FoldingInstance&lt;ZKVM_KECCAK_COLS, Curve&gt;;
 
-<span class="kw">pub type </span>KeccakFoldingEnvironment = FoldingEnvironment&lt;ZKVM_KECCAK_COLS&gt;;
+<span class="kw">pub type </span>KeccakFoldingEnvironment = FoldingEnvironment&lt;ZKVM_KECCAK_COLS, Curve&gt;;
 
 <span class="kw">impl </span>Index&lt;KeccakColumn&gt; <span class="kw">for </span>KeccakFoldingWitness {
     <span class="kw">type </span>Output = Evaluations&lt;Fp, Radix2EvaluationDomain&lt;Fp&gt;&gt;;

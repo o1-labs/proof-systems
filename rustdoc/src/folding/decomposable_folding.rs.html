@@ -118,7 +118,6 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This variant of folding is designed to efficiently handle cases where
 //! certain assumptions about the witness can be made.
 //! Specifically, an alternative is provided such that the scheme is created
@@ -154,8 +153,7 @@
             .into_iter()
             .flat_map(|(s, exps)| {
                 exps.into_iter().map(<span class="kw">move </span>|exp| {
-                    <span class="kw">let </span>s =
-                        FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s.clone()));
+                    <span class="kw">let </span>s = FoldingCompatibleExprInner::Extensions(ExpExtension::Selector(s));
                     <span class="kw">let </span>s = Box::new(FoldingCompatibleExpr::Atom(s));
                     FoldingCompatibleExpr::Mul(s, Box::new(exp))
                 })
