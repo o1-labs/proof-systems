@@ -1,15 +1,9 @@
 use crate::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
-    FoldingConfig, Sponge,
+    FoldingConfig,
 };
 use ark_ff::{Field, Zero};
-use kimchi::curve::KimchiCurve;
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, ScalarChallenge},
-    FqSponge,
-};
-use poly_commitment::PolyComm;
+use mina_poseidon::{constants::PlonkSpongeConstantsKimchi, sponge::DefaultFqSponge};
 
 #[cfg(not(test))]
 use log::debug;
@@ -105,20 +99,5 @@ pub(crate) trait Checker<C: FoldingConfig>: Provide<C> {
                 panic!("check in row {i} failed, {row} != 0");
             }
         }
-    }
-}
-
-// TODO: get rid of trait Sponge in folding, and use the one from kimchi
-impl Sponge<Curve> for BaseSponge {
-    fn challenge(absorb: &[PolyComm<Curve>; 2]) -> Fp {
-        // This function does not have a &self because it is meant to absorb and
-        // squeeze only once
-        let mut s = BaseSponge::new(Curve::other_curve_sponge_params());
-        s.absorb_g(&absorb[0].elems);
-        s.absorb_g(&absorb[1].elems);
-        // Squeeze sponge
-        let chal = ScalarChallenge(s.challenge());
-        let (_, endo_r) = Curve::endos();
-        chal.to_field(endo_r)
     }
 }

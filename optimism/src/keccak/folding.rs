@@ -1,13 +1,8 @@
 use crate::{
-    // FIXME: using BaseSponge from folding as it does require a struct, but we
-    // should simply have a type by modifying how folding uses the sponge
-    folding::BaseSponge,
     folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{column::ZKVM_KECCAK_COLS, KeccakColumn, Steps},
     trace::Indexer,
-    Curve,
-    Fp,
-    DOMAIN_SIZE,
+    Curve, Fp, DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{expressions::FoldingColumnTrait, FoldingConfig};
@@ -70,7 +65,6 @@ impl FoldingConfig for KeccakConfig {
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = SRS<Curve>;
-    type Sponge = BaseSponge;
     type Instance = KeccakFoldingInstance;
     type Witness = KeccakFoldingWitness;
     // The structure is empty as we don't need to store any additional

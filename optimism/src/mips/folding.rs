@@ -1,16 +1,11 @@
 use crate::{
-    // FIXME: using BaseSponge from folding as it does require a struct, but we
-    // should simply have a type by modifying how folding uses the sponge
-    folding::BaseSponge,
     folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
         Instruction,
     },
     trace::Indexer,
-    Curve,
-    Fp,
-    DOMAIN_SIZE,
+    Curve, Fp, DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{expressions::FoldingColumnTrait, FoldingConfig};
@@ -72,7 +67,6 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = SRS<Curve>;
-    type Sponge = BaseSponge;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
     // The structure is empty as we don't need to store any additional
