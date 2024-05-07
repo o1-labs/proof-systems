@@ -49,3 +49,4 @@ rand.workspace = true
 libc.workspace = true
 rayon.workspace = true
 sha3.workspace = true
+itertools.workspace = true
