@@ -510,7 +510,7 @@ fn test_keccak_prover_constraints() {
         let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
         // Keep track of the constraints and lookups of the sub-circuits
-        let mut keccak_circuit = KeccakTrace::<Fp>::new(domain_size, &mut keccak_env);
+        let mut keccak_circuit = KeccakTrace::new(domain_size, &mut keccak_env);
 
         while keccak_env.step.is_some() {
             let step = keccak_env.step.unwrap();
@@ -538,12 +538,15 @@ fn test_keccak_prover_constraints() {
 
 #[test]
 fn test_keccak_decomposable_folding() {
-    use crate::{keccak::folding::KeccakConfig, Curve};
+    use crate::{keccak::folding::KeccakConfig, trace::Folder, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
-        decomposable_folding::DecomposableFoldingScheme, expressions::FoldingCompatibleExpr,
+        checker::{Checker, ExtendedProvider},
+        decomposable_folding::DecomposableFoldingScheme,
+        expressions::FoldingCompatibleExpr,
     };
     use kimchi::curve::KimchiCurve;
+    use log::debug;
     use mina_poseidon::FqSponge;
 
     // guaranteed to have at least 30MB of stack
@@ -556,18 +559,16 @@ fn test_keccak_decomposable_folding() {
         srs.add_lagrange_basis(domain);
 
         // Create sponge
-        let mut _fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+        let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // Create two instances for each selector to be folded
         let mut keccak_trace: [crate::trace::Trace<
             ZKVM_KECCAK_COLS,
             ZKVM_KECCAK_REL,
             ZKVM_KECCAK_SEL,
-            Steps,
-            ark_ff::Fp256<ark_bn254::FrParameters>,
-        >; 2] = std::array::from_fn(|_| {
-            KeccakTrace::<Fp>::new(domain_size, &mut KeccakEnv::<Fp>::default())
-        });
+            KeccakConfig,
+        >; 2] =
+            std::array::from_fn(|_| KeccakTrace::new(domain_size, &mut KeccakEnv::<Fp>::default()));
 
         for trace in &mut keccak_trace {
             // Generate domain_size random preimages of 1 block for Keccak
@@ -615,10 +616,9 @@ fn test_keccak_decomposable_folding() {
         .into_iter()
         .collect();
 
-        let (_scheme, _final_constraint) =
+        let (scheme, final_constraint) =
             DecomposableFoldingScheme::<KeccakConfig>::new(constraints, vec![], &srs, domain, ());
 
-        /*
         // Fold Sponge(Absorb(Only))
         let _right_absorb = {
             let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
@@ -639,7 +639,6 @@ fn test_keccak_decomposable_folding() {
             } = checker;
             (instance, witness)
         };
-        */
 
         // Fold Round(0)
         /*
