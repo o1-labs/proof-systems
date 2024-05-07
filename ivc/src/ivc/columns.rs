@@ -60,25 +60,33 @@ pub type IVCPoseidonColumn = PoseidonColumn<IVC_POSEIDON_STATE_SIZE, IVC_POSEIDO
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
 /// 6N+2 |------------------------------------------|
 ///
+///
+/// Scalars block.
+///
+/// Most of the r^2 and r^3 cells are /unused/, and this design can be
+/// much more optimal if r^2/r^3 elements come in a separate block.
+/// But the overhead is not big and it's a very easy layout, so
+/// keeping it for now.
+///
 ///     constϕ
 ///         constr
-///                ϕ^i             ϕ^i        r*ϕ^i
-///                      r*ϕ^i  in 17 limbs  in 17 limbs
-///                               each        each
-///   1  |---|---|-----|------|------------|------------|
-///      | ϕ   r    ϕ     rϕ  |            |            |
-///      | ϕ   r   ϕ^2   rϕ^2 |            |            |
-///      | ϕ   r   ϕ^3   rϕ^3 |            |            |
-///      |                    |            |            |
-///      |                    |            |            |
-///      |                    |            |            |
-///  i   |                    |            |            |
-///      |                    |            |            |
-///      |                    |            |            |
-///      |                    |            |            |
-///      |       ϕ^{N+1}      |            |            |
-///  N+1 |--------------------|------------|------------|
-///       1    2   3   4 ...        4+17          4+2*17
+///                ϕ^i             r^3·ϕ^i    ϕ^i        r*ϕ^i        r^2·ϕ^i_k    r^3·ϕ^i_k
+///                      r*ϕ^i             in 17 limbs  in 17 limbs      ...         ...
+///                           r^2·ϕ^i         each        each
+///   1  |---|---|-----|-------|----|----|------------|------------|------------|------------|
+///      | ϕ   r    ϕ     rϕ    r^2ϕ r^3ϕ|            |            |            |            |
+///      | ϕ   r   ϕ^2   rϕ^2            |            |            |            |            |
+///      | ϕ   r   ϕ^3   rϕ^3            |            |            |            |            |
+///      |                               |            |            |            |            |
+///      |                               |            |            |            |            |
+///      |                               |            |            |            |            |
+///  i   |                               |            |            |            |            |
+///      |                               |            |            |            |            |
+///      |                               |            |            |            |            |
+///      |                               |            |            |            |            |
+///      |       ϕ^{N+1}                 |            |            |            |            |
+///  N+1 |-------------------------------|------------|------------|------------|------------|
+///       1    2   3   4      5      6   ...        6+17          6+2*17                    6+4*17
 ///
 ///
 ///
@@ -194,10 +202,18 @@ pub enum IVCColumn {
     Block3PhiPow,
     /// Scalar coeff #2, r * phi^i
     Block3PhiPowR,
+    /// Scalar coeff #2, r^2 * phi^i
+    Block3PhiPowR2,
+    /// Scalar coeff #2, r^3 * phi^i
+    Block3PhiPowR3,
     /// 17 15-bit limbs
     Block3PhiPowLimbs(usize),
     /// 17 15-bit limbs
     Block3PhiPowRLimbs(usize),
+    /// 17 15-bit limbs
+    Block3PhiPowR2Limbs(usize),
+    /// 17 15-bit limbs
+    Block3PhiPowR3Limbs(usize),
 
     /// 2*4 75-bit limbs
     Block4Input1(usize),
@@ -238,19 +254,32 @@ impl ColumnIndexer for IVCColumn {
                 assert!(i < 2 * N_LIMBS_XLARGE);
                 Column::Relation(2 * N_LIMBS_SMALL + 2 * N_LIMBS_LARGE + i)
             }
+
             IVCColumn::Block2Hash(poseidon_col) => poseidon_col.to_column(),
+
             IVCColumn::Block3ConstPhi => Column::Relation(0),
             IVCColumn::Block3ConstR => Column::Relation(1),
             IVCColumn::Block3PhiPow => Column::Relation(2),
             IVCColumn::Block3PhiPowR => Column::Relation(3),
+            IVCColumn::Block3PhiPowR2 => Column::Relation(4),
+            IVCColumn::Block3PhiPowR3 => Column::Relation(5),
             IVCColumn::Block3PhiPowLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(4 + i)
+                Column::Relation(6 + i)
             }
             IVCColumn::Block3PhiPowRLimbs(i) => {
                 assert!(i < N_LIMBS_SMALL);
-                Column::Relation(4 + N_LIMBS_SMALL + i)
+                Column::Relation(6 + N_LIMBS_SMALL + i)
             }
+            IVCColumn::Block3PhiPowR2Limbs(i) => {
+                assert!(i < N_LIMBS_SMALL);
+                Column::Relation(6 + 2 * N_LIMBS_SMALL + i)
+            }
+            IVCColumn::Block3PhiPowR3Limbs(i) => {
+                assert!(i < N_LIMBS_SMALL);
+                Column::Relation(6 + 3 * N_LIMBS_SMALL + i)
+            }
+
             IVCColumn::Block4Input1(i) => {
                 assert!(i < 2 * N_LIMBS_LARGE);
                 Column::Relation(i)
