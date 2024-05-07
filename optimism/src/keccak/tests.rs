@@ -4,7 +4,7 @@ use crate::{
             Absorbs::*,
             Sponges::*,
             Steps::{self, *},
-            ZKVM_KECCAK_COLS,
+            ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL,
         },
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
@@ -25,8 +25,6 @@ use rand::Rng;
 use sha3::{Digest, Keccak256};
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
-
-use super::column::{ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL};
 
 pub type Fp = ark_bn254::Fr;
 
@@ -539,14 +537,19 @@ fn test_keccak_prover_constraints() {
     });
 }
 
-#[cfg(feature = "bn254")]
 #[test]
+#[cfg(feature = "bn254")]
 fn test_keccak_decomposable_folding() {
-    use crate::{keccak::folding::KeccakConfig, Curve};
+    use crate::{keccak::folding::KeccakConfig, trace::Folder, BaseSponge, Curve};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
-        decomposable_folding::DecomposableFoldingScheme, expressions::FoldingCompatibleExpr,
+        checker::{Checker, ExtendedProvider},
+        decomposable_folding::DecomposableFoldingScheme,
+        expressions::FoldingCompatibleExpr,
     };
+    use kimchi::curve::KimchiCurve;
+    use log::debug;
+    use mina_poseidon::FqSponge;
 
     // guaranteed to have at least 30MB of stack
     stacker::grow(30 * 1024 * 1024, || {
@@ -558,8 +561,10 @@ fn test_keccak_decomposable_folding() {
         srs.add_lagrange_basis(domain);
 
         // Create sponge
-        // FIXME: when Sponge trait in folding is gone
-        //let mut sponge = BaseSponge::new(Curve::other_curve_sponge_params());
+        let mut fq_sponge: mina_poseidon::sponge::DefaultFqSponge<
+            ark_bn254::g1::Parameters,
+            mina_poseidon::constants::PlonkSpongeConstantsKimchi,
+        > = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // Create two instances for each selector to be folded
         let mut keccak_trace: [crate::trace::Trace<
@@ -618,19 +623,27 @@ fn test_keccak_decomposable_folding() {
         .into_iter()
         .collect();
 
-        let (_scheme, _final_constraint) =
+        let (scheme, final_constraint) =
             DecomposableFoldingScheme::<KeccakConfig>::new(constraints, vec![], &srs, domain, ());
 
         // Fold Sponge(Absorb(Only))
         {
-            let _left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
-            let _right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
+            let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs);
+            let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs);
             // TODO: Fix domain size used in folding because it is using 2^15 instead of 1<<8
-            /*  let (folded_instance, folded_witness, [_t0, _t1]) =
-                scheme.fold_instance_witness_pair(left, right, Some(Sponge(Absorb(Only))));
-
-            (folded_instance, folded_witness)
-            */
+            let (folded_instance, folded_witness, [_t0, _t1]) = scheme.fold_instance_witness_pair(
+                left,
+                right,
+                Some(Sponge(Absorb(Only))),
+                &mut fq_sponge,
+            );
+            let checker = ExtendedProvider::new(folded_instance, folded_witness);
+            debug!("exp: \n {:#?}", final_constraint.to_string());
+            checker.check(&final_constraint);
+            let ExtendedProvider {
+                instance, witness, ..
+            } = checker;
+            (instance, witness)
         };
 
         // Fold Round(0)
