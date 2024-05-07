@@ -1,21 +1,20 @@
 // this example is a copy of the decomposable folding one, but with a degree 3 gate
 // that triggers quadriticization
 use crate::{
-    checker::{BaseSponge, Checker, Curve, Fp, Provide},
+    checker::{BaseSponge, Checker, Curve, ExtendedProvider, Fp},
     error_term::Side,
     examples::example_decomposable_folding::TestWitness,
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
-    Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
-    RelaxedInstance, RelaxedWitness,
+    Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{UniformRand, Zero};
-use ark_poly::Radix2EvaluationDomain;
+use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
 use poly_commitment::SRS as _;
 use rand::thread_rng;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::Index};
 
 // the type representing our columns, in this case we have 3 witness columns
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -255,118 +254,41 @@ fn instance_from_witness(
     }
 }
 
-/// A kind of pseudo-prover, will compute the expressions over the witness a
-/// check row by row for a zero result.
-mod checker {
-    use super::*;
-    pub struct Provider {
-        instance: TestInstance,
-        witness: TestWitness,
-        rows: usize,
-    }
+impl Checker<TestFoldingConfig> for ExtendedProvider<TestFoldingConfig> {}
 
-    impl Provider {
-        pub(super) fn new(instance: TestInstance, witness: TestWitness) -> Self {
-            let rows = TestFoldingConfig::rows();
-            Self {
-                instance,
-                witness,
-                rows,
-            }
+impl Index<TestChallenge> for TestInstance {
+    type Output = Fp;
+
+    fn index(&self, index: TestChallenge) -> &Self::Output {
+        match index {
+            TestChallenge::Beta => &self.challenges[0],
+            TestChallenge::Gamma => &self.challenges[1],
+            TestChallenge::JointCombiner => &self.challenges[2],
         }
     }
+}
 
-    impl Provide<TestFoldingConfig> for Provider {
-        fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
-            match inner {
-                FoldingCompatibleExprInner::Constant(c) => {
-                    vec![c; self.rows]
-                }
-                FoldingCompatibleExprInner::Challenge(chall) => {
-                    let chals = self.instance.challenges;
-                    let v = match chall {
-                        TestChallenge::Beta => chals[0],
-                        TestChallenge::Gamma => chals[1],
-                        TestChallenge::JointCombiner => chals[2],
-                    };
-                    vec![v; self.rows]
-                }
-                FoldingCompatibleExprInner::Cell(var) => {
-                    let Variable { col, row } = var;
-                    let col = match col {
-                        TestColumn::A => &self.witness[0].evals,
-                        TestColumn::B => &self.witness[1].evals,
-                        TestColumn::C => &self.witness[2].evals,
-                    };
+impl Index<TestColumn> for TestWitness {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
-                    let mut col = col.clone();
-                    //check this, while not relevant in this case I think it should be right rotation
-                    if let CurrOrNext::Next = row {
-                        col.rotate_left(1);
-                    }
-                    col
-                }
-                FoldingCompatibleExprInner::Extensions(_) => {
-                    panic!("not handled here");
-                }
-            }
+    fn index(&self, index: TestColumn) -> &Self::Output {
+        match index {
+            TestColumn::A => &self[0],
+            TestColumn::B => &self[1],
+            TestColumn::C => &self[2],
         }
     }
+}
 
-    pub struct ExtendedProvider {
-        inner_provider: Provider,
-        pub instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
-        pub witness: RelaxedWitness<<TestFoldingConfig as FoldingConfig>::Curve, TestWitness>,
-    }
+impl Index<DynamicSelector> for TestWitness {
+    type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
-    impl ExtendedProvider {
-        pub(super) fn new(
-            instance: RelaxedInstance<<TestFoldingConfig as FoldingConfig>::Curve, TestInstance>,
-            witness: RelaxedWitness<<TestFoldingConfig as FoldingConfig>::Curve, TestWitness>,
-        ) -> Self {
-            let inner_provider = {
-                let instance = instance.inner_instance().inner.clone();
-                let witness = witness.inner().inner.clone();
-                Provider::new(instance, witness)
-            };
-            Self {
-                inner_provider,
-                instance,
-                witness,
-            }
+    fn index(&self, index: DynamicSelector) -> &Self::Output {
+        match index {
+            DynamicSelector::SelecAdd => &self[3],
+            DynamicSelector::SelecMul => &self[4],
         }
     }
-
-    impl Provide<TestFoldingConfig> for ExtendedProvider {
-        fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
-            match inner {
-                FoldingCompatibleExprInner::Extensions(ext) => match ext {
-                    ExpExtension::U => {
-                        let u = self.instance.u;
-                        vec![u; self.inner_provider.rows]
-                    }
-                    ExpExtension::Error => self.witness.error_vec.evals.clone(),
-                    ExpExtension::ExtendedWitness(i) => {
-                        self.witness.inner().extended.get(&i).unwrap().evals.clone()
-                    }
-                    ExpExtension::Alpha(i) => {
-                        let alpha = self.instance.inner_instance().inner.alphas.get(i).unwrap();
-                        vec![alpha; self.inner_provider.rows]
-                    }
-                    ExpExtension::Selector(s) => {
-                        let col = match s {
-                            DynamicSelector::SelecAdd => &self.inner_provider.witness[3].evals,
-                            DynamicSelector::SelecMul => &self.inner_provider.witness[4].evals,
-                        };
-                        col.clone()
-                    }
-                },
-                e => self.inner_provider.resolve(e),
-            }
-        }
-    }
-
-    impl Checker<TestFoldingConfig> for ExtendedProvider {}
 }
 
 #[cfg(test)]
@@ -375,7 +297,6 @@ mod tests {
     // Trick to print debug message while testing, as we in the test config env
     use crate::decomposable_folding::DecomposableFoldingScheme;
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-    use checker::ExtendedProvider;
     use std::println as debug;
 
     // two functions to create the entire witness from just the a and b columns
