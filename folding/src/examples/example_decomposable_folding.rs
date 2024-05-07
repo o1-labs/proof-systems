@@ -1,6 +1,7 @@
 use crate::{
-    checker::{BaseSponge, Checker, Curve, ExtendedProvider, Fp},
+    checker::{Checker, ExtendedProvider},
     error_term::Side,
+    examples::{Curve, Fp},
     expressions::{FoldingColumnTrait, FoldingCompatibleExprInner},
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, Witness,
 };
@@ -303,7 +304,10 @@ impl Index<DynamicSelector> for TestWitness {
 mod tests {
     use super::*;
     // Trick to print debug message while testing, as we in the test config env
-    use crate::{checker::ExtendedProvider, decomposable_folding::DecomposableFoldingScheme};
+    use crate::{
+        checker::ExtendedProvider, decomposable_folding::DecomposableFoldingScheme,
+        examples::BaseSponge,
+    };
     use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
     use kimchi::curve::KimchiCurve;
     use mina_poseidon::FqSponge;
