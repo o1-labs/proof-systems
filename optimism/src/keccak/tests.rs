@@ -552,7 +552,7 @@ fn test_keccak_decomposable_folding() {
     // guaranteed to have at least 30MB of stack
     stacker::grow(30 * 1024 * 1024, || {
         let mut rng = o1_utils::tests::make_test_rng();
-        let domain_size = 1 << 8;
+        let domain_size = 1 << 15;
 
         let domain = D::<Fp>::new(domain_size).unwrap();
         let mut srs = poly_commitment::srs::SRS::<Curve>::create(domain_size);
@@ -574,7 +574,10 @@ fn test_keccak_decomposable_folding() {
             // Generate domain_size random preimages of 1 block for Keccak
             // to obtain full witnesses for two different types of instructions: Absorb(Only) and Round(0)
             // We will fold them together and check that all the constraints hold for the folded circuit
-            for _ in 0..domain_size {
+            for i in 0..domain_size {
+                if i % 1000 == 0 {
+                    println!("i: {}", i);
+                }
                 // random 1-block preimages
                 let bytelength = rng.gen_range(0..RATE_IN_BYTES);
                 let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
@@ -607,7 +610,7 @@ fn test_keccak_decomposable_folding() {
             ),
             (
                 Round(0),
-                keccak_trace[0].constraints[&Sponge(Absorb(Only))]
+                keccak_trace[0].constraints[&Round(0)]
                     .iter()
                     .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
                     .collect(),
@@ -620,11 +623,10 @@ fn test_keccak_decomposable_folding() {
             DecomposableFoldingScheme::<KeccakConfig>::new(constraints, vec![], &srs, domain, ());
 
         // Fold Sponge(Absorb(Only))
-        let _right_absorb = {
+        let left_absorb = {
             let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
             let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
             // TODO: Fix domain size used in folding because it is using 2^15 instead of 1<<8
-            println!("before folding pair");
             let (folded_instance, folded_witness, [_t0, _t1]) = scheme.fold_instance_witness_pair(
                 left,
                 right,
@@ -639,17 +641,36 @@ fn test_keccak_decomposable_folding() {
             } = checker;
             (instance, witness)
         };
+        println!("absorb was checked");
 
         // Fold Round(0)
-        /*
-                let _left_round = {
-                    let _left = keccak_trace[0].to_folding_pair(Round(0), &srs);
-                    let _right = keccak_trace[1].to_folding_pair(Round(0), &srs);
-                    let (folded_instance, folded_witness, [_t0, _t1]) =
-                        scheme.fold_instance_witness_pair(left, right, Some(Round(0)));
+        let right_round = {
+            let left = keccak_trace[0].to_folding_pair(Round(0), &srs, &mut fq_sponge);
+            let right = keccak_trace[1].to_folding_pair(Round(0), &srs, &mut fq_sponge);
+            let (folded_instance, folded_witness, [_t0, _t1]) =
+                scheme.fold_instance_witness_pair(left, right, Some(Round(0)), &mut fq_sponge);
+            let checker = ExtendedProvider::new(folded_instance, folded_witness);
+            debug!("exp: \n {:#?}", final_constraint.to_string());
+            checker.check(&final_constraint);
+            let ExtendedProvider {
+                instance, witness, ..
+            } = checker;
+            (instance, witness)
+        };
+        println!("round was checked");
 
-                    (folded_instance, folded_witness)
-                };
-        */
+        // Fold the two different instances together
+        {
+            // here we use already relaxed pairs, which have a trival x -> x implementation
+            let folded =
+                scheme.fold_instance_witness_pair(left_absorb, right_round, None, &mut fq_sponge);
+            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
+
+            let checker = ExtendedProvider::new(folded_instance, folded_witness);
+            debug!("exp: \n {:#?}", final_constraint.to_string());
+
+            checker.check(&final_constraint);
+        };
+        println!("mixed was checked");
     });
 }
