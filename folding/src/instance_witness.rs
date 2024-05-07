@@ -19,7 +19,7 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     }
 
     /// Returns the alphas values for the instance
-    fn alphas(&self) -> &Alphas<G>;
+    fn alphas(&self) -> &Alphas<G::ScalarField>;
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized {
@@ -167,7 +167,7 @@ impl<G: CommitmentCurve, I: Instance<G>> Instance<G> for ExtendedInstance<G, I> 
         Self { inner, extended }
     }
 
-    fn alphas(&self) -> &Alphas<G> {
+    fn alphas(&self) -> &Alphas<G::ScalarField> {
         self.inner.alphas()
     }
 }

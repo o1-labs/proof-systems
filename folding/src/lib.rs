@@ -18,7 +18,7 @@
 // TODO: the documentation above might need more descriptions.
 
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use error_term::{compute_error, ExtendedEnv};
 use expressions::{
@@ -266,16 +266,16 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 /// of other element. This type represents that, allowing to also recognize
 /// which case is present.
 #[derive(Debug, Clone)]
-pub enum Alphas<G: AffineCurve> {
-    Powers(G::ScalarField, Rc<AtomicUsize>),
-    Combinations(Vec<G::ScalarField>),
+pub enum Alphas<F> {
+    Powers(F, Rc<AtomicUsize>),
+    Combinations(Vec<F>),
 }
 
-impl<G: AffineCurve> Alphas<G> {
-    pub fn new(alpha: G::ScalarField) -> Self {
+impl<F: Field> Alphas<F> {
+    pub fn new(alpha: F) -> Self {
         Self::Powers(alpha, Rc::new(AtomicUsize::from(0)))
     }
-    pub fn get(&self, i: usize) -> Option<G::ScalarField> {
+    pub fn get(&self, i: usize) -> Option<F> {
         match self {
             Alphas::Powers(alpha, count) => {
                 let _ = count.fetch_max(i + 1, Ordering::Relaxed);
@@ -285,17 +285,17 @@ impl<G: AffineCurve> Alphas<G> {
             Alphas::Combinations(alphas) => alphas.get(i).cloned(),
         }
     }
-    pub fn powers(self) -> Vec<G::ScalarField> {
+    pub fn powers(self) -> Vec<F> {
         match self {
             Alphas::Powers(alpha, count) => {
                 let n = count.load(Ordering::Relaxed);
-                let alphas = successors(Some(G::ScalarField::one()), |last| Some(*last * alpha));
+                let alphas = successors(Some(F::one()), |last| Some(*last * alpha));
                 alphas.take(n).collect()
             }
             Alphas::Combinations(c) => c,
         }
     }
-    pub fn combine(a: Self, b: Self, challenge: <G as AffineCurve>::ScalarField) -> Self {
+    pub fn combine(a: Self, b: Self, challenge: F) -> Self {
         let a = a.powers();
         let b = b.powers();
         assert_eq!(a.len(), b.len());

@@ -71,7 +71,7 @@ pub struct FoldingInstance<const N: usize> {
     /// - γ (set to 0 for now)
     pub challenges: [Fp; Challenge::COUNT],
     /// Reuses the Alphas defined in the example of folding
-    pub alphas: Alphas<Curve>,
+    pub alphas: Alphas<Fp>,
 }
 
 impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
@@ -85,7 +85,7 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
         }
     }
 
-    fn alphas(&self) -> &Alphas<Curve> {
+    fn alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }

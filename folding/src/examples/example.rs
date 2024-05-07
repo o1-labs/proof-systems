@@ -28,7 +28,7 @@ use rand::thread_rng;
 struct TestInstance {
     commitments: [Curve; 3],
     challenges: [Fp; 3],
-    alphas: Alphas<Curve>,
+    alphas: Alphas<Fp>,
 }
 
 impl Instance<Curve> for TestInstance {
@@ -42,7 +42,7 @@ impl Instance<Curve> for TestInstance {
         }
     }
 
-    fn alphas(&self) -> &Alphas<Curve> {
+    fn alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }

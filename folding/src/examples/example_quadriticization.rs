@@ -50,7 +50,7 @@ pub struct TestInstance {
     // for ilustration only, no constraint in this example uses challenges
     challenges: [Fp; 3],
     // also challenges, but segregated as folding gives them special treatment
-    alphas: Alphas<Curve>,
+    alphas: Alphas<Fp>,
 }
 
 impl Instance<Curve> for TestInstance {
@@ -64,7 +64,7 @@ impl Instance<Curve> for TestInstance {
         }
     }
 
-    fn alphas(&self) -> &Alphas<Curve> {
+    fn alphas(&self) -> &Alphas<Fp> {
         &self.alphas
     }
 }
