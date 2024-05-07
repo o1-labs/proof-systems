@@ -189,7 +189,10 @@ mod folding {
         let mut rng = o1_utils::tests::make_test_rng();
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env(&mut rng);
-        let reg_at = 1;
+        // FIXME: at the moment, we do not support writing and reading into the
+        // same register
+        let reg_src = 1;
+        let reg_dest = 2;
         // Instruction: 0b00100100001000010110110011101000
         // addiu $at, $at, 27880
         write_instruction(
@@ -197,7 +200,7 @@ mod folding {
             InstructionParts {
                 op_code: 0b001001,
                 rs: 0b00001, // source register
-                rt: 0b00001, // destination register
+                rt: 0b00010, // destination register
                 // The rest is the immediate value
                 rd: 0b01101,
                 shamt: 0b10011,
@@ -207,8 +210,8 @@ mod folding {
         dummy_env.registers.current_instruction_pointer = PAGE_INDEX_EXECUTABLE_MEMORY * PAGE_SIZE;
         dummy_env.registers.next_instruction_pointer =
             dummy_env.registers.current_instruction_pointer + 4;
-        let exp_res = dummy_env.registers[reg_at] + 27880;
+        let exp_res = dummy_env.registers[reg_src] + 27880;
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
-        assert_eq!(dummy_env.registers.general_purpose[reg_at], exp_res);
+        assert_eq!(dummy_env.registers.general_purpose[reg_dest], exp_res);
     }
 }
