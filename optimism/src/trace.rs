@@ -117,7 +117,6 @@ where
         FoldingInstance<N, C::Curve>,
         FoldingWitness<N, ScalarField<C>>,
     ) {
-        println!("domain size in tracer {}", self.domain_size);
         let domain = Radix2EvaluationDomain::<ScalarField<C>>::new(self.domain_size).unwrap();
         let folding_witness = FoldingWitness {
             witness: (&self.witness[&selector])
