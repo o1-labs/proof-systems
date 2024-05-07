@@ -5,7 +5,11 @@ use crate::{
     Curve, Fp, DOMAIN_SIZE,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use folding::{expressions::FoldingColumnTrait, FoldingConfig};
+use folding::{
+    checker::{Checker, ExtendedProvider},
+    expressions::FoldingColumnTrait,
+    FoldingConfig,
+};
 use kimchi_msm::columns::Column;
 use poly_commitment::srs::SRS;
 use std::ops::Index;
@@ -76,3 +80,7 @@ impl FoldingConfig for KeccakConfig {
         DOMAIN_SIZE
     }
 }
+
+// IMPLEMENT CHECKER TRAITS
+
+impl Checker<KeccakConfig> for ExtendedProvider<KeccakConfig> {}

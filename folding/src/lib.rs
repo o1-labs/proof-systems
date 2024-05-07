@@ -58,6 +58,10 @@ pub mod quadraticization;
 #[cfg(feature = "bn254")]
 mod examples;
 
+/// Define the different structures required for the examples (both internal and external)
+#[cfg(feature = "bn254")]
+pub mod checker;
+
 // Simple type alias as ScalarField/BaseField is often used. Reduce type
 // complexity for clippy.
 // Should be moved into FoldingConfig, but associated type defaults are unstable
@@ -82,12 +86,12 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     type Srs: SRS<Self::Curve>;
 
     /// For Plonk, it will be the commitments to the polynomials and the challenges
-    type Instance: Instance<Self::Curve>;
+    type Instance: Instance<Self::Curve> + Clone;
 
     /// For PlonK, it will be the polynomials in evaluation form that we commit
     /// to, i.e. the columns.
     /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
-    type Witness: Witness<Self::Curve>;
+    type Witness: Witness<Self::Curve> + Clone;
 
     type Structure;
 
@@ -283,7 +287,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
 /// of other element. This type represents that, allowing to also recognize
 /// which case is present.
 #[derive(Debug, Clone)]
-pub enum Alphas<F: Field> {
+pub enum Alphas<F> {
     Powers(F, Rc<AtomicUsize>),
     Combinations(Vec<F>),
 }

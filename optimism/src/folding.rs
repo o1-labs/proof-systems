@@ -56,6 +56,22 @@ impl<const N: usize> Instance<Curve> for FoldingInstance<N> {
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
     }
+
+    fn alphas(&self) -> &Alphas<Fp> {
+        &self.alphas
+    }
+}
+
+impl<const N: usize> Index<Challenge> for FoldingInstance<N> {
+    type Output = Fp;
+
+    fn index(&self, index: Challenge) -> &Self::Output {
+        match index {
+            Challenge::Beta => &self.challenges[0],
+            Challenge::Gamma => &self.challenges[1],
+            Challenge::JointCombiner => &self.challenges[2],
+        }
+    }
 }
 
 /// Includes the data witness columns and also the dynamic selector columns

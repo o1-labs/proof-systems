@@ -13,7 +13,7 @@ use crate::{
         Error, KeccakColumn,
     },
     lookups::{FixedLookupTables, LookupTable, LookupTableIDs::*},
-    trace::{Folder, Tracer},
+    trace::Tracer,
 };
 use ark_ff::{One, Zero};
 use kimchi::{
@@ -539,6 +539,7 @@ fn test_keccak_prover_constraints() {
     });
 }
 
+#[cfg(feature = "bn254")]
 #[test]
 fn test_keccak_decomposable_folding() {
     use crate::{keccak::folding::KeccakConfig, Curve};

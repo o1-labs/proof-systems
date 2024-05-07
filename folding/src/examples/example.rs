@@ -7,8 +7,8 @@
 /// cargo nextest run examples::example::tests::test_folding_instance --release --all-features
 /// ```
 use crate::{
+    checker::{BaseSponge, Checker, Column, Curve, Fp, Provide},
     error_term::Side,
-    examples::generic::{BaseSponge, Checker, Column, Curve, Fp, Provide},
     expressions::FoldingCompatibleExprInner,
     Alphas, ExpExtension, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance,
     RelaxedInstance, RelaxedWitness, Witness,
@@ -40,6 +40,10 @@ impl Instance<Curve> for TestInstance {
             challenges: std::array::from_fn(|i| a.challenges[i] + challenge * b.challenges[i]),
             alphas: Alphas::combine(a.alphas, b.alphas, challenge),
         }
+    }
+
+    fn alphas(&self) -> &Alphas<Fp> {
+        &self.alphas
     }
 }
 
