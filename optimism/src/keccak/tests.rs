@@ -592,14 +592,9 @@ fn test_keccak_decomposable_folding() {
                 while keccak_env.step.is_some() {
                     let step = keccak_env.step.unwrap(); // Either Absorb(Only) or Round(0)
                     keccak_env.step(); // Create the relation witness columns
-                    match step {
-                        Sponge(Absorb(Only)) => {
-                            // Add the witness row to the circuit
-                            trace.push_row(step, &keccak_env.witness_env.witness.cols);
-                        }
-                        _ => {
-                            // Don't push the other steps
-                        }
+                    if let Sponge(Absorb(Only)) = step {
+                        // Add the witness row to the circuit
+                        trace.push_row(step, &keccak_env.witness_env.witness.cols);
                     }
                 }
             }
