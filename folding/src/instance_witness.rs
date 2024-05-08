@@ -25,6 +25,9 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// See page 15.
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
 
+    /// This method takes an Instance and a commitment to zero and extends the instance,
+    /// returning a relaxed instance which is composed by the extended instance, the scalar one,
+    /// and the error commitment which is set to the commitment to zero.
     fn relax(self, zero_commit: PolyComm<G>) -> RelaxedInstance<G, Self> {
         let instance = ExtendedInstance::extend(self);
         RelaxedInstance {
@@ -39,12 +42,15 @@ pub trait Instance<G: CommitmentCurve>: Sized {
 }
 
 pub trait Witness<G: CommitmentCurve>: Sized {
-    /// Should return a linear combination
+    /// Returns a new witness which is a linear combination using the challenge of the two witnesses `a` and `b`.
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
 
     /// Returns the number of rows in the witness
     fn rows(&self) -> usize;
 
+    /// This method takes a witness and a vector of evaluations to the zero polynomial,
+    /// returning a relaxed witness which is composed by the extended witness and the error vector
+    /// that is set to the zero polynomial.
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
         let witness = ExtendedWitness::extend(self);
         RelaxedWitness {
@@ -55,8 +61,10 @@ pub trait Witness<G: CommitmentCurve>: Sized {
 }
 
 impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
+    /// This method returns an extended witness which is defined as the witness itself,
+    /// followed by an empty BTreeMap.
+    /// The map will be later filled by the quadraticization witness generator.
     fn extend(witness: W) -> ExtendedWitness<G, W> {
-        //will later be filled by the quadraticization witness generator
         let extended = BTreeMap::new();
         ExtendedWitness {
             inner: witness,
@@ -66,6 +74,8 @@ impl<G: CommitmentCurve, W: Witness<G>> ExtendedWitness<G, W> {
 }
 
 impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
+    /// This method returns an extended instance which is defined as the instance itself,
+    /// followed by an empty vector.
     fn extend(instance: I) -> ExtendedInstance<G, I> {
         ExtendedInstance {
             inner: instance,
