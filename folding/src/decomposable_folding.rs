@@ -100,6 +100,10 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         fq_sponge.absorb_g(&error_commitments[0].elems);
         fq_sponge.absorb_g(&error_commitments[1].elems);
 
+        let to_absorb = env.to_absorb();
+        fq_sponge.absorb_fr(&to_absorb.0);
+        fq_sponge.absorb_fq(&to_absorb.1);
+
         let challenge = fq_sponge.challenge();
 
         let ([ins1, ins2], [wit1, wit2]) = env.unwrap();

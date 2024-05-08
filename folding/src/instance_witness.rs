@@ -24,7 +24,11 @@ pub trait Instance<G: CommitmentCurve>: Sized {
     /// Combine two instances 'a' and 'b' into a new instance.
     /// See page 15.
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
-
+    /// this method should provide the instance as the collection of elements that form
+    /// it, both fields are present to support commitments and challenges
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G::BaseField>) {
+        (vec![], vec![])
+    }
     /// This method takes an Instance and a commitment to zero and extends the instance,
     /// returning a relaxed instance which is composed by the extended instance, the scalar one,
     /// and the error commitment which is set to the commitment to zero.
@@ -82,6 +86,19 @@ impl<G: CommitmentCurve, I: Instance<G>> ExtendedInstance<G, I> {
             extended: vec![],
         }
     }
+    /// wraps the inner absorb, adding its own commitments
+    fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G::BaseField>) {
+        let mut elements = self.inner.to_absorb();
+        let extended_commitments = self.extended.iter().flat_map(|commit| {
+            assert_eq!(commit.elems.len(), 1);
+            let point = commit.elems[0];
+            //this may need change if we need to support the infinity point
+            let (x, y) = point.to_coordinates().unwrap();
+            [x, y]
+        });
+        elements.1.extend(extended_commitments);
+        elements
+    }
 }
 
 // -- Relaxed instances
@@ -94,6 +111,15 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: Instance<G>> {
 impl<G: CommitmentCurve, I: Instance<G>> RelaxedInstance<G, I> {
     pub(crate) fn inner_instance(&self) -> &ExtendedInstance<G, I> {
         &self.instance
+    }
+    pub(crate) fn to_absorb(&self) -> (Vec<G::ScalarField>, Vec<G::BaseField>) {
+        let mut elements = self.instance.to_absorb();
+        elements.0.push(self.u);
+        assert_eq!(self.error_commitment.elems.len(), 1);
+        //this may need change if we need to support the infinity point
+        let (x, y) = self.error_commitment.elems[0].to_coordinates().unwrap();
+        elements.1.extend([x, y]);
+        elements
     }
 
     pub(crate) fn inner_mut(&mut self) -> &mut ExtendedInstance<G, I> {

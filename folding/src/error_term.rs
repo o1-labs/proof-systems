@@ -4,7 +4,7 @@ use crate::{
     eval_leaf::EvalLeaf,
     expressions::{Degree, FoldingExp, IntegratedFoldingExpr, Sign},
     quadraticization::ExtendedWitnessGenerator,
-    FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness, ScalarField,
+    BaseField, FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness, ScalarField,
 };
 use ark_ff::{Field, One};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -376,5 +376,12 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
             instance.inner_mut().extended.push(commit)
         }
         self
+    }
+    pub(crate) fn to_absorb(&self) -> (Vec<ScalarField<CF>>, Vec<BaseField<CF>>) {
+        let mut left = self.instances[0].to_absorb();
+        let right = self.instances[1].to_absorb();
+        left.0.extend(right.0.into_iter());
+        left.1.extend(right.1.into_iter());
+        left
     }
 }
