@@ -5,10 +5,13 @@ pub mod lookups;
 #[cfg(test)]
 mod tests {
 
-    use crate::ivc::{
-        columns::IVCColumn,
-        interpreter::{ivc_circuit, ivc_constraint},
-        lookups::IVCLookupTable,
+    use crate::{
+        ivc::{
+            columns::{IVCColumn, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE},
+            interpreter::ivc_circuit,
+            lookups::IVCLookupTable,
+        },
+        poseidon::{interpreter::PoseidonParams, params::static_params},
     };
     use ark_ff::UniformRand;
     use kimchi_msm::{circuit_design::WitnessBuilderEnv, columns::ColumnIndexer, Ff1, Fp};
@@ -18,10 +21,28 @@ mod tests {
     pub const TEST_N_COL_TOTAL: usize = 50;
     pub const TEST_DOMAIN_SIZE: usize = 1 << 15;
 
-    fn build_ivc_circuit<RNG: RngCore + CryptoRng>(
-        rng: &mut RNG,
-    ) -> WitnessBuilderEnv<Fp, { <IVCColumn as ColumnIndexer>::COL_N }, IVCLookupTable<Ff1>> {
-        let mut witness_env = WitnessBuilderEnv::create();
+    #[derive(Clone)]
+    pub struct PoseidonBN254Parameters;
+
+    type IVCWitnessBuilderEnv =
+        WitnessBuilderEnv<Fp, { <IVCColumn as ColumnIndexer>::COL_N }, IVCLookupTable<Ff1>>;
+
+    impl PoseidonParams<Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND>
+        for PoseidonBN254Parameters
+    {
+        fn constants(&self) -> [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_FULL_ROUND] {
+            let rc = &static_params().round_constants;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
+        }
+
+        fn mds(&self) -> [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_STATE_SIZE] {
+            let mds = &static_params().mds;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
+        }
+    }
+
+    fn build_ivc_circuit<RNG: RngCore + CryptoRng>(rng: &mut RNG) -> IVCWitnessBuilderEnv {
+        let mut witness_env = IVCWitnessBuilderEnv::create();
 
         // To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
@@ -45,20 +66,14 @@ mod tests {
             )
         });
 
-        for row_i in 0..TEST_DOMAIN_SIZE {
-            ivc_circuit::<Fp, Ff1, _, TEST_N_COL_TOTAL>(
-                &mut witness_env,
-                comms_left,
-                comms_right,
-                comms_output,
-                row_i,
-            );
-            ivc_constraint(&mut witness_env);
-
-            if row_i < TEST_DOMAIN_SIZE - 1 {
-                witness_env.next_row();
-            }
-        }
+        ivc_circuit::<_, _, _, _, TEST_N_COL_TOTAL>(
+            &mut witness_env,
+            comms_left,
+            comms_right,
+            comms_output,
+            &PoseidonBN254Parameters,
+            TEST_DOMAIN_SIZE,
+        );
 
         witness_env
     }

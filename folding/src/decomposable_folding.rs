@@ -27,7 +27,7 @@ impl<'a, CF: FoldingConfig> DecomposableFoldingScheme<'a, CF> {
         common_constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: &'a CF::Srs,
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
-        structure: CF::Structure,
+        structure: &CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
         let constraints = constraints
             .into_iter()

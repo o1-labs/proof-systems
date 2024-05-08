@@ -1,28 +1,34 @@
 use std::{array, collections::BTreeMap};
 
-use ark_ff::Field;
+use ark_ff::Zero;
 use kimchi_msm::witness::Witness;
 use strum::IntoEnumIterator;
 
 use crate::{
+    folding::ScalarField,
     keccak::{
-        column::{
-            Steps::{self},
-            ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL,
-        },
+        column::{Steps, ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
         environment::KeccakEnv,
         standardize,
     },
     trace::{Trace, Tracer},
 };
 
-/// The Keccak circuit trace
-pub type KeccakTrace<F> = Trace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps, F>;
+use super::folding::KeccakConfig;
 
-impl<F: Field> Tracer<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps, F, KeccakEnv<F>>
-    for KeccakTrace<F>
+/// The Keccak circuit trace
+pub type KeccakTrace = Trace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+
+impl
+    Tracer<
+        ZKVM_KECCAK_COLS,
+        ZKVM_KECCAK_REL,
+        ZKVM_KECCAK_SEL,
+        KeccakConfig,
+        KeccakEnv<ScalarField<KeccakConfig>>,
+    > for KeccakTrace
 {
-    fn new(domain_size: usize, _env: &mut KeccakEnv<F>) -> Self {
+    fn new(domain_size: usize, _env: &mut KeccakEnv<ScalarField<KeccakConfig>>) -> Self {
         let mut circuit = Self {
             domain_size,
             witness: BTreeMap::new(),
@@ -47,7 +53,7 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps,
         circuit
     }
 
-    fn push_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_REL]) {
+    fn push_row(&mut self, opcode: Steps, row: &[ScalarField<KeccakConfig>; ZKVM_KECCAK_REL]) {
         // Make sure we are using the same round number to refer to round steps
         let opcode = standardize(opcode);
         self.witness.entry(opcode).and_modify(|wit| {
@@ -59,7 +65,11 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps,
         });
     }
 
-    fn pad_with_row(&mut self, opcode: Steps, row: &[F; ZKVM_KECCAK_REL]) -> usize {
+    fn pad_with_row(
+        &mut self,
+        opcode: Steps,
+        row: &[ScalarField<KeccakConfig>; ZKVM_KECCAK_REL],
+    ) -> usize {
         let opcode = standardize(opcode);
         let len = self.witness[&opcode].cols[0].len();
         assert!(len <= self.domain_size);
@@ -79,7 +89,7 @@ impl<F: Field> Tracer<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, Steps,
         // When we reach the domain size, we don't need to pad anymore.
         self.witness.entry(opcode).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
-                col.extend((0..rows_to_add).map(|_| F::zero()));
+                col.extend((0..rows_to_add).map(|_| ScalarField::<KeccakConfig>::zero()));
             }
         });
         rows_to_add
