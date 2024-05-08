@@ -19,6 +19,7 @@ use crate::{
 use ark_ff::{One, Zero};
 use folding::{
     checker::{ExtendedProvider, Provider},
+    decomposable_folding::DecomposableFoldingScheme,
     FoldingScheme,
 };
 use kimchi::{
@@ -695,8 +696,7 @@ fn test_keccak_folding() {
                 checker.check(&final_constraint);
             }
             // Check constraints on independent sides and in folded circuit applying selectors
-            /* TODO: UNCOMMENT WHEN PROBLEM IS FIXED FOR DECOMPOSABLE FOLDING FOR KECCAK
-            {
+            if step == Sponge(Absorb(Only)) {
                 // Create the decomposable folding scheme applying selectors
                 let (dec_scheme, dec_final_constraint) =
                     DecomposableFoldingScheme::<KeccakConfig>::new(
@@ -712,7 +712,6 @@ fn test_keccak_folding() {
                 let checker = ExtendedProvider::new(folded_instance, folded_witness);
                 checker.check(&dec_final_constraint);
             }
-            */
         }
         // TODO:
         // Fold mixed steps together and check the constraints
