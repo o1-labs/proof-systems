@@ -575,6 +575,8 @@ fn test_keccak_decomposable_folding() {
         >; 2] =
             std::array::from_fn(|_| KeccakTrace::new(domain_size, &mut KeccakEnv::<Fp>::default()));
 
+        let default_trace = KeccakTrace::new(domain_size, &mut KeccakEnv::<Fp>::default());
+
         for trace in &mut keccak_trace {
             // Generate domain_size random preimages of 1 block for Keccak
             // to obtain full witnesses for two different types of instructions: Absorb(Only) and Round(0)
@@ -587,93 +589,61 @@ fn test_keccak_decomposable_folding() {
                 let mut keccak_env = KeccakEnv::<Fp>::new(0, &preimage);
 
                 // Keep track of the constraints of the sub-circuits
-                for _ in 0..2 {
+                while keccak_env.step.is_some() {
                     let step = keccak_env.step.unwrap(); // Either Absorb(Only) or Round(0)
                     keccak_env.step(); // Create the relation witness columns
-                    trace.push_row(step, &keccak_env.witness_env.witness.cols);
+                    match step {
+                        Sponge(Absorb(Only)) => {
+                            // Add the witness row to the circuit
+                            trace.push_row(step, &keccak_env.witness_env.witness.cols);
+                        }
+                        _ => {
+                            // Don't push the other steps
+                        }
+                    }
                 }
             }
-            // Check there is no need for padding because we reached domain_size rows for these two selectors
+            // Check there is no need for padding because we reached domain_size rows for these selectors
             assert!(trace.is_full(Sponge(Absorb(Only))));
-            assert!(trace.is_full(Round(0)));
 
-            // Add the columns of the two selectors to the circuit
+            // Add the columns of the selectors to the circuit
             trace.set_selector_column(Sponge(Absorb(Only)), domain_size);
-            trace.set_selector_column(Round(0), domain_size);
         }
 
-        let constraints = [
-            (
-                Sponge(Absorb(Only)),
-                keccak_trace[0].constraints[&Sponge(Absorb(Only))]
-                    .iter()
-                    .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
-                    .collect(),
-            ),
-            (
-                Round(0),
-                keccak_trace[0].constraints[&Round(0)]
-                    .iter()
-                    .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
-                    .collect(),
-            ),
-        ]
-        .into_iter()
-        .collect();
+        // Store all constraints indexed by Step
+        let constraints = Steps::iter()
+            .flat_map(|x| x.into_iter())
+            .map(|step| {
+                (
+                    step,
+                    default_trace.constraints[&step]
+                        .iter()
+                        .map(|c| FoldingCompatibleExpr::<KeccakConfig>::from(c.clone()))
+                        .collect(),
+                )
+            })
+            .into_iter()
+            .collect();
 
         let (scheme, final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
             constraints,
             vec![],
             &srs,
             domain,
-            &keccak_trace[0],
+            &default_trace,
         );
 
         // Fold Sponge(Absorb(Only))
-        let left_absorb = {
-            let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
-            let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
-            let (folded_instance, folded_witness, [_t0, _t1]) = scheme.fold_instance_witness_pair(
-                left,
-                right,
-                Some(Sponge(Absorb(Only))),
-                &mut fq_sponge,
-            );
-            let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            debug!("exp: \n {:#?}", final_constraint.to_string());
-            checker.check(&final_constraint);
-            let ExtendedProvider {
-                instance, witness, ..
-            } = checker;
-            (instance, witness)
-        };
-
-        // Fold Round(0)
-        let right_round = {
-            let left = keccak_trace[0].to_folding_pair(Round(0), &srs, &mut fq_sponge);
-            let right = keccak_trace[1].to_folding_pair(Round(0), &srs, &mut fq_sponge);
-            let (folded_instance, folded_witness, [_t0, _t1]) =
-                scheme.fold_instance_witness_pair(left, right, Some(Round(0)), &mut fq_sponge);
-            let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            debug!("exp: \n {:#?}", final_constraint.to_string());
-            checker.check(&final_constraint);
-            let ExtendedProvider {
-                instance, witness, ..
-            } = checker;
-            (instance, witness)
-        };
-
-        // Fold the two different instances together
-        {
-            // here we use already relaxed pairs, which have a trival x -> x implementation
-            let folded =
-                scheme.fold_instance_witness_pair(left_absorb, right_round, None, &mut fq_sponge);
-            let (folded_instance, folded_witness, [_t0, _t1]) = folded;
-
-            let checker = ExtendedProvider::new(folded_instance, folded_witness);
-            debug!("exp: \n {:#?}", final_constraint.to_string());
-
-            checker.check(&final_constraint);
-        };
+        let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
+        let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
+        let (folded_instance, folded_witness, [_t0, _t1]) = scheme.fold_instance_witness_pair(
+            left,
+            right,
+            Some(Sponge(Absorb(Only))),
+            &mut fq_sponge,
+        );
+        let checker = ExtendedProvider::new(folded_instance, folded_witness);
+        debug!("exp: \n {:#?}", final_constraint.to_string());
+        checker.check(&final_constraint);
     });
 }
