@@ -81,6 +81,8 @@ mod tests {
             comms_output,
             [(Ff1::zero(), Ff1::zero()); 3],
             [(Ff1::zero(), Ff1::zero()); 2],
+            Fp::zero(),
+            vec![Fp::zero(); 200],
             &PoseidonBN254Parameters,
             TEST_DOMAIN_SIZE,
         );
