@@ -154,12 +154,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         }
     }
 
-    // not used, you can generate it here, or if you only want to compute once use
-    // something like HashMap<usize,OnceCell<Vec<Fp>>> to compute once and reuse
-    fn lagrange_basis(&self, _i: usize) -> &Vec<Fp> {
-        todo!()
-    }
-
     // access to the alphas, while folding will decide how many there are and how do
     // they appear in the expressions, the instances should store them, and the environment
     // should provide acces to them like this

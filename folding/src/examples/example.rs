@@ -134,10 +134,6 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
         }
     }
 
-    fn lagrange_basis(&self, _i: usize) -> &Vec<Fp> {
-        todo!()
-    }
-
     fn alpha(&self, i: usize, side: Side) -> Fp {
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
