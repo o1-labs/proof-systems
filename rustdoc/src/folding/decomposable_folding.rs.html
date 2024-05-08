@@ -147,7 +147,7 @@
         </span>common_constraints: Vec&lt;FoldingCompatibleExpr&lt;CF&gt;&gt;,
         srs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>CF::Srs,
         domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
-        structure: CF::Structure,
+        structure: <span class="kw-2">&amp;</span>CF::Structure,
     ) -&gt; (<span class="self">Self</span>, FoldingCompatibleExpr&lt;CF&gt;) {
         <span class="kw">let </span>constraints = constraints
             .into_iter()

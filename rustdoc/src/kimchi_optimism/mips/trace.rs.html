@@ -91,7 +91,25 @@
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    folding::ScalarField,
     mips::{
         column::{MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS},
         constraints::Env,
@@ -99,18 +117,26 @@
     },
     trace::{Trace, Tracer},
 };
-<span class="kw">use </span>ark_ff::Field;
+<span class="kw">use </span>ark_ff::Zero;
 <span class="kw">use </span>kimchi_msm::witness::Witness;
 <span class="kw">use </span>std::{array, collections::BTreeMap};
 <span class="kw">use </span>strum::IntoEnumIterator;
 
-<span class="doccomment">/// The MIPS circuit trace
-</span><span class="kw">pub type </span>MIPSTrace&lt;F&gt; = Trace&lt;MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F&gt;;
+<span class="kw">use </span><span class="kw">super</span>::folding::MIPSFoldingConfig;
 
-<span class="kw">impl</span>&lt;F: Field&gt; Tracer&lt;MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F, Env&lt;F&gt;&gt;
-    <span class="kw">for </span>MIPSTrace&lt;F&gt;
+<span class="doccomment">/// The MIPS circuit trace
+</span><span class="kw">pub type </span>MIPSTrace = Trace&lt;MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig&gt;;
+
+<span class="kw">impl
+    </span>Tracer&lt;
+        MIPS_COLUMNS,
+        MIPS_REL_COLS,
+        MIPS_SEL_COLS,
+        MIPSFoldingConfig,
+        Env&lt;ScalarField&lt;MIPSFoldingConfig&gt;&gt;,
+    &gt; <span class="kw">for </span>MIPSTrace
 {
-    <span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env&lt;F&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>new(domain_size: usize, env: <span class="kw-2">&amp;mut </span>Env&lt;ScalarField&lt;MIPSFoldingConfig&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>circuit = <span class="self">Self </span>{
             domain_size,
             witness: BTreeMap::new(),
@@ -135,7 +161,11 @@
         circuit
     }
 
-    <span class="kw">fn </span>push_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Instruction, row: <span class="kw-2">&amp;</span>[F; MIPS_REL_COLS]) {
+    <span class="kw">fn </span>push_row(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        opcode: Instruction,
+        row: <span class="kw-2">&amp;</span>[ScalarField&lt;MIPSFoldingConfig&gt;; MIPS_REL_COLS],
+    ) {
         <span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
             <span class="kw">for </span>(i, value) <span class="kw">in </span>row.iter().enumerate() {
                 <span class="kw">if </span>wit.cols[i].len() &lt; wit.cols[i].capacity() {
@@ -145,7 +175,11 @@
         });
     }
 
-    <span class="kw">fn </span>pad_with_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>, opcode: Instruction, row: <span class="kw-2">&amp;</span>[F; MIPS_REL_COLS]) -&gt; usize {
+    <span class="kw">fn </span>pad_with_row(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        opcode: Instruction,
+        row: <span class="kw-2">&amp;</span>[ScalarField&lt;MIPSFoldingConfig&gt;; MIPS_REL_COLS],
+    ) -&gt; usize {
         <span class="kw">let </span>len = <span class="self">self</span>.witness[<span class="kw-2">&amp;</span>opcode].cols[<span class="number">0</span>].len();
         <span class="macro">assert!</span>(len &lt;= <span class="self">self</span>.domain_size);
         <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
@@ -161,7 +195,7 @@
         <span class="kw">let </span>rows_to_add = <span class="self">self</span>.domain_size - len;
         <span class="self">self</span>.witness.entry(opcode).and_modify(|wit| {
             <span class="kw">for </span>col <span class="kw">in </span>wit.cols.iter_mut() {
-                col.extend((<span class="number">0</span>..rows_to_add).map(|<span class="kw">_</span>| F::zero()));
+                col.extend((<span class="number">0</span>..rows_to_add).map(|<span class="kw">_</span>| ScalarField::&lt;MIPSFoldingConfig&gt;::zero()));
             }
         });
         rows_to_add

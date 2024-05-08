@@ -378,6 +378,13 @@
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module defines a list of traits and structures that are used by the folding scheme
 //! The folding library is built over generic traits like [Instance] and
 //! [Witness] that defines the the NP relation.
@@ -421,6 +428,9 @@
 <span class="kw">pub trait </span>Witness&lt;G: CommitmentCurve&gt;: Sized {
     <span class="doccomment">/// Should return a linear combination
     </span><span class="kw">fn </span>combine(a: <span class="self">Self</span>, b: <span class="self">Self</span>, challenge: G::ScalarField) -&gt; <span class="self">Self</span>;
+
+    <span class="doccomment">/// Returns the number of rows in the witness
+    </span><span class="kw">fn </span>rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 
     <span class="kw">fn </span>relax(<span class="self">self</span>, zero_poly: <span class="kw-2">&amp;</span>Evals&lt;G::ScalarField&gt;) -&gt; RelaxedWitness&lt;G, <span class="self">Self</span>&gt; {
         <span class="kw">let </span>witness = ExtendedWitness::extend(<span class="self">self</span>);
@@ -538,6 +548,10 @@
             })
             .collect();
         <span class="self">Self </span>{ inner, extended }
+    }
+
+    <span class="kw">fn </span>rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.inner.rows()
     }
 }
 

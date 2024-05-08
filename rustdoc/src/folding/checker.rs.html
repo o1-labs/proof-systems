@@ -249,14 +249,12 @@
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A kind of pseudo-prover, will compute the expressions over the witness a check row by row
 //! for a zero result.
 
 </span><span class="kw">use crate</span>::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
-    instance_witness::Instance,
+    instance_witness::{Instance, Witness},
     ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness,
 };
 <span class="kw">use </span>ark_ec::AffineCurve;
@@ -302,17 +300,15 @@
 </span><span class="kw">pub struct </span>Provider&lt;C: FoldingConfig&gt; {
     <span class="kw">pub </span>instance: C::Instance,
     <span class="kw">pub </span>witness: C::Witness,
-    <span class="kw">pub </span>rows: usize,
 }
 
 <span class="kw">impl</span>&lt;C: FoldingConfig&gt; Provider&lt;C&gt; {
     <span class="kw">pub fn </span>new(instance: C::Instance, witness: C::Witness) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>rows = C::rows();
-        <span class="self">Self </span>{
-            instance,
-            witness,
-            rows,
-        }
+        <span class="self">Self </span>{ instance, witness }
+    }
+
+    <span class="kw">pub fn </span>rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.witness.rows()
     }
 }
 
@@ -371,11 +367,11 @@
     ) -&gt; Vec&lt;&lt;C::Curve <span class="kw">as </span>AffineCurve&gt;::ScalarField&gt; {
         <span class="kw">match </span>inner {
             FoldingCompatibleExprInner::Constant(c) =&gt; {
-                <span class="macro">vec!</span>[c; <span class="self">self</span>.rows]
+                <span class="macro">vec!</span>[c; <span class="self">self</span>.rows()]
             }
             FoldingCompatibleExprInner::Challenge(chal) =&gt; {
                 <span class="kw">let </span>v = <span class="self">self</span>.instance[chal];
-                <span class="macro">vec!</span>[v; <span class="self">self</span>.rows]
+                <span class="macro">vec!</span>[v; <span class="self">self</span>.rows()]
             }
             FoldingCompatibleExprInner::Cell(var) =&gt; {
                 <span class="kw">let </span>Variable { col, row } = var;
@@ -422,7 +418,7 @@
             FoldingCompatibleExprInner::Extensions(ext) =&gt; <span class="kw">match </span>ext {
                 ExpExtension::U =&gt; {
                     <span class="kw">let </span>u = <span class="self">self</span>.instance.u;
-                    <span class="macro">vec!</span>[u; <span class="self">self</span>.inner_provider.rows]
+                    <span class="macro">vec!</span>[u; <span class="self">self</span>.inner_provider.rows()]
                 }
                 ExpExtension::Error =&gt; <span class="self">self</span>.witness.error_vec.evals.clone(),
                 ExpExtension::ExtendedWitness(i) =&gt; {
@@ -436,7 +432,7 @@
                         .alphas()
                         .get(i)
                         .unwrap();
-                    <span class="macro">vec!</span>[alpha; <span class="self">self</span>.inner_provider.rows]
+                    <span class="macro">vec!</span>[alpha; <span class="self">self</span>.inner_provider.rows()]
                 }
                 ExpExtension::Selector(s) =&gt; {
                     <span class="kw">let </span>col = <span class="kw-2">&amp;</span><span class="self">self</span>.inner_provider.witness[s].evals;
