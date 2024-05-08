@@ -380,8 +380,8 @@ impl<CF: FoldingConfig> ExtendedEnv<CF> {
     pub(crate) fn to_absorb(&self) -> (Vec<ScalarField<CF>>, Vec<BaseField<CF>>) {
         let mut left = self.instances[0].to_absorb();
         let right = self.instances[1].to_absorb();
-        left.0.extend(right.0.into_iter());
-        left.1.extend(right.1.into_iter());
+        left.0.extend(right.0);
+        left.1.extend(right.1);
         left
     }
 }
