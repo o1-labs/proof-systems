@@ -184,10 +184,6 @@
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DOMAIN_SIZE;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{FftField, Zero};
@@ -360,10 +356,6 @@
             Challenge::Gamma =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">1</span>],
             Challenge::JointCombiner =&gt; <span class="self">self</span>.instances[side <span class="kw">as </span>usize].challenges[<span class="number">2</span>],
         }
-    }
-
-    <span class="kw">fn </span>lagrange_basis(<span class="kw-2">&amp;</span><span class="self">self</span>, _i: usize) -&gt; <span class="kw-2">&amp;</span>Vec&lt;G::ScalarField&gt; {
-        <span class="macro">todo!</span>()
     }
 
     <span class="kw">fn </span>alpha(<span class="kw-2">&amp;</span><span class="self">self</span>, i: usize, side: Side) -&gt; G::ScalarField {
