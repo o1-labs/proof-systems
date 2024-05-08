@@ -110,22 +110,22 @@ fn test_mips_number_constraints() {
 }
 
 mod folding {
-    use crate::mips::{
-        interpreter::{debugging::InstructionParts, interpret_itype},
-        ITypeInstruction,
-    };
     use crate::{
-        cannon::{HostProgram, PAGE_SIZE},
+        cannon::{HostProgram, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
+        folding::ScalarField,
         mips::{
-            // constraints::Env as CEnv,
+            folding::MIPSFoldingConfig,
+            interpreter::{debugging::InstructionParts, interpret_itype, InterpreterEnv},
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
+            ITypeInstruction,
         },
         preimage_oracle::PreImageOracle,
     };
     use kimchi::o1_utils;
-    use mina_curves::pasta::Fp;
     use rand::{CryptoRng, RngCore};
+
+    type Fp = ScalarField<MIPSFoldingConfig>;
 
     const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
@@ -138,21 +138,45 @@ mod folding {
             arguments: vec![],
         });
         let dummy_preimage_oracle = PreImageOracle::create(&host_program);
-        WEnv {
+        let mut env = WEnv {
             instruction_counter: 0,
             // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
             memory: vec![
                 // Read/write memory
                 (0, vec![0; PAGE_SIZE as usize]),
-                // Executable memory
+                // Executable memory. Allocating 4 * 4kB
                 (PAGE_INDEX_EXECUTABLE_MEMORY, vec![0; PAGE_SIZE as usize]),
+                (
+                    PAGE_INDEX_EXECUTABLE_MEMORY + 1,
+                    vec![0; PAGE_SIZE as usize],
+                ),
+                (
+                    PAGE_INDEX_EXECUTABLE_MEMORY + 2,
+                    vec![0; PAGE_SIZE as usize],
+                ),
+                (
+                    PAGE_INDEX_EXECUTABLE_MEMORY + 3,
+                    vec![0; PAGE_SIZE as usize],
+                ),
             ],
             last_memory_accesses: [0; 3],
             memory_write_index: vec![
                 // Read/write memory
                 (0, vec![0; PAGE_SIZE as usize]),
-                // Executable memory
+                // Executable memory. Allocating 4 * 4kB
                 (PAGE_INDEX_EXECUTABLE_MEMORY, vec![0; PAGE_SIZE as usize]),
+                (
+                    PAGE_INDEX_EXECUTABLE_MEMORY + 1,
+                    vec![0; PAGE_SIZE as usize],
+                ),
+                (
+                    PAGE_INDEX_EXECUTABLE_MEMORY + 2,
+                    vec![0; PAGE_SIZE as usize],
+                ),
+                (
+                    PAGE_INDEX_EXECUTABLE_MEMORY + 3,
+                    vec![0; PAGE_SIZE as usize],
+                ),
             ],
             last_memory_write_index_accesses: [0; 3],
             registers: Registers::default(),
@@ -168,20 +192,22 @@ mod folding {
             preimage_key: None,
             keccak_env: None,
             hash_counter: 0,
-        }
+        };
+        env.registers.current_instruction_pointer = PAGE_INDEX_EXECUTABLE_MEMORY * PAGE_SIZE;
+        env.registers.next_instruction_pointer = env.registers.current_instruction_pointer + 4;
+        env
     }
 
-    // Write the instruction to the second memory page, and first memory
-    // location.
-    // This is because in the dummy environment, the instruction pointer is
-    // always at the first memory location of the second memory page, which is
-    // considered as the "executable memory".
+    // Write the instruction to the location of the instruction pointer.
     fn write_instruction(env: &mut WEnv<Fp>, instruction_parts: InstructionParts) {
         let instr = instruction_parts.encode();
-        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[0] = ((instr >> 24) & 0xFF) as u8;
-        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[1] = ((instr >> 16) & 0xFF) as u8;
-        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[2] = ((instr >> 8) & 0xFF) as u8;
-        env.memory[PAGE_INDEX_EXECUTABLE_MEMORY as usize].1[3] = (instr & 0xFF) as u8;
+        let instr_pointer: u32 = env.get_instruction_pointer().try_into().unwrap();
+        let page = instr_pointer >> PAGE_ADDRESS_SIZE;
+        let page_address = (instr_pointer & PAGE_ADDRESS_MASK) as usize;
+        env.memory[page as usize].1[page_address] = ((instr >> 24) & 0xFF) as u8;
+        env.memory[page as usize].1[page_address + 1] = ((instr >> 16) & 0xFF) as u8;
+        env.memory[page as usize].1[page_address + 2] = ((instr >> 8) & 0xFF) as u8;
+        env.memory[page as usize].1[page_address + 3] = (instr & 0xFF) as u8;
     }
 
     #[test]
@@ -199,19 +225,19 @@ mod folding {
             &mut dummy_env,
             InstructionParts {
                 op_code: 0b001001,
-                rs: 0b00001, // source register
-                rt: 0b00010, // destination register
+                rs: reg_src,  // source register
+                rt: reg_dest, // destination register
                 // The rest is the immediate value
                 rd: 0b01101,
                 shamt: 0b10011,
                 funct: 0b101000,
             },
         );
-        dummy_env.registers.current_instruction_pointer = PAGE_INDEX_EXECUTABLE_MEMORY * PAGE_SIZE;
-        dummy_env.registers.next_instruction_pointer =
-            dummy_env.registers.current_instruction_pointer + 4;
-        let exp_res = dummy_env.registers[reg_src] + 27880;
+        let exp_res = dummy_env.registers[reg_src as usize] + 27880;
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
-        assert_eq!(dummy_env.registers.general_purpose[reg_dest], exp_res);
+        assert_eq!(
+            dummy_env.registers.general_purpose[reg_dest as usize],
+            exp_res
+        );
     }
 }
