@@ -113,7 +113,7 @@ pub fn main() -> ExitCode {
             vec![],
             &srs.full_srs,
             domain.d1,
-            (),
+            &mips_trace,
         )
     };
 

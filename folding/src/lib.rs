@@ -93,7 +93,7 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
     /// In the generic prover/verifier, it would be `kimchi_msm::witness::Witness`.
     type Witness: Witness<Self::Curve> + Clone;
 
-    type Structure;
+    type Structure: Clone;
 
     type Env: FoldingEnv<
         <Self::Curve as AffineCurve>::ScalarField,
@@ -104,9 +104,6 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
         Self::Selector,
         Structure = Self::Structure,
     >;
-
-    /// Return the size of the circuit, i.e. the number of rows
-    fn rows() -> usize;
 }
 
 /// Describe a folding environment.
@@ -117,19 +114,24 @@ pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
 /// - `Col`: The type of the column
 /// - `Chal`: The type of the challenge
 /// - `Selector`: The type of the selector
-pub trait FoldingEnv<F, I, W, Col, Chal, Selector> {
+pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// Structure which could be storing useful information like selectors, etc.
     type Structure;
 
     /// Creates a new environment storing the structure, instances and witnesses.
     fn new(structure: &Self::Structure, instances: [&I; 2], witnesses: [&W; 2]) -> Self;
 
+    /// Returns the domain size of the circuit.
+    fn domain_size(&self) -> usize;
+
     // TODO: move into `FoldingConfig`
     // FIXME: when we move this to `FoldingConfig` it will be general for all impls as:
     // vec![F::zero(); Self::rows()]
     /// Returns a vector of zeros with the same length as the number of rows in
     /// the circuit.
-    fn zero_vec(&self) -> Vec<F>;
+    fn zero_vec(&self) -> Vec<F> {
+        vec![F::zero(); self.domain_size()]
+    }
 
     /// Returns the evaluations of a given column witness at omega or zeta*omega.
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
@@ -168,7 +170,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         constraints: Vec<FoldingCompatibleExpr<CF>>,
         srs: &'a CF::Srs,
         domain: Radix2EvaluationDomain<ScalarField<CF>>,
-        structure: CF::Structure,
+        structure: &CF::Structure,
     ) -> (Self, FoldingCompatibleExpr<CF>) {
         let (expression, extended_witness_generator) = folding_expression(constraints);
         let zero = <ScalarField<CF>>::zero();
@@ -183,7 +185,7 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
             domain,
             zero_commitment,
             zero_vec,
-            structure,
+            structure: structure.clone(),
             extended_witness_generator,
         };
         (scheme, final_expression)

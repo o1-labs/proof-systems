@@ -112,10 +112,10 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, TestColumn, TestChallenge, Dynami
         }
     }
 
-    fn zero_vec(&self) -> Vec<Fp> {
+    fn domain_size(&self) -> usize {
         // this works in the example but is not the best way as the envionment
         // could get circuits of any size
-        vec![Fp::zero(); 2]
+        2
     }
 
     // provide access to columns, here side refers to one of the two pairs you
@@ -220,10 +220,6 @@ impl FoldingConfig for TestFoldingConfig {
     type Instance = TestInstance;
     type Witness = TestWitness;
     type Env = TestFoldingEnv;
-
-    fn rows() -> usize {
-        2
-    }
 }
 
 //creates an instance from its witness
@@ -338,7 +334,7 @@ mod tests {
             vec![],
             &srs,
             domain,
-            (),
+            &(),
         );
 
         // some inputs to be used by both add and mul

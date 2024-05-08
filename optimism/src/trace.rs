@@ -27,6 +27,7 @@ pub trait Indexer {
 /// - Selector: an enum representing the different gate behaviours,
 /// - F: the type of the witness data.
 #[allow(clippy::type_complexity)]
+#[derive(Clone)]
 pub struct Trace<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig> {
     /// The domain size of the circuit
     pub domain_size: usize,

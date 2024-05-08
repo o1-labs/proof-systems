@@ -61,6 +61,10 @@ impl Witness<Curve> for TestWitness {
         }
         a
     }
+
+    fn rows(&self) -> usize {
+        self[0].evals.len()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -105,8 +109,8 @@ impl FoldingEnv<Fp, TestInstance, TestWitness, Column, TestChallenge, ()> for Te
         }
     }
 
-    fn zero_vec(&self) -> Vec<Fp> {
-        vec![Fp::zero(); 2]
+    fn domain_size(&self) -> usize {
+        2
     }
 
     fn col(&self, col: Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<Fp> {
@@ -194,10 +198,6 @@ impl FoldingConfig for TestFoldingConfig {
     type Instance = TestInstance;
     type Witness = TestWitness;
     type Env = TestFoldingEnv;
-
-    fn rows() -> usize {
-        2
-    }
 }
 
 fn instance_from_witness(
@@ -239,7 +239,6 @@ mod checker {
         structure: TestStructure<Fp>,
         instance: TestInstance,
         witness: TestWitness,
-        rows: usize,
     }
 
     impl Provider {
@@ -248,13 +247,15 @@ mod checker {
             instance: TestInstance,
             witness: TestWitness,
         ) -> Self {
-            let rows = TestFoldingConfig::rows();
             Self {
                 structure,
                 instance,
                 witness,
-                rows,
             }
+        }
+
+        pub(crate) fn rows(&self) -> usize {
+            self.witness.rows()
         }
     }
 
@@ -262,7 +263,7 @@ mod checker {
         fn resolve(&self, inner: FoldingCompatibleExprInner<TestFoldingConfig>) -> Vec<Fp> {
             match inner {
                 FoldingCompatibleExprInner::Constant(c) => {
-                    vec![c; self.rows]
+                    vec![c; self.rows()]
                 }
                 FoldingCompatibleExprInner::Challenge(chall) => {
                     let chals = self.instance.challenges;
@@ -271,7 +272,7 @@ mod checker {
                         TestChallenge::Gamma => chals[1],
                         TestChallenge::JointCombiner => chals[2],
                     };
-                    vec![v; self.rows]
+                    vec![v; self.rows()]
                 }
                 FoldingCompatibleExprInner::Cell(var) => {
                     let Variable { col, row } = var;
@@ -332,7 +333,7 @@ mod checker {
                 FoldingCompatibleExprInner::Extensions(ext) => match ext {
                     ExpExtension::U => {
                         let u = self.instance.u;
-                        vec![u; self.inner_provider.rows]
+                        vec![u; self.inner_provider.rows()]
                     }
                     ExpExtension::Error => self.witness.error_vec.evals.clone(),
                     ExpExtension::ExtendedWitness(i) => {
@@ -340,7 +341,7 @@ mod checker {
                     }
                     ExpExtension::Alpha(i) => {
                         let alpha = self.instance.inner_instance().inner.alphas.get(i).unwrap();
-                        vec![alpha; self.inner_provider.rows]
+                        vec![alpha; self.inner_provider.rows()]
                     }
                     ExpExtension::Selector(_) => panic!("unused"),
                 },
@@ -381,12 +382,8 @@ mod tests {
             constants: vec![],
         };
 
-        let (scheme, final_constraint) = FoldingScheme::<TestFoldingConfig>::new(
-            constraints.clone(),
-            &srs,
-            domain,
-            structure.clone(),
-        );
+        let (scheme, final_constraint) =
+            FoldingScheme::<TestFoldingConfig>::new(constraints.clone(), &srs, domain, &structure);
 
         // We have a 2 row circuit with and addition gate in the first row, and a multiplication gate in the second
 
