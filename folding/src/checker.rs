@@ -3,7 +3,7 @@
 
 use crate::{
     expressions::{FoldingColumnTrait, FoldingCompatibleExpr, FoldingCompatibleExprInner},
-    instance_witness::Instance,
+    instance_witness::{Instance, Witness},
     ExpExtension, FoldingConfig, Radix2EvaluationDomain, RelaxedInstance, RelaxedWitness,
 };
 use ark_ec::AffineCurve;
@@ -49,17 +49,15 @@ impl FoldingColumnTrait for Column {
 pub struct Provider<C: FoldingConfig> {
     pub instance: C::Instance,
     pub witness: C::Witness,
-    pub rows: usize,
 }
 
 impl<C: FoldingConfig> Provider<C> {
     pub fn new(instance: C::Instance, witness: C::Witness) -> Self {
-        let rows = C::rows();
-        Self {
-            instance,
-            witness,
-            rows,
-        }
+        Self { instance, witness }
+    }
+
+    pub fn rows(&self) -> usize {
+        self.witness.rows()
     }
 }
 
@@ -118,11 +116,11 @@ where
     ) -> Vec<<C::Curve as AffineCurve>::ScalarField> {
         match inner {
             FoldingCompatibleExprInner::Constant(c) => {
-                vec![c; self.rows]
+                vec![c; self.rows()]
             }
             FoldingCompatibleExprInner::Challenge(chal) => {
                 let v = self.instance[chal];
-                vec![v; self.rows]
+                vec![v; self.rows()]
             }
             FoldingCompatibleExprInner::Cell(var) => {
                 let Variable { col, row } = var;
@@ -169,7 +167,7 @@ where
             FoldingCompatibleExprInner::Extensions(ext) => match ext {
                 ExpExtension::U => {
                     let u = self.instance.u;
-                    vec![u; self.inner_provider.rows]
+                    vec![u; self.inner_provider.rows()]
                 }
                 ExpExtension::Error => self.witness.error_vec.evals.clone(),
                 ExpExtension::ExtendedWitness(i) => {
@@ -183,7 +181,7 @@ where
                         .alphas()
                         .get(i)
                         .unwrap();
-                    vec![alpha; self.inner_provider.rows]
+                    vec![alpha; self.inner_provider.rows()]
                 }
                 ExpExtension::Selector(s) => {
                     let col = &self.inner_provider.witness[s].evals;

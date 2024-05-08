@@ -90,8 +90,8 @@ pub fn main() -> ExitCode {
     // The keccak environment is extracted inside the loop
 
     // Initialize the circuits. Includes pre-folding witnesses.
-    let mut mips_trace = MIPSTrace::<Fp>::new(DOMAIN_SIZE, &mut mips_con_env);
-    let mut keccak_trace = KeccakTrace::<Fp>::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
+    let mut mips_trace = MIPSTrace::new(DOMAIN_SIZE, &mut mips_con_env);
+    let mut keccak_trace = KeccakTrace::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
     let _mips_folding = {
         let constraints: BTreeMap<Instruction, Vec<FoldingCompatibleExpr<MIPSFoldingConfig>>> =
@@ -113,7 +113,7 @@ pub fn main() -> ExitCode {
             vec![],
             &srs.full_srs,
             domain.d1,
-            (),
+            &mips_trace,
         )
     };
 

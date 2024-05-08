@@ -1,4 +1,4 @@
-use crate::DOMAIN_SIZE;
+use crate::trace::Trace;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -96,45 +96,56 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
         }
         a
     }
+
+    fn rows(&self) -> usize {
+        self.witness.cols[0].evals.len()
+    }
 }
 
 /// Environment for the folding protocol, for a given number of witness columns
 /// and structure
-pub struct FoldingEnvironment<const N: usize, G: CommitmentCurve> {
-    /// Structure of the folded circuit (not used right now)
-    pub structure: (),
+pub struct FoldingEnvironment<
+    const N: usize,
+    const N_REL: usize,
+    const N_SEL: usize,
+    C: FoldingConfig,
+> {
+    /// Structure of the folded circuit (using Trace for now, as it contains the domain size)
+    pub structure: Trace<N, N_REL, N_SEL, C>,
     /// Commitments to the witness columns, for both sides
-    pub instances: [FoldingInstance<N, G>; 2],
+    pub instances: [FoldingInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
-    pub curr_witnesses: [FoldingWitness<N, G::ScalarField>; 2],
+    pub curr_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
     /// Corresponds to the zeta*omega evaluations, for both sides
     /// This is curr_witness but left shifted by 1
-    pub next_witnesses: [FoldingWitness<N, G::ScalarField>; 2],
+    pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }
 
-impl<const N: usize, G: CommitmentCurve, Col, Selector: Copy + Clone>
+impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
     FoldingEnv<
-        G::ScalarField,
-        FoldingInstance<N, G>,
-        FoldingWitness<N, G::ScalarField>,
-        Col,
+        ScalarField<C>,
+        FoldingInstance<N, C::Curve>,
+        FoldingWitness<N, ScalarField<C>>,
+        C::Column,
         Challenge,
-        Selector,
-    > for FoldingEnvironment<N, G>
+        C::Selector,
+    > for FoldingEnvironment<N, N_REL, N_SEL, C>
 where
-    FoldingWitness<N, G::ScalarField>:
-        Index<Col, Output = Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>>,
-    FoldingWitness<N, G::ScalarField>: Index<
-        Selector,
-        Output = Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>,
+    FoldingWitness<N, ScalarField<C>>: Index<
+        C::Column,
+        Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
+    >,
+    FoldingWitness<N, ScalarField<C>>: Index<
+        C::Selector,
+        Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
 {
-    type Structure = ();
+    type Structure = Trace<N, N_REL, N_SEL, C>;
 
     fn new(
-        _structure: &Self::Structure,
-        instances: [&FoldingInstance<N, G>; 2],
-        witnesses: [&FoldingWitness<N, G::ScalarField>; 2],
+        structure: &Self::Structure,
+        instances: [&FoldingInstance<N, C::Curve>; 2],
+        witnesses: [&FoldingWitness<N, ScalarField<C>>; 2],
     ) -> Self {
         let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
         let mut next_witnesses = curr_witnesses.clone();
@@ -144,18 +155,22 @@ where
             }
         }
         FoldingEnvironment {
-            structure: (),
+            structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],
             curr_witnesses,
             next_witnesses,
         }
     }
 
-    fn zero_vec(&self) -> Vec<G::ScalarField> {
-        vec![G::ScalarField::zero(); DOMAIN_SIZE]
+    fn domain_size(&self) -> usize {
+        self.structure.domain_size
     }
 
-    fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<G::ScalarField> {
+    fn zero_vec(&self) -> Vec<ScalarField<C>> {
+        vec![ScalarField::<C>::zero(); self.domain_size()]
+    }
+
+    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
         let wit = match curr_or_next {
             CurrOrNext::Curr => &self.curr_witnesses[side as usize],
             CurrOrNext::Next => &self.next_witnesses[side as usize],
@@ -164,7 +179,7 @@ where
         &wit[col].evals
     }
 
-    fn challenge(&self, challenge: Challenge, side: Side) -> G::ScalarField {
+    fn challenge(&self, challenge: Challenge, side: Side) -> ScalarField<C> {
         match challenge {
             Challenge::Beta => self.instances[side as usize].challenges[0],
             Challenge::Gamma => self.instances[side as usize].challenges[1],
@@ -172,12 +187,12 @@ where
         }
     }
 
-    fn alpha(&self, i: usize, side: Side) -> G::ScalarField {
+    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
     }
 
-    fn selector(&self, s: &Selector, side: Side) -> &Vec<G::ScalarField> {
+    fn selector(&self, s: &C::Selector, side: Side) -> &Vec<ScalarField<C>> {
         let witness = &self.curr_witnesses[side as usize];
         &witness[*s].evals
     }

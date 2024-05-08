@@ -42,6 +42,9 @@ pub trait Witness<G: CommitmentCurve>: Sized {
     /// Should return a linear combination
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
 
+    /// Returns the number of rows in the witness
+    fn rows(&self) -> usize;
+
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
         let witness = ExtendedWitness::extend(self);
         RelaxedWitness {
@@ -158,6 +161,10 @@ impl<G: CommitmentCurve, W: Witness<G>> Witness<G> for ExtendedWitness<G, W> {
             })
             .collect();
         Self { inner, extended }
+    }
+
+    fn rows(&self) -> usize {
+        self.inner.rows()
     }
 }
 

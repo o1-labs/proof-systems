@@ -1,4 +1,5 @@
 use crate::{
+    folding::ScalarField,
     mips::{
         column::{MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS},
         constraints::Env,
@@ -6,18 +7,26 @@ use crate::{
     },
     trace::{Trace, Tracer},
 };
-use ark_ff::Field;
+use ark_ff::Zero;
 use kimchi_msm::witness::Witness;
 use std::{array, collections::BTreeMap};
 use strum::IntoEnumIterator;
 
-/// The MIPS circuit trace
-pub type MIPSTrace<F> = Trace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F>;
+use super::folding::MIPSFoldingConfig;
 
-impl<F: Field> Tracer<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F, Env<F>>
-    for MIPSTrace<F>
+/// The MIPS circuit trace
+pub type MIPSTrace = Trace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
+
+impl
+    Tracer<
+        MIPS_COLUMNS,
+        MIPS_REL_COLS,
+        MIPS_SEL_COLS,
+        MIPSFoldingConfig,
+        Env<ScalarField<MIPSFoldingConfig>>,
+    > for MIPSTrace
 {
-    fn new(domain_size: usize, env: &mut Env<F>) -> Self {
+    fn new(domain_size: usize, env: &mut Env<ScalarField<MIPSFoldingConfig>>) -> Self {
         let mut circuit = Self {
             domain_size,
             witness: BTreeMap::new(),
@@ -42,7 +51,11 @@ impl<F: Field> Tracer<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F
         circuit
     }
 
-    fn push_row(&mut self, opcode: Instruction, row: &[F; MIPS_REL_COLS]) {
+    fn push_row(
+        &mut self,
+        opcode: Instruction,
+        row: &[ScalarField<MIPSFoldingConfig>; MIPS_REL_COLS],
+    ) {
         self.witness.entry(opcode).and_modify(|wit| {
             for (i, value) in row.iter().enumerate() {
                 if wit.cols[i].len() < wit.cols[i].capacity() {
@@ -52,7 +65,11 @@ impl<F: Field> Tracer<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F
         });
     }
 
-    fn pad_with_row(&mut self, opcode: Instruction, row: &[F; MIPS_REL_COLS]) -> usize {
+    fn pad_with_row(
+        &mut self,
+        opcode: Instruction,
+        row: &[ScalarField<MIPSFoldingConfig>; MIPS_REL_COLS],
+    ) -> usize {
         let len = self.witness[&opcode].cols[0].len();
         assert!(len <= self.domain_size);
         let rows_to_add = self.domain_size - len;
@@ -68,7 +85,7 @@ impl<F: Field> Tracer<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, Instruction, F
         let rows_to_add = self.domain_size - len;
         self.witness.entry(opcode).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
-                col.extend((0..rows_to_add).map(|_| F::zero()));
+                col.extend((0..rows_to_add).map(|_| ScalarField::<MIPSFoldingConfig>::zero()));
             }
         });
         rows_to_add
