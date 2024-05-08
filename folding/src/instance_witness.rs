@@ -47,7 +47,7 @@ pub trait Witness<G: CommitmentCurve>: Sized {
 
     /// This method takes a witness and a vector of evaluations to the zero polynomial,
     /// returning a relaxed witness which is composed by the extended witness and the error vector
-    /// that is set tot he zero polynomial.
+    /// that is set to the zero polynomial.
     fn relax(self, zero_poly: &Evals<G::ScalarField>) -> RelaxedWitness<G, Self> {
         let witness = ExtendedWitness::extend(self);
         RelaxedWitness {
