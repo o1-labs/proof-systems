@@ -9,7 +9,7 @@ use crate::{
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use folding::{
-    checker::{Checker, ExtendedProvider},
+    checker::{Checker, ExtendedProvider, Provider},
     expressions::FoldingColumnTrait,
     FoldingConfig,
 };
@@ -80,3 +80,4 @@ impl FoldingConfig for KeccakConfig {
 // IMPLEMENT CHECKER TRAITS
 
 impl Checker<KeccakConfig> for ExtendedProvider<KeccakConfig> {}
+impl Checker<KeccakConfig> for Provider<KeccakConfig> {}
