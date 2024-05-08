@@ -164,7 +164,8 @@ pub fn main() -> ExitCode {
             mips_wit_env.keccak_env = None;
         }
 
-        // TODO: unify witness of MIPS to include scratch state, instruction counter, and error
+        // TODO: unify witness of MIPS to include scratch state, instruction
+        // counter, and error
         for i in 0..MIPS_REL_COLS {
             match i.cmp(&SCRATCH_SIZE) {
                 Ordering::Less => mips_trace.witness.get_mut(&instr).unwrap().cols[i]
