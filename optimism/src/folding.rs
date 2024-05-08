@@ -1,4 +1,4 @@
-use crate::trace::Trace;
+use crate::trace::TraceT;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -109,9 +109,10 @@ pub struct FoldingEnvironment<
     const N_REL: usize,
     const N_SEL: usize,
     C: FoldingConfig,
+    Structure: TraceT + Clone,
 > {
     /// Structure of the folded circuit (using Trace for now, as it contains the domain size)
-    pub structure: Trace<N, N_REL, N_SEL, C>,
+    pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -121,7 +122,13 @@ pub struct FoldingEnvironment<
     pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
 }
 
-impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
+impl<
+        const N: usize,
+        const N_REL: usize,
+        const N_SEL: usize,
+        C: FoldingConfig,
+        Structure: TraceT + Clone,
+    >
     FoldingEnv<
         ScalarField<C>,
         FoldingInstance<N, C::Curve>,
@@ -129,7 +136,7 @@ impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
         C::Column,
         Challenge,
         C::Selector,
-    > for FoldingEnvironment<N, N_REL, N_SEL, C>
+    > for FoldingEnvironment<N, N_REL, N_SEL, C, Structure>
 where
     FoldingWitness<N, ScalarField<C>>: Index<
         C::Column,
@@ -140,7 +147,7 @@ where
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
 {
-    type Structure = Trace<N, N_REL, N_SEL, C>;
+    type Structure = Structure;
 
     fn new(
         structure: &Self::Structure,
@@ -163,7 +170,7 @@ where
     }
 
     fn domain_size(&self) -> usize {
-        self.structure.domain_size
+        self.structure.domain_size()
     }
 
     fn zero_vec(&self) -> Vec<ScalarField<C>> {

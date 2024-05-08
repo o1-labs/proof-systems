@@ -4,7 +4,7 @@ use crate::{
         column::{ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
         KeccakColumn, Steps,
     },
-    trace::{Indexer, Trace},
+    trace::Indexer,
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -17,11 +17,18 @@ use kimchi_msm::columns::Column;
 use poly_commitment::srs::SRS;
 use std::ops::Index;
 
+use super::trace::KeccakTrace;
+
 pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS, Fp>;
 pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS, Curve>;
 
-pub type KeccakFoldingEnvironment =
-    FoldingEnvironment<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+pub type KeccakFoldingEnvironment = FoldingEnvironment<
+    ZKVM_KECCAK_COLS,
+    ZKVM_KECCAK_REL,
+    ZKVM_KECCAK_SEL,
+    KeccakConfig,
+    KeccakTrace,
+>;
 
 impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
@@ -73,7 +80,7 @@ impl FoldingConfig for KeccakConfig {
     type Srs = SRS<Curve>;
     type Instance = KeccakFoldingInstance;
     type Witness = KeccakFoldingWitness;
-    type Structure = Trace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+    type Structure = KeccakTrace;
     type Env = KeccakFoldingEnvironment;
 }
 

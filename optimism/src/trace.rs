@@ -18,6 +18,23 @@ pub trait Indexer {
     fn ix(&self) -> usize;
 }
 
+pub trait TraceT {
+    fn domain_size(&self) -> usize;
+}
+
+pub struct SingleInstructionTrace<const N: usize, C: FoldingConfig> {
+    pub domain_size: usize,
+    pub witness: Witness<N, Vec<ScalarField<C>>>,
+    pub constraints: Vec<E<ScalarField<C>>>,
+    pub lookups: Vec<Lookup<E<ScalarField<C>>>>,
+}
+
+impl<const N: usize, C: FoldingConfig> TraceT for SingleInstructionTrace<N, C> {
+    fn domain_size(&self) -> usize {
+        self.domain_size
+    }
+}
+
 /// Struct representing a circuit execution trace containing
 /// all the necessary information to generate a proof.
 /// It is parameterized by
@@ -39,6 +56,14 @@ pub struct Trace<const N: usize, const N_REL: usize, const N_SEL: usize, C: Fold
     pub constraints: BTreeMap<C::Selector, Vec<E<ScalarField<C>>>>,
     /// The vector of lookups for a given selector
     pub lookups: BTreeMap<C::Selector, Vec<Lookup<E<ScalarField<C>>>>>,
+}
+
+impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig> TraceT
+    for Trace<N, N_REL, N_SEL, C>
+{
+    fn domain_size(&self) -> usize {
+        self.domain_size
+    }
 }
 
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
