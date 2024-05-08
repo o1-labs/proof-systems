@@ -7,7 +7,7 @@ We choose a domain $H$ such that it is a multiplicative subgroup of the scalar f
 
 Furthermore, as FFT (used for interpolation, [see the section on FFTs](https://o1-labs.github.io/proof-systems/fundamentals/zkbook_fft.html)) works best in domains of size $2^k$ for some $k$, we choose $H$ to be a subgroup of order $2^k$.
 
-Since the [pasta curves](https://o1-labs.github.io/proof-systems/specs/pasta.html) both have scalar fields of prime orders $p$ and $q$, their multiplicative subgroup is of order $p-1$ and $q-1$ respectively (without the zero element). 
+Since the [pasta curves](https://o1-labs.github.io/proof-systems/specs/pasta.html) both have scalar fields of prime orders $p$ and $q$, their multiplicative subgroup is of order $p-1$ and $q-1$ respectively (without the zero element).
 [The pasta curves were generated](https://forum.zcashcommunity.com/t/noob-question-about-plonk-halo2/39098) specifically so that both $p-1$ and $q-1$ are multiples of $2^{32}$.
 
 We say that they have *2-adicity* of 32.
@@ -29,7 +29,7 @@ impl FftParameters for FqParameters {
 The 2-adicity of 32 means that there's a multiplicative subgroup of size $2^{32}$ that exists in the field.
 The code above also defines a generator $g$ for it, such that $g^{2^{32}} = 1$ and $g^i \neq 1$ for $i \in [[1, 2^{32}-1]]$ (so it's a **primitive** $2^{32}$-th root of unity).
 
-[Lagrange's theorem](https://en.wikipedia.org/wiki/Lagrange%27s_theorem_(group_theory\)) tells us that if we have a group of order $n$, then we'll have subgroups with orders dividing $n$. So in our case, we have subgroups with all the powers of 2, up to the 32-th power of 2.
+[Lagrange's theorem](https://en.wikipedia.org/wiki/Lagrange%27s_theorem_(group_theory)) tells us that if we have a group of order $n$, then we'll have subgroups with orders dividing $n$. So in our case, we have subgroups with all the powers of 2, up to the 32-th power of 2.
 
 To find any of these groups, it is pretty straight forward as well. Notice that:
 
@@ -52,11 +52,11 @@ this allows you to easily find subgroups of different sizes of powers of 2, whic
 
 ## Efficient computation of the vanishing polynomial
 
-For each curve, we generate a domain $H$ as the set $H = {1, \omega, \omega^2, \cdots, \omega^{n-1}}$. 
-As we work in a multiplicative subgroup, the polynomial that vanishes in all of these points can be written and efficiently calculated as $Z_H(x) = x^{|H|} - 1$.  
+For each curve, we generate a domain $H$ as the set $H = {1, \omega, \omega^2, \cdots, \omega^{n-1}}$.
+As we work in a multiplicative subgroup, the polynomial that vanishes in all of these points can be written and efficiently calculated as $Z_H(x) = x^{|H|} - 1$.
 This is because, by definition, $\omega^{|H|} = 1$. If $x \in H$, then $x = \omega^i$ for some $i$, and we have:
 
 $$x^{|H|} = (\omega^i)^{|H|} = (\omega^{|H|})^i = 1^i = 1$$
 
-This optimization is important, as without it calculating the vanishing polynomial would take a number of operations linear in $|H|$ (which is not doable in a verifier circuit, for recursion). 
+This optimization is important, as without it calculating the vanishing polynomial would take a number of operations linear in $|H|$ (which is not doable in a verifier circuit, for recursion).
 With the optimization, it takes us a logarithmic number of operation (using [exponentiation by squaring](https://en.wikipedia.org/wiki/Exponentiation_by_squaring)) to calculate the vanishing polynomial.

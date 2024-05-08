@@ -3,7 +3,7 @@ Using fixed-key AES as a hash function in this context can be traced back to the
 
 Prior to [BHKR13](https://eprint.iacr.org/2013/426.pdf) CPU time was the main bottleneck for protocols based on circuit garbling; after the introduction of fixed-key cipher garbling, network throughput became the dominant factor. For this reason, fixed-key AES has been almost universally adopted in subsequent implementations of garbled circuits.
 
-Several instantiations of hash function based on fix-key AES are proposed inspired by the work of Bellare et al. However, most of them have some security flaws as pointed out by [GKWY20](https://eprint.iacr.org/2019/074.pdf). [GKWY20] also proposes a provable secure instantiation satisfies the property called Tweakable Circular Correlation Robustness (TCCR). More discussions about the concrete security of fixed-key AES based hash are introduced in [GKWWY20](https://eprint.iacr.org/2019/1168.pdf).
+Several instantiations of hash function based on fix-key AES are proposed inspired by the work of Bellare et al. However, most of them have some security flaws as pointed out by [GKWY20](https://eprint.iacr.org/2019/074.pdf). (GKWY20) also proposes a provable secure instantiation satisfies the property called Tweakable Circular Correlation Robustness (TCCR). More discussions about the concrete security of fixed-key AES based hash are introduced in [GKWWY20](https://eprint.iacr.org/2019/1168.pdf).
 
 The TCCR hash based on fixed-key AES is defined as follows.
 
