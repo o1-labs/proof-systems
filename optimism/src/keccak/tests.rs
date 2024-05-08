@@ -538,7 +538,11 @@ fn test_keccak_prover_constraints() {
 
 #[test]
 fn test_keccak_decomposable_folding() {
-    use crate::{keccak::folding::KeccakConfig, trace::Folder, Curve};
+    use crate::{
+        keccak::folding::KeccakConfig,
+        trace::{Folder, Trace},
+        Curve,
+    };
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use folding::{
         checker::{Checker, ExtendedProvider},
@@ -548,21 +552,22 @@ fn test_keccak_decomposable_folding() {
     use kimchi::curve::KimchiCurve;
     use log::debug;
     use mina_poseidon::FqSponge;
+    use poly_commitment::srs::SRS;
 
     // guaranteed to have at least 30MB of stack
     stacker::grow(30 * 1024 * 1024, || {
         let mut rng = o1_utils::tests::make_test_rng();
-        let domain_size = 1 << 15;
+        let domain_size = 1 << 8;
 
         let domain = D::<Fp>::new(domain_size).unwrap();
-        let mut srs = poly_commitment::srs::SRS::<Curve>::create(domain_size);
+        let mut srs = SRS::<Curve>::create(domain_size);
         srs.add_lagrange_basis(domain);
 
         // Create sponge
         let mut fq_sponge = BaseSponge::new(Curve::other_curve_sponge_params());
 
         // Create two instances for each selector to be folded
-        let mut keccak_trace: [crate::trace::Trace<
+        let mut keccak_trace: [Trace<
             ZKVM_KECCAK_COLS,
             ZKVM_KECCAK_REL,
             ZKVM_KECCAK_SEL,
@@ -574,10 +579,7 @@ fn test_keccak_decomposable_folding() {
             // Generate domain_size random preimages of 1 block for Keccak
             // to obtain full witnesses for two different types of instructions: Absorb(Only) and Round(0)
             // We will fold them together and check that all the constraints hold for the folded circuit
-            for i in 0..domain_size {
-                if i % 1000 == 0 {
-                    println!("i: {}", i);
-                }
+            for _ in 0..domain_size {
                 // random 1-block preimages
                 let bytelength = rng.gen_range(0..RATE_IN_BYTES);
                 let preimage: Vec<u8> = (0..bytelength).map(|_| rng.gen()).collect();
@@ -619,14 +621,18 @@ fn test_keccak_decomposable_folding() {
         .into_iter()
         .collect();
 
-        let (scheme, final_constraint) =
-            DecomposableFoldingScheme::<KeccakConfig>::new(constraints, vec![], &srs, domain, ());
+        let (scheme, final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(
+            constraints,
+            vec![],
+            &srs,
+            domain,
+            &keccak_trace[0],
+        );
 
         // Fold Sponge(Absorb(Only))
         let left_absorb = {
             let left = keccak_trace[0].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
             let right = keccak_trace[1].to_folding_pair(Sponge(Absorb(Only)), &srs, &mut fq_sponge);
-            // TODO: Fix domain size used in folding because it is using 2^15 instead of 1<<8
             let (folded_instance, folded_witness, [_t0, _t1]) = scheme.fold_instance_witness_pair(
                 left,
                 right,
@@ -641,7 +647,6 @@ fn test_keccak_decomposable_folding() {
             } = checker;
             (instance, witness)
         };
-        println!("absorb was checked");
 
         // Fold Round(0)
         let right_round = {
@@ -657,7 +662,6 @@ fn test_keccak_decomposable_folding() {
             } = checker;
             (instance, witness)
         };
-        println!("round was checked");
 
         // Fold the two different instances together
         {
@@ -671,6 +675,5 @@ fn test_keccak_decomposable_folding() {
 
             checker.check(&final_constraint);
         };
-        println!("mixed was checked");
     });
 }
