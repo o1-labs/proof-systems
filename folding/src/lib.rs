@@ -136,10 +136,6 @@ pub trait FoldingEnv<F: Zero + Clone, I, W, Col, Chal, Selector> {
     /// Returns the evaluations of a given column witness at omega or zeta*omega.
     fn col(&self, col: Col, curr_or_next: CurrOrNext, side: Side) -> &Vec<F>;
 
-    // TODO: could be shared across circuits of the same type
-    /// Returns the evaluations of the i-th Lagrangian term.
-    fn lagrange_basis(&self, i: usize) -> &Vec<F>;
-
     /// Obtains a given challenge from the expanded instance for one side.
     /// The challenges are stored inside the instances structs.
     fn challenge(&self, challenge: Chal, side: Side) -> F;
@@ -251,6 +247,10 @@ impl<'a, CF: FoldingConfig> FoldingScheme<'a, CF> {
         (instance, witness, error_commitments)
     }
 
+    /// Fold two relaxable instances into a relaxed instance.
+    /// It is parametrized by two different types `A` and `B` that represent
+    /// "relaxable" instances to be able to fold a normal and "already relaxed"
+    /// instance.
     pub fn fold_instance_pair<A, B, Sponge>(
         &self,
         a: A,

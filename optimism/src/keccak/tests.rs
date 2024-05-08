@@ -622,7 +622,6 @@ fn test_keccak_decomposable_folding() {
                         .collect(),
                 )
             })
-            .into_iter()
             .collect();
 
         let (scheme, final_constraint) = DecomposableFoldingScheme::<KeccakConfig>::new(

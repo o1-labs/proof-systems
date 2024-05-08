@@ -187,10 +187,6 @@ where
         }
     }
 
-    fn lagrange_basis(&self, _i: usize) -> &Vec<ScalarField<C>> {
-        todo!()
-    }
-
     fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
         let instance = &self.instances[side as usize];
         instance.alphas.get(i).unwrap()
