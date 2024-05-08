@@ -70,8 +70,6 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Srs = SRS<Curve>;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
-    // The structure is empty as we don't need to store any additional
-    // information that is static for the relation
     type Structure = Trace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
     type Env = MIPSFoldingEnvironment;
 }
