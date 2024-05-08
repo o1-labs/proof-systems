@@ -208,6 +208,9 @@ where
     }
 }
 
+/// Folding environment for a trace with a single instruction.
+// FIXME: This is a temporary solution. The folding environment should be
+// rewritten differently.
 pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure: ProvableTrace> {
     /// Structure of the folded circuit
     pub structure: Structure,
@@ -232,6 +235,7 @@ impl<
         FoldingWitness<N, ScalarField<C>>,
         C::Column,
         Challenge,
+        // No selector
         (),
     > for FoldingEnvironment<N, C, Structure>
 where
