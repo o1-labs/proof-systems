@@ -578,6 +578,9 @@ pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<I
 }
 
 /// Convert a list of folding compatible expression into the folded form.
+/// This function is meant to be called internally and the user should not call
+/// it.
+/// The user should use [crate::FoldingScheme] instead.
 pub fn folding_expression<C: FoldingConfig>(
     exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> (IntegratedFoldingExpr<C>, ExtendedWitnessGenerator<C>) {
