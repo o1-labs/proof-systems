@@ -176,6 +176,7 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implement an interpreter for a specific instance of the Poseidon inner permutation.
 //! The Poseidon construction is defined in the paper ["Poseidon: A New Hash
 //! Function"](https://eprint.iacr.org/2019/458.pdf).
@@ -201,7 +202,8 @@
 /// The type is parametrized by the field, the state size, and the number of full rounds.
 /// Note that the parameters are only for instances using full rounds.
 </span><span class="comment">// IMPROVEME merge constants and mds in a flat array, to use the CPU cache
-</span><span class="kw">pub trait </span>Params&lt;F: PrimeField, <span class="kw">const </span>STATE_SIZE: usize, <span class="kw">const </span>NB_FULL_ROUNDS: usize&gt; {
+// IMPROVEME generalise init_state for more than 3 elements
+</span><span class="kw">pub trait </span>PoseidonParams&lt;F: PrimeField, <span class="kw">const </span>STATE_SIZE: usize, <span class="kw">const </span>NB_FULL_ROUNDS: usize&gt; {
     <span class="kw">fn </span>constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[F; STATE_SIZE]; NB_FULL_ROUNDS];
     <span class="kw">fn </span>mds(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[F; STATE_SIZE]; STATE_SIZE];
 }
@@ -215,19 +217,19 @@
     Env,
 &gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    param: PARAMETERS,
-    init_state: (F, F, F),
+    param: <span class="kw-2">&amp;</span>PARAMETERS,
+    init_state: (Env::Variable, Env::Variable, Env::Variable),
 ) <span class="kw">where
     </span>F: PrimeField,
-    PARAMETERS: Params&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
     Env: ColWriteCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
         + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {
     <span class="comment">// Write inputs
     </span>{
-        env.write_column(PoseidonColumn::Input(<span class="number">0</span>), <span class="kw-2">&amp;</span>Env::constant(init_state.<span class="number">0</span>));
-        env.write_column(PoseidonColumn::Input(<span class="number">1</span>), <span class="kw-2">&amp;</span>Env::constant(init_state.<span class="number">1</span>));
-        env.write_column(PoseidonColumn::Input(<span class="number">2</span>), <span class="kw-2">&amp;</span>Env::constant(init_state.<span class="number">2</span>));
+        env.write_column(PoseidonColumn::Input(<span class="number">0</span>), <span class="kw-2">&amp;</span>init_state.<span class="number">0</span>);
+        env.write_column(PoseidonColumn::Input(<span class="number">1</span>), <span class="kw-2">&amp;</span>init_state.<span class="number">1</span>);
+        env.write_column(PoseidonColumn::Input(<span class="number">2</span>), <span class="kw-2">&amp;</span>init_state.<span class="number">2</span>);
     }
 
     <span class="comment">// Write constants
@@ -258,10 +260,10 @@
     Env,
 &gt;(
     env: <span class="kw-2">&amp;mut </span>Env,
-    param: PARAMETERS,
+    param: <span class="kw-2">&amp;</span>PARAMETERS,
 ) <span class="kw">where
     </span>F: PrimeField,
-    PARAMETERS: Params&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
     Env: ColAccessCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
         + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {
@@ -282,7 +284,7 @@
                 std::array::from_fn(|j| PoseidonColumn::Round(i - <span class="number">1</span>, j))
             }
         };
-        compute_one_round::&lt;F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env&gt;(env, <span class="kw-2">&amp;</span>param, i, <span class="kw-2">&amp;</span>state);
+        compute_one_round::&lt;F, STATE_SIZE, NB_FULL_ROUND, PARAMETERS, Env&gt;(env, param, i, <span class="kw-2">&amp;</span>state);
     }
 }
 
@@ -300,7 +302,7 @@
     elements: <span class="kw-2">&amp;</span>[PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;; STATE_SIZE],
 ) <span class="kw">where
     </span>F: PrimeField,
-    PARAMETERS: Params&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
+    PARAMETERS: PoseidonParams&lt;F, STATE_SIZE, NB_FULL_ROUND&gt;,
     Env: ColAccessCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;
         + HybridCopyCap&lt;F, PoseidonColumn&lt;STATE_SIZE, NB_FULL_ROUND&gt;&gt;,
 {
@@ -324,7 +326,7 @@
         .collect();
 
     <span class="comment">// Applying the linear layer
-    </span><span class="kw">let </span>mds = Params::mds(param);
+    </span><span class="kw">let </span>mds = PoseidonParams::mds(param);
     <span class="kw">let </span>state: Vec&lt;Env::Variable&gt; = mds
         .into_iter()
         .map(|m| {

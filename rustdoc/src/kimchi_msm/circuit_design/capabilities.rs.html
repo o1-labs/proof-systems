@@ -126,6 +126,24 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
 </pre></div><pre class="rust"><code><span class="doccomment">/// Provides generic environment traits that allow manipulating columns and
 /// requesting lookups.
 ///
@@ -151,7 +169,7 @@
     </span><span class="kw">fn </span>assert_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cst: <span class="self">Self</span>::Variable);
 
     <span class="doccomment">/// Reads value from a column position.
-    </span><span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, ix: CIx) -&gt; <span class="self">Self</span>::Variable;
+    </span><span class="kw">fn </span>read_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: CIx) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Turns a constant value into a variable.
     </span><span class="kw">fn </span>constant(value: F) -&gt; <span class="self">Self</span>::Variable;
@@ -163,7 +181,7 @@
 <span class="kw">where
     </span><span class="self">Self</span>: ColAccessCap&lt;F, CIx&gt;,
 {
-    <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ix: CIx, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+    <span class="kw">fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, col: CIx, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 }
 
 <span class="doccomment">/// Capability for invoking table lookups.
@@ -172,6 +190,24 @@
     </span><span class="self">Self</span>: ColAccessCap&lt;F, CIx&gt;,
 {
     <span class="kw">fn </span>lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup_id: LT, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+}
+
+<span class="doccomment">/// Capability for reading and moving forward in a multirow fashion.
+/// Holds a "current" row that can be moved forward with `next_row`.
+/// The `ColWriteCap` and `ColAccessCap` reason in terms of current
+/// row. The two other methods can be used to read/write previous.
+</span><span class="kw">pub trait </span>MultiRowReadCap&lt;F: PrimeField, CIx: ColumnIndexer&gt;
+<span class="kw">where
+    </span><span class="self">Self</span>: ColWriteCap&lt;F, CIx&gt;,
+{
+    <span class="doccomment">/// Read value from a (row,column) position.
+    </span><span class="kw">fn </span>read_row_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, row: usize, col: CIx) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="doccomment">/// Progresses to the next row.
+    </span><span class="kw">fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
+
+    <span class="doccomment">/// Returns the current row.
+    </span><span class="kw">fn </span>curr_row(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize;
 }
 
 <span class="comment">////////////////////////////////////////////////////////////////////////////

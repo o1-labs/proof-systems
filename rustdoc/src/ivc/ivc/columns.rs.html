@@ -179,8 +179,42 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{ivc::interpreter::N_LIMBS_XLARGE, poseidon::columns::PoseidonColumn};
 <span class="kw">use </span>kimchi_msm::{
+    circuit_design::composition::MPrism,
     columns::{Column, ColumnIndexer},
     fec::columns::FECColumn,
     serialization::interpreter::{N_LIMBS_LARGE, N_LIMBS_SMALL},
@@ -221,20 +255,24 @@
 ///      0       ...     34*2    76    80
 ///
 ///
-///        Hashes (one hash at a row, passing data to the next one)
+///                      Hashes
+///     (one hash at a row, passing data to the next one)
+///     (for i∈N, the input row #i containing 4 150-bit elements
+///      is processed by hash rows 2*i and 2*i+1)
+///
 ///  1   |------------------------------------------|
 ///      |                                          |
 ///      |                                         .| . here is h_l
-///  N   |------------------------------------------|
-///      |                                          |
-///      |                                         .| . here is h_r
 ///  2N  |------------------------------------------|
 ///      |                                          |
+///      |                                         .| . here is h_r
+///  4N  |------------------------------------------|
+///      |                                          |
 ///      |                                         .| . here is h_o
-///  3N  |------------------------------------------|
+///  6N  |------------------------------------------|
 ///      |                                         .| r = h_lr = h(h_l,h_r)
 ///      |                                         .| ϕ = h_lro = h(r,h_o)
-///      |------------------------------------------|
+/// 6N+2 |------------------------------------------|
 ///
 ///     constϕ
 ///      ϕ^i         ϕ^i        r*ϕ^i
@@ -312,10 +350,7 @@
     </span>Block1InputRepacked150(usize),
 
     <span class="doccomment">/// 1 hash per row
-    </span>Block2Hashes(
-        PoseidonColumn&lt;IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;,
-        usize,
-    ),
+    </span>Block2Hash(PoseidonColumn&lt;IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;),
 
     <span class="doccomment">/// Constant phi
     </span>Block3ConstPhi,
@@ -331,7 +366,7 @@
     </span>Block3PhiRLimbs(usize),
 
     <span class="doccomment">/// 1 addition per row
-    </span>Block4ECAdd(FECColumn, usize),
+    </span>Block4ECAdd(FECColumn),
 }
 
 <span class="kw">impl </span>ColumnIndexer <span class="kw">for </span>IVCColumn {
@@ -354,8 +389,39 @@
                 <span class="macro">assert!</span>(i &lt; <span class="number">2 </span>* N_LIMBS_XLARGE);
                 Column::Relation(<span class="number">2 </span>* N_LIMBS_SMALL + <span class="number">2 </span>* N_LIMBS_LARGE + i)
             }
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Column not supported yet"</span>),
+            IVCColumn::Block2Hash(poseidon_col) =&gt; poseidon_col.to_column(),
+            IVCColumn::Block3ConstPhi =&gt; Column::Relation(<span class="number">0</span>),
+            IVCColumn::Block3ConstR =&gt; Column::Relation(<span class="number">1</span>),
+            IVCColumn::Block3Phi =&gt; Column::Relation(<span class="number">2</span>),
+            IVCColumn::Block3PhiR =&gt; Column::Relation(<span class="number">3</span>),
+            IVCColumn::Block3PhiLimbs(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
+                Column::Relation(<span class="number">4 </span>+ i)
+            }
+            IVCColumn::Block3PhiRLimbs(i) =&gt; {
+                <span class="macro">assert!</span>(i &lt; N_LIMBS_SMALL);
+                Column::Relation(<span class="number">4 </span>+ N_LIMBS_SMALL + i)
+            }
+            IVCColumn::Block4ECAdd(fec_col) =&gt; fec_col.to_column(),
         }
+    }
+}
+
+<span class="kw">pub struct </span>IVCHashLens {}
+
+<span class="kw">impl </span>MPrism <span class="kw">for </span>IVCHashLens {
+    <span class="kw">type </span>Source = IVCColumn;
+    <span class="kw">type </span>Target = IVCPoseidonColumn;
+
+    <span class="kw">fn </span>traverse(<span class="kw-2">&amp;</span><span class="self">self</span>, source: <span class="self">Self</span>::Source) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Target&gt; {
+        <span class="kw">match </span>source {
+            IVCColumn::Block2Hash(col) =&gt; <span class="prelude-val">Some</span>(col),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+        }
+    }
+
+    <span class="kw">fn </span>re_get(<span class="kw-2">&amp;</span><span class="self">self</span>, target: <span class="self">Self</span>::Target) -&gt; <span class="self">Self</span>::Source {
+        IVCColumn::Block2Hash(target)
     }
 }
 </code></pre></div></section></main></body></html>

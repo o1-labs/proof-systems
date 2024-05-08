@@ -279,8 +279,34 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    circuit_design::capabilities::{ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap},
+    circuit_design::capabilities::{
+        ColAccessCap, ColWriteCap, HybridCopyCap, LookupCap, MultiRowReadCap,
+    },
     columns::{Column, ColumnIndexer},
     logup::{Logup, LogupWitness, LookupTableID},
     proof::ProofInputs,
@@ -355,6 +381,28 @@
     <span class="kw">fn </span>hcopy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, ix: CIx) -&gt; <span class="self">Self</span>::Variable {
         &lt;WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt; <span class="kw">as </span>ColWriteCap&lt;F, CIx&gt;&gt;::write_column(<span class="self">self</span>, ix, value);
         <span class="kw-2">*</span>value
+    }
+}
+
+<span class="kw">impl</span>&lt;F: PrimeField, CIx: ColumnIndexer, <span class="kw">const </span>CIX_COL_N: usize, LT: LookupTableID&gt;
+    MultiRowReadCap&lt;F, CIx&gt; <span class="kw">for </span>WitnessBuilderEnv&lt;F, CIX_COL_N, LT&gt;
+{
+    <span class="doccomment">/// Read value from a (row,column) position.
+    </span><span class="kw">fn </span>read_row_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, row: usize, col: CIx) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>Column::Relation(i) = col.to_column() <span class="kw">else </span>{
+            <span class="macro">todo!</span>()
+        };
+        <span class="self">self</span>.witness[row].cols[i]
+    }
+
+    <span class="doccomment">/// Progresses to the next row.
+    </span><span class="kw">fn </span>next_row(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.next_row();
+    }
+
+    <span class="doccomment">/// Returns the current row.
+    </span><span class="kw">fn </span>curr_row(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.witness.len()
     }
 }
 

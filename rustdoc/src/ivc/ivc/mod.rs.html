@@ -74,6 +74,21 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
 </pre></div><pre class="rust"><code><span class="kw">pub mod </span>columns;
 <span class="kw">pub mod </span>interpreter;
 <span class="kw">pub mod </span>lookups;
@@ -81,10 +96,13 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
 
-    <span class="kw">use </span><span class="kw">crate</span>::ivc::{
-        columns::IVCColumn,
-        interpreter::{ivc_circuit, ivc_constraint},
-        lookups::IVCLookupTable,
+    <span class="kw">use crate</span>::{
+        ivc::{
+            columns::{IVCColumn, IVC_POSEIDON_NB_FULL_ROUND, IVC_POSEIDON_STATE_SIZE},
+            interpreter::ivc_circuit,
+            lookups::IVCLookupTable,
+        },
+        poseidon::{interpreter::PoseidonParams, params::static_params},
     };
     <span class="kw">use </span>ark_ff::UniformRand;
     <span class="kw">use </span>kimchi_msm::{circuit_design::WitnessBuilderEnv, columns::ColumnIndexer, Ff1, Fp};
@@ -94,10 +112,28 @@
     </span><span class="kw">pub const </span>TEST_N_COL_TOTAL: usize = <span class="number">50</span>;
     <span class="kw">pub const </span>TEST_DOMAIN_SIZE: usize = <span class="number">1 </span>&lt;&lt; <span class="number">15</span>;
 
-    <span class="kw">fn </span>build_ivc_circuit&lt;RNG: RngCore + CryptoRng&gt;(
-        rng: <span class="kw-2">&amp;mut </span>RNG,
-    ) -&gt; WitnessBuilderEnv&lt;Fp, { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, IVCLookupTable&lt;Ff1&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = WitnessBuilderEnv::create();
+    <span class="attr">#[derive(Clone)]
+    </span><span class="kw">pub struct </span>PoseidonBN254Parameters;
+
+    <span class="kw">type </span>IVCWitnessBuilderEnv =
+        WitnessBuilderEnv&lt;Fp, { &lt;IVCColumn <span class="kw">as </span>ColumnIndexer&gt;::COL_N }, IVCLookupTable&lt;Ff1&gt;&gt;;
+
+    <span class="kw">impl </span>PoseidonParams&lt;Fp, IVC_POSEIDON_STATE_SIZE, IVC_POSEIDON_NB_FULL_ROUND&gt;
+        <span class="kw">for </span>PoseidonBN254Parameters
+    {
+        <span class="kw">fn </span>constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_NB_FULL_ROUND] {
+            <span class="kw">let </span>rc = <span class="kw-2">&amp;</span>static_params().round_constants;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(rc[i][j])))
+        }
+
+        <span class="kw">fn </span>mds(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[Fp; IVC_POSEIDON_STATE_SIZE]; IVC_POSEIDON_STATE_SIZE] {
+            <span class="kw">let </span>mds = <span class="kw-2">&amp;</span>static_params().mds;
+            std::array::from_fn(|i| std::array::from_fn(|j| Fp::from(mds[i][j])))
+        }
+    }
+
+    <span class="kw">fn </span>build_ivc_circuit&lt;RNG: RngCore + CryptoRng&gt;(rng: <span class="kw-2">&amp;mut </span>RNG) -&gt; IVCWitnessBuilderEnv {
+        <span class="kw">let </span><span class="kw-2">mut </span>witness_env = IVCWitnessBuilderEnv::create();
 
         <span class="comment">// To support less rows than domain_size we need to have selectors.
         //let row_num = rng.gen_range(0..domain_size);
@@ -121,20 +157,14 @@
             )
         });
 
-        <span class="kw">for </span>row_i <span class="kw">in </span><span class="number">0</span>..TEST_DOMAIN_SIZE {
-            ivc_circuit::&lt;Fp, Ff1, <span class="kw">_</span>, TEST_N_COL_TOTAL&gt;(
-                <span class="kw-2">&amp;mut </span>witness_env,
-                comms_left,
-                comms_right,
-                comms_output,
-                row_i,
-            );
-            ivc_constraint(<span class="kw-2">&amp;mut </span>witness_env);
-
-            <span class="kw">if </span>row_i &lt; TEST_DOMAIN_SIZE - <span class="number">1 </span>{
-                witness_env.next_row();
-            }
-        }
+        ivc_circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TEST_N_COL_TOTAL&gt;(
+            <span class="kw-2">&amp;mut </span>witness_env,
+            comms_left,
+            comms_right,
+            comms_output,
+            <span class="kw-2">&amp;</span>PoseidonBN254Parameters,
+            TEST_DOMAIN_SIZE,
+        );
 
         witness_env
     }
