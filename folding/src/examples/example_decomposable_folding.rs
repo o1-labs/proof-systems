@@ -6,7 +6,7 @@ use crate::{
     Alphas, FoldingCompatibleExpr, FoldingConfig, FoldingEnv, Instance, Witness,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{UniformRand, Zero};
+use ark_ff::UniformRand;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use itertools::Itertools;
 use kimchi::circuits::{expr::Variable, gate::CurrOrNext};
