@@ -19,13 +19,10 @@ use std::ops::Index;
 
 use super::trace::KeccakTrace;
 
-pub type KeccakFoldingWitness = FoldingWitness<ZKVM_KECCAK_COLS, Fp>;
-pub type KeccakFoldingInstance = FoldingInstance<ZKVM_KECCAK_COLS, Curve>;
-
 pub type KeccakFoldingEnvironment =
     FoldingEnvironment<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
 
-impl Index<KeccakColumn> for KeccakFoldingWitness {
+impl Index<KeccakColumn> for FoldingWitness<ZKVM_KECCAK_COLS, Fp> {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
@@ -34,7 +31,7 @@ impl Index<KeccakColumn> for KeccakFoldingWitness {
 }
 
 // Implemented for decomposable folding compatibility
-impl Index<Steps> for KeccakFoldingWitness {
+impl Index<Steps> for FoldingWitness<ZKVM_KECCAK_COLS, Fp> {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a selector column to the corresponding witness column.
@@ -44,7 +41,7 @@ impl Index<Steps> for KeccakFoldingWitness {
 }
 
 // Implementing this so that generic constraints can be used in folding
-impl Index<Column> for KeccakFoldingWitness {
+impl Index<Column> for FoldingWitness<ZKVM_KECCAK_COLS, Fp> {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a column alias to the corresponding witness column.
@@ -73,8 +70,8 @@ impl FoldingConfig for KeccakConfig {
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = SRS<Curve>;
-    type Instance = KeccakFoldingInstance;
-    type Witness = KeccakFoldingWitness;
+    type Instance = FoldingInstance<ZKVM_KECCAK_COLS, Curve>;
+    type Witness = FoldingWitness<ZKVM_KECCAK_COLS, Fp>;
     type Structure = KeccakTrace;
     type Env = KeccakFoldingEnvironment;
 }
