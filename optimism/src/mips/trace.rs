@@ -5,7 +5,7 @@ use crate::{
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
-    trace::{Trace, Tracer},
+    trace::{DecomposableTrace, DecomposableTracer},
 };
 use ark_ff::Zero;
 use kimchi_msm::witness::Witness;
@@ -15,10 +15,11 @@ use strum::IntoEnumIterator;
 use super::folding::MIPSFoldingConfig;
 
 /// The MIPS circuit trace
-pub type MIPSTrace = Trace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
+pub type MIPSTrace =
+    DecomposableTrace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
 
 impl
-    Tracer<
+    DecomposableTracer<
         MIPS_COLUMNS,
         MIPS_REL_COLS,
         MIPS_SEL_COLS,

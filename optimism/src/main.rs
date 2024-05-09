@@ -23,7 +23,7 @@ use kimchi_optimism::{
     },
     preimage_oracle::PreImageOracle,
     proof,
-    trace::Tracer,
+    trace::DecomposableTracer,
     BaseSponge, Fp, OpeningProof, ScalarSponge, DOMAIN_SIZE,
 };
 use log::debug;

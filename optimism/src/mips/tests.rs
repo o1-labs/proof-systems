@@ -9,7 +9,7 @@ use crate::{
         },
         trace::MIPSTrace,
     },
-    trace::Tracer,
+    trace::DecomposableTracer,
 };
 use strum::{EnumCount, IntoEnumIterator};
 
