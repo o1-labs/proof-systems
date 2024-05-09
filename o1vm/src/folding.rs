@@ -208,3 +208,94 @@ where
         &witness[*s].evals
     }
 }
+
+pub struct FoldingEnvironment<const N: usize, C: FoldingConfig, Structure: ProvableTrace> {
+    /// Structure of the folded circuit
+    pub structure: Structure,
+    /// Commitments to the witness columns, for both sides
+    pub instances: [FoldingInstance<N, C::Curve>; 2],
+    /// Corresponds to the omega evaluations, for both sides
+    pub curr_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
+    /// Corresponds to the zeta*omega evaluations, for both sides
+    /// This is curr_witness but left shifted by 1
+    pub next_witnesses: [FoldingWitness<N, ScalarField<C>>; 2],
+}
+
+impl<
+        const N: usize,
+        C: FoldingConfig,
+        // FIXME: Clone should not be used. Only a reference should be stored
+        Structure: ProvableTrace + Clone,
+    >
+    FoldingEnv<
+        ScalarField<C>,
+        FoldingInstance<N, C::Curve>,
+        FoldingWitness<N, ScalarField<C>>,
+        C::Column,
+        Challenge,
+        (),
+    > for FoldingEnvironment<N, C, Structure>
+where
+    // Used by col and selector
+    FoldingWitness<N, ScalarField<C>>: Index<
+        C::Column,
+        Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
+    >,
+{
+    type Structure = Structure;
+
+    fn new(
+        structure: &Self::Structure,
+        instances: [&FoldingInstance<N, C::Curve>; 2],
+        witnesses: [&FoldingWitness<N, ScalarField<C>>; 2],
+    ) -> Self {
+        let curr_witnesses = [witnesses[0].clone(), witnesses[1].clone()];
+        let mut next_witnesses = curr_witnesses.clone();
+        for side in next_witnesses.iter_mut() {
+            for col in side.witness.cols.iter_mut() {
+                col.evals.rotate_left(1);
+            }
+        }
+        FoldingEnvironment {
+            // FIXME: This is a clone, but it should be a reference
+            structure: structure.clone(),
+            instances: [instances[0].clone(), instances[1].clone()],
+            curr_witnesses,
+            next_witnesses,
+        }
+    }
+
+    fn domain_size(&self) -> usize {
+        self.structure.domain_size()
+    }
+
+    fn zero_vec(&self) -> Vec<ScalarField<C>> {
+        vec![ScalarField::<C>::zero(); self.domain_size()]
+    }
+
+    fn col(&self, col: C::Column, curr_or_next: CurrOrNext, side: Side) -> &Vec<ScalarField<C>> {
+        let wit = match curr_or_next {
+            CurrOrNext::Curr => &self.curr_witnesses[side as usize],
+            CurrOrNext::Next => &self.next_witnesses[side as usize],
+        };
+        // The following is possible because Index is implemented for our circuit witnesses
+        &wit[col].evals
+    }
+
+    fn challenge(&self, challenge: Challenge, side: Side) -> ScalarField<C> {
+        match challenge {
+            Challenge::Beta => self.instances[side as usize].challenges[0],
+            Challenge::Gamma => self.instances[side as usize].challenges[1],
+            Challenge::JointCombiner => self.instances[side as usize].challenges[2],
+        }
+    }
+
+    fn alpha(&self, i: usize, side: Side) -> ScalarField<C> {
+        let instance = &self.instances[side as usize];
+        instance.alphas.get(i).unwrap()
+    }
+
+    fn selector(&self, _s: &(), _side: Side) -> &Vec<ScalarField<C>> {
+        unimplemented!("Selector not implemented for FoldingEnvironment. No selectors are supposed to be used when there is only one instruction.")
+    }
+}
