@@ -7,7 +7,7 @@ use strum::IntoEnumIterator;
 use crate::{
     folding::ScalarField,
     keccak::{
-        column::{Steps, ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
+        column::{Steps, N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
         environment::KeccakEnv,
         standardize,
     },
@@ -17,14 +17,18 @@ use crate::{
 use super::folding::KeccakConfig;
 
 /// The Keccak circuit trace
-pub type KeccakTrace =
-    DecomposableTrace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+pub type KeccakTrace = DecomposableTrace<
+    N_ZKVM_KECCAK_COLS,
+    N_ZKVM_KECCAK_REL_COLS,
+    N_ZKVM_KECCAK_SEL_COLS,
+    KeccakConfig,
+>;
 
 impl
     DecomposableTracer<
-        ZKVM_KECCAK_COLS,
-        ZKVM_KECCAK_REL,
-        ZKVM_KECCAK_SEL,
+        N_ZKVM_KECCAK_COLS,
+        N_ZKVM_KECCAK_REL_COLS,
+        N_ZKVM_KECCAK_SEL_COLS,
         KeccakConfig,
         KeccakEnv<ScalarField<KeccakConfig>>,
     > for KeccakTrace
@@ -54,7 +58,11 @@ impl
         circuit
     }
 
-    fn push_row(&mut self, opcode: Steps, row: &[ScalarField<KeccakConfig>; ZKVM_KECCAK_REL]) {
+    fn push_row(
+        &mut self,
+        opcode: Steps,
+        row: &[ScalarField<KeccakConfig>; N_ZKVM_KECCAK_REL_COLS],
+    ) {
         // Make sure we are using the same round number to refer to round steps
         let opcode = standardize(opcode);
         self.witness.entry(opcode).and_modify(|wit| {
@@ -69,7 +77,7 @@ impl
     fn pad_with_row(
         &mut self,
         opcode: Steps,
-        row: &[ScalarField<KeccakConfig>; ZKVM_KECCAK_REL],
+        row: &[ScalarField<KeccakConfig>; N_ZKVM_KECCAK_REL_COLS],
     ) -> usize {
         let opcode = standardize(opcode);
         let len = self.witness[&opcode].cols[0].len();

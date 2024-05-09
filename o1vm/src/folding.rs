@@ -132,6 +132,7 @@ impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
         C::Selector,
     > for FoldingEnvironment<N, N_REL, N_SEL, C>
 where
+    // Used by col and selector
     FoldingWitness<N, ScalarField<C>>: Index<
         C::Column,
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
