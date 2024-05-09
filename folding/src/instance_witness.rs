@@ -17,6 +17,10 @@
 //! relaxed instance can also be called on a normal instance
 //! - [RelaxableWitness]: same than [RelaxableInstance] but for witnesses.
 
+// FIXME: for optimisation, as values are not necessarily Fp elements and are
+// relatively small, we could get rid of the scalar field objects, and only use
+// bigint where we only apply the modulus when needed.
+
 use crate::{Alphas, Evals};
 use ark_ff::Field;
 use num_traits::One;

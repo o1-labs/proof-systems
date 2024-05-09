@@ -11,6 +11,10 @@ use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use kimchi::circuits::expr::Variable;
 use poly_commitment::SRS;
 
+// FIXME: for optimisation, as values are not necessarily Fp elements and are
+// relatively small, we could get rid of the scalar field objects, and only use
+// bigint where we only apply the modulus when needed.
+
 /// This type refers to the two instances to be folded
 #[derive(Clone, Copy)]
 pub enum Side {
