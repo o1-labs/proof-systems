@@ -26,7 +26,10 @@ pub type KeccakFoldingEnvironment = DecomposableFoldingEnvironment<
     KeccakConfig,
 >;
 
-impl Index<KeccakColumn> for FoldingWitness<N_ZKVM_KECCAK_COLS, Fp> {
+pub type KeccakFoldingWitness = FoldingWitness<N_ZKVM_KECCAK_COLS, Fp>;
+pub type KeccakFoldingInstance = FoldingInstance<N_ZKVM_KECCAK_COLS, Curve>;
+
+impl Index<KeccakColumn> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
@@ -35,7 +38,7 @@ impl Index<KeccakColumn> for FoldingWitness<N_ZKVM_KECCAK_COLS, Fp> {
 }
 
 // Implemented for decomposable folding compatibility
-impl Index<Steps> for FoldingWitness<N_ZKVM_KECCAK_COLS, Fp> {
+impl Index<Steps> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a selector column to the corresponding witness column.
@@ -45,7 +48,7 @@ impl Index<Steps> for FoldingWitness<N_ZKVM_KECCAK_COLS, Fp> {
 }
 
 // Implementing this so that generic constraints can be used in folding
-impl Index<Column> for FoldingWitness<N_ZKVM_KECCAK_COLS, Fp> {
+impl Index<Column> for KeccakFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a column alias to the corresponding witness column.
@@ -74,8 +77,8 @@ impl FoldingConfig for KeccakConfig {
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = SRS<Curve>;
-    type Instance = FoldingInstance<N_ZKVM_KECCAK_COLS, Curve>;
-    type Witness = FoldingWitness<N_ZKVM_KECCAK_COLS, Fp>;
+    type Instance = KeccakFoldingInstance;
+    type Witness = KeccakFoldingWitness;
     type Structure = KeccakTrace;
     type Env = KeccakFoldingEnvironment;
 }
