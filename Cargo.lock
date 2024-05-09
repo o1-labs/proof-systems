@@ -1289,6 +1289,8 @@ name = "mina-book"
 version = "0.1.0"
 dependencies = [
  "cargo-spec",
+ "plist",
+ "time",
 ]
 
 [[package]]

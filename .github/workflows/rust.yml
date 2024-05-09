@@ -1,3 +1,5 @@
+# We use --offline to be sure that we do not access the network
+
 name: CI
 
 on:
@@ -25,6 +27,8 @@ jobs:
 
       - name: Checkout PR
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Set up cargo/rust
         uses: actions-rs/toolchain@v1
@@ -81,7 +85,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --tests --all-targets -- -D warnings
+          args: --all-features --tests --all-targets --offline -- -D warnings
 
       - name: Run Clippy (beta)
         uses: actions-rs/clippy-check@v1
@@ -89,7 +93,7 @@ jobs:
         with:
           name: Clippy (beta)
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets -- -W clippy::all
+          args: --all-features --all-targets --offline -- -W clippy::all
 
       #
       # Build
@@ -99,7 +103,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --all-targets --all-features
+          args: --all-targets --all-features --offline
 
       #
       # Tests
@@ -113,10 +117,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --all-features --release
+          args: run --all-features --release --offline
 
       - name: Doc tests
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all-features --release --doc
+          args: --all-features --release --doc --offline
