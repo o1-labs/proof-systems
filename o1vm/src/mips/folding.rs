@@ -18,12 +18,10 @@ use super::{
 };
 use poly_commitment::srs::SRS;
 
-pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS, Fp>;
-pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS, Curve>;
 pub type MIPSFoldingEnvironment =
     FoldingEnvironment<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
 
-impl Index<MIPSColumn> for MIPSFoldingWitness {
+impl Index<MIPSColumn> for FoldingWitness<MIPS_COLUMNS, Fp> {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     fn index(&self, index: MIPSColumn) -> &Self::Output {
@@ -32,7 +30,7 @@ impl Index<MIPSColumn> for MIPSFoldingWitness {
 }
 
 // Implemented for decomposable folding compatibility
-impl Index<Instruction> for MIPSFoldingWitness {
+impl Index<Instruction> for FoldingWitness<MIPS_COLUMNS, Fp> {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a selector column to the corresponding witness column.
@@ -42,7 +40,7 @@ impl Index<Instruction> for MIPSFoldingWitness {
 }
 
 // Implementing this so that generic constraints can be used in folding
-impl Index<Column> for MIPSFoldingWitness {
+impl Index<Column> for FoldingWitness<MIPS_COLUMNS, Fp> {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a column alias to the corresponding witness column.
@@ -71,8 +69,12 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = SRS<Curve>;
-    type Instance = MIPSFoldingInstance;
-    type Witness = MIPSFoldingWitness;
+    // Using FoldingInstance instead of type alias as the type parameter defines
+    // the number of columns
+    type Instance = FoldingInstance<MIPS_COLUMNS, Curve>;
+    // Using FoldingWitness instead of type alias as the type parameter defines
+    // the number of columns
+    type Witness = FoldingWitness<MIPS_COLUMNS, Fp>;
     type Structure = MIPSTrace;
     type Env = MIPSFoldingEnvironment;
 }
