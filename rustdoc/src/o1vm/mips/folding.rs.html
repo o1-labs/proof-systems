@@ -74,13 +74,15 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias <span class="kw">as </span>MIPSColumn, MIPS_COLUMNS},
         Instruction,
     },
-    trace::{DecomposableTrace, Indexer},
+    trace::Indexer,
     Curve, Fp,
 };
 <span class="kw">use </span>ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -88,7 +90,10 @@
 <span class="kw">use </span>kimchi_msm::columns::Column;
 <span class="kw">use </span>std::ops::Index;
 
-<span class="kw">use </span><span class="kw">super</span>::column::{MIPS_REL_COLS, MIPS_SEL_COLS};
+<span class="kw">use super</span>::{
+    column::{MIPS_REL_COLS, MIPS_SEL_COLS},
+    trace::MIPSTrace,
+};
 <span class="kw">use </span>poly_commitment::srs::SRS;
 
 <span class="kw">pub type </span>MIPSFoldingWitness = FoldingWitness&lt;MIPS_COLUMNS, Fp&gt;;
@@ -146,8 +151,7 @@
     <span class="kw">type </span>Srs = SRS&lt;Curve&gt;;
     <span class="kw">type </span>Instance = MIPSFoldingInstance;
     <span class="kw">type </span>Witness = MIPSFoldingWitness;
-    <span class="kw">type </span>Structure =
-        DecomposableTrace&lt;MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig&gt;;
+    <span class="kw">type </span>Structure = MIPSTrace;
     <span class="kw">type </span>Env = MIPSFoldingEnvironment;
 }
 </code></pre></div></section></main></body></html>
