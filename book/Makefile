@@ -17,12 +17,12 @@ all: deps check build serve
 #
 
 deps:
-	cargo install "mdbook@$(MDBOOK_VERSION)"
-	cargo install "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)"
-	cargo install "mdbook-katex@$(MDBOOK_KATEX_VERSION)"
-	cargo install --git https://github.com/o1-labs/mdbook-linkcheck --rev 8cccfc8fee397092ecdf1236a42871c5c980672e --locked mdbook-linkcheck
-	cargo install "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)"
-	cargo install "mdbook-toc@$(MDBOOK_TOC_VERSION)"
+	cargo install --locked "mdbook@$(MDBOOK_VERSION)"
+	cargo install --locked "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)"
+	cargo install --locked "mdbook-katex@$(MDBOOK_KATEX_VERSION)"
+	cargo install --locked --git https://github.com/o1-labs/mdbook-linkcheck --rev 8cccfc8fee397092ecdf1236a42871c5c980672e mdbook-linkcheck
+	cargo install --locked "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)"
+	cargo install --locked "mdbook-toc@$(MDBOOK_TOC_VERSION)"
 
 #
 # Checks if your installed dependencies match what we've listed above
