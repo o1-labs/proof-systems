@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["MIPSFoldingConfig"],"type":["MIPSFoldingEnvironment"]};
+window.SIDEBAR_ITEMS = {"struct":["DecomposableMIPSFoldingConfig"],"type":["DecomposableMIPSFoldingEnvironment"]};

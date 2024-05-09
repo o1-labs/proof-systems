@@ -303,9 +303,9 @@
     }
 }
 
-<span class="doccomment">/// Environment for the folding protocol, for a given number of witness columns
-/// and structure
-</span><span class="kw">pub struct </span>FoldingEnvironment&lt;
+<span class="doccomment">/// Environment for the decomposable folding protocol, for a given number of
+/// witness columns and selectors.
+</span><span class="kw">pub struct </span>DecomposableFoldingEnvironment&lt;
     <span class="kw">const </span>N: usize,
     <span class="kw">const </span>N_REL: usize,
     <span class="kw">const </span>N_SEL: usize,
@@ -331,7 +331,7 @@
         C::Column,
         Challenge,
         C::Selector,
-    &gt; <span class="kw">for </span>FoldingEnvironment&lt;N, N_REL, N_SEL, C&gt;
+    &gt; <span class="kw">for </span>DecomposableFoldingEnvironment&lt;N, N_REL, N_SEL, C&gt;
 <span class="kw">where
     </span><span class="comment">// Used by col and selector
     </span>FoldingWitness&lt;N, ScalarField&lt;C&gt;&gt;: Index&lt;
@@ -357,7 +357,7 @@
                 col.evals.rotate_left(<span class="number">1</span>);
             }
         }
-        FoldingEnvironment {
+        DecomposableFoldingEnvironment {
             structure: structure.clone(),
             instances: [instances[<span class="number">0</span>].clone(), instances[<span class="number">1</span>].clone()],
             curr_witnesses,

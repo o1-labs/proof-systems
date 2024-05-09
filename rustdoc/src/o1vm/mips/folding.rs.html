@@ -84,8 +84,12 @@
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias <span class="kw">as </span>MIPSColumn, N_MIPS_COLS},
         Instruction,
@@ -100,13 +104,17 @@
 
 <span class="kw">use super</span>::{
     column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
-    trace::MIPSTrace,
+    trace::DecomposableMIPSTrace,
 };
 <span class="kw">use </span>poly_commitment::srs::SRS;
 
 <span class="comment">// Decomposable folding compatibility
-</span><span class="kw">pub type </span>MIPSFoldingEnvironment =
-    FoldingEnvironment&lt;N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, MIPSFoldingConfig&gt;;
+</span><span class="kw">pub type </span>DecomposableMIPSFoldingEnvironment = DecomposableFoldingEnvironment&lt;
+    N_MIPS_COLS,
+    N_MIPS_REL_COLS,
+    N_MIPS_SEL_COLS,
+    DecomposableMIPSFoldingConfig,
+&gt;;
 
 <span class="comment">// -- Start indexer implementations
 // Implement indexers over columns and selectors to implement an abstract
@@ -146,7 +154,7 @@
 <span class="comment">// -- End of indexer implementations
 
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-</span><span class="kw">pub struct </span>MIPSFoldingConfig;
+</span><span class="kw">pub struct </span>DecomposableMIPSFoldingConfig;
 
 <span class="kw">impl </span>FoldingColumnTrait <span class="kw">for </span>MIPSColumn {
     <span class="kw">fn </span>is_witness(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -155,7 +163,7 @@
     </span>}
 }
 
-<span class="kw">impl </span>FoldingConfig <span class="kw">for </span>MIPSFoldingConfig {
+<span class="kw">impl </span>FoldingConfig <span class="kw">for </span>DecomposableMIPSFoldingConfig {
     <span class="kw">type </span>Column = Column;
     <span class="kw">type </span>Selector = Instruction;
     <span class="kw">type </span>Challenge = Challenge;
@@ -167,7 +175,7 @@
     <span class="comment">// Using FoldingWitness instead of type alias as the type parameter defines
     // the number of columns
     </span><span class="kw">type </span>Witness = FoldingWitness&lt;N_MIPS_COLS, Fp&gt;;
-    <span class="kw">type </span>Structure = MIPSTrace;
-    <span class="kw">type </span>Env = MIPSFoldingEnvironment;
+    <span class="kw">type </span>Structure = DecomposableMIPSTrace;
+    <span class="kw">type </span>Env = DecomposableMIPSFoldingEnvironment;
 }
 </code></pre></div></section></main></body></html>

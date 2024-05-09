@@ -84,7 +84,7 @@
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
-    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{
         column::{N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
         KeccakColumn, Steps,
@@ -104,7 +104,7 @@
 
 <span class="kw">use </span><span class="kw">super</span>::trace::KeccakTrace;
 
-<span class="kw">pub type </span>KeccakFoldingEnvironment = FoldingEnvironment&lt;
+<span class="kw">pub type </span>KeccakFoldingEnvironment = DecomposableFoldingEnvironment&lt;
     N_ZKVM_KECCAK_COLS,
     N_ZKVM_KECCAK_REL_COLS,
     N_ZKVM_KECCAK_SEL_COLS,
