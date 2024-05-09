@@ -26,11 +26,14 @@ pub type DecomposableMIPSFoldingEnvironment = DecomposableFoldingEnvironment<
     DecomposableMIPSFoldingConfig,
 >;
 
+pub type MIPSFoldingWitness = FoldingWitness<N_MIPS_COLS, Fp>;
+pub type MIPSFoldingInstance = FoldingInstance<N_MIPS_COLS, Curve>;
+
 // -- Start indexer implementations
 // Implement indexers over columns and selectors to implement an abstract
 // folding environment over selectors, see [crate::folding::FoldingEnvironment]
 // for more details
-impl Index<MIPSColumn> for FoldingWitness<N_MIPS_COLS, Fp> {
+impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     fn index(&self, index: MIPSColumn) -> &Self::Output {
@@ -39,7 +42,7 @@ impl Index<MIPSColumn> for FoldingWitness<N_MIPS_COLS, Fp> {
 }
 
 // Implemented for decomposable folding compatibility
-impl Index<Instruction> for FoldingWitness<N_MIPS_COLS, Fp> {
+impl Index<Instruction> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a selector column to the corresponding witness column.
@@ -49,7 +52,7 @@ impl Index<Instruction> for FoldingWitness<N_MIPS_COLS, Fp> {
 }
 
 // Implementing this so that generic constraints can be used in folding
-impl Index<Column> for FoldingWitness<N_MIPS_COLS, Fp> {
+impl Index<Column> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
     /// Map a column alias to the corresponding witness column.
@@ -79,12 +82,8 @@ impl FoldingConfig for DecomposableMIPSFoldingConfig {
     type Challenge = Challenge;
     type Curve = Curve;
     type Srs = SRS<Curve>;
-    // Using FoldingInstance instead of type alias as the type parameter defines
-    // the number of columns
-    type Instance = FoldingInstance<N_MIPS_COLS, Curve>;
-    // Using FoldingWitness instead of type alias as the type parameter defines
-    // the number of columns
-    type Witness = FoldingWitness<N_MIPS_COLS, Fp>;
+    type Instance = MIPSFoldingInstance;
+    type Witness = MIPSFoldingWitness;
     type Structure = DecomposableMIPSTrace;
     type Env = DecomposableMIPSFoldingEnvironment;
 }
