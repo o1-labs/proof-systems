@@ -104,15 +104,14 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
 
 /// Environment for the decomposable folding protocol, for a given number of
 /// witness columns and selectors.
-pub struct DecomposableFoldingEnvironment<
+pub struct DecomposedFoldingEnvironment<
     const N: usize,
     const N_REL: usize,
     const N_SEL: usize,
     C: FoldingConfig,
     Structure: ProvableTrace,
 > {
-    /// Structure of the folded circuit (using [DecomposedTrace] for now, as
-    /// it contains the domain size)
+    /// Structure of the folded circuit
     pub structure: Structure,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
@@ -138,7 +137,7 @@ impl<
         C::Column,
         Challenge,
         C::Selector,
-    > for DecomposableFoldingEnvironment<N, N_REL, N_SEL, C, Structure>
+    > for DecomposedFoldingEnvironment<N, N_REL, N_SEL, C, Structure>
 where
     // Used by col and selector
     FoldingWitness<N, ScalarField<C>>: Index<
@@ -164,7 +163,7 @@ where
                 col.evals.rotate_left(1);
             }
         }
-        DecomposableFoldingEnvironment {
+        DecomposedFoldingEnvironment {
             // FIXME: This is a clone, but it should be a reference
             structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],

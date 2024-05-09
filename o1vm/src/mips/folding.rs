@@ -1,5 +1,5 @@
 use crate::{
-    folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposedFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias as MIPSColumn, N_MIPS_COLS},
         Instruction,
@@ -19,7 +19,7 @@ use super::{
 use poly_commitment::srs::SRS;
 
 // Decomposable folding compatibility
-pub type DecomposableMIPSFoldingEnvironment = DecomposableFoldingEnvironment<
+pub type DecomposableMIPSFoldingEnvironment = DecomposedFoldingEnvironment<
     N_MIPS_COLS,
     N_MIPS_REL_COLS,
     N_MIPS_SEL_COLS,
