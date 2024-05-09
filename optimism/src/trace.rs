@@ -84,7 +84,12 @@ where
     }
 }
 
-pub(crate) trait Folder<const N: usize, C: FoldingConfig, Sponge> {
+/// The trait [Foldable] describes structures that can be folded.
+/// For that, it requires to be able to implement a way to return a folding
+/// instance and a folding witness.
+/// It is specialized for the [Trace] struct for now and is expected to fold
+/// individual instructions, selected with a specific [C::Selector].
+pub(crate) trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
     /// Returns the witness for the given selector as a folding witness and
     /// folding instance pair.
     /// Note that this function will also absorb all commitments to the columns
@@ -100,8 +105,9 @@ pub(crate) trait Folder<const N: usize, C: FoldingConfig, Sponge> {
     );
 }
 
+/// Implement the trait Foldable for the Trace struct.
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Sponge>
-    Folder<N, C, Sponge> for Trace<N, N_REL, N_SEL, C>
+    Foldable<N, C, Sponge> for Trace<N, N_REL, N_SEL, C>
 where
     C::Selector: Indexer,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
@@ -153,13 +159,20 @@ where
 }
 
 /// Tracer builds traces for some program executions.
-/// The constant type `N` is defined as the maximum number of columns the trace can use per row.
-/// The constant type `N_REL` is defined as the maximum number of relation columns the trace can use per row.
-/// The constant type `N_SEL` is defined as the number of selector columns the trace can use per row.
-/// The type `Selector` encodes the information of the kind of information the trace encodes. Examples:
-/// - For Keccak, `Step` encodes the row being performed at a time: round, squeeze, padding, etc...
-/// - For MIPS, `Instruction` encodes the CPU instruction being executed: add, sub, load, store, etc...
-/// The type parameter `F` is the type the data points in the trace are encoded into. It can be a field or a native type (u64).
+/// The constant type `N` is defined as the maximum number of columns the trace
+/// can use per row.
+/// The constant type `N_REL` is defined as the maximum number of relation
+/// columns the trace can use per row.
+/// The constant type `N_SEL` is defined as the number of selector columns the
+/// trace can use per row.
+/// The type `Selector` encodes the information of the kind of information the
+/// trace encodes. Examples:
+/// - For Keccak, `Step` encodes the row being performed at a time: round,
+/// squeeze, padding, etc...
+/// - For MIPS, `Instruction` encodes the CPU instruction being executed: add,
+/// sub, load, store, etc...
+/// The type parameter `F` is the type the data points in the trace are encoded
+/// into. It can be a field or a native type (u64).
 pub trait Tracer<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Env> {
     /// Create a new circuit
     fn new(domain_size: usize, env: &mut Env) -> Self;
