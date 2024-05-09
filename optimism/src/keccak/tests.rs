@@ -695,8 +695,8 @@ fn test_keccak_folding() {
                 let checker = ExtendedProvider::new(folded_instance, folded_witness);
                 checker.check(&final_constraint);
             }
-            // Check constraints on independent sides and in folded circuit applying selectors
-            if step == Sponge(Absorb(Only)) {
+            // Check constraints on independent sides and in decomposable folding scheme
+            {
                 // Create the decomposable folding scheme applying selectors
                 let (dec_scheme, dec_final_constraint) =
                     DecomposableFoldingScheme::<KeccakConfig>::new(
@@ -706,11 +706,26 @@ fn test_keccak_folding() {
                         domain,
                         &default_trace,
                     );
-                // Check the constraints on the folded circuit applying selectors
-                let (folded_instance, folded_witness, [_t0, _t1]) =
-                    dec_scheme.fold_instance_witness_pair(left, right, Some(step), &mut fq_sponge);
-                let checker = ExtendedProvider::new(folded_instance, folded_witness);
-                checker.check(&dec_final_constraint);
+
+                if step == Sponge(Absorb(Only)) {
+                    // Check the folded circuit of decomposable folding ignoring selectors (None)
+                    let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
+                        .fold_instance_witness_pair(
+                            left.clone(),
+                            right.clone(),
+                            None,
+                            &mut fq_sponge,
+                        );
+                    let checker = ExtendedProvider::new(folded_instance, folded_witness);
+                    checker.check(&dec_final_constraint);
+
+                    // Check constraints on independent sides and in folded circuit applying selectors
+                    let (folded_instance, folded_witness, [_t0, _t1]) = dec_scheme
+                        .fold_instance_witness_pair(left, right, Some(step), &mut fq_sponge);
+                    // Check the constraints on the folded circuit applying selectors
+                    let checker = ExtendedProvider::new(folded_instance, folded_witness);
+                    checker.check(&dec_final_constraint);
+                }
             }
         }
         // TODO:
