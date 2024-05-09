@@ -123,7 +123,7 @@ mod folding {
         preimage_oracle::PreImageOracle,
     };
     use kimchi::o1_utils;
-    use rand::{CryptoRng, RngCore};
+    use rand::{CryptoRng, Rng, RngCore};
 
     type Fp = ScalarField<MIPSFoldingConfig>;
 
@@ -239,5 +239,88 @@ mod folding {
             dummy_env.registers.general_purpose[reg_dest as usize],
             exp_res
         );
+    }
+
+    #[test]
+    fn test_unit_load32_instruction() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        // lw instruction
+        let mut dummy_env = dummy_env(&mut rng);
+        // Instruction: 0b10001111101001000000000000000000
+        // lw $a0, 0(29)
+        // a0 = 4
+        // Random address in SP
+        // Address has only one index
+
+        let addr: u32 = rng.gen_range(0u32..100u32);
+        let aligned_addr: u32 = (addr / 4) * 4;
+        dummy_env.registers[29] = aligned_addr;
+        let mem = &dummy_env.memory[0];
+        let mem = &mem.1;
+        let v0 = mem[aligned_addr as usize];
+        let v1 = mem[(aligned_addr + 1) as usize];
+        let v2 = mem[(aligned_addr + 2) as usize];
+        let v3 = mem[(aligned_addr + 3) as usize];
+        let exp_v = ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b11101,
+                rt: 0b00100,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b000000,
+            },
+        );
+        interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
+        assert_eq!(dummy_env.registers.general_purpose[4], exp_v);
+    }
+
+    #[test]
+    fn test_unit_addi_instruction() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env(&mut rng);
+        // Instruction: 0b10001111101001000000000000000000
+        // addi	a1,sp,4
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b11101,
+                rt: 0b00101,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b000100,
+            },
+        );
+        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
+        assert_eq!(
+            dummy_env.registers.general_purpose[5],
+            dummy_env.registers.general_purpose[29] + 4
+        );
+    }
+
+    #[test]
+    fn test_unit_lui_instruction() {
+        let mut rng = o1_utils::tests::make_test_rng();
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env(&mut rng);
+        // Instruction: 0b00111100000000010000000000001010
+        // lui at, 0xa
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b00000,
+                rt: 0b00001,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b001010,
+            },
+        );
+        interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
+        assert_eq!(dummy_env.registers.general_purpose[1], 0xa0000);
     }
 }
