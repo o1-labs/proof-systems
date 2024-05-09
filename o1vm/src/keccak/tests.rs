@@ -4,7 +4,7 @@ use crate::{
             Absorbs::*,
             Sponges::*,
             Steps::{self, *},
-            ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL,
+            N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS,
         },
         environment::KeccakEnv,
         interpreter::KeccakInterpreter,
@@ -525,7 +525,12 @@ fn test_keccak_prover_constraints() {
 
         for step in Steps::iter().flat_map(|x| x.into_iter()) {
             if keccak_circuit.in_circuit(step) {
-                test_completeness_generic::<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, _>(
+                test_completeness_generic::<
+                    N_ZKVM_KECCAK_COLS,
+                    N_ZKVM_KECCAK_REL_COLS,
+                    N_ZKVM_KECCAK_SEL_COLS,
+                    _,
+                >(
                     keccak_circuit.constraints[&step].clone(),
                     keccak_circuit.witness[&step].clone(),
                     domain_size,
@@ -568,9 +573,9 @@ fn test_keccak_decomposable_folding() {
 
         // Create two instances for each selector to be folded
         let mut keccak_trace: [DecomposableTrace<
-            ZKVM_KECCAK_COLS,
-            ZKVM_KECCAK_REL,
-            ZKVM_KECCAK_SEL,
+            N_ZKVM_KECCAK_COLS,
+            N_ZKVM_KECCAK_REL_COLS,
+            N_ZKVM_KECCAK_SEL_COLS,
             KeccakConfig,
         >; 2] =
             std::array::from_fn(|_| KeccakTrace::new(domain_size, &mut KeccakEnv::<Fp>::default()));
