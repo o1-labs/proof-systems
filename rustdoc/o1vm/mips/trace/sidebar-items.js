@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["DecomposableMIPSTrace"]};
+window.SIDEBAR_ITEMS = {"type":["DecomposedMIPSTrace"]};
