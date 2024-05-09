@@ -1,5 +1,5 @@
 use crate::{
-    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
     mips::{
         column::{ColumnAlias as MIPSColumn, N_MIPS_COLS},
         Instruction,
@@ -14,13 +14,17 @@ use std::ops::Index;
 
 use super::{
     column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
-    trace::MIPSTrace,
+    trace::DecomposableMIPSTrace,
 };
 use poly_commitment::srs::SRS;
 
 // Decomposable folding compatibility
-pub type MIPSFoldingEnvironment =
-    FoldingEnvironment<N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, MIPSFoldingConfig>;
+pub type DecomposableMIPSFoldingEnvironment = DecomposableFoldingEnvironment<
+    N_MIPS_COLS,
+    N_MIPS_REL_COLS,
+    N_MIPS_SEL_COLS,
+    DecomposableMIPSFoldingConfig,
+>;
 
 // -- Start indexer implementations
 // Implement indexers over columns and selectors to implement an abstract
@@ -60,7 +64,7 @@ impl Index<Column> for FoldingWitness<N_MIPS_COLS, Fp> {
 // -- End of indexer implementations
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct MIPSFoldingConfig;
+pub struct DecomposableMIPSFoldingConfig;
 
 impl FoldingColumnTrait for MIPSColumn {
     fn is_witness(&self) -> bool {
@@ -69,7 +73,7 @@ impl FoldingColumnTrait for MIPSColumn {
     }
 }
 
-impl FoldingConfig for MIPSFoldingConfig {
+impl FoldingConfig for DecomposableMIPSFoldingConfig {
     type Column = Column;
     type Selector = Instruction;
     type Challenge = Challenge;
@@ -81,6 +85,6 @@ impl FoldingConfig for MIPSFoldingConfig {
     // Using FoldingWitness instead of type alias as the type parameter defines
     // the number of columns
     type Witness = FoldingWitness<N_MIPS_COLS, Fp>;
-    type Structure = MIPSTrace;
-    type Env = MIPSFoldingEnvironment;
+    type Structure = DecomposableMIPSTrace;
+    type Env = DecomposableMIPSFoldingEnvironment;
 }

@@ -1,5 +1,5 @@
 use crate::{
-    folding::{Challenge, FoldingEnvironment, FoldingInstance, FoldingWitness},
+    folding::{Challenge, DecomposableFoldingEnvironment, FoldingInstance, FoldingWitness},
     keccak::{
         column::{N_ZKVM_KECCAK_COLS, N_ZKVM_KECCAK_REL_COLS, N_ZKVM_KECCAK_SEL_COLS},
         KeccakColumn, Steps,
@@ -19,7 +19,7 @@ use std::ops::Index;
 
 use super::trace::KeccakTrace;
 
-pub type KeccakFoldingEnvironment = FoldingEnvironment<
+pub type KeccakFoldingEnvironment = DecomposableFoldingEnvironment<
     N_ZKVM_KECCAK_COLS,
     N_ZKVM_KECCAK_REL_COLS,
     N_ZKVM_KECCAK_SEL_COLS,

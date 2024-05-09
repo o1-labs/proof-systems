@@ -7,7 +7,7 @@ use crate::{
             JTypeInstruction::{self, *},
             RTypeInstruction::{self, *},
         },
-        trace::MIPSTrace,
+        trace::DecomposableMIPSTrace,
     },
     trace::DecomposableTracer,
 };
@@ -28,7 +28,7 @@ fn test_mips_number_constraints() {
     };
 
     // Keep track of the constraints and lookups of the sub-circuits
-    let mips_circuit = MIPSTrace::new(domain_size, &mut constraints_env);
+    let mips_circuit = DecomposableMIPSTrace::new(domain_size, &mut constraints_env);
 
     let assert_num_constraints = |instr: &Instruction, num: usize| {
         assert_eq!(mips_circuit.constraints.get(instr).unwrap().len(), num)
@@ -114,7 +114,7 @@ mod folding {
         cannon::{HostProgram, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE, PAGE_SIZE},
         folding::ScalarField,
         mips::{
-            folding::MIPSFoldingConfig,
+            folding::DecomposableMIPSFoldingConfig,
             interpreter::{debugging::InstructionParts, interpret_itype, InterpreterEnv},
             registers::Registers,
             witness::{Env as WEnv, SyscallEnv, SCRATCH_SIZE},
@@ -125,7 +125,7 @@ mod folding {
     use kimchi::o1_utils;
     use rand::{CryptoRng, Rng, RngCore};
 
-    type Fp = ScalarField<MIPSFoldingConfig>;
+    type Fp = ScalarField<DecomposableMIPSFoldingConfig>;
 
     const PAGE_INDEX_EXECUTABLE_MEMORY: u32 = 1;
 
