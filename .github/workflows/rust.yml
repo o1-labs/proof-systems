@@ -92,7 +92,6 @@ jobs:
           cargo fmt -- --check
 
       - name: Lint (clippy)
-<<<<<<< HEAD
         uses: actions-rs/cargo@v1
         with:
           command: clippy
@@ -105,27 +104,16 @@ jobs:
           name: Clippy (beta)
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features --all-targets --offline -- -W clippy::all
-=======
-        run: |
-          eval $(opam env)
-          cargo clippy --all-features --all-targets --tests -- -W clippy::all -D warnings
->>>>>>> 5c79cb386b54490442638939c57f4509af873a73
 
       #
       # Build
       #
 
       - name: Ensure that everything builds
-<<<<<<< HEAD
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --all-targets --all-features --offline
-=======
-        run: |
-          eval $(opam env)
-          cargo build --release --all-targets --all-features
->>>>>>> 5c79cb386b54490442638939c57f4509af873a73
 
       #
       # Tests
@@ -139,7 +127,6 @@ jobs:
           cargo install cargo-nextest@=0.9.67 --locked
 
       - name: Test with latest nextest release (faster than cargo test)
-<<<<<<< HEAD
         uses: actions-rs/cargo@v1
         with:
           command: nextest
@@ -150,13 +137,3 @@ jobs:
         with:
           command: test
           args: --all-features --release --doc --offline
-=======
-        run: |
-          eval $(opam env)
-          cargo nextest run --all-features --release
-
-      - name: Doc tests
-        run: |
-          eval $(opam env)
-          cargo test --all-features --release --doc
->>>>>>> 5c79cb386b54490442638939c57f4509af873a73
