@@ -4,7 +4,7 @@ use crate::{
         column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
         Instruction,
     },
-    trace::{Indexer, Trace},
+    trace::{DecomposableTrace, Indexer},
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -70,6 +70,7 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Srs = SRS<Curve>;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
-    type Structure = Trace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
+    type Structure =
+        DecomposableTrace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
     type Env = MIPSFoldingEnvironment;
 }

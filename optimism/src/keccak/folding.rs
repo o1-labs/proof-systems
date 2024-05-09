@@ -4,7 +4,7 @@ use crate::{
         column::{ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL},
         KeccakColumn, Steps,
     },
-    trace::{Indexer, Trace},
+    trace::{DecomposableTrace, Indexer},
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -73,7 +73,8 @@ impl FoldingConfig for KeccakConfig {
     type Srs = SRS<Curve>;
     type Instance = KeccakFoldingInstance;
     type Witness = KeccakFoldingWitness;
-    type Structure = Trace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+    type Structure =
+        DecomposableTrace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
     type Env = KeccakFoldingEnvironment;
 }
 

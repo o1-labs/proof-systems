@@ -1,3 +1,10 @@
+//! This module defines structures and traits to build and manipulate traces.
+//! A trace is a collection of data points that represent the execution of a
+//! program.
+//! Some trace can be seen as "decomposable" in the sense that they can be
+//! divided into sub-traces that share the same columns, and sub-traces can be
+//! selected using "selectors".
+
 use crate::{
     folding::{BaseField, FoldingInstance, FoldingWitness, ScalarField},
     lookups::Lookup,
@@ -18,17 +25,22 @@ pub trait Indexer {
     fn ix(&self) -> usize;
 }
 
-/// Struct representing a circuit execution trace containing
-/// all the necessary information to generate a proof.
+/// Struct representing a circuit execution trace which is decomposable in
+/// individual sub-circuits sharing the same columns.
 /// It is parameterized by
-/// - N: the total number of columns (constant), it must equal N_REL + N_SEL
-/// - N_REL: the number of relation columns (constant),
-/// - N_SEL: the number of selector columns (constant),
-/// - Selector: an enum representing the different gate behaviours,
-/// - F: the type of the witness data.
+/// - `N`: the total number of columns (constant), it must equal `N_REL + N_SEL`
+/// - `N_REL`: the number of relation columns (constant),
+/// - `N_SEL`: the number of selector columns (constant),
+/// - `Selector`: an enum representing the different gate behaviours,
+/// - `F`: the type of the witness data.
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
-pub struct Trace<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig> {
+pub struct DecomposableTrace<
+    const N: usize,
+    const N_REL: usize,
+    const N_SEL: usize,
+    C: FoldingConfig,
+> {
     /// The domain size of the circuit
     pub domain_size: usize,
     /// The witness for a given selector
@@ -42,23 +54,27 @@ pub struct Trace<const N: usize, const N_REL: usize, const N_SEL: usize, C: Fold
 }
 
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
-    Trace<N, N_REL, N_SEL, C>
+    DecomposableTrace<N, N_REL, N_SEL, C>
 where
     C::Selector: Indexer,
 {
-    /// Returns the number of rows that have been instantiated for the given selector.
-    /// It is important that the column used is a relation column because selector columns
-    /// are only instantiated at the very end, so their length could be zero most times.
+    /// Returns the number of rows that have been instantiated for the given
+    /// selector.
+    /// It is important that the column used is a relation column because
+    /// selector columns are only instantiated at the very end, so their length
+    /// could be zero most times.
     pub fn number_of_rows(&self, opcode: C::Selector) -> usize {
         self.witness[&opcode].cols[0].len()
     }
 
-    /// Returns a boolean indicating whether the witness for the given selector was ever found in the cirucit or not.
+    /// Returns a boolean indicating whether the witness for the given selector
+    /// was ever found in the cirucit or not.
     pub fn in_circuit(&self, opcode: C::Selector) -> bool {
         self.number_of_rows(opcode) != 0
     }
 
-    /// Returns whether the witness for the given selector has achieved a number of rows that is equal to the domain size.
+    /// Returns whether the witness for the given selector has achieved a number
+    /// of rows that is equal to the domain size.
     pub fn is_full(&self, opcode: C::Selector) -> bool {
         self.domain_size == self.number_of_rows(opcode)
     }
@@ -87,8 +103,8 @@ where
 /// The trait [Foldable] describes structures that can be folded.
 /// For that, it requires to be able to implement a way to return a folding
 /// instance and a folding witness.
-/// It is specialized for the [Trace] struct for now and is expected to fold
-/// individual instructions, selected with a specific [C::Selector].
+/// It is specialized for the [DecomposableTrace] struct for now and is expected
+/// to fold individual instructions, selected with a specific [C::Selector].
 pub(crate) trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
     /// Returns the witness for the given selector as a folding witness and
     /// folding instance pair.
@@ -105,9 +121,9 @@ pub(crate) trait Foldable<const N: usize, C: FoldingConfig, Sponge> {
     );
 }
 
-/// Implement the trait Foldable for the Trace struct.
+/// Implement the trait Foldable for the structure [DecomposableTrace]
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Sponge>
-    Foldable<N, C, Sponge> for Trace<N, N_REL, N_SEL, C>
+    Foldable<N, C, Sponge> for DecomposableTrace<N, N_REL, N_SEL, C>
 where
     C::Selector: Indexer,
     Sponge: FqSponge<BaseField<C>, C::Curve, ScalarField<C>>,
@@ -173,7 +189,14 @@ where
 /// sub, load, store, etc...
 /// The type parameter `F` is the type the data points in the trace are encoded
 /// into. It can be a field or a native type (u64).
-pub trait Tracer<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig, Env> {
+pub trait DecomposableTracer<
+    const N: usize,
+    const N_REL: usize,
+    const N_SEL: usize,
+    C: FoldingConfig,
+    Env,
+>
+{
     /// Create a new circuit
     fn new(domain_size: usize, env: &mut Env) -> Self;
 

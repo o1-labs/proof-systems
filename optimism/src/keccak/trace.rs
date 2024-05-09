@@ -11,16 +11,17 @@ use crate::{
         environment::KeccakEnv,
         standardize,
     },
-    trace::{Trace, Tracer},
+    trace::{DecomposableTrace, DecomposableTracer},
 };
 
 use super::folding::KeccakConfig;
 
 /// The Keccak circuit trace
-pub type KeccakTrace = Trace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
+pub type KeccakTrace =
+    DecomposableTrace<ZKVM_KECCAK_COLS, ZKVM_KECCAK_REL, ZKVM_KECCAK_SEL, KeccakConfig>;
 
 impl
-    Tracer<
+    DecomposableTracer<
         ZKVM_KECCAK_COLS,
         ZKVM_KECCAK_REL,
         ZKVM_KECCAK_SEL,
