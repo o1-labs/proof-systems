@@ -4,7 +4,7 @@ use crate::{
         column::{ColumnAlias as MIPSColumn, MIPS_COLUMNS},
         Instruction,
     },
-    trace::{DecomposableTrace, Indexer},
+    trace::Indexer,
     Curve, Fp,
 };
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -12,7 +12,10 @@ use folding::{expressions::FoldingColumnTrait, FoldingConfig};
 use kimchi_msm::columns::Column;
 use std::ops::Index;
 
-use super::column::{MIPS_REL_COLS, MIPS_SEL_COLS};
+use super::{
+    column::{MIPS_REL_COLS, MIPS_SEL_COLS},
+    trace::MIPSTrace,
+};
 use poly_commitment::srs::SRS;
 
 pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS, Fp>;
@@ -70,7 +73,6 @@ impl FoldingConfig for MIPSFoldingConfig {
     type Srs = SRS<Curve>;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
-    type Structure =
-        DecomposableTrace<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
+    type Structure = MIPSTrace;
     type Env = MIPSFoldingEnvironment;
 }
