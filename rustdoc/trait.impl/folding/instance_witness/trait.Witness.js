@@ -1,3 +1,0 @@
-(function() {var implementors = {
-"kimchi_optimism":[["impl&lt;const N: <a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.usize.html\">usize</a>, G: CommitmentCurve&gt; Witness&lt;G&gt; for <a class=\"struct\" href=\"kimchi_optimism/folding/struct.FoldingWitness.html\" title=\"struct kimchi_optimism::folding::FoldingWitness\">FoldingWitness</a>&lt;N, G::ScalarField&gt;"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

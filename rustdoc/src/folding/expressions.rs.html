@@ -1,6 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `folding/src/expressions.rs`."><title>expressions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
-            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../folding/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `folding/src/expressions.rs`."><title>expressions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../folding/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -832,7 +830,7 @@
         <span class="kw">match </span>(<span class="self">self</span>, rhs) {
             (Zero, other) | (other, Zero) =&gt; <span class="kw-2">*</span>other,
             (One, One) =&gt; Two,
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"The folding library does support only expressions of degree `2` maximum"</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;The folding library does support only expressions of degree `2` maximum&quot;</span>),
         }
     }
 }
@@ -861,7 +859,7 @@
     </span>Selector(C::Selector),
 }
 
-<span class="doccomment">/// Components to be used to convert multivariate polynomials into "compatible"
+<span class="doccomment">/// Components to be used to convert multivariate polynomials into &quot;compatible&quot;
 /// multivariate polynomials that will be translated to folding expressions.
 </span><span class="attr">#[derive(Clone, PartialEq, Debug)]
 </span><span class="kw">pub enum </span>FoldingCompatibleExprInner&lt;C: FoldingConfig&gt; {
@@ -896,46 +894,46 @@
             FoldingCompatibleExpr::Atom(c) =&gt; <span class="kw">match </span>c {
                 FoldingCompatibleExprInner::Constant(c) =&gt; {
                     <span class="kw">if </span>c.is_zero() {
-                        <span class="string">"0"</span>.to_string()
+                        <span class="string">&quot;0&quot;</span>.to_string()
                     } <span class="kw">else </span>{
                         c.to_string()
                     }
                 }
                 FoldingCompatibleExprInner::Challenge(c) =&gt; {
-                    <span class="macro">format!</span>(<span class="string">"{:?}"</span>, c)
+                    <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, c)
                 }
                 FoldingCompatibleExprInner::Cell(cell) =&gt; {
                     <span class="kw">let </span>Variable { col, row } = cell;
                     <span class="kw">let </span>next = <span class="kw">match </span>row {
-                        CurrOrNext::Curr =&gt; <span class="string">""</span>,
-                        CurrOrNext::Next =&gt; <span class="string">" * ω"</span>,
+                        CurrOrNext::Curr =&gt; <span class="string">&quot;&quot;</span>,
+                        CurrOrNext::Next =&gt; <span class="string">&quot; * ω&quot;</span>,
                     };
-                    <span class="macro">format!</span>(<span class="string">"Col({:?}){}"</span>, col, next)
+                    <span class="macro">format!</span>(<span class="string">&quot;Col({:?}){}&quot;</span>, col, next)
                 }
                 FoldingCompatibleExprInner::Extensions(e) =&gt; <span class="kw">match </span>e {
-                    ExpExtension::U =&gt; <span class="string">"U"</span>.to_string(),
-                    ExpExtension::Error =&gt; <span class="string">"E"</span>.to_string(),
+                    ExpExtension::U =&gt; <span class="string">&quot;U&quot;</span>.to_string(),
+                    ExpExtension::Error =&gt; <span class="string">&quot;E&quot;</span>.to_string(),
                     ExpExtension::ExtendedWitness(i) =&gt; {
-                        <span class="macro">format!</span>(<span class="string">"ExWit({})"</span>, i)
+                        <span class="macro">format!</span>(<span class="string">&quot;ExWit({})&quot;</span>, i)
                     }
-                    ExpExtension::Alpha(i) =&gt; <span class="macro">format!</span>(<span class="string">"α_{i}"</span>),
-                    ExpExtension::Selector(s) =&gt; <span class="macro">format!</span>(<span class="string">"Selec({:?})"</span>, s),
+                    ExpExtension::Alpha(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;α_{i}&quot;</span>),
+                    ExpExtension::Selector(s) =&gt; <span class="macro">format!</span>(<span class="string">&quot;Selec({:?})&quot;</span>, s),
                 },
             },
             FoldingCompatibleExpr::Double(e) =&gt; {
-                <span class="macro">format!</span>(<span class="string">"2 {}"</span>, e.to_string())
+                <span class="macro">format!</span>(<span class="string">&quot;2 {}&quot;</span>, e.to_string())
             }
             FoldingCompatibleExpr::Square(e) =&gt; {
-                <span class="macro">format!</span>(<span class="string">"{} ^ 2"</span>, e.to_string())
+                <span class="macro">format!</span>(<span class="string">&quot;{} ^ 2&quot;</span>, e.to_string())
             }
             FoldingCompatibleExpr::Add(e1, e2) =&gt; {
-                <span class="macro">format!</span>(<span class="string">"{} + {}"</span>, e1.to_string(), e2.to_string())
+                <span class="macro">format!</span>(<span class="string">&quot;{} + {}&quot;</span>, e1.to_string(), e2.to_string())
             }
             FoldingCompatibleExpr::Sub(e1, e2) =&gt; {
-                <span class="macro">format!</span>(<span class="string">"{} - {}"</span>, e1.to_string(), e2.to_string())
+                <span class="macro">format!</span>(<span class="string">&quot;{} - {}&quot;</span>, e1.to_string(), e2.to_string())
             }
             FoldingCompatibleExpr::Mul(e1, e2) =&gt; {
-                <span class="macro">format!</span>(<span class="string">"({}) ({})"</span>, e1.to_string(), e2.to_string())
+                <span class="macro">format!</span>(<span class="string">&quot;({}) ({})&quot;</span>, e1.to_string(), e2.to_string())
             }
             FoldingCompatibleExpr::Pow(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
         }
@@ -943,14 +941,14 @@
 }
 
 <span class="doccomment">/// Internal expression used for folding.
-/// A "folding" expression is a multivariate polynomial like defined in
+/// A &quot;folding&quot; expression is a multivariate polynomial like defined in
 /// [kimchi::circuits::expr] with the following differences.
 /// - No constructors related to zero-knowledge or lagrange basis (i.e. no
 /// constructors related to the PIOP)
 /// - The variables includes a set of columns that describes the initial circuit
 /// shape, with additional columns strictly related to the folding scheme (error
 /// term, etc).
-</span><span class="comment">// TODO: renamed in "RelaxedExpression"?
+</span><span class="comment">// TODO: renamed in &quot;RelaxedExpression&quot;?
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub enum </span>FoldingExp&lt;C: FoldingConfig&gt; {
     Atom(ExtendedFoldingColumn&lt;C&gt;),
@@ -992,8 +990,8 @@
     }
 }
 
-<span class="doccomment">/// Converts an expression "compatible" with folding into a folded expression.
-</span><span class="comment">// TODO: use "into"?
+<span class="doccomment">/// Converts an expression &quot;compatible&quot; with folding into a folded expression.
+</span><span class="comment">// TODO: use &quot;into&quot;?
 // FIXME: add independent tests
 // FIXME: test independently the behavior of pow_to_mul, and explain only why 8
 // maximum
@@ -1009,12 +1007,12 @@
                 FoldingCompatibleExprInner::Cell(col) =&gt; Atom(ExtendedFoldingColumn::Inner(col)),
                 FoldingCompatibleExprInner::Extensions(ext) =&gt; {
                     <span class="kw">match </span>ext {
-                        <span class="comment">// TODO: this shouldn't be allowed, but is needed for now to add
+                        <span class="comment">// TODO: this shouldn&#39;t be allowed, but is needed for now to add
                         // decomposable folding without many changes, it should be
                         // refactored at some point in the future
                         </span>ExpExtension::Selector(s) =&gt; Atom(ExtendedFoldingColumn::Selector(s)),
                         <span class="kw">_ </span>=&gt; {
-                            <span class="macro">panic!</span>(<span class="string">"this should only be created by folding itself"</span>)
+                            <span class="macro">panic!</span>(<span class="string">&quot;this should only be created by folding itself&quot;</span>)
                         }
                     }
                 }
@@ -1062,7 +1060,7 @@
                     <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                 }
             }
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"unsupported"</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;unsupported&quot;</span>),
         }
     }
 }
@@ -1323,7 +1321,7 @@
         Pow(e, <span class="kw-2">mut </span>i) =&gt; {
             <span class="kw">let </span>e = extract_terms(<span class="kw-2">*</span>e).collect_vec();
             <span class="kw">let </span><span class="kw-2">mut </span>acc = e.clone();
-            <span class="comment">// Could do this inplace, but it's more annoying to write
+            <span class="comment">// Could do this inplace, but it&#39;s more annoying to write
             </span><span class="kw">while </span>i &gt; <span class="number">2 </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>combinations = Vec::with_capacity(e.len() * acc.len());
                 <span class="kw">for </span>t1 <span class="kw">in </span>e.iter() {
@@ -1389,7 +1387,7 @@
             ConstantExprInner::Constant(c) =&gt; <span class="kw">match </span>c {
                 ConstantTerm::Literal(f) =&gt; FoldingCompatibleExprInner::Constant(f),
                 ConstantTerm::EndoCoefficient | ConstantTerm::Mds { row: <span class="kw">_</span>, col: <span class="kw">_ </span>} =&gt; {
-                    <span class="macro">panic!</span>(<span class="string">"When special constants are involved, don't forget to simplify the expression before."</span>)
+                    <span class="macro">panic!</span>(<span class="string">&quot;When special constants are involved, don&#39;t forget to simplify the expression before.&quot;</span>)
                 }
             },
         }
@@ -1408,10 +1406,10 @@
             ExprInner::Constant(cexpr) =&gt; cexpr.into(),
             ExprInner::Cell(col) =&gt; FoldingCompatibleExprInner::Cell(col),
             ExprInner::UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; {
-                <span class="macro">panic!</span>(<span class="string">"UnnormalizedLagrangeBasis should not be used in folding expressions"</span>)
+                <span class="macro">panic!</span>(<span class="string">&quot;UnnormalizedLagrangeBasis should not be used in folding expressions&quot;</span>)
             }
             ExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
-                <span class="macro">panic!</span>(<span class="string">"VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions"</span>)
+                <span class="macro">panic!</span>(<span class="string">&quot;VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions&quot;</span>)
             }
         }
     }
@@ -1438,7 +1436,7 @@
             Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
             Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),
             Operations::Pow(e, p) =&gt; FoldingCompatibleExpr::Pow(Box::new((<span class="kw-2">*</span>e).into()), p),
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Operation not supported in folding expressions"</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Operation not supported in folding expressions&quot;</span>),
         }
     }
 }
@@ -1463,7 +1461,7 @@
             Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
             Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),
             Operations::Pow(e, p) =&gt; FoldingCompatibleExpr::Pow(Box::new((<span class="kw-2">*</span>e).into()), p),
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Operation not supported in folding expressions"</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Operation not supported in folding expressions&quot;</span>),
         }
     }
 }
@@ -1494,16 +1492,16 @@
                     Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
                     Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),
                     Operations::Pow(e, p) =&gt; FoldingCompatibleExpr::Pow(Box::new((<span class="kw-2">*</span>e).into()), p),
-                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Operation not supported in folding expressions"</span>),
+                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Operation not supported in folding expressions&quot;</span>),
                 },
                 ExprInner::Cell(col) =&gt; {
                     FoldingCompatibleExpr::Atom(FoldingCompatibleExprInner::Cell(col))
                 }
                 ExprInner::UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">panic!</span>(<span class="string">"UnnormalizedLagrangeBasis should not be used in folding expressions"</span>)
+                    <span class="macro">panic!</span>(<span class="string">&quot;UnnormalizedLagrangeBasis should not be used in folding expressions&quot;</span>)
                 }
                 ExprInner::VanishesOnZeroKnowledgeAndPreviousRows =&gt; {
-                    <span class="macro">panic!</span>(<span class="string">"VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions"</span>)
+                    <span class="macro">panic!</span>(<span class="string">&quot;VanishesOnZeroKnowledgeAndPreviousRows should not be used in folding expressions&quot;</span>)
                 }
             },
             Operations::Add(x, y) =&gt; {
@@ -1518,7 +1516,7 @@
             Operations::Double(x) =&gt; FoldingCompatibleExpr::Double(Box::new((<span class="kw-2">*</span>x).into())),
             Operations::Square(x) =&gt; FoldingCompatibleExpr::Square(Box::new((<span class="kw-2">*</span>x).into())),
             Operations::Pow(e, p) =&gt; FoldingCompatibleExpr::Pow(Box::new((<span class="kw-2">*</span>e).into()), p),
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Operation not supported in folding expressions"</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Operation not supported in folding expressions&quot;</span>),
         }
     }
 }

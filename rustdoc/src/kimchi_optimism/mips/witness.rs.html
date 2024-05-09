@@ -1,6 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `optimism/src/mips/witness.rs`."><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_optimism" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
-            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../kimchi_optimism/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `optimism/src/mips/witness.rs`."><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_optimism" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi_optimism/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1289,12 +1287,12 @@
 }
 
 <span class="kw">const </span>KUNIT: usize = <span class="number">1024</span>; <span class="comment">// a kunit of memory is 1024 things (bytes, kilobytes, ...)
-</span><span class="kw">const </span>PREFIXES: <span class="kw-2">&amp;</span>str = <span class="string">"KMGTPE"</span>; <span class="comment">// prefixes for memory quantities KiB, MiB, GiB, ...
+</span><span class="kw">const </span>PREFIXES: <span class="kw-2">&amp;</span>str = <span class="string">&quot;KMGTPE&quot;</span>; <span class="comment">// prefixes for memory quantities KiB, MiB, GiB, ...
 
 // Create a human-readable string representation of the memory size
 </span><span class="kw">fn </span>memory_size(total: usize) -&gt; String {
     <span class="kw">if </span>total &lt; KUNIT {
-        <span class="macro">format!</span>(<span class="string">"{total} B"</span>)
+        <span class="macro">format!</span>(<span class="string">&quot;{total} B&quot;</span>)
     } <span class="kw">else </span>{
         <span class="comment">// Compute the index in the prefixes string above
         </span><span class="kw">let </span><span class="kw-2">mut </span>idx = <span class="number">0</span>;
@@ -1313,13 +1311,13 @@
         <span class="comment">////////////////////////////////////////////////////////////////////////////
         // Famous last words: 1023 exabytes ought to be enough for anybody        //
         //                                                                        //
-        // Corollary: unwrap() below shouldn't fail                               //
+        // Corollary: unwrap() below shouldn&#39;t fail                               //
         //                                                                        //
         // The maximum representation for usize corresponds to 16 exabytes anyway //
         ////////////////////////////////////////////////////////////////////////////
             </span>PREFIXES.chars().nth(idx).unwrap();
 
-        <span class="macro">format!</span>(<span class="string">"{:.1} {}iB"</span>, value, prefix)
+        <span class="macro">format!</span>(<span class="string">&quot;{:.1} {}iB&quot;</span>, value, prefix)
     }
 }
 
@@ -1368,7 +1366,7 @@
 
     <span class="kw">fn </span>check_boolean(x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="kw">if </span>!(<span class="kw-2">*</span>x == <span class="number">0 </span>|| <span class="kw-2">*</span>x == <span class="number">1</span>) {
-            <span class="macro">panic!</span>(<span class="string">"The value {} is not a boolean"</span>, <span class="kw-2">*</span>x);
+            <span class="macro">panic!</span>(<span class="string">&quot;The value {} is not a boolean&quot;</span>, <span class="kw-2">*</span>x);
         }
     }
 
@@ -1402,7 +1400,7 @@
         } <span class="kw">else if </span><span class="kw-2">*</span>if_is_true == <span class="number">0 </span>{
             <span class="comment">// No-op
         </span>} <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">"Bad value for flag in push_register: {}"</span>, <span class="kw-2">*</span>if_is_true);
+            <span class="macro">panic!</span>(<span class="string">&quot;Bad value for flag in push_register: {}&quot;</span>, <span class="kw-2">*</span>if_is_true);
         }
     }
 
@@ -1427,7 +1425,7 @@
         } <span class="kw">else if </span><span class="kw-2">*</span>if_is_true == <span class="number">0 </span>{
             <span class="comment">// No-op
         </span>} <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">"Bad value for flag in push_register: {}"</span>, <span class="kw-2">*</span>if_is_true);
+            <span class="macro">panic!</span>(<span class="string">&quot;Bad value for flag in push_register: {}&quot;</span>, <span class="kw-2">*</span>if_is_true);
         }
     }
 
@@ -1451,7 +1449,7 @@
         <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
         <span class="kw">let </span>memory_page_idx = <span class="self">self</span>.get_memory_page_index(page);
         <span class="self">self</span>.memory[memory_page_idx].<span class="number">1</span>[page_address] =
-            value.try_into().expect(<span class="string">"push_memory values fit in a u8"</span>);
+            value.try_into().expect(<span class="string">&quot;push_memory values fit in a u8&quot;</span>);
     }
 
     <span class="kw">unsafe fn </span>fetch_memory_access(
@@ -1799,13 +1797,13 @@
         </span>} <span class="kw">else if </span>flag == <span class="number">1 </span>{
             <span class="self">self</span>.halt = <span class="bool-val">true
         </span>} <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">"Bad value for flag in set_halted: {}"</span>, flag);
+            <span class="macro">panic!</span>(<span class="string">&quot;Bad value for flag in set_halted: {}&quot;</span>, flag);
         }
     }
 
     <span class="kw">fn </span>report_exit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exit_code: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
         <span class="macro">println!</span>(
-            <span class="string">"Exited with code {} at step {}"</span>,
+            <span class="string">&quot;Exited with code {} at step {}&quot;</span>,
             <span class="kw-2">*</span>exit_code, <span class="self">self</span>.instruction_counter
         );
     }
@@ -1843,7 +1841,7 @@
         <span class="kw">let </span>preimage = <span class="self">self
             </span>.preimage
             .as_ref()
-            .expect(<span class="string">"to have a preimage if we're requesting it at a non-zero offset"</span>);
+            .expect(<span class="string">&quot;to have a preimage if we&#39;re requesting it at a non-zero offset&quot;</span>);
         <span class="kw">let </span>preimage_len = preimage.len();
         <span class="kw">let </span>preimage_offset = <span class="self">self</span>.registers.preimage_offset <span class="kw">as </span>u64;
 
@@ -1903,9 +1901,9 @@
             (preimage_len <span class="kw">as </span>u64) - <span class="self">self</span>.preimage_bytes_read,
         );
 
-        <span class="comment">// If we've read the entire preimage, trigger Keccak workflow
+        <span class="comment">// If we&#39;ve read the entire preimage, trigger Keccak workflow
         </span><span class="kw">if </span><span class="self">self</span>.preimage_bytes_read == preimage_len <span class="kw">as </span>u64 {
-            <span class="macro">debug!</span>(<span class="string">"Preimage has been read entirely, triggering Keccak process"</span>);
+            <span class="macro">debug!</span>(<span class="string">&quot;Preimage has been read entirely, triggering Keccak process&quot;</span>);
             <span class="self">self</span>.keccak_env = <span class="prelude-val">Some</span>(KeccakEnv::&lt;Fp&gt;::new(
                 <span class="self">self</span>.hash_counter,
                 <span class="self">self</span>.preimage.as_ref().unwrap(),
@@ -2055,7 +2053,7 @@
     <span class="kw">pub fn </span>write_field_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: Fp) {
         <span class="kw">match </span>column {
             Column::ScratchState(idx) =&gt; <span class="self">self</span>.scratch_state[idx] = value,
-            Column::InstructionCounter =&gt; <span class="macro">panic!</span>(<span class="string">"Cannot overwrite the column {:?}"</span>, column),
+            Column::InstructionCounter =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Cannot overwrite the column {:?}&quot;</span>, column),
         }
     }
 
@@ -2171,7 +2169,7 @@
                         },
                         <span class="number">4055 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallFcntl),
                         <span class="kw">_ </span>=&gt; {
-                            <span class="comment">// NB: This has well-defined behavior. Don't panic!
+                            <span class="comment">// NB: This has well-defined behavior. Don&#39;t panic!
                             </span>Instruction::RType(RTypeInstruction::SyscallOther)
                         }
                     },
@@ -2195,7 +2193,7 @@
                     <span class="number">0x2a </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThan),
                     <span class="number">0x2b </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
                     <span class="kw">_ </span>=&gt; {
-                        <span class="macro">panic!</span>(<span class="string">"Unhandled instruction {:#X}"</span>, instruction)
+                        <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
                     }
                 },
                 <span class="number">0x01 </span>=&gt; {
@@ -2203,7 +2201,7 @@
                     </span><span class="kw">match </span>(instruction &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0x1F </span>{
                         <span class="number">0x0 </span>=&gt; Instruction::IType(ITypeInstruction::BranchLtZero),
                         <span class="number">0x1 </span>=&gt; Instruction::IType(ITypeInstruction::BranchGeqZero),
-                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Unhandled instruction {:#X}"</span>, instruction),
+                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction),
                     }
                 }
                 <span class="number">0x02 </span>=&gt; Instruction::JType(JTypeInstruction::Jump),
@@ -2224,7 +2222,7 @@
                     <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::MultiplyToRegister),
                     <span class="number">0x20 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingZeros),
                     <span class="number">0x21 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingOnes),
-                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Unhandled instruction {:#X}"</span>, instruction),
+                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction),
                 },
                 <span class="number">0x20 </span>=&gt; Instruction::IType(ITypeInstruction::Load8),
                 <span class="number">0x21 </span>=&gt; Instruction::IType(ITypeInstruction::Load16),
@@ -2239,15 +2237,15 @@
                 <span class="number">0x2b </span>=&gt; Instruction::IType(ITypeInstruction::Store32),
                 <span class="number">0x2e </span>=&gt; Instruction::IType(ITypeInstruction::StoreWordRight),
                 <span class="number">0x30 </span>=&gt; {
-                    <span class="comment">// Note: This is ll (LoadLinked), but we're only simulating a single processor.
+                    <span class="comment">// Note: This is ll (LoadLinked), but we&#39;re only simulating a single processor.
                     </span>Instruction::IType(ITypeInstruction::Load32)
                 }
                 <span class="number">0x38 </span>=&gt; {
-                    <span class="comment">// Note: This is sc (StoreConditional), but we're only simulating a single processor.
+                    <span class="comment">// Note: This is sc (StoreConditional), but we&#39;re only simulating a single processor.
                     </span>Instruction::IType(ITypeInstruction::Store32Conditional)
                 }
                 <span class="kw">_ </span>=&gt; {
-                    <span class="macro">panic!</span>(<span class="string">"Unhandled instruction {:#X}"</span>, instruction)
+                    <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
                 }
             }
         };
@@ -2272,7 +2270,7 @@
         </span><span class="kw">if </span><span class="self">self</span>.should_trigger_at(<span class="kw-2">&amp;</span>config.stop_at) {
             <span class="self">self</span>.halt = <span class="bool-val">true</span>;
             <span class="macro">println!</span>(
-                <span class="string">"Halted as requested at step={} instruction={:?}"</span>,
+                <span class="string">&quot;Halted as requested at step={} instruction={:?}&quot;</span>,
                 <span class="self">self</span>.instruction_counter, opcode
             );
             <span class="kw">return </span>opcode;
@@ -2284,7 +2282,7 @@
 
         <span class="kw">if </span><span class="self">self</span>.halt {
             <span class="macro">println!</span>(
-                <span class="string">"Halted at step={} instruction={:?}"</span>,
+                <span class="string">&quot;Halted at step={} instruction={:?}&quot;</span>,
                 <span class="self">self</span>.instruction_counter, opcode
             );
         }
@@ -2323,7 +2321,7 @@
             <span class="kw">if </span>page_id == <span class="kw-2">*</span>page_index {
                 <span class="kw">let </span>memory_slice: [u8; <span class="number">4</span>] = memory[page_address..page_address + <span class="number">4</span>]
                     .try_into()
-                    .expect(<span class="string">"Couldn't read 4 bytes at given address"</span>);
+                    .expect(<span class="string">&quot;Couldn&#39;t read 4 bytes at given address&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Some</span>(u32::from_be_bytes(memory_slice));
             }
         }
@@ -2332,8 +2330,8 @@
 
     <span class="kw">fn </span>snapshot_state_at(<span class="kw-2">&amp;mut </span><span class="self">self</span>, at: <span class="kw-2">&amp;</span>StepFrequency) {
         <span class="kw">if </span><span class="self">self</span>.should_trigger_at(at) {
-            <span class="kw">let </span>filename = <span class="macro">format!</span>(<span class="string">"snapshot-state-{}.json"</span>, <span class="self">self</span>.instruction_counter);
-            <span class="kw">let </span>file = File::create(filename.clone()).expect(<span class="string">"Impossible to open file"</span>);
+            <span class="kw">let </span>filename = <span class="macro">format!</span>(<span class="string">&quot;snapshot-state-{}.json&quot;</span>, <span class="self">self</span>.instruction_counter);
+            <span class="kw">let </span>file = File::create(filename.clone()).expect(<span class="string">&quot;Impossible to open file&quot;</span>);
             <span class="kw">let </span><span class="kw-2">mut </span>writer = BufWriter::new(file);
             <span class="kw">let </span><span class="kw-2">mut </span>preimage_key = [<span class="number">0u8</span>; <span class="number">32</span>];
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
@@ -2367,10 +2365,10 @@
             };
             <span class="kw">let _ </span>= serde_json::to_writer(<span class="kw-2">&amp;mut </span>writer, <span class="kw-2">&amp;</span>s);
             <span class="macro">info!</span>(
-                <span class="string">"Snapshot state in {}, step {}"</span>,
+                <span class="string">&quot;Snapshot state in {}, step {}&quot;</span>,
                 filename, <span class="self">self</span>.instruction_counter
             );
-            writer.flush().expect(<span class="string">"Flush writer failing"</span>)
+            writer.flush().expect(<span class="string">&quot;Flush writer failing&quot;</span>)
         }
     }
 
@@ -2392,10 +2390,10 @@
             <span class="kw">let </span>mem = <span class="self">self</span>.memory_usage();
             <span class="kw">let </span>name = meta
                 .find_address_symbol(pc)
-                .unwrap_or_else(|| <span class="string">"n/a"</span>.to_string());
+                .unwrap_or_else(|| <span class="string">&quot;n/a&quot;</span>.to_string());
 
             <span class="macro">info!</span>(
-                <span class="string">"processing step={} pc={:010x} insn={:010x} ips={:.2} pages={} mem={} name={}"</span>,
+                <span class="string">&quot;processing step={} pc={:010x} insn={:010x} ips={:.2} pages={} mem={} name={}&quot;</span>,
                 step, pc, insn, ips, pages, mem, name
             );
         }
@@ -2409,11 +2407,11 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_memory_size() {
-        <span class="macro">assert_eq!</span>(memory_size(<span class="number">1023_usize</span>), <span class="string">"1023 B"</span>);
-        <span class="macro">assert_eq!</span>(memory_size(<span class="number">1024_usize</span>), <span class="string">"1.0 KiB"</span>);
-        <span class="macro">assert_eq!</span>(memory_size(<span class="number">1024 </span>* <span class="number">1024_usize</span>), <span class="string">"1.0 MiB"</span>);
-        <span class="macro">assert_eq!</span>(memory_size(<span class="number">2100 </span>* <span class="number">1024 </span>* <span class="number">1024_usize</span>), <span class="string">"2.1 GiB"</span>);
-        <span class="macro">assert_eq!</span>(memory_size(std::usize::MAX), <span class="string">"16.0 EiB"</span>);
+        <span class="macro">assert_eq!</span>(memory_size(<span class="number">1023_usize</span>), <span class="string">&quot;1023 B&quot;</span>);
+        <span class="macro">assert_eq!</span>(memory_size(<span class="number">1024_usize</span>), <span class="string">&quot;1.0 KiB&quot;</span>);
+        <span class="macro">assert_eq!</span>(memory_size(<span class="number">1024 </span>* <span class="number">1024_usize</span>), <span class="string">&quot;1.0 MiB&quot;</span>);
+        <span class="macro">assert_eq!</span>(memory_size(<span class="number">2100 </span>* <span class="number">1024 </span>* <span class="number">1024_usize</span>), <span class="string">&quot;2.1 GiB&quot;</span>);
+        <span class="macro">assert_eq!</span>(memory_size(std::usize::MAX), <span class="string">&quot;16.0 EiB&quot;</span>);
     }
 }
 </code></pre></div></section></main></body></html>

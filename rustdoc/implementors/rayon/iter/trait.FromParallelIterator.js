@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"kimchi_msm":[["impl&lt;const N: <a class=\"primitive\" href=\"https://doc.rust-lang.org/1.72.1/std/primitive.usize.html\">usize</a>, G: <a class=\"trait\" href=\"https://doc.rust-lang.org/1.72.1/core/marker/trait.Send.html\" title=\"trait core::marker::Send\">Send</a> + <a class=\"trait\" href=\"https://doc.rust-lang.org/1.72.1/core/fmt/trait.Debug.html\" title=\"trait core::fmt::Debug\">Debug</a>&gt; FromParallelIterator&lt;G&gt; for <a class=\"struct\" href=\"kimchi_msm/witness/struct.Witness.html\" title=\"struct kimchi_msm::witness::Witness\">Witness</a>&lt;N, G&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,6 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `folding/src/error_term.rs`."><title>error_term.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-4e54bb2b497cc83f.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.77.0-nightly (714b29a17 2024-01-15)" data-channel="nightly" data-search-js="search-dd67cee4cfa65049.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-0b2e2def73e61cbe.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-04d5337699b92874.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title">
-            <h2>Files</h2></div></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../folding/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `folding/src/error_term.rs`."><title>error_term.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="folding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.72.1 (d5c2e9c34 2023-09-13)" data-channel="1.72.1" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../folding/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -380,6 +378,22 @@
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     columns::ExtendedFoldingColumn,
     decomposable_folding::check_selector,
@@ -393,7 +407,11 @@
 <span class="kw">use </span>kimchi::circuits::expr::Variable;
 <span class="kw">use </span>poly_commitment::SRS;
 
-<span class="doccomment">/// This type refers to the two instances to be folded
+<span class="comment">// FIXME: for optimisation, as values are not necessarily Fp elements and are
+// relatively small, we could get rid of the scalar field objects, and only use
+// bigint where we only apply the modulus when needed.
+
+</span><span class="doccomment">/// This type refers to the two instances to be folded
 </span><span class="attr">#[derive(Clone, Copy)]
 </span><span class="kw">pub enum </span>Side {
     Left = <span class="number">0</span>,
@@ -410,11 +428,11 @@
 }
 
 <span class="doccomment">/// Evaluates the expression in the provided side
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_sided&lt;<span class="lifetime">'a</span>, C: FoldingConfig&gt;(
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_sided&lt;<span class="lifetime">&#39;a</span>, C: FoldingConfig&gt;(
     exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;,
-    env: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ExtendedEnv&lt;C&gt;,
+    env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ExtendedEnv&lt;C&gt;,
     side: Side,
-) -&gt; EvalLeaf&lt;<span class="lifetime">'a</span>, ScalarField&lt;C&gt;&gt; {
+) -&gt; EvalLeaf&lt;<span class="lifetime">&#39;a</span>, ScalarField&lt;C&gt;&gt; {
     <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
 
     <span class="kw">match </span>exp {
@@ -434,7 +452,7 @@
         Add(e1, e2) =&gt; eval_sided(e1, env, side) + eval_sided(e2, env, side),
         Sub(e1, e2) =&gt; eval_sided(e1, env, side) - eval_sided(e2, env, side),
         Mul(e1, e2) =&gt; {
-            <span class="comment">//this assumes to some degree that selectors don't multiply each other
+            <span class="comment">//this assumes to some degree that selectors don&#39;t multiply each other
             </span><span class="kw">let </span>selector = check_selector(e1)
                 .or(check_selector(e2))
                 .zip(env.enabled_selector())
@@ -471,11 +489,11 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_exp_error&lt;<span class="lifetime">'a</span>, C: FoldingConfig&gt;(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>eval_exp_error&lt;<span class="lifetime">&#39;a</span>, C: FoldingConfig&gt;(
     exp: <span class="kw-2">&amp;</span>FoldingExp&lt;C&gt;,
-    env: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ExtendedEnv&lt;C&gt;,
+    env: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ExtendedEnv&lt;C&gt;,
     side: Side,
-) -&gt; EvalLeaf&lt;<span class="lifetime">'a</span>, ScalarField&lt;C&gt;&gt; {
+) -&gt; EvalLeaf&lt;<span class="lifetime">&#39;a</span>, ScalarField&lt;C&gt;&gt; {
     <span class="kw">use </span>FoldingExp::<span class="kw-2">*</span>;
 
     <span class="kw">match </span>exp {
@@ -503,7 +521,7 @@
         Add(e1, e2) =&gt; eval_exp_error(e1, env, side) + eval_exp_error(e2, env, side),
         Sub(e1, e2) =&gt; eval_exp_error(e1, env, side) - eval_exp_error(e2, env, side),
         Mul(e1, e2) =&gt; {
-            <span class="comment">//this assumes to some degree that selectors don't multiply each other
+            <span class="comment">//this assumes to some degree that selectors don&#39;t multiply each other
             </span><span class="kw">let </span>selector = check_selector(e1)
                 .or(check_selector(e2))
                 .zip(env.enabled_selector())
@@ -545,7 +563,7 @@
                 }
                 acc
             }
-            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"degree over 2"</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;degree over 2&quot;</span>),
         },
     }
 }
@@ -555,14 +573,20 @@
     env: <span class="kw-2">&amp;</span>ExtendedEnv&lt;C&gt;,
     u: (ScalarField&lt;C&gt;, ScalarField&lt;C&gt;),
 ) -&gt; [Vec&lt;ScalarField&lt;C&gt;&gt;; <span class="number">2</span>] {
-    <span class="kw">let </span>(ul, ur) = (u.<span class="number">0</span>, u.<span class="number">1</span>);
+    <span class="comment">// FIXME: for speed, use inplace operations, and avoid cloning and
+    // allocating a new element.
+    // An allocation can cost a third of the time required for an addition and a
+    // 9th for a multiplication on the scalar field
+    // Indirections are also costly, so we should avoid them as much as
+    // possible, and inline code.
+    </span><span class="kw">let </span>(ul, ur) = (u.<span class="number">0</span>, u.<span class="number">1</span>);
     <span class="kw">let </span>u_cross = ul * ur;
     <span class="kw">let </span>zero = || EvalLeaf::Result(env.inner().zero_vec());
 
     <span class="kw">let </span>t_0 = {
         <span class="kw">let </span>t_0 = (zero(), zero());
         <span class="kw">let </span>(l, r) = exp.degree_0.iter().fold(t_0, |(l, r), (exp, sign, alpha)| {
-            <span class="comment">//could be left or right, doesn't matter for constant terms
+            <span class="comment">//could be left or right, doesn&#39;t matter for constant terms
             </span><span class="kw">let </span>exp = eval_exp_error(exp, env, Side::Left);
             <span class="kw">let </span>alpha_l = env.inner().alpha(<span class="kw-2">*</span>alpha, Side::Left);
             <span class="kw">let </span>alpha_r = env.inner().alpha(<span class="kw-2">*</span>alpha, Side::Right);
@@ -637,17 +661,19 @@
 <span class="kw">impl</span>&lt;CF: FoldingConfig&gt; ExtendedEnv&lt;CF&gt; {
     <span class="kw">pub fn </span>new(
         structure: <span class="kw-2">&amp;</span>CF::Structure,
-        <span class="comment">//maybe better to have some structure exteded or something like that
+        <span class="comment">// maybe better to have some structure exteded or something like that
         </span>instances: [RelaxedInstance&lt;CF::Curve, CF::Instance&gt;; <span class="number">2</span>],
         witnesses: [RelaxedWitness&lt;CF::Curve, CF::Witness&gt;; <span class="number">2</span>],
         domain: Radix2EvaluationDomain&lt;ScalarField&lt;CF&gt;&gt;,
         selector: <span class="prelude-ty">Option</span>&lt;CF::Selector&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>inner_instances = [
+        <span class="comment">// FIXME: avoid indirection
+        </span><span class="kw">let </span>inner_instances = [
             instances[<span class="number">0</span>].inner_instance().inner(),
             instances[<span class="number">1</span>].inner_instance().inner(),
         ];
-        <span class="kw">let </span>inner_witnesses = [witnesses[<span class="number">0</span>].inner().inner(), witnesses[<span class="number">1</span>].inner().inner()];
+        <span class="comment">// FIXME: avoid indirection
+        </span><span class="kw">let </span>inner_witnesses = [witnesses[<span class="number">0</span>].inner().inner(), witnesses[<span class="number">1</span>].inner().inner()];
         <span class="kw">let </span>inner = &lt;CF::Env&gt;::new(structure, inner_instances, inner_witnesses);
         <span class="self">Self </span>{
             inner,
@@ -693,9 +719,9 @@
                 .inner()
                 .extended
                 .get(i)
-                .expect(<span class="string">"extended column not present"</span>)
+                .expect(<span class="string">&quot;extended column not present&quot;</span>)
                 .evals),
-            Error =&gt; <span class="macro">panic!</span>(<span class="string">"shouldn't happen"</span>),
+            Error =&gt; <span class="macro">panic!</span>(<span class="string">&quot;shouldn&#39;t happen&quot;</span>),
             Constant(c) =&gt; EvalLeaf::Const(<span class="kw-2">*</span>c),
             Challenge(chall) =&gt; EvalLeaf::Const(<span class="self">self</span>.inner().challenge(<span class="kw-2">*</span>chall, side)),
             Alpha(i) =&gt; EvalLeaf::Const(<span class="self">self</span>.inner().alpha(<span class="kw-2">*</span>i, side)),
@@ -711,7 +737,7 @@
         };
         <span class="kw">match </span>col {
             WitnessExtended(i) =&gt; witness.inner().extended.get(i).is_some(),
-            Error =&gt; <span class="macro">panic!</span>(<span class="string">"shouldn't happen"</span>),
+            Error =&gt; <span class="macro">panic!</span>(<span class="string">&quot;shouldn&#39;t happen&quot;</span>),
             Inner(<span class="kw">_</span>) | Constant(<span class="kw">_</span>) | Challenge(<span class="kw">_</span>) | Alpha(<span class="kw">_</span>) | Selector(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
         }
     }
@@ -745,19 +771,23 @@
         env.compute_extended_commitments(srs, Side::Right)
     }
 
-    <span class="kw">fn </span>compute_extended_commitments(<span class="kw-2">mut </span><span class="self">self</span>, srs: <span class="kw-2">&amp;</span>CF::Srs, side: Side) -&gt; <span class="self">Self </span>{
+    <span class="comment">// FIXME: use reference to avoid indirect copying/cloning.
+    </span><span class="kw">fn </span>compute_extended_commitments(<span class="kw-2">mut </span><span class="self">self</span>, srs: <span class="kw-2">&amp;</span>CF::Srs, side: Side) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>(instance, witness) = <span class="kw">match </span>side {
             Side::Left =&gt; (<span class="kw-2">&amp;mut </span><span class="self">self</span>.instances[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.witnesses[<span class="number">0</span>]),
             Side::Right =&gt; (<span class="kw-2">&amp;mut </span><span class="self">self</span>.instances[<span class="number">1</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.witnesses[<span class="number">1</span>]),
         };
 
-        <span class="kw">for </span>(expected_i, (i, wit)) <span class="kw">in </span>witness.inner().extended.iter().enumerate() {
+        <span class="comment">// FIXME: use parallelisation
+        </span><span class="kw">for </span>(expected_i, (i, wit)) <span class="kw">in </span>witness.inner().extended.iter().enumerate() {
             <span class="comment">//in case any where to be missing for some reason
             </span><span class="macro">assert_eq!</span>(<span class="kw-2">*</span>i, expected_i);
             <span class="kw">let </span>commit = srs.commit_evaluations_non_hiding(<span class="self">self</span>.domain, wit);
             instance.inner_mut().extended.push(commit)
         }
-        <span class="self">self
+        <span class="comment">// FIXME: maybe returning a value is not necessary as it does inplace operations.
+        // It implies copying on the stack and possibly copy multiple times.
+        </span><span class="self">self
     </span>}
 }
 </code></pre></div></section></main></body></html>
