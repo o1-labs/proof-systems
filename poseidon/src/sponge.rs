@@ -3,9 +3,6 @@ use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
-#[cfg(feature = "debug_sponge")]
-use o1_utils::FieldHelpers;
-
 pub use crate::FqSponge;
 
 pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
@@ -132,49 +129,6 @@ where
     }
 }
 
-// Debugging macros -- these only insert code when non-release build and
-// "debug_sponge" feature is enabled.
-macro_rules! debug_sponge {
-    ($name:expr, $sponge:expr) => {
-        #[cfg(feature = "debug_sponge")]
-        {
-            // No input
-            debug_sponge_print_state!($name, $sponge);
-        }
-    };
-    ($name:expr, $input:expr, $sponge:expr) => {
-        #[cfg(feature = "debug_sponge")]
-        {
-            // Field input
-            debug_sponge_print_state!($name, $sponge);
-
-            println!(
-                "debug_sponge: id{} {} input {}",
-                $sponge.id,
-                $name,
-                $input.to_hex()
-            );
-        }
-    };
-}
-#[cfg(feature = "debug_sponge")]
-macro_rules! debug_sponge_print_state {
-    ($name:expr, $sponge:expr) => {
-        println!(
-            "debug_sponge: id{} {} state {:?} {}",
-            $sponge.id,
-            $name,
-            $sponge.sponge_state,
-            $sponge
-                .state
-                .iter()
-                .map(|f| { f.to_hex() })
-                .collect::<Vec<String>>()
-                .join(" "),
-        );
-    };
-}
-
 impl<P: SWModelParameters, SC: SpongeConstants>
     FqSponge<P::BaseField, GroupAffine<P>, P::ScalarField> for DefaultFqSponge<P, SC>
 where
@@ -183,7 +137,6 @@ where
 {
     fn new(params: &'static ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
         let sponge = ArithmeticSponge::new(params);
-        debug_sponge!("new", sponge);
         DefaultFqSponge {
             sponge,
             last_squeezed: vec![],
@@ -196,14 +149,10 @@ where
             if g.infinity {
                 // absorb a fake point (0, 0)
                 let zero = P::BaseField::zero();
-                debug_sponge!("absorb", zero, self.sponge);
                 self.sponge.absorb(&[zero]);
-                debug_sponge!("absorb", zero, self.sponge);
                 self.sponge.absorb(&[zero]);
             } else {
-                debug_sponge!("absorb", g.x, self.sponge);
                 self.sponge.absorb(&[g.x]);
-                debug_sponge!("absorb", g.y, self.sponge);
                 self.sponge.absorb(&[g.y]);
             }
         }
@@ -213,7 +162,6 @@ where
         self.last_squeezed = vec![];
 
         for fe in x {
-            debug_sponge!("absorb", fe, self.sponge);
             self.sponge.absorb(&[*fe])
         }
     }
@@ -232,7 +180,6 @@ where
                     <P::BaseField as PrimeField>::BigInt::from_bits_le(&bits),
                 )
                 .expect("padding code has a bug");
-                debug_sponge!("absorb", fe, self.sponge);
                 self.sponge.absorb(&[fe]);
             } else {
                 let low_bit = if bits[0] {
@@ -246,16 +193,13 @@ where
                 )
                 .expect("padding code has a bug");
 
-                debug_sponge!("absorb", high_bits, self.sponge);
                 self.sponge.absorb(&[high_bits]);
-                debug_sponge!("absorb", low_bit, self.sponge);
                 self.sponge.absorb(&[low_bit]);
             }
         });
     }
 
     fn digest(mut self) -> P::ScalarField {
-        debug_sponge!("squeeze", self.sponge);
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
         // Returns zero for values that are too large.
         // This means that there is a bias for the value zero (in one of the curve).
@@ -267,17 +211,14 @@ where
     }
 
     fn digest_fq(mut self) -> P::BaseField {
-        debug_sponge!("squeeze", self.sponge);
         self.squeeze_field()
     }
 
     fn challenge(&mut self) -> P::ScalarField {
-        debug_sponge!("squeeze", self.sponge);
         self.squeeze(CHALLENGE_LENGTH_IN_LIMBS)
     }
 
     fn challenge_fq(&mut self) -> P::BaseField {
-        debug_sponge!("squeeze", self.sponge);
         self.squeeze_field()
     }
 }

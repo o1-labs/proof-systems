@@ -4,8 +4,6 @@ name: CI
 
 on:
   push:
-    branches:
-      - master
   pull_request:
 
 env:
@@ -18,44 +16,57 @@ env:
 
 jobs:
   run_checks:
+    strategy:
+      matrix:
+        # FIXME: use the latest version of cargo nextest when we get rid of 1.71
+        # and 1.72
+        rust_toolchain_version: ["1.71", "1.72"]
+        # FIXME: currently not available for 5.0.0.
+        # It might be related to boxroot dependency, and we would need to bump
+        # up the ocaml-rs dependency
+        ocaml_version: ["4.14"]
+
     runs-on: ubuntu-latest
     name: Run some basic checks and tests
     steps:
-      #
-      # Setup
-      #
-
       - name: Checkout PR
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
         with:
-          submodules: true
+          submodules: true        
 
-      - name: Set up cargo/rust
-        uses: actions-rs/toolchain@v1
+      # as action-rs does not seem to be maintained anymore, building from
+      # scratch the environment using rustup
+      - name: Setup Rust toolchain ${{ matrix.rust_toolchain_version }}
+        run:
+          |
+            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
+            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+            chmod +x ./rustup-init
+            ./rustup-init -y --default-toolchain "${{ matrix.rust_toolchain_version }}" --profile default
+            rm ./rustup-init
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            # overwriting default rust-toolchain
+            echo ${{ matrix.rust_toolchain_version }} > rust-toolchain
+
+      - name: Setup OCaml ${{ matrix.ocaml_version }}
+        uses: ocaml/setup-ocaml@v2
         with:
-          profile: minimal
-          toolchain: "1.67.0"
-          components: rustfmt, clippy
+          ocaml-compiler: ${{ matrix.ocaml_version }}
+          # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
+          # disable-cache: true
 
       - name: Install markdownlint
         run: |
           npm install -g markdownlint-cli
-
-      - name: Setup OCaml (because of ocaml-gen)
-        run: |
-          sudo apt update
-          sudo apt install -y ocaml
-
-      # https://github.com/Swatinem/rust-cache
-      - name: Cache Rust stuff
-        uses: Swatinem/rust-cache@v1
 
       #
       # Doc & Spec
       #
 
       - name: Install cargo-spec for specifications
-        run: cargo install --locked --version 0.4.1 cargo-spec
+        run: |
+          eval $(opam env)
+          cargo install --locked cargo-spec
 
       - name: Build the kimchi specification
         run: |
@@ -69,19 +80,19 @@ jobs:
 
       - name: Check that up-to-date specification is checked in
         run: |
-          git diff --exit-code
+          git diff --exit-code ":(exclude)rust-toolchain"
 
       #
       # Coding guidelines
       #
 
       - name: Enforce formating
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
+        run: |
+          eval $(opam env)
+          cargo fmt -- --check
 
       - name: Lint (clippy)
+<<<<<<< HEAD
         uses: actions-rs/cargo@v1
         with:
           command: clippy
@@ -94,16 +105,27 @@ jobs:
           name: Clippy (beta)
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features --all-targets --offline -- -W clippy::all
+=======
+        run: |
+          eval $(opam env)
+          cargo clippy --all-features --all-targets --tests -- -W clippy::all -D warnings
+>>>>>>> 5c79cb386b54490442638939c57f4509af873a73
 
       #
       # Build
       #
 
       - name: Ensure that everything builds
+<<<<<<< HEAD
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --all-targets --all-features --offline
+=======
+        run: |
+          eval $(opam env)
+          cargo build --release --all-targets --all-features
+>>>>>>> 5c79cb386b54490442638939c57f4509af873a73
 
       #
       # Tests
@@ -111,9 +133,13 @@ jobs:
 
       # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
       - name: Install latest nextest release
-        uses: taiki-e/install-action@nextest
+        run: |
+          eval $(opam env)
+          # FIXME: update to 0.9.68 when we get rid of 1.71 and 1.72.
+          cargo install cargo-nextest@=0.9.67 --locked
 
       - name: Test with latest nextest release (faster than cargo test)
+<<<<<<< HEAD
         uses: actions-rs/cargo@v1
         with:
           command: nextest
@@ -124,3 +150,13 @@ jobs:
         with:
           command: test
           args: --all-features --release --doc --offline
+=======
+        run: |
+          eval $(opam env)
+          cargo nextest run --all-features --release
+
+      - name: Doc tests
+        run: |
+          eval $(opam env)
+          cargo test --all-features --release --doc
+>>>>>>> 5c79cb386b54490442638939c57f4509af873a73

@@ -145,6 +145,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: None,
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
+            zk_rows: cs.zk_rows,
         };
 
         let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =

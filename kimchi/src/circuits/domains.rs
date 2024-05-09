@@ -3,7 +3,7 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use crate::error::SetupError;
+use crate::error::DomainCreationError;
 
 #[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -22,26 +22,29 @@ impl<F: FftField> EvaluationDomains<F> {
     /// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),
     /// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator
     /// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.
-    pub fn create(n: usize) -> Result<Self, SetupError> {
-        let n = Domain::<F>::compute_size_of_domain(n).ok_or(SetupError::DomainCreation(
-            "could not compute size of domain",
-        ))?;
+    pub fn create(n: usize) -> Result<Self, DomainCreationError> {
+        let n = Domain::<F>::compute_size_of_domain(n)
+            .ok_or(DomainCreationError::DomainSizeFailed(n))?;
 
-        let d1 = Domain::<F>::new(n).ok_or(SetupError::DomainCreation(
-            "construction of domain d1 did not work as intended",
+        let d1 = Domain::<F>::new(n).ok_or(DomainCreationError::DomainConstructionFailed(
+            "d1".to_string(),
+            n,
         ))?;
 
         // we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
         // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
-        let d2 = Domain::<F>::new(2 * n).ok_or(SetupError::DomainCreation(
-            "construction of domain d2 did not work as intended",
+        let d2 = Domain::<F>::new(2 * n).ok_or(DomainCreationError::DomainConstructionFailed(
+            "d2".to_string(),
+            2 * n,
         ))?;
-        let d4 = Domain::<F>::new(4 * n).ok_or(SetupError::DomainCreation(
-            "construction of domain d4 did not work as intended",
+        let d4 = Domain::<F>::new(4 * n).ok_or(DomainCreationError::DomainConstructionFailed(
+            "d4".to_string(),
+            4 * n,
         ))?;
-        let d8 = Domain::<F>::new(8 * n).ok_or(SetupError::DomainCreation(
-            "construction of domain d8 did not work as intended",
+        let d8 = Domain::<F>::new(8 * n).ok_or(DomainCreationError::DomainConstructionFailed(
+            "d8".to_string(),
+            8 * n,
         ))?;
 
         // ensure the relationship between the three domains in case the library's behavior changes
