@@ -1,4 +1,4 @@
-use crate::trace::DecomposableTrace;
+use crate::trace::DecomposedTrace;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
@@ -110,9 +110,9 @@ pub struct DecomposableFoldingEnvironment<
     const N_SEL: usize,
     C: FoldingConfig,
 > {
-    /// Structure of the folded circuit (using [DecomposableTrace] for now, as
+    /// Structure of the folded circuit (using [DecomposedTrace] for now, as
     /// it contains the domain size)
-    pub structure: DecomposableTrace<N, N_REL, N_SEL, C>,
+    pub structure: DecomposedTrace<N, N_REL, N_SEL, C>,
     /// Commitments to the witness columns, for both sides
     pub instances: [FoldingInstance<N, C::Curve>; 2],
     /// Corresponds to the omega evaluations, for both sides
@@ -142,7 +142,7 @@ where
         Output = Evaluations<ScalarField<C>, Radix2EvaluationDomain<ScalarField<C>>>,
     >,
 {
-    type Structure = DecomposableTrace<N, N_REL, N_SEL, C>;
+    type Structure = DecomposedTrace<N, N_REL, N_SEL, C>;
 
     fn new(
         structure: &Self::Structure,

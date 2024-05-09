@@ -14,7 +14,7 @@ use std::ops::Index;
 
 use super::{
     column::{N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
-    trace::DecomposableMIPSTrace,
+    trace::DecomposedMIPSTrace,
 };
 use poly_commitment::srs::SRS;
 
@@ -84,6 +84,6 @@ impl FoldingConfig for DecomposableMIPSFoldingConfig {
     type Srs = SRS<Curve>;
     type Instance = MIPSFoldingInstance;
     type Witness = MIPSFoldingWitness;
-    type Structure = DecomposableMIPSTrace;
+    type Structure = DecomposedMIPSTrace;
     type Env = DecomposableMIPSFoldingEnvironment;
 }

@@ -5,7 +5,7 @@ use crate::{
         constraints::Env,
         interpreter::{interpret_instruction, Instruction},
     },
-    trace::{DecomposableTrace, DecomposableTracer},
+    trace::{DecomposableTracer, DecomposedTrace},
 };
 use ark_ff::Zero;
 use kimchi_msm::witness::Witness;
@@ -15,8 +15,8 @@ use strum::IntoEnumIterator;
 use super::folding::DecomposableMIPSFoldingConfig;
 
 /// The MIPS circuit trace
-pub type DecomposableMIPSTrace =
-    DecomposableTrace<N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, DecomposableMIPSFoldingConfig>;
+pub type DecomposedMIPSTrace =
+    DecomposedTrace<N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, DecomposableMIPSFoldingConfig>;
 
 impl
     DecomposableTracer<
@@ -25,7 +25,7 @@ impl
         N_MIPS_SEL_COLS,
         DecomposableMIPSFoldingConfig,
         Env<ScalarField<DecomposableMIPSFoldingConfig>>,
-    > for DecomposableMIPSTrace
+    > for DecomposedMIPSTrace
 {
     fn new(domain_size: usize, env: &mut Env<ScalarField<DecomposableMIPSFoldingConfig>>) -> Self {
         let mut circuit = Self {
