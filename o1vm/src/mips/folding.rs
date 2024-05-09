@@ -18,11 +18,16 @@ use super::{
 };
 use poly_commitment::srs::SRS;
 
+// Decomposable folding compatibility
 pub type MIPSFoldingWitness = FoldingWitness<MIPS_COLUMNS, Fp>;
 pub type MIPSFoldingInstance = FoldingInstance<MIPS_COLUMNS, Curve>;
 pub type MIPSFoldingEnvironment =
     FoldingEnvironment<MIPS_COLUMNS, MIPS_REL_COLS, MIPS_SEL_COLS, MIPSFoldingConfig>;
 
+// -- Start indexer implementations
+// Implement indexers over columns and selectors to implement an abstract
+// folding environment over selectors, see [crate::folding::FoldingEnvironment]
+// for more details
 impl Index<MIPSColumn> for MIPSFoldingWitness {
     type Output = Evaluations<Fp, Radix2EvaluationDomain<Fp>>;
 
@@ -54,6 +59,7 @@ impl Index<Column> for MIPSFoldingWitness {
         }
     }
 }
+// -- End of indexer implementations
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MIPSFoldingConfig;
