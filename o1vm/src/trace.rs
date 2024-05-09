@@ -25,6 +25,35 @@ pub trait Indexer {
     fn ix(&self) -> usize;
 }
 
+/// Represents an provable trace.
+/// A trace is provable if it can be used to prove the correctness of the
+/// computation it embeds.
+/// For now, the only requirement is to be able to return the length of
+/// the computation, which is commonly named the domain size.
+pub trait ProvableTrace {
+    fn domain_size(&self) -> usize;
+}
+
+/// Implement a trace for a single instruction.
+// TODO: we should use the generic traits defined in [kimchi_msm].
+// For now, we want to have this to be able to test the folding library for a
+// single instruction.
+// It is not recommended to use this in production and it should not be
+// maintained in the long term.
+pub struct SingleInstructionTrace<const N: usize, C: FoldingConfig> {
+    pub domain_size: usize,
+    pub witness: Witness<N, Vec<ScalarField<C>>>,
+    pub constraints: Vec<E<ScalarField<C>>>,
+    pub lookups: Vec<Lookup<E<ScalarField<C>>>>,
+}
+
+// Any single instruction trace is provable.
+impl<const N: usize, C: FoldingConfig> ProvableTrace for SingleInstructionTrace<N, C> {
+    fn domain_size(&self) -> usize {
+        self.domain_size
+    }
+}
+
 /// Struct representing a circuit execution trace which is decomposable in
 /// individual sub-circuits sharing the same columns.
 /// It is parameterized by
@@ -51,6 +80,15 @@ pub struct DecomposableTrace<
     pub constraints: BTreeMap<C::Selector, Vec<E<ScalarField<C>>>>,
     /// The vector of lookups for a given selector
     pub lookups: BTreeMap<C::Selector, Vec<Lookup<E<ScalarField<C>>>>>,
+}
+
+// Any decomposable trace is provable.
+impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig> ProvableTrace
+    for DecomposableTrace<N, N_REL, N_SEL, C>
+{
+    fn domain_size(&self) -> usize {
+        self.domain_size
+    }
 }
 
 impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
