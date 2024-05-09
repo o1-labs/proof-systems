@@ -104,7 +104,7 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
 
 /// Environment for the decomposable folding protocol, for a given number of
 /// witness columns and selectors.
-pub struct DecomposableFoldingEnvironment<
+pub struct DecomposedFoldingEnvironment<
     const N: usize,
     const N_REL: usize,
     const N_SEL: usize,
@@ -138,7 +138,7 @@ impl<
         C::Column,
         Challenge,
         C::Selector,
-    > for DecomposableFoldingEnvironment<N, N_REL, N_SEL, C, Structure>
+    > for DecomposedFoldingEnvironment<N, N_REL, N_SEL, C, Structure>
 where
     // Used by col and selector
     FoldingWitness<N, ScalarField<C>>: Index<
@@ -164,7 +164,7 @@ where
                 col.evals.rotate_left(1);
             }
         }
-        DecomposableFoldingEnvironment {
+        DecomposedFoldingEnvironment {
             // FIXME: This is a clone, but it should be a reference
             structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],
