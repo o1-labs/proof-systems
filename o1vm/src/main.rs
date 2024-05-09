@@ -17,9 +17,9 @@ use o1vm::{
     mips::{
         column::{N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS},
         constraints as mips_constraints,
-        folding::MIPSFoldingConfig,
+        folding::DecomposableMIPSFoldingConfig,
         interpreter::Instruction,
-        trace::MIPSTrace,
+        trace::DecomposableMIPSTrace,
         witness::{self as mips_witness, SCRATCH_SIZE},
     },
     preimage_oracle::PreImageOracle,
@@ -90,25 +90,27 @@ pub fn main() -> ExitCode {
     // The keccak environment is extracted inside the loop
 
     // Initialize the circuits. Includes pre-folding witnesses.
-    let mut mips_trace = MIPSTrace::new(DOMAIN_SIZE, &mut mips_con_env);
+    let mut mips_trace = DecomposableMIPSTrace::new(DOMAIN_SIZE, &mut mips_con_env);
     let mut keccak_trace = KeccakTrace::new(DOMAIN_SIZE, &mut KeccakEnv::<Fp>::default());
 
     let _mips_folding = {
-        let constraints: BTreeMap<Instruction, Vec<FoldingCompatibleExpr<MIPSFoldingConfig>>> =
-            mips_trace
-                .constraints
-                .iter()
-                .map(|(k, constraints)| {
-                    (
-                        *k,
-                        constraints
-                            .iter()
-                            .map(|x| FoldingCompatibleExpr::from(x.clone()))
-                            .collect(),
-                    )
-                })
-                .collect();
-        DecomposableFoldingScheme::<MIPSFoldingConfig>::new(
+        let constraints: BTreeMap<
+            Instruction,
+            Vec<FoldingCompatibleExpr<DecomposableMIPSFoldingConfig>>,
+        > = mips_trace
+            .constraints
+            .iter()
+            .map(|(k, constraints)| {
+                (
+                    *k,
+                    constraints
+                        .iter()
+                        .map(|x| FoldingCompatibleExpr::from(x.clone()))
+                        .collect(),
+                )
+            })
+            .collect();
+        DecomposableFoldingScheme::<DecomposableMIPSFoldingConfig>::new(
             constraints,
             vec![],
             &srs.full_srs,

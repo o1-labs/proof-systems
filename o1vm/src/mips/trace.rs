@@ -12,22 +12,22 @@ use kimchi_msm::witness::Witness;
 use std::{array, collections::BTreeMap};
 use strum::IntoEnumIterator;
 
-use super::folding::MIPSFoldingConfig;
+use super::folding::DecomposableMIPSFoldingConfig;
 
 /// The MIPS circuit trace
-pub type MIPSTrace =
-    DecomposableTrace<N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, MIPSFoldingConfig>;
+pub type DecomposableMIPSTrace =
+    DecomposableTrace<N_MIPS_COLS, N_MIPS_REL_COLS, N_MIPS_SEL_COLS, DecomposableMIPSFoldingConfig>;
 
 impl
     DecomposableTracer<
         N_MIPS_COLS,
         N_MIPS_REL_COLS,
         N_MIPS_SEL_COLS,
-        MIPSFoldingConfig,
-        Env<ScalarField<MIPSFoldingConfig>>,
-    > for MIPSTrace
+        DecomposableMIPSFoldingConfig,
+        Env<ScalarField<DecomposableMIPSFoldingConfig>>,
+    > for DecomposableMIPSTrace
 {
-    fn new(domain_size: usize, env: &mut Env<ScalarField<MIPSFoldingConfig>>) -> Self {
+    fn new(domain_size: usize, env: &mut Env<ScalarField<DecomposableMIPSFoldingConfig>>) -> Self {
         let mut circuit = Self {
             domain_size,
             witness: BTreeMap::new(),
@@ -55,7 +55,7 @@ impl
     fn push_row(
         &mut self,
         opcode: Instruction,
-        row: &[ScalarField<MIPSFoldingConfig>; N_MIPS_REL_COLS],
+        row: &[ScalarField<DecomposableMIPSFoldingConfig>; N_MIPS_REL_COLS],
     ) {
         self.witness.entry(opcode).and_modify(|wit| {
             for (i, value) in row.iter().enumerate() {
@@ -69,7 +69,7 @@ impl
     fn pad_with_row(
         &mut self,
         opcode: Instruction,
-        row: &[ScalarField<MIPSFoldingConfig>; N_MIPS_REL_COLS],
+        row: &[ScalarField<DecomposableMIPSFoldingConfig>; N_MIPS_REL_COLS],
     ) -> usize {
         let len = self.witness[&opcode].cols[0].len();
         assert!(len <= self.domain_size);
@@ -86,7 +86,9 @@ impl
         let rows_to_add = self.domain_size - len;
         self.witness.entry(opcode).and_modify(|wit| {
             for col in wit.cols.iter_mut() {
-                col.extend((0..rows_to_add).map(|_| ScalarField::<MIPSFoldingConfig>::zero()));
+                col.extend(
+                    (0..rows_to_add).map(|_| ScalarField::<DecomposableMIPSFoldingConfig>::zero()),
+                );
             }
         });
         rows_to_add

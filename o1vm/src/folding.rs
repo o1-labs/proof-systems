@@ -102,9 +102,9 @@ impl<const N: usize, G: CommitmentCurve> Witness<G> for FoldingWitness<N, G::Sca
     }
 }
 
-/// Environment for the folding protocol, for a given number of witness columns
-/// and structure
-pub struct FoldingEnvironment<
+/// Environment for the decomposable folding protocol, for a given number of
+/// witness columns and selectors.
+pub struct DecomposableFoldingEnvironment<
     const N: usize,
     const N_REL: usize,
     const N_SEL: usize,
@@ -130,7 +130,7 @@ impl<const N: usize, const N_REL: usize, const N_SEL: usize, C: FoldingConfig>
         C::Column,
         Challenge,
         C::Selector,
-    > for FoldingEnvironment<N, N_REL, N_SEL, C>
+    > for DecomposableFoldingEnvironment<N, N_REL, N_SEL, C>
 where
     // Used by col and selector
     FoldingWitness<N, ScalarField<C>>: Index<
@@ -156,7 +156,7 @@ where
                 col.evals.rotate_left(1);
             }
         }
-        FoldingEnvironment {
+        DecomposableFoldingEnvironment {
             structure: structure.clone(),
             instances: [instances[0].clone(), instances[1].clone()],
             curr_witnesses,
